@@ -1,5 +1,6 @@
 import type { JsonSerializable } from "@app/lib/utils/cache";
 import {
+  batchInvalidateCacheWithRedis,
   buildCacheWithRedisKey,
   cacheWithRedis,
   invalidateCacheAfterCommit,
@@ -43,9 +44,44 @@ type CachedResourceLookupDefinition<Input, Snapshot, Resource> = {
 export type CachedResourceLookup<Input, Resource> = {
   fetch: (input: Input, transaction?: Transaction) => Promise<Resource | null>;
   invalidate: (input: Input, transaction?: Transaction) => Promise<void>;
+  invalidateMany: (
+    inputs: readonly Input[],
+    transaction?: Transaction
+  ) => Promise<void>;
+};
+
+type CachedResourceListDefinition<Input, Snapshot, Resource> = Omit<
+  CachedResourceLookupDefinition<Input, Snapshot, Resource[]>,
+  "loadFromDatabase"
+> & {
+  loadFromDatabase: (
+    input: Input,
+    transaction?: Transaction
+  ) => Promise<Resource[]>;
+};
+
+export type CachedResourceList<Input, Resource> = {
+  fetch: (input: Input, transaction?: Transaction) => Promise<Resource[]>;
+  invalidate: (input: Input, transaction?: Transaction) => Promise<void>;
+  invalidateMany: (
+    inputs: readonly Input[],
+    transaction?: Transaction
+  ) => Promise<void>;
 };
 
 type OperableCachedResourceLookup<Input, Resource> = CachedResourceLookup<
+  Input,
+  Resource
+> & {
+  createCacheOperations: <OperationsInput>(definition: {
+    label: string;
+    params: CacheOperationParam[];
+    inputSchema: z.ZodType<OperationsInput>;
+    toLookupInput: (input: OperationsInput) => Input;
+  }) => CacheOperations;
+};
+
+type OperableCachedResourceList<Input, Resource> = CachedResourceList<
   Input,
   Resource
 > & {
@@ -122,6 +158,14 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
       readFromKeyFirst: readFromKeyFirstOptions,
     }
   );
+  const invalidateSnapshots = batchInvalidateCacheWithRedis(
+    loadSnapshotFromDatabase,
+    versionedKey,
+    {
+      cacheId: id,
+      readFromKeyFirst: readFromKeyFirstOptions,
+    }
+  );
 
   return {
     fetch: async (input, transaction) => {
@@ -152,6 +196,16 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
       }
       await invalidateSnapshot(input);
     },
+    invalidateMany: async (inputs, transaction) => {
+      const argsList = inputs.map((input): [Input] => [input]);
+      if (transaction) {
+        invalidateCacheAfterCommit(transaction, () =>
+          invalidateSnapshots(argsList)
+        );
+        return;
+      }
+      await invalidateSnapshots(argsList);
+    },
     createCacheOperations: ({ label, params, inputSchema, toLookupInput }) =>
       defineCacheOperations({
         id,
@@ -168,5 +222,27 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
           operationsCacheKey.keyPattern
         ),
       }),
+  };
+}
+
+/**
+ * List-shaped counterpart to `defineCachedResourceLookup`. The collection is
+ * cached as one versioned snapshot while callers always receive Resource
+ * instances and never need to handle a nullable cache result.
+ */
+export function defineCachedResourceList<Input, Snapshot, Resource>(
+  definition: CachedResourceListDefinition<Input, Snapshot, Resource>
+): OperableCachedResourceList<Input, Resource> {
+  const lookup = defineCachedResourceLookup<Input, Snapshot, Resource[]>({
+    ...definition,
+    loadFromDatabase: definition.loadFromDatabase,
+  });
+
+  return {
+    fetch: async (input, transaction) =>
+      (await lookup.fetch(input, transaction)) ?? [],
+    invalidate: lookup.invalidate,
+    invalidateMany: lookup.invalidateMany,
+    createCacheOperations: lookup.createCacheOperations,
   };
 }
