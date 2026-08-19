@@ -65,6 +65,7 @@ import {
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
+import { isProgrammaticSpendLimitRateCapReached } from "@app/lib/api/credits/programmatic_usage_limit";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { isApiKeySpendLimitRateCapReached } from "@app/lib/api/keys/spend_limit";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
@@ -2646,17 +2647,22 @@ export async function checkMessagesLimit(
 
     // Programmatic monthly cap: block programmatic calls when the cap is reached.
     if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
+      // The Redis fixed-window backups are flag-gated while we validate the
+      // counters; usage is recorded regardless (in credit_cost), so the flag
+      // only controls blocking.
+      const featureFlags = await getFeatureFlags(auth);
+      const spendCapEnabled = featureFlags.includes(
+        "enforce_user_spend_limit_rate_cap"
+      );
+
       // Per-API-key credit cap: block when this key's credit state is "capped"
       // (driven by the Metronome per-key cap alert / reconcile), or when the
-      // Redis fixed-window backup reports the cap reached. The backup is
-      // flag-gated while we validate the counter; usage is recorded regardless
-      // (in credit_cost), so the flag only controls blocking.
+      // Redis fixed-window backup reports the cap reached.
       const key = auth.key();
       if (key) {
-        const featureFlags = await getFeatureFlags(auth);
         const capReached =
           (await isApiKeyCapped(owner.sId, key.id)) ||
-          (featureFlags.includes("enforce_user_spend_limit_rate_cap") &&
+          (spendCapEnabled &&
             (await isApiKeySpendLimitRateCapReached(auth, {
               keyModelId: key.id,
             })));
@@ -2672,7 +2678,12 @@ export async function checkMessagesLimit(
         }
       }
 
-      const programmaticBlocked = await isProgrammaticApiBlocked(owner.sId);
+      // Workspace programmatic monthly cap: the Metronome-driven state
+      // (`isProgrammaticApiBlocked`) OR the Redis fixed-window backup.
+      const programmaticBlocked =
+        (await isProgrammaticApiBlocked(owner.sId)) ||
+        (spendCapEnabled &&
+          (await isProgrammaticSpendLimitRateCapReached(auth)));
       if (programmaticBlocked) {
         return new Err({
           status_code: 429,
