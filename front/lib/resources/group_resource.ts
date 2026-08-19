@@ -205,7 +205,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   };
 
   private static fromCachedGroup(data: CachedGroup): GroupResource {
-    return new GroupResource(GroupModel, {
+    return new this(this.model, {
       id: data.id,
       name: data.name,
       kind: data.kind,
@@ -392,7 +392,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         workspaceModelId
       )
     );
-    await GroupResource.byModelIdCache.invalidate(
+    await this.byModelIdCache.invalidate(
       {
         workspaceModelId,
         groupModelId: group.id,
@@ -781,7 +781,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         throw new Error("Group for key not found.");
       }
 
-      return cached.map((g) => GroupResource.fromCachedGroup(g));
+      return cached.map((g) => this.fromCachedGroup(g));
     }
 
     const groups = await this.model.findAll({
@@ -891,7 +891,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const requestedKeys = new Set(inputs.map(groupCacheKey));
-    const groupModels = await GroupModel.findAll({
+    const groupModels = await this.model.findAll({
       where: {
         workspaceId: workspaceModelId,
         id: {
@@ -910,14 +910,15 @@ export class GroupResource extends BaseResource<GroupModel> {
           })
         )
       )
-      .map((group) => new GroupResource(GroupModel, group.get()));
+      .map((group) => new this(this.model, group.get()));
   }
 
   private static readonly byModelIdCache = defineCachedResourceBatchLookup({
     id: "group_by_model_id",
     version: GROUP_BY_MODEL_ID_CACHE_KEY_VERSION,
     key: groupCacheKey,
-    loadManyFromDatabase: GroupResource.fetchByModelIdsFromDatabase,
+    loadManyFromDatabase: (inputs, transaction) =>
+      this.fetchByModelIdsFromDatabase(inputs, transaction),
     inputFromResource: (group: GroupResource) => ({
       workspaceModelId: group.workspaceId,
       groupModelId: group.id,
@@ -927,11 +928,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       const parsedSnapshot: unknown = JSON.parse(serializedSnapshot);
       return CachedGroupSchema.parse(parsedSnapshot);
     },
-    fromSnapshot: GroupResource.fromCachedGroup,
+    fromSnapshot: (snapshot) => this.fromCachedGroup(snapshot),
   });
 
   static readonly byModelIdCacheOperations =
-    GroupResource.byModelIdCache.createCacheOperations({
+    this.byModelIdCache.createCacheOperations({
       label: "Group (by ModelId)",
       inputSchema: GroupCacheInputSchema,
       params: [
@@ -960,7 +961,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     groupModelIds: ModelId[];
     transaction?: Transaction;
   }): Promise<void> {
-    await GroupResource.byModelIdCache.invalidateMany(
+    await this.byModelIdCache.invalidateMany(
       groupModelIds.map((groupModelId) => ({
         workspaceModelId,
         groupModelId,
@@ -978,7 +979,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     }: { groupKinds?: GroupKind[]; transaction?: Transaction } = {}
   ) {
     const workspaceModelId = auth.getNonNullableWorkspace().id;
-    const groups = await GroupResource.byModelIdCache.fetchMany(
+    const groups = await this.byModelIdCache.fetchMany(
       ids.map((groupModelId) => ({ workspaceModelId, groupModelId })),
       transaction
     );
