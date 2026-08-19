@@ -1091,22 +1091,11 @@ export function UsagePage() {
         )}
 
         {isAnalyticsConsumptionEnabled &&
+        !isOverviewError &&
         (!consumptionOverview || !!creditUsage || hasPool) ? (
           <Page.Vertical gap="none" align="stretch">
             <Page.H variant="h6">Credit Pool</Page.H>
             <div className="flex flex-col gap-2 pt-4">
-              {isOverviewError && !consumptionOverview && (
-                <ContentMessage
-                  title="Failed to load Workspace Credit Pool"
-                  icon={AlertCircle}
-                  variant="warning"
-                >
-                  An error occurred while loading your Workspace Credit Pool
-                  data. Please refresh the page or contact support if the issue
-                  persists.
-                </ContentMessage>
-              )}
-
               {isOverviewLoading && (
                 <div className="flex justify-center py-8">
                   <Spinner />
