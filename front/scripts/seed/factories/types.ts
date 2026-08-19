@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import type { AgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
@@ -22,6 +23,8 @@ export interface AgentAsset {
   pictureUrl: string;
   sharedWithAdditionalUsers?: boolean;
   responseFormat?: string;
+  // Defaults to "visible" (published). "hidden" makes the agent visible to its editors only.
+  scope?: Exclude<AgentConfigurationScope, "global">;
 }
 
 export interface UserAsset {
