@@ -521,7 +521,7 @@ export const GPT_5_6_TERRA_MODEL_CONFIG: ModelConfigurationType = {
 export const GPT_5_6_TERRA_LONG_CONTEXT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
-  displayName: "GPT 5.6 Terra (1M context)",
+  displayName: "GPT 5.6 Terra (long context)",
   contextSize: 1_050_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64,
