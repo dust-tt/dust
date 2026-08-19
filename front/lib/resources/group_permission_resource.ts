@@ -267,7 +267,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         transaction: t,
       });
 
-      await this.refreshGroupGrantsAfterCommit(workspaceId, [group.id], t);
+      await this.refreshGroupGrantsAfterCommit(auth, [group.id], t);
 
       return new this(GroupPermissionModel, row.get());
     }, transaction);
@@ -547,11 +547,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       },
       transaction,
     });
-    await this.refreshGroupGrantsAfterCommit(
-      workspaceId,
-      [group.id],
-      transaction
-    );
+    await this.refreshGroupGrantsAfterCommit(auth, [group.id], transaction);
   }
 
   // Read grants for the given groups, optionally narrowed by grant type / resource type /
@@ -662,9 +658,10 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   }
 
   private static async refreshGroupGrants(
-    workspaceModelId: ModelId,
+    auth: Authenticator,
     groupModelIds: ModelId[]
   ): Promise<void> {
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
     const statsDClient = getStatsDClient();
     try {
       const key = cacheKey(workspaceModelId);
@@ -701,7 +698,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // Overwrite instead of delete: grants change rarely, so one writer reloads instead of every
   // concurrent reader missing at once.
   private static async refreshGroupGrantsAfterCommit(
-    workspaceModelId: ModelId,
+    auth: Authenticator,
     groupModelIds: ModelId[],
     transaction?: Transaction
   ): Promise<void> {
@@ -710,15 +707,16 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
 
     await invalidateCacheAfterCommit(transaction, () =>
-      this.refreshGroupGrants(workspaceModelId, [...new Set(groupModelIds)])
+      this.refreshGroupGrants(auth, [...new Set(groupModelIds)])
     );
   }
 
   // Teardown only: no group set worth reconstructing.
   private static async dropWorkspaceGrantsAfterCommit(
-    workspaceModelId: ModelId,
+    auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
     await invalidateCacheAfterCommit(transaction, async () => {
       try {
         const redis = await getRedisCacheClient({
@@ -767,11 +765,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       },
       transaction,
     });
-    await this.refreshGroupGrantsAfterCommit(
-      workspaceId,
-      groupModelIds,
-      transaction
-    );
+    await this.refreshGroupGrantsAfterCommit(auth, groupModelIds, transaction);
 
     return deleted;
   }
@@ -819,7 +813,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         workspaceId,
       },
     });
-    await this.refreshGroupGrantsAfterCommit(workspaceId, groupModelIds);
+    await this.refreshGroupGrantsAfterCommit(auth, groupModelIds);
   }
 
   // Workspace-scrub hook: drop every grant for the workspace. Must run before groups and the
@@ -829,7 +823,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     await GroupPermissionModel.destroy({
       where: { workspaceId },
     });
-    await this.dropWorkspaceGrantsAfterCommit(workspaceId);
+    await this.dropWorkspaceGrantsAfterCommit(auth);
   }
 
   // Grant a permission for the whole resource type (resourceId = -1). Single-group convenience over
@@ -886,7 +880,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       { ignoreDuplicates: true, transaction }
     );
     await this.refreshGroupGrantsAfterCommit(
-      workspaceId,
+      auth,
       groups.map((group) => group.id),
       transaction
     );
@@ -908,11 +902,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       },
       transaction,
     });
-    await this.refreshGroupGrantsAfterCommit(
-      workspaceId,
-      [group.id],
-      transaction
-    );
+    await this.refreshGroupGrantsAfterCommit(auth, [group.id], transaction);
   }
 
   // Batch of instance-level grants (one INSERT, unique index dedupes). Each is validated; -1 is
@@ -962,7 +952,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       { ignoreDuplicates: true, transaction }
     );
     await this.refreshGroupGrantsAfterCommit(
-      workspaceId,
+      auth,
       grants.map(({ group }) => group.id),
       transaction
     );
@@ -1080,11 +1070,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       where: capabilityWhere,
       transaction,
     });
-    await this.refreshGroupGrantsAfterCommit(
-      workspaceId,
-      groupModelIds,
-      transaction
-    );
+    await this.refreshGroupGrantsAfterCommit(auth, groupModelIds, transaction);
   }
 
   // Serialize concurrent writes on the same grant tuple. The transaction-scoped advisory lock
@@ -1195,7 +1181,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       transaction,
     });
     await GroupPermissionResource.refreshGroupGrantsAfterCommit(
-      workspaceId,
+      auth,
       [this.groupId],
       transaction
     );

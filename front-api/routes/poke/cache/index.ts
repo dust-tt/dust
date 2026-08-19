@@ -12,6 +12,7 @@ import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
+import mapValues from "lodash/mapValues";
 import { z } from "zod";
 
 import catalog from "./catalog";
@@ -143,14 +144,8 @@ app.get("/", async (ctx): HandlerResult<GetPokeCacheResponseBody> => {
 
       if (keyType === "hash") {
         const fields = await client.hGetAll(cacheKey);
-        const value = Object.fromEntries(
-          Object.entries(fields).map(([field, rawValue]) => [
-            field,
-            decodeCacheValue(rawValue),
-          ])
-        );
 
-        return { value, ttlSeconds: ttl };
+        return { value: mapValues(fields, decodeCacheValue), ttlSeconds: ttl };
       }
 
       const rawValue = await client.get(cacheKey);
