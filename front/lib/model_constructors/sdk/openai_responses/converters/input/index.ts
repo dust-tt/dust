@@ -86,7 +86,7 @@ export function WithOpenAIResponsesInputConverter<
       });
 
       return {
-        model: this.constructor.model,
+        model: this.constructor.providerModel ?? this.constructor.model,
         max_output_tokens: this.constructor.maxOutputTokens,
         ...(cacheKey ? { prompt_cache_key: cacheKey } : {}),
         input: [
