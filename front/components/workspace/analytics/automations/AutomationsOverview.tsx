@@ -31,16 +31,16 @@ export function AutomationsOverview({
   return (
     <div className="flex items-stretch gap-6">
       <SummaryCard
-        label="Credits spent"
+        label="Credits"
         value={formatCredits(automationCredits)}
         hint={
           workspaceTotalCredits > 0
-            ? `${Math.round((automationCredits / workspaceTotalCredits) * 100)}% of workspace usage`
+            ? `${Math.round((automationCredits / workspaceTotalCredits) * 100)}% of workspace consumption`
             : null
         }
       />
       <SummaryCard
-        label="Active triggers"
+        label="Triggers enabled"
         value={`${triggers.enabled.toLocaleString()} / ${triggers.total.toLocaleString()}`}
         hint={disabledCount > 0 ? `${disabledCount} disabled` : null}
       />
