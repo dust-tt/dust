@@ -17,8 +17,7 @@ import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
-  getFixedWindowCount,
-  setFixedWindowCount,
+  readFixedWindowCountWithLazySeed,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -154,27 +153,12 @@ async function readProgrammaticSpendLimitCountWithLazySeed(
   auth: Authenticator,
   { redisKey, bounds }: { redisKey: string; bounds: FixedWindowBounds }
 ): Promise<number | null> {
-  const countResult = await getFixedWindowCount({ key: redisKey, bounds });
-  if (countResult.isErr()) {
-    return null;
-  }
-  if (countResult.value > 0) {
-    return countResult.value;
-  }
-
-  const consumed = await getEsConsumedProgrammaticAwuCredits(auth, {});
-  // `null` means the ES read failed (or no cycle) — treat as unknown and skip
-  // the seed rather than writing 0 (fail-open read).
-  if (consumed === null || consumed <= 0) {
-    return 0;
-  }
-  await setFixedWindowCount({
+  return readFixedWindowCountWithLazySeed({
     key: redisKey,
     bounds,
-    value: consumed,
     logger,
+    fetchSeedValue: () => getEsConsumedProgrammaticAwuCredits(auth, {}),
   });
-  return consumed;
 }
 
 /**
