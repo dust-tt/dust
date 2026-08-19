@@ -21,7 +21,10 @@ import {
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionScopeFilter,
+  ConsumptionTopSortBy,
+} from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
 import { getSkillAvatarIcon } from "@app/lib/skill";
@@ -47,7 +50,11 @@ import {
   Tooltip,
   XCircle,
 } from "@dust-tt/sparkle";
-import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 import type { Transition, Variants } from "framer-motion";
 import {
   AnimatePresence,
@@ -70,6 +77,21 @@ import {
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const ATTRIBUTION_PAGE_SIZE = 25;
 const ATTRIBUTION_MAX_ROW_COUNT = 1_000;
+const DEFAULT_ATTRIBUTION_SORTING: SortingState = [
+  { id: "credits", desc: true },
+];
+
+// Only these columns are ranked server-side (see fetchConsumptionTopGroups):
+// sorting by any other column (currently just name) still reorders the
+// current page locally, since the underlying value isn't rankable in
+// Elasticsearch without a larger indexing change.
+const ATTRIBUTION_SERVER_SORT_BY: Partial<
+  Record<string, ConsumptionTopSortBy>
+> = {
+  credits: "credits",
+  avgCredits: "avgCredits",
+  vsPrev: "vsPrev",
+};
 
 type AttributionTransitionDirection = -1 | 0 | 1;
 
@@ -422,7 +444,23 @@ function AttributionRows({
     pageIndex: 0,
     pageSize: ATTRIBUTION_PAGE_SIZE,
   });
+  const [sorting, setSorting] = useState<SortingState>(
+    DEFAULT_ATTRIBUTION_SORTING
+  );
   const shouldReduceMotion = useReducedMotion();
+
+  // A new sort order invalidates the current page's offset into it, so jump
+  // back to the first page whenever it changes.
+  const handleSortingChange: typeof setSorting = (updater) => {
+    setSorting(updater);
+    setPagination((current) => ({ ...current, pageIndex: 0 }));
+  };
+
+  const activeSort = sorting[0];
+  const sortBy = activeSort
+    ? ATTRIBUTION_SERVER_SORT_BY[activeSort.id]
+    : undefined;
+  const sortOrder = activeSort?.desc ? "desc" : "asc";
 
   const {
     rows,
@@ -439,6 +477,8 @@ function AttributionRows({
     offset: pagination.pageIndex * pagination.pageSize,
     search,
     filter,
+    sortBy,
+    sortOrder,
   });
   const cappedRowCount = Math.min(totalCount, ATTRIBUTION_MAX_ROW_COUNT);
 
@@ -522,6 +562,8 @@ function AttributionRows({
             skeletonRowCount={skeletonRowCount}
             hasAvatar={hasAvatar}
             isAvatarRounded={dimension === "user"}
+            sorting={sorting}
+            onSortingChange={handleSortingChange}
           />
         </div>
         {paginationControls}
@@ -553,6 +595,8 @@ function AttributionRows({
               filter={filter}
               onViewAll={onViewAll}
               expandedRowId={expandedRowId}
+              sorting={sorting}
+              onSortingChange={handleSortingChange}
             />
           </div>
         )}

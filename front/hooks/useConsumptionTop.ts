@@ -6,7 +6,11 @@ import {
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/schema";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionScopeFilter,
+  ConsumptionTopSortBy,
+  ConsumptionTopSortOrder,
+} from "@app/lib/api/analytics/consumption/scope";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
 import type { GetConsumptionTopApiKeysResponse } from "@app/lib/api/analytics/consumption/top_api_keys";
 import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
@@ -181,6 +185,8 @@ export function useConsumptionTop({
   offset = 0,
   search,
   filter,
+  sortBy = "credits",
+  sortOrder = "desc",
   disabled,
 }: {
   workspaceId: string;
@@ -190,6 +196,8 @@ export function useConsumptionTop({
   offset?: number;
   search?: string;
   filter?: ConsumptionScopeFilter;
+  sortBy?: ConsumptionTopSortBy;
+  sortOrder?: ConsumptionTopSortOrder;
   disabled?: boolean;
 }) {
   const url = `/api/w/${workspaceId}/analytics/consumption/${CONSUMPTION_TOP_ENDPOINTS[dimension]}`;
@@ -201,6 +209,8 @@ export function useConsumptionTop({
     limit,
     offset,
     search: search?.trim(),
+    sortBy,
+    sortOrder,
   };
 
   const { data, error, isLoading, isValidating } = useConsumptionQuery<

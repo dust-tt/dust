@@ -1,6 +1,7 @@
 import { listConsumptionFacetCatalogDimension } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import { previousConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
 import { fetchConsumptionTopApiKeys } from "@app/lib/api/analytics/consumption/top_api_keys";
 import { fetchConsumptionTopGroups } from "@app/lib/api/analytics/consumption/top_groups";
@@ -69,19 +70,31 @@ function mockAggs({
       const excludedKeys = new Set(
         Array.isArray(terms?.exclude) ? terms.exclude.map(String) : []
       );
+      // Every bucket carries both the flat shape the previous-credits lookup
+      // reads and the current_period-nested shape the ranking query reads,
+      // since this same mock answers both kinds of call.
+      const wrappedBuckets = buckets
+        .filter(({ key }) =>
+          includedKeys ? includedKeys.has(key) : !excludedKeys.has(key)
+        )
+        .slice(0, terms?.size)
+        .map((bucket) => ({
+          ...bucket,
+          current_period: {
+            doc_count: bucket.doc_count,
+            ...(bucket.credit_micro
+              ? { credit_micro: bucket.credit_micro }
+              : {}),
+            ...(bucket.messages ? { messages: bucket.messages } : {}),
+          },
+        }));
       const ranking = {
-        by_group: {
-          buckets: buckets
-            .filter(({ key }) =>
-              includedKeys ? includedKeys.has(key) : !excludedKeys.has(key)
-            )
-            .slice(0, terms?.size),
-        },
-        total_count: { value: totalCount },
+        by_group: { buckets: wrappedBuckets },
+        total_count: { count: { value: totalCount } },
       };
       return esResponse({
         ...(filtered ? { ranking } : ranking),
-        total_credit_micro: { value: totalMicro },
+        total_credit_micro: { metric: { value: totalMicro } },
       });
     }
   );
@@ -191,18 +204,22 @@ describe("consumption top rankings", () => {
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
       field: "agent.id",
       size: 10,
-      order: { credit_micro: "desc" },
+      order: { "current_period>credit_micro": "desc" },
     });
     expect(
-      options?.aggregations?.by_group?.aggs?.credit_micro?.sum?.field
+      options?.aggregations?.by_group?.aggs?.current_period?.aggs?.credit_micro
+        ?.sum?.field
     ).toBe("credit_micro");
     expect(
-      options?.aggregations?.by_group?.aggs?.messages?.cardinality?.field
+      options?.aggregations?.by_group?.aggs?.current_period?.aggs?.messages
+        ?.cardinality?.field
     ).toBe("agent_message_id");
-    expect(options?.aggregations?.total_credit_micro?.sum?.field).toBe(
-      "credit_micro"
-    );
-    expect(options?.aggregations?.total_count?.cardinality).toEqual({
+    expect(
+      options?.aggregations?.total_credit_micro?.aggs?.metric?.sum?.field
+    ).toBe("credit_micro");
+    expect(
+      options?.aggregations?.total_count?.aggs?.count?.cardinality
+    ).toEqual({
       field: "agent.id",
       precision_threshold: 40_000,
     });
@@ -379,7 +396,9 @@ describe("consumption top rankings", () => {
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
       field: "tool.server_name",
     });
-    expect(options?.aggregations?.by_group?.aggs?.messages).toBeUndefined();
+    expect(
+      options?.aggregations?.by_group?.aggs?.current_period?.aggs?.messages
+    ).toBeUndefined();
   });
 
   it("ranks API key names on gross credits per distinct message", async () => {
@@ -442,8 +461,8 @@ describe("consumption top rankings", () => {
       }
     );
     expect(
-      options?.aggregations?.ranking?.aggs?.by_group?.aggs?.messages
-        ?.cardinality?.field
+      options?.aggregations?.ranking?.aggs?.by_group?.aggs?.current_period?.aggs
+        ?.messages?.cardinality?.field
     ).toBe("agent_message_id");
   });
 
@@ -495,7 +514,9 @@ describe("consumption top rankings", () => {
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
       field: "tool.attributed_skill_ids",
     });
-    expect(options?.aggregations?.by_group?.aggs?.messages).toBeUndefined();
+    expect(
+      options?.aggregations?.by_group?.aggs?.current_period?.aggs?.messages
+    ).toBeUndefined();
   });
 
   it("ranks users, groups and models per message on their own key", async () => {
@@ -704,13 +725,16 @@ describe("consumption top rankings", () => {
             {
               key: "agent1",
               doc_count: 1,
-              credit_micro: { value: 3_000_000 },
-              messages: { value: 1 },
+              current_period: {
+                doc_count: 1,
+                credit_micro: { value: 3_000_000 },
+                messages: { value: 1 },
+              },
             },
           ],
         },
-        total_count: { value: 1 },
-        total_credit_micro: { value: 3_000_000 },
+        total_count: { count: { value: 1 } },
+        total_credit_micro: { metric: { value: 3_000_000 } },
       })
     );
     vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
@@ -727,6 +751,154 @@ describe("consumption top rankings", () => {
       return;
     }
     expect(result.value.agents[0].credits).toBe(3);
+    expect(result.value.agents[0].previousCredits).toBeNull();
+  });
+
+  it("ranks by average credits per message when sorted by avgCredits", async () => {
+    const { auth } = await setup();
+    mockLabels({ agent1: "@dust" });
+    mockAggs({
+      buckets: [
+        {
+          key: "agent1",
+          doc_count: 1,
+          credit_micro: { value: 3_000_000 },
+          messages: { value: 1 },
+        },
+      ],
+      totalMicro: 3_000_000,
+    });
+
+    const result = await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 10,
+      sortBy: "avgCredits",
+      sortOrder: "asc",
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const [, options] = rankingSearchCall();
+    expect(options?.aggregations?.by_group?.terms).toMatchObject({
+      order: { avg_credits: "asc" },
+    });
+    expect(
+      options?.aggregations?.by_group?.aggs?.avg_credits?.bucket_script
+    ).toEqual({
+      buckets_path: {
+        credit: "current_period>credit_micro",
+        count: "current_period>messages",
+      },
+      script: "params.count > 0 ? params.credit / params.count : 0",
+    });
+  });
+
+  it("ranks by period-over-period growth when sorted by vsPrev, without a second lookup", async () => {
+    const { auth } = await setup();
+    mockLabels({ agent1: "@dust" });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({
+        by_group: {
+          buckets: [
+            {
+              key: "agent1",
+              doc_count: 1,
+              current_period: {
+                doc_count: 1,
+                credit_micro: { value: 4_000_000 },
+              },
+              previous_period: {
+                doc_count: 1,
+                credit_micro: { value: 2_000_000 },
+              },
+            },
+          ],
+        },
+        total_count: { count: { value: 1 } },
+        total_credit_micro: { metric: { value: 4_000_000 } },
+      })
+    );
+
+    const result = await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 10,
+      sortBy: "vsPrev",
+      sortOrder: "desc",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.agents[0].credits).toBe(4);
+    // Grown from 2 to 4 credits: read straight off the same query's
+    // previous_period sub-agg, with no separate previous-credits lookup.
+    expect(result.value.agents[0].previousCredits).toBe(2);
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
+
+    const [query, options] = rankingSearchCall();
+    const previousPeriod = previousConsumptionPeriod(PERIOD);
+    // The query window widens to cover the previous period too, since the
+    // previous_period sub-agg needs those documents in view.
+    expect(query.bool?.filter).toContainEqual({
+      range: {
+        completed_at: { gte: previousPeriod.startDate, lt: PERIOD.endDate },
+      },
+    });
+    expect(options?.aggregations?.by_group?.terms).toMatchObject({
+      order: { growth: "desc" },
+    });
+    expect(
+      options?.aggregations?.by_group?.aggs?.growth?.bucket_script
+    ).toMatchObject({
+      buckets_path: {
+        current: "current_period>credit_micro",
+        previous: "previous_period>credit_micro",
+      },
+    });
+    // Both sub-aggs stay scoped to their own window even though the outer
+    // query spans both: totals still read off the current period alone.
+    expect(options?.aggregations?.total_credit_micro).toMatchObject({
+      filter: {
+        range: { completed_at: { gte: PERIOD.startDate, lt: PERIOD.endDate } },
+      },
+    });
+  });
+
+  it("reports null growth for a key with no prior-period activity", async () => {
+    const { auth } = await setup();
+    mockLabels({ agent1: "@dust" });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({
+        by_group: {
+          buckets: [
+            {
+              key: "agent1",
+              doc_count: 1,
+              current_period: {
+                doc_count: 1,
+                credit_micro: { value: 4_000_000 },
+              },
+              previous_period: { doc_count: 0 },
+            },
+          ],
+        },
+        total_count: { count: { value: 1 } },
+        total_credit_micro: { metric: { value: 4_000_000 } },
+      })
+    );
+
+    const result = await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 10,
+      sortBy: "vsPrev",
+      sortOrder: "desc",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
     expect(result.value.agents[0].previousCredits).toBeNull();
   });
 });
