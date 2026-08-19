@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { Readable } from "node:stream";
 
-import type { FileSystemBackend } from "@app/lib/api/file_system/backends/file_system_backend";
+import type {
+  FileSystemBackend,
+  FileSystemNodeIdentity,
+} from "@app/lib/api/file_system/backends/file_system_backend";
 import {
   getFileSystemDownloadUrl,
   getFileSystemReadStream,
@@ -342,7 +345,7 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
     scopedPath: string,
     content: Buffer | string | Readable,
     contentType: string
-  ): Promise<Result<void, DustFileSystemError>> {
+  ): Promise<Result<FileSystemNodeIdentity, DustFileSystemError>> {
     try {
       const destination = await this.resolveParent(scopedPath);
       let node = destination.existing;
@@ -379,7 +382,7 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
       if (written.isErr()) {
         throw written.error;
       }
-      return new Ok(undefined);
+      return new Ok({ nodeId: node.id });
     } catch (error) {
       return new Err(this.error(error));
     }
@@ -387,7 +390,12 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
 
   async mkdir(
     scopedPath: string
-  ): Promise<Result<FileSystemDirectoryEntry, DustFileSystemError>> {
+  ): Promise<
+    Result<
+      { entry: FileSystemDirectoryEntry } & FileSystemNodeIdentity,
+      DustFileSystemError
+    >
+  > {
     try {
       const destination = await this.resolveParent(scopedPath);
       if (destination.existing) {
@@ -417,7 +425,7 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
       if (!entry.isDirectory) {
         throw new Error("Created directory rendered as a file.");
       }
-      return new Ok(entry);
+      return new Ok({ entry, nodeId: created.value.id });
     } catch (error) {
       return new Err(this.error(error));
     }
