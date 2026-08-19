@@ -1,0 +1,7 @@
+.env
+.auth*
+/work/
+/results/
+/packs/
+*.private.json
+*.log
