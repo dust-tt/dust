@@ -10,6 +10,7 @@ type InputBarModelPickerProps = Omit<
   | "showLabel"
   | "setStickyModelOverride"
   | "stickyModelOverride"
+  | "trackingSurface"
 >;
 
 export function InputBarModelPicker({
@@ -45,6 +46,7 @@ export function InputBarModelPicker({
         setStickyModelOverride={setStickyModelOverride}
         commitApiRef={commitApiRef}
         openApiRef={openModelPickerRef}
+        trackingSurface="conversation_input_bar"
       />
     </ModelPickerHighlight>
   );

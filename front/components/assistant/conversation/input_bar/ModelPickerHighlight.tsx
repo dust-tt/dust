@@ -1,3 +1,4 @@
+import { trackModelPickerExposure } from "@app/components/model_picker/modelPickerTracking";
 import { useClientType } from "@app/lib/context/clientType";
 import { DiscoveryGlint } from "@dust-tt/sparkle";
 import type React from "react";
@@ -38,7 +39,8 @@ interface ModelPickerHighlightProps {
 }
 
 export function ModelPickerHighlight({ children }: ModelPickerHighlightProps) {
-  const isExtension = useClientType() === "extension";
+  const clientType = useClientType();
+  const isExtension = clientType === "extension";
   const [isActive, setIsActive] = useState<boolean>(
     () =>
       !isExtension &&
@@ -47,6 +49,20 @@ export function ModelPickerHighlight({ children }: ModelPickerHighlightProps) {
   );
   const hostRef = useRef<HTMLSpanElement>(null);
   const hasSpentDismissalRef = useRef(false);
+  const hasTrackedExposureRef = useRef(false);
+
+  // Fire a single exposure event per mount, the first time the glint is
+  // actually rendered. Guarded by a ref so re-renders (and toggling back off
+  // after a dismissal) never emit a duplicate.
+  useEffect(() => {
+    if (isActive && !hasTrackedExposureRef.current) {
+      hasTrackedExposureRef.current = true;
+      trackModelPickerExposure({
+        surface: "conversation_input_bar",
+        clientType,
+      });
+    }
+  }, [isActive, clientType]);
 
   const dismiss = useCallback(() => {
     if (!hasSpentDismissalRef.current && !isReplayRequested()) {
