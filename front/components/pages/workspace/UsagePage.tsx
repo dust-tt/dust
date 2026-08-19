@@ -1188,7 +1188,7 @@ export function UsagePage() {
                       <div className="flex min-w-0 flex-col gap-1 text-sm text-foreground">
                         {creditUsageDisplayTarget === "on_target" ? (
                           <span>
-                            Your credit usage is on track for this cycle.
+                            Your credit usage is on target for this cycle.
                           </span>
                         ) : resetAt ? (
                           <span>
