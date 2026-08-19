@@ -116,8 +116,6 @@ FileModel.init(
         unique: true,
         where: { mountFilePath: { [Op.ne]: null } },
       },
-      // Leads with the node id: deleting a node scans files by this column
-      // alone, without a workspace in hand.
       {
         fields: ["fileSystemNodeId"],
         concurrently: true,
@@ -131,10 +129,6 @@ UserModel.hasMany(FileModel, {
   onDelete: "RESTRICT",
 });
 FileModel.belongsTo(UserModel);
-// RESTRICT: removing a node while a file still points at it fails. Deleting the
-// file record is a decision with consequences of its own (shares, grants,
-// published bundles), so the caller must deal with the file first rather than
-// have the binding silently disappear.
 FileSystemNodeModel.hasMany(FileModel, {
   foreignKey: { name: "fileSystemNodeId", allowNull: true },
   onDelete: "RESTRICT",
