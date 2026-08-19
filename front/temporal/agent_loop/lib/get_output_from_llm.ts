@@ -8,8 +8,10 @@ import type { LLM } from "@app/lib/api/llm/llm";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
+import { classifyTemporalAbortReason } from "@app/lib/temporal/cancellation";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
+import { makeModelInterruptionError } from "@app/temporal/agent_loop/lib/run_model_errors";
 import type {
   GetOutputRequestParams,
   GetOutputResponse,
@@ -332,6 +334,12 @@ export async function getOutputFromLLMStream(
         await sleep(1);
       } catch (err) {
         if (err instanceof CancelledFailure) {
+          // Worker shutdown also cancels in-flight activities. Surface a retryable failure so
+          // Temporal reruns the step on another worker, instead of finalizing the message as
+          // successful mid-answer like a user stop would.
+          if (classifyTemporalAbortReason(err) === "worker_shutdown") {
+            throw makeModelInterruptionError();
+          }
           logger.info("Activity cancelled, stopping");
           return new Err({ type: "shouldReturnNull" });
         }
