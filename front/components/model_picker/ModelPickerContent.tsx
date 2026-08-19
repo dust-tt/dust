@@ -98,7 +98,6 @@ export function ModelPickerContent({
 
       {MODEL_TIERS.map((tier) => {
         const isSelected = isTierDisplayed(tier.id, shown.display);
-        const isDefault = isTierDisplayed(tier.id, agentDefault.display);
         const lockReason = getTierLockReason(tier.id, {
           lockPremiumEfforts,
           streamModels,
@@ -126,18 +125,23 @@ export function ModelPickerContent({
           <DropdownMenuItem
             key={tier.id}
             icon={TIER_ICON[tier.id]}
-            label={`${tier.name}${isDefault ? " (Default)" : ""}`}
+            label={tier.name}
             endComponent={
-              isSelected ? (
-                <ModelPickerSelectionIndicator
-                  canRevert={canRevert}
-                  onRevert={onRevert}
-                />
-              ) : (
+              <div className="flex items-center gap-1.5">
                 <span className="whitespace-nowrap text-xs text-faint">
                   {getTierResolvedModelLabel(tier.id, streams)}
                 </span>
-              )
+                {isSelected ? (
+                  <ModelPickerSelectionIndicator
+                    canRevert={canRevert}
+                    onRevert={onRevert}
+                    size="xs"
+                  />
+                ) : (
+                  // Reserved slot, so the resolved model labels stay aligned
+                  <span aria-hidden className="h-4 w-4 shrink-0" />
+                )}
+              </div>
             }
             onClick={() => onSelectTier(tier.id)}
             onSelect={(e) => e.preventDefault()}
