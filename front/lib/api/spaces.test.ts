@@ -331,6 +331,49 @@ describe("createSpaceAndGroup", () => {
       createConnectorSpy.mockRestore();
     });
 
+    it("refreshes the live creator auth so it can administrate the new project in the same request", async () => {
+      const createConnectorSpy = vi
+        .spyOn(
+          await import("@app/lib/api/projects/connector"),
+          "createDataSourceAndConnectorForProject"
+        )
+        .mockResolvedValue(new Ok(undefined));
+
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user1.sId,
+        workspace.sId
+      );
+
+      const result = await createSpaceAndGroup(userAuth, {
+        name: "Test Project Live Auth Refresh",
+        isRestricted: true,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const pod = result.value;
+        const { groupsToProcess } =
+          await pod.fetchManualGroupsMemberships(userAuth);
+        const editorGroup = groupsToProcess.find(
+          (group) => group.kind === "space_editors"
+        );
+        expect(editorGroup).toBeDefined();
+
+        // createSpaceAndGroup added the creator to the new editor group, wrote its grants, and
+        // refreshed `userAuth` post-commit. The same live auth must now see the group and
+        // administrate the pod with no manual refresh (contrast the reconstructed stale-auth test
+        // above, which has to call refresh() itself).
+        expect(userAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
+        expect(userAuth.getGrantedVerbs("space", pod.id)).toContain("admin");
+        expect(pod.canAdministrate(userAuth)).toBe(true);
+      }
+
+      createConnectorSpy.mockRestore();
+    });
+
     it("should handle connector creation failure gracefully", async () => {
       // Mock createDataSourceAndConnectorForProject to fail
       const createConnectorError = new Error("Failed to create connector");

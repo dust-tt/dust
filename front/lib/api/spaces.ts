@@ -879,6 +879,13 @@ export async function createSpaceAndGroup(
   });
 
   if (result.isOk()) {
+    // Creating the space wrote `group_permissions` and, for projects, added the creator to the new
+    // editor group, so the group set and grants `auth` resolved at construction are now stale.
+    // Refresh the caller's snapshot now that the write has committed (no transaction, so the re-read
+    // sees the committed rows and the `afterCommit`-invalidated cache), so later permission checks in
+    // this request see the new access instead of a pre-creation view.
+    await auth.refresh();
+
     const space = result.value;
     if (space.kind === "project") {
       // If this is a project space, create the dust_project connector
