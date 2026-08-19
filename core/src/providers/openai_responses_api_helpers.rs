@@ -103,7 +103,14 @@ pub struct OpenAIResponseReasoningConfig {
 }
 
 fn reasoning_summary_for_model(model_id: &str) -> &'static str {
-    if model_id.starts_with("gpt-5.") {
+    let supports_concise = ["gpt-5.2", "gpt-5.4", "gpt-5.5", "gpt-5.6"]
+        .iter()
+        .any(|family| {
+            model_id == *family
+                || matches!(model_id.strip_prefix(family), Some(suffix) if suffix.starts_with('-'))
+        });
+
+    if supports_concise {
         "concise"
     } else {
         "auto"
@@ -1272,8 +1279,8 @@ mod tests {
 
     #[test]
     fn test_reasoning_summary_for_model() {
-        assert_eq!(reasoning_summary_for_model("gpt-5.6-sol"), "concise");
-        assert_eq!(reasoning_summary_for_model("gpt-5"), "auto");
+        assert_eq!(reasoning_summary_for_model("gpt-5.2"), "concise");
+        assert_eq!(reasoning_summary_for_model("gpt-5.1"), "auto");
         assert_eq!(reasoning_summary_for_model("o4-mini"), "auto");
     }
 
