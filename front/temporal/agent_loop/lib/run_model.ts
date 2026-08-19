@@ -132,6 +132,19 @@ const ASK_USER_QUESTION_BLOCKED_ORIGINS: readonly UserMessageOrigin[] = [
   "reinforcement",
 ];
 
+// Retryable model errors stop retrying at RUN_MODEL_MAX_RETRIES even though the activity retry
+// policy allows more attempts: the extra attempts only serve non-model failures (worker-shutdown
+// interruptions, timeouts, internal errors). Exported for tests.
+export function shouldSurfaceModelError({
+  isRetryable,
+  attempt,
+}: {
+  isRetryable: boolean;
+  attempt: number;
+}): boolean {
+  return !isRetryable || attempt >= RUN_MODEL_MAX_RETRIES;
+}
+
 // Builds the JSON blob whose token count estimates how many tokens the tool
 // definitions actually cost in context, for the model's token budget. When
 // tool search is active, deferred (non-eager) tool schemas are excluded from
@@ -918,7 +931,6 @@ export async function runModel(
         const { type, isRetryable } = error.content;
         const errorDustRunId = llm?.getTraceId();
         const currentAttempt = Context.current().info.attempt;
-        const isLastAttempt = currentAttempt >= RUN_MODEL_MAX_RETRIES;
         const plan = auth.getNonNullablePlan();
 
         if (
@@ -964,8 +976,7 @@ export async function runModel(
             ? getByokUserFacingLLMErrorMessage(type, metadata)
             : getUserFacingLLMErrorMessage(type, metadata);
 
-        if (!isRetryable || isLastAttempt) {
-          // Non-retryable errors or last retry attempt: surface error to user.
+        if (shouldSurfaceModelError({ isRetryable, attempt: currentAttempt })) {
           await publishAgentError(
             {
               code: "multi_actions_error",
