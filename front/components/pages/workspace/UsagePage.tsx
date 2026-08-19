@@ -172,6 +172,11 @@ function CreditPoolProgressBar({
   target,
   usedPercentage,
 }: CreditPoolProgressBarProps) {
+  const projectedRemainderPercentage = Math.max(
+    projectedPercentage - usedPercentage,
+    0
+  );
+
   return (
     <div
       className="relative h-2 w-full overflow-hidden rounded-sm bg-muted-foreground/15"
@@ -183,16 +188,25 @@ function CreditPoolProgressBar({
     >
       <div
         className={`absolute inset-y-0 left-0 ${
-          target === "off_target" ? "bg-warning-100" : "bg-highlight-100"
-        }`}
-        style={{ width: `${projectedPercentage}%` }}
-      />
-      <div
-        className={`absolute inset-y-0 left-0 ${
           target === "off_target" ? "bg-warning-500" : "bg-highlight-500"
         }`}
         style={{ width: `${usedPercentage}%` }}
       />
+      {projectedRemainderPercentage > 0 && (
+        <div
+          className="absolute inset-y-0 overflow-hidden"
+          style={{
+            left: `${usedPercentage}%`,
+            width: `${projectedRemainderPercentage}%`,
+          }}
+        >
+          <div
+            className={`h-full w-full translate-x-0.5 ${
+              target === "off_target" ? "bg-warning-100" : "bg-highlight-100"
+            }`}
+          />
+        </div>
+      )}
     </div>
   );
 }
