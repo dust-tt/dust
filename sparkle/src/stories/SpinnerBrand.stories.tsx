@@ -51,7 +51,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/**
+ * Interactive branded spinner — tweak size, variant, and speed from the
+ * Controls panel. The 0.4 speed mirrors the component's own default (the
+ * Lottie animation is authored fast, so production surfaces slow it down).
+ * @summary Interactive playground.
+ */
 export const Playground: Story = {
+  tags: ["!manifest"],
   args: {
     size: "md",
     variant: "mono",
@@ -59,6 +66,11 @@ export const Playground: Story = {
   },
 };
 
+/**
+ * The mono-white variant renders the logo in white for dark or richly
+ * colored surfaces where the standard mono treatment would vanish.
+ * @summary White variant for dark surfaces.
+ */
 export const MonoWhite: Story = {
   args: {
     size: "md",
@@ -69,6 +81,12 @@ export const MonoWhite: Story = {
   },
 };
 
+/**
+ * The colored variant shows the full-color Dust logo — the most
+ * brand-forward treatment, suited to app or page initialization screens on
+ * light surfaces.
+ * @summary Full-color brand variant.
+ */
 export const Colored: Story = {
   args: {
     size: "md",
@@ -76,6 +94,12 @@ export const Colored: Story = {
   },
 };
 
+/**
+ * The colored-gray variant keeps the multi-tone animation but in muted
+ * grays, for loading moments that should stay subdued while remaining
+ * on-brand.
+ * @summary Muted gray brand variant.
+ */
 export const ColoredGray: Story = {
   args: {
     size: "md",
@@ -83,7 +107,13 @@ export const ColoredGray: Story = {
   },
 };
 
+/**
+ * Visual reference: every variant crossed with every size (xs through 2xl),
+ * for design review only.
+ * @summary Visual matrix of all variants and sizes.
+ */
 export const Gallery: Story = {
+  tags: ["!manifest"],
   render: () => {
     return (
       <div className="flex flex-col gap-8">

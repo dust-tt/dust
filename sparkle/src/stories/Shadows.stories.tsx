@@ -11,7 +11,7 @@ import {
 
 const meta = {
   title: "Foundations/Shadows",
-  tags: ["autodocs"],
+  tags: ["!manifest", "autodocs"],
   decorators: [withThemedSurface],
   parameters: {
     layout: "padded",

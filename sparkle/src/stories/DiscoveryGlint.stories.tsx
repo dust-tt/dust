@@ -65,6 +65,11 @@ Wraps any element without touching it. The ring and the streaks are absolutely p
 export default meta;
 type Story = StoryObj<typeof DiscoveryGlint>;
 
+/**
+ * The canonical glint on an icon-only button, with every timing knob exposed
+ * in the Controls panel at its default value.
+ * @summary Glint on an icon-only button with default timing.
+ */
 export const Default: Story = {
   args: {
     isActive: true,
@@ -86,15 +91,20 @@ export const Default: Story = {
   },
 };
 
+/**
+ * The glint wraps any target without touching its layout: an icon-only
+ * button, a labeled button, a pill, and a full-width sidebar row (which
+ * needs `className="flex w-full"` since the wrapper is inline-flex by
+ * default). The sweep scales to the wrapped element's own size.
+ * @summary Glint wrapping four target shapes.
+ */
 export const Targets: Story = {
   name: "Across target shapes",
   parameters: { controls: { disable: true } },
   render: () => (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col items-start gap-2">
-        <p className="text-sm text-muted-foreground">
-          Icon-only button — <code></code>
-        </p>
+        <p className="text-sm text-muted-foreground">Icon-only button</p>
         <DiscoveryGlint>
           <Button
             variant="ghost-secondary"
@@ -107,9 +117,7 @@ export const Targets: Story = {
       </div>
 
       <div className="flex flex-col items-start gap-2">
-        <p className="text-sm text-muted-foreground">
-          Button with a label — <code></code>
-        </p>
+        <p className="text-sm text-muted-foreground">Button with a label</p>
         <DiscoveryGlint>
           <Button
             variant="outline"
@@ -121,9 +129,7 @@ export const Targets: Story = {
       </div>
 
       <div className="flex flex-col items-start gap-2">
-        <p className="text-sm text-muted-foreground">
-          Pill — <code></code>
-        </p>
+        <p className="text-sm text-muted-foreground">Pill</p>
         <DiscoveryGlint>
           <Button
             variant="outline"
@@ -137,7 +143,7 @@ export const Targets: Story = {
 
       <div className="flex flex-col items-start gap-2">
         <p className="text-sm text-muted-foreground">
-          Sidebar row — <code></code> with <code>className="flex w-full"</code>
+          Sidebar row — with <code>className="flex w-full"</code>
         </p>
         <div className="w-64 rounded-xl bg-muted-background p-2">
           <NavigationList>
@@ -153,6 +159,13 @@ export const Targets: Story = {
   ),
 };
 
+/**
+ * The dismissal wiring the product uses: the component never stops itself,
+ * so the parent drops **isActive** on the first press of the wrapped
+ * control. Press the glinting button to retire the glint, then Replay to
+ * bring it back.
+ * @summary Parent-controlled dismissal on first press.
+ */
 export const Dismissal: Story = {
   name: "Dismissed on press",
   parameters: { controls: { disable: true } },

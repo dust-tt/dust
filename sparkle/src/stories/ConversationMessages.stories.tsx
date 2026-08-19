@@ -5,12 +5,11 @@ import {
   ActionCardBlock,
   AttachmentChip,
   Avatar,
-  Zap,
   Citation,
   CitationIcons,
   CitationTitle,
-  File02,
   DriveLogo,
+  File02,
   Folder,
   Icon,
   Markdown,
@@ -24,7 +23,6 @@ import {
   ConversationMessageContent,
   ConversationMessageTitle,
 } from "../components/ConversationMessages";
-import { ConversationContainer } from "../components/ConversationMessage";
 
 const meta = {
   title: "Product/Conversation/ConversationMessages",
@@ -48,252 +46,214 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Example: Story = {
-  render: () => (
-    <div className="flex w-full justify-center gap-6">
-      <div className="flex w-full max-w-4xl flex-col gap-6 p-2 @sm-conversation:gap-8 @md-conversation:gap-10">
-        <ConversationMessageContainer messageType="me" type="user">
-          <ConversationMessageAvatar
-            avatarUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
-            name="Edouard"
-            type="user"
-          />
-          <ConversationMessageTitle
-            name="Edouard"
-            timestamp="14:30"
-            renderName={(name) => <span>{name}</span>}
-            infoChip={<Icon size="xs" visual={Zap} />}
-          />
-          <ConversationMessageContent type="user">
-            Can you summarize the customer feedback from this week?
-          </ConversationMessageContent>
-        </ConversationMessageContainer>
-        <ConversationMessageContainer messageType="user" type="user">
-          <ConversationMessageAvatar
-            avatarUrl="https://dust.tt/static/droidavatar/Droid_Green_2.jpg"
-            name="Alex"
-            type="user"
-          />
-          <ConversationMessageTitle
-            name="Alex"
-            timestamp="14:31"
-            renderName={(name) => <span>{name}</span>}
-          />
-          <ConversationMessageContent type="user">
-            Yes — also highlight any churn risk from support tickets.
-          </ConversationMessageContent>
-        </ConversationMessageContainer>
-        <ConversationMessageContainer messageType="me" type="user">
-          <ConversationMessageAvatar
-            avatarUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
-            name="Edouard"
-            type="user"
-          />
-          <ConversationMessageTitle
-            name="Edouard"
-            timestamp="14:32"
-            renderName={(name) => <span>{name}</span>}
-          />
-          <ConversationMessageContent type="user">
-            <div className="flex flex-col gap-2">
-              <span>Here are the related docs and a drive folder.</span>
-              <div className="flex flex-wrap gap-2">
-                <AttachmentChip
-                  label="Q1_feedback_summary.pdf"
-                  icon={{ visual: File02 }}
-                />
-                <AttachmentChip
-                  label="Customer interviews"
-                  doubleIcon={{
-                    mainIcon: Folder,
-                    secondaryIcon: DriveLogo,
-                    size: "sm",
-                  }}
-                />
-              </div>
-            </div>
-          </ConversationMessageContent>
-        </ConversationMessageContainer>
-        <ConversationMessageContainer messageType="user" type="user">
-          <ConversationMessageAvatar
-            avatarUrl="https://dust.tt/static/droidavatar/Droid_Orange_4.jpg"
-            name="Maya"
-            type="user"
-          />
-          <ConversationMessageTitle
-            name="Maya"
-            timestamp="14:33"
-            renderName={(name) => <span>{name}</span>}
-          />
-          <ConversationMessageContent type="user">
-            <div className="flex flex-col gap-2">
-              <span>Adding meeting notes from last week.</span>
-              <div className="flex flex-wrap gap-2">
-                <AttachmentChip
-                  label="Notes — Interviews"
-                  doubleIcon={{
-                    mainIcon: File02,
-                    secondaryIcon: NotionLogo,
-                    size: "sm",
-                  }}
-                  href="https://notion.so"
-                  target="_blank"
-                />
-              </div>
-            </div>
-          </ConversationMessageContent>
-        </ConversationMessageContainer>
+const USER_AVATAR_URL = "https://dust.tt/static/droidavatar/Droid_Lime_1.jpg";
+const AGENT_AVATAR_URL = "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg";
 
-        <ConversationMessageContainer messageType="agent" type="agent">
-          <ConversationMessageAvatar
-            avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-            name="@agent"
-            type="agent"
-          />
-          <ConversationMessageTitle
-            name="@agent"
-            timestamp="14:31"
-            renderName={(name) => <span>{name}</span>}
-            completionStatus={
-              <span className="text-xs text-muted-foreground">
-                Completed in 18 sec
-              </span>
-            }
-          />
-          <ConversationMessageContent
-            type="agent"
-            citations={[
-              <Citation key="table">
-                <CitationIcons>
-                  <Icon visual={Table} size="sm" />
-                </CitationIcons>
-                <CitationTitle>Weekly support report</CitationTitle>
-              </Citation>,
-              <Citation key="slack">
-                <CitationIcons>
-                  <Icon visual={SlackLogo} size="sm" />
-                </CitationIcons>
-                <CitationTitle>Thread in #feedback</CitationTitle>
-              </Citation>,
-            ]}
-          >
-            <Markdown content={exampleShort} />
-          </ConversationMessageContent>
-        </ConversationMessageContainer>
-
-        <ConversationMessageContainer messageType="agent" type="agent">
-          <ConversationMessageAvatar
-            avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-            name="@agent"
-            type="agent"
-          />
-          <ConversationMessageTitle
-            name="@agent"
-            timestamp="14:33"
-            renderName={(name) => <span>{name}</span>}
-            completionStatus={
-              <span className="text-xs text-muted-foreground">
-                Awaiting approval
-              </span>
-            }
-          />
-          <ConversationMessageContent type="agent">
-            <ActionCardBlock
-              title="Enable weekly feedback digest"
-              description="Share a Monday summary of sentiment and top requests with the team."
-              applyLabel="Enable"
-              rejectLabel="Not now"
-              cardVariant="highlight"
-              actionsPosition="header"
-              visual={
-                <Avatar size="sm" emoji="🗞️" backgroundColor="bg-blue-100" />
-              }
-            />
-          </ConversationMessageContent>
-        </ConversationMessageContainer>
-
-        <ConversationMessageContainer messageType="agent" type="agent">
-          <ConversationMessageAvatar
-            avatarUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-            name="@agent"
-            type="agent"
-          />
-          <ConversationMessageTitle
-            name="@agent"
-            timestamp="14:34"
-            renderName={(name) => <span>{name}</span>}
-            completionStatus={
-              <span className="text-xs text-muted-foreground">
-                Completed in 46 sec
-              </span>
-            }
-          />
-          <ConversationMessageContent
-            type="agent"
-            citations={[
-              <Citation key="long-table">
-                <CitationIcons>
-                  <Icon visual={Table} size="sm" />
-                </CitationIcons>
-                <CitationTitle>Support queue trends</CitationTitle>
-              </Citation>,
-              <Citation key="long-slack">
-                <CitationIcons>
-                  <Icon visual={SlackLogo} size="sm" />
-                </CitationIcons>
-                <CitationTitle>Customer feedback summary</CitationTitle>
-              </Citation>,
-            ]}
-          >
-            <Markdown content={exampleLong} />
-            <ActionCardBlock
-              title="Link Drive folder for raw notes"
-              description="Connect the folder so I can attach source links in responses."
-              applyLabel="Connect"
-              rejectLabel="Skip"
-              cardVariant="secondary"
-              visual={
-                <Avatar size="sm" emoji="📁" backgroundColor="bg-green-100" />
-              }
-            />
-          </ConversationMessageContent>
-        </ConversationMessageContainer>
-      </div>
-    </div>
-  ),
-};
-
-const exampleShort = `
+const agentReplyMarkdown = `
 Highlights from this week:
 - Customers love the faster search results.
 - The onboarding checklist is now clearer.
 - A few requests asked for dark mode improvements.
 `;
 
-const exampleLong = `
-**Weekly summary (highlights + risks)**
+// Thread layout shared by every story, matching the product's conversation
+// column (centered, capped width, responsive gap).
+function Thread({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex w-full justify-center gap-6">
+      <div className="flex w-full max-w-4xl flex-col gap-6 p-2 @sm-conversation:gap-8 @md-conversation:gap-10">
+        {children}
+      </div>
+    </div>
+  );
+}
 
-Top positives:
-- Search feels faster (especially on large workspaces).
-- Onboarding checklist is clearer and reduces first-day confusion.
+/**
+ * The minimal thread: one user turn (`messageType="me"`) answered by one agent
+ * turn, with a `completionStatus` label on the agent's title.
+ * @summary Minimal user question and agent reply.
+ */
+export const UserAgentExchange: Story = {
+  render: () => (
+    <Thread>
+      <ConversationMessageContainer messageType="me" type="user">
+        <ConversationMessageAvatar
+          avatarUrl={USER_AVATAR_URL}
+          name="Edouard"
+          type="user"
+        />
+        <ConversationMessageTitle
+          name="Edouard"
+          timestamp="14:30"
+          renderName={(name) => <span>{name}</span>}
+        />
+        <ConversationMessageContent type="user">
+          Can you summarize the customer feedback from this week?
+        </ConversationMessageContent>
+      </ConversationMessageContainer>
+      <ConversationMessageContainer messageType="agent" type="agent">
+        <ConversationMessageAvatar
+          avatarUrl={AGENT_AVATAR_URL}
+          name="@agent"
+          type="agent"
+        />
+        <ConversationMessageTitle
+          name="@agent"
+          timestamp="14:31"
+          renderName={(name) => <span>{name}</span>}
+          completionStatus={
+            <span className="text-xs text-muted-foreground">
+              Completed in 18 sec
+            </span>
+          }
+        />
+        <ConversationMessageContent type="agent">
+          <Markdown content={agentReplyMarkdown} />
+        </ConversationMessageContent>
+      </ConversationMessageContainer>
+    </Thread>
+  ),
+};
 
-Risks to watch:
-- A handful of teams requested better dark mode contrast.
-- Two enterprise accounts asked for audit log export frequency.
+/**
+ * A user message carrying files and connected resources as **AttachmentChip**s
+ * (single icon, doubleIcon for a platform-scoped resource, and a linked chip).
+ * @summary User message with attachment chips.
+ */
+export const WithAttachments: Story = {
+  render: () => (
+    <Thread>
+      <ConversationMessageContainer messageType="me" type="user">
+        <ConversationMessageAvatar
+          avatarUrl={USER_AVATAR_URL}
+          name="Edouard"
+          type="user"
+        />
+        <ConversationMessageTitle
+          name="Edouard"
+          timestamp="14:32"
+          renderName={(name) => <span>{name}</span>}
+        />
+        <ConversationMessageContent type="user">
+          <div className="flex flex-col gap-2">
+            <span>Here are the related docs and a drive folder.</span>
+            <div className="flex flex-wrap gap-2">
+              <AttachmentChip
+                label="Q1_feedback_summary.pdf"
+                icon={{ visual: File02 }}
+              />
+              <AttachmentChip
+                label="Customer interviews"
+                doubleIcon={{
+                  mainIcon: Folder,
+                  secondaryIcon: DriveLogo,
+                  size: "sm",
+                }}
+              />
+              <AttachmentChip
+                label="Notes — Interviews"
+                doubleIcon={{
+                  mainIcon: File02,
+                  secondaryIcon: NotionLogo,
+                  size: "sm",
+                }}
+                href="https://notion.so"
+                target="_blank"
+              />
+            </div>
+          </div>
+        </ConversationMessageContent>
+      </ConversationMessageContainer>
+    </Thread>
+  ),
+};
 
-**Churn risk signals**
-1. "Multiple admins can't find settings" appears in 3 tickets.
-2. "Latency spikes in threads with many citations" noted twice.
+/**
+ * An agent message whose sources are passed through the content's `citations`
+ * prop as **Citation** elements, rendered alongside the Markdown body.
+ * @summary Agent message with source citations.
+ */
+export const WithCitations: Story = {
+  render: () => (
+    <Thread>
+      <ConversationMessageContainer messageType="agent" type="agent">
+        <ConversationMessageAvatar
+          avatarUrl={AGENT_AVATAR_URL}
+          name="@agent"
+          type="agent"
+        />
+        <ConversationMessageTitle
+          name="@agent"
+          timestamp="14:31"
+          renderName={(name) => <span>{name}</span>}
+          completionStatus={
+            <span className="text-xs text-muted-foreground">
+              Completed in 18 sec
+            </span>
+          }
+        />
+        <ConversationMessageContent
+          type="agent"
+          citations={[
+            <Citation key="table">
+              <CitationIcons>
+                <Icon visual={Table} size="sm" />
+              </CitationIcons>
+              <CitationTitle>Weekly support report</CitationTitle>
+            </Citation>,
+            <Citation key="slack">
+              <CitationIcons>
+                <Icon visual={SlackLogo} size="sm" />
+              </CitationIcons>
+              <CitationTitle>Thread in #feedback</CitationTitle>
+            </Citation>,
+          ]}
+        >
+          <Markdown content={agentReplyMarkdown} />
+        </ConversationMessageContent>
+      </ConversationMessageContainer>
+    </Thread>
+  ),
+};
 
-**Suggested follow-ups**
-- Share a quick dark mode roadmap update.
-- Add a tooltip in settings for export cadence.
-- Confirm whether the citation rendering delay is reproducible.
-
-\`\`\`
-Next step checklist
-[ ] Triage dark mode issues
-[ ] Export cadence FAQ update
-[ ] Run perf test on long threads
-\`\`\`
-`;
+/**
+ * An agent message embedding an **ActionCardBlock** proposal in its content,
+ * paired with an "Awaiting approval" `completionStatus` on the title.
+ * @summary Agent message with an embedded action card.
+ */
+export const WithActionCards: Story = {
+  render: () => (
+    <Thread>
+      <ConversationMessageContainer messageType="agent" type="agent">
+        <ConversationMessageAvatar
+          avatarUrl={AGENT_AVATAR_URL}
+          name="@agent"
+          type="agent"
+        />
+        <ConversationMessageTitle
+          name="@agent"
+          timestamp="14:33"
+          renderName={(name) => <span>{name}</span>}
+          completionStatus={
+            <span className="text-xs text-muted-foreground">
+              Awaiting approval
+            </span>
+          }
+        />
+        <ConversationMessageContent type="agent">
+          <ActionCardBlock
+            title="Enable weekly feedback digest"
+            description="Share a Monday summary of sentiment and top requests with the team."
+            applyLabel="Enable"
+            rejectLabel="Not now"
+            cardVariant="highlight"
+            actionsPosition="header"
+            visual={
+              <Avatar size="sm" emoji="🗞️" backgroundColor="bg-blue-100" />
+            }
+          />
+        </ConversationMessageContent>
+      </ConversationMessageContainer>
+    </Thread>
+  ),
+};

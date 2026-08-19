@@ -1,5 +1,5 @@
-import { Meta } from "@storybook/react";
-import React, { useEffect, useRef, useState } from "react";
+import type { Meta, StoryObj } from "@storybook/react";
+import React, { useState } from "react";
 
 import { cn, RainbowEffect } from "../index_with_tw_base";
 
@@ -24,50 +24,43 @@ const meta = {
 
 export default meta;
 
-const Example = () => {
+// Story scaffolding: a focusable surface that drives the RainbowEffect `size`
+// from its focus state. In product code, drive `size` from whatever state
+// should trigger emphasis (input focus, active step, etc.).
+const FocusGlowDemo = () => {
   const [isFocused, setIsFocused] = useState(false);
-  const divRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (divRef.current && !divRef.current.contains(event.target as Node)) {
-        setIsFocused(false);
-      }
-    };
-
-    document.addEventListener("click", handleClickOutside);
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
-    };
-  }, []);
-
-  const handleFocus = () => {
-    setIsFocused(true);
-  };
 
   return (
-    <div className="flex w-[900px] flex-1 px-0">
+    <div className="flex w-[600px]">
       <RainbowEffect
         containerClassName="w-full"
         className="w-full"
         size={isFocused ? "large" : "medium"}
       >
         <div
-          ref={divRef}
-          onClick={handleFocus}
+          tabIndex={0}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           className={cn(
             "relative flex h-[120px] w-full flex-row p-5",
             "rounded-3xl border border-transparent bg-primary-50 transition-all",
-            isFocused
-              ? "border-border ring-2 ring-highlight-300 ring-offset-2"
-              : ""
+            isFocused && "border-border ring-2 ring-highlight-300 ring-offset-2"
           )}
         >
-          Hello
+          Click or tab here to focus
         </div>
       </RainbowEffect>
     </div>
   );
 };
 
-export const Demo = () => <Example />;
+/**
+ * The glow grows from `medium` to `large` when the wrapped surface gains
+ * focus, the component's primary use case. The focusable div and its focus
+ * state are story scaffolding — only the `size` switch is the RainbowEffect
+ * API at work.
+ * @summary Glow enlarges when the wrapped element is focused.
+ */
+export const FocusGlow: StoryObj = {
+  render: () => <FocusGlowDemo />,
+};

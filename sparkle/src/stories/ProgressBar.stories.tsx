@@ -5,6 +5,7 @@ import { ProgressBar } from "../components/ProgressBar";
 
 const meta = {
   title: "Data Display/ProgressBar",
+  tags: ["a11y-issues"],
   component: ProgressBar,
   parameters: {
     docs: {
@@ -34,11 +35,22 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+/**
+ * An in-progress bar at 40% — adjust `percentage` from the Controls panel to
+ * see any fill level. Width comes from the `className` (here `w-48`).
+ * @summary Bar at an adjustable percentage.
+ */
 export const Default: Story = {
   render: (args) => <ProgressBar {...args} className="w-48" />,
 };
 
+/**
+ * Visual gallery: the same bar at 10 / 40 / 75 / 100% to compare fill levels
+ * side by side.
+ * @summary Visual gallery of fill levels.
+ */
 export const Percentages: Story = {
+  tags: ["!manifest"],
   render: () => (
     <div className="flex w-48 flex-col gap-3">
       {[10, 40, 75, 100].map((percentage) => (

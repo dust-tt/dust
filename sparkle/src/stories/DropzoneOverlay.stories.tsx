@@ -24,7 +24,15 @@ const meta = {
 
 export default meta;
 
-export const DropzoneOverlayExample = () => {
+/**
+ * The overlay appearing over droppable content. The mouse-enter/leave
+ * toggling of `isDragActive` here is story scaffolding so the overlay can be
+ * previewed by hovering — real usage drives `isDragActive` from the
+ * dropzone's drag events (e.g. dragenter/dragleave or a dropzone library's
+ * drag state).
+ * @summary Overlay toggled by hover-simulated drag state.
+ */
+export const HoverSimulatedDrag = () => {
   const [isDragActive, setIsDragActive] = React.useState(false);
 
   return (

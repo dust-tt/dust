@@ -35,7 +35,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const example = `
+const textFormattingContent = `
 # Level 1 Title
 
 ## Level 2 Title
@@ -48,55 +48,51 @@ const example = `
 
 ###### Level 6 Title
 
-Got it. I won’t escape your Markdown.
-
-If you intended to render a footnote reference like [^4], you can write it directly without backslashes:
-
-- Footnote reference in text: [^4]
-- Footnote definition at the end:
-  [^4]: Your footnote content here
-
-This is a paragraph with **bold** text and *italic* text. This is \`code\` block:
-\`\`\`
-Block
-\`\`\`
+This is a paragraph with **bold** text and *italic* text, plus some inline \`code\`.
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 
-# Another Level 1 Title
-
-Demo of a list, showcasing our pets of the month:
-- Soupinou
-- Chawarma
-- Chalom
-- Anakine
-- Goose
+Unordered list:
+- Apples
+- Oranges
+- Pears
+- Plums
+- Cherries
 
 Ordered list:
-1. Soupinou
-2. Chawarma
-3. Chalom
+1. First step
+2. Second step
+3. Third step
+
+Task list:
+* [ ] to do
+* [x] done
+
+~~Strikethrough~~ and a bare link www.x.com
 
 ---
 
-### Demo of a quote below:
-
-> You take the blue pill - the story ends, you wake up in your bed and believe whatever you want to believe. You take the red pill - you stay in Wonderland and I show you how deep the rabbit hole goes.
+### A quote
 
 > You take the blue pill - the story ends, you wake up in your bed and believe whatever you want to believe. You take the red pill - you stay in Wonderland and I show you how deep the rabbit hole goes.
 
 Another one, a short one:
-> Soupinou fait des miaou miaou.
+> Less is more.
+`;
 
-### Other stuff
+/**
+ * The core GitHub-flavored text features an agent message may contain:
+ * all heading levels, emphasis, inline code, lists, task lists,
+ * strikethrough, autolinks, horizontal rules, and blockquotes.
+ * @summary Headings, emphasis, lists, and quotes.
+ */
+export const TextFormatting: Story = {
+  args: {
+    content: textFormattingContent,
+  },
+};
 
-~~stuff~~
-link www.x.com
-footnote [^1]
-
-* [ ] to do
-* [x] done
-
+const tablesContent = `
 ### Short Table
 
 | Date        | High Temperature (°C) | Low Temperature (°C) |
@@ -110,7 +106,7 @@ footnote [^1]
 | October 31  | 19                    | 10                   |
 
 
-### Table
+### Wide Table
 
 | Date        | High Temperature (°C) | Low Temperature (°C) | Weather Condition             | Date        | High Temperature (°C) | Low Temperature (°C) | Weather Condition             | Date        | High Temperature (°C) | Low Temperature (°C) | Weather Condition             |
 |-------------|-----------------------|----------------------|-------------------------------|-------------|-----------------------|----------------------|-------------------------------|-------------|-----------------------|----------------------|-------------------------------|
@@ -121,32 +117,24 @@ footnote [^1]
 | October 29  | 17                    | 8                    | Scattered clouds              | October 25  | 19                    | 14                   | Passing showers, cloudy       | October 25  | 19                    | 14                   | Passing showers, cloudy       |
 | October 30  | 19                    | 8                    | Sunny                         | October 25  | 19                    | 14                   | Passing showers, cloudy       | October 25  | 19                    | 14                   | Passing showers, cloudy       |
 | October 31  | 19                    | 10                   | Sunny                         | October 25  | 19                    | 14                   | Passing showers, cloudy       | October 25  | 19                    | 14                   | Passing showers, cloudy       |
+`;
 
+/**
+ * GFM tables at two widths: a compact table that fits the message column,
+ * and a very wide one exercising horizontal overflow handling.
+ * @summary Compact and overflowing tables.
+ */
+export const Tables: Story = {
+  args: {
+    content: tablesContent,
+  },
+};
 
-
-### Some LaTeX
-
-$$ \\sigma(z_i) = \\frac{e^{z_{i}}}{\\sum_{j=1}^K e^{z_{j}}} \\ \\ \\ for\\ i=1,2,\\dots,K $$
-
-### Some inline LaTeX
-
-**Example**: Linear attention is a 2-level optimization:
-- Inner level: Memory matrix $\\mathcal{M}_t = \\mathcal{M}_{t-1} + \\mathbf{v}_t \\mathbf{k}_t^\\top$ (updates every token)
-- Outer level: Projection matrices $W_k, W_v, W_q$ (updates during pre-training)
-
-Even **optimizers** are associative memories. Momentum with gradient descent is 2-level:
-- Momentum $\\mathbf{m}_t$ compresses past gradients
-- Weights $W_t$ are updated by momentum
-
-The result is $a=2+t$
-
-### Some text with dollars signs:
-
-One want to import $USER_WORKSPACE but it will cost them $3.5 or $100 $1000
-
--> The EF for this code is 0.49059 kgCO2e per $ (2018 USD).
--> This code is 0.54895 kgCO2e per $ (2018 USD) more.
--> This thing is $5-$10 range.
+const codeBlocksContent = `
+A plain fence with no language hint:
+\`\`\`
+Block
+\`\`\`
 
 ### This is a CSV:
 
@@ -356,7 +344,59 @@ if __name__ == "__main__":
     main()
 
 \`\`\`
+`;
 
+/**
+ * Fenced code delegated to **CodeBlock**: a plain fence, CSV
+ * pretty-printing, and syntax highlighting for JavaScript, bash, and
+ * Python.
+ * @summary Fenced code and CSV rendering.
+ */
+export const CodeBlocks: Story = {
+  args: {
+    content: codeBlocksContent,
+  },
+};
+
+const mathAndLatexContent = `
+### Some LaTeX
+
+$$ \\sigma(z_i) = \\frac{e^{z_{i}}}{\\sum_{j=1}^K e^{z_{j}}} \\ \\ \\ for\\ i=1,2,\\dots,K $$
+
+### Some inline LaTeX
+
+**Example**: Linear attention is a 2-level optimization:
+- Inner level: Memory matrix $\\mathcal{M}_t = \\mathcal{M}_{t-1} + \\mathbf{v}_t \\mathbf{k}_t^\\top$ (updates every token)
+- Outer level: Projection matrices $W_k, W_v, W_q$ (updates during pre-training)
+
+Even **optimizers** are associative memories. Momentum with gradient descent is 2-level:
+- Momentum $\\mathbf{m}_t$ compresses past gradients
+- Weights $W_t$ are updated by momentum
+
+The result is $a=2+t$
+
+### Some text with dollars signs:
+
+One want to import $USER_WORKSPACE but it will cost them $3.5 or $100 $1000
+
+-> The EF for this code is 0.49059 kgCO2e per $ (2018 USD).
+-> This code is 0.54895 kgCO2e per $ (2018 USD) more.
+-> This thing is $5-$10 range.
+`;
+
+/**
+ * LaTeX rendering in both display ($$…$$) and inline ($…$) form, plus
+ * prose full of literal dollar signs that must not be mistaken for math
+ * delimiters.
+ * @summary Display and inline LaTeX, dollar-sign disambiguation.
+ */
+export const MathAndLatex: Story = {
+  args: {
+    content: mathAndLatexContent,
+  },
+};
+
+const mermaidContent = `
 ### And some mermaids:
 
 \`\`\`mermaid
@@ -384,12 +424,17 @@ pie title Distribution
     "Category D" : 10
     "Category E" : 25
 \`\`\`
-
 `;
 
-export const ExtendedMarkdownStory: Story = {
+/**
+ * Mermaid fences rendered as live diagrams — a flowchart with a subgraph
+ * and a pie chart. The play function asserts the diagram SVG actually
+ * mounts.
+ * @summary Mermaid flowchart and pie chart.
+ */
+export const MermaidDiagrams: Story = {
   args: {
-    content: example,
+    content: mermaidContent,
   },
   play: async ({ canvasElement }) => {
     await waitFor(() => {
@@ -398,27 +443,33 @@ export const ExtendedMarkdownStory: Story = {
   },
 };
 
-const mermaidAndJSON = `
-\`\`\`mermaid pie chart
-pie title Distribution
-    "Category A" : 30
-    "Category B" : 20
-    "Category C" : 15
-    "Category D" : 10
-    "Category E" : 25
-\`\`\`
+const footnotesContent = `
+Footnote references in text link down to their definitions at the end of the message.
 
+- A first claim backed by a source. [^1]
+- A second claim backed by another source. [^2]
 
+If a reference like [^1] appears without escaping, it renders as a superscript link.
+
+[^1]: First footnote content here.
+[^2]: Second footnote content here.
+`;
+
+/**
+ * GFM footnotes: superscript references in the body linking to their
+ * definitions rendered at the bottom of the message.
+ * @summary Footnote references and definitions.
+ */
+export const Footnotes: Story = {
+  args: {
+    content: footnotesContent,
+  },
+};
+
+const validJSONContent = `
 \`\`\`json
 {
-  "message": "Invalid JSON should not be pretty printed",
-  "status": "success",
-}
-\`\`\`
-
-\`\`\`json
-{
-  "message": "Soupi soupi soupinou ! Youhou !",
+  "message": "Request completed",
   "status": "success",
   "data": null
 }
@@ -468,11 +519,36 @@ pie title Distribution
   "done": true
 }
 \`\`\`
-
 `;
 
-export const JSONMarkdownStory: Story = {
+/**
+ * Valid \`json\` fences of increasing size are pretty-printed — small
+ * payloads, a one-key query object, and a nested API response.
+ * @summary Pretty-printed JSON code fences.
+ */
+export const JSONPrettyPrinting: Story = {
   args: {
-    content: mermaidAndJSON,
+    content: validJSONContent,
+  },
+};
+
+const invalidJSONContent = `
+\`\`\`json
+{
+  "message": "Invalid JSON should not be pretty printed",
+  "status": "success",
+}
+\`\`\`
+`;
+
+/**
+ * A \`json\` fence with a deliberate trailing comma: parsing fails, so the
+ * block must fall back to plain code rendering instead of crashing or
+ * pretty-printing.
+ * @summary Graceful fallback for malformed JSON.
+ */
+export const InvalidJSONHandling: Story = {
+  args: {
+    content: invalidJSONContent,
   },
 };

@@ -13,7 +13,7 @@ type IconModule = {
 
 const meta = {
   title: "Assets/Icons",
-  tags: ["autodocs"],
+  tags: ["!manifest", "autodocs"],
   parameters: {
     docs: {
       description: {

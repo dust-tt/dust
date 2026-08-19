@@ -9,12 +9,14 @@ import { ArrowUp, ChevronDown } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<React.ComponentProps<typeof LegacyFlexSplitButton>> = {
   title: "Actions/LegacySplitButton",
-  tags: ["a11y-issues"],
+  tags: ["deprecated", "!manifest", "a11y-issues"],
   component: LegacyFlexSplitButton,
   parameters: {
     docs: {
       description: {
-        component: `A primary action paired with an attached secondary affordance. **LegacyFlexSplitButton** renders a labelled button (with \`label\`, \`icon\`, \`variant\`, and an \`isLoading\` state) joined to a \`splitAction\` — typically a chevron **Button** that opens a menu of related options.
+        component: `**Deprecated — use SplitButton instead.** Kept only as a visual reference for legacy product surfaces.
+
+A primary action paired with an attached secondary affordance. **LegacyFlexSplitButton** renders a labelled button (with \`label\`, \`icon\`, \`variant\`, and an \`isLoading\` state) joined to a \`splitAction\` — typically a chevron **Button** that opens a menu of related options.
 
 **When to use**
 - When one action is the obvious default but a few related variants should be one click away (e.g. "Send" + send options).

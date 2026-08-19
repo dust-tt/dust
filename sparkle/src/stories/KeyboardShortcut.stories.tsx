@@ -28,29 +28,45 @@ const meta = {
       },
     },
   },
+  args: {
+    shortcut: "Cmd+K",
+  },
 } satisfies Meta<typeof KeyboardShortcut>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Basic: Story = {
-  args: {
-    shortcut: "Cmd+K",
-  },
+/**
+ * A single shortcut string: parts joined by `+` are rendered as key caps
+ * with platform symbols.
+ *
+ * @summary One shortcut rendered as key caps.
+ */
+export const Default: Story = {};
+
+/**
+ * How the normalizer handles modifiers, multi-part combos, and arrow keys —
+ * write the names, never the glyphs.
+ *
+ * @summary Modifier and arrow-key normalization.
+ */
+export const ModifierFormats: Story = {
   render: () => (
     <div className="flex flex-col gap-2">
       <KeyboardShortcut shortcut="Shift+Cmd+P" />
       <KeyboardShortcut shortcut="Ctrl+Alt+Del" />
-      <KeyboardShortcut shortcut="Cmd+K" />
       <KeyboardShortcut shortcut="ArrowUp+ArrowDown" />
     </div>
   ),
 };
 
+/**
+ * Inside a dropdown, use `DropdownMenuShortcut` (which wraps this component)
+ * via the item's `endComponent` slot.
+ *
+ * @summary Shortcuts on dropdown menu items.
+ */
 export const InDropdown: Story = {
-  args: {
-    shortcut: "Cmd+K",
-  },
   render: () => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

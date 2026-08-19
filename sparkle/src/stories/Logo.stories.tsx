@@ -17,7 +17,7 @@ import {
 
 const meta = {
   title: "Assets/Logo",
-  tags: ["autodocs"],
+  tags: ["!manifest", "autodocs"],
   parameters: {
     docs: {
       description: {

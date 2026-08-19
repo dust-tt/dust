@@ -1,4 +1,4 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import { AspectRatio } from "../index_with_tw_base";
@@ -20,100 +20,52 @@ const meta = {
       },
     },
   },
-} satisfies Meta;
+} satisfies Meta<typeof AspectRatio>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Demo = () => {
-  return (
-    <div className="flex flex-col gap-12">
-      <Demo169 />
-      <Demo43 />
+/**
+ * A 16 / 9 media box: the container reserves the widescreen footprint before
+ * the image loads (preventing layout shift), and the image fills and crops
+ * to it via `object-cover` + `overflow-hidden`.
+ * @summary Widescreen 16:9 media container.
+ */
+export const Widescreen16x9: Story = {
+  args: {
+    ratio: 16 / 9,
+  },
+  render: (args) => (
+    <div className="w-96">
+      <AspectRatio {...args} className="overflow-hidden rounded-lg bg-muted">
+        <img
+          src="https://dust.tt/static/droidavatar/Droid_Lime_2.jpg"
+          alt="Droid avatar cropped to a 16:9 frame"
+          className="h-full w-full object-cover"
+        />
+      </AspectRatio>
     </div>
-  );
+  ),
 };
 
-export const Demo169 = () => {
-  return (
-    <div className="grid grid-cols-3 gap-4">
-      <AspectRatio
-        ratio={16 / 9}
-        className="flex items-center justify-center overflow-hidden bg-muted"
-      >
-        Hello
-      </AspectRatio>
-      <AspectRatio
-        ratio={16 / 9}
-        className="flex items-center justify-center overflow-hidden bg-muted"
-      >
-        Hello
-      </AspectRatio>
-      <AspectRatio
-        ratio={16 / 9}
-        className="flex items-center justify-center overflow-hidden bg-muted"
-      >
-        Hello
-      </AspectRatio>
-      <AspectRatio
-        ratio={16 / 9}
-        className="flex items-center justify-center overflow-hidden bg-muted"
-      >
-        Hello
-      </AspectRatio>
-      <AspectRatio
-        ratio={16 / 9}
-        className="flex items-center justify-center overflow-hidden bg-muted"
-      >
-        Hello
-      </AspectRatio>
-      <AspectRatio
-        ratio={16 / 9}
-        className="flex items-center justify-center overflow-hidden bg-muted"
-      >
-        Hello
+/**
+ * The same media box at the classic 4 / 3 ratio, used for squarer previews
+ * and thumbnails.
+ * @summary Standard 4:3 media container.
+ */
+export const Standard4x3: Story = {
+  args: {
+    ratio: 4 / 3,
+  },
+  render: (args) => (
+    <div className="w-96">
+      <AspectRatio {...args} className="overflow-hidden rounded-lg bg-muted">
+        <img
+          src="https://dust.tt/static/droidavatar/Droid_Lime_2.jpg"
+          alt="Droid avatar cropped to a 4:3 frame"
+          className="h-full w-full object-cover"
+        />
       </AspectRatio>
     </div>
-  );
-};
-export const Demo43 = () => {
-  return (
-    <div className="grid grid-cols-3 gap-4">
-      <AspectRatio
-        ratio={4 / 3}
-        className="flex items-center justify-center overflow-hidden bg-muted"
-      >
-        Hello
-      </AspectRatio>
-      <AspectRatio
-        ratio={4 / 3}
-        className="flex items-center justify-center overflow-hidden bg-muted"
-      >
-        Hello
-      </AspectRatio>
-      <AspectRatio
-        ratio={4 / 3}
-        className="flex items-center justify-center overflow-hidden bg-muted"
-      >
-        Hello
-      </AspectRatio>
-      <AspectRatio
-        ratio={4 / 3}
-        className="flex items-center justify-center overflow-hidden bg-muted"
-      >
-        Hello
-      </AspectRatio>
-      <AspectRatio
-        ratio={4 / 3}
-        className="flex items-center justify-center overflow-hidden bg-muted"
-      >
-        Hello
-      </AspectRatio>
-      <AspectRatio
-        ratio={4 / 3}
-        className="flex items-center justify-center overflow-hidden bg-muted"
-      >
-        Hello
-      </AspectRatio>
-    </div>
-  );
+  ),
 };

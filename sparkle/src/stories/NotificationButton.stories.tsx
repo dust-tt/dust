@@ -1,11 +1,11 @@
-import type { Meta } from "@storybook/react";
-import React from "react";
+import type { Meta, StoryObj } from "@storybook/react";
 
 import { NotificationButton } from "@sparkle/components";
 import { InfoCircle } from "@sparkle/icons";
 
 const meta = {
   title: "Feedback & Status/NotificationButton",
+  component: NotificationButton,
   tags: ["a11y-issues"],
   parameters: {
     docs: {
@@ -24,35 +24,46 @@ const meta = {
 } satisfies Meta<typeof NotificationButton>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Example = () => {
-  return (
-    <div className="flex gap-4">
-      <NotificationButton
-        buttonProps={{
-          variant: "outline",
-          size: "md",
-          icon: InfoCircle,
-          label: "InfoCircle",
-        }}
-        counterProps={{
-          value: 1,
-          variant: "highlight",
-          size: "sm",
-        }}
-      />
-      <NotificationButton
-        buttonProps={{
-          icon: InfoCircle,
-          size: "sm",
-          variant: "ghost",
-        }}
-        counterProps={{
-          value: 99,
-          variant: "warning",
-          size: "xs",
-        }}
-      />
-    </div>
-  );
+/**
+ * A labeled outline button with a small highlight badge — the typical
+ * header affordance for a notifications inbox with a modest unread count.
+ * @summary Labeled button with a highlight counter badge.
+ */
+export const WithCount: Story = {
+  args: {
+    buttonProps: {
+      variant: "outline",
+      size: "md",
+      icon: InfoCircle,
+      label: "Notifications",
+    },
+    counterProps: {
+      value: 1,
+      variant: "highlight",
+      size: "sm",
+    },
+  },
+};
+
+/**
+ * A compact icon-only ghost button carrying a large warning count — the
+ * minimal toolbar treatment when space is tight and the count signals
+ * urgency.
+ * @summary Icon-only ghost button with a high warning count.
+ */
+export const GhostWithHighCount: Story = {
+  args: {
+    buttonProps: {
+      icon: InfoCircle,
+      size: "sm",
+      variant: "ghost",
+    },
+    counterProps: {
+      value: 99,
+      variant: "warning",
+      size: "xs",
+    },
+  },
 };

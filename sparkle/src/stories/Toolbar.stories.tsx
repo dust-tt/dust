@@ -204,7 +204,15 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Playground: Story = {
+/**
+ * The `inline` variant, sitting in the editor flow. The story supplies a
+ * full formatting toolbar (text styles, link dialog, lists, code) as
+ * children via `ToolbarContent` groups — `children: null` in the args is
+ * only a type placeholder.
+ *
+ * @summary Inline formatting toolbar within the editor flow.
+ */
+export const Inline: Story = {
   args: {
     children: null,
     variant: "inline",
@@ -213,6 +221,12 @@ export const Playground: Story = {
   render: renderToolbarStory,
 };
 
+/**
+ * The `overlay` variant: a floating bubble menu with `scroll` for narrow
+ * containers and an `onClose` affordance.
+ *
+ * @summary Floating overlay toolbar with close and scroll.
+ */
 export const Overlay: Story = {
   args: {
     children: null,

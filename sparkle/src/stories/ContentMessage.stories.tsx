@@ -21,6 +21,26 @@ const ICONS = {
   Heart: Heart,
 } as const;
 
+const COLOR_VARIANTS = [
+  "primary",
+  "warning",
+  "success",
+  "highlight",
+  "info",
+  "green",
+  "blue",
+  "rose",
+  "golden",
+] as const;
+
+const INLINE_VARIANTS = [
+  "primary",
+  "warning",
+  "success",
+  "highlight",
+  "info",
+] as const;
+
 const meta: Meta<ContentMessageStoryProps> = {
   title: "Feedback & Status/ContentMessage",
   component: ContentMessage,
@@ -56,18 +76,7 @@ const meta: Meta<ContentMessageStoryProps> = {
       description: "Content of the message",
     },
     variant: {
-      options: [
-        "primary",
-        "warning",
-        "success",
-        "highlight",
-        "info",
-        "green",
-        "blue",
-        "rose",
-        "golden",
-        "outline",
-      ],
+      options: COLOR_VARIANTS,
       control: { type: "select" },
       description: "Visual style variant",
     },
@@ -92,7 +101,12 @@ const meta: Meta<ContentMessageStoryProps> = {
 export default meta;
 type Story = StoryObj<ContentMessageStoryProps>;
 
-export const Basic: Story = {
+/**
+ * The standard block message: a title and body text. Toggle `showAction` to
+ * add a right-aligned **ContentMessageAction** button.
+ * @summary Titled block message with optional action.
+ */
+export const Default: Story = {
   render: ({ showAction, ...args }) => (
     <ContentMessage
       {...args}
@@ -111,6 +125,11 @@ export const Basic: Story = {
   },
 };
 
+/**
+ * Pass an `icon` to reinforce the message's meaning next to the title; never
+ * rely on color alone to convey severity.
+ * @summary Block message with a leading icon.
+ */
 export const WithIcon: Story = {
   args: {
     title: "This is a title",
@@ -120,6 +139,11 @@ export const WithIcon: Story = {
   },
 };
 
+/**
+ * The body accepts arbitrary children — here a bulleted list, as used to show
+ * an agent's chain of thought.
+ * @summary Structured list content inside the message body.
+ */
 export const WithList: Story = {
   args: {
     title: "Agent Thoughts",
@@ -130,7 +154,7 @@ export const WithList: Story = {
         <li className="break-words py-1 first:pt-0 last:pb-0">
           <div className="whitespace-pre-wrap break-words py-1 font-normal first:pt-0 last:pb-0">
             Should search internal data as this appears to be a code-related
-            question specific to the company"s codebase
+            question specific to the company&apos;s codebase
           </div>
         </li>
         <li className="break-words py-1 first:pt-0 last:pb-0">
@@ -144,6 +168,11 @@ export const WithList: Story = {
   },
 };
 
+/**
+ * Longer content can be laid out as several paragraphs with inline emphasis;
+ * the message grows with its body.
+ * @summary Multi-paragraph body content.
+ */
 export const MultiParagraph: Story = {
   args: {
     title: "This is a title",
@@ -160,35 +189,21 @@ export const MultiParagraph: Story = {
   },
 };
 
+/**
+ * Visual reference for design review: every color variant side by side. See
+ * the component guidelines for which variant to pick — color should signal
+ * the consequence for the user.
+ * @summary Gallery of all color variants for design review.
+ */
 export const ColorVariants: Story = {
+  tags: ["!manifest"],
   render: () => (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {[
-        "primary",
-        "warning",
-        "success",
-        "highlight",
-        "info",
-        "green",
-        "blue",
-        "rose",
-        "golden",
-      ].map((variant) => (
+      {COLOR_VARIANTS.map((variant) => (
         <ContentMessage
           key={variant}
           title={`${variant.charAt(0).toUpperCase() + variant.slice(1)} Variant`}
-          variant={
-            variant as
-              | "primary"
-              | "warning"
-              | "success"
-              | "highlight"
-              | "info"
-              | "green"
-              | "blue"
-              | "rose"
-              | "golden"
-          }
+          variant={variant}
           size="md"
         >
           This is a {variant} variant message. It shows how the component looks
@@ -199,6 +214,11 @@ export const ColorVariants: Story = {
   ),
 };
 
+/**
+ * **ContentMessageInline** is the compact single-line form of ContentMessage,
+ * for short contextual notes attached to a control or region.
+ * @summary Compact single-line message (ContentMessageInline).
+ */
 export const InlineBasic: Story = {
   render: () => (
     <ContentMessageInline icon={InfoCircle} variant="info">
@@ -207,6 +227,11 @@ export const InlineBasic: Story = {
   ),
 };
 
+/**
+ * A **ContentMessageInline** with a trailing **ContentMessageAction** button,
+ * passed as a child after the message text.
+ * @summary Inline message with one action button.
+ */
 export const InlineWithAction: Story = {
   render: () => (
     <ContentMessageInline icon={InfoCircle} variant="info">
@@ -216,6 +241,11 @@ export const InlineWithAction: Story = {
   ),
 };
 
+/**
+ * A **ContentMessageInline** can carry several **ContentMessageAction**
+ * buttons — for example a primary and a highlighted one.
+ * @summary Inline message with two action buttons.
+ */
 export const InlineWithTwoActions: Story = {
   render: () => (
     <ContentMessageInline icon={InfoCircle} variant="info">
@@ -226,6 +256,11 @@ export const InlineWithTwoActions: Story = {
   ),
 };
 
+/**
+ * A **ContentMessageInline** with a `title` prefix — with body text and an
+ * action, or title-only for a terse status flag.
+ * @summary Inline message with a title prefix.
+ */
 export const InlineWithTitle: Story = {
   render: () => (
     <div className="flex flex-col gap-4">
@@ -238,26 +273,17 @@ export const InlineWithTitle: Story = {
   ),
 };
 
+/**
+ * Visual reference for design review: the main **ContentMessageInline** color
+ * variants stacked, each with an action button.
+ * @summary Gallery of inline variants for design review.
+ */
 export const InlineVariants: Story = {
+  tags: ["!manifest"],
   render: () => (
     <div className="flex flex-col gap-4">
-      {["primary", "warning", "success", "highlight", "info"].map((variant) => (
-        <ContentMessageInline
-          key={variant}
-          icon={InfoCircle}
-          variant={
-            variant as
-              | "primary"
-              | "warning"
-              | "success"
-              | "highlight"
-              | "info"
-              | "green"
-              | "blue"
-              | "rose"
-              | "golden"
-          }
-        >
+      {INLINE_VARIANTS.map((variant) => (
+        <ContentMessageInline key={variant} icon={InfoCircle} variant={variant}>
           {variant.charAt(0).toUpperCase() + variant.slice(1)} inline message
           <ContentMessageAction variant="primary" label="Action" />
         </ContentMessageInline>

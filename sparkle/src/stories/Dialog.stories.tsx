@@ -40,7 +40,13 @@ const meta: Meta<typeof Dialog> = {
 export default meta;
 type Story = StoryObj<typeof Dialog>;
 
-export const Basic: Story = {
+/**
+ * The canonical composition: trigger, header with title and description,
+ * body content, and a cancel / confirm footer. Dialog is compositional, so
+ * stories are render-based rather than args-driven.
+ * @summary Canonical confirm dialog composition.
+ */
+export const Default: Story = {
   render: () => (
     <Dialog>
       <DialogTrigger asChild>
@@ -71,6 +77,12 @@ export const Basic: Story = {
   ),
 };
 
+/**
+ * The tool-permission prompt shape used in product: a **DialogTitle** with a
+ * leading Avatar `visual` (here the Slack logo) above an allow / cancel
+ * decision.
+ * @summary Tool-usage confirmation with an avatar title.
+ */
 export const ToolValidation: Story = {
   render: () => (
     <Dialog>
@@ -108,6 +120,11 @@ export const ToolValidation: Story = {
   ),
 };
 
+/**
+ * A short form inside the dialog body — **DialogContainer** hosting a couple
+ * of **Input** fields with a save / cancel footer.
+ * @summary Dialog hosting a short form.
+ */
 export const WithForm: Story = {
   render: () => (
     <Dialog>
@@ -139,7 +156,13 @@ export const WithForm: Story = {
   ),
 };
 
-export const AlertDialog: Story = {
+/**
+ * A Dialog used as a destructive confirmation: `warning`-variant trigger and
+ * confirm buttons, an irreversibility note in the body, and a compact
+ * `DialogContent size="md"`.
+ * @summary Destructive-action confirmation dialog.
+ */
+export const DestructiveConfirmation: Story = {
   render: () => (
     <Dialog>
       <DialogTrigger asChild>
@@ -168,6 +191,13 @@ export const AlertDialog: Story = {
   ),
 };
 
+/**
+ * Scroll behavior for long content: `DialogContent size="2xl" height="md"`
+ * caps the dialog's dimensions so the body scrolls, while
+ * **DialogContainer**'s `fixedContent` slot pins a search input above the
+ * scrolling area.
+ * @summary Scrolling dialog with pinned fixed content.
+ */
 export const LargeContent: Story = {
   render: () => (
     <Dialog>

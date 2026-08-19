@@ -1,5 +1,6 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { fn } from "storybook/test";
 
 import {
   DriveLogo,
@@ -12,12 +13,12 @@ import {
   Avatar,
   Button,
   Chip,
-  Settings01,
   ContextItem,
+  Edit04,
   Folder,
   Icon,
-  Edit04,
   Robot,
+  Settings01,
   SliderToggle,
   Trash01,
 } from "../index_with_tw_base";
@@ -44,9 +45,131 @@ const meta = {
 } satisfies Meta<typeof ContextItem>;
 
 export default meta;
+// Stories compose full ContextItem.List structures rather than a single row,
+// so they are render-based and untyped against the row's own props.
+type Story = StoryObj;
 
-export const ListItemExample = () => (
-  <div>
+/**
+ * The basic composition: clickable rows in a **ContextItem.List**, each with a
+ * platform logo via **ContextItem.Visual** and a **ContextItem.Description**.
+ * @summary Clickable list rows with logo visuals and descriptions.
+ */
+export const ConnectionsList: Story = {
+  render: () => (
+    <ContextItem.List>
+      <ContextItem
+        title="Notion"
+        visual={<ContextItem.Visual visual={NotionLogo} />}
+        onClick={fn()}
+      >
+        <ContextItem.Description description="Teamspaces “General” and “Public”, pages “Engineering” and “Team Life”." />
+      </ContextItem>
+      <ContextItem
+        title="Drive"
+        visual={<ContextItem.Visual visual={DriveLogo} />}
+        onClick={fn()}
+      >
+        <ContextItem.Description description="Shared drives “Product” and “Design”." />
+      </ContextItem>
+    </ContextItem.List>
+  ),
+};
+
+/**
+ * Use **ContextItem.SectionHeader** to break a long list into titled groups,
+ * each with its own description.
+ * @summary Rows grouped under titled section headers.
+ */
+export const WithSectionHeaders: Story = {
+  render: () => (
+    <ContextItem.List>
+      <ContextItem.SectionHeader
+        title="Connected platforms"
+        description="Data sources synced into this workspace."
+      />
+      <ContextItem
+        title="Notion"
+        visual={<ContextItem.Visual visual={NotionLogo} />}
+      >
+        <ContextItem.Description description="Teamspaces “General” and “Public”." />
+      </ContextItem>
+      <ContextItem.SectionHeader
+        title="Agents"
+        description="Agents available to this workspace."
+      />
+      <ContextItem
+        title="@SalesFr"
+        visual={
+          <Avatar
+            visual="https://dust.tt/static/droidavatar/Droid_Indigo_4.jpg"
+            size="sm"
+          />
+        }
+      >
+        <ContextItem.Description description="Answers sales questions for the French market." />
+      </ContextItem>
+    </ContextItem.List>
+  ),
+};
+
+/**
+ * Trailing controls: a hover-only Button group via **hoverAction**, a
+ * **SliderToggle** to enable/disable a row, and a persistent Manage button.
+ * @summary Hover-revealed buttons and toggle actions on rows.
+ */
+export const WithActions: Story = {
+  render: () => (
+    <ContextItem.List>
+      <ContextItem
+        title="Slack"
+        visual={<ContextItem.Visual visual={SlackLogo} />}
+        hoverAction
+        action={
+          <div className="flex gap-1">
+            <Button icon={Trash01} variant="warning" label="Remove" />
+            <Button variant="outline" label="Edit" size="sm" icon={Edit04} />
+          </div>
+        }
+      >
+        <ContextItem.Description description="Channels #support and #feedback." />
+      </ContextItem>
+      <ContextItem
+        title="Github"
+        action={<SliderToggle />}
+        visual={<ContextItem.Visual visual={GithubLogo} />}
+      >
+        <ContextItem.Description description="Repositories dust-tt/dust and dust-tt/sparkle." />
+      </ContextItem>
+      <ContextItem
+        title="@SalesFr"
+        action={
+          <Button
+            variant="outline"
+            label="Manage"
+            size="sm"
+            icon={Settings01}
+          />
+        }
+        visual={
+          <Avatar
+            visual="https://dust.tt/static/droidavatar/Droid_Indigo_4.jpg"
+            size="sm"
+          />
+        }
+      >
+        <ContextItem.Description description="Answers sales questions for the French market." />
+      </ContextItem>
+    </ContextItem.List>
+  ),
+};
+
+/**
+ * Rich row content: **subElement** metadata next to the title, status
+ * **Chip**s as free-form children, and a description below.
+ * @summary Rows with subElement metadata, status chips, and descriptions.
+ */
+export const WithMetadata: Story = {
+  render: () => (
     <ContextItem.List>
       <ContextItem
         title="docs.stripe.com-payments-payment-intents-verifying-status"
@@ -65,107 +188,18 @@ export const ListItemExample = () => (
         <div className="py-2">
           <Chip size="xs" label="Last Sync ~7 days ago" color="success" />
         </div>
-        <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
-      </ContextItem>
-      <ContextItem.SectionHeader
-        title="Connected platforms"
-        description="Platforms connected"
-      />
-      <ContextItem
-        title="Notion"
-        visual={<ContextItem.Visual visual={NotionLogo} />}
-        onClick={() => console.log("clicked item")}
-      >
-        <ContextItem.Description description="Teamspaces “General” and “Public”, pages “Engineering”, “Team Life”, “Marketing”, “Brand”, “Getting Started at Dust”, “Brand”, “Design”, “Product Decisions”, “Hiring”, “Man" />
-      </ContextItem>
-      <ContextItem
-        title="Drive"
-        visual={<ContextItem.Visual visual={DriveLogo} />}
-        onClick={() => console.log("clicked")}
-      >
-        <ContextItem.Description description="Hello you" />
-      </ContextItem>
-
-      <ContextItem.SectionHeader
-        title="Connected platforms"
-        description="Platforms connected"
-      />
-      <ContextItem
-        title="Slack"
-        visual={<ContextItem.Visual visual={SlackLogo} />}
-        hoverAction
-        action={
-          <div className="flex gap-1">
-            <Button icon={Trash01} variant="warning" label="Remove" />
-            <Button variant="outline" label="Edit" size="sm" icon={Edit04} />
-          </div>
-        }
-      >
-        <ContextItem.Description description="Hello you" />
+        <ContextItem.Description description="Documentation on verifying the status of a payment intent." />
       </ContextItem>
       <ContextItem
         title="Github"
         subElement={<>By: Stan</>}
-        action={<SliderToggle />}
         visual={<ContextItem.Visual visual={GithubLogo} />}
       >
-        <>
-          <div className="py-2">
-            <Chip label="Syncing…" color="info" size="sm" isBusy />
-          </div>
-          <ContextItem.Description description="Teamspaces “General” and “Public”, pages “Engineering”, “Team Life”, “Marketing”, “Brand”, “Getting Started at Dust”, “Brand”, “Design”, “Product Decisions”, “Hiring”, “Man" />
-        </>
+        <div className="py-2">
+          <Chip label="Syncing…" color="info" size="sm" isBusy />
+        </div>
+        <ContextItem.Description description="Repositories dust-tt/dust and dust-tt/sparkle." />
       </ContextItem>
-      <ContextItem
-        title="@Gpt4"
-        action={<SliderToggle />}
-        visual={
-          <Avatar visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png" />
-        }
-      >
-        <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
-      </ContextItem>
-      <ContextItem
-        title="@SalesFr"
-        subElement={<>By: Edouard Wautier, Amira Hadad</>}
-        action={
-          <Button
-            variant="outline"
-            label="Manage"
-            size="sm"
-            icon={Settings01}
-          />
-        }
-        visual={
-          <Avatar
-            visual="https://dust.tt/static/droidavatar/Droid_Indigo_4.jpg"
-            size="sm"
-          />
-        }
-      >
-        <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
-      </ContextItem>
-      <ContextItem
-        title="@SupportFr"
-        subElement={<>By: Edouard Wautier, Amira Hadad</>}
-        action={
-          <Button
-            variant="outline"
-            label="Manage"
-            size="sm"
-            icon={Settings01}
-          />
-        }
-        visual={
-          <Avatar
-            visual="https://dust.tt/static/droidavatar/Droid_Pink_4.jpg"
-            size="sm"
-          />
-        }
-      >
-        <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
-      </ContextItem>
-      {undefined}
     </ContextItem.List>
-  </div>
-);
+  ),
+};

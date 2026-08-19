@@ -56,17 +56,97 @@ type VoicePickerDemoProps = Pick<
   "size" | "disabled" | "showStopLabel" | "pressDelayMs"
 >;
 
-export const Interactive: Story = {
+const noopRecordingHandlers = {
+  onRecordStart: async () => {},
+  onRecordStop: async () => {},
+};
+
+/**
+ * The resting state, ready to record. Static and fully args-driven — see
+ * `SimulatedRecordingLifecycle` for the full state machine in motion.
+ *
+ * @summary Idle push-to-talk button.
+ */
+export const Idle: Story = {
   args: {
     status: "idle",
     level: 0,
     elapsedSeconds: 0,
-    onRecordStart: async () => {},
-    onRecordStop: async () => {},
+    size: "xs",
+    showStopLabel: true,
+    ...noopRecordingHandlers,
+  },
+};
+
+/**
+ * Mid-recording: the live waveform is driven by `level` (0–1) and the timer
+ * by `elapsedSeconds` — update both from your audio capture loop.
+ *
+ * @summary Recording with live level and elapsed time.
+ */
+export const Recording: Story = {
+  args: {
+    status: "recording",
+    level: 0.6,
+    elapsedSeconds: 7,
+    size: "xs",
+    showStopLabel: true,
+    ...noopRecordingHandlers,
+  },
+};
+
+/**
+ * After stop, keep `status` at `transcribing` until your speech-to-text call
+ * resolves; the button shows a busy state.
+ *
+ * @summary Waiting for transcription to complete.
+ */
+export const Transcribing: Story = {
+  args: {
+    status: "transcribing",
+    level: 0,
+    elapsedSeconds: 0,
+    size: "xs",
+    showStopLabel: true,
+    ...noopRecordingHandlers,
+  },
+};
+
+/**
+ * Disabled, e.g. while the surrounding composer cannot accept input.
+ *
+ * @summary Disabled voice button.
+ */
+export const Disabled: Story = {
+  args: {
+    status: "idle",
+    level: 0,
+    elapsedSeconds: 0,
+    size: "xs",
+    disabled: true,
+    showStopLabel: true,
+    ...noopRecordingHandlers,
+  },
+};
+
+/**
+ * The full controlled lifecycle, simulated: press to record (level and
+ * timer animate), release to transcribe, then back to idle. The
+ * `status`/`level`/`elapsedSeconds` args are placeholders here — the demo
+ * owns them in state, as your integration should.
+ *
+ * @summary Simulated record → transcribe → idle lifecycle.
+ */
+export const SimulatedRecordingLifecycle: Story = {
+  args: {
+    status: "idle",
+    level: 0,
+    elapsedSeconds: 0,
     size: "xs",
     disabled: false,
     showStopLabel: true,
     pressDelayMs: 150,
+    ...noopRecordingHandlers,
   },
   render: function Render(args: VoicePickerProps): React.ReactElement {
     return (
