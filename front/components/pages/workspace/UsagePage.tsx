@@ -188,15 +188,21 @@ function CreditPoolProgressBar({
       aria-label="Workspace credit usage"
       aria-valuenow={clampedUsedPercentage}
       className="h-2 w-full bg-background"
-      fillClassName={[
-        target === "off_target" ? "bg-warning-500" : "bg-highlight-500",
-        target === "off_target" ? "bg-warning-100" : "bg-highlight-100",
-        "bg-muted-background",
-      ]}
-      percentages={[
-        clampedUsedPercentage,
-        projectedRemainderPercentage,
-        unusedPercentage,
+      segments={[
+        {
+          percentage: clampedUsedPercentage,
+          className:
+            target === "off_target" ? "bg-warning-500" : "bg-highlight-500",
+        },
+        {
+          percentage: projectedRemainderPercentage,
+          className:
+            target === "off_target" ? "bg-warning-100" : "bg-highlight-100",
+        },
+        {
+          percentage: unusedPercentage,
+          className: "bg-muted-background",
+        },
       ]}
       radius="xs"
     />

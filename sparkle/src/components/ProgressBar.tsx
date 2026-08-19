@@ -36,43 +36,49 @@ const progressBarFillVariants = cva("h-full", {
   },
 });
 
-interface ProgressBarBaseProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "children">,
-    VariantProps<typeof progressBarVariants> {
-  fillClassName?: string | string[];
+interface ProgressBarSegment {
+  percentage: number;
+  className?: string;
 }
 
-export type ProgressBarProps = ProgressBarBaseProps &
+export type ProgressBarProps = Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  "children"
+> &
+  VariantProps<typeof progressBarVariants> &
   (
-    | { percentage: number; percentages?: never }
-    | { percentage?: never; percentages: number[] }
+    | { percentage: number; segments?: never }
+    | { percentage?: never; segments: ProgressBarSegment[] }
   );
 
 export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
   (
     {
       percentage,
-      percentages,
+      segments,
       radius = "full",
       variant = "default",
       className,
-      fillClassName,
       ...props
     },
     ref
   ) => {
-    const isSegmented = percentages !== undefined;
-    const values =
-      percentages ?? (percentage === undefined ? [] : [percentage]);
-    const clampedPercentages = values.map((value) =>
-      Math.min(100, Math.max(0, value))
-    );
+    const isSegmented = segments !== undefined;
+    const values: ProgressBarSegment[] =
+      segments ?? (percentage === undefined ? [] : [{ percentage }]);
+    const clampedSegments = values.map((segment) => ({
+      ...segment,
+      percentage: Math.min(100, Math.max(0, segment.percentage)),
+    }));
     const valueNow = isSegmented
       ? Math.min(
           100,
-          clampedPercentages.reduce((total, value) => total + value, 0)
+          clampedSegments.reduce(
+            (total, segment) => total + segment.percentage,
+            0
+          )
         )
-      : clampedPercentages[0];
+      : clampedSegments[0]?.percentage;
 
     return (
       <div
@@ -88,20 +94,18 @@ export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
         )}
         {...props}
       >
-        {clampedPercentages.map((value, index) =>
-          !isSegmented || value > 0 ? (
+        {clampedSegments.map((segment, index) =>
+          !isSegmented || segment.percentage > 0 ? (
             <div
               key={index}
               className={cn(
                 progressBarFillVariants({ radius, variant }),
-                Array.isArray(fillClassName)
-                  ? fillClassName[index]
-                  : fillClassName
+                segment.className
               )}
               style={
                 isSegmented
-                  ? { flexBasis: 0, flexGrow: value }
-                  : { width: `${value}%` }
+                  ? { flexBasis: 0, flexGrow: segment.percentage }
+                  : { width: `${segment.percentage}%` }
               }
             />
           ) : null
