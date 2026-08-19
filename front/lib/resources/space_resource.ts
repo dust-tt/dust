@@ -997,7 +997,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const globalGroup = groupRes.value;
 
-    return withTransaction(async (t) => {
+    const result = await withTransaction(async (t) => {
       // Update managementMode if provided
       const { managementMode } = params;
 
@@ -1221,6 +1221,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
       return new Ok(undefined);
     });
+
+    // Opening/closing the space or changing its groups rewrote `group_permissions` (and possibly the
+    // caller's own membership), so the group set and grants `auth` resolved at construction are now
+    // stale. Refresh the caller's snapshot now that the write has committed — no transaction, so the
+    // re-read sees the committed rows and the `afterCommit`-invalidated cache — so any later
+    // permission check in the same request (e.g. the post-update `canRead` in the members handler)
+    // sees the new state instead of a pre-mutation view.
+    await auth.refresh();
+
+    return result;
   }
 
   private async removeGroup(
