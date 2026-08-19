@@ -1162,15 +1162,15 @@ export function UsagePage() {
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-1">
-                      <LoadingBlock className="h-7 w-32" />
+                      <LoadingBlock className="h-[30px] w-32" />
                       <LoadingBlock className="h-4 w-36" />
                     </div>
                     <LoadingBlock className="h-5 w-16 rounded-full" />
                   </div>
                   <LoadingBlock className="h-2 w-full rounded-xs" />
                   <div className="flex items-center justify-between gap-4">
-                    <LoadingBlock className="h-4 w-12" />
-                    <LoadingBlock className="h-4 w-20" />
+                    <LoadingBlock className="h-5 w-12" />
+                    <LoadingBlock className="h-5 w-20" />
                   </div>
                 </div>
               ) : isOverviewError ? (
