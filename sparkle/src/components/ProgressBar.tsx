@@ -42,18 +42,11 @@ interface ProgressBarBaseProps
   fillClassName?: string | string[];
 }
 
-interface SingleProgressBarProps {
-  percentage: number;
-  percentages?: never;
-}
-
-interface SegmentedProgressBarProps {
-  percentage?: never;
-  percentages: number[];
-}
-
 export type ProgressBarProps = ProgressBarBaseProps &
-  (SingleProgressBarProps | SegmentedProgressBarProps);
+  (
+    | { percentage: number; percentages?: never }
+    | { percentage?: never; percentages: number[] }
+  );
 
 export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
   (
