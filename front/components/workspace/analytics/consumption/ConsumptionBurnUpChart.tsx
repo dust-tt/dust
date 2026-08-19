@@ -170,7 +170,7 @@ export function ConsumptionBurnUpChart({
 
   return (
     <ChartContainer
-      title="Cumulative credits"
+      title="Cumulative consumption"
       isLoading={isTimeseriesLoading}
       errorMessage={
         isTimeseriesError ? "Failed to load consumption." : undefined
