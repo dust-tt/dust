@@ -143,20 +143,20 @@ export function PersonalAuthenticationCard({
     >
       <div className="flex items-center gap-3 px-5 pt-4">
         <Avatar icon={icon} size="sm" />
-        <div className="heading-base min-w-0 wrap-break-word">{title}</div>
+        <div className="heading-base min-w-0">{title}</div>
       </div>
 
-      <div className="flex flex-col gap-4 px-5 py-4">
+      <div className="flex flex-col gap-4 wrap-break-word px-5 py-4">
         {isConnected ? (
           <div className="text-base">
             {`${serverDisplayName ?? "Your account"} is now connected.`}
           </div>
         ) : (
           <>
-            <div className="text-base wrap-break-word text-muted-foreground">
+            <div className="text-base text-muted-foreground">
               {`Dust needs access to ${serverDisplayName ?? "this service"} to complete this action.`}
             </div>
-            <div className="text-base wrap-break-word text-muted-foreground">
+            <div className="text-base text-muted-foreground">
               {`Once connected, ${serverDisplayName ?? "this service"} will remain connected for future requests.`}
             </div>
             {canCurrentUserRespond ? (
@@ -181,7 +181,7 @@ export function PersonalAuthenticationCard({
                 )}
               </>
             ) : (
-              <div className="text-sm wrap-break-word text-muted-foreground">
+              <div className="text-sm text-muted-foreground">
                 Waiting for{" "}
                 <span className="font-semibold text-foreground">
                   {triggeringUser?.fullName}
