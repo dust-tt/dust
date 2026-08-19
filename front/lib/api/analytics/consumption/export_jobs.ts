@@ -29,6 +29,10 @@ export type ConsumptionExportListItem = {
   sizeBytes: number;
 };
 
+export type StartConsumptionExportResponse =
+  | { isGenerating: true }
+  | { isGenerating: false; name: string };
+
 export async function listConsumptionExports(
   auth: Authenticator
 ): Promise<ConsumptionExportListItem[]> {

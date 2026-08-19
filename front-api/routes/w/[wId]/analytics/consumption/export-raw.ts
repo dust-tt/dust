@@ -70,6 +70,16 @@ app.post(
       });
     }
 
+    // Already generated for this exact period+filter: nothing was (re)triggered, so the
+    // caller can go straight to downloading it instead of switching into a "generating" state.
+    if (result.value.status === "cached") {
+      const { gcsPath } = result.value;
+      return ctx.json({
+        isGenerating: false,
+        name: gcsPath.split("/").pop() ?? gcsPath,
+      });
+    }
+
     return ctx.json({ isGenerating: true }, 202);
   }
 );
