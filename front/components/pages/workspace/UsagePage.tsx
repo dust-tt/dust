@@ -263,6 +263,9 @@ export function UsagePage() {
   const [membersTab, setMembersTab] = useState<"members" | "requests">(
     "members"
   );
+  const [usageTab, setUsageTab] = useState<
+    "members" | "groups" | "top-ups" | "settings"
+  >("members");
   const { upgradeRequests, isUpgradeRequestsLoading } = useUpgradeRequests({
     workspaceId: owner.sId,
   });
@@ -476,11 +479,17 @@ export function UsagePage() {
     orderDirection: membersOrderDirection,
     seatType: seatTypeFilter ?? undefined,
     groupId: groupFilter ?? undefined,
+    // Only the Members tab renders this data — skip the fetch (and its Metronome
+    // per-user credit read) while another tab is active.
+    disabled: usageTab !== "members",
   });
 
   const { groups } = useGroups({
     owner,
     kinds: [...CAP_ELIGIBLE_GROUP_KINDS],
+    // Only feeds the Members tab (group filter + Groups column); the Groups tab
+    // self-fetches via GroupsUsageTable.
+    disabled: usageTab !== "members",
   });
   const selectedGroupName =
     groups.find((g) => g.sId === groupFilter)?.name ?? null;
@@ -1078,7 +1087,16 @@ export function UsagePage() {
           </Page.Vertical>
         )}
 
-        <Tabs defaultValue="members">
+        <Tabs
+          value={usageTab}
+          onValueChange={(v) =>
+            setUsageTab(
+              v === "groups" || v === "top-ups" || v === "settings"
+                ? v
+                : "members"
+            )
+          }
+        >
           <TabsList className="mb-4">
             <TabsTrigger value="members" label="Members" />
             <TabsTrigger value="groups" label="Groups" />
