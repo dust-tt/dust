@@ -45,6 +45,10 @@ app.get(
         : [kind]
       : ["global", "regular_auto", "space_editors"];
 
+    // Both list helpers filter by `canRead`. For role-only group kinds
+    // (regular_manual, provisioned, regular_auto, global, system) only
+    // admins/managers can read, so a plain member gets an empty list rather
+    // than the groups they belong to.
     const groups: GroupResource[] = spaceId
       ? await GroupResource.listForSpaceById(auth, spaceId, { groupKinds })
       : await GroupResource.listAllWorkspaceGroups(auth, { groupKinds });
