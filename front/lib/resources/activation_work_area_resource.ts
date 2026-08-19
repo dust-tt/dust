@@ -1,8 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
-import type {
-  ActivationWorkAreaStatus,
-  PublicActivationWorkAreaStatus,
-} from "@app/lib/models/activation/activation_work_area";
+import type { ActivationWorkAreaStatus } from "@app/lib/models/activation/activation_work_area";
 import { ActivationWorkAreaModel } from "@app/lib/models/activation/activation_work_area";
 import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -12,47 +9,12 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   Attributes,
-  CreationAttributes,
   ModelStatic,
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
-
-// Maps a stored status (which may hold legacy values) to the public status
-// exposed to callers. Legacy `candidate`/`confirmed` rows read as `suggested`.
-function publicActivationWorkAreaStatus(
-  status: ActivationWorkAreaStatus
-): PublicActivationWorkAreaStatus {
-  switch (status) {
-    case "dismissed":
-      return "dismissed";
-    case "suggested":
-    case "candidate":
-    case "confirmed":
-      return "suggested";
-    default:
-      assertNever(status);
-  }
-}
-
-// Expands a public status into the set of stored values that match it, so
-// filtering by `suggested` also returns legacy `candidate`/`confirmed` rows.
-function matchingActivationWorkAreaStatuses(
-  status: PublicActivationWorkAreaStatus
-): ActivationWorkAreaStatus[] {
-  switch (status) {
-    case "dismissed":
-      return ["dismissed"];
-    case "suggested":
-      return ["suggested", "candidate", "confirmed"];
-    default:
-      assertNever(status);
-  }
-}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ActivationWorkAreaResource
@@ -88,11 +50,7 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
 
   static async makeNew(
     auth: Authenticator,
-    blob: Pick<
-      CreationAttributes<ActivationWorkAreaModel>,
-      "title" | "description"
-    > &
-      Partial<Pick<CreationAttributes<ActivationWorkAreaModel>, "podId">>
+    blob: { title: string; description: string; podId: ModelId }
   ): Promise<ActivationWorkAreaResource> {
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
@@ -103,7 +61,7 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
       status: "suggested",
       title: blob.title,
       description: blob.description,
-      podId: blob.podId ?? null,
+      podId: blob.podId,
     });
 
     return new this(this.model, row.get());
@@ -138,7 +96,7 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
       status,
       activationPodModelId,
     }: {
-      status?: PublicActivationWorkAreaStatus;
+      status?: ActivationWorkAreaStatus;
       activationPodModelId?: ModelId;
     }
   ): Promise<ActivationWorkAreaResource[]> {
@@ -147,14 +105,11 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
     const where: WhereOptions<ActivationWorkAreaModel> = {
       userId: user.id,
       workspaceId: auth.getNonNullableWorkspace().id,
+      ...(status !== undefined ? { status } : {}),
+      ...(activationPodModelId !== undefined
+        ? { podId: activationPodModelId }
+        : {}),
     };
-
-    if (status !== undefined) {
-      where.status = { [Op.in]: matchingActivationWorkAreaStatuses(status) };
-    }
-    if (activationPodModelId !== undefined) {
-      where.podId = activationPodModelId;
-    }
 
     const rows = await this.model.findAll({
       where,
@@ -232,7 +187,7 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
       sId: this.sId,
       title: this.title,
       description: this.description,
-      status: publicActivationWorkAreaStatus(this.status),
+      status: this.status,
       createdAt: this.createdAt.getTime(),
     };
   }
