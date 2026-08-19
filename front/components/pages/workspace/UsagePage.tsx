@@ -209,7 +209,7 @@ function CreditPoolProgressBar({
       )}
       {unusedPercentage > 0 && (
         <div
-          className="h-full rounded-xs bg-muted-foreground/15"
+          className="h-full rounded-xs bg-gray-50"
           style={{ flexBasis: 0, flexGrow: unusedPercentage }}
         />
       )}
