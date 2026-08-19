@@ -8,7 +8,11 @@ import type { LLM } from "@app/lib/api/llm/llm";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
-import { classifyTemporalAbortReason } from "@app/lib/temporal/cancellation";
+import { getShutdownSignal } from "@app/lib/shutdown_signal";
+import {
+  classifyTemporalAbortReason,
+  classifyTemporalAbortSignal,
+} from "@app/lib/temporal/cancellation";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { makeModelInterruptionError } from "@app/temporal/agent_loop/lib/run_model_errors";
@@ -116,6 +120,16 @@ async function* withPeriodicHeartbeat<T>(
 
   try {
     while (!streamExhausted) {
+      // The pod shutdown signal aborts 10s before the termination grace period ends, while
+      // Temporal's own WORKER_SHUTDOWN cancellation only fires at grace expiry, together with
+      // SIGKILL, too late to report anything. Checked here (every event or 10s heartbeat tick)
+      // so the retryable failure is reported while the pod can still talk to Temporal.
+      if (
+        classifyTemporalAbortSignal(getShutdownSignal()) === "worker_shutdown"
+      ) {
+        throw makeModelInterruptionError();
+      }
+
       const remainingActivityTimeMs = activityTimeoutDeadlineMs - Date.now();
 
       if (remainingActivityTimeMs <= 0) {
