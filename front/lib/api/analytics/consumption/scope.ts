@@ -102,7 +102,7 @@ export type ConsumptionTopSortOrder =
 // of these three:
 // - "credits" orders by the sum(credit_micro) metric directly. Cost share is
 //   credits divided by the same totalCredits for every row, so it rides this
-//   same ranking (see ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS in
+//   same ranking (see ATTRIBUTION_SERVER_SORT_BY_COLUMN_ID in
 //   ConsumptionAttributionTable.tsx).
 // - "avgCredits" orders by average credits per unit. For "invocation"
 //   dimensions (tool, skill) that unit is the document itself, so a plain

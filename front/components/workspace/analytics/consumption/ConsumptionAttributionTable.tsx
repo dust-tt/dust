@@ -467,10 +467,9 @@ function AttributionRows({
   };
 
   const activeSort = sorting[0];
-  // Only forward the sort to the server when the sorted column actually
-  // rides a server-side ranking; sorting by anything else keeps fetching
-  // pages in the default credits-desc order and reorders them locally
-  // instead.
+  // Every sortable column rides a server-side ranking (see
+  // ATTRIBUTION_SERVER_SORT_BY_COLUMN_ID); the lookup is only there to
+  // narrow the column id's plain string type.
   const serverSortBy: ConsumptionTopSortBy | undefined = activeSort?.id
     ? ATTRIBUTION_SERVER_SORT_BY_COLUMN_ID[activeSort.id]
     : undefined;
