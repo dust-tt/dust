@@ -156,9 +156,8 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       );
     }
 
-    // Mount the skill's files before persisting the enablement, since persistingit before the
-    // mount is confirmed would let those consumers see the skill as enabled eventhough its
-    // files never landed.
+    // Mount the skill's files before persisting the enablement: persisting it first would let a
+    // failed mount still leave the skill looking "enabled".
     const mountResult = await ensureSkillFilesMounted(
       auth,
       skill,

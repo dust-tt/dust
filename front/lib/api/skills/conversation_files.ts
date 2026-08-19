@@ -9,10 +9,13 @@ import type { Readable } from "stream";
 // A skill file ready to be written into a conversation, regardless of whether it
 // came from a database-backed `FileResource` (custom skills) or was declared
 // inline by a code-defined skill.
+//
+// `getContent` is only invoked when the file is confirmed missing from the conversation mount, so
+// a file already present is never re-read: no wasted GCS read stream for `FileResource` attachments.
 type WritableSkillFile = {
   fileName: string;
   contentType: string;
-  content: Readable | string;
+  getContent: () => Readable | string;
 };
 
 /**
@@ -27,7 +30,8 @@ type WritableSkillFile = {
  * Writing through DustFileSystem (rather than the sandbox filesystem) makes the files visible
  * everywhere the conversation files are: the `files__*` tools, the sandbox gcsfuse mount
  * (`/files/conversation-{cId}/skills/...`), the conversation files panel, and conversation
- * branching copies. The write is idempotent: re-enabling a skill overwrites the same paths.
+ * branching copies. Idempotent: files already present at their deterministic path are left
+ * untouched, and re-enabling a skill only writes whatever is still missing.
  *
  * Returns the canonical scoped paths (`conversation-{cId}/skills/...`) of the loaded files, as
  * surfaced by the `files__list` tool.
@@ -46,12 +50,12 @@ export async function loadSkillFilesToConversation(
     ...skill.getFileAttachments().map((file) => ({
       fileName: file.fileName,
       contentType: file.contentType,
-      content: file.getReadStream({ auth, version: "original" }),
+      getContent: () => file.getReadStream({ auth, version: "original" }),
     })),
     ...skill.getCodeDefinedFiles().map((file) => ({
       fileName: file.fileName,
       contentType: file.contentType,
-      content: file.content,
+      getContent: () => file.content,
     })),
   ];
 
@@ -83,18 +87,28 @@ export async function loadSkillFilesToConversation(
   for (const [index, file] of files.entries()) {
     const scopedPath = expectedPaths[index];
 
-    const writeResult = await fileSystem.write(
-      scopedPath,
-      file.content,
-      file.contentType
-    );
-    if (writeResult.isErr()) {
-      const missingPaths = expectedPaths.slice(index);
+    const existsResult = await fileSystem.exists(scopedPath);
+    if (existsResult.isErr()) {
       return new Err(
         new Error(
-          `Failed to write skill file(s): ${missingPaths.join(", ")} (${writeResult.error.message})`
+          `Failed to check skill file(s): ${expectedPaths.slice(index).join(", ")} (${existsResult.error.message})`
         )
       );
+    }
+
+    if (!existsResult.value) {
+      const writeResult = await fileSystem.write(
+        scopedPath,
+        file.getContent(),
+        file.contentType
+      );
+      if (writeResult.isErr()) {
+        return new Err(
+          new Error(
+            `Failed to write skill file(s): ${expectedPaths.slice(index).join(", ")} (${writeResult.error.message})`
+          )
+        );
+      }
     }
 
     loadedPaths.push(scopedPath);
