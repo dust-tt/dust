@@ -126,7 +126,13 @@ function RunningCell({ row }: { row: TriggerRowData }) {
       );
     default:
       assertNeverAndIgnore(row.displayStatus);
-      return null;
+      return (
+        <SliderToggle
+          selected={row.displayStatus === "enabled"}
+          disabled={row.isStatusPending}
+          onClick={row.onToggleStatus}
+        />
+      );
   }
 }
 
