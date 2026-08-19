@@ -8,7 +8,6 @@ import {
   trackModelPickerSelect,
 } from "@app/components/model_picker/modelPickerTracking";
 import type {
-  MakerGroup,
   ModelTierId,
   Selection,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -20,6 +19,7 @@ import {
   getModelTier,
   getModelWithReasoningEffortLabel,
   getTierLockReason,
+  groupModelsByMaker,
   isPremiumModel,
   isSameSelection,
   resolveShownSelection,
@@ -188,22 +188,7 @@ export function ModelPicker({
 
   // Group models by maker, preserving first-seen order of both makers and
   // models within each maker.
-  const makerGroups = useMemo<MakerGroup[]>(() => {
-    const groups = new Map<ModelMakerIdType, ModelConfigurationType[]>();
-    for (const model of allModels) {
-      const makerId = getModelMaker(model);
-      const existing = groups.get(makerId);
-      if (existing) {
-        existing.push(model);
-      } else {
-        groups.set(makerId, [model]);
-      }
-    }
-    return Array.from(groups.entries()).map(([makerId, makerModels]) => ({
-      makerId,
-      models: makerModels,
-    }));
-  }, [allModels]);
+  const makerGroups = useMemo(() => groupModelsByMaker(allModels), [allModels]);
 
   const commit = (
     selection: Selection,
