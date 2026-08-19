@@ -153,10 +153,10 @@ export function PersonalAuthenticationCard({
           </div>
         ) : (
           <>
-            <div className="text-sm wrap-break-word text-muted-foreground">
+            <div className="text-base wrap-break-word text-muted-foreground">
               {`Dust needs access to ${serverDisplayName ?? "this service"} to complete this action.`}
             </div>
-            <div className="text-sm wrap-break-word text-muted-foreground">
+            <div className="text-base wrap-break-word text-muted-foreground">
               {`Once connected, ${serverDisplayName ?? "this service"} will remain connected for future requests.`}
             </div>
             {canCurrentUserRespond ? (
