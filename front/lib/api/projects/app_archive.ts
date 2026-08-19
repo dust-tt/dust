@@ -11,7 +11,7 @@ import { createPodFrameFile } from "@app/lib/api/projects/pod_frame_file";
 import { reconcileDatabaseFromPodPath } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
-import { publishFrame } from "@app/lib/api/viz/publish_frame";
+import { publishFrameFromFileSystem } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -614,7 +614,8 @@ export async function importPodApp(
       continue;
     }
 
-    const publishResult = await publishFrame(auth, {
+    const publishResult = await publishFrameFromFileSystem(auth, {
+      dustFileSystem: dustFs,
       file: created.file,
       reader: createMountFrameSourceReader(dustFs, destFolderPath),
       entryRelPath: created.fileName,

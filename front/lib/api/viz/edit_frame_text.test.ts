@@ -43,8 +43,15 @@ beforeEach(() => {
 });
 
 // In-memory DustFileSystem standing in for the mount. Keys are full scoped paths.
-function mockMount(files: Map<string, string>) {
+function mockMount(
+  files: Map<string, string>,
+  {
+    databaseBacked = false,
+    nodePath = null,
+  }: { databaseBacked?: boolean; nodePath?: string | null } = {}
+) {
   const fakeFs = {
+    isDatabaseBacked: () => databaseBacked,
     readBuffer: async (p: string) =>
       new Ok(files.has(p) ? Buffer.from(files.get(p)!, "utf-8") : null),
     stat: async (p: string) =>
@@ -63,6 +70,8 @@ function mockMount(files: Map<string, string>) {
           .filter((p) => p.startsWith(`${root}/`))
           .map((p) => ({ path: p, isDirectory: false }))
       ),
+    pathForNodeId: async () => new Ok(nodePath),
+    nodeIdForPath: async () => new Ok(databaseBacked ? 42 : null),
   };
   vi.spyOn(DustFileSystem, "fromScopedPath").mockResolvedValue(
     new Ok(fakeFs as unknown as DustFileSystem)
@@ -127,6 +136,70 @@ describe("editFrameTextAtSource", () => {
       expect(uploadBundleSpy).toHaveBeenCalledTimes(1);
       expect(uploadBundleSpy.mock.calls[0][1]).toContain("Revenue");
       expect(file.getRenderableVersion()).toBe("processed");
+    },
+    TEST_TIMEOUT_MS
+  );
+
+  it(
+    "uses the entry node after the Frame is moved and renamed",
+    async () => {
+      const { authenticator: auth } = await createResourceTest({});
+      const file = await createPublishedFrame(auth);
+      const movedRoot = "conversation-conv_x/moved";
+      const movedEntry = `${movedRoot}/Renamed.tsx`;
+      const files = mockMount(new Map([[movedEntry, ENTRY_SOURCE]]), {
+        databaseBacked: true,
+        nodePath: movedEntry,
+      });
+      Object.defineProperty(file, "fileSystemNodeId", { value: 42 });
+
+      vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+        Readable.from([Buffer.from(ENTRY_SOURCE, "utf-8")])
+      );
+      const sourceSpy = vi
+        .spyOn(file, "setPublishedFrameSource")
+        .mockResolvedValue([1]);
+
+      const result = await editFrameTextAtSource(auth, {
+        file,
+        source: "Renamed.tsx:4:8",
+        oldText: "Sales",
+        newText: "Revenue",
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(files.get(movedEntry)).toContain("<h1>Revenue</h1>");
+      expect(sourceSpy).toHaveBeenCalledWith(
+        auth,
+        expect.objectContaining({ fileSystemNodeId: 42 })
+      );
+    },
+    TEST_TIMEOUT_MS
+  );
+
+  it(
+    "does not use the old path when the entry node is gone",
+    async () => {
+      const { authenticator: auth } = await createResourceTest({});
+      const file = await createPublishedFrame(auth);
+      const files = mockMount(
+        new Map([[`${ROOT}/Dashboard.tsx`, ENTRY_SOURCE]]),
+        { databaseBacked: true, nodePath: null }
+      );
+      Object.defineProperty(file, "fileSystemNodeId", { value: 42 });
+
+      const result = await editFrameTextAtSource(auth, {
+        file,
+        source: "Dashboard.tsx:4:8",
+        oldText: "Sales",
+        newText: "Revenue",
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("source_not_found");
+      }
+      expect(files.get(`${ROOT}/Dashboard.tsx`)).toBe(ENTRY_SOURCE);
     },
     TEST_TIMEOUT_MS
   );

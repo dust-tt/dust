@@ -1,3 +1,5 @@
+import path from "node:path";
+import type { DustFileSystem } from "@app/lib/api/file_system";
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import {
   validateTailwindCode,
@@ -46,6 +48,69 @@ function shouldValidate(relPath: string): boolean {
 }
 
 /**
+ * Publish from a mounted source. Database files are bound to the entry node;
+ * GCS files keep using their saved path.
+ */
+export async function publishFrameFromFileSystem(
+  auth: Authenticator,
+  {
+    dustFileSystem,
+    file,
+    reader,
+    entryRelPath,
+    rootScopedPath,
+    publishedByAgentConfigurationId,
+  }: {
+    dustFileSystem: DustFileSystem;
+    file: FileResource;
+    reader: FrameSourceReader;
+    entryRelPath: string;
+    rootScopedPath: string;
+    publishedByAgentConfigurationId?: string;
+  }
+): Promise<Result<{ warnings: ValidationWarning[] }, PublishFrameError>> {
+  if (!dustFileSystem.isDatabaseBacked()) {
+    return publishFrame(auth, {
+      file,
+      reader,
+      entryRelPath,
+      rootScopedPath,
+      publishedByAgentConfigurationId,
+    });
+  }
+
+  const entryPath = path.posix.join(rootScopedPath, entryRelPath);
+  const entryNodeIdRes = await dustFileSystem.nodeIdForPath(entryPath);
+  if (entryNodeIdRes.isErr()) {
+    return new Err(
+      new PublishFrameError(
+        entryNodeIdRes.error.code === "not_found"
+          ? "entry_not_found"
+          : "internal",
+        entryNodeIdRes.error.message
+      )
+    );
+  }
+  if (entryNodeIdRes.value === null) {
+    return new Err(
+      new PublishFrameError(
+        "internal",
+        "The database filesystem did not return a node id."
+      )
+    );
+  }
+
+  return publishFrame(auth, {
+    file,
+    reader,
+    entryRelPath,
+    rootScopedPath,
+    entryNodeId: entryNodeIdRes.value,
+    publishedByAgentConfigurationId,
+  });
+}
+
+/**
  * Publish a Frame: build its source tree into a single bundle and make it the rendered version.
  *
  * Steps, under the per-file edit lock:
@@ -71,12 +136,15 @@ export async function publishFrame(
     reader,
     entryRelPath,
     rootScopedPath,
+    entryNodeId,
     publishedByAgentConfigurationId,
   }: {
     file: FileResource;
     reader: FrameSourceReader;
     entryRelPath: string;
     rootScopedPath: string;
+    // Only database-backed files have a stable entry node.
+    entryNodeId?: number;
     publishedByAgentConfigurationId?: string;
   }
 ): Promise<Result<{ warnings: ValidationWarning[] }, PublishFrameError>> {
@@ -188,7 +256,7 @@ export async function publishFrame(
       await file.uploadProcessed(auth, buildResult.value.code);
       // frameBundleRootPath and frameEntryRelPath flip rendering to the bundle and let live
       // edits rebuild later without a model in the loop.
-      await file.setUseCaseMetadata(auth, {
+      const metadata = {
         ...(file.useCaseMetadata ?? {}),
         frameBundleRootPath: rootScopedPath,
         frameEntryRelPath: entryRelPath,
@@ -197,7 +265,15 @@ export async function publishFrame(
               lastEditedByAgentConfigurationId: publishedByAgentConfigurationId,
             }
           : {}),
-      });
+      };
+      if (entryNodeId === undefined) {
+        await file.setUseCaseMetadata(auth, metadata);
+      } else {
+        await file.setPublishedFrameSource(auth, {
+          fileSystemNodeId: entryNodeId,
+          metadata,
+        });
+      }
 
       // 5. Recompute the allowlist against the rendered bundle.
       const allowlist = await ensureAuthorizedFileAccessForShare(auth, file);

@@ -26,7 +26,7 @@ import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_valid
 import { exportInteractiveContentFileAsPdf } from "@app/lib/api/files/pdf_export";
 import { screenshotInteractiveContentFile } from "@app/lib/api/files/screenshot";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
-import { publishFrame } from "@app/lib/api/viz/publish_frame";
+import { publishFrameFromFileSystem } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { splitFrameEntryScopedPath } from "@app/types/mount_path";
@@ -411,7 +411,8 @@ export async function createInteractiveContentTools(
         );
       }
 
-      const result = await publishFrame(auth, {
+      const result = await publishFrameFromFileSystem(auth, {
+        dustFileSystem: fsResult.value,
         file,
         reader: createMountFrameSourceReader(fsResult.value, root),
         entryRelPath,

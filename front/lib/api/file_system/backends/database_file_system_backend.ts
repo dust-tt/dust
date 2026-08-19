@@ -211,6 +211,7 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
         node.contentType ?? DEFAULT_CONTENT_TYPE
       ),
       lastModifiedMs: node.updatedAt.getTime(),
+      fileSystemNodeId: node.id,
       fileId: null,
       thumbnailUrl: null,
     };
@@ -336,6 +337,55 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
   ): Promise<Result<boolean, DustFileSystemError>> {
     try {
       return new Ok((await this.resolve(scopedPath)) !== null);
+    } catch (error) {
+      return new Err(this.error(error));
+    }
+  }
+
+  async nodeIdForPath(
+    scopedPath: string
+  ): Promise<Result<number | null, DustFileSystemError>> {
+    try {
+      const resolved = await this.resolve(scopedPath);
+      if (!resolved) {
+        return new Err(
+          new DustFileSystemError(
+            "not_found",
+            `No file or directory at: ${scopedPath}`
+          )
+        );
+      }
+      return new Ok(resolved.node.id);
+    } catch (error) {
+      return new Err(this.error(error));
+    }
+  }
+
+  async pathForNodeId(
+    nodeId: number
+  ): Promise<Result<string | null, DustFileSystemError>> {
+    try {
+      const node = await FileSystemNodeResource.fetchById(
+        this.auth,
+        this.scope,
+        nodeId
+      );
+      if (!node) {
+        return new Err(
+          new DustFileSystemError("not_found", "The node no longer exists.")
+        );
+      }
+      const path = (await node.pathSegmentsFromRoot()).join("/");
+      // The node may have moved to a root this file system does not mount.
+      if (!this.parse(path)) {
+        return new Err(
+          new DustFileSystemError(
+            "not_found",
+            "The node lives outside this file system."
+          )
+        );
+      }
+      return new Ok(path);
     } catch (error) {
       return new Err(this.error(error));
     }

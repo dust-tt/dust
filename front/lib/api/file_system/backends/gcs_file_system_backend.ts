@@ -386,6 +386,14 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
   }
 
+  async nodeIdForPath(): Promise<Result<number | null, DustFileSystemError>> {
+    return new Ok(null);
+  }
+
+  async pathForNodeId(): Promise<Result<string | null, DustFileSystemError>> {
+    return new Ok(null);
+  }
+
   async write(
     scopedPath: string,
     content: Buffer | string | Readable,

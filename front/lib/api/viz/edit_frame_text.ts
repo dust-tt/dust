@@ -1,3 +1,4 @@
+import path from "node:path";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
@@ -5,7 +6,7 @@ import {
   parseSourceLocation,
   replaceJsxTextAtSourceLocation,
 } from "@app/lib/api/viz/edit_source_text";
-import { publishFrame } from "@app/lib/api/viz/publish_frame";
+import { publishFrameFromFileSystem } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { Result } from "@app/types/shared/result";
@@ -40,17 +41,17 @@ class EditFrameTextError extends Error {
  * SOURCE file in the mount, then rebuild the Frame so the rendered bundle reflects the change.
  *
  * Steps:
- * 1. Resolve the Frame's build root from `frameBundleRootPath` (only published Frames have one and
- *    thus carry `data-source` tags).
+ * 1. Resolve the Frame's current entry path from its file system node. Older Frames use the path
+ *    saved when they were published.
  * 2. Read the addressed source file from the mount and splice the new text by AST location.
  * 3. Write the updated source back to the mount (the durable source of truth).
- * 4. Rebuild via {@link publishFrame}, which re-reads the import graph, re-bundles, refreshes the
- *    rendered version, and recomputes the share allowlist. A text-only edit changes neither
- *    imports nor data refs, but rebuilding keeps the bundle and the source in lock-step.
+ * 4. Rebuild via {@link publishFrameFromFileSystem}, which re-reads the import graph, re-bundles,
+ *    refreshes the rendered version, and recomputes the share allowlist. A text-only edit changes
+ *    neither imports nor data refs, but rebuilding keeps the bundle and the source in lock-step.
  *
  * Note: the mount read/modify/write is not held under the publish lock (that lock is taken by
- * {@link publishFrame} and is not reentrant). Live edits are human-paced, so a concurrent edit to
- * the same file could lose an update, which is acceptable for now.
+ * {@link publishFrameFromFileSystem} and is not reentrant). Live edits are human-paced, so a
+ * concurrent edit to the same file could lose an update, which is acceptable for now.
  */
 export async function editFrameTextAtSource(
   auth: Authenticator,
@@ -68,8 +69,8 @@ export async function editFrameTextAtSource(
     editedByAgentConfigurationId?: string;
   }
 ): Promise<Result<{ warnings: ValidationWarning[] }, EditFrameTextError>> {
-  const root = file.useCaseMetadata?.frameBundleRootPath;
-  if (!file.isInteractiveContent || !root) {
+  const storedRoot = file.useCaseMetadata?.frameBundleRootPath;
+  if (!file.isInteractiveContent || !storedRoot) {
     return new Err(
       new EditFrameTextError(
         "not_published",
@@ -89,8 +90,8 @@ export async function editFrameTextAtSource(
   }
 
   try {
-    const rootScopedPath = root.replace(/\/+$/, "");
-    const scopedPath = `${rootScopedPath}/${location.relPath}`;
+    let rootScopedPath = storedRoot.replace(/\/+$/, "");
+    let entryRelPath = file.useCaseMetadata?.frameEntryRelPath ?? file.fileName;
 
     const fsResult = await DustFileSystem.fromScopedPath(auth, rootScopedPath);
     if (fsResult.isErr()) {
@@ -99,6 +100,34 @@ export async function editFrameTextAtSource(
       );
     }
     const dustFs = fsResult.value;
+
+    // The entry node follows the Frame when it is moved or renamed. The saved
+    // path is only used by Frames published before node ids were recorded.
+    const entryNodeId = file.fileSystemNodeId;
+    if (entryNodeId !== null) {
+      const currentEntryRes = await dustFs.pathForNodeId(entryNodeId);
+      if (currentEntryRes.isErr()) {
+        return new Err(
+          new EditFrameTextError(
+            "source_not_found",
+            currentEntryRes.error.message
+          )
+        );
+      }
+      if (currentEntryRes.value === null) {
+        return new Err(
+          new EditFrameTextError(
+            "source_not_found",
+            "The Frame source no longer exists."
+          )
+        );
+      }
+
+      rootScopedPath = path.posix.dirname(currentEntryRes.value);
+      entryRelPath = path.posix.basename(currentEntryRes.value);
+    }
+
+    const scopedPath = `${rootScopedPath}/${location.relPath}`;
 
     const bufferResult = await dustFs.readBuffer(scopedPath);
     if (bufferResult.isErr()) {
@@ -144,11 +173,8 @@ export async function editFrameTextAtSource(
       );
     }
 
-    // Falls back to fileName for Frames published before frameEntryRelPath existed.
-    const entryRelPath =
-      file.useCaseMetadata?.frameEntryRelPath ?? file.fileName;
-
-    const publishResult = await publishFrame(auth, {
+    const publishResult = await publishFrameFromFileSystem(auth, {
+      dustFileSystem: dustFs,
       file,
       reader: createMountFrameSourceReader(dustFs, rootScopedPath),
       entryRelPath,

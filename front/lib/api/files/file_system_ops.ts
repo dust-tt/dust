@@ -1,5 +1,5 @@
 /**
- * High-level file system operations that combine DustFileSystem (GCS) with
+ * High-level file system operations that combine DustFileSystem with
  * FileResource (DB) sync. Used by the unified `/files/path/` endpoint and the
  * files MCP tools.
  */
@@ -9,7 +9,10 @@ import { decodeBuffer } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type { FileSystemEntry } from "@app/types/api/file_system/types";
+import type {
+  FileSystemEntry,
+  FileSystemFileEntry,
+} from "@app/types/api/file_system/types";
 import {
   DustFileSystemError,
   SCOPED_PREFIX_CONVERSATION,
@@ -138,11 +141,12 @@ export async function streamThumbnail(
 // ---------------------------------------------------------------------------
 
 /**
- * Enrich a list of file entries with their linked FileResource sId (fileId).
- * A single batch DB query covers all entries; pod files probe the legacy projects/ path too.
+ * Enrich file entries with the linked FileResource id and content type.
+ * Database-backed files use their stable node id. Path-only GCS files keep the
+ * mount-path lookup, including the legacy projects/ variant for pod files.
  *
  * Intended for endpoints that expose file listings to the client (conversation files,
- * pod files) where the fileId is needed to open frames.
+ * pod files) where the FileResource marks a source file as a Frame.
  */
 export async function enrichListWithFileResourceIds(
   auth: Authenticator,
@@ -154,7 +158,56 @@ export async function enrichListWithFileResourceIds(
     return entries;
   }
 
-  // Collect all GCS paths to probe, including legacy projects/ variants for pod files.
+  if (dustFs.isDatabaseBacked()) {
+    return enrichDatabaseFileEntries(auth, entries, fileEntries);
+  }
+
+  return enrichGCSFileEntries(auth, dustFs, entries, fileEntries);
+}
+
+async function enrichDatabaseFileEntries(
+  auth: Authenticator,
+  entries: FileSystemEntry[],
+  fileEntries: FileSystemFileEntry[]
+): Promise<FileSystemEntry[]> {
+  const nodeIds = fileEntries.flatMap((entry) =>
+    entry.fileSystemNodeId === undefined ? [] : [entry.fileSystemNodeId]
+  );
+  if (nodeIds.length === 0) {
+    return entries;
+  }
+
+  const nodeFiles = await FileResource.fetchByFileSystemNodeIds(auth, nodeIds);
+
+  const byNodeId = new Map<number, FileResource>();
+  for (const file of nodeFiles) {
+    if (file.fileSystemNodeId !== null) {
+      byNodeId.set(file.fileSystemNodeId, file);
+    }
+  }
+
+  return entries.map((entry) => {
+    if (entry.isDirectory) {
+      return entry;
+    }
+    if (entry.fileSystemNodeId !== undefined) {
+      const file = byNodeId.get(entry.fileSystemNodeId);
+      return {
+        ...entry,
+        fileId: file?.sId ?? null,
+        contentType: file?.contentType ?? entry.contentType,
+      };
+    }
+    return entry;
+  });
+}
+
+async function enrichGCSFileEntries(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  entries: FileSystemEntry[],
+  fileEntries: FileSystemFileEntry[]
+): Promise<FileSystemEntry[]> {
   const mountPaths: string[] = [];
   for (const entry of fileEntries) {
     const gcsPath = dustFs.toMountFilePath(entry.path);
@@ -166,21 +219,15 @@ export async function enrichListWithFileResourceIds(
       }
     }
   }
-
   if (mountPaths.length === 0) {
     return entries;
   }
 
-  const fileResources = await FileResource.fetchByMountFilePaths(
-    auth,
-    mountPaths
-  );
-
-  // Map every known mountFilePath to its FileResource sId.
-  const byMountPath = new Map<string, string>();
-  for (const fr of fileResources) {
-    if (fr.mountFilePath) {
-      byMountPath.set(fr.mountFilePath, fr.sId);
+  const pathFiles = await FileResource.fetchByMountFilePaths(auth, mountPaths);
+  const byMountPath = new Map<string, FileResource>();
+  for (const file of pathFiles) {
+    if (file.mountFilePath) {
+      byMountPath.set(file.mountFilePath, file);
     }
   }
 
@@ -193,9 +240,13 @@ export async function enrichListWithFileResourceIds(
       return entry;
     }
     const legacyPath = gcsPath.replace(/\/pods\//, "/projects/");
-    const fileId =
+    const file =
       byMountPath.get(gcsPath) ?? byMountPath.get(legacyPath) ?? null;
-    return { ...entry, fileId };
+    return {
+      ...entry,
+      fileId: file?.sId ?? null,
+      contentType: file?.contentType ?? entry.contentType,
+    };
   });
 }
 
