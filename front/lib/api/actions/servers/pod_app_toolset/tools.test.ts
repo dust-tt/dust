@@ -14,7 +14,10 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { PodAppShareFactory } from "@app/tests/utils/PodAppShareFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
+import type {
+  SandboxFunctionStake,
+  SandboxFunctionUserIdentityPolicy,
+} from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -59,7 +62,8 @@ async function setupSharedApp() {
   const makeFunction = async (
     slug: string,
     fileName: string,
-    userIdentity?: SandboxFunctionUserIdentityPolicy
+    userIdentity?: SandboxFunctionUserIdentityPolicy,
+    defaultStake?: SandboxFunctionStake
   ) => {
     const file = await FileFactory.create(adminAuth, null, {
       contentType: sandboxFunctionContentType,
@@ -75,6 +79,7 @@ async function setupSharedApp() {
       slug,
       description: `Function ${slug}.`,
       userIdentity,
+      defaultStake,
       inputSchema,
       outputSchema,
     });
@@ -196,6 +201,20 @@ describe("pod_app_toolset listPodAppTools", () => {
     const memberAuth = await addPodMember(adminAuth, workspace, pod);
     const memberTools = await listPodAppTools(memberAuth, mcpServerId);
     expect(memberTools.map(({ name }) => name)).toEqual(["members-only"]);
+  });
+
+  it("lists each tool with its function's declared default stake", async () => {
+    const { mcpServerId, makeFunction, outsiderAuth } = await setupSharedApp();
+    await makeFunction("notes__list", "list.ts");
+    await makeFunction("notes__wipe", "wipe.ts", undefined, "high");
+
+    const tools = await listPodAppTools(outsiderAuth, mcpServerId);
+
+    const stakeByName = new Map(
+      tools.map((tool) => [tool.name, tool._meta?.dust])
+    );
+    expect(stakeByName.get("list")).toMatchObject({ stake: "low" });
+    expect(stakeByName.get("wipe")).toMatchObject({ stake: "high" });
   });
 
   it("returns no tools for an unknown server id", async () => {

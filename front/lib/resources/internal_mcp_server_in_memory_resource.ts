@@ -24,7 +24,6 @@ import {
   isAutoInternalMCPServerName,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { POD_APP_TOOL_DEFAULT_STAKE } from "@app/lib/api/actions/servers/pod_app_toolset/metadata";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
 import { sandboxFunctionNameFromSlug } from "@app/lib/api/sandbox_functions/slug";
@@ -149,7 +148,7 @@ export class InternalMCPServerInMemoryResource {
             name: toolName,
             description: sandboxFunction.description,
             inputSchema: sandboxFunction.inputSchema,
-            stake: POD_APP_TOOL_DEFAULT_STAKE,
+            stake: sandboxFunction.defaultStake,
             displayLabels: {
               running: `Calling ${toolName}...`,
               done: `Called ${toolName}`,
