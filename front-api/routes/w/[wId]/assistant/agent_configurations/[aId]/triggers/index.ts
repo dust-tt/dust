@@ -380,7 +380,7 @@ app.post(
         editor: auth.getNonNullableUser().id,
         webhookSourceViewId,
         executionPerDayLimitOverride: executionPerDay,
-        executionMode: validatedTrigger.kind === "webhook" ? "fair_use" : null,
+        executionMode: "user_pool",
         origin: "user",
         spaceId: spaceIdRes.value,
       });
