@@ -18,7 +18,10 @@
 
 import config from "@app/lib/api/config";
 import { DatabaseFileSystemBackend } from "@app/lib/api/file_system/backends/database_file_system_backend";
-import type { FileSystemBackend } from "@app/lib/api/file_system/backends/file_system_backend";
+import type {
+  FileSystemBackend,
+  FileSystemNodeIdentity,
+} from "@app/lib/api/file_system/backends/file_system_backend";
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
 import type { FileSystemStorageMode } from "@app/lib/api/file_system/storage_mode";
 import {
@@ -948,7 +951,7 @@ export class DustFileSystem {
     scopedPath: string,
     content: Buffer | string | Readable,
     contentType: string
-  ): Promise<Result<void, DustFileSystemError>> {
+  ): Promise<Result<FileSystemNodeIdentity, DustFileSystemError>> {
     const resolved = this.requireWriteMount(scopedPath);
     if (resolved.isErr()) {
       return resolved;
@@ -970,7 +973,12 @@ export class DustFileSystem {
 
   async mkdir(
     scopedPath: string
-  ): Promise<Result<FileSystemDirectoryEntry, DustFileSystemError>> {
+  ): Promise<
+    Result<
+      { entry: FileSystemDirectoryEntry } & FileSystemNodeIdentity,
+      DustFileSystemError
+    >
+  > {
     const resolved = this.requireWriteMount(scopedPath);
     if (resolved.isErr()) {
       return resolved;

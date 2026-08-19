@@ -486,6 +486,15 @@ describe("GCSFileSystemBackend.write", () => {
       expect(result.error.code).toBe("invalid_path");
     }
   });
+
+  it("reports no node identity, since GCS objects have no node", async () => {
+    const result = await makeBackend().write(
+      `conversation-${CONV_ID}/report.txt`,
+      Buffer.from("hello"),
+      "text/plain"
+    );
+    expect(result.isOk() && result.value).toEqual({ nodeId: null });
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -26,7 +26,10 @@ import { isString } from "@app/types/shared/utils/general";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
-import type { FileSystemBackend } from "./file_system_backend";
+import type {
+  FileSystemBackend,
+  FileSystemNodeIdentity,
+} from "./file_system_backend";
 
 // ---------------------------------------------------------------------------
 // Scoped-path helpers
@@ -387,7 +390,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     scopedPath: string,
     content: Buffer | string | Readable,
     contentType: string
-  ): Promise<Result<void, DustFileSystemError>> {
+  ): Promise<Result<FileSystemNodeIdentity, DustFileSystemError>> {
     const gcsPath = this.toGCSPath(scopedPath);
     if (!gcsPath) {
       return new Err(
@@ -411,7 +414,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
         );
       }
 
-      return new Ok(undefined);
+      return new Ok({ nodeId: null });
     } catch (err) {
       return new Err(
         new DustFileSystemError("internal", normalizeError(err).message)
@@ -421,7 +424,12 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
   async mkdir(
     scopedPath: string
-  ): Promise<Result<FileSystemDirectoryEntry, DustFileSystemError>> {
+  ): Promise<
+    Result<
+      { entry: FileSystemDirectoryEntry } & FileSystemNodeIdentity,
+      DustFileSystemError
+    >
+  > {
     const gcsPath = this.toGCSPath(scopedPath);
     if (!gcsPath) {
       return new Err(
@@ -451,11 +459,14 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
       const fileName = gcsPath.split("/").pop() ?? "";
       return new Ok({
-        isDirectory: true as const,
-        fileName,
-        path: scopedPath,
-        sizeBytes: 0,
-        lastModifiedMs: Date.now(),
+        entry: {
+          isDirectory: true as const,
+          fileName,
+          path: scopedPath,
+          sizeBytes: 0,
+          lastModifiedMs: Date.now(),
+        },
+        nodeId: null,
       });
     } catch (err) {
       return new Err(

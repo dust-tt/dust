@@ -1,5 +1,5 @@
 import config from "@app/lib/api/config";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const PUBLIC_URL = "https://eu.dust.tt";
 const INTERNAL_URL = "http://front-internal-service";
@@ -8,6 +8,7 @@ describe("getSandboxApiBaseUrl", () => {
   const originalEnv = { ...process.env };
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     process.env = { ...originalEnv };
   });
 
@@ -39,7 +40,8 @@ describe("getSandboxApiBaseUrl", () => {
   it("ignores the development host outside development", () => {
     process.env.NEXT_PUBLIC_DUST_API_URL = PUBLIC_URL;
     delete process.env.IS_DEVELOPMENT;
-    process.env.NODE_ENV = "production";
+    // Node's types mark NODE_ENV read-only, so stub it instead of assigning.
+    vi.stubEnv("NODE_ENV", "production");
     process.env.SBX_DEV_FRONT_URL = "https://tunnel.example.com";
 
     expect(config.getSandboxApiBaseUrl()).toBe(PUBLIC_URL);
