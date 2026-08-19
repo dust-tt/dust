@@ -320,6 +320,10 @@ function buildColumns({
     },
     {
       id: "vsPrev",
+      // Rows with no prior-period data (N.A.) sort to the bottom regardless of direction.
+      accessorFn: (row) =>
+        growthPercent(row.credits, row.previousCredits) ??
+        Number.NEGATIVE_INFINITY,
       header: "vs prev",
       meta: { sizeRatio: 18, headerAlign: "right" },
       cell: (info) => (
