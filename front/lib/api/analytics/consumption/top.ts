@@ -353,13 +353,15 @@ export async function fetchConsumptionTopGroups(
     filter,
   });
 
-  // Elasticsearch cannot order terms buckets by a ratio of two metrics
-  // (summed credits over distinct message count), so ranking "message"
-  // dimensions by avg credits requires fetching every bucket and sorting by
-  // average in memory, rather than relying on the requested page's size.
+  // Elasticsearch cannot order terms buckets by a ratio of two metrics —
+  // summed credits over distinct message count for a "message" dimension's
+  // avg credits, or current credits over previous-period credits for a
+  // vs-prev sort. Both require fetching every bucket and ranking in memory,
+  // rather than relying on the requested page's size.
   const sortInMemory =
-    sortBy === "avgCredits" &&
-    CONSUMPTION_DIMENSION_UNIT[dimension] === "message";
+    sortBy === "vsPrev" ||
+    (sortBy === "avgCredits" &&
+      CONSUMPTION_DIMENSION_UNIT[dimension] === "message");
   const requestedBucketCount = sortInMemory
     ? Number.MAX_SAFE_INTEGER
     : offset + limit;
@@ -415,39 +417,48 @@ export async function fetchConsumptionTopGroups(
     buckets.length === batchSize
   );
 
-  const sortedGroups = sortInMemory
-    ? [...rankedGroups].sort((a, b) => {
-        const diff =
-          avgCreditsPerUnit(a.credits, a.count) -
-          avgCreditsPerUnit(b.credits, b.count);
-        return sortOrder === "asc" ? diff : -diff;
-      })
-    : rankedGroups;
+  // A vs-prev sort ranks every group by growth, which needs each one's
+  // previous-period credits up front — not just the page's, since a group
+  // outside the requested page can still outrank one inside it.
+  let previousCreditsByKey = new Map<string, number>();
+  if (sortBy === "vsPrev") {
+    previousCreditsByKey = await fetchPreviousCreditsWithFallback(auth, {
+      dimension,
+      previousPeriod: previousConsumptionPeriod(period),
+      filter,
+      keys: rankedGroups.map((group) => group.key),
+    });
+  }
+
+  const sortedGroups =
+    sortBy === "vsPrev"
+      ? [...rankedGroups].sort((a, b) => {
+          const diff =
+            growthForSort(a.credits, previousCreditsByKey.get(a.key) ?? null) -
+            growthForSort(b.credits, previousCreditsByKey.get(b.key) ?? null);
+          return sortOrder === "asc" ? diff : -diff;
+        })
+      : sortInMemory
+        ? [...rankedGroups].sort((a, b) => {
+            const diff =
+              avgCreditsPerUnit(a.credits, a.count) -
+              avgCreditsPerUnit(b.credits, b.count);
+            return sortOrder === "asc" ? diff : -diff;
+          })
+        : rankedGroups;
   const pagedGroups = sortedGroups.slice(offset, offset + limit);
 
-  const previousCreditsResult = await fetchConsumptionPreviousCredits(auth, {
-    dimension,
-    previousPeriod: previousConsumptionPeriod(period),
-    filter,
-    keys: pagedGroups.map((group) => group.key),
-  });
-  // The prior-period lookup only feeds the vs-prev display column: a failure
-  // there should not take down the current-period ranking, which already
-  // succeeded. Fall back to unknown growth for every group instead.
-  if (previousCreditsResult.isErr()) {
-    logger.warn(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        dimension,
-        err: previousCreditsResult.error,
-      },
-      "[ConsumptionAnalytics] Failed to fetch previous-period credits, " +
-        "falling back to null vs-prev values."
-    );
+  // vs-prev sort already looked up every group's previous-period credits
+  // above; every other sort still needs that lookup, scoped to just the
+  // page's keys.
+  if (sortBy !== "vsPrev") {
+    previousCreditsByKey = await fetchPreviousCreditsWithFallback(auth, {
+      dimension,
+      previousPeriod: previousConsumptionPeriod(period),
+      filter,
+      keys: pagedGroups.map((group) => group.key),
+    });
   }
-  const previousCreditsByKey = previousCreditsResult.isOk()
-    ? previousCreditsResult.value
-    : new Map<string, number>();
 
   return new Ok({
     groups: pagedGroups.map((group) => ({
@@ -458,6 +469,43 @@ export async function fetchConsumptionTopGroups(
     totalCount,
     totalCredits,
   });
+}
+
+// A key with no prior-period credits has no ratio to rank a vs-prev sort by.
+// Sink it to whichever end of the sort its magnitude puts it at, rather than
+// dropping it from the ranking or dividing by zero.
+const NO_PREVIOUS_DATA_GROWTH_SENTINEL = -1_000_000;
+
+function growthForSort(
+  credits: number,
+  previousCredits: number | null
+): number {
+  return previousCredits && previousCredits > 0
+    ? (credits - previousCredits) / previousCredits
+    : NO_PREVIOUS_DATA_GROWTH_SENTINEL;
+}
+
+// The prior-period lookup only feeds the vs-prev display column and sort: a
+// failure there should not take down the current-period ranking, which
+// already succeeded. Fall back to unknown/no-growth values instead.
+async function fetchPreviousCreditsWithFallback(
+  auth: Authenticator,
+  args: Parameters<typeof fetchConsumptionPreviousCredits>[1]
+): Promise<Map<string, number>> {
+  const result = await fetchConsumptionPreviousCredits(auth, args);
+  if (result.isErr()) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        dimension: args.dimension,
+        err: result.error,
+      },
+      "[ConsumptionAnalytics] Failed to fetch previous-period credits, " +
+        "falling back to null vs-prev values."
+    );
+    return new Map();
+  }
+  return result.value;
 }
 
 // A group can hold credits with nothing to divide them by — a message whose id

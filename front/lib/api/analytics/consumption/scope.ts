@@ -95,23 +95,32 @@ export const CONSUMPTION_TOP_SORT_ORDER = ["asc", "desc"] as const;
 export type ConsumptionTopSortOrder =
   (typeof CONSUMPTION_TOP_SORT_ORDER)[number];
 
-// A terms aggregation cannot order its buckets by a pipeline aggregation
-// so a ratio like avg credits per unit can't be
-// ranked with a bucket_script the way gross credits is. Two metrics avoid
-// that:
+// A terms aggregation can only order its buckets by a genuine metric
+// (avg, sum, cardinality, ...), never by a ratio of two metrics — a
+// scripted_metric or bucket_script pipeline aggregation both fail with an
+// invalid order path. That rules out an Elasticsearch-native order for two
+// of these three:
 // - "credits" orders by the sum(credit_micro) metric directly. Cost share is
 //   credits divided by the same totalCredits for every row, so it rides this
 //   same ranking (see ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS in
 //   ConsumptionAttributionTable.tsx).
 // - "avgCredits" orders by average credits per unit. For "invocation"
 //   dimensions (tool, skill) that unit is the document itself, so a plain
-//   avg(credit_micro) metric already equals credits-per-invocation. For
-//   "message" dimensions it isn't: several documents (one per LLM run, one
-//   per tool action) can share a message, so the average needs a
-//   scripted_metric to divide the summed credits by the count of *distinct*
-//   message ids in the bucket — the "real complexity" previously left for a
-//   follow-up. See AVG_CREDIT_PER_MESSAGE_AGG in top.ts.
-export const CONSUMPTION_TOP_SORT_BY = ["credits", "avgCredits"] as const;
+//   avg(credit_micro) metric already equals credits-per-invocation and
+//   Elasticsearch can order by it directly. For "message" dimensions it
+//   isn't: several documents (one per LLM run, one per tool action) can
+//   share a message, so the average is a ratio (summed credits over
+//   distinct message count) and top.ts fetches every bucket to rank it in
+//   memory instead.
+// - "vsPrev" orders by growth — current credits over previous-period
+//   credits, a ratio across two separate queries — so it always ranks in
+//   memory: top.ts fetches every bucket's current credits, looks up every
+//   key's previous-period credits, and sorts by growth from there.
+export const CONSUMPTION_TOP_SORT_BY = [
+  "credits",
+  "avgCredits",
+  "vsPrev",
+] as const;
 
 export type ConsumptionTopSortBy = (typeof CONSUMPTION_TOP_SORT_BY)[number];
 

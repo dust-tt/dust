@@ -855,4 +855,128 @@ describe("consumption top rankings", () => {
       avg: { field: "credit_micro" },
     });
   });
+
+  it("ranks by growth in memory when sortBy is vsPrev, looking up every group's previous credits once", async () => {
+    const { auth } = await setup();
+    mockLabels({ agent1: "Agent 1", agent2: "Agent 2" });
+    // Both agents have the same current credits, so a credits-based sort
+    // would tie them, but agent2 grew far more from its previous period —
+    // Elasticsearch cannot order by that ratio, so it must be ranked in
+    // memory from a full previous-period lookup.
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValueOnce(
+      esResponse({
+        by_group: {
+          buckets: [
+            {
+              key: "agent1",
+              doc_count: 1,
+              credit_micro: { value: 6_000_000 },
+              messages: { value: 1 },
+            },
+            {
+              key: "agent2",
+              doc_count: 1,
+              credit_micro: { value: 6_000_000 },
+              messages: { value: 1 },
+            },
+          ],
+        },
+        total_count: { value: 2 },
+        total_credit_micro: { value: 12_000_000 },
+      })
+    );
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValueOnce(
+      esResponse({
+        by_group: {
+          buckets: [
+            { key: "agent1", doc_count: 1, credit_micro: { value: 3_000_000 } },
+            { key: "agent2", doc_count: 1, credit_micro: { value: 1_000_000 } },
+          ],
+        },
+      })
+    );
+
+    const result = await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 10,
+      sortBy: "vsPrev",
+      sortOrder: "desc",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    // agent1 grew 6/3 - 1 = 100%, agent2 grew 6/1 - 1 = 500%.
+    expect(result.value.agents.map((agent) => agent.agentId)).toEqual([
+      "agent2",
+      "agent1",
+    ]);
+    expect(result.value.agents.map((agent) => agent.previousCredits)).toEqual([
+      1, 3,
+    ]);
+    // The full-key previous-credits lookup done to rank by growth is reused
+    // for the page's display values, so no third query follows it.
+    expect(vi.mocked(searchConsumptionAnalytics).mock.calls).toHaveLength(2);
+
+    const [, rankingOptions] = rankingSearchCall();
+    expect(rankingOptions?.aggregations?.by_group?.terms).toMatchObject({
+      order: { credit_micro: "desc" },
+    });
+  });
+
+  it("sinks a vsPrev-sorted group with no previous credits to the bottom", async () => {
+    const { auth } = await setup();
+    mockLabels({ agent1: "Agent 1", agent2: "Agent 2" });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValueOnce(
+      esResponse({
+        by_group: {
+          buckets: [
+            {
+              key: "agent1",
+              doc_count: 1,
+              credit_micro: { value: 1_000_000 },
+              messages: { value: 1 },
+            },
+            {
+              key: "agent2",
+              doc_count: 1,
+              credit_micro: { value: 5_000_000 },
+              messages: { value: 1 },
+            },
+          ],
+        },
+        total_count: { value: 2 },
+        total_credit_micro: { value: 6_000_000 },
+      })
+    );
+    // agent1 has prior credits to compute real (negative) growth from,
+    // agent2 has none at all.
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValueOnce(
+      esResponse({
+        by_group: {
+          buckets: [
+            { key: "agent1", doc_count: 1, credit_micro: { value: 5_000_000 } },
+          ],
+        },
+      })
+    );
+
+    const result = await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 10,
+      sortBy: "vsPrev",
+      sortOrder: "desc",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.agents.map((agent) => agent.agentId)).toEqual([
+      "agent1",
+      "agent2",
+    ]);
+    expect(result.value.agents[1].previousCredits).toBeNull();
+  });
 });

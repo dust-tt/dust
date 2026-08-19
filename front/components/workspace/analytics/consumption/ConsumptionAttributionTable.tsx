@@ -87,6 +87,7 @@ const ATTRIBUTION_SERVER_SORT_BY_COLUMN_ID: Partial<
   credits: "credits",
   costShare: "credits",
   avgCredits: "avgCredits",
+  vsPrev: "vsPrev",
 };
 
 type AttributionTransitionDirection = -1 | 0 | 1;
@@ -344,6 +345,13 @@ function buildColumns({
     },
     {
       id: "vsPrev",
+      // Rows already arrive from the server in vs-prev order when that's the
+      // active sort (see ATTRIBUTION_SERVER_SORT_BY_COLUMN_ID); this accessor
+      // just keeps the table's own client-side sort consistent with it,
+      // including sinking "no prior data" rows the same way the server does.
+      accessorFn: (row) =>
+        growthPercent(row.credits, row.previousCredits) ??
+        Number.NEGATIVE_INFINITY,
       header: "vs prev",
       enableSorting: false,
       meta: { sizeRatio: 18, headerAlign: "right" },
