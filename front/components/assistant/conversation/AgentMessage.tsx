@@ -877,7 +877,7 @@ export function AgentMessage({
           label={formattedCredits}
           iconRight={CoinsStacked01}
           className="gap-1 px-1 tracking-normal"
-          aria-label={`${formatCreditValue(agentMessage.costCredits)} used for this message. View credit breakdown`}
+          aria-label={`${formatCreditValue(agentMessage.costCredits)} used for this message. View consumption breakdown`}
         />
       );
 

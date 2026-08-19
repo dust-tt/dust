@@ -92,7 +92,7 @@ export function ConsumptionSummary({
           value={topAgent?.name ?? "—"}
           hint={
             topAgent && totalCredits > 0
-              ? `${Math.round((topAgent.credits / totalCredits) * 100)}% of total spend`
+              ? `${Math.round((topAgent.credits / totalCredits) * 100)}% of total consumption`
               : null
           }
         />

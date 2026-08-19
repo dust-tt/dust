@@ -282,7 +282,7 @@ function buildColumns({
     },
     {
       id: "costShare",
-      header: "Cost share",
+      header: "Consumption share",
       meta: { sizeRatio: 20, headerAlign: "left" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-start">
