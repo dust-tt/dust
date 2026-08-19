@@ -25,7 +25,7 @@ function createTestExtra(auth: Authenticator) {
 }
 
 describe("list_workspace_members", () => {
-  it("rejects lookups from a non-admin", async () => {
+  it("rejects lookups from a non-manager", async () => {
     const { workspace, authenticator } = await createResourceTest({
       role: "user",
     });
@@ -39,8 +39,23 @@ describe("list_workspace_members", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("Only workspace admins");
+      expect(result.error.message).toContain("admins and managers");
     }
+  });
+
+  it("allows managers to list members", async () => {
+    const { workspace, authenticator } = await createResourceTest({
+      role: "manager",
+    });
+    const targetUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, targetUser, { role: "user" });
+
+    const result = await getListWorkspaceMembersTool().handler(
+      { userIds: [targetUser.sId] },
+      createTestExtra(authenticator)
+    );
+
+    expect(result.isOk()).toBe(true);
   });
 
   it("rejects calls with more than one filter", async () => {

@@ -201,10 +201,10 @@ async function listByGroupId(
 
 const handlers: ToolHandlers<typeof WORKSPACE_PEOPLE_TOOLS_METADATA> = {
   list_workspace_members: async ({ userIds, jobType, groupId }, { auth }) => {
-    if (!auth.isAdmin()) {
+    if (!auth.isManager()) {
       return new Err(
         new MCPError(
-          "Only workspace admins can list other members' workspace context."
+          "Only workspace admins and managers can list other members' workspace context."
         )
       );
     }
@@ -245,7 +245,7 @@ function createServer(
   const server = makeInternalMCPServer(WORKSPACE_PEOPLE_SERVER_NAME);
 
   for (const tool of TOOLS) {
-    if (tool.name === LIST_WORKSPACE_MEMBERS_TOOL_NAME && !auth.isAdmin()) {
+    if (tool.name === LIST_WORKSPACE_MEMBERS_TOOL_NAME && !auth.isManager()) {
       continue;
     }
     registerTool(auth, toolContext, server, tool, {
