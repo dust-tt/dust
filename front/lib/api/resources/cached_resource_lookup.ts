@@ -45,7 +45,34 @@ export type CachedResourceLookup<Input, Resource> = {
   invalidate: (input: Input, transaction?: Transaction) => Promise<void>;
 };
 
+type CachedResourceListDefinition<Input, Snapshot, Resource> = Omit<
+  CachedResourceLookupDefinition<Input, Snapshot, Resource[]>,
+  "loadFromDatabase"
+> & {
+  loadFromDatabase: (
+    input: Input,
+    transaction?: Transaction
+  ) => Promise<Resource[]>;
+};
+
+export type CachedResourceList<Input, Resource> = {
+  fetch: (input: Input, transaction?: Transaction) => Promise<Resource[]>;
+  invalidate: (input: Input, transaction?: Transaction) => Promise<void>;
+};
+
 type OperableCachedResourceLookup<Input, Resource> = CachedResourceLookup<
+  Input,
+  Resource
+> & {
+  createCacheOperations: <OperationsInput>(definition: {
+    label: string;
+    params: CacheOperationParam[];
+    inputSchema: z.ZodType<OperationsInput>;
+    toLookupInput: (input: OperationsInput) => Input;
+  }) => CacheOperations;
+};
+
+type OperableCachedResourceList<Input, Resource> = CachedResourceList<
   Input,
   Resource
 > & {
@@ -168,5 +195,26 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
           operationsCacheKey.keyPattern
         ),
       }),
+  };
+}
+
+/**
+ * List-shaped counterpart to `defineCachedResourceLookup`. The collection is
+ * cached as one versioned snapshot while callers always receive Resource
+ * instances and never need to handle a nullable cache result.
+ */
+export function defineCachedResourceList<Input, Snapshot, Resource>(
+  definition: CachedResourceListDefinition<Input, Snapshot, Resource>
+): OperableCachedResourceList<Input, Resource> {
+  const lookup = defineCachedResourceLookup<Input, Snapshot, Resource[]>({
+    ...definition,
+    loadFromDatabase: definition.loadFromDatabase,
+  });
+
+  return {
+    fetch: async (input, transaction) =>
+      (await lookup.fetch(input, transaction)) ?? [],
+    invalidate: lookup.invalidate,
+    createCacheOperations: lookup.createCacheOperations,
   };
 }
