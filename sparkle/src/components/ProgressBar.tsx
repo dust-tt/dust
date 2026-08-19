@@ -2,24 +2,36 @@ import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-const progressBarVariants = cva("h-1.5 overflow-hidden rounded-full", {
+const progressBarVariants = cva("h-1.5 overflow-hidden", {
   variants: {
+    radius: {
+      none: "rounded-none",
+      xs: "rounded-xs",
+      full: "rounded-full",
+    },
     variant: {
       default: "bg-muted-background",
     },
   },
   defaultVariants: {
+    radius: "full",
     variant: "default",
   },
 });
 
-const progressBarFillVariants = cva("h-full rounded-full", {
+const progressBarFillVariants = cva("h-full", {
   variants: {
+    radius: {
+      none: "rounded-none",
+      xs: "rounded-xs",
+      full: "rounded-full",
+    },
     variant: {
       default: "bg-primary-light",
     },
   },
   defaultVariants: {
+    radius: "full",
     variant: "default",
   },
 });
@@ -27,27 +39,65 @@ const progressBarFillVariants = cva("h-full rounded-full", {
 export interface ProgressBarProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, "children">,
     VariantProps<typeof progressBarVariants> {
-  percentage: number;
+  fillClassName?: string | string[];
+  percentage: number | number[];
 }
 
 export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
-  ({ percentage, variant = "default", className, ...props }, ref) => {
-    const clampedPercentage = Math.min(100, Math.max(0, percentage));
+  (
+    {
+      percentage,
+      radius = "full",
+      variant = "default",
+      className,
+      fillClassName,
+      ...props
+    },
+    ref
+  ) => {
+    const isSegmented = Array.isArray(percentage);
+    const clampedPercentages = (isSegmented ? percentage : [percentage]).map(
+      (value) => Math.min(100, Math.max(0, value))
+    );
+    const valueNow = isSegmented
+      ? Math.min(
+          100,
+          clampedPercentages.reduce((total, value) => total + value, 0)
+        )
+      : clampedPercentages[0];
 
     return (
       <div
         ref={ref}
         role="progressbar"
-        aria-valuenow={clampedPercentage}
+        aria-valuenow={valueNow}
         aria-valuemin={0}
         aria-valuemax={100}
-        className={cn(progressBarVariants({ variant }), className)}
+        className={cn(
+          progressBarVariants({ radius, variant }),
+          isSegmented && "flex gap-0.5",
+          className
+        )}
         {...props}
       >
-        <div
-          className={progressBarFillVariants({ variant })}
-          style={{ width: `${clampedPercentage}%` }}
-        />
+        {clampedPercentages.map((value, index) =>
+          !isSegmented || value > 0 ? (
+            <div
+              key={index}
+              className={cn(
+                progressBarFillVariants({ radius, variant }),
+                Array.isArray(fillClassName)
+                  ? fillClassName[index]
+                  : fillClassName
+              )}
+              style={
+                isSegmented
+                  ? { flexBasis: 0, flexGrow: value }
+                  : { width: `${value}%` }
+              }
+            />
+          ) : null
+        )}
       </div>
     );
   }
