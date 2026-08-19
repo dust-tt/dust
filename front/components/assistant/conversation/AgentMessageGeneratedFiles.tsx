@@ -1,3 +1,4 @@
+import { getCollapseAnimationStyle } from "@app/components/assistant/conversation/actions/inline/utils";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { formatCalendarDate } from "@app/lib/utils/timestamps";
 import type { LightAgentMessageType } from "@app/types/assistant/conversation";
@@ -8,12 +9,15 @@ import {
 import { getTime } from "@app/types/shared/utils/date_utils";
 import {
   ActionFrame,
+  ChevronRight,
   Citation,
   CitationDescription,
   CitationGrid,
   CitationTitle,
+  cn,
   Icon,
 } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 function getDescriptionForContentType(
   file: LightAgentMessageType["generatedFiles"][number]
@@ -33,20 +37,23 @@ interface AgentMessageInteractiveContentGeneratedFilesProps {
   files: LightAgentMessageType["generatedFiles"];
   onClick?: () => void;
   variant?: "list" | "grid";
+  collapsible?: boolean;
 }
 
 export function AgentMessageInteractiveContentGeneratedFiles({
   files,
   onClick,
   variant = "list",
+  collapsible = false,
 }: AgentMessageInteractiveContentGeneratedFilesProps) {
   const { openPanel } = useConversationSidePanelContext();
+  const [isCollapsed, setIsCollapsed] = useState(collapsible);
 
   if (files.length === 0) {
     return null;
   }
 
-  return (
+  const grid = (
     <CitationGrid variant={variant}>
       {files.map((file) => {
         if (!file.fileId) {
@@ -108,5 +115,34 @@ export function AgentMessageInteractiveContentGeneratedFiles({
         );
       })}
     </CitationGrid>
+  );
+
+  if (!collapsible) {
+    return grid;
+  }
+
+  return (
+    <div className="flex flex-col text-sm">
+      <button
+        className="self-start text-muted-foreground hover:text-foreground transition-colors duration-200 flex gap-1 items-center"
+        onClick={() => setIsCollapsed((c) => !c)}
+      >
+        Frames
+        <span
+          className={cn(
+            "transition-transform duration-200 ease-out",
+            isCollapsed ? "rotate-0" : "rotate-90"
+          )}
+        >
+          <Icon size="xs" visual={ChevronRight} />
+        </span>
+      </button>
+      <div
+        className="grid ease-out"
+        style={getCollapseAnimationStyle(isCollapsed)}
+      >
+        <div className="overflow-hidden">{grid}</div>
+      </div>
+    </div>
   );
 }

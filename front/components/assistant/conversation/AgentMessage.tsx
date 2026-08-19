@@ -1422,6 +1422,7 @@ function AgentMessageContent({
         {blockedActionElement}
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
+          collapsible={uiView === "compact"}
         />
         {allImages.length > 0 && <InteractiveImageGrid images={allImages} />}
 
