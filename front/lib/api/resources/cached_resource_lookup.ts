@@ -112,6 +112,10 @@ type OperableCachedResourceBatchLookup<Input, Resource> =
       inputs: Input[],
       transaction?: Transaction
     ) => Promise<Resource[]>;
+    invalidateMany: (
+      inputs: Input[],
+      transaction?: Transaction
+    ) => Promise<void>;
   };
 
 // Marks database errors so they are not mistaken for Redis failures and retried by the database
@@ -286,19 +290,29 @@ export function defineCachedResourceBatchLookup<Input, Snapshot, Resource>({
   Snapshot,
   Resource
 >): OperableCachedResourceBatchLookup<Input, Resource> {
+  const versionedKey = (input: Input) => `v${version}:${key(input)}`;
+  const loadFromDatabase = async (
+    input: Input,
+    transaction?: Transaction
+  ): Promise<Resource | null> => {
+    const [resource] = await loadManyFromDatabase([input], transaction);
+    return resource ?? null;
+  };
   const lookup = defineCachedResourceLookup({
     id,
     version,
     key,
-    loadFromDatabase: async (input: Input, transaction?: Transaction) => {
-      const [resource] = await loadManyFromDatabase([input], transaction);
-      return resource ?? null;
-    },
+    loadFromDatabase,
     toSnapshot,
     fromSnapshot,
   });
+  const invalidateManySnapshots = batchInvalidateCacheWithRedis(
+    loadFromDatabase,
+    versionedKey,
+    { cacheId: id }
+  );
   const cacheKey = (input: Input) =>
-    buildCacheWithRedisKey(id, `v${version}:${key(input)}`);
+    buildCacheWithRedisKey(id, versionedKey(input));
 
   return {
     ...lookup,
@@ -399,6 +413,23 @@ export function defineCachedResourceBatchLookup<Input, Snapshot, Resource>({
         );
         return loadManyFromDatabase(uniqueInputs);
       }
+    },
+    invalidateMany: async (inputs, transaction) => {
+      if (inputs.length === 0) {
+        return;
+      }
+
+      const uniqueInputs = [
+        ...new Map(inputs.map((input) => [cacheKey(input), input])).values(),
+      ];
+      const invalidate = () =>
+        invalidateManySnapshots(uniqueInputs.map((input) => [input]));
+
+      if (transaction) {
+        invalidateCacheAfterCommit(transaction, invalidate);
+        return;
+      }
+      await invalidate();
     },
   };
 }

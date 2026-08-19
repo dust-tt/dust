@@ -83,11 +83,12 @@ vi.mock("@app/lib/utils/cache", async (importOriginal) => {
       .mockImplementation(
         <T, Args extends unknown[]>(
           fn: CacheableFunction<JsonSerializable<T>, Args>,
-          resolver: (...args: Args) => string
+          resolver: (...args: Args) => string,
+          options?: { cacheId?: string }
         ) => {
           return async (argsList: Args[]): Promise<void> => {
             for (const args of argsList) {
-              const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+              const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
               inMemoryCache.delete(key);
             }
           };
@@ -96,12 +97,19 @@ vi.mock("@app/lib/utils/cache", async (importOriginal) => {
   };
 });
 
+import {
+  batchHardDeletePendingAgentConfigurations,
+  createPendingAgentConfiguration,
+} from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import {
   BUILDER_GROUP_NAME,
   GroupResource,
   MANUAL_BUILDERS_GROUP_NAME,
 } from "@app/lib/resources/group_resource";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -111,6 +119,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -243,6 +252,136 @@ describe("GroupResource", () => {
       await expect(
         GroupResource.fetchByModelIds(authenticator, [group.id])
       ).resolves.toEqual([]);
+    });
+
+    it("invalidates a cached group deleted through a group-space resource", async () => {
+      const space = await SpaceFactory.regular(workspace);
+      const group = await GroupResource.makeNew({
+        name: "Cached Space Group",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      const groupSpace = await GroupSpaceMemberResource.makeNew(authenticator, {
+        group,
+        space,
+      });
+      const cacheKey = getCacheKeyForGroup(workspace.id, group.id);
+
+      await GroupResource.fetchByModelIds(authenticator, [group.id]);
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+      const deleteResult = await groupSpace.delete(authenticator);
+      expect(deleteResult.isOk()).toBe(true);
+      expect(inMemoryCache.has(cacheKey)).toBe(false);
+      await expect(
+        GroupResource.fetchByModelIds(authenticator, [group.id])
+      ).resolves.toEqual([]);
+    });
+
+    it("defers batched invalidation until the transaction commits", async () => {
+      const firstGroup = await GroupResource.makeNew({
+        name: "First Cached Group",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      const secondGroup = await GroupResource.makeNew({
+        name: "Second Cached Group",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      const groups = [firstGroup, secondGroup];
+      const groupIds = groups.map((group) => group.id);
+      const cacheKeys = groupIds.map((groupId) =>
+        getCacheKeyForGroup(workspace.id, groupId)
+      );
+      await GroupResource.fetchByModelIds(authenticator, groupIds);
+
+      const parentTransaction =
+        getNamespace("test-namespace")?.get("transaction");
+      if (!parentTransaction) {
+        throw new Error("Expected the test transaction to be available.");
+      }
+      const transaction = await frontSequelize.transaction({
+        transaction: parentTransaction,
+      });
+
+      try {
+        await GroupResource.invalidateByModelIdsCache({
+          workspaceModelId: workspace.id,
+          groupModelIds: groupIds,
+          transaction,
+        });
+        for (const cacheKey of cacheKeys) {
+          expect(inMemoryCache.has(cacheKey)).toBe(true);
+        }
+
+        await transaction.commit();
+
+        for (const cacheKey of cacheKeys) {
+          expect(inMemoryCache.has(cacheKey)).toBe(false);
+        }
+      } catch (err) {
+        await transaction.rollback();
+        throw err;
+      }
+    });
+
+    it("schedules batched invalidation for editor groups deleted with pending agents", async () => {
+      const pendingAgentIds: string[] = [];
+      for (let i = 0; i < 2; i++) {
+        const pendingAgentResult =
+          await createPendingAgentConfiguration(authenticator);
+        if (pendingAgentResult.isErr()) {
+          throw pendingAgentResult.error;
+        }
+        pendingAgentIds.push(pendingAgentResult.value.sId);
+      }
+
+      const pendingAgents = await AgentConfigurationModel.findAll({
+        where: { sId: pendingAgentIds, workspaceId: workspace.id },
+      });
+      const groupAgents = await GroupAgentModel.findAll({
+        where: {
+          agentConfigurationId: pendingAgents.map((agent) => agent.id),
+          workspaceId: workspace.id,
+        },
+      });
+      const groupIds = groupAgents.map((groupAgent) => groupAgent.groupId);
+
+      await GroupResource.fetchByModelIds(authenticator, groupIds);
+      for (const groupId of groupIds) {
+        expect(
+          inMemoryCache.has(getCacheKeyForGroup(workspace.id, groupId))
+        ).toBe(true);
+      }
+
+      const invalidateSpy = vi.spyOn(
+        GroupResource,
+        "invalidateByModelIdsCache"
+      );
+      try {
+        await batchHardDeletePendingAgentConfigurations(
+          pendingAgents,
+          workspace.id
+        );
+
+        expect(invalidateSpy).toHaveBeenCalledOnce();
+        const invalidation = invalidateSpy.mock.calls[0]?.[0];
+        expect(invalidation?.workspaceModelId).toBe(workspace.id);
+        expect(invalidation?.groupModelIds.toSorted((a, b) => a - b)).toEqual(
+          groupIds.toSorted((a, b) => a - b)
+        );
+        expect(invalidation?.transaction).toBe(
+          getNamespace("test-namespace")?.get("transaction")
+        );
+
+        const remainingGroups = await GroupModel.count({
+          where: { id: groupIds, workspaceId: workspace.id },
+        });
+        expect(remainingGroups).toBe(0);
+      } finally {
+        invalidateSpy.mockRestore();
+      }
     });
   });
 

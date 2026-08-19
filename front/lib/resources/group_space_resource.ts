@@ -1,7 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -225,6 +225,12 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
           // Delete the corresponding group if it's regular_auto or space_editors (system, global, provisioned groups should not be deleted)
           kind: ["regular_auto", "space_editors"],
         },
+        transaction,
+      });
+
+      await GroupResource.invalidateByModelIdsCache({
+        workspaceModelId: auth.getNonNullableWorkspace().id,
+        groupModelIds: [this.groupId],
         transaction,
       });
 

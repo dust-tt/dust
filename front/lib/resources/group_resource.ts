@@ -951,6 +951,24 @@ export class GroupResource extends BaseResource<GroupModel> {
       toLookupInput: (input) => input,
     });
 
+  static async invalidateByModelIdsCache({
+    workspaceModelId,
+    groupModelIds,
+    transaction,
+  }: {
+    workspaceModelId: ModelId;
+    groupModelIds: ModelId[];
+    transaction?: Transaction;
+  }): Promise<void> {
+    await GroupResource.byModelIdCache.invalidateMany(
+      groupModelIds.map((groupModelId) => ({
+        workspaceModelId,
+        groupModelId,
+      })),
+      transaction
+    );
+  }
+
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[],

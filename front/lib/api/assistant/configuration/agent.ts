@@ -1446,6 +1446,12 @@ export async function batchHardDeletePendingAgentConfigurations(
         where: { id: groupIds, workspaceId },
         transaction: t,
       });
+
+      await GroupResource.invalidateByModelIdsCache({
+        workspaceModelId: workspaceId,
+        groupModelIds: groupIds,
+        transaction: t,
+      });
     }
 
     // Delete agent suggestions before agents (FK constraint)
