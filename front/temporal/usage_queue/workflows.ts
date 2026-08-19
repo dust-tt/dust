@@ -7,6 +7,7 @@ import {
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
   condition,
+  patched,
   proxyActivities,
   setHandler,
   sleep,
@@ -73,12 +74,21 @@ export async function syncMetronomeSeatCountWorkflow(
 
   while (pendingSync) {
     pendingSync = false;
-    if (!runImmediately) {
-      // Debounce, but wake early if an immediate sync is requested mid-wait
-      // (coalesces bursts; an immediate trigger interrupts the window).
-      await condition(() => runImmediately, METRONOME_SEAT_COUNT_DEBOUNCE_MS);
+    // patched: workflows started before this change replay the plain `sleep` so
+    // they stay deterministic; new ones use an interruptible `condition` so an
+    // `immediate` signal can skip the debounce window. Safe to remove the patch
+    // (→ `deprecatePatch` → delete) a few days after deploy — these workflows
+    // are short-lived, so no pre-change instance survives that long.
+    if (patched("seat-count-immediate-debounce")) {
+      if (!runImmediately) {
+        // Debounce, but wake early if an immediate sync is requested mid-wait
+        // (coalesces bursts; an immediate trigger interrupts the window).
+        await condition(() => runImmediately, METRONOME_SEAT_COUNT_DEBOUNCE_MS);
+      }
+      runImmediately = false;
+    } else {
+      await sleep(METRONOME_SEAT_COUNT_DEBOUNCE_MS);
     }
-    runImmediately = false;
     await syncMetronomeSeatCountActivity(workspaceId);
   }
 }
