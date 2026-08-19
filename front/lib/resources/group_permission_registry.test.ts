@@ -324,15 +324,15 @@ describe("GroupPermissions wildcard grant", () => {
     expect(restored.resolvedVerbsForResource("space", 12)).toContain("admin");
   });
 
-  it("names no concrete instance", () => {
-    // Documented behaviour of the type-wide (-1) entry: it confers the verb on every id and so
-    // enumerating instances returns nothing.
+  it("enumerates as every instance, not as none", () => {
+    // A type-wide entry names no id, so it cannot come back as a list. Reporting "all" is what
+    // keeps the enumeration consistent with `resolvedVerbsForResource`, which folds -1 in.
     expect(
       GroupPermissions.fromGrants([...WILDCARD]).resourceIdsWithVerb(
         "space",
         "read"
       )
-    ).toEqual([]);
+    ).toEqual({ kind: "all" });
   });
 });
 
@@ -342,30 +342,50 @@ describe("GroupPermissions.resourceIdsWithVerb", () => {
     const perms = GroupPermissions.fromJSON({
       grants: { space: { 12: 0b011, 34: 0b001 } },
     });
-    expect(perms.resourceIdsWithVerb("space", "read").sort()).toEqual([12, 34]);
-    expect(perms.resourceIdsWithVerb("space", "write")).toEqual([12]);
+    expect(perms.resourceIdsWithVerb("space", "read")).toEqual({
+      kind: "ids",
+      resourceIds: [12, 34],
+    });
+    expect(perms.resourceIdsWithVerb("space", "write")).toEqual({
+      kind: "ids",
+      resourceIds: [12],
+    });
   });
 
   it("filters out ids that lack the verb", () => {
     const perms = GroupPermissions.fromJSON({
       grants: { space: { 12: 0b001, 34: 0b011 } },
     });
-    expect(perms.resourceIdsWithVerb("space", "write")).toEqual([34]);
-    expect(perms.resourceIdsWithVerb("space", "admin")).toEqual([]);
+    expect(perms.resourceIdsWithVerb("space", "write")).toEqual({
+      kind: "ids",
+      resourceIds: [34],
+    });
+    expect(perms.resourceIdsWithVerb("space", "admin")).toEqual({
+      kind: "ids",
+      resourceIds: [],
+    });
   });
 
-  it("excludes the type-wide (-1) entry", () => {
-    // A type-wide grant confers the verb on every id but names no concrete instance.
+  it("reports the type-wide (-1) entry as every instance", () => {
     const perms = GroupPermissions.fromJSON({
       grants: { agent: { [WHOLE_TYPE_RESOURCE_ID]: 0b1000, 42: 0b011 } },
     });
-    expect(perms.resourceIdsWithVerb("agent", "read")).toEqual([42]);
-    expect(perms.resourceIdsWithVerb("agent", "create")).toEqual([]);
+    // `read` is held on 42 only; `create` comes from the type-wide entry, so it covers every agent.
+    expect(perms.resourceIdsWithVerb("agent", "read")).toEqual({
+      kind: "ids",
+      resourceIds: [42],
+    });
+    expect(perms.resourceIdsWithVerb("agent", "create")).toEqual({
+      kind: "all",
+    });
   });
 
-  it("returns an empty array when the resource type has no grants", () => {
+  it("returns an empty list when the resource type has no grants", () => {
     const perms = GroupPermissions.fromJSON({ grants: {} });
-    expect(perms.resourceIdsWithVerb("space", "read")).toEqual([]);
+    expect(perms.resourceIdsWithVerb("space", "read")).toEqual({
+      kind: "ids",
+      resourceIds: [],
+    });
   });
 });
 

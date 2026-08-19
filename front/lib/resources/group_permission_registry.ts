@@ -254,6 +254,13 @@ interface SerializedGroupPermissions {
   >;
 }
 
+// What the caller may act on for a given verb: a concrete instance list, or every instance of the
+// type when a type-wide (-1) grant confers it. Callers must handle "all" — that is the point of the
+// union (see `GroupPermissions.resourceIdsWithVerb`).
+export type ResourcesWithVerb =
+  | { kind: "all" }
+  | { kind: "ids"; resourceIds: number[] };
+
 /**
  * The governance grants the *caller* holds, resolved once at auth construction. Keyed by
  * (resourceType, resourceId) -> verb bitmask: resourceId is WHOLE_TYPE_RESOURCE_ID (-1) for type-
@@ -384,23 +391,28 @@ export class GroupPermissions {
     return maskToVerbs(mask);
   }
 
-  // The concrete instance ids of `resourceType` on which the caller holds `verb` — the reverse of
+  // The instances of `resourceType` on which the caller holds `verb` — the reverse of
   // resolvedVerbsForResource, for callers that enumerate what they may act on ("which spaces am I a
-  // member of") rather than checking one id. Excludes the type-wide (-1) entry: a type-wide grant
-  // confers the verb on every id of the type and names no concrete instance, so callers that must
-  // also account for type-wide access should consult toWorkspacePermissions separately.
+  // member of") rather than checking one id.
+  //
+  // A type-wide (-1) grant confers the verb on every instance and names none, so it cannot be
+  // returned as a list. It is reported as "all" rather than folded away: `resolvedVerbsForResource`
+  // does fold -1 in, so dropping it here would answer yes for a single id and no for the
+  // enumeration of the same verb.
   resourceIdsWithVerb(
     resourceType: ConcreteResourceType,
     verb: GrantVerb
-  ): number[] {
-    const byId = this.grants.get(resourceType);
-    if (!byId) {
-      return [];
-    }
+  ): ResourcesWithVerb {
     const bit = VERB_BIT.get(verb) ?? 0;
-    if (bit === 0) {
-      return [];
+    const byId = this.grants.get(resourceType);
+    if (!byId || bit === 0) {
+      return { kind: "ids", resourceIds: [] };
     }
+
+    if (((byId.get(WHOLE_TYPE_RESOURCE_ID) ?? 0) & bit) !== 0) {
+      return { kind: "all" };
+    }
+
     const resourceIds: number[] = [];
     for (const [resourceId, mask] of byId) {
       if (resourceId === WHOLE_TYPE_RESOURCE_ID) {
@@ -410,7 +422,7 @@ export class GroupPermissions {
         resourceIds.push(resourceId);
       }
     }
-    return resourceIds;
+    return { kind: "ids", resourceIds };
   }
 
   // The type-wide (-1) verbs the caller's grants confer per resource type — the flat record for the

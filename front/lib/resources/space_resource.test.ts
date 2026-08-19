@@ -22,6 +22,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -2255,6 +2256,23 @@ describe("SpaceResource", () => {
       const pods = await SpaceResource.listWorkspacePodsAsMember(adminAuth);
 
       expect(pods).toEqual([]);
+    });
+
+    it("returns every project for a system key", async () => {
+      const first = await SpaceFactory.project(workspace);
+      const second = await SpaceFactory.project(workspace);
+
+      const key = await KeyFactory.system(systemGroup);
+      const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId);
+
+      // A system key holds the type-wide space grant, so `isMember` is true on every project. The
+      // enumeration has to agree rather than come back empty.
+      const pods = await SpaceResource.listWorkspacePodsAsMember(workspaceAuth);
+
+      expect(pods.map((p) => p.sId).sort()).toEqual(
+        [first.sId, second.sId].sort()
+      );
+      expect(pods.every((p) => p.isMember(workspaceAuth))).toBe(true);
     });
   });
 });

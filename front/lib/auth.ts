@@ -19,7 +19,10 @@ import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
-import type { GroupPermissionsJSON } from "@app/lib/resources/group_permission_registry";
+import type {
+  GroupPermissionsJSON,
+  ResourcesWithVerb,
+} from "@app/lib/resources/group_permission_registry";
 import {
   allWorkspacePermissions,
   GroupPermissions,
@@ -1519,15 +1522,16 @@ export class Authenticator {
   }
 
   /**
-   * The instance ids of `resourceType` the caller may `verb`, resolved from their governance grants.
+   * The instances of `resourceType` the caller may `verb`, resolved from their governance grants.
    * The enumeration counterpart of `getGrantedVerbs` — "which resources may I act on" rather than
-   * "what may I do on this one" — for reverse lookups such as the projects a caller belongs to. See
-   * `GroupPermissions.resourceIdsWithVerb`; the type-wide (-1) grant is excluded there.
+   * "what may I do on this one" — for reverse lookups such as the projects a caller belongs to.
+   * Returns `{ kind: "all" }` when a type-wide grant confers the verb on every instance, which a
+   * system key holds on every type (see `resolvePermissions`).
    */
   getResourceIdsWithVerb(
     resourceType: ConcreteResourceType,
     verb: GrantVerb
-  ): ModelId[] {
+  ): ResourcesWithVerb {
     return this._permissions.resourceIdsWithVerb(resourceType, verb);
   }
 

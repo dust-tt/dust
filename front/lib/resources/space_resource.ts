@@ -428,17 +428,21 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // Project (pod) spaces the caller belongs to are those on which they hold the pod membership
     // verb (see `POD_SPACE_MEMBERSHIP_VERB`): selecting by it and `kind: "project"` reproduces the
     // former `group_vaults` member/editor lookup, so the previous safety re-filter is redundant.
-    const podSpaceModelIds = auth.getResourceIdsWithVerb(
+    // A type-wide grant makes the caller a member of every pod (`isMember` says so too), so it
+    // drops the id filter rather than the whole result.
+    const podSpaces = auth.getResourceIdsWithVerb(
       "space",
       POD_SPACE_MEMBERSHIP_VERB
     );
-    if (podSpaceModelIds.length === 0) {
+    if (podSpaces.kind === "ids" && podSpaces.resourceIds.length === 0) {
       return [];
     }
 
     return this.baseFetch(auth, {
       where: {
-        id: { [Op.in]: podSpaceModelIds },
+        ...(podSpaces.kind === "ids"
+          ? { id: { [Op.in]: podSpaces.resourceIds } }
+          : {}),
         kind: "project",
       },
     });
