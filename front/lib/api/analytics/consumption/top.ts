@@ -59,32 +59,12 @@ const CREDIT_AGG = "credit_micro";
 const MESSAGES_AGG = "messages";
 const TOTAL_COUNT_AGG = "total_count";
 // Ranks "invocation" dimensions by avg credits: one document is one
-// invocation there, so a plain avg metric already equals credits per unit.
+// invocation there, so a plain avg metric already equals credits per unit,
+// and terms aggregations can order buckets by it directly.
 const AVG_CREDIT_PER_INVOCATION_AGG = "avg_credit_per_invocation";
-// Ranks "message" dimensions by avg credits. Several documents (one per LLM
-// run, one per tool action) can share a message, so a plain avg(credit_micro)
-// would average per-document slices instead of per-message totals. A
-// scripted_metric divides the bucket's summed credits by its count of
-// *distinct* message ids instead, giving a genuine single-value metric a
-// terms aggregation can order by (a bucket_script, the alternative, is a
-// pipeline aggregation and terms cannot order by those).
-const AVG_CREDIT_PER_MESSAGE_AGG = "avg_credit_per_message";
 const RANKING_TERMS_PAGE_SIZE = 1_000;
 const MAX_ES_QUERY_CLAUSES = 1_024;
 const MAX_ES_TERMS_QUERY_VALUES = 65_536;
-
-const AVG_CREDIT_PER_MESSAGE_SCRIPT: estypes.AggregationsScriptedMetricAggregation =
-  {
-    init_script: "state.creditMicro = 0L; state.messageIds = new HashSet();",
-    map_script:
-      "state.creditMicro += doc['credit_micro'].value; " +
-      "state.messageIds.add(doc['agent_message_id'].value);",
-    combine_script: "return [state.creditMicro, state.messageIds];",
-    reduce_script:
-      "long creditMicro = 0L; Set messageIds = new HashSet(); " +
-      "for (s in states) { creditMicro += s[0]; messageIds.addAll(s[1]); } " +
-      "return messageIds.isEmpty() ? 0.0 : (double) creditMicro / messageIds.size();",
-  };
 
 type GroupBucket = {
   key: string;
@@ -92,46 +72,42 @@ type GroupBucket = {
   [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
   [MESSAGES_AGG]?: estypes.AggregationsCardinalityAggregate;
   [AVG_CREDIT_PER_INVOCATION_AGG]?: estypes.AggregationsAvgAggregate;
-  [AVG_CREDIT_PER_MESSAGE_AGG]?: estypes.AggregationsScriptedMetricAggregate;
 };
 
 // The avg-credit-per-unit sub-aggregation is only worth computing when the
-// ranking actually orders by it — a scripted_metric in particular runs a
-// painless script over every document in every bucket.
+// ranking actually orders by it. "message" dimensions rank by average in
+// memory (see `fetchConsumptionTopGroups`) from the credits/messages sums
+// already computed here, so no extra sub-aggregation is needed for them.
 function subAggs(unit: ConsumptionTopUnit, sortBy: ConsumptionTopSortBy) {
   return {
     [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
     ...(unit === "message"
       ? { [MESSAGES_AGG]: { cardinality: { field: AGENT_MESSAGE_ID_FIELD } } }
       : {}),
-    ...(sortBy === "avgCredits"
-      ? unit === "message"
-        ? {
-            [AVG_CREDIT_PER_MESSAGE_AGG]: {
-              scripted_metric: AVG_CREDIT_PER_MESSAGE_SCRIPT,
-            },
-          }
-        : {
-            [AVG_CREDIT_PER_INVOCATION_AGG]: {
-              avg: { field: CREDIT_MICRO_FIELD },
-            },
-          }
+    ...(sortBy === "avgCredits" && unit === "invocation"
+      ? {
+          [AVG_CREDIT_PER_INVOCATION_AGG]: {
+            avg: { field: CREDIT_MICRO_FIELD },
+          },
+        }
       : {}),
   };
 }
 
 // The sub-aggregation a terms aggregation orders its buckets by for a given
-// ranking metric and unit.
+// ranking metric and unit. "message" dimensions ranked by avg credits are a
+// ratio of two metrics (summed credits over distinct message count):
+// Elasticsearch terms aggregations can only order by a genuine metric
+// aggregation (avg, sum, cardinality, ...), not a ratio, so that case orders
+// by credits here and is re-ranked by average in memory afterwards.
 function orderAggName(
   sortBy: ConsumptionTopSortBy,
   unit: ConsumptionTopUnit
 ): string {
-  if (sortBy === "credits") {
-    return CREDIT_AGG;
+  if (sortBy === "avgCredits" && unit === "invocation") {
+    return AVG_CREDIT_PER_INVOCATION_AGG;
   }
-  return unit === "message"
-    ? AVG_CREDIT_PER_MESSAGE_AGG
-    : AVG_CREDIT_PER_INVOCATION_AGG;
+  return CREDIT_AGG;
 }
 
 type RankingAggs = {
@@ -380,7 +356,16 @@ export async function fetchConsumptionTopGroups(
     filter,
   });
 
-  const requestedBucketCount = offset + limit;
+  // Elasticsearch cannot order terms buckets by a ratio of two metrics
+  // (summed credits over distinct message count), so ranking "message"
+  // dimensions by avg credits requires fetching every bucket and sorting by
+  // average in memory, rather than relying on the requested page's size.
+  const sortInMemory =
+    sortBy === "avgCredits" &&
+    CONSUMPTION_DIMENSION_UNIT[dimension] === "message";
+  const requestedBucketCount = sortInMemory
+    ? Number.MAX_SAFE_INTEGER
+    : offset + limit;
   const rankedGroups: Omit<ConsumptionTopGroup, "previousCredits">[] = [];
   let buckets: GroupBucket[];
   let batchSize = 0;
@@ -389,7 +374,8 @@ export async function fetchConsumptionTopGroups(
 
   // Terms aggregations do not expose an after_key when ordered by a metric.
   // Continue the ranked result in bounded batches by excluding the keys
-  // already returned, and stop as soon as the requested page is available.
+  // already returned, and stop as soon as the requested page is available
+  // (or, when sorting in memory, once every bucket has been fetched).
   do {
     batchSize = Math.min(
       requestedBucketCount - rankedGroups.length,
@@ -432,7 +418,15 @@ export async function fetchConsumptionTopGroups(
     buckets.length === batchSize
   );
 
-  const pagedGroups = rankedGroups.slice(offset, offset + limit);
+  const sortedGroups = sortInMemory
+    ? [...rankedGroups].sort((a, b) => {
+        const diff =
+          avgCreditsPerUnit(a.credits, a.count) -
+          avgCreditsPerUnit(b.credits, b.count);
+        return sortOrder === "asc" ? diff : -diff;
+      })
+    : rankedGroups;
+  const pagedGroups = sortedGroups.slice(offset, offset + limit);
 
   const previousCreditsResult = await fetchConsumptionPreviousCredits(auth, {
     dimension,
