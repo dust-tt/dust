@@ -1162,7 +1162,7 @@ export function UsagePage() {
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-1">
-                      <LoadingBlock className="h-[30px] w-32" />
+                      <LoadingBlock className="h-7.5 w-32" />
                       <LoadingBlock className="h-4 w-36" />
                     </div>
                     <LoadingBlock className="h-5 w-16 rounded-full" />
