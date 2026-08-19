@@ -59,7 +59,7 @@ async function createActivationPodForCaller(
   const pod = await SpaceFactory.project(workspace, user.id);
   await ProjectMetadataResource.makeNew(auth, pod, { description: null });
   await ActivationPodResource.makeNew(auth, { pod, user });
-  return pod;
+  return { pod };
 }
 
 describe("activation recommendations work-area tools", () => {
@@ -67,13 +67,16 @@ describe("activation recommendations work-area tools", () => {
     const { workspace, authenticator } = await createResourceTest({
       role: "user",
     });
-    const pod = await createActivationPodForCaller(authenticator, workspace);
+    const { pod } = await createActivationPodForCaller(
+      authenticator,
+      workspace
+    );
 
     const createResult = await getCreateWorkAreasTool().handler(
       {
-        podId: pod.sId,
         assignments: [
           {
+            podIds: [pod.sId],
             workAreas: [
               {
                 title: "Weekly planning",
@@ -88,7 +91,7 @@ describe("activation recommendations work-area tools", () => {
     expect(createResult.isOk()).toBe(true);
 
     const listResult = await getListWorkAreasTool().handler(
-      { podId: pod.sId },
+      { podIds: [pod.sId] },
       createTestExtra(authenticator, pod.sId)
     );
     expect(listResult.isOk()).toBe(true);
@@ -109,10 +112,13 @@ describe("activation recommendations work-area tools", () => {
     const { workspace, authenticator } = await createResourceTest({
       role: "admin",
     });
-    const pod = await createActivationPodForCaller(authenticator, workspace);
+    const { pod } = await createActivationPodForCaller(
+      authenticator,
+      workspace
+    );
     const targetUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, targetUser, { role: "user" });
-    const targetPod = await createActivationPodForCaller(
+    const { pod: targetPod } = await createActivationPodForCaller(
       await Authenticator.fromUserIdAndWorkspaceId(
         targetUser.sId,
         workspace.sId
@@ -154,10 +160,13 @@ describe("activation recommendations work-area tools", () => {
     const { workspace, authenticator } = await createResourceTest({
       role: "user",
     });
-    const pod = await createActivationPodForCaller(authenticator, workspace);
+    const { pod } = await createActivationPodForCaller(
+      authenticator,
+      workspace
+    );
     const targetUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, targetUser, { role: "user" });
-    const targetPod = await createActivationPodForCaller(
+    const { pod: targetPod } = await createActivationPodForCaller(
       await Authenticator.fromUserIdAndWorkspaceId(
         targetUser.sId,
         workspace.sId
@@ -185,7 +194,9 @@ describe("activation recommendations work-area tools", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("Only workspace admins");
+      expect(result.error.message).toContain(
+        "Not authorized to create work areas"
+      );
     }
   });
 
@@ -193,7 +204,10 @@ describe("activation recommendations work-area tools", () => {
     const { workspace, authenticator } = await createResourceTest({
       role: "admin",
     });
-    const pod = await createActivationPodForCaller(authenticator, workspace);
+    const { pod } = await createActivationPodForCaller(
+      authenticator,
+      workspace
+    );
 
     const result = await getCreateWorkAreasTool().handler(
       {
@@ -223,7 +237,10 @@ describe("activation recommendations work-area tools", () => {
     const { workspace, authenticator } = await createResourceTest({
       role: "admin",
     });
-    const pod = await createActivationPodForCaller(authenticator, workspace);
+    const { pod } = await createActivationPodForCaller(
+      authenticator,
+      workspace
+    );
     const firstCohortUser = await UserFactory.basic();
     const secondCohortUser = await UserFactory.basic();
     const exceptionUser = await UserFactory.basic();
@@ -236,7 +253,11 @@ describe("activation recommendations work-area tools", () => {
     await MembershipFactory.associate(workspace, exceptionUser, {
       role: "user",
     });
-    const [firstCohortPod, secondCohortPod, exceptionPod] = await Promise.all([
+    const [
+      { pod: firstCohortPod },
+      { pod: secondCohortPod },
+      { pod: exceptionPod },
+    ] = await Promise.all([
       createActivationPodForCaller(
         await Authenticator.fromUserIdAndWorkspaceId(
           firstCohortUser.sId,
@@ -308,10 +329,13 @@ describe("activation recommendations work-area tools", () => {
     const { workspace, authenticator } = await createResourceTest({
       role: "admin",
     });
-    const pod = await createActivationPodForCaller(authenticator, workspace);
+    const { pod } = await createActivationPodForCaller(
+      authenticator,
+      workspace
+    );
     const targetUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, targetUser, { role: "user" });
-    const targetPod = await createActivationPodForCaller(
+    const { pod: targetPod } = await createActivationPodForCaller(
       await Authenticator.fromUserIdAndWorkspaceId(
         targetUser.sId,
         workspace.sId
@@ -356,10 +380,13 @@ describe("activation recommendations work-area tools", () => {
     const { workspace, authenticator } = await createResourceTest({
       role: "user",
     });
-    const pod = await createActivationPodForCaller(authenticator, workspace);
+    const { pod } = await createActivationPodForCaller(
+      authenticator,
+      workspace
+    );
     const targetUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, targetUser, { role: "user" });
-    const targetPod = await createActivationPodForCaller(
+    const { pod: targetPod } = await createActivationPodForCaller(
       await Authenticator.fromUserIdAndWorkspaceId(
         targetUser.sId,
         workspace.sId
@@ -386,7 +413,9 @@ describe("activation recommendations work-area tools", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("Only workspace admins");
+      expect(result.error.message).toContain(
+        "Not authorized to create work areas"
+      );
     }
   });
 
@@ -394,14 +423,17 @@ describe("activation recommendations work-area tools", () => {
     const { workspace, authenticator } = await createResourceTest({
       role: "admin",
     });
-    const pod = await createActivationPodForCaller(authenticator, workspace);
+    const { pod } = await createActivationPodForCaller(
+      authenticator,
+      workspace
+    );
     const firstTarget = await UserFactory.basic();
     const secondTarget = await UserFactory.basic();
     await MembershipFactory.associate(workspace, firstTarget, { role: "user" });
     await MembershipFactory.associate(workspace, secondTarget, {
       role: "user",
     });
-    const firstTargetPod = await createActivationPodForCaller(
+    const { pod: firstTargetPod } = await createActivationPodForCaller(
       await Authenticator.fromUserIdAndWorkspaceId(
         firstTarget.sId,
         workspace.sId
@@ -412,7 +444,7 @@ describe("activation recommendations work-area tools", () => {
       authenticator,
       firstTargetPod
     );
-    const secondTargetPod = await createActivationPodForCaller(
+    const { pod: secondTargetPod } = await createActivationPodForCaller(
       await Authenticator.fromUserIdAndWorkspaceId(
         secondTarget.sId,
         workspace.sId

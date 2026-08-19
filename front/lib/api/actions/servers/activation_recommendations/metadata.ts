@@ -195,23 +195,16 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
   {
     name: "list_work_areas",
     description:
-      "List work areas for the current Activation Pod, or for a batch of active " +
-      "workspace members during admin-led work-area curation. Returns one entry " +
-      "per member with their work-area ids, titles, descriptions, and statuses.",
+      "List work areas for one or more Activation Pods. Pass the caller's own " +
+      "pod sId to read their own work areas, or multiple pod sIds during admin-led " +
+      "curation. Write access to each pod is required.",
     schema: {
-      podId: z
-        .string()
-        .optional()
-        .describe(
-          "The current Pod ID from the activation context. Use this for the current user's own work areas; otherwise pass podIds."
-        ),
       podIds: z
         .array(z.string())
         .min(1)
         .max(100)
-        .optional()
         .describe(
-          "Pod IDs (space sIds) of workspace members' Learning Spaces. Only workspace admins may use this during delegated work-area curation; otherwise pass podId."
+          "Pod IDs (space sIds) to query. The caller must have write access to each pod."
         ),
       status: z
         .enum(["suggested", "dismissed"])
@@ -229,26 +222,18 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
   {
     name: "create_work_areas",
     description:
-      "Create work-area maps in one call. For the current user, pass podId and " +
-      "one assignment without podIds. During admin-led curation, omit " +
-      "podId and pass podIds on every assignment; a shared assignment " +
-      "applies the same approved map to a cohort while storing independent rows.",
+      "Create work-area maps for one or more Activation Pods in a single call. " +
+      "Each assignment targets one or more pods and the same map is stored " +
+      "independently for every target. The caller must have write access to each pod.",
     schema: {
-      podId: z
-        .string()
-        .optional()
-        .describe(
-          "The current Pod ID from the activation context. Pass only when creating the current user's own work areas."
-        ),
       assignments: z
         .array(
           z.object({
             podIds: z
               .array(z.string())
               .min(1)
-              .optional()
               .describe(
-                "Pod IDs (space sIds) of the Learning Spaces that share this exact approved map. Required for delegated admin curation and omitted for the current user's own Pod."
+                "Pod IDs (space sIds) that share this approved map. The caller must have write access to each pod."
               ),
             workAreas: z
               .array(WORK_AREA_INPUT_SCHEMA)

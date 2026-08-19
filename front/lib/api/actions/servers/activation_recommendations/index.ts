@@ -23,7 +23,6 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -285,87 +284,72 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
       ]);
     },
 
-    list_work_areas: async (
-      { podId, podIds, status },
-      { auth, runContext }
-    ) => {
-      const podSpaceId = isAgentLoopRunContext(runContext)
-        ? runContext.conversation.spaceId
-        : null;
-      const pod = podSpaceId
-        ? await SpaceResource.fetchById(auth, podSpaceId)
-        : null;
-      const activationPod = pod
-        ? await ActivationPodResource.fetchBySpace(auth, pod)
-        : null;
-
-      if (!pod || !activationPod) {
+    list_work_areas: async ({ podIds, status }, { auth, runContext }) => {
+      if (!isAgentLoopRunContext(runContext)) {
         return new Err(
           new MCPError(
             "Work areas are only available inside an Activation Pod conversation."
           )
         );
       }
-      if ((!podId && !podIds) || (podId && podIds)) {
+      const { spaceId: conversationSpaceId } = runContext.conversation;
+      const conversationPod = conversationSpaceId
+        ? await SpaceResource.fetchById(auth, conversationSpaceId)
+        : null;
+      if (
+        !conversationPod ||
+        !(await ActivationPodResource.fetchBySpace(auth, conversationPod))
+      ) {
         return new Err(
           new MCPError(
-            "Pass exactly one of podId or podIds when listing work areas."
+            "Work areas are only available inside an Activation Pod conversation."
           )
         );
       }
 
-      let users: UserResource[];
-      let rows: ActivationWorkAreaResource[];
-      if (podIds) {
-        if (!auth.isAdmin()) {
-          return new Err(
-            new MCPError(
-              "Only workspace admins can list work areas for other users."
-            )
-          );
-        }
-        const spaces = await SpaceResource.fetchByIds(auth, podIds);
-        const foundSIds = new Set(spaces.map((s) => s.sId));
-        const missingPodIds = podIds.filter((id) => !foundSIds.has(id));
-        if (missingPodIds.length > 0) {
-          return new Err(
-            new MCPError(`Pod(s) not found: ${missingPodIds.join(", ")}.`)
-          );
-        }
-        const activationPods = await ActivationPodResource.fetchBySpaceModelIds(
-          auth,
-          spaces.map((s) => s.id)
+      const spaces = await SpaceResource.fetchByIds(auth, podIds);
+      const foundSIds = new Set(spaces.map((s) => s.sId));
+      const missingPodIds = podIds.filter((id) => !foundSIds.has(id));
+      if (missingPodIds.length > 0) {
+        return new Err(
+          new MCPError(`Pod(s) not found: ${missingPodIds.join(", ")}.`)
         );
-        const podSpaceIds = new Set(activationPods.map((p) => p.spaceId));
-        const nonPodSpaces = spaces.filter((s) => !podSpaceIds.has(s.id));
-        if (nonPodSpaces.length > 0) {
-          return new Err(
-            new MCPError(
-              `Space(s) are not Activation Pods: ${nonPodSpaces.map((s) => s.sId).join(", ")}.`
-            )
-          );
-        }
-        users = await UserResource.fetchByModelIds(
-          activationPods.map((p) => p.userId)
-        );
-        rows = await ActivationWorkAreaResource.listByUsersAndStatus(auth, {
-          users,
-          status,
-        });
-      } else {
-        if (pod.sId !== podId) {
-          return new Err(
-            new MCPError(
-              "podId must match the current Activation Pod conversation."
-            )
-          );
-        }
-        users = [auth.getNonNullableUser()];
-        rows = await ActivationWorkAreaResource.listByUserAndStatus(auth, {
-          status,
-          activationPodModelId: activationPod.id,
-        });
       }
+
+      const activationPods = await ActivationPodResource.fetchBySpaceModelIds(
+        auth,
+        spaces.map((s) => s.id)
+      );
+      const podSpaceIds = new Set(activationPods.map((p) => p.spaceId));
+      const nonPodSpaces = spaces.filter((s) => !podSpaceIds.has(s.id));
+      if (nonPodSpaces.length > 0) {
+        return new Err(
+          new MCPError(
+            `Space(s) are not Activation Pods: ${nonPodSpaces.map((s) => s.sId).join(", ")}.`
+          )
+        );
+      }
+
+      const callerUserId = auth.getNonNullableUser().id;
+      const unauthorizedPods = auth.isAdmin()
+        ? []
+        : activationPods.filter((p) => p.userId !== callerUserId);
+      if (unauthorizedPods.length > 0) {
+        const spacesBySModelId = new Map(spaces.map((s) => [s.id, s]));
+        return new Err(
+          new MCPError(
+            `Not authorized to read work areas for pod(s): ${unauthorizedPods.map((p) => spacesBySModelId.get(p.spaceId)?.sId ?? p.spaceId).join(", ")}.`
+          )
+        );
+      }
+
+      const users = await UserResource.fetchByModelIds(
+        activationPods.map((p) => p.userId)
+      );
+      const rows = await ActivationWorkAreaResource.listByUsersAndStatus(auth, {
+        users,
+        status,
+      });
 
       const workAreasByUserId = new Map<
         number,
@@ -394,18 +378,22 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
       ]);
     },
 
-    create_work_areas: async ({ podId, assignments }, { auth, runContext }) => {
-      const podSpaceId = isAgentLoopRunContext(runContext)
-        ? runContext.conversation.spaceId
+    create_work_areas: async ({ assignments }, { auth, runContext }) => {
+      if (!isAgentLoopRunContext(runContext)) {
+        return new Err(
+          new MCPError(
+            "Work areas can only be created inside an Activation Pod conversation."
+          )
+        );
+      }
+      const { spaceId: conversationSpaceId } = runContext.conversation;
+      const conversationPod = conversationSpaceId
+        ? await SpaceResource.fetchById(auth, conversationSpaceId)
         : null;
-      const pod = podSpaceId
-        ? await SpaceResource.fetchById(auth, podSpaceId)
-        : null;
-      const activationPod = pod
-        ? await ActivationPodResource.fetchBySpace(auth, pod)
-        : null;
-
-      if (!activationPod) {
+      if (
+        !conversationPod ||
+        !(await ActivationPodResource.fetchBySpace(auth, conversationPod))
+      ) {
         return new Err(
           new MCPError(
             "Work areas can only be created inside an Activation Pod conversation."
@@ -413,56 +401,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         );
       }
 
-      if (podId) {
-        if (
-          pod?.sId !== podId ||
-          assignments.length !== 1 ||
-          assignments[0]?.podIds
-        ) {
-          return new Err(
-            new MCPError(
-              "Current-user creation requires the current podId and exactly one assignment without podIds."
-            )
-          );
-        }
-
-        const [assignment] = assignments;
-        const created = await concurrentExecutor(
-          assignment.workAreas,
-          (item) =>
-            ActivationWorkAreaResource.makeNew(auth, {
-              title: item.title,
-              description: item.description,
-              podId: activationPod.id,
-            }),
-          { concurrency: 8 }
-        );
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `Created ${created.length} work areas for the current Activation Pod.`,
-          },
-        ]);
-      }
-
-      if (assignments.some((assignment) => !assignment.podIds)) {
-        return new Err(
-          new MCPError(
-            "Delegated creation requires podIds on every assignment."
-          )
-        );
-      }
-      if (!auth.isAdmin()) {
-        return new Err(
-          new MCPError(
-            "Only workspace admins can create work areas for other users."
-          )
-        );
-      }
-
-      const allPodIds = assignments.flatMap(
-        (assignment) => assignment.podIds ?? []
-      );
+      const allPodIds = assignments.flatMap((a) => a.podIds);
       const uniquePodIds = [...new Set(allPodIds)];
       if (uniquePodIds.length !== allPodIds.length) {
         return new Err(
@@ -484,6 +423,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         spaces.map((s) => s.id)
       );
       const spacesBySId = new Map(spaces.map((s) => [s.sId, s]));
+      const spacesByModelId = new Map(spaces.map((s) => [s.id, s]));
       const activationPodBySpaceModelId = new Map(
         activationPods.map((p) => [p.spaceId, p])
       );
@@ -498,28 +438,25 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         );
       }
 
-      const targetUsers = await UserResource.fetchByModelIds(
-        activationPods.map((p) => p.userId)
-      );
-      const { memberships } = await MembershipResource.getActiveMemberships({
-        workspace: auth.getNonNullableWorkspace(),
-        users: targetUsers,
-      });
-      const activeMemberUserIds = new Set(memberships.map((m) => m.userId));
-      const inactiveUsers = targetUsers.filter(
-        (u) => !activeMemberUserIds.has(u.id)
-      );
-      if (inactiveUsers.length > 0) {
+      const callerUserId = auth.getNonNullableUser().id;
+      const unauthorizedPods = auth.isAdmin()
+        ? []
+        : activationPods.filter((p) => p.userId !== callerUserId);
+      if (unauthorizedPods.length > 0) {
         return new Err(
           new MCPError(
-            `User(s) are not active workspace members: ${inactiveUsers.map((u) => u.sId).join(", ")}.`
+            `Not authorized to create work areas for pod(s): ${unauthorizedPods.map((p) => spacesByModelId.get(p.spaceId)?.sId ?? String(p.spaceId)).join(", ")}.`
           )
         );
       }
+
+      const targetUsers = await UserResource.fetchByModelIds(
+        activationPods.map((p) => p.userId)
+      );
       const userByModelId = new Map(targetUsers.map((u) => [u.id, u]));
 
       const perUserAssignments = assignments.flatMap((assignment) =>
-        (assignment.podIds ?? []).flatMap((podSId) => {
+        assignment.podIds.flatMap((podSId) => {
           const space = spacesBySId.get(podSId);
           const activationPod = space
             ? activationPodBySpaceModelId.get(space.id)
@@ -539,19 +476,37 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         })
       );
 
-      const createResult = await ActivationWorkAreaResource.makeNewForUsers(
-        auth,
-        { assignments: perUserAssignments }
-      );
-      if (createResult.isErr()) {
-        return new Err(new MCPError(createResult.error.message));
+      let savedCount: number;
+      if (auth.isAdmin()) {
+        const createResult = await ActivationWorkAreaResource.makeNewForUsers(
+          auth,
+          { assignments: perUserAssignments }
+        );
+        if (createResult.isErr()) {
+          return new Err(new MCPError(createResult.error.message));
+        }
+        savedCount = createResult.value.length;
+      } else {
+        // Non-admin: all pods belong to the calling user (verified above).
+        const rows = await Promise.all(
+          perUserAssignments.flatMap(({ activationPodModelId, workAreas }) =>
+            workAreas.map((w) =>
+              ActivationWorkAreaResource.makeNew(auth, {
+                title: w.title,
+                description: w.description,
+                podId: activationPodModelId,
+              })
+            )
+          )
+        );
+        savedCount = rows.length;
       }
 
       return new Ok([
         {
           type: "text" as const,
           text:
-            `Saved ${createResult.value.length} work areas independently for ` +
+            `Saved ${savedCount} work areas independently for ` +
             `${uniquePodIds.length} users across ${assignments.length} approved map(s).`,
         },
       ]);
