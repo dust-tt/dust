@@ -1825,7 +1825,15 @@ describe("SpaceResource", () => {
         { members: [regularGroup, globalGroup] }
       );
 
-      const spaces = await SpaceResource.listWorkspaceSpacesAsMember(userAuth);
+      // Membership reads from the caller's grants, resolved once at auth construction, so rebuild
+      // the auth after the space (and its grants) exist — same as space authorization (`canRead`).
+      const refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        userAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+
+      const spaces =
+        await SpaceResource.listWorkspaceSpacesAsMember(refreshedUserAuth);
       expect(spaces.some((s) => s.id === openSpace.id)).toBe(true);
     });
 
@@ -2018,9 +2026,26 @@ describe("SpaceResource", () => {
           { members: [regularGroup, globalGroup] }
         );
 
-        expect(openSpace.isMember(adminAuth)).toBe(true);
-        expect(openSpace.isMember(userAuth)).toBe(true);
-        expect(openSpace.isMember(nonMemberAuth)).toBe(true);
+        // Membership reads from the caller's grants, which are resolved once at auth construction,
+        // so the auths must be rebuilt after the space (and its grants) exist — same as the
+        // restricted case below. This matches how space authorization (`canRead`) already resolves.
+        const openAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          adminAuth.getNonNullableUser().sId,
+          workspace.sId
+        );
+        const openUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          userAuth.getNonNullableUser().sId,
+          workspace.sId
+        );
+        const openNonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          nonMemberAuth.getNonNullableUser().sId,
+          workspace.sId
+        );
+
+        // Open regular spaces grant every workspace member `reader`, so all are members.
+        expect(openSpace.isMember(openAdminAuth)).toBe(true);
+        expect(openSpace.isMember(openUserAuth)).toBe(true);
+        expect(openSpace.isMember(openNonMemberAuth)).toBe(true);
       });
     });
 
@@ -2133,6 +2158,103 @@ describe("SpaceResource", () => {
         expect(updatedSpace?.isMember(user1Auth)).toBe(true);
         expect(updatedSpace?.isMember(nonMemberAuth)).toBe(false);
       });
+    });
+  });
+
+  describe("listWorkspacePodsAsMember", () => {
+    let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+    let adminAuth: Authenticator;
+    let globalGroup: GroupResource;
+    let systemGroup: GroupResource;
+    let member: UserResource;
+
+    beforeEach(async () => {
+      workspace = await WorkspaceFactory.basic();
+      const adminUser = await UserFactory.basic();
+      member = await UserFactory.basic();
+
+      const { globalGroup: gGroup, systemGroup: sGroup } =
+        await GroupFactory.defaults(workspace);
+      globalGroup = gGroup;
+      systemGroup = sGroup;
+
+      await MembershipFactory.associate(workspace, adminUser, {
+        role: "admin",
+      });
+      await MembershipFactory.associate(workspace, member, { role: "user" });
+
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceResource.makeDefaultsForWorkspace(internalAdminAuth, {
+        globalGroup,
+        systemGroup,
+      });
+
+      adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        workspace.sId
+      );
+    });
+
+    it("returns only the projects the caller is a member or editor of", async () => {
+      // A project the caller is a plain member of.
+      const memberGroup = await GroupResource.makeNew({
+        name: "Pod Members",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      const projectAsMember = await SpaceResource.makeNew(
+        adminAuth,
+        { name: "Member Pod", kind: "project", workspaceId: workspace.id },
+        { members: [memberGroup] }
+      );
+      await memberGroup.dangerouslyAddMembers(adminAuth, {
+        users: [member.toJSON()],
+      });
+
+      // A project the caller is an editor of (SpaceFactory puts the creator in the editor group).
+      const projectAsEditor = await SpaceFactory.project(workspace, member.id);
+
+      // A project the caller has nothing to do with — must not be returned.
+      const otherProject = await SpaceFactory.project(workspace);
+
+      // A regular space the caller is a member of: they hold `write` on it, but it is not a
+      // project, so it must be filtered out by kind.
+      const regularGroup = await GroupResource.makeNew({
+        name: "Regular Members",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      await SpaceResource.makeNew(
+        adminAuth,
+        { name: "Regular Space", kind: "regular", workspaceId: workspace.id },
+        { members: [regularGroup] }
+      );
+      await regularGroup.dangerouslyAddMembers(adminAuth, {
+        users: [member.toJSON()],
+      });
+
+      // Build the caller's auth after all grants exist (grants are snapshotted at construction).
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        member.sId,
+        workspace.sId
+      );
+
+      const pods = await SpaceResource.listWorkspacePodsAsMember(memberAuth);
+
+      expect(pods.map((p) => p.sId).sort()).toEqual(
+        [projectAsMember.sId, projectAsEditor.sId].sort()
+      );
+      expect(pods.map((p) => p.sId)).not.toContain(otherProject.sId);
+    });
+
+    it("returns an empty list when the caller belongs to no project", async () => {
+      await SpaceFactory.project(workspace);
+
+      const pods = await SpaceResource.listWorkspacePodsAsMember(adminAuth);
+
+      expect(pods).toEqual([]);
     });
   });
 });

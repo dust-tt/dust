@@ -24,7 +24,6 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type { GrantVerb } from "@app/types/group_permissions";
 import type { GroupKind, GroupType } from "@app/types/groups";
@@ -46,7 +45,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { GroupSpaceKind, SpaceKind, SpaceType } from "@app/types/space";
 import assert from "assert";
-import uniq from "lodash/uniq";
 import type {
   Attributes,
   CreationAttributes,
@@ -103,6 +101,16 @@ class SpaceGroupReference {
     return this.groupKind === "provisioned";
   }
 }
+
+// Space membership resolved from the caller's governance grants (see `SpaceResource.isMember`). The
+// membership verb differs by space kind because the grants `spaceGroupRoles` writes differ:
+// - Regular spaces grant `read` to every member — open spaces via the global group's `reader`,
+//   restricted spaces via their own groups' `member` — so holding `read` marks membership.
+// - Project (pod) spaces attach the workspace global group as a `reader` viewer on unrestricted
+//   projects, so `read` would count every workspace member as a member. `write` is held only by a
+//   project's editor (`admin`) and member (`member`) groups, so it is what marks an actual member.
+const REGULAR_SPACE_MEMBERSHIP_VERB: GrantVerb = "read";
+const POD_SPACE_MEMBERSHIP_VERB: GrantVerb = "write";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SpaceResource extends BaseResource<SpaceModel> {
@@ -417,40 +425,23 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   static async listWorkspacePodsAsMember(auth: Authenticator) {
-    // Fast path, lookup to pods spaces, we lookup the vault ids of the pods spaces and fetch the spaces by model ids.
-    const raw = await GroupSpaceModel.findAll({
-      attributes: ["vaultId"],
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        kind: { [Op.in]: ["member", "project_editor"] },
-        groupId: { [Op.in]: auth.groupModelIds() },
-      },
-    });
+    // Project (pod) spaces the caller belongs to are those on which they hold the pod membership
+    // verb (see `POD_SPACE_MEMBERSHIP_VERB`): selecting by it and `kind: "project"` reproduces the
+    // former `group_vaults` member/editor lookup, so the previous safety re-filter is redundant.
+    const podSpaceModelIds = auth.getResourceIdsWithVerb(
+      "space",
+      POD_SPACE_MEMBERSHIP_VERB
+    );
+    if (podSpaceModelIds.length === 0) {
+      return [];
+    }
 
-    const podVaultIds = uniq(raw.map((v) => v.vaultId));
-
-    // Then we fetch the spaces by model ids.
-    const allSpaces = await this.baseFetch(auth, {
+    return this.baseFetch(auth, {
       where: {
-        id: { [Op.in]: podVaultIds },
+        id: { [Op.in]: podSpaceModelIds },
         kind: "project",
       },
     });
-
-    // To be on the safe side.
-    const filteredSpaces = allSpaces.filter((s) => s.isMember(auth));
-    if (filteredSpaces.length !== allSpaces.length) {
-      logger.error(
-        {
-          spaceNotMember: allSpaces
-            .filter((s) => !s.isMember(auth))
-            .map((s) => s.sId),
-        },
-        "The user is not a member of some pod spaces. Action: check how we get the podVaultIds"
-      );
-    }
-
-    return filteredSpaces;
   }
 
   static async listProjectSpaces(
@@ -1735,9 +1726,29 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    */
 
   isMember(auth: Authenticator): boolean {
-    return this.isMemberByGroupPredicate((groupModelId) =>
-      auth.hasGroupByModelId(groupModelId)
-    );
+    // Read membership from the caller's resolved space grants rather than raw group membership; the
+    // grants `spaceGroupRoles` writes mirror `isMemberByGroupPredicate` per kind (see the
+    // `*_SPACE_MEMBERSHIP_VERB` constants for why the verb differs between regular and project).
+    switch (this.kind) {
+      // The workspace-wide space: every member belongs to it.
+      case "global":
+        return true;
+      // System groups manage connections and the conversations space is not a membership space; the
+      // group predicate returns false for both regardless of grants.
+      case "system":
+      case "conversations":
+        return false;
+      case "regular":
+        return auth
+          .getGrantedVerbs("space", this.id)
+          .includes(REGULAR_SPACE_MEMBERSHIP_VERB);
+      case "project":
+        return auth
+          .getGrantedVerbs("space", this.id)
+          .includes(POD_SPACE_MEMBERSHIP_VERB);
+      default:
+        assertNever(this.kind);
+    }
   }
 
   /**
