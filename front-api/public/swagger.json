@@ -367,11 +367,12 @@
             "in": "query",
             "name": "view",
             "required": false,
-            "description": "The view to use when retrieving agents:\n- all: Retrieves all non-private agents (default if not authenticated)\n- list: Retrieves all active agents accessible to the user (default if authenticated)\n- published: Retrieves all agents with published scope\n- global: Retrieves all global agents\n- favorites: Retrieves all agents marked as favorites by the user (only available to authenticated users)\n",
+            "description": "The view to use when retrieving agents:\n- all: Retrieves all non-private agents (default if not authenticated)\n- list: Retrieves all active agents accessible to the user (default if authenticated)\n- published: Retrieves all agents with published scope\n- global: Retrieves all global agents\n- favorites: Retrieves all agents marked as favorites by the user (only available to authenticated users)\n- all_unrestricted: Retrieves every active agent of the workspace, including unpublished agents the caller does not edit and agents requesting spaces the caller cannot access. Requires an admin key.\n",
             "schema": {
               "type": "string",
               "enum": [
                 "all",
+                "all_unrestricted",
                 "list",
                 "workspace",
                 "published",
@@ -424,6 +425,9 @@
           },
           "401": {
             "description": "Unauthorized. Invalid or missing authentication token, or attempting to access restricted views without authentication."
+          },
+          "403": {
+            "description": "Forbidden. The all_unrestricted view requires a workspace admin."
           },
           "404": {
             "description": "Workspace not found."
