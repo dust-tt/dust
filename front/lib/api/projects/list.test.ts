@@ -115,6 +115,9 @@ describe("listPodsForScope", () => {
     });
     expect(betaPodRes.isOk()).toBe(true);
 
+    // Refresh so the long-lived auth's governance snapshot includes the just-created pods.
+    await adminAuth.refresh();
+
     const { pods, total } = await listPodsForScope(adminAuth, {
       access: "open",
       q: "alpha",
@@ -144,6 +147,9 @@ describe("listPodsForScope", () => {
       memberIds: [],
     });
     expect(cafePodRes.isOk()).toBe(true);
+
+    // Refresh so the long-lived auth's governance snapshot includes the just-created pod.
+    await adminAuth.refresh();
 
     const { pods, total } = await listPodsForScope(adminAuth, {
       access: "open",
