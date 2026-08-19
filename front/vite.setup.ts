@@ -4,200 +4,17 @@ import "vitest-canvas-mock";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { redisMock } from "@app/tests/utils/mocks/redis";
 import { createNamespace } from "@app/tests/utils/test_cls";
 import { cleanup } from "@testing-library/react";
 import { Sequelize } from "sequelize";
 import { afterEach, beforeEach, vi } from "vitest";
 
 // Mock Redis - must be at module level.
-// runOnRedis uses a shared in-memory store so that set/get/del/ttl persist across calls
-// (needed for OTP challenge generate → validate flows).
-// getRedisCacheClient uses a shared Hash-aware store so warm → fetch round-trips work.
-const redisStore = new Map<string, { value: string; expiresAtMs: number }>();
-const redisHashStore = new Map<string, Map<string, string>>();
-
-function attachHashCommands(
-  client: Record<string, unknown>,
-  hashStore: Map<string, Map<string, string>>
-) {
-  const hSet = vi.fn(async (key: string, field: string, value: string) => {
-    let hash = hashStore.get(key);
-    if (!hash) {
-      hash = new Map();
-      hashStore.set(key, hash);
-    }
-    hash.set(field, value);
-    return 1;
-  });
-  const hGetAll = vi.fn(async (key: string) => {
-    const hash = hashStore.get(key);
-    if (!hash) {
-      return {};
-    }
-    return Object.fromEntries(hash);
-  });
-  const pExpire = vi.fn(async (_key: string, _ms: number) => true);
-
-  const multi = vi.fn(() => {
-    const ops: Array<() => Promise<unknown>> = [];
-    const multiClient = {
-      hSet: (key: string, field: string, value: string) => {
-        ops.push(() => hSet(key, field, value));
-        return multiClient;
-      },
-      hGetAll: (key: string) => {
-        ops.push(() => hGetAll(key));
-        return multiClient;
-      },
-      pExpire: (key: string, ms: number) => {
-        ops.push(() => pExpire(key, ms));
-        return multiClient;
-      },
-      exec: async () => Promise.all(ops.map((op) => op())),
-    };
-    return multiClient;
-  });
-
-  Object.assign(client, { hSet, hGetAll, pExpire, multi });
-}
-
-function createStatefulMockRedisClient() {
-  const client: Record<string, unknown> = {
-    get: vi.fn(async (key: string) => {
-      const entry = redisStore.get(key);
-      if (!entry) {
-        return null;
-      }
-      if (entry.expiresAtMs > 0 && Date.now() > entry.expiresAtMs) {
-        redisStore.delete(key);
-        return null;
-      }
-      return entry.value;
-    }),
-    set: vi.fn(
-      async (
-        key: string,
-        value: string,
-        opts?: { EX?: number; PX?: number }
-      ) => {
-        // The "OK" return matters: distributedLock treats anything else as
-        // acquisition failure, and a mock that returns undefined spins
-        // executeWithLock's acquire loop until its 30s timeout in every
-        // suite that takes a lock. NX is deliberately NOT enforced: tests
-        // run sequentially, so mutual exclusion never needs to hold, and
-        // enforcing it would break consumers that legitimately re-set a
-        // live key (and require the unlock Lua script to really delete).
-        const expiresAtMs = opts?.EX
-          ? Date.now() + opts.EX * 1000
-          : opts?.PX
-            ? Date.now() + opts.PX
-            : 0;
-        redisStore.set(key, { value, expiresAtMs });
-        return "OK";
-      }
-    ),
-    del: vi.fn(async (key: string) => {
-      redisStore.delete(key);
-      redisHashStore.delete(key);
-    }),
-    ttl: vi.fn(async (key: string) => {
-      const entry = redisStore.get(key);
-      if (!entry || entry.expiresAtMs === 0) {
-        return -1;
-      }
-      const remainingMs = entry.expiresAtMs - Date.now();
-      return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : -2;
-    }),
-    zAdd: vi.fn(),
-    expire: vi.fn(),
-    zRange: vi.fn(),
-    zCount: vi.fn().mockResolvedValue(0),
-    hGet: vi.fn(),
-    quit: vi.fn().mockResolvedValue(undefined),
-    on: vi.fn(),
-    xAdd: vi.fn().mockResolvedValue("0-0"),
-    xRead: vi.fn().mockResolvedValue(null),
-    xDel: vi.fn().mockResolvedValue(1),
-    publish: vi.fn().mockResolvedValue(1),
-    subscribe: vi.fn().mockResolvedValue(undefined),
-    unsubscribe: vi.fn().mockResolvedValue(undefined),
-    ping: vi.fn().mockResolvedValue("PONG"),
-    eval: vi.fn().mockResolvedValue(1),
-    exists: vi.fn(async (key: string) => {
-      const entry = redisStore.get(key);
-      if (!entry) {
-        return 0;
-      }
-      if (entry.expiresAtMs > 0 && Date.now() > entry.expiresAtMs) {
-        redisStore.delete(key);
-        return 0;
-      }
-      return 1;
-    }),
-  };
-  attachHashCommands(client, redisHashStore);
-  return client;
-}
-
-const createMockRedisClient = () => {
-  const client: Record<string, unknown> = {
-    get: vi.fn(),
-    set: vi.fn(),
-    del: vi.fn(),
-    ttl: vi.fn(),
-    zAdd: vi.fn(),
-    expire: vi.fn(),
-    zRange: vi.fn(),
-    zCount: vi.fn().mockResolvedValue(0),
-    hGet: vi.fn(),
-    quit: vi.fn().mockResolvedValue(undefined),
-    on: vi.fn(),
-    xAdd: vi.fn().mockResolvedValue("0-0"),
-    xRead: vi.fn().mockResolvedValue(null),
-    xDel: vi.fn().mockResolvedValue(1),
-    publish: vi.fn().mockResolvedValue(1),
-    subscribe: vi.fn().mockResolvedValue(undefined),
-    unsubscribe: vi.fn().mockResolvedValue(undefined),
-    ping: vi.fn().mockResolvedValue("PONG"),
-    eval: vi.fn().mockResolvedValue(1),
-  };
-  // Stateless clients get an isolated hash store (fresh per client instance).
-  attachHashCommands(client, new Map());
-  return client;
-};
-
-// runOnRedis: shared stateful client (persists across calls within a test).
-const statefulRedisClient = createStatefulMockRedisClient();
-// getRedisCacheClient: shared Hash-aware client so warm → fetch round-trips work.
-const sharedCacheRedisClient = createStatefulMockRedisClient();
-
-const mockRunOnRedisImpl = async (
-  opts: unknown,
-  fn: (
-    client: ReturnType<typeof createStatefulMockRedisClient>
-  ) => Promise<unknown>
-) => {
-  return fn(statefulRedisClient);
-};
-
-// runOnRedisCache: fresh client per call (isolated hash store).
-const mockRunOnRedisCacheImpl = async (
-  opts: unknown,
-  fn: (client: ReturnType<typeof createMockRedisClient>) => Promise<unknown>
-) => {
-  const mockRedisClient = createMockRedisClient();
-  return fn(mockRedisClient);
-};
-
-vi.mock("@app/lib/api/redis", () => ({
-  getRedisStreamClient: vi.fn().mockResolvedValue(statefulRedisClient),
-  createRedisStreamClient: vi.fn().mockResolvedValue(createMockRedisClient()),
-  getRedisCacheClient: vi.fn().mockResolvedValue(sharedCacheRedisClient),
-  runOnRedis: vi.fn().mockImplementation(mockRunOnRedisImpl),
-  runOnRedisCache: vi.fn().mockImplementation(mockRunOnRedisCacheImpl),
-  closeRedisClients: vi.fn().mockResolvedValue(undefined),
-  REDIS_CACHE_CONCURRENCY: 32,
-}));
+vi.mock("@app/lib/api/redis", async () => {
+  const { redisMock } = await import("@app/tests/utils/mocks/redis");
+  return redisMock.mock();
+});
 
 vi.mock("@app/lib/utils/cache", () => ({
   buildCacheWithRedisKey: (cacheId: string, resolverKey: string) =>
@@ -302,8 +119,7 @@ vi.mock("@app/temporal/es_indexation/client", async (importOriginal) => {
 beforeEach(async (c) => {
   vi.clearAllMocks();
   fileStorageMock.reset();
-  redisStore.clear();
-  redisHashStore.clear();
+  redisMock.reset();
 
   const namespace = createNamespace("test-namespace");
 

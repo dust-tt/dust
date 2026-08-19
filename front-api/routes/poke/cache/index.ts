@@ -7,11 +7,13 @@ import type {
   RedisCacheResult,
 } from "@app/types/api/poke/cache";
 import { isString } from "@app/types/shared/utils/general";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { getPokeCacheOperations } from "@front-api/lib/api/poke/cache_catalog";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
+import mapValues from "lodash/mapValues";
 import { z } from "zod";
 
 import catalog from "./catalog";
@@ -118,6 +120,12 @@ function resolveCacheKey(
   };
 }
 
+function decodeCacheValue(rawValue: string): unknown {
+  const parsed = safeParseJSON(rawValue);
+
+  return parsed.isOk() ? parsed.value : rawValue;
+}
+
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetPokeCacheResponseBody> => {
   const r = resolveCacheKey(ctx);
@@ -130,21 +138,21 @@ app.get("/", async (ctx): HandlerResult<GetPokeCacheResponseBody> => {
     runFn: typeof runOnRedisCache
   ): Promise<RedisCacheResult> => {
     return runFn({ origin: "poke_cache_lookup" }, async (client) => {
-      const [rawValue, ttl] = await Promise.all([
-        client.get(cacheKey),
-        client.ttl(cacheKey),
-      ]);
+      const keyType = await client.type(cacheKey);
+      const ttl = await client.ttl(cacheKey);
 
-      let parsed: unknown | null = null;
-      if (rawValue !== null) {
-        try {
-          parsed = JSON.parse(rawValue);
-        } catch {
-          parsed = rawValue;
-        }
+      if (keyType === "hash") {
+        const fields = await client.hGetAll(cacheKey);
+
+        return { value: mapValues(fields, decodeCacheValue), ttlSeconds: ttl };
       }
 
-      return { value: parsed, ttlSeconds: ttl };
+      const rawValue = await client.get(cacheKey);
+
+      return {
+        value: rawValue === null ? null : decodeCacheValue(rawValue),
+        ttlSeconds: ttl,
+      };
     });
   };
 
