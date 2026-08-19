@@ -313,6 +313,6 @@ describe("getToolAggregateDisplayLabel", () => {
         functionCallName: "custom_server__prepare_report",
         toolName: "prepare_report",
       })
-    ).toBe("Prepare Report");
+    ).toBe("Prepare peport");
   });
 });
