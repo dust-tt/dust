@@ -57,10 +57,22 @@ describe("GET/POST /api/w/:wId/spaces/:spaceId/sandbox/env-vars", () => {
     vi.clearAllMocks();
   });
 
-  it("returns 403 for non-admin users", async () => {
+  it("lets a non-admin pod member list env vars", async () => {
     const { workspace, pod } = await setupTest({ role: "user" });
 
     const response = await listEnvVars(workspace.sId, pod.sId);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ envVars: [] });
+  });
+
+  it("rejects a non-admin write with a 403 even for a pod member", async () => {
+    const { workspace, pod } = await setupTest({ role: "user" });
+
+    const response = await postEnvVar(workspace.sId, pod.sId, {
+      name: "API_TOKEN",
+      value: "secret",
+    });
 
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({

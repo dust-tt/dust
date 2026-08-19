@@ -152,16 +152,37 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     ).toBeUndefined();
   });
 
-  it("rejects non-admin users with a 403", async () => {
-    const { workspace } = await setupTest({ role: "user" });
-    const pod = await SpaceFactory.project(workspace);
+  it("lets a non-admin pod member read the policy", async () => {
+    const { workspace, user } = await setupTest({ role: "user" });
+    const pod = await SpaceFactory.project(workspace, user.id);
+    seedPolicyFile(workspace.sId, pod.sId, {
+      allowedDomains: ["api.github.com"],
+    });
 
     const response = await getPolicy(workspace.sId, pod.sId);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      policy: { allowedDomains: ["api.github.com"] },
+      requestedDomains: [],
+    });
+  });
+
+  it("rejects a non-admin write with a 403 even for a pod member", async () => {
+    const { workspace, user } = await setupTest({ role: "user" });
+    const pod = await SpaceFactory.project(workspace, user.id);
+
+    const response = await putPolicy(workspace.sId, pod.sId, {
+      allowedDomains: ["api.github.com"],
+    });
 
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({
       error: { type: "workspace_auth_error" },
     });
+    expect(
+      fileStorageMock.getObject(`w/${workspace.sId}/sandboxes/${pod.sId}.json`)
+    ).toBeUndefined();
   });
 
   it("rejects workspaces without sandbox_functions with a 403", async () => {

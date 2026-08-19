@@ -14,6 +14,7 @@ import type {
 } from "@app/types/api/sandbox/egress_policy";
 import { parseEgressPolicy } from "@app/types/sandbox/egress_policy";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
@@ -77,6 +78,7 @@ app.get(
 /** @ignoreswagger */
 app.put(
   "/",
+  ensureIsAdmin(),
   withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx): HandlerResult<PutPodEgressPolicyResponseBody> => {
     const auth = ctx.get("auth");
@@ -147,6 +149,7 @@ app.put(
 /** @ignoreswagger */
 app.post(
   "/requests/dismiss",
+  ensureIsAdmin(),
   withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx): HandlerResult<PutPodEgressPolicyResponseBody> => {
     const auth = ctx.get("auth");

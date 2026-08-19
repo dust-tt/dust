@@ -10,6 +10,7 @@ import type {
 } from "@app/types/api/sandbox/env_vars";
 import { SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
@@ -50,6 +51,7 @@ app.get(
 /** @ignoreswagger */
 app.post(
   "/",
+  ensureIsAdmin(),
   withSpace({ requireProject: true, requireCanReadOrAdministrate: true }),
   validate("json", PostPodSandboxEnvVarBodySchema),
   async (ctx): HandlerResult<PostSandboxEnvVarsResponseBody> => {

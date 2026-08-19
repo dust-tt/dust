@@ -54,15 +54,18 @@ interface SandboxEnvVarsSectionProps {
   // Central admin page, workspace scope only: enables applying a new
   // variable to specific Pods and the per-row "Override in Pods" action.
   targetablePods?: SandboxEnvVarPodOption[];
+  // Whether to show the add/edit/delete controls. Read-only viewers (non-admin
+  // pod members) still see the variables; the caller gates mounting.
+  canEdit: boolean;
 }
 
 export function SandboxEnvVarsSection({
   owner,
   spaceId,
   targetablePods,
+  canEdit,
 }: SandboxEnvVarsSectionProps) {
-  const { isAdmin, isComputerEnabled, canAdministrateComputer } =
-    useComputerAdminAccess();
+  const { isComputerEnabled } = useComputerAdminAccess();
   const [dialogMode, setDialogMode] =
     useState<SandboxEnvVarFormDialogMode | null>(null);
   const [envVarToDelete, setEnvVarToDelete] =
@@ -75,7 +78,7 @@ export function SandboxEnvVarsSection({
     useSandboxEnvVars({
       owner,
       spaceId,
-      disabled: !canAdministrateComputer,
+      disabled: !isComputerEnabled,
     });
   const { patchSandboxEnvVar, isPatchingSandboxEnvVar } = usePatchSandboxEnvVar(
     { owner, spaceId }
@@ -134,13 +137,6 @@ export function SandboxEnvVarsSection({
   };
 
   const renderBody = () => {
-    if (!isAdmin) {
-      return (
-        <ContentMessage variant="info" icon={InfoCircle} size="lg">
-          Only workspace admins can manage Computer environment variables.
-        </ContentMessage>
-      );
-    }
     if (!isComputerEnabled) {
       return (
         <ContentMessage variant="info" icon={InfoCircle} size="lg">
@@ -207,13 +203,15 @@ export function SandboxEnvVarsSection({
           </div>
         </ContentMessage>
 
-        <div className="flex justify-end">
-          <Button
-            label="Add variable"
-            icon={Plus}
-            onClick={() => setDialogMode({ kind: "create" })}
-          />
-        </div>
+        {canEdit && (
+          <div className="flex justify-end">
+            <Button
+              label="Add variable"
+              icon={Plus}
+              onClick={() => setDialogMode({ kind: "create" })}
+            />
+          </div>
+        )}
 
         {envVars.length === 0 ? (
           <ContentMessage variant="primary" size="lg">
@@ -260,48 +258,52 @@ export function SandboxEnvVarsSection({
                         ))}
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {targetablePods && !spaceId ? (
+                  {canEdit && (
+                    <div className="flex shrink-0 items-center gap-2">
+                      {targetablePods && !spaceId ? (
+                        <Button
+                          variant="outline"
+                          size="mini"
+                          icon={CubeOutline}
+                          tooltip={`Override ${envVar.name} in Pods`}
+                          disabled={isAnyMutationPending}
+                          onClick={() =>
+                            setDialogMode({ kind: "override", envVar })
+                          }
+                        />
+                      ) : null}
                       <Button
                         variant="outline"
                         size="mini"
-                        icon={CubeOutline}
-                        tooltip={`Override ${envVar.name} in Pods`}
+                        icon={envVar.kind === "config" ? Lock01 : Globe01}
+                        tooltip={
+                          envVar.kind === "config"
+                            ? `Promote ${envVar.name} to HTTPS secret`
+                            : `Edit allowed domains for ${envVar.name}`
+                        }
+                        disabled={isAnyMutationPending}
+                        onClick={() => openConfigureDomainsDialog(envVar)}
+                      />
+                      <Button
+                        variant="outline"
+                        size="mini"
+                        icon={Edit04}
+                        tooltip={`Replace value of ${envVar.name}`}
                         disabled={isAnyMutationPending}
                         onClick={() =>
-                          setDialogMode({ kind: "override", envVar })
+                          setDialogMode({ kind: "replace", envVar })
                         }
                       />
-                    ) : null}
-                    <Button
-                      variant="outline"
-                      size="mini"
-                      icon={envVar.kind === "config" ? Lock01 : Globe01}
-                      tooltip={
-                        envVar.kind === "config"
-                          ? `Promote ${envVar.name} to HTTPS secret`
-                          : `Edit allowed domains for ${envVar.name}`
-                      }
-                      disabled={isAnyMutationPending}
-                      onClick={() => openConfigureDomainsDialog(envVar)}
-                    />
-                    <Button
-                      variant="outline"
-                      size="mini"
-                      icon={Edit04}
-                      tooltip={`Replace value of ${envVar.name}`}
-                      disabled={isAnyMutationPending}
-                      onClick={() => setDialogMode({ kind: "replace", envVar })}
-                    />
-                    <Button
-                      variant="warning"
-                      size="mini"
-                      icon={Trash01}
-                      tooltip={`Delete ${envVar.name}`}
-                      disabled={isAnyMutationPending}
-                      onClick={() => setEnvVarToDelete(envVar)}
-                    />
-                  </div>
+                      <Button
+                        variant="warning"
+                        size="mini"
+                        icon={Trash01}
+                        tooltip={`Delete ${envVar.name}`}
+                        disabled={isAnyMutationPending}
+                        onClick={() => setEnvVarToDelete(envVar)}
+                      />
+                    </div>
+                  )}
                 </ListItem>
               );
             })}

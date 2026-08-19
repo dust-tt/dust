@@ -10,13 +10,18 @@ import { ContentMessage, InfoCircle, Spinner } from "@dust-tt/sparkle";
 interface PodNetworkSectionProps {
   owner: LightWorkspaceType;
   podId: string;
+  // Pod members can view; only workspace admins can edit (matching the API).
+  canEdit: boolean;
 }
 
 // Pod-level sandbox egress allowlist. Merged on top of the workspace-level
-// allowlist for the Pod's Shared Computer. Workspace-admin only (matching
-// the API), gated behind the workspace-level Computer flag at the call site
-// (useComputerAdminAccess).
-export function PodNetworkSection({ owner, podId }: PodNetworkSectionProps) {
+// allowlist for the Pod's Shared Computer. Visible to anyone who can open the
+// Pod settings page; editable only by workspace admins.
+export function PodNetworkSection({
+  owner,
+  podId,
+  canEdit,
+}: PodNetworkSectionProps) {
   const {
     policy,
     requestedDomains,
@@ -68,6 +73,7 @@ export function PodNetworkSection({ owner, podId }: PodNetworkSectionProps) {
         onSave={(allowedDomains) => updatePodEgressPolicy({ allowedDomains })}
         isUpdating={isUpdatingPodEgressPolicy || isDismissingRequest}
         emptyMessage="No Pod-specific domains are currently allowed."
+        readOnly={!canEdit}
       />
     </div>
   );

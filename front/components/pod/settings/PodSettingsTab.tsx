@@ -101,11 +101,11 @@ export function PodSettingsTab({
   const { hasFeature } = useFeatureFlags();
   const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
   const hasAdminControlledPodsFeature = hasFeature("admin_controlled_pods");
-  // The pod sandbox admin sections (network allowlist, env vars) are
-  // workspace-admin only, gated by the workspace-level Computer flag; pod
-  // membership is deliberately not consulted. The hook mirrors the API gate
-  // on /spaces/:spaceId/sandbox — change both together.
-  const { canAdministrateComputer: isPodSandboxAdminEnabled } =
+  // The pod sandbox sections (network allowlist, env vars) are visible to
+  // anyone who can open this page once the feature is on, and editable only by
+  // workspace admins. Mirrors the API gate on /spaces/:spaceId/sandbox (GET
+  // requireCanReadOrAdministrate, writes ensureIsAdmin) — change both together.
+  const { canViewPodComputerSettings, canAdministratePods: canEditComputer } =
     useComputerAdminAccess();
 
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({
@@ -819,13 +819,21 @@ export function PodSettingsTab({
           )}
         </div>
 
-        {isPodSandboxAdminEnabled && (
-          <PodNetworkSection owner={owner} podId={pod.sId} />
+        {canViewPodComputerSettings && (
+          <PodNetworkSection
+            owner={owner}
+            podId={pod.sId}
+            canEdit={canEditComputer}
+          />
         )}
 
-        {isPodSandboxAdminEnabled && (
+        {canViewPodComputerSettings && (
           <div className="flex w-full flex-col gap-2">
-            <SandboxEnvVarsSection owner={owner} spaceId={pod.sId} />
+            <SandboxEnvVarsSection
+              owner={owner}
+              spaceId={pod.sId}
+              canEdit={canEditComputer}
+            />
           </div>
         )}
 

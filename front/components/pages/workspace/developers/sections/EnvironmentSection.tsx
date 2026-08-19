@@ -1,5 +1,6 @@
 import type { SandboxEnvVarPodOption } from "@app/components/sandbox/SandboxEnvVarFormDialog";
 import { SandboxEnvVarsSection } from "@app/components/sandbox/SandboxEnvVarsSection";
+import { useComputerAdminAccess } from "@app/hooks/useComputerAdminAccess";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 
 interface EnvironmentSectionProps {
@@ -13,8 +14,13 @@ export function EnvironmentSection({
   targetablePods,
 }: EnvironmentSectionProps) {
   const owner = useWorkspace();
+  const { canAdministrateComputer } = useComputerAdminAccess();
 
   return (
-    <SandboxEnvVarsSection owner={owner} targetablePods={targetablePods} />
+    <SandboxEnvVarsSection
+      owner={owner}
+      targetablePods={targetablePods}
+      canEdit={canAdministrateComputer}
+    />
   );
 }
