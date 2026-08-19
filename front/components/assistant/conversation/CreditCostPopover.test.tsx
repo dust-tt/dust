@@ -175,6 +175,28 @@ describe("CreditCostPopover", () => {
     expect(screen.getByText("7 credits")).toBeInTheDocument();
   });
 
+  it("uses the authoritative sub-agent total returned by the endpoint", () => {
+    mockUseAgentMessageConsumption.mockReturnValue({
+      consumption: {
+        billedCredits: 20,
+        subAgentBilledCredits: 282,
+        totalBilledCredits: 302,
+        details: {
+          attributionVersion: 3,
+          agentWorkCredits: 20,
+          tools: [],
+        },
+      },
+      isConsumptionLoading: false,
+      mutateConsumption: vi.fn(),
+    });
+
+    render(<CreditCostPopover {...defaultProps} subAgentCredits={0} />);
+
+    expect(screen.getByText("302 credits")).toBeInTheDocument();
+    expect(screen.getByText("282 credits")).toBeInTheDocument();
+  });
+
   it("hides the conversation consumption button when the credits panel is open", () => {
     mockSidePanelContext.currentPanel = "credits";
     mockUseAgentMessageConsumption.mockReturnValue({
