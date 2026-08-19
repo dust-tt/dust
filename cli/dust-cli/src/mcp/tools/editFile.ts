@@ -2,6 +2,7 @@ import fs from "fs";
 import { z } from "zod";
 
 import { normalizeError } from "../../utils/errors.js";
+import { resolveInSandbox } from "../../utils/sandbox.js";
 import type { McpTool } from "../types/tools.js";
 import { ReadFileTool } from "./readFile.js";
 
@@ -70,11 +71,22 @@ export class EditFileTool implements McpTool {
   }
 
   async execute({
-    path: filePath,
+    path: requestedPath,
     old_string,
     new_string,
     expected_replacements = 1,
   }: z.infer<typeof this.inputSchema>) {
+    const pathRes = resolveInSandbox(requestedPath);
+    if (pathRes.isErr()) {
+      return {
+        content: [
+          { type: "text" as const, text: `Error: ${pathRes.error.message}` },
+        ],
+        isError: true,
+      };
+    }
+    const filePath = pathRes.value;
+
     try {
       // Validate file exists and is readable
       if (!fs.existsSync(filePath)) {

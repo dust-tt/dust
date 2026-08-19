@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { normalizeError } from "../../utils/errors.js";
 import { processFile } from "../../utils/fileHandling.js";
+import { resolveInSandbox } from "../../utils/sandbox.js";
 import type { McpTool } from "../types/tools.js";
 
 export class ReadFileTool implements McpTool {
@@ -37,7 +38,17 @@ export class ReadFileTool implements McpTool {
     offset = 0,
     limit = 5000,
   }: z.infer<typeof this.inputSchema>) {
-    const content = await processFile(filePath, offset, limit);
+    const pathRes = resolveInSandbox(filePath);
+    if (pathRes.isErr()) {
+      return {
+        content: [
+          { type: "text" as const, text: `Error: ${pathRes.error.message}` },
+        ],
+        isError: true,
+      };
+    }
+
+    const content = await processFile(pathRes.value, offset, limit);
     if (content.isErr()) {
       return {
         content: [

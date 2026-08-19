@@ -28,3 +28,6 @@ jobs:
       - name: Typecheck
         working-directory: cli/dust-cli
         run: npx tsc --version && npx tsc
+      - name: Test
+        working-directory: cli/dust-cli
+        run: npm test
