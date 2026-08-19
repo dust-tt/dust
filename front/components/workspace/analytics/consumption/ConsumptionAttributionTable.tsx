@@ -171,7 +171,7 @@ function VsPrevCell({
         <Tooltip
           label="Not enough data to compute"
           tooltipTriggerAsChild
-          trigger={<span className="text-sm text-muted-foreground">N.A</span>}
+          trigger={<span className="text-sm text-muted-foreground">--</span>}
         />
       </DataTable.CellContent>
     );
