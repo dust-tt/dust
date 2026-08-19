@@ -473,18 +473,18 @@ function BillingToggle({ billing, setBilling }: BillingToggleProps) {
   }, [billing]);
 
   const pillBase =
-    "relative z-[1] inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full px-4 heading-sm motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-muted";
+    "relative z-[1] inline-flex h-8 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 heading-sm motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-muted";
 
   return (
     <div
       ref={wrapRef}
       role="group"
       aria-label="Billing period"
-      className="relative inline-flex items-center gap-1 rounded-full border border-border bg-muted p-1"
+      className="relative flex w-full items-center gap-1 rounded-full bg-muted p-0.5"
     >
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute top-1 bottom-1 rounded-full border border-border bg-background shadow-sm motion-safe:transition-[left,width] motion-safe:duration-[220ms] motion-safe:ease-out"
+        className="pointer-events-none absolute top-0.5 bottom-0.5 rounded-full border border-border bg-background motion-safe:transition-[left,width] motion-safe:duration-[220ms] motion-safe:ease-out"
         style={{ left: sliderStyle.left, width: sliderStyle.width }}
       />
       <button
@@ -498,7 +498,7 @@ function BillingToggle({ billing, setBilling }: BillingToggleProps) {
         )}
       >
         Yearly
-        <Chip size="mini" color="success" label="Save 20%" />
+        <Chip size="mini" color="highlight" label="Save 20%" />
       </button>
       <button
         type="button"
@@ -519,6 +519,7 @@ function BillingToggle({ billing, setBilling }: BillingToggleProps) {
 interface PlanCardProps {
   plan: Plan;
   billing: Billing;
+  setBilling: (b: Billing) => void;
   onBusinessStart: () => void;
   onEnterpriseContact: () => void;
 }
@@ -526,6 +527,7 @@ interface PlanCardProps {
 function PlanCard({
   plan,
   billing,
+  setBilling,
   onBusinessStart,
   onEnterpriseContact,
 }: PlanCardProps) {
@@ -577,6 +579,9 @@ function PlanCard({
       {plan.seatTiers && (
         <>
           <Separator className="mb-4" />
+          <div className="mb-4">
+            <BillingToggle billing={billing} setBilling={setBilling} />
+          </div>
           <div className="mb-5">
             <div className="flex flex-col gap-4">
               {plan.seatTiers.map((tier) => {
@@ -631,6 +636,9 @@ function PlanCard({
                 );
               })}
             </div>
+            <p className="copy-xs mt-5 text-right text-primary-400">
+              Excluding VAT
+            </p>
           </div>
         </>
       )}
@@ -711,14 +719,13 @@ function Hero({
         enterprise-ready deployment, governance, and support
       </p>
 
-      <BillingToggle billing={billing} setBilling={setBilling} />
-
       <div className="mt-12 grid w-full grid-cols-1 items-stretch gap-5 md:grid-cols-2 md:max-w-3xl">
         {PLANS.map((p) => (
           <PlanCard
             key={p.id}
             plan={p}
             billing={billing}
+            setBilling={setBilling}
             onBusinessStart={onBusinessStart}
             onEnterpriseContact={onEnterpriseContact}
           />
