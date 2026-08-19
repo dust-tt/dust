@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import type { ActivationWorkAreaStatus } from "@app/lib/models/activation/activation_work_area";
+import type { PublicActivationWorkAreaStatus } from "@app/lib/models/activation/activation_work_area";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -11,7 +11,7 @@ export interface ActivationWorkAreaForUserType {
   sId: string;
   title: string;
   description: string;
-  status: ActivationWorkAreaStatus;
+  status: PublicActivationWorkAreaStatus;
   createdAt: number;
 }
 
@@ -29,7 +29,7 @@ export async function listActivationWorkAreasForUser(
     status,
     podId,
   }: {
-    status?: ActivationWorkAreaStatus;
+    status?: PublicActivationWorkAreaStatus;
     podId?: string;
   } = {}
 ): Promise<ActivationWorkAreaForUserType[]> {
@@ -67,7 +67,7 @@ export async function updateActivationWorkAreaForUser(
     description,
   }: {
     workAreaId: string;
-    status?: ActivationWorkAreaStatus;
+    status?: PublicActivationWorkAreaStatus;
     title?: string;
     description?: string;
   }

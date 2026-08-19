@@ -7,10 +7,15 @@ import type { CreationOptional, ForeignKey } from "sequelize";
 export const ACTIVATION_WORK_AREA_STATUSES = [
   "suggested",
   "dismissed",
+  // Legacy values still present on existing rows. Treat as `suggested`.
+  "candidate",
+  "confirmed",
 ] as const;
 
 export type ActivationWorkAreaStatus =
   (typeof ACTIVATION_WORK_AREA_STATUSES)[number];
+
+export type PublicActivationWorkAreaStatus = "suggested" | "dismissed";
 
 export class ActivationWorkAreaModel extends WorkspaceAwareModel<ActivationWorkAreaModel> {
   declare createdAt: CreationOptional<Date>;
