@@ -28,7 +28,8 @@ vi.mock("@app/lib/metronome/user_block", () => ({
     mockSetWorkspaceProgrammaticCreditStatus,
 }));
 
-vi.mock("@app/lib/utils/cache", () => ({
+vi.mock("@app/lib/utils/cache", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/utils/cache")>()),
   invalidateCacheAfterCommit: mockInvalidateCacheAfterCommit,
 }));
 
