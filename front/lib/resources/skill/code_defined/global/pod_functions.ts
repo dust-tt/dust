@@ -223,15 +223,15 @@ use \`dsbx tools --json --args-json - [SERVER_NAME] [TOOL_NAME]\` and write the 
 object as JSON to stdin. Run \`dsbx tools --help\` from the Computer to explore available servers
 and tools before writing the function.
 
-The outer result is stable (\`content\`, \`isError\` and optional \`structuredContent\`), but
-the content blocks inside are tool-specific. Check \`isError\` and prefer \`structuredContent\`
-when present. Otherwise select the documented machine-readable text or resource block, resolve it
-with \`resolveToolTextContent(block)\` from \`@dust/pod\`, then parse and validate that tool's
-expected shape. Keep this normalization in one helper per integration; never concatenate mixed
-prose and JSON blocks and parse them as one JSON value.
+The outer \`ToolCallResult\` is stable (\`content\`, \`isError\` and optional
+\`structuredContent\`), but the content blocks inside are tool-specific. Check \`isError\`, prefer
+\`structuredContent\` when present, and use \`result.json()\` only when the tool guarantees one JSON
+payload. For mixed prose and data, select the documented machine-readable block from
+\`result.content\`, then parse and validate the expected schema. Keep this normalization in one
+helper per integration.
 
-\`dsbx tools --json\` resolves offloaded blocks automatically. Never parse a human
-\`[Full content archived at ...]\` marker or manually read its path. Its
+\`tools.call()\` and \`dsbx tools --json\` resolve offloaded blocks automatically. Never parse a
+human \`[Full content archived at ...]\` marker or manually read its path. A
 \`tool_output_unavailable\` error is retryable. Any function that calls a workspace tool must be
 published as \`durable\`, see below.
 
