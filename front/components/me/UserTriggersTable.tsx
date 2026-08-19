@@ -17,6 +17,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  LoadingBlock,
   SearchInput,
   Spinner,
   Trash01,
@@ -31,6 +32,117 @@ type UserTriggerRow = GetUserTriggersResponseBody["triggers"][number] & {
 
 interface UserTriggersTableProps {
   owner: LightWorkspaceType;
+}
+
+interface UserTriggerSkeletonRow {
+  actions: string;
+  agentName: string;
+  name: string;
+  onClick?: () => void;
+  status: string;
+}
+
+const USER_TRIGGER_SKELETON_ROWS: UserTriggerSkeletonRow[] = Array.from(
+  { length: 5 },
+  (_, index) => ({
+    actions: `action-${index}`,
+    agentName: `agent-${index}`,
+    name: `trigger-${index}`,
+    status: `status-${index}`,
+  })
+);
+
+const USER_TRIGGER_NAME_SKELETON_WIDTHS = [
+  "w-28",
+  "w-36",
+  "w-24",
+  "w-40",
+  "w-32",
+];
+
+const USER_TRIGGER_DESCRIPTION_SKELETON_WIDTHS = [
+  "w-64",
+  "w-52",
+  "w-72",
+  "w-60",
+  "w-56",
+];
+
+const USER_TRIGGER_SKELETON_COLUMNS: ColumnDef<UserTriggerSkeletonRow>[] = [
+  {
+    accessorKey: "agentName",
+    header: "Agent",
+    cell: () => (
+      <DataTable.CellContent>
+        <div className="flex min-w-0 items-center gap-2">
+          <LoadingBlock className="h-7 w-7 shrink-0 rounded-md" />
+          <LoadingBlock className="h-4 w-20 max-w-full" />
+        </div>
+      </DataTable.CellContent>
+    ),
+    meta: {
+      className: "w-40",
+    },
+  },
+  {
+    accessorKey: "name",
+    header: "Trigger",
+    cell: ({ row }) => (
+      <DataTable.CellContent grow>
+        <div className="flex min-w-0 flex-col py-3">
+          <div className="flex h-5 items-center">
+            <LoadingBlock
+              className={`h-4 max-w-full ${USER_TRIGGER_NAME_SKELETON_WIDTHS[row.index]}`}
+            />
+          </div>
+          <div className="flex h-5 items-center">
+            <LoadingBlock
+              className={`h-4 max-w-full ${USER_TRIGGER_DESCRIPTION_SKELETON_WIDTHS[row.index]}`}
+            />
+          </div>
+        </div>
+      </DataTable.CellContent>
+    ),
+    meta: {
+      className: "w-full",
+    },
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: () => (
+      <DataTable.CellContent>
+        <LoadingBlock className="h-6 w-20 rounded-[9px]" />
+      </DataTable.CellContent>
+    ),
+    meta: {
+      className: "w-36",
+    },
+  },
+  {
+    accessorKey: "actions",
+    header: "",
+    cell: () => (
+      <DataTable.CellContent>
+        <LoadingBlock className="h-6 w-20 rounded-[9px]" />
+      </DataTable.CellContent>
+    ),
+    meta: {
+      className: "w-24",
+    },
+  },
+];
+
+function UserTriggersTableSkeleton() {
+  return (
+    <div aria-hidden="true">
+      <DataTable
+        data={USER_TRIGGER_SKELETON_ROWS}
+        columns={USER_TRIGGER_SKELETON_COLUMNS}
+        sorting={[{ id: "agentName", desc: false }]}
+      />
+    </div>
+  );
 }
 
 export function UserTriggersTable({ owner }: UserTriggersTableProps) {
@@ -188,9 +300,7 @@ export function UserTriggersTable({ owner }: UserTriggersTableProps) {
       </div>
 
       {isTriggersLoading ? (
-        <div className="flex justify-center p-6">
-          <Spinner />
-        </div>
+        <UserTriggersTableSkeleton />
       ) : filteredTriggers.length > 0 ? (
         <DataTable
           data={filteredTriggers}

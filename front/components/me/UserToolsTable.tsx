@@ -29,8 +29,8 @@ import {
   DropdownMenuItem,
   DropdownMenuPortal,
   DropdownMenuTrigger,
+  LoadingBlock,
   SearchInput,
-  Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import keyBy from "lodash/keyBy";
@@ -50,6 +50,90 @@ interface UserTableRow {
 
 interface UserToolsTableProps {
   owner: LightWorkspaceType;
+}
+
+interface UserToolSkeletonRow {
+  actions: string;
+  name: string;
+  onClick?: () => void;
+}
+
+const USER_TOOL_SKELETON_ROWS: UserToolSkeletonRow[] = Array.from(
+  { length: 5 },
+  (_, index) => ({
+    actions: `action-${index}`,
+    name: `tool-${index}`,
+  })
+);
+
+const USER_TOOL_NAME_SKELETON_WIDTHS = ["w-28", "w-36", "w-24", "w-32", "w-40"];
+
+const USER_TOOL_DESCRIPTION_SKELETON_WIDTHS = [
+  "w-64",
+  "w-52",
+  "w-72",
+  "w-60",
+  "w-56",
+];
+
+const USER_TOOL_SKELETON_COLUMNS: ColumnDef<UserToolSkeletonRow>[] = [
+  {
+    accessorKey: "name",
+    header: "Name",
+    cell: ({ row }) => (
+      <DataTable.CellContent grow>
+        <div className="flex flex-row items-center gap-3 py-3">
+          <LoadingBlock className="h-9 w-9 shrink-0 rounded-lg" />
+          <div className="flex min-w-0 flex-grow flex-col overflow-hidden">
+            <div className="flex h-5 items-center">
+              <LoadingBlock
+                className={classNames(
+                  "h-4 max-w-full",
+                  USER_TOOL_NAME_SKELETON_WIDTHS[row.index]
+                )}
+              />
+            </div>
+            <div className="flex h-5 items-center">
+              <LoadingBlock
+                className={classNames(
+                  "h-4 max-w-full",
+                  USER_TOOL_DESCRIPTION_SKELETON_WIDTHS[row.index]
+                )}
+              />
+            </div>
+          </div>
+          <LoadingBlock className="h-6 w-20 shrink-0 rounded-[9px]" />
+        </div>
+      </DataTable.CellContent>
+    ),
+    meta: {
+      className: "w-full",
+    },
+  },
+  {
+    accessorKey: "actions",
+    header: "",
+    cell: () => (
+      <DataTable.CellContent>
+        <LoadingBlock className="h-8 w-8 rounded-xl" />
+      </DataTable.CellContent>
+    ),
+    meta: {
+      className: "w-12",
+    },
+  },
+];
+
+function UserToolsTableSkeleton() {
+  return (
+    <div aria-hidden="true">
+      <DataTable
+        data={USER_TOOL_SKELETON_ROWS}
+        columns={USER_TOOL_SKELETON_COLUMNS}
+        sorting={[{ id: "name", desc: false }]}
+      />
+    </div>
+  );
 }
 
 export function UserToolsTable({ owner }: UserToolsTableProps) {
@@ -309,9 +393,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
       isHiddenMCPServerViewsLoading ||
       isConnectionsLoading ||
       isApprovalsLoading ? (
-        <div className="flex justify-center p-6">
-          <Spinner />
-        </div>
+        <UserToolsTableSkeleton />
       ) : actionsTableData.length > 0 ? (
         <DataTable
           data={actionsTableData}
