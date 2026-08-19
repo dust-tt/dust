@@ -3,6 +3,7 @@ import {
   validateTailwindCode,
   validateTypeScriptSyntax,
 } from "@app/lib/api/files/content_validation";
+import { syncCanonicalFileLocation } from "@app/lib/api/files/file_system_ops";
 import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import type { FrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { buildFrameBundle } from "@app/lib/api/viz/build_frame_bundle";
@@ -54,15 +55,18 @@ function shouldValidate(relPath: string): boolean {
  *    each file as it loads: TS/JSX syntax errors are blocking, Tailwind warnings are not and are
  *    returned to the caller. Files in the mount that the frame does not import are never touched.
  * 2. Validate Pod function references and inputs before writing.
- * 3. Refresh the canonical source from the entry so MCP retrieve and the render fallback match.
- * 4. Store the bundle as the processed (rendered) version and record the root and entry in
+ * 3. Adopt the entry as the Frame's own location, so the writes below land where the Frame is
+ *    published from.
+ * 4. Refresh the canonical source from the entry so MCP retrieve and the render fallback match.
+ * 5. Store the bundle as the processed (rendered) version and record the root and entry in
  *    metadata, which flips {@link FileResource.getRenderableVersion} to "processed".
- * 5. Recompute the authorized-file allowlist against the rendered bundle.
+ * 6. Recompute the authorized-file allowlist against the rendered bundle.
  *
  * `reader` is injected (rather than a `DustFileSystem`) so this stays unit-testable with an
  * in-memory tree. The handler wires `createMountFrameSourceReader`. `entryRelPath` is resolved by
  * the caller, not derived here from `file.fileName` (see `frameEntryRelPath` on
- * `FileUseCaseMetadata` for why).
+ * `FileUseCaseMetadata` for why), and `entryMountFilePath` is the mount path of that entry on the
+ * file system the reader reads (`null` when the sources do not come from a mount).
  */
 export async function publishFrame(
   auth: Authenticator,
@@ -71,12 +75,14 @@ export async function publishFrame(
     reader,
     entryRelPath,
     rootScopedPath,
+    entryMountFilePath,
     publishedByAgentConfigurationId,
   }: {
     file: FileResource;
     reader: FrameSourceReader;
     entryRelPath: string;
     rootScopedPath: string;
+    entryMountFilePath: string | null;
     publishedByAgentConfigurationId?: string;
   }
 ): Promise<Result<{ warnings: ValidationWarning[] }, PublishFrameError>> {
@@ -177,14 +183,27 @@ export async function publishFrame(
         );
       }
 
-      // 3. Refresh the canonical source from the entry so MCP retrieve and the render fallback
+      // 3. Adopt the entry as the Frame's own location. Publishing from a path is the statement
+      //    that the Frame lives there, and a Frame whose source was moved through the mount without
+      //    `moveCanonicalFile` (a `mv` in the Computer) still points at its old path: the canonical
+      //    write below would recreate it in the old scope, and a Frame moved into a Pod that way
+      //    would keep listing as an app with no file id.
+      if (entryMountFilePath) {
+        await syncCanonicalFileLocation(
+          file,
+          `${rootScopedPath}/${entryRelPath}`,
+          entryMountFilePath
+        );
+      }
+
+      // 4. Refresh the canonical source from the entry so MCP retrieve and the render fallback
       //    stay in sync with what was published (the entry is always read during the build).
       const entrySource = cache.get(entryRelPath);
       if (entrySource !== undefined) {
         await file.uploadContent(auth, entrySource);
       }
 
-      // 4. Store the bundle as the rendered version and mark the frame published.
+      // 5. Store the bundle as the rendered version and mark the frame published.
       await file.uploadProcessed(auth, buildResult.value.code);
       // frameBundleRootPath and frameEntryRelPath flip rendering to the bundle and let live
       // edits rebuild later without a model in the loop.
@@ -199,7 +218,7 @@ export async function publishFrame(
           : {}),
       });
 
-      // 5. Recompute the allowlist against the rendered bundle.
+      // 6. Recompute the allowlist against the rendered bundle.
       const allowlist = await ensureAuthorizedFileAccessForShare(auth, file);
       if (allowlist.isErr()) {
         return new Err(

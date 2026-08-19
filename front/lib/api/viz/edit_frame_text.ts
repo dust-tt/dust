@@ -153,6 +153,9 @@ export async function editFrameTextAtSource(
       reader: createMountFrameSourceReader(dustFs, rootScopedPath),
       entryRelPath,
       rootScopedPath,
+      entryMountFilePath: dustFs.toMountFilePath(
+        `${rootScopedPath}/${entryRelPath}`
+      ),
       publishedByAgentConfigurationId: editedByAgentConfigurationId,
     });
     if (publishResult.isErr()) {

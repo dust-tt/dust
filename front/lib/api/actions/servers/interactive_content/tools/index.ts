@@ -416,6 +416,7 @@ export async function createInteractiveContentTools(
         reader: createMountFrameSourceReader(fsResult.value, root),
         entryRelPath,
         rootScopedPath: root,
+        entryMountFilePath: fsResult.value.toMountFilePath(path),
         publishedByAgentConfigurationId: agentConfiguration?.sId,
       });
       if (result.isErr()) {

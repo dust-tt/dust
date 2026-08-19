@@ -63,6 +63,9 @@ function mockMount(files: Map<string, string>) {
           .filter((p) => p.startsWith(`${root}/`))
           .map((p) => ({ path: p, isDirectory: false }))
       ),
+    // This stand-in has no GCS paths, so the rebuild has no entry mount path to compare the
+    // Frame's record against and leaves it alone.
+    toMountFilePath: () => null,
   };
   vi.spyOn(DustFileSystem, "fromScopedPath").mockResolvedValue(
     new Ok(fakeFs as unknown as DustFileSystem)

@@ -619,6 +619,9 @@ export async function importPodApp(
       reader: createMountFrameSourceReader(dustFs, destFolderPath),
       entryRelPath: created.fileName,
       rootScopedPath: destFolderPath,
+      entryMountFilePath: dustFs.toMountFilePath(
+        `${destFolderPath}/${created.fileName}`
+      ),
     });
     if (publishResult.isErr()) {
       warnings.push(

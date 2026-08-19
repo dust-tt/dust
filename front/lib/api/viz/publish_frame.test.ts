@@ -15,8 +15,12 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { SCOPED_PREFIX_POD } from "@app/types/file_system";
 import { frameContentType, sandboxFunctionContentType } from "@app/types/files";
-import { splitFrameEntryScopedPath } from "@app/types/mount_path";
+import {
+  getPodFilesBasePath,
+  splitFrameEntryScopedPath,
+} from "@app/types/mount_path";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -207,6 +211,7 @@ describe("publishFrame", () => {
       reader: inMemoryReader(VALID_SOURCES),
       entryRelPath: "Dashboard.tsx",
       rootScopedPath: ROOT,
+      entryMountFilePath: null,
     });
 
     expect(result.isOk()).toBe(true);
@@ -252,6 +257,7 @@ describe("publishFrame", () => {
       }),
       entryRelPath: "Dashboard.tsx",
       rootScopedPath: ROOT,
+      entryMountFilePath: null,
     });
 
     expect(result.isErr()).toBe(true);
@@ -300,6 +306,7 @@ export default function Dashboard() {
       }),
       entryRelPath: "Dashboard.tsx",
       rootScopedPath: ROOT,
+      entryMountFilePath: null,
     });
 
     expect(result.isOk(), result.isErr() ? result.error.message : "").toBe(
@@ -338,6 +345,7 @@ export default function Dashboard() {
       }),
       entryRelPath: "Dashboard.tsx",
       rootScopedPath: ROOT,
+      entryMountFilePath: null,
     });
 
     expect(result.isErr()).toBe(true);
@@ -366,6 +374,7 @@ export default function Dashboard() {
       }),
       entryRelPath: "Dashboard.tsx",
       rootScopedPath: ROOT,
+      entryMountFilePath: null,
     });
 
     expect(result.isErr()).toBe(true);
@@ -392,6 +401,7 @@ export default function Dashboard() {
       }),
       entryRelPath: "Dashboard.tsx",
       rootScopedPath: ROOT,
+      entryMountFilePath: null,
     });
 
     expect(result.isErr()).toBe(true);
@@ -428,6 +438,7 @@ export default function Dashboard() {
       reader,
       entryRelPath: "Dashboard.tsx",
       rootScopedPath: ROOT,
+      entryMountFilePath: null,
     });
 
     expect(result.isOk()).toBe(true);
@@ -452,6 +463,7 @@ export default function Dashboard() {
       reader: inMemoryReader({ "Chart.tsx": VALID_SOURCES["Chart.tsx"] }),
       entryRelPath: "Dashboard.tsx",
       rootScopedPath: ROOT,
+      entryMountFilePath: null,
     });
 
     expect(result.isErr()).toBe(true);
@@ -481,6 +493,7 @@ export default function Dashboard() {
       reader: inMemoryReader({ "notes.txt": "hello" }),
       entryRelPath: "notes.txt",
       rootScopedPath: ROOT,
+      entryMountFilePath: null,
     });
 
     expect(result.isErr()).toBe(true);
@@ -544,6 +557,7 @@ export default function Dashboard() {
       reader: inMemoryReader({ [firstSplit.value.entryRelPath]: firstSource }),
       entryRelPath: firstSplit.value.entryRelPath,
       rootScopedPath: firstSplit.value.root,
+      entryMountFilePath: null,
     });
     const secondResult = await publishFrame(auth, {
       file: second,
@@ -552,6 +566,7 @@ export default function Dashboard() {
       }),
       entryRelPath: secondSplit.value.entryRelPath,
       rootScopedPath: secondSplit.value.root,
+      entryMountFilePath: null,
     });
 
     expect(firstResult.isOk()).toBe(true);
@@ -564,5 +579,39 @@ export default function Dashboard() {
     expect(second.useCaseMetadata?.frameEntryRelPath).toBe(
       secondSplit.value.entryRelPath
     );
+  });
+
+  it("re-parents a Frame published from a path its record does not point at", async () => {
+    const { auth, space } = await setupPodTestContext();
+    const file = await createFrameFile(auth);
+    expect(file.useCase).toBe("conversation");
+
+    vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
+      Readable.from([Buffer.from("self contained", "utf-8")])
+    );
+
+    // What a `mv` in the Computer leaves behind: the sources sit in a Pod app folder while the
+    // Frame's record still describes the conversation path it was created at.
+    const podRoot = `${SCOPED_PREFIX_POD}${space.sId}/Dashboard`;
+    const podMountFilePath = `${getPodFilesBasePath({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      podId: space.sId,
+    })}Dashboard/Dashboard.tsx`;
+    expect(file.mountFilePath).not.toBe(podMountFilePath);
+
+    const result = await publishFrame(auth, {
+      file,
+      reader: inMemoryReader(VALID_SOURCES),
+      entryRelPath: "Dashboard.tsx",
+      rootScopedPath: podRoot,
+      entryMountFilePath: podMountFilePath,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(file.mountFilePath).toBe(podMountFilePath);
+    expect(file.useCase).toBe("project_context");
+    expect(file.useCaseMetadata?.spaceId).toBe(space.sId);
+    expect(file.useCaseMetadata?.frameBundleRootPath).toBe(podRoot);
+    expect(file.toScopedPath(auth)).toBe(`${podRoot}/Dashboard.tsx`);
   });
 });

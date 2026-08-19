@@ -345,6 +345,41 @@ export async function moveCanonicalFile(
   return moveResult;
 }
 
+/**
+ * Point a FileResource at `scopedPath`, the location its bytes are actually at, when its record
+ * still describes another one. Returns whether the record was updated.
+ *
+ * Only the operations in this module keep the two in sync. Bytes moved any other way — a `mv` on the
+ * mount from the Computer, for instance — leave the record behind: it keeps the old `mountFilePath`,
+ * `useCase` and metadata, so the file is still treated as owned by the old scope. A Frame moved into
+ * a Pod that way lists as an app with no file id, because `listPodApps` joins the Pod's Frame entries
+ * to their FileResource on `mountFilePath`. Callers that learn a file's real path can heal the record
+ * here, applying exactly what {@link moveCanonicalFile} would have applied.
+ */
+export async function syncCanonicalFileLocation(
+  file: FileResource,
+  scopedPath: string,
+  mountFilePath: string
+): Promise<boolean> {
+  if (file.mountFilePath === mountFilePath) {
+    return false;
+  }
+
+  const destInfo = inferDestMountInfo(scopedPath);
+  if (!destInfo) {
+    return false;
+  }
+
+  await file.updateMount({
+    destFileName: path.posix.basename(scopedPath),
+    destMountFilePath: mountFilePath,
+    destUseCase: destInfo.useCase,
+    destUseCaseMetadata: destInfo.useCaseMetadata,
+  });
+
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // Content write
 // ---------------------------------------------------------------------------
