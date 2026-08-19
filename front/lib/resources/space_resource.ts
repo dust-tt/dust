@@ -27,9 +27,11 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import tracer from "@app/logger/tracer";
 import type { GrantVerb } from "@app/types/group_permissions";
+import { SPACE_EDITOR_GRANT_TYPE } from "@app/types/group_permissions";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
+  MIGRATING_SPACE_EDITOR_GROUP_KINDS,
   PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
   SPACE_GROUP_PREFIX,
@@ -116,6 +118,11 @@ const POD_SPACE_MEMBERSHIP_VERB: GrantVerb = "write";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SpaceResource extends BaseResource<SpaceModel> {
   static model: ModelStaticSoftDeletable<SpaceModel> = SpaceModel;
+
+  // Memoized manual editor group. A space's editor group identity is immutable, so it is resolved
+  // from `group_permissions` at most once per instance. `undefined` = not yet resolved; `null` =
+  // resolved to "no manual editor group" (non-project space, or provisioned mode).
+  private cachedManualEditorGroup?: GroupResource | null;
 
   constructor(
     model: ModelStaticSoftDeletable<SpaceModel>,
@@ -908,30 +915,20 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     if (this.isRegular() || this.isProject()) {
       // For regular spaces that only have a single group, update
       // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
-      const regularGroupReference = this.getSpaceManualMemberGroupReference();
-      const spaceEditorGroupReference =
-        this.getSpaceManualEditorGroupReference();
-      const [regularGroup, spaceEditorGroup] = await this.fetchGroupResources(
-        auth,
-        {
-          groupReferences: [
-            regularGroupReference,
-            ...(spaceEditorGroupReference && this.isProject()
-              ? [spaceEditorGroupReference]
-              : []),
-          ],
-        }
-      );
+      const regularGroup = await this.fetchManualMemberGroup(auth);
       await regularGroup.updateName(
         auth,
         `${this.isProject() ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${this.name}`
       );
 
-      if (spaceEditorGroup && this.isProject()) {
-        await spaceEditorGroup.updateName(
-          auth,
-          `${PROJECT_EDITOR_GROUP_PREFIX} ${this.name}`
-        );
+      if (this.isProject()) {
+        const spaceEditorGroup = await this.fetchManualEditorGroup(auth);
+        if (spaceEditorGroup) {
+          await spaceEditorGroup.updateName(
+            auth,
+            `${PROJECT_EDITOR_GROUP_PREFIX} ${this.name}`
+          );
+        }
       }
     }
 
@@ -1118,7 +1115,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             const editorGroup = await GroupResource.makeNew(
               {
                 name: `${PROJECT_EDITOR_GROUP_PREFIX} ${this.name}`,
-                kind: "space_editors",
+                kind: "regular_auto",
                 workspaceId: this.workspaceId,
               },
               { transaction: t }
@@ -1713,27 +1710,51 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return new Ok(users);
   }
 
-  private getSpaceManualMemberGroupReference(): SpaceGroupReference {
-    const regularGroups = this.groups.filter((group) => group.isRegularAuto());
-    assert(
-      regularGroups.length === 1,
-      `Expected exactly one regular group for the space, but found ${regularGroups.length}.`
-    );
-    return regularGroups[0];
-  }
-
-  private getSpaceManualEditorGroupReference(): SpaceGroupReference | null {
-    const editorGroups = this.groups.filter(
-      (group) => group.groupKind === "space_editors"
-    );
-    if (editorGroups.length === 0) {
+  // The space's manual editor group (project spaces only): the regular_auto group holding the
+  // `admin` grant on this space in `group_permissions`. Read from `group_permissions` rather than
+  // `group_vaults` (being removed). Returns null for non-project spaces and for provisioned mode,
+  // where the editor grant is held by a provisioned group rather than the manual editor group.
+  // Memoized on the instance (see `cachedManualEditorGroup`).
+  async fetchManualEditorGroup(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<GroupResource | null> {
+    if (!this.isProject()) {
       return null;
     }
-    assert(
-      editorGroups.length === 1,
-      `Expected at most one space editors group for the space, but found ${editorGroups.length}.`
+    if (this.cachedManualEditorGroup === undefined) {
+      this.cachedManualEditorGroup =
+        await GroupPermissionResource.findRegularAutoGroupForGrant(auth, {
+          grantType: SPACE_EDITOR_GRANT_TYPE,
+          resourceType: "space",
+          resourceId: this.id,
+          groupKinds: MIGRATING_SPACE_EDITOR_GROUP_KINDS,
+          transaction,
+        });
+    }
+    return this.cachedManualEditorGroup;
+  }
+
+  // The space's manual member group: the regular_auto group holding this space's membership. A
+  // project space has two regular_auto groups (member + editor), so the editor group (identified
+  // by its `admin` grant in `group_permissions`) is excluded; a regular space has exactly one.
+  private async fetchManualMemberGroup(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<GroupResource> {
+    const editorGroup = await this.fetchManualEditorGroup(auth, transaction);
+    const memberReferences = this.groups.filter(
+      (group) => group.isRegularAuto() && group.groupId !== editorGroup?.id
     );
-    return editorGroups[0];
+    assert(
+      memberReferences.length === 1,
+      `Expected exactly one member group for the space, but found ${memberReferences.length}.`
+    );
+    const [memberGroup] = await this.fetchGroupResources(auth, {
+      groupReferences: memberReferences,
+      transaction,
+    });
+    return memberGroup;
   }
 
   /**
@@ -1961,7 +1982,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return groups.map((group) => {
         // Editors manage the project.
         if (editorGroupIdSet.has(group.id)) {
-          return { groupId: group.id, grantType: "admin" };
+          return { groupId: group.id, grantType: SPACE_EDITOR_GRANT_TYPE };
         }
         // The workspace global group is attached to unrestricted projects as a viewer, so it must
         // only read: conferring write would hand write on every unrestricted project to every
@@ -2267,15 +2288,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
-    const memberGroupReference = this.getSpaceManualMemberGroupReference();
-    const editorGroupReference = this.getSpaceManualEditorGroupReference();
-    const groups = await this.fetchGroupResources(auth, {
-      groupReferences: [
-        memberGroupReference,
-        ...(editorGroupReference ? [editorGroupReference] : []),
-      ],
-      transaction,
-    });
+    const memberGroup = await this.fetchManualMemberGroup(auth, transaction);
+    const editorGroup = await this.fetchManualEditorGroup(auth, transaction);
+    const groups = [memberGroup, ...(editorGroup ? [editorGroup] : [])];
 
     for (const group of groups) {
       await group.suspendMembers(auth, { transaction });
@@ -2289,15 +2304,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
-    const memberGroupReference = this.getSpaceManualMemberGroupReference();
-    const editorGroupReference = this.getSpaceManualEditorGroupReference();
-    const groups = await this.fetchGroupResources(auth, {
-      groupReferences: [
-        memberGroupReference,
-        ...(editorGroupReference ? [editorGroupReference] : []),
-      ],
-      transaction,
-    });
+    const memberGroup = await this.fetchManualMemberGroup(auth, transaction);
+    const editorGroup = await this.fetchManualEditorGroup(auth, transaction);
+    const groups = [memberGroup, ...(editorGroup ? [editorGroup] : [])];
 
     for (const group of groups) {
       await group.restoreMembers(auth, { transaction });
@@ -2320,6 +2329,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   ): Promise<{
     groupsToProcess: GroupResource[];
     allGroupMemberships: GroupMembershipModel[];
+    editorGroupModelId: ModelId | null;
   }> {
     const groupReferences = this.groups.filter(
       (group) => group.isRegularAuto() || group.groupKind === "space_editors"
@@ -2327,6 +2337,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const groupsToProcess = await this.fetchGroupResources(auth, {
       groupReferences,
     });
+    const editorGroup = await this.fetchManualEditorGroup(auth);
+    const editorGroupModelId = editorGroup?.id ?? null;
 
     // Fetch all group memberships to get the startAt date (will be the joinedAt date returned for each member)
     const allGroupMemberships = await GroupMembershipModel.findAll({
@@ -2351,6 +2363,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return {
       groupsToProcess,
       allGroupMemberships,
+      editorGroupModelId,
     };
   }
 

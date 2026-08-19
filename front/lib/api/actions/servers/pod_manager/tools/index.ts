@@ -748,7 +748,7 @@ export function createProjectManagerTools(
           );
         }
 
-        const { groupsToProcess, allGroupMemberships } =
+        const { groupsToProcess, allGroupMemberships, editorGroupModelId } =
           await pod.fetchManualGroupsMemberships(auth, {
             shouldIncludeAllMembers: true,
           });
@@ -774,7 +774,7 @@ export function createProjectManagerTools(
           const previous = membershipByUserId.get(membership.userId);
           membershipByUserId.set(membership.userId, {
             isEditor:
-              Boolean(previous?.isEditor) || group.kind === "space_editors",
+              Boolean(previous?.isEditor) || group.id === editorGroupModelId,
             isActive:
               Boolean(previous?.isActive) || membership.status === "active",
             joinedAtMs: Math.min(

@@ -46,6 +46,11 @@ export const GRANT_TYPES = [
 ] as const;
 export type GrantType = (typeof GRANT_TYPES)[number];
 
+// A space's editors are the group holding the space-level `admin` role (see the `space` entry in
+// the role registry). Single source of truth for that mapping, shared by the code that writes the
+// grant (SpaceResource.spaceGroupRoles) and the code that reads it back (fetchManualEditorGroup).
+export const SPACE_EDITOR_GRANT_TYPE = "admin" satisfies GrantType;
+
 // Resource domains. "*" means "all resource types".
 export const GROUP_PERMISSION_RESOURCE_TYPES = [
   "space",
