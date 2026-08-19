@@ -1202,8 +1202,8 @@ export function UsagePage() {
                       <div className="flex min-w-0 flex-col gap-1 text-sm text-foreground">
                         {creditUsageDisplayTarget === "on_target" ? (
                           <span>
-                            You have enough credits to finish the cycle at your
-                            current rate.
+                            At your current rate, you have enough credits to
+                            finish the cycle.
                           </span>
                         ) : resetAt ? (
                           <span>
