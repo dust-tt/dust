@@ -18,6 +18,7 @@ import {
   GPT_5_5_MODEL_ID,
   GPT_5_6_LUNA_MODEL_ID,
   GPT_5_6_SOL_MODEL_ID,
+  GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
   GPT_5_6_TERRA_MODEL_ID,
 } from "@app/types/assistant/models/openai";
 
@@ -44,6 +45,7 @@ export const EU_UPLIFT_MODEL_IDS = [
   GPT_5_5_MODEL_ID,
   GPT_5_6_SOL_MODEL_ID,
   GPT_5_6_TERRA_MODEL_ID,
+  GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
   GPT_5_6_LUNA_MODEL_ID,
 ] as const satisfies readonly StaticModelIdType[];
 

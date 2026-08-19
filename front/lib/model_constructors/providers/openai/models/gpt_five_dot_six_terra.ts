@@ -29,7 +29,7 @@ const GPT_5_6_REASONING_EFFORTS = [
 // rejects every other value with "Unsupported parameter: 'temperature' is not
 // supported with this model" — so the field is pinned to `z.literal(1)`,
 // defaulted so callers can omit it.
-const configSchema = z.union([
+export const GPT_5_6_TERRA_CONFIG_SCHEMA = z.union([
   inputConfigSchema.extend({
     reasoning: z
       .object({ effort: z.enum(GPT_5_6_REASONING_EFFORTS) })
@@ -51,7 +51,8 @@ export function WithOpenAIGptFiveDotSixTerraConfig<
   abstract class OpenAIGptFiveDotSixTerra extends Base {
     static readonly model = GPT_5_6_TERRA;
 
-    static readonly configSchema: z.ZodType<InputConfig> = configSchema;
+    static readonly configSchema: z.ZodType<InputConfig> =
+      GPT_5_6_TERRA_CONFIG_SCHEMA;
 
     static readonly contextSize = CONTEXT_SIZE;
     static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;

@@ -12,6 +12,9 @@ export type BaseEndpointConfiguration<C extends InputConfig = InputConfig> = {
   lab: Lab;
   host: Host;
   model: Model;
+  // Optional upstream model ID when the endpoint's public model ID is a Dust
+  // variant of an existing provider model.
+  providerModel?: Model;
   region: Region;
 
   // Capabilities
