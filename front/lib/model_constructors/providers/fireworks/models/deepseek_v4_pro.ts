@@ -2,10 +2,11 @@ import { fireworksConfigSchema } from "@app/lib/model_constructors/providers/fir
 import { DEEPSEEK_V4_PRO } from "@app/lib/model_constructors/types/models";
 import { z } from "zod";
 
-// Verified 2026-08-19: https://fireworks.ai/models/fireworks/deepseek-v4-pro
-// (1040k context) and https://api-docs.deepseek.com/quick_start/pricing
-// (384k maximum output).
-const CONTEXT_SIZE = 1_040_000;
+// Verified through Fireworks' Get Model API on 2026-08-19:
+// https://docs.fireworks.ai/api-reference/get-model
+// `contextLength` is exactly 1,048,576. DeepSeek documents a 384k maximum
+// output: https://api-docs.deepseek.com/quick_start/pricing
+const CONTEXT_SIZE = 1_048_576;
 const MAX_OUTPUT_TOKENS = 384_000;
 
 // DeepSeek documents exactly three states: thinking disabled

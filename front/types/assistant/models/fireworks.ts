@@ -93,15 +93,14 @@ export const FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_CONFIG: ModelConfigurationTy
       "europe-west1": false,
     },
   };
-// Verified 2026-08-19: https://fireworks.ai/models/fireworks/deepseek-v4-pro
-// (1040k context) and https://api-docs.deepseek.com/quick_start/pricing
-// (384k maximum output).
 export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelMaker: "deepseek",
   modelId: FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID,
   displayName: "DeepSeek V4 Pro (Fireworks)",
-  contextSize: 1_040_000,
+  // Product caps: this legacy config still drives conversation rendering.
+  // Native 1,048,576/384k limits live on the model_constructors endpoint.
+  contextSize: 1_000_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64,
   largeModel: true,
@@ -110,7 +109,7 @@ export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "DeepSeek's V4 Pro model.",
   isLegacy: false,
   isLatest: true,
-  generationTokensCount: 384_000,
+  generationTokensCount: 64_000,
   supportsVision: false,
   supportedReasoningEfforts: {
     none: true,
