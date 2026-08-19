@@ -94,7 +94,7 @@ export function ModelPickerContent({
       align="start"
       side={side}
     >
-      <DropdownMenuLabel label="Model" />
+      <DropdownMenuLabel label="Recommendations" className="text-sm" />
 
       {MODEL_TIERS.map((tier) => {
         const isSelected = isTierDisplayed(tier.id, shown.display);
@@ -126,20 +126,18 @@ export function ModelPickerContent({
             key={tier.id}
             icon={TIER_ICON[tier.id]}
             label={tier.name}
+            className="text-foreground"
             endComponent={
-              <div className="flex items-center gap-1.5">
-                <span className="whitespace-nowrap text-xs text-faint">
+              <div className="flex items-center gap-3">
+                <span className="whitespace-nowrap text-xs text-muted-foreground">
                   {getTierResolvedModelLabel(tier.id, streams)}
                 </span>
-                {isSelected ? (
+                {isSelected && (
                   <ModelPickerSelectionIndicator
                     canRevert={canRevert}
                     onRevert={onRevert}
                     size="xs"
                   />
-                ) : (
-                  // Reserved slot, so the resolved model labels stay aligned
-                  <span aria-hidden className="h-4 w-4 shrink-0" />
                 )}
               </div>
             }
