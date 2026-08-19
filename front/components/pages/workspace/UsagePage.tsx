@@ -825,11 +825,8 @@ export function UsagePage() {
 
   const creditUsage = consumptionOverview?.creditUsage ?? null;
   const creditUsageDisplayTarget =
-    creditUsage?.status.target === "on_target"
-      ? "on_target"
-      : creditUsage
-        ? "off_target"
-        : null;
+    creditUsage &&
+    (creditUsage.status.target === "on_target" ? "on_target" : "off_target");
 
   const totalConsumedCredits =
     consumptionOverview?.totalCredits ??
