@@ -203,7 +203,7 @@ export function getToolValidationAlwaysAllowLabel(
   data: ToolValidationLabelData
 ): string {
   if (data.stake !== "medium") {
-    return "Always allow";
+    return `Allow every time an agent uses the “${asDisplayName(data.metadata.toolName)}” tool`;
   }
   const toolOverride = getToolOverride(data.metadata);
   if (toolOverride?.alwaysAllowLabel) {
@@ -214,18 +214,31 @@ export function getToolValidationAlwaysAllowLabel(
     return data.approvalArgsLabel;
   }
   const args = data.argumentsRequiringApproval ?? [];
-  const argValues = args
+  const approvalScopes = args
     .filter((arg) => data.inputs[arg] != null)
     .map((arg) => {
       const value = data.inputs[arg];
-      if (Array.isArray(value)) {
-        return value.map(String).join(", ");
-      }
-      return JSON.stringify(value);
+      const displayValue = Array.isArray(value)
+        ? value.map(String).join(", ")
+        : typeof value === "string" ||
+            typeof value === "number" ||
+            typeof value === "boolean"
+          ? String(value)
+          : JSON.stringify(value);
+
+      return {
+        label: `“${asDisplayName(arg).toLowerCase()}” is ${displayValue}`,
+        value: displayValue,
+      };
     });
-  return `Always allow agent to ${asDisplayName(data.metadata.toolName)} ${
-    argValues.length > 0
-      ? ` for the following parameters: ${argValues.join(", ")}`
-      : ""
-  }`;
+
+  const [approvalScope] = approvalScopes;
+  let scopeLabel = "";
+  if (approvalScopes.length === 1 && approvalScope) {
+    scopeLabel = ` only for ${approvalScope.value}`;
+  } else if (approvalScopes.length > 1) {
+    scopeLabel = ` only when ${approvalScopes.map(({ label }) => label).join(" and ")}`;
+  }
+
+  return `Always allow ${data.metadata.agentName} to ${asDisplayName(data.metadata.toolName)}${scopeLabel}`;
 }
