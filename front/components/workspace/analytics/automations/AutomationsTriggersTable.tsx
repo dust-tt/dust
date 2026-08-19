@@ -6,6 +6,7 @@ import type { TriggerRowData as BaseTriggerRowData } from "@app/components/works
 import { AutomationsTriggersRowsTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
 import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { toAutomationsTriggersFilter } from "@app/components/workspace/analytics/automationsFilter";
+import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import {
   AvatarNameCell,
   CreditsCell,
@@ -13,7 +14,10 @@ import {
 } from "@app/components/workspace/analytics/creditsTableCells";
 import { useAutomationsTriggers } from "@app/hooks/useAutomationsTriggers";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
+import type { AutomationTriggersBody } from "@app/lib/api/analytics/automations/schema";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import { useUpdateTriggerStatus } from "@app/lib/swr/agent_triggers";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
@@ -384,6 +388,24 @@ export function AutomationsTriggersTable({
   const confirm = useContext(ConfirmContext);
   const updateTriggerStatus = useUpdateTriggerStatus({ workspaceId });
 
+  const exportBody: AutomationTriggersBody = {
+    period: period.kind,
+    days:
+      period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
+    limit: TRIGGERS_PAGE_SIZE,
+    offset: 0,
+    search: debouncedValue.trim() || undefined,
+    filter: triggersFilter,
+    format: "csv",
+  };
+  const exportDate = new Date().toISOString().slice(0, 10);
+  const csvDownload = useDownloadCsv({
+    url: `/api/w/${workspaceId}/analytics/automations/triggers`,
+    filename: `dust_automations_${exportDate}.csv`,
+    body: exportBody,
+    disabled: isTriggersLoading || !!isTriggersError || totalCount === 0,
+  });
+
   // The table data comes from an expensive Elasticsearch query, so instead of
   // revalidating after a toggle we track the new statuses locally.
   const [statusOverrides, setStatusOverrides] = useState<
@@ -481,6 +503,7 @@ export function AutomationsTriggersTable({
             filter={filter}
             onFilterChange={onFilterChange}
           />
+          <CsvDownloadButton {...csvDownload} />
         </div>
         <AutomationsFilterSummary
           filter={filter}
