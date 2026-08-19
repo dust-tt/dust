@@ -54,12 +54,17 @@ class TokenUsageNoopStream extends DustNoopNoopGlobalNoopStream {
   }
 }
 
-class TokenUsageThenErrorNoopStream extends DustNoopNoopGlobalNoopStream {
+class ErrorThenTokenUsageNoopStream extends DustNoopNoopGlobalNoopStream {
   override async *rawStreamOutputToEvents(
     raw: AsyncGenerator<string>
   ): AsyncGenerator<ModelResponseEvent> {
     for await (const event of super.rawStreamOutputToEvents(raw)) {
       if (event.type === "success") {
+        yield buildErrorEvent({
+          metadata: event.metadata,
+          type: "stop_error",
+          message: "The maximum response length was reached.",
+        });
         yield {
           type: "token_usage",
           content: {
@@ -72,12 +77,6 @@ class TokenUsageThenErrorNoopStream extends DustNoopNoopGlobalNoopStream {
           },
           metadata: event.metadata,
         };
-        yield buildErrorEvent({
-          metadata: event.metadata,
-          type: "stop_error",
-          message: "The maximum response length was reached.",
-        });
-        return;
       }
       yield event;
     }
@@ -306,7 +305,7 @@ describe("non-batch LLM run persistence", () => {
   it("logs whether a failed stream reported usage and partial output", async () => {
     const { authenticator: auth } = await createResourceTest({});
     const error = vi.spyOn(logger, "error").mockImplementation(() => {});
-    const llm = makeNoopLLM(auth, TokenUsageThenErrorNoopStream, {
+    const llm = makeNoopLLM(auth, ErrorThenTokenUsageNoopStream, {
       operationType: "agent_conversation",
       conversationId: generateRandomModelSId(),
       workspaceId: auth.getNonNullableWorkspace().sId,

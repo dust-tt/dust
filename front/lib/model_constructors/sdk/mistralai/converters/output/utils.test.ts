@@ -1,6 +1,9 @@
 import { createAsyncGenerator } from "@app/lib/api/llm/utils";
 import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/mistralai/converters/output/utils";
-import { expectStreamEventContract } from "@app/lib/model_constructors/test/stream_event_contract";
+import {
+  collectStreamEvents,
+  expectStreamEventContract,
+} from "@app/lib/model_constructors/test/stream_event_contract";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
   CompletionEvent,
@@ -48,13 +51,9 @@ describe("rawOutputToEvents", () => {
       }),
     ];
 
-    const events = [];
-    for await (const event of rawOutputToEvents(
-      createAsyncGenerator(rawEvents),
-      metadata
-    )) {
-      events.push(event);
-    }
+    const events = await collectStreamEvents(
+      rawOutputToEvents(createAsyncGenerator(rawEvents), metadata)
+    );
 
     expectStreamEventContract(events, {
       terminalType: "error",
@@ -73,13 +72,9 @@ describe("rawOutputToEvents", () => {
       ]),
     ];
 
-    const events = [];
-    for await (const event of rawOutputToEvents(
-      createAsyncGenerator(rawEvents),
-      metadata
-    )) {
-      events.push(event);
-    }
+    const events = await collectStreamEvents(
+      rawOutputToEvents(createAsyncGenerator(rawEvents), metadata)
+    );
 
     expectStreamEventContract(events, {
       terminalType: "success",

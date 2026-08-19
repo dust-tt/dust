@@ -5,7 +5,10 @@ import {
   rawOutputToEvents,
   usageToTokenUsageEvent,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
-import { expectStreamEventContract } from "@app/lib/model_constructors/test/stream_event_contract";
+import {
+  collectStreamEvents,
+  expectStreamEventContract,
+} from "@app/lib/model_constructors/test/stream_event_contract";
 import type {
   Response as OpenAIResponse,
   ResponseOutputItem,
@@ -184,14 +187,9 @@ describe("rawOutputToEvents", () => {
       },
     ];
 
-    const events = [];
-    for await (const event of rawOutputToEvents(
-      createAsyncGenerator(rawEvents),
-      metadata,
-      converters
-    )) {
-      events.push(event);
-    }
+    const events = await collectStreamEvents(
+      rawOutputToEvents(createAsyncGenerator(rawEvents), metadata, converters)
+    );
 
     expectStreamEventContract(events, {
       terminalType: "error",
@@ -212,14 +210,9 @@ describe("rawOutputToEvents", () => {
       },
     ];
 
-    const events = [];
-    for await (const event of rawOutputToEvents(
-      createAsyncGenerator(rawEvents),
-      metadata,
-      converters
-    )) {
-      events.push(event);
-    }
+    const events = await collectStreamEvents(
+      rawOutputToEvents(createAsyncGenerator(rawEvents), metadata, converters)
+    );
 
     expectStreamEventContract(events, {
       terminalType: "error",

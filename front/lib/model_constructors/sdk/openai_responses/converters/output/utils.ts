@@ -483,9 +483,6 @@ export async function* rawOutputToEvents(
   const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
   let usage: ResponseUsage | null = null;
   let stopReason: string | null = null;
-  // The shared LLM stream stops at the first terminal event. Hold errors until
-  // any final provider usage has been emitted and persisted.
-  let terminalError: ErrorEvent | null = null;
 
   while (true) {
     let result: IteratorResult<ResponseStreamEvent>;
@@ -497,7 +494,7 @@ export async function* rawOutputToEvents(
       if (usage !== null) {
         yield converters.usageToTokenUsageEvent(metadata, usage);
       }
-      yield terminalError ?? converters.streamErrorToErrorEvent(metadata, err);
+      yield converters.streamErrorToErrorEvent(metadata, err);
       return;
     }
     if (result.done) {
@@ -640,10 +637,6 @@ export async function* rawOutputToEvents(
     }
 
     for (const outputEvent of outputEvents) {
-      if (outputEvent.type === "error") {
-        terminalError ??= outputEvent;
-        continue;
-      }
       if (
         outputEvent.type === "text" ||
         outputEvent.type === "reasoning" ||
@@ -657,11 +650,6 @@ export async function* rawOutputToEvents(
 
   if (usage !== null) {
     yield converters.usageToTokenUsageEvent(metadata, usage);
-  }
-
-  if (terminalError) {
-    yield terminalError;
-    return;
   }
 
   yield {

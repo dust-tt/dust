@@ -39,7 +39,10 @@ import {
   textDeltaToTextDeltaEvent,
   toolUseBlockStartToToolCallStartedEvent,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
-import { expectStreamEventContract } from "@app/lib/model_constructors/test/stream_event_contract";
+import {
+  collectStreamEvents,
+  expectStreamEventContract,
+} from "@app/lib/model_constructors/test/stream_event_contract";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { describe, expect, it, vi } from "vitest";
@@ -1232,7 +1235,7 @@ describe("rawOutputToEvents", () => {
   });
 
   it("emits usage before a terminal stop error", async () => {
-    const events = await collect(
+    const events = await collectStreamEvents(
       rawOutputToEvents(
         streamOf([
           {
@@ -1365,7 +1368,7 @@ describe("rawOutputToEvents", () => {
   });
 
   it("preserves the latest reported usage when the stream fails afterward", async () => {
-    const events = await collect(
+    const events = await collectStreamEvents(
       rawOutputToEvents(
         streamOf(
           [

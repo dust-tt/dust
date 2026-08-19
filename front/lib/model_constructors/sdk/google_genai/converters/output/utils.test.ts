@@ -4,7 +4,10 @@ import {
   rawOutputToEvents,
   usageToTokenUsageEvent,
 } from "@app/lib/model_constructors/sdk/google_genai/converters/output/utils";
-import { expectStreamEventContract } from "@app/lib/model_constructors/test/stream_event_contract";
+import {
+  collectStreamEvents,
+  expectStreamEventContract,
+} from "@app/lib/model_constructors/test/stream_event_contract";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type { GenerateContentResponseUsageMetadata } from "@google/genai";
 import { FinishReason, GenerateContentResponse } from "@google/genai";
@@ -54,14 +57,9 @@ describe("rawOutputToEvents", () => {
       usageMetadata: usage,
     });
 
-    const events = [];
-    for await (const event of rawOutputToEvents(
-      createAsyncGenerator([response]),
-      metadata,
-      converters
-    )) {
-      events.push(event);
-    }
+    const events = await collectStreamEvents(
+      rawOutputToEvents(createAsyncGenerator([response]), metadata, converters)
+    );
 
     expectStreamEventContract(events, {
       terminalType: "error",
@@ -74,14 +72,9 @@ describe("rawOutputToEvents", () => {
       candidates: [{ finishReason: FinishReason.STOP }],
     });
 
-    const events = [];
-    for await (const event of rawOutputToEvents(
-      createAsyncGenerator([response]),
-      metadata,
-      converters
-    )) {
-      events.push(event);
-    }
+    const events = await collectStreamEvents(
+      rawOutputToEvents(createAsyncGenerator([response]), metadata, converters)
+    );
 
     expectStreamEventContract(events, {
       terminalType: "success",

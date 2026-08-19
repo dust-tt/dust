@@ -1,5 +1,16 @@
+import { deferTerminalError } from "@app/lib/model_constructors/stream/defer_terminal_error";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { expect } from "vitest";
+
+export async function collectStreamEvents(
+  events: AsyncGenerator<ModelResponseEvent>
+): Promise<ModelResponseEvent[]> {
+  const collected: ModelResponseEvent[] = [];
+  for await (const event of deferTerminalError(events)) {
+    collected.push(event);
+  }
+  return collected;
+}
 
 export function expectStreamEventContract(
   events: ModelResponseEvent[],

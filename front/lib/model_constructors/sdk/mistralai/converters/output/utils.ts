@@ -265,9 +265,6 @@ export async function* rawOutputToEvents(
   let hasYieldedResponseId = false;
   let usage: UsageInfo | undefined;
   let stopReason: string | null = null;
-  // The shared LLM stream stops at the first terminal event. Hold errors until
-  // any final provider usage has been emitted and persisted.
-  let terminalError: ErrorEvent | null = null;
 
   while (true) {
     let result: IteratorResult<CompletionEvent>;
@@ -277,7 +274,7 @@ export async function* rawOutputToEvents(
       if (usage) {
         yield usageToTokenUsageEvent(metadata, usage);
       }
-      yield terminalError ?? streamErrorToErrorEvent(metadata, err);
+      yield streamErrorToErrorEvent(metadata, err);
       return;
     }
     if (result.done) {
@@ -323,14 +320,14 @@ export async function* rawOutputToEvents(
     stopReason = finishReason;
     switch (finishReason) {
       case CompletionResponseStreamChoiceFinishReason.Length:
-        terminalError ??= buildErrorEvent({
+        yield buildErrorEvent({
           metadata,
           type: "stop_error",
           message: "The maximum response length was reached.",
         });
         break;
       case CompletionResponseStreamChoiceFinishReason.Error:
-        terminalError ??= buildErrorEvent({
+        yield buildErrorEvent({
           metadata,
           type: "server_error",
           message: "Mistral reported an error during completion.",
@@ -347,10 +344,6 @@ export async function* rawOutputToEvents(
 
   if (usage) {
     yield usageToTokenUsageEvent(metadata, usage);
-  }
-  if (terminalError) {
-    yield terminalError;
-    return;
   }
   yield {
     type: "success",

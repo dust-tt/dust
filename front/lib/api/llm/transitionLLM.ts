@@ -39,6 +39,7 @@ import type {
 } from "@app/lib/model_constructors/batch/endpoint";
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import type { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
+import { deferTerminalError } from "@app/lib/model_constructors/stream/defer_terminal_error";
 import type { NoopRequest } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
 import { NoopNoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
 import type { Host } from "@app/lib/model_constructors/types/hosts";
@@ -648,7 +649,7 @@ async function* convertToOldEvents(
   newEvents: AsyncGenerator<ModelResponseEvent>,
   metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
-  for await (const event of newEvents) {
+  for await (const event of deferTerminalError(newEvents)) {
     yield convertToOldEvent(event, metadata);
   }
 }
