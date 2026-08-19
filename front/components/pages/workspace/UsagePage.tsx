@@ -119,6 +119,7 @@ import {
   LoadingBlock,
   Page,
   SearchInput,
+  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -1274,7 +1275,7 @@ export function UsagePage() {
           <Page.Vertical gap="xs" align="stretch">
             <Page.H variant="h4">Workspace credit pool</Page.H>
 
-            {isAwuPoolSummaryError && (
+            {isAwuPoolSummaryError ? (
               <ContentMessage
                 title="Failed to load Workspace Credits Pool"
                 icon={AlertCircle}
@@ -1284,9 +1285,11 @@ export function UsagePage() {
                 data. Please refresh the page or contact support if the issue
                 persists.
               </ContentMessage>
-            )}
-
-            {!isAwuPoolSummaryError && (
+            ) : isAwuPoolSummaryLoading ? (
+              <div className="flex justify-center py-8">
+                <Spinner />
+              </div>
+            ) : (
               <>
                 <div className="flex items-baseline gap-1">
                   <span className="heading-mono-4xl text-foreground">
