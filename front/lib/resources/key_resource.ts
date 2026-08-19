@@ -50,6 +50,16 @@ export interface KeyAuthType {
   monthlyCapMicroUsd: number | null;
 }
 
+// A key proven to be a system key. Callers that only make sense for a system key take this rather
+// than a key plus a boolean, so a regular key cannot reach them (see `Authenticator.resolvePermissions`).
+export type SystemKey = { isSystem: true };
+
+export function isSystemKey<T extends { isSystem: boolean }>(
+  key: T
+): key is T & SystemKey {
+  return key.isSystem;
+}
+
 export const DEFAULT_SYSTEM_KEY_NAME = "DustSystemKey";
 export const SECRET_KEY_PREFIX = "sk-";
 

@@ -2225,6 +2225,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   canWrite(auth: Authenticator): boolean {
     // TODO(governance): cleanup we we'll be able to assign API key to editor groups.
+    // TODO(@jd): Revisit this shortcircuit with our current ACLs stack.
     // API keys cannot be added to a skill's editor group (no such assignment mechanism exists),
     // so any key is allowed to write to any skill. Skill *creation* is separately gated by
     // `auth.hasWorkspacePermission("create", "skill")`; this only governs already-existing skills.

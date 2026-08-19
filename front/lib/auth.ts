@@ -19,7 +19,10 @@ import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
-import type { GroupPermissionsJSON } from "@app/lib/resources/group_permission_registry";
+import type {
+  GroupPermissionsJSON,
+  ResourcesWithVerb,
+} from "@app/lib/resources/group_permission_registry";
 import {
   allWorkspacePermissions,
   GroupPermissions,
@@ -27,9 +30,10 @@ import {
 } from "@app/lib/resources/group_permission_registry";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import type { KeyAuthType } from "@app/lib/resources/key_resource";
+import type { KeyAuthType, SystemKey } from "@app/lib/resources/key_resource";
 import {
   DEFAULT_SYSTEM_KEY_NAME,
+  isSystemKey,
   KeyResource,
   SECRET_KEY_PREFIX,
 } from "@app/lib/resources/key_resource";
@@ -974,26 +978,33 @@ export class Authenticator {
       : [];
     const keyGroupModelIds = allGroups.map((g) => g.id);
 
+    // `requestedGroupIds` replaces the key's own groups (the Slack bot acting as a user), so the
+    // resolution goes through those groups instead of the key.
+    const systemKey = !requestedGroupIds && isSystemKey(key) ? key : null;
+
     let permissions: GroupPermissions;
     let keyPermissions: GroupPermissions;
     if (isKeyWorkspace) {
       // Same workspace and same groups: both Authenticators share one resolution rather than
       // running the same query twice. Safe to share the instance, GroupPermissions is immutable.
-      permissions = await this.resolvePermissions({
-        workspace,
-        groupModelIds: workspaceGroupModelIds,
-      });
+      permissions = await this.resolvePermissions(
+        systemKey
+          ? { workspace, systemKey }
+          : { workspace, groupModelIds: workspaceGroupModelIds }
+      );
       keyPermissions = permissions;
     } else {
       [permissions, keyPermissions] = await Promise.all([
+        // The target workspace is not the key's, so the key says nothing about it.
         this.resolvePermissions({
           workspace,
           groupModelIds: workspaceGroupModelIds,
         }),
-        this.resolvePermissions({
-          workspace: keyWorkspace,
-          groupModelIds: keyGroupModelIds,
-        }),
+        this.resolvePermissions(
+          systemKey
+            ? { workspace: keyWorkspace, systemKey }
+            : { workspace: keyWorkspace, groupModelIds: keyGroupModelIds }
+        ),
       ]);
     }
 
@@ -1294,20 +1305,34 @@ export class Authenticator {
    * NOT confer access to a specific instance unless a grant grants it. Cheap for callers with no
    * groups (no query).
    */
-  static async resolvePermissions({
-    workspace,
-    groupModelIds,
-  }: {
-    workspace?: WorkspaceResource | null;
-    groupModelIds: ModelId[];
-  }): Promise<GroupPermissions> {
+  static async resolvePermissions(
+    // Groups or a system key, never both: a system key is attached to every group of its
+    // workspace, so its grants are the wildcard and reading them back would scan the workspace's
+    // whole `group_permissions` slice. A system key narrowed to a group subset must resolve from
+    // those groups, so the two inputs are mutually exclusive rather than a rule to remember.
+    params: { workspace?: WorkspaceResource | null } & (
+      | { groupModelIds: ModelId[]; systemKey?: never }
+      | { systemKey: SystemKey; groupModelIds?: never }
+    )
+  ): Promise<GroupPermissions> {
+    const { workspace } = params;
     if (!workspace) {
       return GroupPermissions.empty();
     }
 
+    if (params.systemKey) {
+      return GroupPermissions.fromGrants([
+        {
+          grantType: "*",
+          resourceType: "*",
+          resourceId: WHOLE_TYPE_RESOURCE_ID,
+        },
+      ]);
+    }
+
     const lightWorkspace = renderLightWorkspaceType({ workspace });
     const grants = await GroupPermissionResource.listForGroups(lightWorkspace, {
-      groupModelIds,
+      groupModelIds: params.groupModelIds,
     });
 
     return GroupPermissions.fromGrants(grants);
@@ -1497,15 +1522,16 @@ export class Authenticator {
   }
 
   /**
-   * The instance ids of `resourceType` the caller may `verb`, resolved from their governance grants.
+   * The instances of `resourceType` the caller may `verb`, resolved from their governance grants.
    * The enumeration counterpart of `getGrantedVerbs` — "which resources may I act on" rather than
-   * "what may I do on this one" — for reverse lookups such as the projects a caller belongs to. See
-   * `GroupPermissions.resourceIdsWithVerb`; the type-wide (-1) grant is excluded there.
+   * "what may I do on this one" — for reverse lookups such as the projects a caller belongs to.
+   * Returns `{ kind: "all" }` when a type-wide grant confers the verb on every instance, which a
+   * system key holds on every type (see `resolvePermissions`).
    */
   getResourceIdsWithVerb(
     resourceType: ConcreteResourceType,
     verb: GrantVerb
-  ): ModelId[] {
+  ): ResourcesWithVerb {
     return this._permissions.resourceIdsWithVerb(resourceType, verb);
   }
 
