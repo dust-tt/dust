@@ -29,8 +29,6 @@ export type ConsumptionExportListItem = {
   sizeBytes: number;
 };
 
-// Either a new generation was (re)triggered, or one already existed for
-// this exact period+filter and the caller can download it directly.
 export type StartConsumptionExportResponse =
   | { isGenerating: true }
   | { isGenerating: false; name: string };
