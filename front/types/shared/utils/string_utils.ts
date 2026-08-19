@@ -120,7 +120,7 @@ const SPECIAL_CASES = {
 
 // Create a single regex pattern for all special cases
 const SPECIAL_CASES_PATTERN = new RegExp(
-  Object.keys(SPECIAL_CASES).join("|"),
+  `\\b(?:${Object.keys(SPECIAL_CASES).join("|")})\\b`,
   "g"
 );
 
