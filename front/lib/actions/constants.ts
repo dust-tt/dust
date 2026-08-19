@@ -5,6 +5,11 @@ import type {
 
 export const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes.
 
+// Timeout for agent-loop tools/list requests. The MCP SDK default (60s) equals the model
+// activity heartbeat timeout, and a hung server should not stall every step for a minute:
+// a failed listing degrades gracefully (the server's tools are skipped for the step).
+export const MCP_LIST_TOOLS_TIMEOUT_MS = 30 * 1000;
+
 export const RUN_AGENT_CALL_TOOL_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.
 
 export const RETRY_ON_INTERRUPT_MAX_ATTEMPTS = 15;
