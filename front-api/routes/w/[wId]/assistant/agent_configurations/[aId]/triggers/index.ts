@@ -3,6 +3,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import {
   resolveTriggerSpaceId,
+  TriggerExecutionModeForbiddenError,
   TriggerResource,
 } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -336,6 +337,18 @@ app.patch(
           executionMode
         );
         if (executionModeRes.isErr()) {
+          if (
+            executionModeRes.error instanceof TriggerExecutionModeForbiddenError
+          ) {
+            return apiError(ctx, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message: executionModeRes.error.message,
+              },
+            });
+          }
+
           logger.error(
             {
               workspaceId: workspace.sId,
