@@ -147,7 +147,6 @@ describe("getAgentMessageConsumption", () => {
 
     expect(consumption).toEqual({
       billedCredits: BILLED_CREDITS,
-      subAgentBilledCredits: 0,
       totalBilledCredits: BILLED_CREDITS,
       details: {
         attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
@@ -319,7 +318,6 @@ describe("getAgentMessageConsumption", () => {
 
     expect(consumption).toMatchObject({
       billedCredits: BILLED_CREDITS,
-      subAgentBilledCredits: 20,
       totalBilledCredits: 30,
       details: {
         agentWorkCredits: 4,
@@ -430,7 +428,6 @@ describe("getAgentMessageConsumption", () => {
       })
     ).resolves.toEqual({
       billedCredits: BILLED_CREDITS,
-      subAgentBilledCredits: 0,
       totalBilledCredits: BILLED_CREDITS,
       details: null,
     });
@@ -490,7 +487,6 @@ describe("getAgentMessageConsumption", () => {
       })
     ).resolves.toEqual({
       billedCredits: BILLED_CREDITS,
-      subAgentBilledCredits: 0,
       totalBilledCredits: BILLED_CREDITS,
       details: null,
     });

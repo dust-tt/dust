@@ -51,7 +51,6 @@ export async function getAgentMessageConsumption(
 
   const unavailableResponse: AgentMessageConsumptionResponse = {
     billedCredits: facts.billedCredits,
-    subAgentBilledCredits,
     totalBilledCredits,
     details: null,
   };
@@ -118,7 +117,6 @@ export async function getAgentMessageConsumption(
 
   return {
     billedCredits: facts.billedCredits,
-    subAgentBilledCredits,
     totalBilledCredits,
     details: messageDetails,
   };

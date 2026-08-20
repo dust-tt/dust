@@ -110,7 +110,6 @@ describe("CreditCostPopover", () => {
     mockUseAgentMessageConsumption.mockReturnValue({
       consumption: {
         billedCredits: 12,
-        subAgentBilledCredits: 18,
         totalBilledCredits: 30,
         details: {
           attributionVersion: 2,
@@ -187,7 +186,6 @@ describe("CreditCostPopover", () => {
     mockUseAgentMessageConsumption.mockReturnValue({
       consumption: {
         billedCredits: 20,
-        subAgentBilledCredits: 282,
         totalBilledCredits: 302,
         details: {
           attributionVersion: 3,

@@ -22,7 +22,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/consumption:
  *   get:
  *     summary: Get an agent message credit attribution
- *     description: Returns direct, sub-agent, and total billed credits. Run-agent tool rows combine invocation cost with the bill of their direct sub-agent.
+ *     description: Returns direct and total billed credits. Run-agent tool rows combine invocation cost with the bill of their direct sub-agent.
  *     tags:
  *       - Private Messages
  *     parameters:
@@ -58,9 +58,6 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                   type: number
  *                   nullable: true
  *                   description: Authoritative credits billed directly for this agent message, excluding sub-agents.
- *                 subAgentBilledCredits:
- *                   type: number
- *                   description: Credits billed by direct sub-agents spawned from this message.
  *                 totalBilledCredits:
  *                   type: number
  *                   description: Total credits billed by this message and its direct sub-agents.
