@@ -1,4 +1,3 @@
-import type { ModelTierId } from "@app/components/model_picker/modelPickerUtils";
 import {
   buildModelPickerCatalog,
   MODEL_TIERS,
@@ -14,9 +13,6 @@ import type {
 } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
 import {
-  BarFull,
-  BarHalf,
-  BarLow,
   Button,
   Check,
   ChevronDown,
@@ -50,23 +46,13 @@ interface ModelsFilterMenuProps {
   isCompact?: boolean;
 }
 
-const TIER_ICON: Record<ModelTierId, ComponentType> = {
-  fast: BarLow,
-  standard: BarHalf,
-  complex: BarFull,
-};
-
-type TierModelFilter = AgentModelFilterType & {
-  tierId: ModelTierId;
-};
-
 interface AgentModelMakerGroup {
   makerId: ModelMakerIdType;
   models: AgentModelFilterType[];
 }
 
 interface ModelsFilterCatalog {
-  tierModels: TierModelFilter[];
+  tierModels: AgentModelFilterType[];
   makerGroups: AgentModelMakerGroup[];
   makerByModelId: Map<string, ModelMakerIdType>;
   unknownModels: AgentModelFilterType[];
@@ -80,9 +66,7 @@ function buildModelsFilterCatalog(
   const tierModels = removeNulls(
     MODEL_TIERS.map((tier) => {
       const model = modelsById.get(tier.metaModelId);
-      return model
-        ? { ...model, displayName: tier.name, tierId: tier.id }
-        : null;
+      return model ? { ...model, displayName: tier.name } : null;
     })
   );
 
@@ -470,7 +454,6 @@ export function ModelsFilterMenu({
               <ModelFilterItem
                 key={model.modelId}
                 model={model}
-                icon={TIER_ICON[model.tierId]}
                 isSelected={selectedModelIds.has(model.modelId)}
                 onToggle={toggleModel}
               />
