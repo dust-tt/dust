@@ -65,6 +65,8 @@ export async function resolveTriggerSpaceId(
   return new Ok(pod.id);
 }
 
+export class TriggerExecutionModeForbiddenError extends Error {}
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -1068,6 +1070,14 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     executionMode: TriggerExecutionMode
   ): Promise<Result<undefined, Error>> {
+    if (!(await this.canSetExecutionMode(auth, executionMode))) {
+      return new Err(
+        new TriggerExecutionModeForbiddenError(
+          "You don't have permission to change this trigger's pool."
+        )
+      );
+    }
+
     if (this.executionMode === executionMode) {
       return new Ok(undefined);
     }

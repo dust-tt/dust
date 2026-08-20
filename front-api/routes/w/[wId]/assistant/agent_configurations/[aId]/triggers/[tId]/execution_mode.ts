@@ -1,5 +1,8 @@
 import { getFeatureFlags } from "@app/lib/auth";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import {
+  TriggerExecutionModeForbiddenError,
+  TriggerResource,
+} from "@app/lib/resources/trigger_resource";
 import logger from "@app/logger/logger";
 import { PatchTriggerExecutionModeRequestBodySchema } from "@app/types/api/assistant/configuration/triggers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -58,18 +61,18 @@ app.patch(
       });
     }
 
-    if (!(await trigger.canSetExecutionMode(auth, executionMode))) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "You don't have permission to change this trigger's pool.",
-        },
-      });
-    }
-
     const result = await trigger.setExecutionMode(auth, executionMode);
     if (result.isErr()) {
+      if (result.error instanceof TriggerExecutionModeForbiddenError) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: result.error.message,
+          },
+        });
+      }
+
       logger.error(
         { error: result.error, aId, tId, executionMode },
         "Error updating trigger execution mode"
