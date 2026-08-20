@@ -1,3 +1,4 @@
+import type { AgentMessageModelResolution } from "@app/lib/api/assistant/conversation/messages";
 import {
   makePremiumModelMessageRateLimitKeyForUser,
   PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK,
@@ -13,23 +14,36 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type { UserMessageContext } from "@app/types/assistant/conversation";
 import type { ResolvedRequestedModel } from "@app/types/assistant/models/types";
-import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { isCreditPricedPlan } from "@app/types/plan";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
 
-export async function checkPremiumModelMessageLimit(
+export type PremiumModelFairUseDecision =
+  | { action: "run_as_requested" }
+  | {
+      action: "downgrade";
+      resolution: AgentMessageModelResolution;
+      requested: ResolvedRequestedModel;
+    }
+  | { action: "refuse"; limit: number; windowSeconds: number };
+
+export function premiumModelLimitMessage(): string {
+  return (
+    `You have reached the limit of ${PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK} messages ` +
+    `per week on premium models. Pick another model or try again later.`
+  );
+}
+
+export async function applyPremiumModelFairUse(
   auth: Authenticator,
   {
     user,
-    resolvedModel,
+    resolution,
     context,
   }: {
     user: UserResource;
-    resolvedModel: ResolvedRequestedModel;
+    resolution: AgentMessageModelResolution;
     context: UserMessageContext;
   }
-): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
+): Promise<PremiumModelFairUseDecision> {
   const workspace = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
 
@@ -38,15 +52,16 @@ export async function checkPremiumModelMessageLimit(
     isFreeOrigin(context.origin) ||
     isProgrammaticUsage(auth, { userMessageOrigin: context.origin })
   ) {
-    return new Ok(undefined);
+    return { action: "run_as_requested" };
   }
 
+  const { resolvedModel } = resolution;
   const tierName = ModelsTierResource.getTierForModel(
     resolvedModel.modelId,
     resolvedModel.reasoningEffort
   );
   if (tierName !== "premium") {
-    return new Ok(undefined);
+    return { action: "run_as_requested" };
   }
 
   const remaining = await rateLimiter({
@@ -57,7 +72,7 @@ export async function checkPremiumModelMessageLimit(
   });
 
   if (remaining > 0) {
-    return new Ok(undefined);
+    return { action: "run_as_requested" };
   }
 
   const featureFlags = await getFeatureFlags(auth);
@@ -79,16 +94,12 @@ export async function checkPremiumModelMessageLimit(
   );
 
   if (isBlocked) {
-    return new Err({
-      status_code: 429,
-      api_error: {
-        type: "rate_limit_error",
-        message:
-          `You have reached the limit of ${PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK} messages ` +
-          `per week on premium models. Pick another model or try again later.`,
-      },
-    });
+    return {
+      action: "refuse",
+      limit: PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK,
+      windowSeconds: PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
+    };
   }
 
-  return new Ok(undefined);
+  return { action: "run_as_requested" };
 }

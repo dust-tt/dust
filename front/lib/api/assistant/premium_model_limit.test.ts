@@ -1,4 +1,4 @@
-import { checkPremiumModelMessageLimit } from "@app/lib/api/assistant/premium_model_limit";
+import { applyPremiumModelFairUse } from "@app/lib/api/assistant/premium_model_limit";
 import type { Authenticator, AuthMethodType } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
@@ -70,14 +70,14 @@ function callGate(
     origin?: UserMessageOrigin;
   } = {}
 ) {
-  return checkPremiumModelMessageLimit(auth, {
+  return applyPremiumModelFairUse(auth, {
     user: USER,
-    resolvedModel,
+    resolution: { resolvedModel, modelResolutionMethod: "user" },
     context: { origin } as UserMessageContext,
   });
 }
 
-describe("checkPremiumModelMessageLimit", () => {
+describe("applyPremiumModelFairUse", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetFeatureFlags.mockResolvedValue([
@@ -89,7 +89,7 @@ describe("checkPremiumModelMessageLimit", () => {
   it("consumes one unit atomically for a premium message under the weekly limit", async () => {
     const result = await callGate(makeAuth());
 
-    expect(result.isOk()).toBe(true);
+    expect(result.action).toBe("run_as_requested");
     expect(mockRateLimiter).toHaveBeenCalledWith(
       expect.objectContaining({
         key: EXPECTED_KEY,
@@ -99,25 +99,21 @@ describe("checkPremiumModelMessageLimit", () => {
     );
   });
 
-  it("blocks once the limit is reached and the flag is on", async () => {
+  it("refuses once the limit is reached and the enforce flag is on", async () => {
     mockRateLimiter.mockResolvedValue(0);
 
     const result = await callGate(makeAuth());
 
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.status_code).toBe(429);
-      expect(result.error.api_error.type).toBe("rate_limit_error");
-    }
+    expect(result.action).toBe("refuse");
   });
 
-  it("allows past the limit when the flag is off", async () => {
+  it("allows past the limit when no flag is on", async () => {
     mockGetFeatureFlags.mockResolvedValue([]);
     mockRateLimiter.mockResolvedValue(0);
 
     const result = await callGate(makeAuth());
 
-    expect(result.isOk()).toBe(true);
+    expect(result.action).toBe("run_as_requested");
   });
 
   it("does not count non-premium models", async () => {
@@ -125,14 +121,14 @@ describe("checkPremiumModelMessageLimit", () => {
       resolvedModel: BALANCED_MODEL,
     });
 
-    expect(result.isOk()).toBe(true);
+    expect(result.action).toBe("run_as_requested");
     expect(mockRateLimiter).not.toHaveBeenCalled();
   });
 
   it("does not count credit-priced plans", async () => {
     const result = await callGate(makeAuth({ planCode: "CP_PRO" }));
 
-    expect(result.isOk()).toBe(true);
+    expect(result.action).toBe("run_as_requested");
     expect(mockRateLimiter).not.toHaveBeenCalled();
   });
 
@@ -145,7 +141,7 @@ describe("checkPremiumModelMessageLimit", () => {
         origin,
       });
 
-      expect(result.isOk()).toBe(true);
+      expect(result.action).toBe("run_as_requested");
       expect(mockRateLimiter).toHaveBeenCalledTimes(1);
     }
   });
@@ -158,7 +154,7 @@ describe("checkPremiumModelMessageLimit", () => {
         origin,
       });
 
-      expect(result.isOk()).toBe(true);
+      expect(result.action).toBe("run_as_requested");
       expect(mockRateLimiter).not.toHaveBeenCalled();
     }
   });
@@ -168,7 +164,7 @@ describe("checkPremiumModelMessageLimit", () => {
       origin: "slack",
     });
 
-    expect(result.isOk()).toBe(true);
+    expect(result.action).toBe("run_as_requested");
     expect(mockRateLimiter).not.toHaveBeenCalled();
   });
 
@@ -177,14 +173,14 @@ describe("checkPremiumModelMessageLimit", () => {
       origin: "web",
     });
 
-    expect(result.isOk()).toBe(true);
+    expect(result.action).toBe("run_as_requested");
     expect(mockRateLimiter).toHaveBeenCalledTimes(1);
   });
 
   it("does not count free origins", async () => {
     const result = await callGate(makeAuth(), { origin: "agent_sidekick" });
 
-    expect(result.isOk()).toBe(true);
+    expect(result.action).toBe("run_as_requested");
     expect(mockRateLimiter).not.toHaveBeenCalled();
   });
 });

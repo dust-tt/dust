@@ -16,6 +16,7 @@ import {
   createUserMentions,
   resolveUserMentions,
 } from "@app/lib/api/assistant/conversation/mentions";
+import type { AgentMessageModelResolution } from "@app/lib/api/assistant/conversation/messages";
 import {
   attributeUserFromWorkspaceAndEmail,
   createAgentMessages,
@@ -34,7 +35,11 @@ import {
   batchRenderUserMessagesWithoutMentions,
 } from "@app/lib/api/assistant/messages";
 import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
-import { checkPremiumModelMessageLimit } from "@app/lib/api/assistant/premium_model_limit";
+import type { PremiumModelFairUseDecision } from "@app/lib/api/assistant/premium_model_limit";
+import {
+  applyPremiumModelFairUse,
+  premiumModelLimitMessage,
+} from "@app/lib/api/assistant/premium_model_limit";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
@@ -523,6 +528,35 @@ export function isUserMessageContextValid(
 // This method is in charge of creating a new user message in database, running the necessary agents
 // in response and updating accordingly the conversation. AgentMentions must point to valid agent
 // configurations from the same workspace or whose scope is global.
+// Maps the fair-use gate's decision onto the message-posting flow: Ok(null) runs what was
+// resolved, Ok(resolution) runs the downgraded model instead.
+export function applyFairUseDecision(
+  decision: PremiumModelFairUseDecision
+): Result<
+  AgentMessageModelResolution | null,
+  APIErrorWithContentfulStatusCode
+> {
+  switch (decision.action) {
+    case "run_as_requested":
+      return new Ok(null);
+
+    case "downgrade":
+      return new Ok(decision.resolution);
+
+    case "refuse":
+      return new Err({
+        status_code: 429,
+        api_error: {
+          type: "rate_limit_error",
+          message: premiumModelLimitMessage(),
+        },
+      });
+
+    default:
+      assertNever(decision);
+  }
+}
+
 export async function postUserMessage(
   auth: Authenticator,
   {
@@ -825,7 +859,7 @@ export async function postUserMessage(
     configuration: mentionedAgentConfiguration,
     conversation,
   });
-  const modelResolution = mentionedAgentConfiguration
+  let modelResolution = mentionedAgentConfiguration
     ? await resolveModelForMentionedAgent(auth, {
         configuration: mentionedAgentConfiguration,
         selection: modelSelection,
@@ -833,14 +867,16 @@ export async function postUserMessage(
     : null;
 
   if (user && modelResolution) {
-    const premiumModelLimitResult = await checkPremiumModelMessageLimit(auth, {
+    const decision = await applyPremiumModelFairUse(auth, {
       user,
-      resolvedModel: modelResolution.resolvedModel,
+      resolution: modelResolution,
       context,
     });
+    const premiumModelLimitResult = applyFairUseDecision(decision);
     if (premiumModelLimitResult.isErr()) {
       return premiumModelLimitResult;
     }
+    modelResolution = premiumModelLimitResult.value ?? modelResolution;
   }
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
@@ -1245,7 +1281,7 @@ export async function editUserMessage(
     conversation,
   });
 
-  const modelResolution = mentionedAgentConfiguration
+  let modelResolution = mentionedAgentConfiguration
     ? await resolveModelForMentionedAgent(auth, {
         configuration: mentionedAgentConfiguration,
         selection: message.requestedModel ?? undefined,
@@ -1253,14 +1289,16 @@ export async function editUserMessage(
     : null;
 
   if (user && modelResolution) {
-    const premiumModelLimitResult = await checkPremiumModelMessageLimit(auth, {
+    const decision = await applyPremiumModelFairUse(auth, {
       user,
-      resolvedModel: modelResolution.resolvedModel,
+      resolution: modelResolution,
       context: message.context,
     });
+    const premiumModelLimitResult = applyFairUseDecision(decision);
     if (premiumModelLimitResult.isErr()) {
       return premiumModelLimitResult;
     }
+    modelResolution = premiumModelLimitResult.value ?? modelResolution;
   }
 
   try {
@@ -1818,24 +1856,28 @@ export async function retryAgentMessage(
     return limitResult;
   }
 
+  let retryModelResolution: AgentMessageModelResolution | null = null;
   const user = auth.user();
   if (user) {
-    const resolvedModel =
-      message.resolvedModel ??
-      (
-        await resolveModelForMentionedAgent(auth, {
+    const resolution = message.resolvedModel
+      ? {
+          resolvedModel: message.resolvedModel,
+          modelResolutionMethod: message.modelResolutionMethod ?? "agent",
+        }
+      : await resolveModelForMentionedAgent(auth, {
           configuration: message.configuration,
-        })
-      ).resolvedModel;
+        });
 
-    const premiumModelLimitResult = await checkPremiumModelMessageLimit(auth, {
+    const decision = await applyPremiumModelFairUse(auth, {
       user,
-      resolvedModel,
+      resolution,
       context: parentUserMessage.context,
     });
+    const premiumModelLimitResult = applyFairUseDecision(decision);
     if (premiumModelLimitResult.isErr()) {
       return premiumModelLimitResult;
     }
+    retryModelResolution = premiumModelLimitResult.value;
   }
 
   const retryAgentConfiguration = await getAgentConfiguration(auth, {
@@ -1915,6 +1957,7 @@ export async function retryAgentMessage(
           parentId: messageRow.parentId,
           agentMessage: message,
           agentMessageRow: messageRow.agentMessage,
+          modelResolution: retryModelResolution,
         },
         transaction: t,
       });
@@ -3421,13 +3464,25 @@ export async function updateAgentMessageWithFinalStatus(
     });
 
     // The no-selection default was resolved before the transaction.
-    const modelResolution =
+    let modelResolution =
       defaultModelResolution && !promotedUserMessage.requestedModel
         ? defaultModelResolution
         : await resolveModelForMentionedAgent(promotedAuth, {
             configuration: agentMessage.configuration,
             selection: promotedUserMessage.requestedModel ?? undefined,
           });
+
+    const fairUseUser = promotedAuth.user();
+    if (fairUseUser) {
+      const decision = await applyPremiumModelFairUse(promotedAuth, {
+        user: fairUseUser,
+        resolution: modelResolution,
+        context: promotedUserMessage.context,
+      });
+      if (decision.action === "downgrade") {
+        modelResolution = decision.resolution;
+      }
+    }
 
     // Create a new agent message using the last promoted user message.
     const { agentMessages } = await createAgentMessages(promotedAuth, {
