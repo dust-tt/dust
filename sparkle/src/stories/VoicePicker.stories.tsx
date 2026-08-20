@@ -62,6 +62,37 @@ const noopRecordingHandlers = {
 };
 
 /**
+ * The full controlled lifecycle, simulated: press to record (level and
+ * timer animate), release to transcribe, then back to idle. The
+ * `status`/`level`/`elapsedSeconds` args are placeholders here — the demo
+ * owns them in state, as your integration should.
+ *
+ * @summary Simulated record → transcribe → idle lifecycle.
+ */
+export const SimulatedRecordingLifecycle: Story = {
+  args: {
+    status: "idle",
+    level: 0,
+    elapsedSeconds: 0,
+    size: "xs",
+    disabled: false,
+    showStopLabel: true,
+    pressDelayMs: 150,
+    ...noopRecordingHandlers,
+  },
+  render: function Render(args: VoicePickerProps): React.ReactElement {
+    return (
+      <VoicePickerDemo
+        size={args.size}
+        disabled={args.disabled}
+        showStopLabel={args.showStopLabel}
+        pressDelayMs={args.pressDelayMs}
+      />
+    );
+  },
+};
+
+/**
  * The resting state, ready to record. Static and fully args-driven — see
  * `SimulatedRecordingLifecycle` for the full state machine in motion.
  *
@@ -154,37 +185,6 @@ export const Disabled: Story = {
     disabled: true,
     showStopLabel: true,
     ...noopRecordingHandlers,
-  },
-};
-
-/**
- * The full controlled lifecycle, simulated: press to record (level and
- * timer animate), release to transcribe, then back to idle. The
- * `status`/`level`/`elapsedSeconds` args are placeholders here — the demo
- * owns them in state, as your integration should.
- *
- * @summary Simulated record → transcribe → idle lifecycle.
- */
-export const SimulatedRecordingLifecycle: Story = {
-  args: {
-    status: "idle",
-    level: 0,
-    elapsedSeconds: 0,
-    size: "xs",
-    disabled: false,
-    showStopLabel: true,
-    pressDelayMs: 150,
-    ...noopRecordingHandlers,
-  },
-  render: function Render(args: VoicePickerProps): React.ReactElement {
-    return (
-      <VoicePickerDemo
-        size={args.size}
-        disabled={args.disabled}
-        showStopLabel={args.showStopLabel}
-        pressDelayMs={args.pressDelayMs}
-      />
-    );
   },
 };
 
