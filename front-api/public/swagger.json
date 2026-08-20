@@ -7302,7 +7302,7 @@
     "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/consumption": {
       "get": {
         "summary": "Get an agent message credit attribution",
-        "description": "Returns direct, recursively spawned sub-agent, and total billed credits, plus an additive attribution of the message and its direct sub-agents reconciled exclusively through model input rows.",
+        "description": "Returns billed credits and an additive attribution for the message and its direct sub-agents, reconciled exclusively through model input rows.",
         "tags": [
           "Private Messages"
         ],
@@ -7356,16 +7356,16 @@
                     },
                     "subAgentBilledCredits": {
                       "type": "number",
-                      "description": "Credits billed by sub-agents recursively spawned from this message."
+                      "description": "Credits billed by direct sub-agents spawned from this message."
                     },
                     "totalBilledCredits": {
                       "type": "number",
-                      "description": "Total credits billed by this message and its recursively spawned sub-agents."
+                      "description": "Total credits billed by this message and its direct sub-agents."
                     },
                     "details": {
                       "type": "object",
                       "nullable": true,
-                      "description": "Additive attribution of the message and its direct sub-agents, reconciled to totalBilledCredits through model input rows. Deeper sub-agent charges remain in agentWorkCredits. Null when any expanded billed message lacks a complete stored attribution or the direct descendant graph is incomplete.",
+                      "description": "Additive attribution of the message and its direct sub-agents, reconciled to totalBilledCredits through model input rows. Null when any billed message lacks a complete stored attribution.",
                       "required": [
                         "attributionVersion",
                         "agentWorkCredits",
@@ -7378,7 +7378,7 @@
                         },
                         "agentWorkCredits": {
                           "type": "number",
-                          "description": "Agent work across the message and its direct sub-agents after assigning billing reconciliation exclusively to model input rows, plus charges from deeper sub-agents."
+                          "description": "Agent work across the message and its direct sub-agents after assigning billing reconciliation exclusively to model input rows."
                         },
                         "tools": {
                           "type": "array",
