@@ -63,10 +63,16 @@ describe("ConversationCreditUsageBreakdown", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Total consumption" })
+      screen.getByRole("heading", { name: "Total credits consumed" })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Per Models" })
+      screen.getByRole("heading", { name: "By model" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Context and reasoning")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Agents use credits to process the conversation history and context. Longer conversations consume more credits."
+      )
     ).toBeInTheDocument();
     expect(screen.getByText("Calendar tool")).toBeInTheDocument();
     expect(screen.getByText("6.5 credits")).toBeInTheDocument();

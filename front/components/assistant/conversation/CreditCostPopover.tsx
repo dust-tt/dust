@@ -187,7 +187,7 @@ export function CreditCostPopover({
           ) : details ? (
             <dl>
               <CreditDetailRow
-                label="Agent work and context"
+                label="Context and reasoning"
                 value={formatCreditValue(details.agentWorkCredits)}
                 icon={InternalActionIcons.ActionBrainIcon}
               />
@@ -233,7 +233,7 @@ export function CreditCostPopover({
             <Button
               variant="highlight-ghost"
               size="sm"
-              label="Conversation consumption"
+              label="Credit usage"
               className="w-full"
               onClick={() => {
                 preventTriggerFocusOnCloseRef.current = true;
