@@ -177,20 +177,23 @@ export const FontFamilies: Story = {
   ),
 };
 
-const rawSizes = [
-  "xs",
-  "sm",
-  "base",
-  "lg",
-  "xl",
-  "2xl",
-  "3xl",
-  "4xl",
-  "5xl",
-  "6xl",
-  "7xl",
-  "8xl",
-  "9xl",
+// Full literal class names: Tailwind only compiles classes it can see in
+// source, so a computed `text-${size}` template would leave any size unused
+// elsewhere in the codebase out of the stylesheet (rendering at base size).
+const rawSizeClasses = [
+  "text-xs",
+  "text-sm",
+  "text-base",
+  "text-lg",
+  "text-xl",
+  "text-2xl",
+  "text-3xl",
+  "text-4xl",
+  "text-5xl",
+  "text-6xl",
+  "text-7xl",
+  "text-8xl",
+  "text-9xl",
 ] as const;
 
 export const FontSizes: Story = {
@@ -206,8 +209,8 @@ export const FontSizes: Story = {
       }
     >
       <TypeTable
-        rows={rawSizes.map((size) => ({
-          name: `text-${size}`,
+        rows={rawSizeClasses.map((sizeClass) => ({
+          name: sizeClass,
           sample: "Aa",
         }))}
       />
@@ -269,20 +272,23 @@ const headingDescriptions: Record<string, string> = {
   "heading-3xl": "Hero / marketing headings.",
 };
 
-const headingSizes = [
-  "xs",
-  "sm",
-  "base",
-  "lg",
-  "xl",
-  "2xl",
-  "3xl",
-  "4xl",
-  "5xl",
-  "6xl",
-  "7xl",
-  "8xl",
-  "9xl",
+// Literal class names so the Tailwind scanner compiles every one of them
+// (a computed `heading-${size}` template only works for sizes that happen to
+// be used elsewhere in the codebase).
+const headingClasses = [
+  "heading-xs",
+  "heading-sm",
+  "heading-base",
+  "heading-lg",
+  "heading-xl",
+  "heading-2xl",
+  "heading-3xl",
+  "heading-4xl",
+  "heading-5xl",
+  "heading-6xl",
+  "heading-7xl",
+  "heading-8xl",
+  "heading-9xl",
 ] as const;
 
 export const Headings: Story = {
@@ -298,27 +304,27 @@ export const Headings: Story = {
       }
     >
       <TypeTable
-        rows={headingSizes.map((size) => ({
-          name: `heading-${size}`,
+        rows={headingClasses.map((headingClass) => ({
+          name: headingClass,
           sample: "Sparkle",
-          description: headingDescriptions[`heading-${size}`],
+          description: headingDescriptions[headingClass],
         }))}
       />
     </Section>
   ),
 };
 
-const headingMonoSizes = [
-  "lg",
-  "xl",
-  "2xl",
-  "3xl",
-  "4xl",
-  "5xl",
-  "6xl",
-  "7xl",
-  "8xl",
-  "9xl",
+const headingMonoClasses = [
+  "heading-mono-lg",
+  "heading-mono-xl",
+  "heading-mono-2xl",
+  "heading-mono-3xl",
+  "heading-mono-4xl",
+  "heading-mono-5xl",
+  "heading-mono-6xl",
+  "heading-mono-7xl",
+  "heading-mono-8xl",
+  "heading-mono-9xl",
 ] as const;
 
 export const HeadingsMono: Story = {
@@ -332,8 +338,8 @@ export const HeadingsMono: Story = {
       }
     >
       <TypeTable
-        rows={headingMonoSizes.map((size) => ({
-          name: `heading-mono-${size}`,
+        rows={headingMonoClasses.map((headingClass) => ({
+          name: headingClass,
           sample: "Sparkle",
         }))}
       />
@@ -350,7 +356,14 @@ const copyDescriptions: Record<string, string> = {
   "copy-2xl": "Large editorial / marketing copy.",
 };
 
-const copySizes = ["xs", "sm", "base", "lg", "xl", "2xl"] as const;
+const copyClasses = [
+  "copy-xs",
+  "copy-sm",
+  "copy-base",
+  "copy-lg",
+  "copy-xl",
+  "copy-2xl",
+] as const;
 
 export const Copy: Story = {
   render: () => (
@@ -364,10 +377,10 @@ export const Copy: Story = {
       }
     >
       <TypeTable
-        rows={copySizes.map((size) => ({
-          name: `copy-${size}`,
+        rows={copyClasses.map((copyClass) => ({
+          name: copyClass,
           sample: copySentence,
-          description: copyDescriptions[`copy-${size}`],
+          description: copyDescriptions[copyClass],
         }))}
       />
     </Section>
