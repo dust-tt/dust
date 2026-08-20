@@ -47,7 +47,6 @@ interface APIKeyRowData {
   key: KeyType;
   name: string;
   creator: string;
-  searchText: string;
   spaces: string[];
   scope: string;
   secret: string;
@@ -120,6 +119,22 @@ function toggleSetValue<T>(current: ReadonlySet<T>, value: T): ReadonlySet<T> {
     next.add(value);
   }
   return next;
+}
+
+function matchesAPIKeySearch(row: APIKeyRowData, search: string): boolean {
+  const normalizedSearch = search.trim().toLowerCase();
+  if (!normalizedSearch) {
+    return true;
+  }
+
+  return [
+    row.name,
+    row.creator,
+    row.secret,
+    row.scope,
+    row.status,
+    ...row.spaces,
+  ].some((value) => value.toLowerCase().includes(normalizedSearch));
 }
 
 function buildColumns({
@@ -334,8 +349,7 @@ export function APIKeysList({
         const status = getKeyStatus(key);
         const creator = key.creator ?? "Unknown creator";
         const menuItems: MenuItem[] =
-          key.status === "active" &&
-          (showLegacyUsdMonthlyCap || showCreditMonthlyCap)
+          key.status === "active"
             ? [
                 {
                   kind: "item",
@@ -350,14 +364,6 @@ export function APIKeysList({
           key,
           name: key.name || "Unnamed",
           creator,
-          searchText: [
-            key.name,
-            creator,
-            key.secret,
-            scope,
-            status,
-            ...spaces,
-          ].join(" "),
           spaces,
           scope,
           secret: key.secret,
@@ -387,11 +393,8 @@ export function APIKeysList({
     [actionsDisabled, onRevoke, showCreditMonthlyCap]
   );
   const filteredRows = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
     return rows.filter((row) => {
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        row.searchText.toLowerCase().includes(normalizedSearch);
+      const matchesSearch = matchesAPIKeySearch(row, search);
       const matchesStatus =
         statusFilters.size === 0 || statusFilters.has(row.status);
       const matchesScope =
