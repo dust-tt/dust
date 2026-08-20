@@ -19,6 +19,7 @@ import { Chip, LinkWrapper } from "@dust-tt/sparkle";
 export function WorkspaceInfoTable({
   owner,
   membersCount,
+  inactiveMembersCount,
   metronomeCustomerId,
   stripeCustomerId,
   workspaceVerifiedDomains,
@@ -31,6 +32,7 @@ export function WorkspaceInfoTable({
 }: {
   owner: WorkspaceType;
   membersCount: number;
+  inactiveMembersCount: number;
   metronomeCustomerId: string | null;
   stripeCustomerId: string | null;
   workspaceVerifiedDomains: WorkspaceDomain[];
@@ -161,7 +163,9 @@ export function WorkspaceInfoTable({
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>Members count</PokeTableCell>
-              <PokeTableCell>{membersCount}</PokeTableCell>
+              <PokeTableCell>
+                {`${membersCount} active, ${inactiveMembersCount} inactive`}
+              </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>SSO Enforced</PokeTableCell>

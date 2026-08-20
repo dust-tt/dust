@@ -132,6 +132,7 @@ export function WorkspacePage() {
     activeSubscription,
     hasDummyFeature,
     hasMetronomeFeature,
+    inactiveMembersCount,
     membersCount,
     metronomeCustomerId,
     pendingSubscription,
@@ -237,6 +238,7 @@ export function WorkspacePage() {
                 <WorkspaceInfoTable
                   owner={owner}
                   membersCount={membersCount}
+                  inactiveMembersCount={inactiveMembersCount}
                   metronomeCustomerId={metronomeCustomerId}
                   stripeCustomerId={stripeCustomerId}
                   workspaceVerifiedDomains={workspaceVerifiedDomains}
