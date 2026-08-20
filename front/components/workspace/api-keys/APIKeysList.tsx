@@ -23,6 +23,7 @@ import {
   FilterFunnel01,
   Icon,
   SearchInput,
+  Separator,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
@@ -453,8 +454,8 @@ export function APIKeysList({
   };
 
   return (
-    <div className="rounded-xl border border-border bg-panel-background p-4">
-      <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center">
+    <div className="flex flex-col gap-4 rounded-xl border border-border bg-panel-background p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <SearchInput
           name="api-keys-search"
           placeholder="Search API Key"
@@ -535,42 +536,45 @@ export function APIKeysList({
         </div>
       )}
 
-      <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+      <Separator />
+      <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-foreground">
           {filteredRows.length.toLocaleString()} API{" "}
           {filteredRows.length === 1 ? "key" : "keys"}
         </span>
         {filteredRows.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="mr-1 text-sm text-muted-foreground">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">
               Page {pageIndex + 1} of {pageCount}
             </span>
-            <Button
-              icon={ChevronLeft}
-              aria-label="Previous page"
-              size="sm"
-              variant="outline"
-              disabled={pageIndex === 0}
-              onClick={() =>
-                setPagination((current) => ({
-                  ...current,
-                  pageIndex: Math.max(0, pageIndex - 1),
-                }))
-              }
-            />
-            <Button
-              icon={ChevronRight}
-              aria-label="Next page"
-              size="sm"
-              variant="outline"
-              disabled={pageIndex >= pageCount - 1}
-              onClick={() =>
-                setPagination((current) => ({
-                  ...current,
-                  pageIndex: Math.min(pageCount - 1, pageIndex + 1),
-                }))
-              }
-            />
+            <div className="flex items-center gap-2">
+              <Button
+                icon={ChevronLeft}
+                aria-label="Previous page"
+                size="sm"
+                variant="outline"
+                disabled={pageIndex === 0}
+                onClick={() =>
+                  setPagination((current) => ({
+                    ...current,
+                    pageIndex: Math.max(0, pageIndex - 1),
+                  }))
+                }
+              />
+              <Button
+                icon={ChevronRight}
+                aria-label="Next page"
+                size="sm"
+                variant="outline"
+                disabled={pageIndex >= pageCount - 1}
+                onClick={() =>
+                  setPagination((current) => ({
+                    ...current,
+                    pageIndex: Math.min(pageCount - 1, pageIndex + 1),
+                  }))
+                }
+              />
+            </div>
           </div>
         )}
       </div>

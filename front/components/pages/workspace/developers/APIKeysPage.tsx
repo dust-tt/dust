@@ -206,35 +206,36 @@ export function APIKeys({ owner }: APIKeysProps) {
         latestKey={keys[0]}
         workspace={owner}
       />
-      <Page.Horizontal align="stretch">
-        <div className="w-full" />
-        <Button
-          label="API reference"
-          size="sm"
-          variant="outline"
-          icon={BookOpen01}
-          href="https://docs.dust.tt/reference"
-          target="_blank"
-          rel="noreferrer"
-        />
-        <NewAPIKeyDialog
-          groups={groups}
-          isGenerating={isGenerating}
+      <Page.Vertical align="stretch" gap="xl">
+        <Page.Horizontal align="right">
+          <Button
+            label="API reference"
+            size="sm"
+            variant="outline"
+            icon={BookOpen01}
+            href="https://docs.dust.tt/reference"
+            target="_blank"
+            rel="noreferrer"
+          />
+          <NewAPIKeyDialog
+            groups={groups}
+            isGenerating={isGenerating}
+            isRevoking={isRevoking}
+            onCreate={handleGenerate}
+            showLegacyUsdMonthlyCap={showLegacyUsdMonthlyCap}
+          />
+        </Page.Horizontal>
+        <APIKeysList
+          keys={keys}
+          groupsById={groupsById}
           isRevoking={isRevoking}
-          onCreate={handleGenerate}
+          isGenerating={isGenerating}
+          onRevoke={handleRevoke}
+          onEditCap={setEditCapKey}
           showLegacyUsdMonthlyCap={showLegacyUsdMonthlyCap}
+          showCreditMonthlyCap={showCreditMonthlyCap}
         />
-      </Page.Horizontal>
-      <APIKeysList
-        keys={keys}
-        groupsById={groupsById}
-        isRevoking={isRevoking}
-        isGenerating={isGenerating}
-        onRevoke={handleRevoke}
-        onEditCap={setEditCapKey}
-        showLegacyUsdMonthlyCap={showLegacyUsdMonthlyCap}
-        showCreditMonthlyCap={showCreditMonthlyCap}
-      />
+      </Page.Vertical>
       {showLegacyUsdMonthlyCap && editCapKey && (
         <EditKeyCapDialog
           keyData={editCapKey}
@@ -261,17 +262,12 @@ export function APIKeysPage() {
   const owner = useWorkspace();
 
   return (
-    <>
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="API Keys"
-          description="API Keys allow you to securely connect to Dust from other applications and work with your data programmatically."
-        />
-        <Page.Vertical align="stretch" gap="md">
-          <APIKeys owner={owner} />
-        </Page.Vertical>
-      </Page.Vertical>
-      <div className="h-12" />
-    </>
+    <Page.Vertical gap="xl" align="stretch">
+      <Page.Header
+        title="API Keys"
+        description="API Keys allow you to securely connect to Dust from other applications and work with your data programmatically."
+      />
+      <APIKeys owner={owner} />
+    </Page.Vertical>
   );
 }
