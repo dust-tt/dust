@@ -64,17 +64,9 @@ function TypeCell({ trigger }: { trigger: AutomationTriggerRow }) {
     case "webhook":
       if (trigger.webhookSourceRestricted) {
         return (
-          <Tooltip
+          <TypeLabel
+            visual={getIcon("ActionLockIcon")}
             label="This webhook lives in a space you don't have access to."
-            tooltipTriggerAsChild
-            trigger={
-              <div>
-                <TypeLabel
-                  visual={getIcon("ActionLockIcon")}
-                  label="Restricted webhook"
-                />
-              </div>
-            }
           />
         );
       }
@@ -150,7 +142,6 @@ function TypeLabel({
       trigger={
         <div className="flex min-w-0 items-center gap-2">
           <Icon visual={visual} size="xs" className="text-muted-foreground" />
-          <span className="truncate text-sm">{label}</span>
         </div>
       }
     />
@@ -207,13 +198,14 @@ function EditorCell({ editor }: { editor: AutomationTriggerRow["editor"] }) {
       }
       tooltipTriggerAsChild
       trigger={
-        <div className="flex items-center">
+        <div className="flex gap-2 items-center">
           <Avatar
             name={editor.name}
             visual={editor.pictureUrl ?? undefined}
             size="xs"
             isRounded
           />
+          <span className="text-sm truncate">{editor.name}</span>
         </div>
       }
     />
@@ -230,10 +222,23 @@ function buildColumns({
       id: "name",
       accessorKey: "name",
       header: "Name",
-      meta: { className: "w-48", headerAlign: "left" },
+      meta: { className: "truncate", headerAlign: "left" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-start text-left">
-          <span className="truncate text-sm">{info.row.original.name}</span>
+          <span className="truncate text-sm font-semibold">
+            {info.row.original.name}
+          </span>
+        </DataTable.CellContent>
+      ),
+    },
+    {
+      id: "editor",
+      header: "Editor",
+      enableSorting: false,
+      meta: { className: "w-36", headerAlign: "center" },
+      cell: (info) => (
+        <DataTable.CellContent className="w-full justify-start">
+          <EditorCell editor={info.row.original.editor} />
         </DataTable.CellContent>
       ),
     },
@@ -249,23 +254,12 @@ function buildColumns({
       ),
     },
     {
-      id: "editor",
-      header: "Editor",
-      enableSorting: false,
-      meta: { className: "w-16", headerAlign: "center" },
-      cell: (info) => (
-        <DataTable.CellContent className="w-full justify-center">
-          <EditorCell editor={info.row.original.editor} />
-        </DataTable.CellContent>
-      ),
-    },
-    {
       id: "type",
       header: "Type",
       enableSorting: false,
-      meta: { headerAlign: "left" },
+      meta: { className: "w-8" },
       cell: (info) => (
-        <DataTable.CellContent className="w-full justify-start">
+        <DataTable.CellContent className="w-full justify-center">
           <TypeCell trigger={info.row.original} />
         </DataTable.CellContent>
       ),
@@ -285,7 +279,7 @@ function buildColumns({
       id: "status",
       header: "Enabled",
       enableSorting: false,
-      meta: { className: "w-24" },
+      meta: { className: "w-16" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-center">
           <RunningCell row={info.row.original} />
