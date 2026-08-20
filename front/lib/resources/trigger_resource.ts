@@ -1070,22 +1070,16 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
   }
 
-  private async canSetExecutionMode(
-    auth: Authenticator,
-    executionMode: TriggerExecutionMode
-  ): Promise<boolean> {
-    if (!auth.isManager() && this.editor !== auth.getNonNullableUser().id) {
-      return false;
-    }
-
-    return TriggerResource.canUseExecutionMode(auth, executionMode);
-  }
-
   async setExecutionMode(
     auth: Authenticator,
     executionMode: TriggerExecutionMode
   ): Promise<Result<undefined, Error>> {
-    if (!(await this.canSetExecutionMode(auth, executionMode))) {
+    const isEditor =
+      auth.isManager() || this.editor === auth.getNonNullableUser().id;
+    if (
+      !isEditor ||
+      !(await TriggerResource.canUseExecutionMode(auth, executionMode))
+    ) {
       return new Err(
         new TriggerExecutionModeForbiddenError(
           "You don't have permission to change this trigger's pool."
