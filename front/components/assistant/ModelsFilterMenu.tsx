@@ -75,10 +75,10 @@ export function ModelsFilterMenu({
   );
   const modelsById = new Map(models.map((model) => [model.modelId, model]));
 
-  const tierModels = MODEL_TIERS.flatMap((tier) => {
+  const tierModels = removeNulls(MODEL_TIERS.map((tier) => {
     const model = modelsById.get(tier.metaModelId);
-    return model ? [{ ...model, displayName: tier.name, tierId: tier.id }] : [];
-  });
+    return model ? { ...model, displayName: tier.name, tierId: tier.id } : null;
+  }));
   // Keep the same model and maker ordering as the Composer picker, while only
   // showing models that are actually used by agents in this workspace.
   const knownModelIds = new Set<string>();
@@ -226,7 +226,7 @@ export function ModelsFilterMenu({
                 visual={getModelMakerLogo(maker.makerId, isDark)}
                 size="sm"
               />
-              <span className="flex-grow truncate text-left">
+              <span className="grow truncate text-left">
                 {getModelMakerDisplayName(maker.makerId)}
               </span>
               {maker.models.some((model) =>
@@ -298,7 +298,7 @@ export function ModelsFilterMenu({
   ) : (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger onClick={(event) => event.stopPropagation()}>
-        <span className="flex-grow truncate text-left">More models</span>
+        <span className="grow truncate text-left">More models</span>
         {hasSelectedConcreteModel && (
           <Icon visual={Check} size="sm" className="text-muted-foreground" />
         )}
@@ -309,7 +309,7 @@ export function ModelsFilterMenu({
         />
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
-        className="max-h-[28rem] w-64 overflow-y-auto"
+        className="max-h-112 w-64 overflow-y-auto"
         onClick={(event) => event.stopPropagation()}
       >
         {searchbar}
@@ -341,7 +341,7 @@ export function ModelsFilterMenu({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-84 max-w-(--radix-dropdown-menu-content-available-width)"
+        className="w-84"
         align="start"
       >
         {models.length > 0 ? (
