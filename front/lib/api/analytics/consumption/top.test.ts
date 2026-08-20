@@ -182,14 +182,14 @@ describe("consumption top rankings", () => {
       },
     ]);
 
-    // Ranked on agent.id by gross credits, with a per-message cardinality
+    // Ranked on the attributed agent by gross credits, with a per-message cardinality
     // sub-agg — a message spans several documents.
     const [query, options] = rankingSearchCall();
     expect(query.bool?.filter).toContainEqual({
       range: { completed_at: { gte: PERIOD.startDate, lt: PERIOD.endDate } },
     });
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
-      field: "agent.id",
+      field: "agent.attributed_id",
       size: 10,
       order: { credit_micro: "desc" },
     });
@@ -203,7 +203,7 @@ describe("consumption top rankings", () => {
       "credit_micro"
     );
     expect(options?.aggregations?.total_count?.cardinality).toEqual({
-      field: "agent.id",
+      field: "agent.attributed_id",
       precision_threshold: 40_000,
     });
     expect(options?.aggregations?.ranking).toBeUndefined();
@@ -253,7 +253,7 @@ describe("consumption top rankings", () => {
   });
 
   it.each([
-    ["AGENT 080", { terms: { "agent.id": ["agent80"] } }],
+    ["AGENT 080", { terms: { "agent.attributed_id": ["agent80"] } }],
     ["missing", { match_none: {} }],
   ])("filters the ranking for search %s", async (search, expectedFilter) => {
     const { auth } = await setup();
@@ -321,8 +321,10 @@ describe("consumption top rankings", () => {
     }
 
     expect(termsClauses).toHaveLength(2);
-    expect(termsClauses[0]?.terms?.["agent.id"]).toHaveLength(65_536);
-    expect(termsClauses[1]?.terms?.["agent.id"]).toHaveLength(1);
+    expect(termsClauses[0]?.terms?.["agent.attributed_id"]).toHaveLength(
+      65_536
+    );
+    expect(termsClauses[1]?.terms?.["agent.attributed_id"]).toHaveLength(1);
   });
 
   it("counts tool invocations as documents, with no message sub-agg", async () => {

@@ -190,7 +190,7 @@ describe("fetchConsumptionTimeseries", () => {
     const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
     expect(query.bool?.filter).toEqual(
       expect.arrayContaining([
-        { term: { "agent.id": "a1" } },
+        { term: { "agent.attributed_id": "a1" } },
         { term: { "tool.attributed_skill_ids": "s1" } },
         { terms: { normalized_origin: ["web", "slack"] } },
       ])

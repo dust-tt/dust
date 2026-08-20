@@ -52,7 +52,7 @@ describe("buildConsumptionScopeQuery", () => {
     expect(query.bool?.filter).toEqual([
       { term: { workspace_id: authenticator.getNonNullableWorkspace().sId } },
       expect.objectContaining({ range: expect.anything() }),
-      { term: { "agent.id": "a1" } },
+      { term: { "agent.attributed_id": "a1" } },
       { terms: { "user.id": ["u1", "u2"] } },
       { term: { api_key_name: "Production key" } },
       { term: { "user.group_ids": "group1" } },
