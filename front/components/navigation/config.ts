@@ -406,18 +406,14 @@ export const subNavigationAdmin = ({
               disabled: !hasAdminRole,
             },
           ]),
-      ...(featureFlags.includes("enable_analytics_automations")
-        ? [
-            {
-              id: "automations" as const,
-              label: "Automations",
-              icon: Clock,
-              href: `/w/${owner.sId}/automations`,
-              current: isCurrent("automations"),
-              disabled: !hasManagerRole,
-            },
-          ]
-        : []),
+      {
+        id: "automations" as const,
+        label: "Automations",
+        icon: Clock,
+        href: `/w/${owner.sId}/automations`,
+        current: isCurrent("automations"),
+        disabled: !hasManagerRole,
+      },
     ],
   });
 

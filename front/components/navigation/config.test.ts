@@ -15,7 +15,7 @@ function automationNavItem(owner: WorkspaceType) {
   const nav = subNavigationAdmin({
     owner,
     currentRoute: "/w/ws_1/automations",
-    featureFlags: ["enable_analytics_automations"],
+    featureFlags: [],
     subscription: SUBSCRIPTION,
     hasPermission: () => false,
   });
