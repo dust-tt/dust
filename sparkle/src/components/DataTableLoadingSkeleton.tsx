@@ -25,19 +25,40 @@ function DataTableLoadingSkeleton({
       className={cn("flex w-full flex-col", className)}
       {...props}
     >
+      <div className="flex h-8 items-center border-b border-separator">
+        {showSelectionColumn && (
+          <div className="flex w-10 shrink-0 items-center px-2">
+            <LoadingBlock className="h-4 w-4 rounded-md" />
+          </div>
+        )}
+        <div className="flex min-w-0 flex-1 items-center px-2">
+          <LoadingBlock className="h-3 w-20" />
+        </div>
+        {showTrailingCell && (
+          <div className="flex w-28 shrink-0 items-center px-2">
+            <LoadingBlock className="h-3 w-16" />
+          </div>
+        )}
+      </div>
       {Array.from({ length: rows }, (_, i) => (
         <div
           key={i}
-          className="flex h-12 items-center gap-3 border-b border-separator px-2"
+          className="flex h-12 items-center border-b border-separator"
         >
           {showSelectionColumn && (
-            <LoadingBlock className="h-5 w-5 shrink-0 rounded-md" />
+            <div className="flex w-10 shrink-0 items-center px-2">
+              <LoadingBlock className="h-4 w-4 rounded-md" />
+            </div>
           )}
-          <LoadingBlock
-            className={cn("h-4", LABEL_WIDTHS[i % LABEL_WIDTHS.length])}
-          />
+          <div className="flex min-w-0 flex-1 items-center px-2">
+            <LoadingBlock
+              className={cn("h-4", LABEL_WIDTHS[i % LABEL_WIDTHS.length])}
+            />
+          </div>
           {showTrailingCell && (
-            <LoadingBlock className="ml-auto h-5 w-24 rounded-full" />
+            <div className="flex w-28 shrink-0 items-center px-2">
+              <LoadingBlock className="h-5 w-24 rounded-full" />
+            </div>
           )}
         </div>
       ))}

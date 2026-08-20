@@ -9,7 +9,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: `A skeleton placeholder that mirrors the layout of a **DataTable** / **ScrollableDataTable** list (rows with an optional selection checkbox, a label, and an optional trailing cell). Built on **LoadingBlock**, it reserves the list's shape while rows are being fetched, so the swap to real content feels seamless.
+        component: `A skeleton placeholder that mirrors the layout of a **DataTable** / **ScrollableDataTable** (header and rows with an optional selection checkbox, a label, and an optional trailing cell). Built on **LoadingBlock**, it reserves the table's shape while rows are being fetched, so the swap to real content feels seamless.
 
 **When to use**
 - While loading rows whose shape is known ahead of time (selectable lists, tables).
