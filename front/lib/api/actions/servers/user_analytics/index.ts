@@ -323,14 +323,15 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
   },
 };
 
+export const TOOLS = buildTools(USER_ANALYTICS_TOOLS_METADATA, handlers);
+
 function createServer(
   auth: Authenticator,
   toolContext?: ToolContext
 ): McpServer {
   const server = makeInternalMCPServer(USER_ANALYTICS_SERVER_NAME);
 
-  const tools = buildTools(USER_ANALYTICS_TOOLS_METADATA, handlers);
-  for (const tool of tools) {
+  for (const tool of TOOLS) {
     registerTool(auth, toolContext, server, tool, {
       monitoringName: USER_ANALYTICS_SERVER_NAME,
     });
