@@ -238,7 +238,7 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
     disabled: !isCreditBased || !visible,
   });
 
-  const { hasPendingUpgradeRequest } = useWorkspaceUsageStatus({
+  const { hasPendingUpgradeRequest, requireReason } = useWorkspaceUsageStatus({
     owner,
     disabled: isManager || !isCreditBased || !visible,
   });
@@ -274,6 +274,7 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
               hasPendingUpgradeRequest={hasPendingUpgradeRequest}
               variant="button"
               isManager={isManager}
+              requireReason={requireReason}
               onManagerNavigate={onClose}
             />
           </div>
