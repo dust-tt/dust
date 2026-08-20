@@ -5,7 +5,7 @@ import { SliderToggle } from "@dust-tt/sparkle";
 
 const LABEL = "Email and Slack notifications";
 const DESCRIPTION =
-  "Whether members can receive conversation unread notifications by email or Slack, and For you recommendation emails. In-app Dust notifications are not affected";
+  "Whether members can receive conversation notifications by email or Slack. In-app Dust notifications are not affected.";
 
 interface ConversationExternalNotificationsToggleProps {
   owner: WorkspaceType;

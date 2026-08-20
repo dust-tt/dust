@@ -743,8 +743,8 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
           {showNotificationPreferences && notif.status !== "error" && (
             <div className="flex flex-col gap-4">
               <Page.SectionHeader
-                title="Conversation notifications"
-                description="Choose how Dust notifies you about conversation activity"
+                title="Other channels"
+                description="Choose where else to receive notifications"
               />
               <NotificationPreferences
                 control={notif.control}
