@@ -572,6 +572,9 @@ export interface WorkspaceMetadata {
   killSwitched?: WorkspaceKillSwitchValue;
   allowContentCreationFileSharing?: boolean;
   allowEmailAgents?: boolean;
+  // When false, conversation unread email and Slack are not sent. Missing or
+  // true keeps per-user prefs. In-app notifications are not affected.
+  allowConversationExternalNotifications?: boolean;
   emailBlacklistedAgentIds?: string[];
   allowVoiceTranscription?: boolean;
   allowOpenProjects?: boolean;

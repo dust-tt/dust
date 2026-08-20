@@ -9,6 +9,7 @@ import {
   getActivationRecommendation,
   getConversationDetails,
 } from "@app/lib/notifications/helpers";
+import { shouldSkipConversationExternalNotification } from "@app/lib/notifications/workflows/conversation-unread";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FOR_YOU_EMAIL_UTM } from "@app/lib/tracking/campaigns";
@@ -66,6 +67,10 @@ export const shouldSkipActivationNewConversation = async ({
   payload: activationNewConversationPayloadType;
 }): Promise<boolean> => {
   if (!subscriberId) {
+    return true;
+  }
+
+  if (await shouldSkipConversationExternalNotification(payload.workspaceId)) {
     return true;
   }
 

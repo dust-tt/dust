@@ -1,0 +1,7 @@
+{
+  "action": "workspace.conversation_external_notifications_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "enabled": "string"
+  }
+}

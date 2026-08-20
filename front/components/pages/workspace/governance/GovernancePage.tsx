@@ -6,6 +6,7 @@ import { SkillDiscoverabilityWarning } from "@app/components/pages/workspace/gov
 import { ExtensionMcpToolsSection } from "@app/components/workspace/ExtensionMcpToolsSection";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
 import { AuditLogsGovernanceSection } from "@app/components/workspace/settings/AuditLogsToggle";
+import { ConversationExternalNotificationsToggle } from "@app/components/workspace/settings/ConversationExternalNotificationsToggle";
 import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharing } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
@@ -260,6 +261,7 @@ export const GovernancePage = () => {
               <WorkspaceDefaultAgentPicker owner={owner} />
               <VoiceTranscriptionToggle owner={owner} />
               <EmailAgentsToggle owner={owner} />
+              <ConversationExternalNotificationsToggle owner={owner} />
               <PrivateConversationUrlsToggle owner={owner} />
               <DustMcpServerSettingsItem owner={owner} />
               <ExtensionMcpToolsSection owner={owner} />
