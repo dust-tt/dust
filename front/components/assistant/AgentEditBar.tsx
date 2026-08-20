@@ -1,16 +1,13 @@
 import { useBatchUpdateAgentTags } from "@app/lib/swr/assistants";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
-import {
-  classNames,
-  compareForFuzzySort,
-  subFilter,
-  tagsSorter,
-} from "@app/lib/utils";
+import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { TagType } from "@app/types/tag";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuSearchbar,
@@ -28,10 +25,6 @@ import { DeleteAssistantsDialog } from "./DeleteAssistantsDialog";
 import { SetModelAssistantsDialog } from "./SetModelAssistantsDialog";
 import { UnpublishAssistantsDialog } from "./UnpublishAssistantsDialog";
 
-const BAR_CLASSNAME =
-  "flex items-center gap-2 rounded-xl border bg-orange-50 border-orange-100 p-3 dark:bg-golden-950 dark:border-golden-900";
-const BAR_TEXT_CLASSNAME = "text-xs text-orange-800 dark:text-golden-100";
-
 type AgentEditBarProps = {
   onClear: () => void;
   onSelectAll: () => void;
@@ -42,10 +35,6 @@ type AgentEditBarProps = {
   tags: TagType[];
   mutateAgentConfigurations: () => Promise<any>;
 };
-
-function agentsLabel(count: number): string {
-  return count === 1 ? "agent" : "agents";
-}
 
 export const AgentEditBar = ({
   onClear,
@@ -93,25 +82,30 @@ export const AgentEditBar = ({
     });
 
   return (
-    <div className={classNames("mt-3 mb-2", BAR_CLASSNAME)}>
+    <div
+      className={cn(
+        "mt-3 mb-2 flex items-center gap-2 rounded-xl border p-3",
+        "border-warning-200 bg-warning-100"
+      )}
+    >
       <div
-        className={classNames(
+        className={cn(
           "flex flex-1 flex-row flex-wrap items-center gap-x-2 gap-y-1",
-          BAR_TEXT_CLASSNAME
+          "text-xs text-warning-900"
         )}
       >
         {isAllSelected ? (
           <span>
-            {selectedCount} {agentsLabel(selectedCount)} are selected.
+            {selectedCount} agent{pluralize(selectedCount)} are selected.
           </span>
         ) : (
           <>
             <span>
-              {pageSelectedCount} {agentsLabel(pageSelectedCount)} selected on
-              this page
+              {pageSelectedCount} agent{pluralize(pageSelectedCount)} selected
+              on this page
             </span>
             <Hoverable variant="highlight" onClick={onSelectAll}>
-              Select all {totalCount} {agentsLabel(totalCount)}
+              Select all {totalCount} agent{pluralize(totalCount)}
             </Hoverable>
           </>
         )}

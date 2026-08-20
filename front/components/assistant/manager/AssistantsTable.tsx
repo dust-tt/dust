@@ -124,22 +124,31 @@ const getTableColumns = ({
         );
       },
       accessorKey: "select",
-      cell: (info: CellContext<RowData, boolean>) => (
-        // Selecting a row must not also trigger the row's `onClick` (which opens
-        // the agent details panel).
-        <div
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <DataTable.CellContent>
-            <Checkbox
-              checked={info.row.getIsSelected()}
-              disabled={!info.row.getCanSelect()}
-              onCheckedChange={(checked) => info.row.toggleSelected(!!checked)}
-            />
-          </DataTable.CellContent>
-        </div>
-      ),
+      cell: (info: CellContext<RowData, boolean>) => {
+        if (!info.row.getCanSelect()) {
+          return null;
+        }
+
+        return (
+          // The whole cell (not just the checkbox) toggles selection, since the
+          // checkbox alone is a small target and a missclick opens the agent
+          // details panel via the row's `onClick`. The click also reaches the
+          // checkbox itself, so the toggle is only handled here to avoid
+          // double-toggling.
+          <div
+            className="flex size-full items-center justify-center"
+            onClick={(e) => {
+              e.stopPropagation();
+              info.row.toggleSelected();
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <DataTable.CellContent>
+              <Checkbox checked={info.row.getIsSelected()} />
+            </DataTable.CellContent>
+          </div>
+        );
+      },
       meta: {
         className: "w-10",
       },
@@ -580,18 +589,11 @@ export function AssistantsTable({
   );
   const totalSelectableCount = selectableRowIds.length;
 
-  const agentsBySId = useMemo(
-    () => new Map(agents.map((a) => [a.sId, a])),
-    [agents]
-  );
-
+  // Selection only ever contains selectable rows (only those render a
+  // checkbox), so no extra filtering is needed here.
   const selectedAgents = useMemo(
-    () =>
-      selectableRowIds
-        .filter((sId) => selectionSet.has(sId))
-        .map((sId) => agentsBySId.get(sId))
-        .filter((a): a is LightAgentConfigurationType => !!a),
-    [selectableRowIds, selectionSet, agentsBySId]
+    () => agents.filter((a) => selectionSet.has(a.sId)),
+    [agents, selectionSet]
   );
 
   const pageRows = useMemo(() => {
