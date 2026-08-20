@@ -143,6 +143,7 @@ describe("Authenticator.getWorkspacePermissions", () => {
       billing: ["admin"],
       security: ["admin"],
       dust_app: ["admin"],
+      trigger: ["use_workspace_pool"],
     });
   });
 

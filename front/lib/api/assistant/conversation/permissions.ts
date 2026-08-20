@@ -1,5 +1,6 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getContentFragmentsSpaceIds } from "@app/lib/api/assistant/permissions";
+import { listUsersWithoutAccessToSpaceResources } from "@app/lib/api/spaces/access";
 import { Authenticator } from "@app/lib/auth";
 import type { ConversationAccessType } from "@app/lib/resources/conversation_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -135,23 +136,12 @@ export async function canAgentBeUsedInProjectConversation(
           await project.fetchDistinctActiveManualGroupMembers(auth);
 
         if (restrictedAgentSpaces.length > 0 && projectMembers.length > 0) {
-          const workspaceId = auth.getNonNullableWorkspace().sId;
-          const memberAuths = await Promise.all(
-            projectMembers.map((member) =>
-              Authenticator.fromUserIdAndWorkspaceId(member.sId, workspaceId)
-            )
-          );
-
-          // O(n×m) sync membership checks; both arrays are small (Pod members and
-          // agent restricted spaces are typically each well under 100 elements).
-          for (const restrictedSpace of restrictedAgentSpaces) {
-            for (const memberAuth of memberAuths) {
-              if (!memberAuth || !restrictedSpace.isMember(memberAuth)) {
-                return false;
-              }
-            }
-          }
-          return true;
+          const membersWithoutAccess =
+            await listUsersWithoutAccessToSpaceResources(auth, {
+              spaces: restrictedAgentSpaces,
+              users: projectMembers,
+            });
+          return membersWithoutAccess.length === 0;
         }
       }
 

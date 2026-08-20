@@ -70,6 +70,11 @@ const GOVERNANCE_SETTING_METADATA: Partial<
     description: "Who can manage user access, identities, and provisioning",
     isGroupsOnly: true,
   },
+  "use_workspace_pool:trigger": {
+    label: "Charge automations to the workspace",
+    description:
+      "Who can run a trigger on the workspace credit pool instead of their own",
+  },
 };
 
 const PERMISSION_SCOPE_OPTIONS: {
