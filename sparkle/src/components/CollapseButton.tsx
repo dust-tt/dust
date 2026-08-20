@@ -11,7 +11,9 @@ const customColors = {
 };
 
 export interface CollapseButtonProps {
+  /** Direction the chevron points on hover: `left` to collapse a left rail, `right` to expand it. */
   direction: "left" | "right";
+  /** Color treatment matching the surface contrast: `light` or `dark`. */
   variant?: "light" | "dark";
 }
 
@@ -81,6 +83,13 @@ const FRAMES = {
   RIGHT_END: 25,
 };
 
+/**
+ * An animated chevron affordance for collapsing or expanding a side panel, playing
+ * a Lottie animation on hover that points in the `direction` it controls. Use it as
+ * the toggle handle for a collapsible sidebar or rail; it renders only the icon, so
+ * wrap it in a tooltip or an accessible control if it needs a label.
+ * @summary Panel-collapse chevron handle.
+ */
 const CollapseButton: React.FC<CollapseButtonProps> = ({
   direction,
   variant = "light",

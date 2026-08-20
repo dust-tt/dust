@@ -1,5 +1,6 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
+import { fn } from "storybook/test";
 
 import {
   DriveLogo,
@@ -11,16 +12,10 @@ import {
 import {
   Button,
   Chip,
-  DownloadCloud01,
-  Settings01,
-  File02,
   DustLogo,
-  Eye,
+  File02,
   Folder,
-  ClockRewind,
-  Icon,
-  IconButton,
-  PlusCircle,
+  Settings01,
   Tree,
 } from "../index_with_tw_base";
 
@@ -45,963 +40,400 @@ const meta = {
 } satisfies Meta<typeof Tree>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const TreeExample = () => {
+// ---------------------------------------------------------------------------
+// Shared fixtures
+// ---------------------------------------------------------------------------
+
+// Local checkbox-selection state shared by the interactive stories.
+function useCheckedFixture() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
-  const check = (id: string) => {
+  const toggle = (id: string) => {
     setChecked((prev) => ({
       ...prev,
       [id]: !prev[id],
     }));
   };
+  return { checked, toggle };
+}
 
-  return (
-    <div className="flex flex-col gap-10">
-      <div className="flex gap-10">
-        <div className="flex flex-col gap-3">
-          <div className="text-xl">Tree</div>
-          <div>
-            <Tree>
-              <Tree.Item label="Item 1 (no children)" visual={Folder} />
-              <Tree.Item label="Item 2 (loading)" visual={Folder}>
-                <Tree isLoading />
-              </Tree.Item>
-              <Tree.Item label="Item 3" visual={Folder}>
-                <Tree>
-                  <Tree.Item
-                    type="leaf"
-                    label="Item 1"
-                    checkbox={{
-                      checked: checked["Item 1"],
-                      onCheckedChange: () => {
-                        check("Item 1");
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="Item 2"
-                    type="leaf"
-                    checkbox={{
-                      checked: checked["Item 2"],
-                      onCheckedChange: () => {
-                        check("Item 2");
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="Item 3"
-                    type="leaf"
-                    checkbox={{
-                      checked: checked["Item 3"],
-                      onCheckedChange: () => {
-                        check("Item 3");
-                      },
-                    }}
-                  />
-                </Tree>
-              </Tree.Item>
-              <Tree.Item
-                label="Item 4 (forced expanded)"
-                visual={Folder}
-                collapsed={false}
-              >
-                <Tree>
-                  <Tree.Item
-                    label="Item 1"
-                    visual={Folder}
-                    defaultCollapsed={false}
-                  >
-                    <Tree.Item label="Item 3" type="leaf" visual={File02} />
-                    <Tree.Item label="Item 3" type="leaf" visual={File02} />
-                    <Tree.Empty label="(+ 4 items)" />
-                  </Tree.Item>
-                </Tree>
-              </Tree.Item>
-              <Tree.Item
-                label="Item 5 (forced expanded)"
-                visual={Folder}
-                collapsed={false}
-              >
-                <Tree>
-                  <Tree.Item
-                    label="Item 1"
-                    visual={File02}
-                    type="leaf"
-                    actions={
-                      <>
-                        <div className="text-sm text-muted-foreground">
-                          hello
-                        </div>
-                        <IconButton size="xs" icon={Eye} variant="outline" />
-                      </>
-                    }
-                  />
+const PLATFORMS = [
+  { label: "Intercom", visual: IntercomLogo },
+  { label: "Notion", visual: NotionLogo },
+  { label: "Slack", visual: SlackLogo },
+  { label: "Dust", visual: DustLogo },
+] as const;
 
-                  <Tree.Item
-                    label="t"
-                    visual={File02}
-                    type="leaf"
-                    actions={
-                      <div className="flex grow flex-row items-center justify-between">
-                        <Button size="icon" variant="outline" icon={Eye} />
-                        <div className="flex flex-row items-center gap-1 text-sm text-muted-foreground">
-                          <Icon visual={ClockRewind} size="xs" />
-                          1y
-                        </div>
-                      </div>
-                    }
-                  />
-                </Tree>
-              </Tree.Item>
-              <Tree.Item
-                label="Item 6 (default collapsed)"
-                visual={Folder}
-                defaultCollapsed={true}
-              >
-                <Tree>
-                  <Tree.Item label="Item 1" visual={File02} />
-                </Tree>
-              </Tree.Item>
+// Actions row used by the data-source display story.
+const ConnectionActions = () => (
+  <div className="flex flex-row items-center justify-center gap-3">
+    <span className="text-sm text-muted-foreground">
+      Managed by: Stanislas Polu
+    </span>
+    <Chip size="sm" color="success" label="Syncing (235)" />
+    <Button label="Manage" icon={Settings01} variant="outline" size="sm" />
+  </div>
+);
 
-              <Tree.Item
-                label="Item 7 (default expanded)"
-                visual={Folder}
-                defaultCollapsed={false}
-              >
-                <Tree>
-                  <Tree.Item label="Item 1" visual={File02} />
-                  <Tree.Item label="Item 2" visual={File02} />
-                </Tree>
-              </Tree.Item>
-              <Tree.Item
-                label="Item 8 (loading, with existing nodes)"
-                visual={Folder}
-              >
-                <Tree isLoading>
-                  <Tree.Item
-                    type="leaf"
-                    label="Item 1"
-                    checkbox={{
-                      checked: checked["Item 1"],
-                      onCheckedChange: () => {
-                        check("Item 1");
-                      },
-                    }}
-                  />
-                </Tree>
-              </Tree.Item>
-            </Tree>
-          </div>
-        </div>
-        <div className="flex flex-col gap-3">
-          <div className="text-xl">Flat</div>
-          <div>
-            <Tree>
-              <Tree.Item
-                label="Item 1"
-                type="item"
-                visual={Folder}
-                checkbox={{
-                  checked: "partial",
-                  onCheckedChange: () => {
-                    return;
-                  },
-                }}
-              />
-              <Tree.Item
-                label="Item 2"
-                type="item"
-                visual={Folder}
-                checkbox={{
-                  checked: checked["Item 2"],
-                  onCheckedChange: () => {
-                    check("Item 2");
-                  },
-                }}
-              />
-              <Tree.Item
-                label="Item 3"
-                type="item"
-                visual={Folder}
-                checkbox={{
-                  checked: checked["Item 3"],
-                  onCheckedChange: () => {
-                    check("Item 3");
-                  },
-                }}
-              />
-              <Tree.Item
-                label="Item 4"
-                type="item"
-                visual={Folder}
-                checkbox={{
-                  checked: checked["Item 4"],
-                  onCheckedChange: () => {
-                    check("Item 4");
-                  },
-                }}
-              />
-              <Tree.Item
-                label="Item 5"
-                type="item"
-                visual={Folder}
-                checkbox={{
-                  checked: checked["Item 5"],
-                  onCheckedChange: () => {
-                    check("Item 5");
-                  },
-                }}
-              />
-            </Tree>
-          </div>
-        </div>
-        <div className="flex flex-col gap-3">
-          <div className="text-xl">With custom visual</div>
-          <div>
-            <Tree>
-              <Tree.Item
-                label="Intercom"
-                visual={IntercomLogo}
-                type="item"
-                checkbox={{
-                  checked: checked["Intercom"],
-                  onCheckedChange: () => {
-                    check("Intercom");
-                  },
-                }}
-              />
-              <Tree.Item
-                label="Notion"
-                type="item"
-                visual={NotionLogo}
-                checkbox={{
-                  checked: checked["Notion"],
-                  onCheckedChange: () => {
-                    check("Notion");
-                  },
-                }}
-              />
-              <Tree.Item
-                label="Slack"
-                type="item"
-                visual={SlackLogo}
-                checkbox={{
-                  checked: checked["Slack"],
-                  onCheckedChange: () => {
-                    check("Slack");
-                  },
-                }}
-              />
-              <Tree.Item
-                label="Dust"
-                type="item"
-                visual={DustLogo}
-                checkbox={{
-                  checked: checked["Dust"],
-                  onCheckedChange: () => {
-                    check("Dust");
-                  },
-                }}
-              />
-            </Tree>
-          </div>
-        </div>
-        <div className="flex max-w-xs flex-col gap-3">
-          <div className="text-xl">Nav bar</div>
-          <div>
-            <Tree variant="navigator">
-              <Tree.Item
-                label="Intercom  github.com-apache-incubator-devlake-tree-main-backend"
-                visual={IntercomLogo}
-                onItemClick={() => console.log("Clickable")}
-                isSelected={true}
-              >
-                <Tree variant="navigator">
-                  <Tree.Item
-                    label="Item 1 with a very very very very very very very long text"
-                    visual={Folder}
-                  >
-                    <Tree variant="navigator">
-                      <Tree.Item
-                        label="Item 1 with a very very very very very very very long text"
-                        visual={Folder}
-                        type="leaf"
-                      />
-                      <Tree.Item label="Item 2" visual={Folder} />
-                      <Tree.Item label="Item 3" visual={Folder} />
-                    </Tree>
-                  </Tree.Item>
-                  <Tree.Item label="Item 2" visual={Folder}>
-                    <Tree variant="navigator">
-                      <Tree.Item label="Item 1" visual={Folder} />
-                      <Tree.Item label="Item 2" visual={Folder} />
-                      <Tree.Item label="Item 3" visual={Folder} />
-                    </Tree>
-                  </Tree.Item>
-                  <Tree.Item label="Item 3" visual={Folder}>
-                    <Tree variant="navigator">
-                      <Tree.Item label="Item 1" visual={Folder} />
-                      <Tree.Item label="Item 2" visual={Folder} />
-                      <Tree.Item label="Item 3" visual={Folder} />
-                    </Tree>
-                  </Tree.Item>
-                </Tree>
-              </Tree.Item>
-              <Tree.Item label="Notion" visual={NotionLogo} />
-              <Tree.Item label="Slack" visual={SlackLogo} />
-              <Tree.Item label="Dust" visual={DustLogo} />
-            </Tree>
-          </div>
-        </div>
+// ---------------------------------------------------------------------------
+// Stories
+// ---------------------------------------------------------------------------
 
-        <div className="flex max-w-xs flex-col gap-3">
-          <div className="text-xl">Select DataSource</div>
-          <div>
-            <Tree variant="navigator">
-              <Tree.Item
-                label="Intercom  github.com-apache-incubator-devlake-tree-main-backend"
-                visual={IntercomLogo}
-                onItemClick={() => console.log("Clickable")}
-                isSelected={true}
-              >
-                <Tree variant="navigator">
-                  <Tree.Item
-                    label="Item 1 with a very very very very very very very long text"
-                    visual={Folder}
-                  >
-                    <Tree variant="navigator">
-                      <Tree.Item
-                        label="Item 1 with a very very very very very very very long text"
-                        visual={Folder}
-                        type="leaf"
-                        checkbox={{
-                          checked: checked["Item 1"],
-                          onCheckedChange: () => {
-                            check("Item 1");
-                          },
-                        }}
-                      />
-                      <Tree.Item
-                        label="Item 2"
-                        visual={Folder}
-                        checkbox={{
-                          checked: checked["Item 2"],
-                          onCheckedChange: () => {
-                            check("Item 2");
-                          },
-                        }}
-                      />
-                      <Tree.Item
-                        label="Item 3"
-                        visual={Folder}
-                        checkbox={{
-                          checked: checked["Item 3"],
-                          onCheckedChange: () => {
-                            check("Item 3");
-                          },
-                        }}
-                      />
-                    </Tree>
-                  </Tree.Item>
-                  <Tree.Item label="Item 2" visual={Folder}>
-                    <Tree variant="navigator">
-                      <Tree.Item label="Item 1" visual={Folder} />
-                      <Tree.Item label="Item 2" visual={Folder} />
-                      <Tree.Item label="Item 3" visual={Folder} />
-                    </Tree>
-                  </Tree.Item>
-                  <Tree.Item label="Item 3" visual={Folder}>
-                    <Tree variant="navigator">
-                      <Tree.Item label="Item 1" visual={Folder} />
-                      <Tree.Item label="Item 2" visual={Folder} />
-                      <Tree.Item label="Item 3" visual={Folder} />
-                    </Tree>
-                  </Tree.Item>
-                </Tree>
-              </Tree.Item>
-              <Tree.Item label="Notion" visual={NotionLogo} />
-              <Tree.Item label="Slack" visual={SlackLogo} />
-              <Tree.Item label="Dust" visual={DustLogo} />
-            </Tree>
-          </div>
-        </div>
-      </div>
+/**
+ * A basic folder hierarchy: expandable nodes with nested **Tree** children,
+ * terminal `type="leaf"` items, a **Tree.Empty** placeholder, and
+ * `defaultCollapsed` controlling the initial expansion of each branch.
+ * @summary Expandable folder hierarchy.
+ */
+export const Default: Story = {
+  render: () => (
+    <Tree>
+      <Tree.Item label="Reports" visual={Folder} defaultCollapsed={false}>
+        <Tree>
+          <Tree.Item label="Q1 summary" type="leaf" visual={File02} />
+          <Tree.Item label="Q2 summary" type="leaf" visual={File02} />
+          <Tree.Empty label="(+ 4 items)" />
+        </Tree>
+      </Tree.Item>
+      <Tree.Item label="Archives" visual={Folder} defaultCollapsed={true}>
+        <Tree>
+          <Tree.Item label="2023" type="leaf" visual={File02} />
+          <Tree.Item label="2024" type="leaf" visual={File02} />
+        </Tree>
+      </Tree.Item>
+      <Tree.Item label="Drafts" visual={Folder}>
+        <Tree>
+          <Tree.Empty label="No documents" onItemClick={fn()} />
+        </Tree>
+      </Tree.Item>
+      <Tree.Item label="Readme" type="leaf" visual={File02} />
+    </Tree>
+  ),
+};
 
-      <div className="flex gap-10">
-        <div className="flex flex-col gap-3">
-          <div className="text-xl">Tree</div>
-          <div>
-            <Tree isBoxed>
-              <Tree.Item label="Item 1 (no children)" visual={Folder} />
-              <Tree.Item label="Item 2 (loading)" visual={Folder}>
-                <Tree isLoading />
-              </Tree.Item>
-              <Tree.Item label="Item 3" visual={Folder}>
-                <Tree>
-                  <Tree.Item
-                    type="leaf"
-                    label="Item 1"
-                    checkbox={{
-                      checked: checked["Item 1"],
-                      onCheckedChange: () => {
-                        check("Item 1");
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="Item 2"
-                    type="leaf"
-                    checkbox={{
-                      checked: checked["Item 2"],
-                      onCheckedChange: () => {
-                        check("Item 2");
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="Item 3"
-                    type="leaf"
-                    checkbox={{
-                      checked: checked["Item 3"],
-                      onCheckedChange: () => {
-                        check("Item 3");
-                      },
-                    }}
-                  />
-                </Tree>
-              </Tree.Item>
-              <Tree.Item
-                label="Item 4 (forced collapsed)"
-                visual={Folder}
-                collapsed={true}
-              >
-                <Tree>
-                  <Tree.Item label="Item 1" />
-                </Tree>
-              </Tree.Item>
-              <Tree.Item
-                label="Item 5 (forced expanded)"
-                visual={Folder}
-                collapsed={false}
-              >
-                <Tree>
-                  <Tree.Item label="Item 1" defaultCollapsed={false}>
-                    <Tree>
-                      <Tree.Empty label="No documents" />
-                    </Tree>
-                  </Tree.Item>
-                  <Tree.Item label="Item 2" defaultCollapsed={false}>
-                    <Tree>
-                      <Tree.Empty
-                        label="Empty tree can be clickable"
-                        onItemClick={() => alert("Soupinou")}
-                      />
-                    </Tree>
-                  </Tree.Item>
-                </Tree>
-              </Tree.Item>
-              <Tree.Item
-                label="Item 6 (default collapsed)"
-                visual={Folder}
-                defaultCollapsed={true}
-              >
-                <Tree>
-                  <Tree.Item
-                    label="Item 1"
-                    checkbox={{
-                      checked: "partial",
-                      onCheckedChange: () => {
-                        return;
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="Item 2"
-                    checkbox={{
-                      checked: checked["Item 2"],
-                      onCheckedChange: () => {
-                        check("Item 2");
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="Item 3"
-                    checkbox={{
-                      checked: checked["Item 3"],
-                      onCheckedChange: () => {
-                        check("Item 3");
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="Item 4"
-                    checkbox={{
-                      checked: checked["Item 4"],
-                      onCheckedChange: () => {
-                        check("Item 4");
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="Item 5"
-                    checkbox={{
-                      checked: checked["Item 5"],
-                      onCheckedChange: () => {
-                        check("Item 5");
-                      },
-                    }}
-                  />
-                </Tree>
-              </Tree.Item>
+/**
+ * A single-level list of `type="item"` rows with checkboxes — no expansion
+ * affordance. The first row shows the `"partial"` checked state used when
+ * only some descendants of a group are selected.
+ * @summary Flat selectable list without nesting.
+ */
+export const FlatList: Story = {
+  render: function Render() {
+    const { checked, toggle } = useCheckedFixture();
+    return (
+      <Tree>
+        <Tree.Item
+          label="Item 1"
+          type="item"
+          visual={Folder}
+          checkbox={{
+            checked: "partial",
+            onCheckedChange: fn(),
+          }}
+        />
+        {["Item 2", "Item 3", "Item 4", "Item 5"].map((label) => (
+          <Tree.Item
+            key={label}
+            label={label}
+            type="item"
+            visual={Folder}
+            checkbox={{
+              checked: checked[label],
+              onCheckedChange: () => {
+                toggle(label);
+              },
+            }}
+          />
+        ))}
+      </Tree>
+    );
+  },
+};
 
-              <Tree.Item
-                label="Item 7 (default expanded)"
-                visual={Folder}
-                defaultCollapsed={false}
-              >
-                <Tree>
-                  <Tree.Item
-                    label="Item 1"
-                    checkbox={{
-                      checked: "partial",
-                      onCheckedChange: () => {
-                        return;
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="Item 3"
-                    type="leaf"
-                    checkbox={{
-                      checked: "partial",
-                      onCheckedChange: () => {
-                        return;
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="Item 2"
-                    checkbox={{
-                      checked: checked["Item 2"],
-                      onCheckedChange: () => {
-                        check("Item 2");
-                      },
-                    }}
-                  />
-                </Tree>
-              </Tree.Item>
+/**
+ * Any icon component works as a **visual** — here platform logos distinguish
+ * connected services instead of the generic folder/file icons.
+ * @summary Platform logos as item visuals.
+ */
+export const CustomVisuals: Story = {
+  render: function Render() {
+    const { checked, toggle } = useCheckedFixture();
+    return (
+      <Tree>
+        {PLATFORMS.map(({ label, visual }) => (
+          <Tree.Item
+            key={label}
+            label={label}
+            type="item"
+            visual={visual}
+            checkbox={{
+              checked: checked[label],
+              onCheckedChange: () => {
+                toggle(label);
+              },
+            }}
+          />
+        ))}
+      </Tree>
+    );
+  },
+};
 
+/**
+ * Multi-selection inside a hierarchy: leaf items carry a **checkbox**, and a
+ * parent reflects a mixed selection with the `"partial"` checked state.
+ * @summary Nested checkbox selection with partial state.
+ */
+export const CheckboxSelection: Story = {
+  render: function Render() {
+    const { checked, toggle } = useCheckedFixture();
+    return (
+      <Tree>
+        <Tree.Item
+          label="Projects"
+          visual={Folder}
+          defaultCollapsed={false}
+          checkbox={{
+            checked: "partial",
+            onCheckedChange: fn(),
+          }}
+        >
+          <Tree>
+            {["Roadmap", "Specs", "Retros"].map((label) => (
               <Tree.Item
-                label="Item 8 (loading, with existing nodes)"
-                visual={Folder}
-              >
-                <Tree isLoading>
-                  <Tree.Item
-                    type="leaf"
-                    label="Item 1"
-                    checkbox={{
-                      checked: checked["Item 1"],
-                      onCheckedChange: () => {
-                        check("Item 1");
-                      },
-                    }}
-                  />
-                </Tree>
-              </Tree.Item>
-            </Tree>
-          </div>
-        </div>
-        <div className="flex flex-col gap-3">
-          <div className="text-xl">Flat</div>
-          <div>
-            <Tree isBoxed>
-              <Tree.Item
-                label="Item 1"
-                type="item"
-                visual={Folder}
+                key={label}
+                label={label}
+                type="leaf"
                 checkbox={{
-                  checked: checked["Item 1"],
+                  checked: checked[label],
                   onCheckedChange: () => {
-                    check("Item 1");
+                    toggle(label);
                   },
                 }}
               />
-              <Tree.Item
-                label="Item 2"
-                type="item"
-                visual={Folder}
-                checkbox={{
-                  checked: checked["Item 2"],
-                  onCheckedChange: () => {
-                    check("Item 2");
-                  },
-                }}
-              />
-              <Tree.Item
-                label="Item 3"
-                type="item"
-                visual={Folder}
-                checkbox={{
-                  checked: checked["Item 3"],
-                  onCheckedChange: () => {
-                    check("Item 3");
-                  },
-                }}
-              />
-              <Tree.Item
-                label="Item 4"
-                type="item"
-                visual={Folder}
-                checkbox={{
-                  checked: checked["Item 4"],
-                  onCheckedChange: () => {
-                    check("Item 4");
-                  },
-                }}
-              />
-              <Tree.Item
-                label="Item 5"
-                type="item"
-                visual={Folder}
-                checkbox={{
-                  checked: checked["Item 5"],
-                  onCheckedChange: () => {
-                    check("Item 5");
-                  },
-                }}
-              />
-            </Tree>
-          </div>
-        </div>
-        <div className="flex flex-col gap-3">
-          <div className="text-xl">With custom visual</div>
-          <div>
-            <Tree isBoxed>
-              <Tree.Item
-                label="Intercom"
-                type="item"
-                visual={IntercomLogo}
-                checkbox={{
-                  checked: checked["Intercom"],
-                  onCheckedChange: () => {
-                    check("Intercom");
-                  },
-                }}
-              />
-              <Tree.Item
-                label="Notion"
-                type="item"
-                visual={NotionLogo}
-                checkbox={{
-                  checked: checked["Notion"],
-                  onCheckedChange: () => {
-                    check("Notion");
-                  },
-                }}
-              />
-              <Tree.Item
-                label="Slack"
-                type="item"
-                visual={SlackLogo}
-                checkbox={{
-                  checked: checked["Slack"],
-                  onCheckedChange: () => {
-                    check("Slack");
-                  },
-                }}
-              />
-              <Tree.Item
-                label="Dust"
-                type="item"
-                visual={DustLogo}
-                checkbox={{
-                  checked: checked["Dust"],
-                  onCheckedChange: () => {
-                    check("Dust");
-                  },
-                }}
-              />
-            </Tree>
-          </div>
-        </div>
-        <div className="flex flex-col gap-3">
-          <div className="text-xl">Nav bar</div>
-          <div>
-            <Tree isBoxed variant="navigator">
-              <Tree.Item
-                label="Intercom"
-                visual={IntercomLogo}
-                onItemClick={() => console.log("Clickable")}
-                isSelected={true}
-              >
-                <Tree tailwindIconTextColor="text-foreground">
-                  <Tree.Item label="Item 1" visual={Folder}>
-                    <Tree>
-                      <Tree.Item label="Item 1" visual={Folder} />
-                      <Tree.Item label="Item 2" visual={Folder} />
-                      <Tree.Item label="Item 3" visual={Folder} />
-                    </Tree>
-                  </Tree.Item>
-                  <Tree.Item label="Item 2" visual={Folder}>
-                    <Tree>
-                      <Tree.Item label="Item 1" visual={Folder} />
-                      <Tree.Item label="Item 2" visual={Folder} />
-                      <Tree.Item label="Item 3" visual={Folder} />
-                    </Tree>
-                  </Tree.Item>
-                  <Tree.Item label="Item 3" visual={Folder}>
-                    <Tree>
-                      <Tree.Item label="Item 1" visual={Folder} />
-                      <Tree.Item label="Item 2" visual={Folder} />
-                      <Tree.Item label="Item 3" visual={Folder} />
-                    </Tree>
-                  </Tree.Item>
-                </Tree>
-              </Tree.Item>
-              <Tree.Item label="Notion" visual={NotionLogo} />
-              <Tree.Item label="Slack" visual={SlackLogo} />
-              <Tree.Item label="Dust" visual={DustLogo} />
-            </Tree>
-          </div>
-        </div>
-      </div>
+            ))}
+          </Tree>
+        </Tree.Item>
+      </Tree>
+    );
+  },
+};
+
+/**
+ * Lazily loaded branches: render a child \`<Tree isLoading />\` while the
+ * branch's content is being fetched. The spinner can stand alone or follow
+ * items that already arrived.
+ * @summary Loading spinner for lazily fetched branches.
+ */
+export const LazyLoading: Story = {
+  render: () => (
+    <Tree>
+      <Tree.Item label="Loading branch" visual={Folder}>
+        <Tree isLoading />
+      </Tree.Item>
+      <Tree.Item
+        label="Loading more, with existing items"
+        visual={Folder}
+        defaultCollapsed={false}
+      >
+        <Tree isLoading>
+          <Tree.Item label="Already fetched" type="leaf" visual={File02} />
+        </Tree>
+      </Tree.Item>
+    </Tree>
+  ),
+};
+
+/**
+ * The `navigator` variant styles the tree as a sidebar navigation: rows are
+ * clickable via **onItemClick**, the current location is marked with
+ * **isSelected**, and long labels truncate within the container width.
+ * @summary Sidebar navigation styling with a selected row.
+ */
+export const NavigationBar: Story = {
+  render: () => (
+    <div className="max-w-xs">
+      <Tree variant="navigator">
+        <Tree.Item
+          label="Intercom  github.com-apache-incubator-devlake-tree-main-backend"
+          visual={IntercomLogo}
+          onItemClick={fn()}
+          isSelected={true}
+        >
+          <Tree variant="navigator">
+            <Tree.Item
+              label="Conversations with a very very very very long title"
+              visual={Folder}
+            >
+              <Tree variant="navigator">
+                <Tree.Item
+                  label="Tickets with a very very very very very long title"
+                  visual={Folder}
+                  type="leaf"
+                />
+                <Tree.Item label="Help center" visual={Folder} />
+                <Tree.Item label="News" visual={Folder} />
+              </Tree>
+            </Tree.Item>
+            <Tree.Item label="Teams" visual={Folder}>
+              <Tree variant="navigator">
+                <Tree.Item label="Support" visual={Folder} />
+                <Tree.Item label="Sales" visual={Folder} />
+              </Tree>
+            </Tree.Item>
+          </Tree>
+        </Tree.Item>
+        <Tree.Item label="Notion" visual={NotionLogo} />
+        <Tree.Item label="Slack" visual={SlackLogo} />
+        <Tree.Item label="Dust" visual={DustLogo} />
+      </Tree>
     </div>
-  );
+  ),
 };
 
-export const SelectDataSourceExample = () => {
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
-  const check = (id: string) => {
-    setChecked((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
-
-  return (
-    <div className="flex w-full flex-col gap-10">
-      <div className="flex grow gap-10">
-        <div className="w-full flex flex-col gap-3">
-          <div className="text-xl">Display Data source Tree example</div>
-          <div className="w-full">
-            <Tree>
-              <Tree.Item
-                label="Intercom"
-                visual={IntercomLogo}
-                areActionsFading={false}
-                actions={
-                  <div className="flex flex-row items-center justify-center gap-3">
-                    <span className="text-sm text-muted-foreground">
-                      Managed by: Stanislas Polu
-                    </span>
-                    <Chip size="sm" color="success" label="Syncing (235)" />
-                    <Button
-                      label="Manage"
-                      icon={Settings01}
-                      variant="outline"
-                      size="sm"
-                    />
-                  </div>
-                }
-              />
-              <Tree.Item
-                label="Slack"
-                defaultCollapsed={true}
-                visual={SlackLogo}
-                areActionsFading={false}
-                actions={
-                  <div className="flex flex-row items-center justify-center gap-3">
-                    <span className="text-sm text-muted-foreground">
-                      Managed by: Stanislas Polu
-                    </span>
-                    <Chip size="sm" color="success" label="Syncing (235)" />
-                    <Button
-                      label="Manage"
-                      icon={Settings01}
-                      variant="outline"
-                      size="sm"
-                    />
-                  </div>
-                }
-              />
-              <Tree.Item
-                label="Notion"
-                visual={NotionLogo}
-                areActionsFading={false}
-                actions={
-                  <div className="flex flex-row items-center justify-center gap-3">
-                    <span className="text-sm text-muted-foreground">
-                      Managed by: Stanislas Polu
-                    </span>
-                    <Chip size="sm" color="success" label="Syncing (235)" />
-                    <Button
-                      label="Manage"
-                      icon={Settings01}
-                      variant="outline"
-                      size="sm"
-                    />
-                  </div>
-                }
-                defaultCollapsed={false}
-              >
-                <Tree>
-                  <Tree.Item label="Item 1" />
-                  <Tree.Item label="Item 2" />
-                  <Tree.Item label="Item 3" />
-                  <Tree.Item label="Item 4" />
-                </Tree>
-              </Tree.Item>
-              <Tree.Item
-                label="Google Drive"
-                visual={DriveLogo}
-                areActionsFading={false}
-                defaultCollapsed={true}
-                actions={
-                  <div className="flex flex-row items-center justify-center gap-3">
-                    <span className="text-sm text-muted-foreground">
-                      Managed by: Stanislas Polu
-                    </span>
-                    <Chip size="sm" color="success" label="Syncing (235)" />
-                    <Button
-                      label="Manage"
-                      icon={Settings01}
-                      variant="outline"
-                      size="sm"
-                    />
-                  </div>
-                }
-              />
-            </Tree>
-          </div>
-        </div>
-      </div>
-      <div className="flex gap-10">
-        <div className="flex flex-col gap-3">
-          <div className="text-xl">Select Data source Tree example</div>
-          <div>
-            <Tree>
-              <Tree.Item
-                label="Intercoxxm"
-                visual={IntercomLogo}
-                checkbox={{
-                  checked: checked["Intercom"],
-                  onCheckedChange: () => {
-                    check("Intercom");
-                  },
-                }}
-              />
-              <Tree.Item
-                label="Slack"
-                defaultCollapsed={true}
-                visual={SlackLogo}
-                checkbox={{
-                  checked: checked["Slack"],
-                  onCheckedChange: () => {
-                    check("Slack");
-                  },
-                }}
-              />
-              <Tree.Item
-                label="Notion"
-                visual={NotionLogo}
-                checkbox={{
-                  checked: checked["Notion"],
-                  onCheckedChange: () => {
-                    check("Notion");
-                  },
-                }}
-                defaultCollapsed={false}
-              >
-                <Tree>
-                  <Tree.Item
-                    label="Item 1"
-                    checkbox={{
-                      checked: checked["Item 1"],
-                      onCheckedChange: () => {
-                        check("Item 1");
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="Item 2"
-                    checkbox={{
-                      checked: checked["Item 2"],
-                      onCheckedChange: () => {
-                        check("Item 2");
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="Item 3"
-                    checkbox={{
-                      checked: checked["Item 3"],
-                      onCheckedChange: () => {
-                        check("Item 3");
-                      },
-                    }}
-                  />
-                  <Tree.Item
-                    label="Item 4"
-                    checkbox={{
-                      checked: checked["Item 4"],
-                      onCheckedChange: () => {
-                        check("Item 4");
-                      },
-                    }}
-                  />
-                </Tree>
-              </Tree.Item>
-              <Tree.Item
-                label="Google Drive"
-                visual={DriveLogo}
-                checkbox={{
-                  checked: checked["Google Drive"],
-                  onCheckedChange: () => {
-                    check("Google Drive");
-                  },
-                }}
-                defaultCollapsed={true}
-              />
-            </Tree>
-          </div>
-        </div>
-      </div>
+/**
+ * Read-only management view of connected data sources: each connection row
+ * keeps its **actions** (sync status **Chip** and a Manage **Button**)
+ * permanently visible via `areActionsFading={false}`.
+ * @summary Data-source rows with permanent status and actions.
+ */
+export const DataSourceDisplay: Story = {
+  render: () => (
+    <div className="w-full">
+      <Tree>
+        <Tree.Item
+          label="Intercom"
+          visual={IntercomLogo}
+          areActionsFading={false}
+          actions={<ConnectionActions />}
+        />
+        <Tree.Item
+          label="Slack"
+          defaultCollapsed={true}
+          visual={SlackLogo}
+          areActionsFading={false}
+          actions={<ConnectionActions />}
+        />
+        <Tree.Item
+          label="Notion"
+          visual={NotionLogo}
+          areActionsFading={false}
+          actions={<ConnectionActions />}
+          defaultCollapsed={false}
+        >
+          <Tree>
+            <Tree.Item label="Product wiki" />
+            <Tree.Item label="Meeting notes" />
+            <Tree.Item label="OKRs" />
+          </Tree>
+        </Tree.Item>
+        <Tree.Item
+          label="Google Drive"
+          visual={DriveLogo}
+          areActionsFading={false}
+          defaultCollapsed={true}
+          actions={<ConnectionActions />}
+        />
+      </Tree>
     </div>
-  );
+  ),
 };
 
-const TreeItem = ({
-  label,
-  getLabel,
-}: {
-  label: string;
-  getLabel: () => string;
-}) => {
-  const n = Math.floor(Math.random() * 8) + 3;
-  return (
-    <Tree.Item
-      label={label}
-      visual={Folder}
-      actions={
-        <div className="flex flex-row justify-center gap-2">
-          <span className="text-xs text-muted-foreground">
-            last updated Jan 6
-          </span>
-          <IconButton icon={DownloadCloud01} size="xs" variant="outline" />
-          <IconButton icon={PlusCircle} size="xs" />
-        </div>
-      }
-      renderTreeItems={() => <Tree>{createTreeItems(n, getLabel)}</Tree>}
-    />
-  );
+/**
+ * Picking content to sync from connected data sources: every connection and
+ * nested folder carries a **checkbox**, so whole sources or individual
+ * branches can be selected.
+ * @summary Selecting data sources and folders via checkboxes.
+ */
+export const DataSourceSelection: Story = {
+  render: function Render() {
+    const { checked, toggle } = useCheckedFixture();
+    return (
+      <Tree>
+        <Tree.Item
+          label="Intercom"
+          visual={IntercomLogo}
+          checkbox={{
+            checked: checked["Intercom"],
+            onCheckedChange: () => {
+              toggle("Intercom");
+            },
+          }}
+        />
+        <Tree.Item
+          label="Slack"
+          defaultCollapsed={true}
+          visual={SlackLogo}
+          checkbox={{
+            checked: checked["Slack"],
+            onCheckedChange: () => {
+              toggle("Slack");
+            },
+          }}
+        />
+        <Tree.Item
+          label="Notion"
+          visual={NotionLogo}
+          checkbox={{
+            checked: checked["Notion"],
+            onCheckedChange: () => {
+              toggle("Notion");
+            },
+          }}
+          defaultCollapsed={false}
+        >
+          <Tree>
+            {["Product wiki", "Meeting notes", "OKRs"].map((label) => (
+              <Tree.Item
+                key={label}
+                label={label}
+                checkbox={{
+                  checked: checked[label],
+                  onCheckedChange: () => {
+                    toggle(label);
+                  },
+                }}
+              />
+            ))}
+          </Tree>
+        </Tree.Item>
+        <Tree.Item
+          label="Google Drive"
+          visual={DriveLogo}
+          defaultCollapsed={true}
+          checkbox={{
+            checked: checked["Google Drive"],
+            onCheckedChange: () => {
+              toggle("Google Drive");
+            },
+          }}
+        />
+      </Tree>
+    );
+  },
 };
 
-const createTreeItems = (n = 5, getLabel: () => string) => {
-  const items = [];
-  for (let i = 1; i <= n; i++) {
-    const label = getLabel();
-    items.push(<TreeItem key={label} label={label} getLabel={getLabel} />);
-  }
-
-  return <Tree>{items}</Tree>;
+/**
+ * The `isBoxed` prop wraps the tree in a bordered, contained surface — use it
+ * when the tree sits directly on the page rather than inside a panel.
+ * @summary Boxed container styling.
+ */
+export const Boxed: Story = {
+  render: () => (
+    <Tree isBoxed>
+      <Tree.Item label="Reports" visual={Folder} defaultCollapsed={false}>
+        <Tree>
+          <Tree.Item label="Q1 summary" type="leaf" visual={File02} />
+          <Tree.Item label="Q2 summary" type="leaf" visual={File02} />
+        </Tree>
+      </Tree.Item>
+      <Tree.Item label="Archives" visual={Folder} defaultCollapsed={true}>
+        <Tree>
+          <Tree.Item label="2023" type="leaf" visual={File02} />
+        </Tree>
+      </Tree.Item>
+      <Tree.Item label="Readme" type="leaf" visual={File02} />
+    </Tree>
+  ),
 };

@@ -140,6 +140,7 @@ export const AUDIT_ACTIONS = [
   "trigger.enabled",
   "trigger.disabled",
   "trigger.fired",
+  "trigger.pool_updated",
   "trigger.email_received",
   // Wake-ups.
   "wake_up.cancelled",

@@ -40,8 +40,13 @@ export type ProgressBarProps = Omit<
   React.HTMLAttributes<HTMLDivElement>,
   "children"
 > &
-  VariantProps<typeof progressBarVariants> &
-  (
+  VariantProps<typeof progressBarVariants> & {
+    /**
+     * Accessible name announced by screen readers for the progressbar role.
+     * Name what is progressing (e.g. "Upload progress").
+     */
+    label?: string;
+  } & (
     | { percentage: number; values?: never }
     | {
         percentage?: never;
@@ -49,11 +54,21 @@ export type ProgressBarProps = Omit<
       }
   );
 
+/**
+ * A slim determinate progress indicator for a known completion percentage.
+ * Exposes the `progressbar` role with value semantics; pass `label` to name
+ * what is progressing for screen readers.
+ *
+ * For indeterminate waits with no percentage, use Spinner instead.
+ *
+ * @summary Determinate progress indicator (0-100%).
+ */
 export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
   (
     {
       percentage,
       values,
+      label = "Progress",
       radius = "full",
       variant = "default",
       className,
@@ -86,6 +101,7 @@ export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
       <div
         ref={ref}
         role="progressbar"
+        aria-label={label}
         aria-valuenow={normalizedValues[0]?.percentage}
         aria-valuemin={0}
         aria-valuemax={100}

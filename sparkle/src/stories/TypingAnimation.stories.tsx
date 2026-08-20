@@ -1,5 +1,5 @@
-import type { Meta } from "@storybook/react";
-import React from "react";
+import type { Meta, StoryObj } from "@storybook/react";
+import { fn } from "storybook/test";
 
 import { TypingAnimation } from "@sparkle/components";
 
@@ -19,16 +19,31 @@ const meta = {
       },
     },
   },
+  argTypes: {
+    text: {
+      control: "text",
+      description: "The string revealed one character at a time",
+    },
+    duration: {
+      control: { type: "number", min: 10, max: 500, step: 10 },
+      description: "Delay in milliseconds between characters",
+    },
+  },
 } satisfies Meta<typeof TypingAnimation>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Demo = () => {
-  return (
-    <div>
-      <div className="flex items-center space-x-2 text-xl">
-        <TypingAnimation text="Hello world" />
-      </div>
-    </div>
-  );
+/**
+ * A short message revealed character by character, as when an agent appears
+ * to type its reply. **duration** sets the per-character delay and
+ * **onComplete** fires once the full text is shown.
+ * @summary Character-by-character text reveal.
+ */
+export const StreamingText: Story = {
+  args: {
+    text: "Searching your knowledge base…",
+    duration: 50,
+    onComplete: fn(),
+  },
 };

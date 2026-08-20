@@ -56,9 +56,18 @@ const buttonGroupVariants = cva("inline-flex w-fit items-stretch", {
 export interface ButtonGroupProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof buttonGroupVariants> {
+  /** Disable all buttons in the group. */
   disabled?: boolean;
 }
 
+/**
+ * Groups related Buttons into a single cohesive control, laid out horizontally or
+ * vertically, optionally merging their borders into a segmented control
+ * (`removeGaps`). Use it for closely related actions or a split button paired with
+ * ButtonGroupDropdown; for a single button with an attached chevron menu, prefer
+ * SplitButton (FlexSplitButton) instead.
+ * @summary Cohesive group of buttons.
+ */
 const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
   (
     { className, orientation = "horizontal", removeGaps = true, ...props },
@@ -82,12 +91,21 @@ const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
 ButtonGroup.displayName = "ButtonGroup";
 
 interface ButtonGroupDropdownProps {
+  /** Element (typically a Button) that opens the menu. */
   trigger: React.ReactElement;
+  /** Menu entries rendered as DropdownMenuItems. */
   items: DropdownMenuItemProps[];
+  /** Menu alignment relative to the trigger. */
   align?: "start" | "center" | "end";
+  /** Invoked when the menu opens or closes. */
   onOpenChange?: (open: boolean) => void;
 }
 
+/**
+ * A ButtonGroup child that attaches an overflow DropdownMenu to a trigger button,
+ * e.g. the secondary half of a split button.
+ * @summary Overflow menu for a ButtonGroup.
+ */
 function ButtonGroupDropdown({
   trigger,
   items,

@@ -13,7 +13,7 @@ import {
 
 const meta = {
   title: "Foundations/Colors",
-  tags: ["autodocs"],
+  tags: ["!manifest", "autodocs"],
   decorators: [withThemedSurface],
   parameters: {
     layout: "padded",

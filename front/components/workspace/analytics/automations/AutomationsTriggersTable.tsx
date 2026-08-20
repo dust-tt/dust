@@ -19,9 +19,17 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
 import type { AutomationTriggersBody } from "@app/lib/api/analytics/automations/schema";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
-import { useUpdateTriggerStatus } from "@app/lib/swr/agent_triggers";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import {
+  useUpdateTriggerExecutionMode,
+  useUpdateTriggerStatus,
+} from "@app/lib/swr/agent_triggers";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
-import type { TriggerStatus } from "@app/types/assistant/triggers";
+import type {
+  TriggerExecutionMode,
+  TriggerStatus,
+} from "@app/types/assistant/triggers";
 import { getTriggerStatusOwner } from "@app/types/assistant/triggers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -33,6 +41,10 @@ import {
   Clock,
   DataTable,
   DataTableLoadingSkeleton,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Icon,
   Pagination,
   SearchInput,
@@ -50,6 +62,44 @@ interface TriggerRowData extends BaseTriggerRowData {
   displayStatus: TriggerStatus;
   isStatusPending: boolean;
   onToggleStatus: () => void;
+  displayExecutionMode: TriggerExecutionMode;
+  isExecutionModePending: boolean;
+  onSetExecutionMode: (executionMode: TriggerExecutionMode) => void;
+}
+
+const POOL_OPTIONS: { value: TriggerExecutionMode; label: string }[] = [
+  { value: "workspace_pool", label: "Workspace" },
+  { value: "user_pool", label: "Member" },
+];
+
+function PoolCell({ row }: { row: TriggerRowData }) {
+  const { hasPermission } = useWorkspacePermissions();
+  const isWorkspacePool = row.displayExecutionMode === "workspace_pool";
+  const canSetPool = hasPermission("use_workspace_pool", "trigger");
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="xs"
+          isSelect
+          disabled={row.isExecutionModePending || !canSetPool}
+          className={isWorkspacePool ? "text-highlight" : undefined}
+          label={isWorkspacePool ? "Workspace" : "Member"}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        {POOL_OPTIONS.map(({ value, label }) => (
+          <DropdownMenuItem
+            key={value}
+            label={label}
+            onClick={() => row.onSetExecutionMode(value)}
+          />
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 function TypeCell({ trigger }: { trigger: AutomationTriggerRow }) {
@@ -214,8 +264,10 @@ function EditorCell({ editor }: { editor: AutomationTriggerRow["editor"] }) {
 
 function buildColumns({
   expandedRowId,
+  showPoolColumn,
 }: {
   expandedRowId: string | null;
+  showPoolColumn: boolean;
 }): ColumnDef<TriggerRowData>[] {
   return [
     {
@@ -275,6 +327,21 @@ function buildColumns({
         </DataTable.CellContent>
       ),
     },
+    ...(showPoolColumn
+      ? [
+          {
+            id: "pool",
+            header: "Pool",
+            enableSorting: false,
+            meta: { className: "w-28" },
+            cell: (info) => (
+              <DataTable.CellContent className="w-full justify-start">
+                <PoolCell row={info.row.original} />
+              </DataTable.CellContent>
+            ),
+          } satisfies ColumnDef<TriggerRowData>,
+        ]
+      : []),
     {
       id: "status",
       header: "Enabled",
@@ -375,6 +442,9 @@ export function AutomationsTriggersTable({
 
   const confirm = useContext(ConfirmContext);
   const updateTriggerStatus = useUpdateTriggerStatus({ workspaceId });
+  const updateTriggerExecutionMode = useUpdateTriggerExecutionMode({
+    workspaceId,
+  });
 
   const exportBody: AutomationTriggersBody = {
     period: period.kind,
@@ -400,6 +470,12 @@ export function AutomationsTriggersTable({
     Record<string, TriggerStatus>
   >({});
   const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
+  const [executionModeOverrides, setExecutionModeOverrides] = useState<
+    Record<string, TriggerExecutionMode>
+  >({});
+  const [pendingExecutionModeIds, setPendingExecutionModeIds] = useState<
+    ReadonlySet<string>
+  >(new Set());
 
   // Refetched rows (pagination, period change) already carry any status we
   // wrote, so overrides only need to live until the next fetch. Reset during
@@ -410,6 +486,7 @@ export function AutomationsTriggersTable({
   if (prevTriggers !== triggers) {
     setPrevTriggers(triggers);
     setStatusOverrides({});
+    setExecutionModeOverrides({});
   }
 
   const handleToggle = useCallback(
@@ -456,6 +533,32 @@ export function AutomationsTriggersTable({
     [confirm, updateTriggerStatus]
   );
 
+  const handleSetExecutionMode = useCallback(
+    async (
+      trigger: AutomationTriggerRow,
+      executionMode: TriggerExecutionMode
+    ) => {
+      setPendingExecutionModeIds((ids) => new Set([...ids, trigger.triggerId]));
+      const success = await updateTriggerExecutionMode({
+        agentConfigurationId: trigger.agent.agentId,
+        triggerId: trigger.triggerId,
+        executionMode,
+      });
+      if (success) {
+        setExecutionModeOverrides((overrides) => ({
+          ...overrides,
+          [trigger.triggerId]: executionMode,
+        }));
+      }
+      setPendingExecutionModeIds((ids) => {
+        const next = new Set(ids);
+        next.delete(trigger.triggerId);
+        return next;
+      });
+    },
+    [updateTriggerExecutionMode]
+  );
+
   const rows: TriggerRowData[] = useMemo(
     () =>
       triggers.map((trigger) => {
@@ -466,13 +569,28 @@ export function AutomationsTriggersTable({
           displayStatus,
           isStatusPending: pendingIds.has(trigger.triggerId),
           onToggleStatus: () => void handleToggle(trigger, displayStatus),
+          displayExecutionMode:
+            executionModeOverrides[trigger.triggerId] ?? trigger.executionMode,
+          isExecutionModePending: pendingExecutionModeIds.has(
+            trigger.triggerId
+          ),
+          onSetExecutionMode: (executionMode: TriggerExecutionMode) =>
+            void handleSetExecutionMode(trigger, executionMode),
           onClick: () =>
             setExpandedRowId((current) =>
               current === trigger.triggerId ? null : trigger.triggerId
             ),
         };
       }),
-    [triggers, statusOverrides, pendingIds, handleToggle]
+    [
+      triggers,
+      statusOverrides,
+      pendingIds,
+      handleToggle,
+      executionModeOverrides,
+      pendingExecutionModeIds,
+      handleSetExecutionMode,
+    ]
   );
 
   return (
@@ -545,9 +663,11 @@ function TriggersTableBody({
   period,
   expandedRowId,
 }: TriggersTableBodyProps) {
+  const { hasFeature } = useFeatureFlags();
+  const showPoolColumn = hasFeature("trigger_pool_choice");
   const columns = useMemo(
-    () => buildColumns({ expandedRowId }),
-    [expandedRowId]
+    () => buildColumns({ expandedRowId, showPoolColumn }),
+    [expandedRowId, showPoolColumn]
   );
 
   if (isLoading) {

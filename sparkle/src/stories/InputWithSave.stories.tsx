@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
 
+import { fn } from "storybook/test";
+
 import { InputWithSave } from "../index_with_tw_base";
 
 const meta = {
@@ -53,10 +55,12 @@ function ControlledInputWithSave({
   initialValue,
   unit,
   placeholder,
+  onSave,
 }: {
   initialValue: string;
   unit?: string;
   placeholder?: string;
+  onSave?: (value: string) => void | Promise<void>;
 }) {
   const [value, setValue] = useState(initialValue);
 
@@ -69,37 +73,73 @@ function ControlledInputWithSave({
         // Simulate a network call.
         await new Promise((resolve) => setTimeout(resolve, 1000));
         setValue(newValue);
+        await onSave?.(newValue);
       }}
     />
   );
 }
 
-export const ExampleInputWithSave: Story = {
+/**
+ * A persisted value with a unit. The story wires `onSave` to a simulated
+ * 1s network call so the save spinner is visible; keep `value` in sync with
+ * the persisted state in real usage.
+ *
+ * @summary Saved value with a right-aligned unit.
+ */
+export const Default: Story = {
   args: {
     value: "12,890",
+    onSave: fn(),
     unit: "Credits",
-    onSave: () => {},
   },
   render: (args) => (
     <ControlledInputWithSave
       initialValue={args.value ?? ""}
       unit={args.unit}
       placeholder={args.placeholder}
+      onSave={args.onSave}
     />
   ),
 };
 
-export function InputWithSaveExamples() {
-  return (
-    <div className="flex max-w-md flex-col gap-4">
-      <ControlledInputWithSave initialValue="12,890" unit="Credits" />
-      <ControlledInputWithSave initialValue="49" unit="$" />
-      <ControlledInputWithSave
-        initialValue=""
-        unit="Credits"
-        placeholder="Enter an amount"
-      />
-      <ControlledInputWithSave initialValue="No unit here" />
-    </div>
-  );
-}
+/**
+ * Empty state: no persisted value yet, so the `placeholder` invites input.
+ *
+ * @summary Empty field with a placeholder.
+ */
+export const EmptyWithPlaceholder: Story = {
+  args: {
+    value: "",
+    onSave: fn(),
+    unit: "Credits",
+    placeholder: "Enter an amount",
+  },
+  render: (args) => (
+    <ControlledInputWithSave
+      initialValue={args.value ?? ""}
+      unit={args.unit}
+      placeholder={args.placeholder}
+      onSave={args.onSave}
+    />
+  ),
+};
+
+/**
+ * Without a `unit`, the field is a plain inline-save text input.
+ *
+ * @summary Inline-save field with no unit.
+ */
+export const WithoutUnit: Story = {
+  args: {
+    value: "Marketing team workspace",
+    onSave: fn(),
+  },
+  render: (args) => (
+    <ControlledInputWithSave
+      initialValue={args.value ?? ""}
+      unit={args.unit}
+      placeholder={args.placeholder}
+      onSave={args.onSave}
+    />
+  ),
+};

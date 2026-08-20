@@ -38,23 +38,43 @@ function showUnsupportedDirective() {
 }
 
 export interface MarkdownProps {
+  /** Raw Markdown to render; the component handles escaping and rendering, so avoid pre-formatting to HTML. */
   content: string;
+  /** Legacy boolean flag for streaming; prefer `streamingState`. */
   isStreaming?: boolean;
+  /** Streaming lifecycle: "streaming", "none", or "cancelled". Takes priority over `isStreaming`. */
   streamingState?: StreamingState;
+  /** Tailwind text-color class applied to rendered text (default "text-foreground"). */
   textColor?: string;
+  /** Whether this renders the last message of a conversation; exposed to blocks via MarkdownContentContext. */
   isLastMessage?: boolean;
   compactSpacing?: boolean; // When true, removes vertical padding from paragraph blocks for tighter spacing
+  /** Text-size class overriding the default typography, e.g. to match a surrounding context like an ActionCardBlock detail. */
   forcedTextSize?: string;
+  /** Extra react-markdown component overrides merged on top of the base renderer blocks. */
   additionalMarkdownComponents?: Components;
+  /** Extra remark plugins appended to the default set (directive, GFM, math). */
   additionalMarkdownPlugins?: PluggableList;
+  /** When true (default), blockquotes show a copy button. */
   canCopyQuotes?: boolean;
+  /** When true, streamed text is revealed with a smooth animation (see useAnimatedText). */
   enableAnimation?: boolean;
+  /** Duration of each streaming reveal animation. */
   animationDurationSeconds?: number;
+  /** Delimiter used to split text for the reveal animation ("" animates per character). */
   delimiter?: string;
   /** When true (default), skip re-rendering blocks whose AST position is unchanged. */
   optimizeForStreaming?: boolean;
 }
 
+/**
+ * Renders agent message bodies from a Markdown `content` string. Supports the
+ * full GitHub-flavored set — headings, lists, task lists, tables, blockquotes,
+ * links, footnotes — plus fenced code (via CodeBlock), LaTeX math, CSV/JSON
+ * pretty-printing, and Mermaid diagrams, with optional streaming-aware
+ * rendering and animated text reveal.
+ * @summary GitHub-flavored Markdown renderer for agent messages.
+ */
 export const Markdown: React.FC<MarkdownProps> = ({
   content,
   isStreaming = false,

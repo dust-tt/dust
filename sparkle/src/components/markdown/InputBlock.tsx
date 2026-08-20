@@ -8,6 +8,12 @@ type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "ref"> &
     ref?: React.Ref<HTMLInputElement>;
   };
 
+/**
+ * Renders `<input>` elements inside Markdown output; checkboxes (as produced
+ * by GFM task lists) are swapped for the Sparkle Checkbox component, other
+ * input types pass through unchanged.
+ * @summary Input renderer for Markdown task-list checkboxes.
+ */
 export const InputBlock = memo(
   ({ type, checked, className, onChange, ref, ...props }: InputProps) => {
     const inputRef = React.useRef<HTMLInputElement>(null);

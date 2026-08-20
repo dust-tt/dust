@@ -69,10 +69,18 @@ const textVariants = cva("absolute inset-0", {
 
 interface AnimatedShinyTextProps {
   children: ReactNode;
+  /** Tints the shimmer to a semantic or brand color (default `muted`). */
   variant?: VariantProps<typeof textVariants>["variant"];
   className?: string;
 }
 
+/**
+ * Text with a shimmering gradient sweeping across the characters, signalling that
+ * something is in progress (e.g. a "Thinking..." indicator). Use it for ephemeral
+ * "agent is working" states with no measurable progress; for a generic, non-text
+ * loading indicator, use Spinner instead.
+ * @summary Shimmering in-progress text.
+ */
 export function AnimatedText({
   children,
   variant,

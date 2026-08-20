@@ -3,7 +3,14 @@ import React from "react";
 
 import { ArrowUp, ChevronDown } from "@sparkle/icons/v2-stroke";
 
-import { Button, FlexSplitButton } from "../index_with_tw_base";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  FlexSplitButton,
+} from "../index_with_tw_base";
 
 const meta: Meta<React.ComponentProps<typeof FlexSplitButton>> = {
   title: "Actions/SplitButton",
@@ -39,7 +46,55 @@ const VARIANTS = [
   "warning-ghost",
 ] as const;
 
-export const Variants: Story = {
+/**
+ * The canonical use case: one obvious default action ("Send") with a chevron
+ * `splitAction` that opens a DropdownMenu of related variants. The chevron
+ * Button matches the main button's variant so the pair reads as one control.
+ * @summary Default action with an attached options menu.
+ */
+export const Default: Story = {
+  args: {
+    label: "Send",
+    variant: "highlight",
+    icon: ArrowUp,
+    splitAction: (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="xs" variant="highlight" icon={ChevronDown} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem label="Send now" />
+          <DropdownMenuItem label="Schedule send" />
+          <DropdownMenuItem label="Save as draft" />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ),
+  },
+};
+
+/**
+ * While `isLoading` is set the main button shows a spinner and the
+ * `splitAction` is automatically disabled, so neither half can be triggered
+ * during async work.
+ * @summary Loading state disables both halves.
+ */
+export const Loading: Story = {
+  args: {
+    label: "Sending",
+    variant: "highlight",
+    icon: ArrowUp,
+    isLoading: true,
+    splitAction: <Button size="xs" variant="highlight" icon={ChevronDown} />,
+  },
+};
+
+/**
+ * Visual reference for design review: every Button variant applied to the
+ * split button pair. Not a usage example.
+ * @summary Gallery of all variants.
+ */
+export const VariantGallery: Story = {
+  tags: ["!manifest"],
   render: () => (
     <div className="flex flex-wrap gap-3">
       {VARIANTS.map((variant) => (
@@ -48,25 +103,6 @@ export const Variants: Story = {
           label="Send"
           variant={variant}
           icon={ArrowUp}
-          splitAction={
-            <Button size="xs" variant={variant} icon={ChevronDown} />
-          }
-        />
-      ))}
-    </div>
-  ),
-};
-
-export const Loading: Story = {
-  render: () => (
-    <div className="flex flex-wrap gap-3">
-      {(["highlight", "primary", "outline"] as const).map((variant) => (
-        <FlexSplitButton
-          key={variant}
-          label="Sending"
-          variant={variant}
-          icon={ArrowUp}
-          isLoading
           splitAction={
             <Button size="xs" variant={variant} icon={ChevronDown} />
           }

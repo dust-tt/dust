@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
+import { fn } from "storybook/test";
 
 import {
   cn,
@@ -63,13 +64,21 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const ExampleSearchInput: Story = {
+const onItemSelect = fn();
+const onSelectAll = fn();
+
+/**
+ * The plain **SearchInput** with its simplified string contract: `onChange`
+ * receives the new value directly, so the story keeps it in local state.
+ * @summary Basic controlled search field.
+ */
+export const Default: Story = {
   args: {
     name: "search",
     placeholder: "Search...",
     value: "",
     disabled: false,
-    onChange: () => console.log("hey"),
+    onChange: fn(),
   },
   render: (args) => {
     const [value, setValue] = React.useState(args.value);
@@ -87,14 +96,90 @@ export const ExampleSearchInput: Story = {
   },
 };
 
-export function SearchInputWithPopoverScrollableExample() {
+// Shared row renderer for the popover stories.
+function renderResultRow(
+  item: string,
+  selected: boolean,
+  onClick: (item: string) => void
+) {
+  return (
+    <div
+      key={item}
+      role="option"
+      className={cn(
+        "cursor-pointer truncate px-2 py-2 hover:bg-primary-100",
+        selected && "bg-primary-100"
+      )}
+      onClick={() => onClick(item)}
+    >
+      {item}
+    </div>
+  );
+}
+
+const PopoverMinimalDemo = () => {
   const [value, setValue] = useState("");
   const [open, setOpen] = useState(false);
-  const items = Array.from({ length: 50 }).map((_, i) => `Item ${i + 1}`);
-
+  const items = [
+    "Marketing",
+    "Engineering",
+    "Design",
+    "Sales",
+    "Customer Success",
+  ];
   const filteredItems = items.filter((item) =>
     item.toLowerCase().includes(value.toLowerCase())
   );
+
+  const selectItem = (item: string) => {
+    setValue(item);
+    setOpen(false);
+    onItemSelect(item);
+  };
+
+  return (
+    <SearchInputWithPopover
+      name="search"
+      placeholder="Search teams..."
+      value={value}
+      onChange={setValue}
+      open={open}
+      onOpenChange={setOpen}
+      items={filteredItems}
+      onItemSelect={selectItem}
+      renderItem={(item, selected) =>
+        renderResultRow(item, selected, selectItem)
+      }
+      noResults="No teams found"
+    />
+  );
+};
+
+/**
+ * The minimum useful **SearchInputWithPopover** wiring: controlled `value` /
+ * `open` state, a filtered `items` list, `renderItem`, `onItemSelect`, and a
+ * `noResults` message. Everything else on the component is optional.
+ * @summary Minimal results-popover wiring.
+ */
+export const PopoverWithResults: StoryObj = {
+  render: () => <PopoverMinimalDemo />,
+};
+
+const PopoverFullyLoadedDemo = () => {
+  const [value, setValue] = useState("");
+  const [open, setOpen] = useState(false);
+  const items = Array.from({ length: 50 }).map(
+    (_, i) => `Document ${String(i + 1).padStart(2, "0")}`
+  );
+  const filteredItems = items.filter((item) =>
+    item.toLowerCase().includes(value.toLowerCase())
+  );
+
+  const selectItem = (item: string) => {
+    setValue(item);
+    setOpen(false);
+    onItemSelect(item);
+  };
 
   return (
     <SearchInputWithPopover
@@ -105,6 +190,11 @@ export function SearchInputWithPopoverScrollableExample() {
       open={open}
       onOpenChange={setOpen}
       items={filteredItems}
+      onItemSelect={selectItem}
+      renderItem={(item, selected) =>
+        renderResultRow(item, selected, selectItem)
+      }
+      noResults="No results found"
       stickyTopContent={
         <div className="text-xs text-muted-foreground">
           Tip: use Ctrl+K to focus search.
@@ -115,10 +205,8 @@ export function SearchInputWithPopoverScrollableExample() {
           Press Enter to select the highlighted result.
         </div>
       }
-      onItemSelect={(item) => console.log(item)}
-      onSelectAll={() => console.log("select all")}
       contentMessage={{
-        title: "You can add a custom message here",
+        title: "Showing the 50 most recent documents",
         variant: "green",
         icon: InfoCircle,
         className: "w-full",
@@ -126,29 +214,23 @@ export function SearchInputWithPopoverScrollableExample() {
       }}
       displayItemCount={true}
       totalItems={100}
-      renderItem={(item, selected) => (
-        <div
-          key={item}
-          role="option"
-          className={cn(
-            "cursor-pointer truncate px-2 py-2 hover:bg-primary-100",
-            selected && "bg-primary-100"
-          )}
-          onClick={() => {
-            setValue(item);
-            setOpen(false);
-            console.log("clicked", item);
-          }}
-        >
-          {item}
-        </div>
-      )}
-      noResults="No results found"
     />
   );
-}
+};
 
-export function SearchInputWithPopoverSelectAllExample() {
+/**
+ * Every optional popover feature at once, on a long scrollable list:
+ * `stickyTopContent` / `stickyBottomContent` (pinned around the results),
+ * `contentMessage` (an inline banner), and `displayItemCount` + `totalItems`
+ * (a "shown of total" counter). All of these can be omitted — see
+ * PopoverWithResults for the minimal wiring.
+ * @summary All optional popover features on a scrollable list.
+ */
+export const PopoverFullyLoaded: StoryObj = {
+  render: () => <PopoverFullyLoadedDemo />,
+};
+
+const PopoverSelectAllDemo = () => {
   const [value, setValue] = useState("");
   const [open, setOpen] = useState(false);
   const items = Array.from({ length: 30 }).map(
@@ -157,6 +239,12 @@ export function SearchInputWithPopoverSelectAllExample() {
   const filteredItems = items.filter((item) =>
     item.toLowerCase().includes(value.toLowerCase())
   );
+
+  const selectItem = (item: string) => {
+    setValue(item);
+    setOpen(false);
+    onItemSelect(item);
+  };
 
   return (
     <div className="flex max-w-md flex-col gap-2">
@@ -168,34 +256,27 @@ export function SearchInputWithPopoverSelectAllExample() {
         open={open}
         onOpenChange={setOpen}
         items={filteredItems}
-        stickyTopContent={<>hello</>}
-        stickyBottomContent={<>world</>}
-        onItemSelect={(item) => {
-          setValue(item);
-          setOpen(false);
-        }}
+        onItemSelect={selectItem}
         onSelectAll={() => {
           setValue("All teams");
           setOpen(false);
+          onSelectAll();
         }}
+        stickyTopContent={
+          <div className="text-xs text-muted-foreground">
+            {filteredItems.length} teams match your search.
+          </div>
+        }
+        stickyBottomContent={
+          <div className="text-xs text-muted-foreground">
+            Missing a team? Ask an admin to create it.
+          </div>
+        }
         displayItemCount
         totalItems={42}
-        renderItem={(item, selected) => (
-          <div
-            key={item}
-            role="option"
-            className={cn(
-              "cursor-pointer truncate px-2 py-2 hover:bg-primary-100",
-              selected && "bg-primary-100"
-            )}
-            onClick={() => {
-              setValue(item);
-              setOpen(false);
-            }}
-          >
-            {item}
-          </div>
-        )}
+        renderItem={(item, selected) =>
+          renderResultRow(item, selected, selectItem)
+        }
         noResults="No teams found"
       />
       <div className="text-xs text-muted-foreground">
@@ -203,4 +284,13 @@ export function SearchInputWithPopoverSelectAllExample() {
       </div>
     </div>
   );
-}
+};
+
+/**
+ * Passing **onSelectAll** adds a "Select all" affordance to the popover, for
+ * flows where the user can act on every result at once instead of picking one.
+ * @summary Popover with a Select all action.
+ */
+export const PopoverSelectAll: StoryObj = {
+  render: () => <PopoverSelectAllDemo />,
+};

@@ -19,10 +19,19 @@ interface CitationItem {
 }
 
 interface PaginatedCitationsGridProps {
+  /** The citations to display: title, icon, and optional description/href per item. */
   items: CitationItem[];
+  /** Page size; pagination controls only appear when items exceed it. */
   maxItemsPerPage?: 6 | 9 | 12 | 15;
 }
 
+/**
+ * A paginated grid of link citations for when an agent answer references many
+ * sources, automatically paging through large sets while staying compact for
+ * a handful of items. Use it for sizeable, homogeneous link lists; for a few
+ * rich, individually composed references use Citation with CitationGrid.
+ * @summary Paginated grid of source citations.
+ */
 export function PaginatedCitationsGrid({
   items,
   maxItemsPerPage = 12,

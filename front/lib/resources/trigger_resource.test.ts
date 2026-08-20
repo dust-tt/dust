@@ -1,9 +1,12 @@
+import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import * as temporalClient from "@app/temporal/triggers/schedule_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 
@@ -460,6 +463,83 @@ describe("TriggerResource", () => {
         enabled: 0,
         total: 0,
       });
+    });
+  });
+  describe("setExecutionMode", () => {
+    it("refuses the workspace pool without the governance grant", async () => {
+      const { authenticator } = await createResourceTest({ role: "builder" });
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Test Agent" }
+      );
+      const trigger = await TriggerFactory.webhook(authenticator, {
+        agentConfigurationId: agentConfig.sId,
+      });
+
+      const result = await trigger.setExecutionMode(
+        authenticator,
+        "workspace_pool"
+      );
+
+      expect(result.isErr()).toBe(true);
+      const reloaded = await TriggerResource.fetchById(
+        authenticator,
+        trigger.sId
+      );
+      expect(reloaded?.executionMode).toBe("user_pool");
+    });
+
+    it("refuses a member who neither manages nor edits the trigger", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Test Agent" }
+      );
+      const trigger = await TriggerFactory.webhook(authenticator, {
+        agentConfigurationId: agentConfig.sId,
+        executionMode: "workspace_pool",
+      });
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      const result = await trigger.setExecutionMode(otherAuth, "user_pool");
+
+      expect(result.isErr()).toBe(true);
+      const reloaded = await TriggerResource.fetchById(
+        authenticator,
+        trigger.sId
+      );
+      expect(reloaded?.executionMode).toBe("workspace_pool");
+    });
+
+    it("lets an admin move a trigger to the workspace pool", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Test Agent" }
+      );
+      const trigger = await TriggerFactory.webhook(authenticator, {
+        agentConfigurationId: agentConfig.sId,
+      });
+
+      const result = await trigger.setExecutionMode(
+        authenticator,
+        "workspace_pool"
+      );
+
+      expect(result.isOk()).toBe(true);
+      const reloaded = await TriggerResource.fetchById(
+        authenticator,
+        trigger.sId
+      );
+      expect(reloaded?.executionMode).toBe("workspace_pool");
     });
   });
 });

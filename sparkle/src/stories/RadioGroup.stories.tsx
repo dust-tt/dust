@@ -1,8 +1,7 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  Button,
   DownloadCloud01,
   Folder,
   Icon,
@@ -15,7 +14,7 @@ import {
 
 const meta = {
   title: "Forms & Inputs/RadioGroup",
-  tags: ["a11y-issues"],
+  component: RadioGroup,
   parameters: {
     docs: {
       description: {
@@ -32,101 +31,142 @@ const meta = {
       },
     },
   },
-} satisfies Meta;
+} satisfies Meta<typeof RadioGroup>;
 
 export default meta;
-export const RadioGroupExample = () => {
-  return (
-    <div className="flex flex-col gap-10">
-      <RadioGroup defaultValue="option-one">
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem
-            value="option-one"
-            id="option-one"
-            label="Option One"
-          />
-        </div>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem
-            value="option-two"
-            id="option-two"
-            label="Option Two"
-          />
-        </div>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem
-            value="option-three"
-            id="option-three"
-            label="Option Three"
-            icon={DownloadCloud01}
-          />
-        </div>
-      </RadioGroup>
-      <RadioGroup defaultValue="option-one">
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem
-            value="option-four"
-            id="option-four"
-            label="Option Four"
-          />
-        </div>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem
-            value="option-five"
-            id="option-five"
-            disabled
-            label="Option Five"
-          />
-        </div>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem
-            value="option-six"
-            id="option-six"
-            label="Option Six"
-          />
-        </div>
-      </RadioGroup>
-    </div>
-  );
+type Story = StoryObj<typeof meta>;
+
+/**
+ * A standard group of labelled options with a **defaultValue** so one option
+ * is always selected.
+ * @summary Standard labelled radio group.
+ */
+export const Default: Story = {
+  args: {
+    defaultValue: "all-messages",
+  },
+  render: (args) => (
+    <RadioGroup {...args}>
+      <RadioGroupItem
+        value="all-messages"
+        id="all-messages"
+        label="All new messages"
+      />
+      <RadioGroupItem
+        value="mentions-only"
+        id="mentions-only"
+        label="Mentions only"
+      />
+      <RadioGroupItem value="nothing" id="nothing" label="Nothing" />
+    </RadioGroup>
+  ),
 };
 
-export const RadioGroupWithChildrenExample = () => {
-  const [selectedChoice, setSelectedChoice] =
-    React.useState<string>("option-one");
+/**
+ * Each **RadioGroupItem** accepts an optional **icon** rendered next to its
+ * label, useful when options map to distinct destinations or modes.
+ * @summary Options with leading icons.
+ */
+export const WithIcons: Story = {
+  args: {
+    defaultValue: "workspace",
+  },
+  render: (args) => (
+    <RadioGroup {...args}>
+      <RadioGroupItem
+        value="workspace"
+        id="workspace"
+        label="Workspace folder"
+        icon={Folder}
+      />
+      <RadioGroupItem
+        value="downloads"
+        id="downloads"
+        label="Downloads"
+        icon={DownloadCloud01}
+      />
+      <RadioGroupItem
+        value="private"
+        id="private"
+        label="Private space"
+        icon={Lock01}
+      />
+    </RadioGroup>
+  ),
+};
 
-  const choices = [
-    { id: "option-one", label: "Option One" },
-    { id: "option-two", label: "Option Two" },
-    { id: "option-three", label: "Option Three" },
-  ];
-  return (
-    <div className="flex flex-col gap-10">
-      <RadioGroup
-        defaultValue="option-one"
-        onValueChange={(value) => setSelectedChoice(value)}
-      >
+/**
+ * Individual options can be disabled with the **disabled** prop; the rest of
+ * the group stays interactive.
+ * @summary Group with a disabled option.
+ */
+export const Disabled: Story = {
+  args: {
+    defaultValue: "standard",
+  },
+  render: (args) => (
+    <RadioGroup {...args}>
+      <RadioGroupItem value="standard" id="standard" label="Standard plan" />
+      <RadioGroupItem
+        value="enterprise"
+        id="enterprise"
+        label="Enterprise plan (contact sales)"
+        disabled
+      />
+      <RadioGroupItem value="free" id="free" label="Free plan" />
+    </RadioGroup>
+  ),
+};
+
+/**
+ * **RadioGroupCustomItem** replaces the plain label with arbitrary content
+ * via **customItem**, and renders optional **children** below the row —
+ * here an icon + label pair with a muted description.
+ * @summary Options with custom rendered content.
+ */
+export const CustomItemContent: Story = {
+  args: {
+    defaultValue: "private",
+  },
+  render: (args) => {
+    const choices = [
+      {
+        id: "private",
+        label: "Private",
+        icon: Lock01,
+        description: "Only you can access this space.",
+      },
+      {
+        id: "shared",
+        label: "Shared",
+        icon: Folder,
+        description: "Everyone in the workspace can access this space.",
+      },
+    ];
+    return (
+      <RadioGroup {...args}>
         {choices.map((choice) => (
           <RadioGroupCustomItem
+            key={choice.id}
             value={choice.id}
+            id={choice.id}
             iconPosition="start"
             customItem={
-              <div className="flex items-center gap-2">
-                <Icon visual={Lock01} />
-                <Label>{choice.label}</Label>
-              </div>
+              <Label
+                htmlFor={choice.id}
+                className="flex items-center gap-2 font-medium"
+              >
+                <Icon visual={choice.icon} />
+                {choice.label}
+              </Label>
             }
           >
-            <div className="flex items-center gap-2 border border-red-500 p-2">
-              <Icon visual={Folder} />
-              <Label>{choice.label}</Label>
-              <Button label="Click me" />
-            </div>
-            {choice.id === selectedChoice && (
-              <span>{choice.label} is selected</span>
-            )}
+            <span className="pl-6 text-sm text-muted-foreground">
+              {choice.description}
+            </span>
           </RadioGroupCustomItem>
         ))}
       </RadioGroup>
-    </div>
-  );
+    );
+  },
 };

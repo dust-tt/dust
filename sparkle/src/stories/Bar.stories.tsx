@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { fn } from "storybook/test";
 
 import {
   Bar,
@@ -37,122 +38,92 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const BasicBarHeader: Story = {
+// Neutral scrollable filler used by the layout stories.
+const ScrollingContent = () => (
+  <div className="flex flex-col gap-4">
+    <div className="h-64 rounded-xl bg-primary-100" />
+    <div className="h-64 rounded-xl bg-primary-100" />
+    <div className="h-64 rounded-xl bg-primary-100" />
+  </div>
+);
+
+/**
+ * The simplest header: a top bar carrying only the page title.
+ *
+ * @summary Top bar with a title.
+ */
+export const Header: Story = {
   args: {
     position: "top",
     title: "Knowledge Base",
   },
 };
 
-export const BarHeaderWithDescription = () => {
-  return (
-    <Bar
-      position="top"
-      title="My Custom Skill"
-      description={
-        <div className="flex items-center gap-1 text-sm">
-          <p className="text-muted-foreground">Based on</p>
-          <Icon visual={Robot} size="xs" />
-          <p className="text-foreground">Research Assistant</p>
-        </div>
-      }
-    />
-  );
+/**
+ * The `description` slot accepts arbitrary content under the title — here a
+ * "based on" line mixing text and an icon.
+ *
+ * @summary Header with a rich description line.
+ */
+export const HeaderWithDescription: Story = {
+  args: {
+    position: "top",
+    title: "My Custom Skill",
+    description: (
+      <div className="flex items-center gap-1 text-sm">
+        <p className="text-muted-foreground">Based on</p>
+        <Icon visual={Robot} size="xs" />
+        <p className="text-foreground">Research Assistant</p>
+      </div>
+    ),
+  },
 };
 
-export const BasicBarFooter: Story = {
+/**
+ * `Bar.ButtonBar` with `variant="close"` gives a header the standard close
+ * affordance for modals and full-screen builders.
+ *
+ * @summary Header with the ready-made close action.
+ */
+export const HeaderWithClose: Story = {
+  args: {
+    position: "top",
+    title: "Agent Builder",
+    rightActions: <Bar.ButtonBar variant="close" onClose={fn()} />,
+  },
+};
+
+/**
+ * A bottom bar with content in the `rightActions` slot — the base for pinned
+ * footer actions.
+ *
+ * @summary Bottom bar with right-aligned actions.
+ */
+export const Footer: Story = {
   args: {
     position: "bottom",
     rightActions: <span>Right Actions</span>,
   },
 };
 
-export const BasicBarHeaderValidate = () => {
-  const [isSaving, setIsSaving] = React.useState(false);
-
-  return (
-    <div className="h-full w-full">
-      <Bar
-        position="top"
-        title="Knowledge Base"
-        rightActions={
-          <Bar.ButtonBar
-            variant="validate"
-            saveButtonProps={{
-              size: "sm",
-              label: isSaving ? "Saving..." : "Save",
-              variant: "primary",
-              onClick: () => {
-                setIsSaving(true);
-                setTimeout(() => {
-                  setIsSaving(false);
-                  alert("Save !");
-                }, 2000);
-              },
-              disabled: isSaving,
-            }}
-          />
-        }
-      />
-      <div className="mt-16 h-full w-full overflow-y-auto">
-        <Page.Header title="Page Title" />
-        <div className="flex flex-col gap-y-96">
-          <img
-            src="/static/landing/mainVisual/MainVisual1.png"
-            alt="Main Visual 1"
-          />
-          <img
-            src="/static/landing/mainVisual/MainVisual2.png"
-            alt="Main Visual 2"
-          />
-          <img
-            src="/static/landing/mainVisual/MainVisual3.png"
-            alt="Main Visual 3"
-          />
-          <img
-            src="/static/landing/mainVisual/MainVisual4.png"
-            alt="Main Visual 4"
-          />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export const BasicBarFooterValidate = () => {
-  return (
+/**
+ * A save bar: **BarFooter** pinned under scrolling content, combining a
+ * secondary close action on the left with the `validate` **ButtonBar** on the
+ * right. The typical bottom edge of a form or builder.
+ *
+ * @summary Pinned save/cancel bar under scrolling content.
+ */
+export const SaveBar: Story = {
+  render: () => (
     <div className="flex h-full w-full flex-col">
       <div className="flex-1 overflow-y-auto p-4">
         <Page.Header title="Page Title" />
-        <div className="flex flex-col gap-y-96">
-          <img
-            src="/static/landing/mainVisual/MainVisual1.png"
-            alt="Main Visual 1"
-          />
-          <img
-            src="/static/landing/mainVisual/MainVisual2.png"
-            alt="Main Visual 2"
-          />
-          <img
-            src="/static/landing/mainVisual/MainVisual3.png"
-            alt="Main Visual 3"
-          />
-          <img
-            src="/static/landing/mainVisual/MainVisual4.png"
-            alt="Main Visual 4"
-          />
-        </div>
+        <ScrollingContent />
       </div>
       <BarFooter
         variant="default"
         className="mx-4 justify-between"
-        leftActions={
-          <Button
-            variant="outline"
-            label="Close"
-            onClick={() => console.log("Exit")}
-          />
-        }
+        leftActions={<Button variant="outline" label="Close" onClick={fn()} />}
         rightActions={
           <BarFooter.ButtonBar
             variant="validate"
@@ -160,105 +131,37 @@ export const BasicBarFooterValidate = () => {
               size: "sm",
               label: "Save",
               variant: "primary",
-              disabled: false,
+              onClick: fn(),
             }}
           />
         }
       />
     </div>
-  );
+  ),
 };
 
-export const HeaderAndFooterCombined = () => {
-  const [isSaving, setIsSaving] = React.useState(false);
-
-  return (
-    <div className="flex h-full w-full flex-col">
-      <Bar
-        position="top"
-        title="Agent Builder"
-        rightActions={
-          <Bar.ButtonBar variant="close" onClose={() => alert("Closed!")} />
-        }
-      />
-      <div className="flex-1 overflow-y-auto p-4">
-        <Page.Header title="Page Content" />
-        <div className="flex flex-col gap-y-96">
-          <img
-            src="/static/landing/mainVisual/MainVisual1.png"
-            alt="Main Visual 1"
-          />
-          <img
-            src="/static/landing/mainVisual/MainVisual2.png"
-            alt="Main Visual 2"
-          />
-          <img
-            src="/static/landing/mainVisual/MainVisual3.png"
-            alt="Main Visual 3"
-          />
-          <img
-            src="/static/landing/mainVisual/MainVisual4.png"
-            alt="Main Visual 4"
-          />
-        </div>
-      </div>
-      <Bar
-        position="bottom"
-        rightActions={
-          <Bar.ButtonBar
-            variant="validate"
-            cancelButtonProps={{
-              size: "sm",
-              label: "Cancel",
-              variant: "ghost",
-              onClick: () => alert("Cancelled!"),
-            }}
-            saveButtonProps={{
-              size: "sm",
-              label: isSaving ? "Saving..." : "Save",
-              variant: "primary",
-              onClick: () => {
-                setIsSaving(true);
-                setTimeout(() => {
-                  setIsSaving(false);
-                  alert("Saved!");
-                }, 2000);
-              },
-              disabled: isSaving,
-            }}
-          />
-        }
-      />
-    </div>
-  );
-};
-
-export const DefaultVariantInPanel = () => {
-  const [isSaving, setIsSaving] = React.useState(false);
-
-  return (
+/**
+ * `variant="default"` scopes each bar to its parent container instead of the
+ * viewport — shown here with header and footer bars inside two resizable
+ * panels. Resize the panels to see the bars follow their container.
+ *
+ * @summary Container-scoped bars inside resizable panels.
+ */
+export const PanelScopedBars: Story = {
+  render: () => (
     <div className="h-full w-full">
       <ResizablePanelGroup direction="horizontal" className="h-full w-full">
         <ResizablePanel defaultSize={70} minSize={30}>
-          <div className="flex h-full flex-col bg-white shadow-sm">
+          <div className="flex h-full flex-col bg-background shadow-sm">
             <Bar
               position="top"
               variant="default"
               title="Agent Builder"
-              rightActions={
-                <Bar.ButtonBar
-                  variant="close"
-                  onClose={() => alert("Closed!")}
-                />
-              }
+              rightActions={<Bar.ButtonBar variant="close" onClose={fn()} />}
             />
             <div className="flex-1 overflow-y-auto p-4">
-              <Page.Header title="Left Panel Content" />
-              <p className="text-sm text-gray-600">
-                This demonstrates the "default" variant of Bar that is contained
-                within its parent container, perfect for panels and sidebars.
-                This panel uses ResizablePanelGroup like AgentBuilderLayout.
-              </p>
+              <Page.Header title="Left Panel" />
+              <ScrollingContent />
             </div>
             <Bar
               position="bottom"
@@ -270,20 +173,13 @@ export const DefaultVariantInPanel = () => {
                     size: "sm",
                     label: "Cancel",
                     variant: "ghost",
-                    onClick: () => alert("Cancelled!"),
+                    onClick: fn(),
                   }}
                   saveButtonProps={{
                     size: "sm",
-                    label: isSaving ? "Saving..." : "Save",
+                    label: "Save",
                     variant: "primary",
-                    onClick: () => {
-                      setIsSaving(true);
-                      setTimeout(() => {
-                        setIsSaving(false);
-                        alert("Saved!");
-                      }, 2000);
-                    },
-                    disabled: isSaving,
+                    onClick: fn(),
                   }}
                 />
               }
@@ -294,25 +190,16 @@ export const DefaultVariantInPanel = () => {
         <ResizableHandle />
 
         <ResizablePanel defaultSize={30} minSize={20}>
-          <div className="flex h-full flex-col bg-white shadow-sm">
+          <div className="flex h-full flex-col bg-background shadow-sm">
             <Bar
               position="top"
               variant="default"
               title="Preview Panel"
-              rightActions={
-                <Bar.ButtonBar
-                  variant="close"
-                  onClose={() => alert("Closed!")}
-                />
-              }
+              rightActions={<Bar.ButtonBar variant="close" onClose={fn()} />}
             />
             <div className="flex-1 overflow-y-auto p-4">
-              <Page.Header title="Right Panel Content" />
-              <p className="text-sm text-gray-600">
-                Notice how each Bar is scoped to its own panel width, unlike the
-                "full" variant which would span the entire viewport width. You
-                can resize this panel!
-              </p>
+              <Page.Header title="Right Panel" />
+              <ScrollingContent />
             </div>
             <Bar
               position="bottom"
@@ -320,17 +207,11 @@ export const DefaultVariantInPanel = () => {
               rightActions={
                 <Bar.ButtonBar
                   variant="validate"
-                  cancelButtonProps={{
-                    size: "sm",
-                    label: "Cancel",
-                    variant: "ghost",
-                    onClick: () => alert("Cancelled!"),
-                  }}
                   saveButtonProps={{
                     size: "sm",
                     label: "Save",
                     variant: "primary",
-                    onClick: () => alert("Saved!"),
+                    onClick: fn(),
                   }}
                 />
               }
@@ -339,5 +220,5 @@ export const DefaultVariantInPanel = () => {
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>
-  );
+  ),
 };

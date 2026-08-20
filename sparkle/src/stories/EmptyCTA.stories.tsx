@@ -1,11 +1,12 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import { Button, EmptyCTA, EmptyCTAButton } from "@sparkle/components";
 import { DownloadCloud01, Plus } from "@sparkle/icons/v2-stroke";
 
-const meta = {
+const meta: Meta<typeof EmptyCTA> = {
   title: "Feedback & Status/EmptyCTA",
+  component: EmptyCTA,
   parameters: {
     docs: {
       description: {
@@ -21,24 +22,34 @@ const meta = {
       },
     },
   },
-} satisfies Meta;
+};
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const Demo = () => {
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center space-x-2">
-        <EmptyCTA
-          action={
-            <EmptyCTAButton icon={DownloadCloud01} label="Create a new space" />
-          }
-          message="You don't have any spaces yet."
-        />
-      </div>
-      <div className="flex items-center space-x-2">
-        <EmptyCTA action={<Button icon={Plus} label="Add domain" />} />
-      </div>
-    </div>
-  );
+/**
+ * The standard empty state: a short message explaining what's missing, plus an
+ * EmptyCTAButton pointing at the next step. Use this pairing for most empty
+ * lists and sections.
+ * @summary Message and EmptyCTAButton together.
+ */
+export const WithMessage: Story = {
+  args: {
+    message: "You don't have any spaces yet.",
+    action: (
+      <EmptyCTAButton icon={DownloadCloud01} label="Create a new space" />
+    ),
+  },
+};
+
+/**
+ * An empty state reduced to its action slot — no message — with a regular
+ * Button. Use when the surrounding context already explains what's missing and
+ * only the call to action is needed.
+ * @summary Action slot only, no message.
+ */
+export const ActionOnly: Story = {
+  args: {
+    action: <Button icon={Plus} label="Add domain" />,
+  },
 };

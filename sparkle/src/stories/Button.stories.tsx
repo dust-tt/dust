@@ -36,7 +36,7 @@ const meta = {
 **Guidelines**
 - Use a single **highlight** button per view; use **outline** or a **ghost** variant for secondary actions.
 - Write concise, verb-first labels ("Save changes", not "OK").
-- An icon-only button (an **icon** with no **label**) should always have a **tooltip**.
+- An icon-only button (an **icon** with no **label**) should always have a **tooltip**. This replaces the deprecated **IconButton** component.
 - Set **isLoading** during async work to communicate progress and prevent double submits.`,
       },
     },

@@ -9,18 +9,29 @@ import React from "react";
 
 interface BaseAssistantCardProps {
   description: string;
+  /** Max number of description lines before truncation (default 2). */
   descriptionLineClamp?: number;
   title: string;
+  /** URL of the agent's avatar image. */
   pictureUrl: string;
+  /** Secondary line under the title, commonly the agent's authors. */
   subtitle?: string;
   className?: string;
+  /** Invoked when the card is clicked, typically to select the agent. */
   onClick?: () => void;
+  /** Invoked on right-click, e.g. to open a context menu. */
   onContextMenu?: (event: React.MouseEvent) => void;
+  /** Visual style of the underlying Card. */
   variant?: CardVariantType;
 }
 
 type AssistantCardMore = Omit<IconOnlyButtonProps, "icon" | "size">;
 
+/**
+ * The "more" (dots) action button for an AssistantCard's `action` slot, commonly
+ * used as a DropdownMenu trigger for secondary controls (edit, duplicate, remove).
+ * @summary Actions button for assistant cards.
+ */
 export const AssistantCardMore = React.forwardRef<
   HTMLButtonElement,
   AssistantCardMore
@@ -32,10 +43,19 @@ export const AssistantCardMore = React.forwardRef<
 AssistantCardMore.displayName = "AssistantCardMore";
 
 interface AssistantCardProps extends BaseAssistantCardProps {
+  /** Slot for a secondary control, commonly an AssistantCardMore dropdown trigger. */
   action?: React.ReactNode;
+  /** Size of the avatar (default `md`). */
   iconSize?: "sm" | "md";
 }
 
+/**
+ * A card presenting an agent for browsing or selection, showing its title, avatar,
+ * subtitle (authors), and description, with an optional `action` slot. Use it in
+ * agent galleries, pickers, or lists laid out with CardGrid. For a denser tile use
+ * CompactAssistantCard; for a wide two-column list row use LargeAssistantCard.
+ * @summary Agent card for galleries and pickers.
+ */
 export const AssistantCard = React.forwardRef<
   HTMLDivElement,
   AssistantCardProps
@@ -106,6 +126,12 @@ AssistantCard.displayName = "AssistantCard";
 
 interface LargeAssistantCardProps extends BaseAssistantCardProps {}
 
+/**
+ * The wide variant of AssistantCard for two-column lists: a large avatar next to
+ * the title and an up-to-five-line description. Prefer AssistantCard or
+ * CompactAssistantCard for grids.
+ * @summary Wide agent card for lists.
+ */
 export const LargeAssistantCard = React.forwardRef<
   HTMLDivElement,
   LargeAssistantCardProps
@@ -139,6 +165,11 @@ LargeAssistantCard.displayName = "LargeAssistantCard";
 
 interface CompactAssistantCardProps extends BaseAssistantCardProps {}
 
+/**
+ * The dense tile variant of AssistantCard for grids: a small avatar stacked above
+ * the title and a clamped description. Prefer LargeAssistantCard for wide list rows.
+ * @summary Dense agent tile for grids.
+ */
 export const CompactAssistantCard = React.forwardRef<
   HTMLDivElement,
   CompactAssistantCardProps

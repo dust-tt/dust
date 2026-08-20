@@ -47,7 +47,7 @@ describe("CreditCostPopover accessibility", () => {
     });
   });
 
-  it("restores focus on Escape but not when opening conversation consumption", async () => {
+  it("restores focus on Escape but not when opening credit usage", async () => {
     const user = userEvent.setup();
     render(
       <CreditCostPopover
@@ -88,7 +88,7 @@ describe("CreditCostPopover accessibility", () => {
 
     await user.keyboard("{Enter}");
     await user.click(
-      await screen.findByRole("button", { name: "Conversation consumption" })
+      await screen.findByRole("button", { name: "Credit usage" })
     );
 
     await waitFor(() => {

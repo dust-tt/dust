@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import React from "react";
 
 import { MessageCircle01, Icon } from "../index_with_tw_base";
+
+const ICON_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl"] as const;
 
 const meta = {
   title: "Data Display/Icon",
@@ -20,12 +23,24 @@ const meta = {
       },
     },
   },
+  argTypes: {
+    size: {
+      description: "The size of the icon",
+      options: ICON_SIZES,
+      control: { type: "select" },
+    },
+  },
 } satisfies Meta<typeof Icon>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const IconSM: Story = {
+/**
+ * A single icon with its color set through a text utility class. Use the size
+ * control to preview the icon at every scale.
+ * @summary Args-driven icon with size control.
+ */
+export const Default: Story = {
   args: {
     visual: MessageCircle01,
     className: "text-highlight-500",
@@ -33,26 +48,45 @@ export const IconSM: Story = {
   },
 };
 
-export const IconXS: Story = {
+/**
+ * An icon composed inside a list row next to a text label — the documented use
+ * case: the glyph inherits alignment from the flex row and its color from a
+ * text utility, while the label carries the meaning.
+ * @summary Icon paired with a text label in a row.
+ */
+export const InLabelRow: Story = {
   args: {
     visual: MessageCircle01,
-    className: "text-highlight-500",
-    size: "xs",
+    className: "text-muted-foreground",
+    size: "sm",
   },
+  render: (args) => (
+    <div className="flex items-center gap-2">
+      <Icon {...args} />
+      <span className="text-sm text-foreground">Conversations</span>
+    </div>
+  ),
 };
 
-export const IconMD: Story = {
+/**
+ * Design-review reference: the same glyph at every size step, xs through 2xl,
+ * for comparing the scale at a glance.
+ * @summary All size steps side by side.
+ */
+export const Sizes: Story = {
+  tags: ["!manifest"],
   args: {
     visual: MessageCircle01,
     className: "text-highlight-500",
-    size: "md",
   },
-};
-
-export const IconLG: Story = {
-  args: {
-    visual: MessageCircle01,
-    className: "text-highlight-500",
-    size: "lg",
-  },
+  render: (args) => (
+    <div className="flex items-end gap-4">
+      {ICON_SIZES.map((size) => (
+        <div key={size} className="flex flex-col items-center gap-1">
+          <Icon {...args} size={size} />
+          <span className="text-xs text-muted-foreground">{size}</span>
+        </div>
+      ))}
+    </div>
+  ),
 };

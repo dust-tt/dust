@@ -1,4 +1,4 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import { CollapseButton } from "../index_with_tw_base";
@@ -21,15 +21,33 @@ const meta = {
       },
     },
   },
+  argTypes: {
+    direction: {
+      description: "Direction the chevron points on hover",
+      options: ["left", "right"],
+      control: { type: "select" },
+    },
+    variant: {
+      description: "Color treatment matching the surface contrast",
+      options: ["light", "dark"],
+      control: { type: "select" },
+    },
+  },
+  render: (args) => <CollapseButton {...args} />,
 } satisfies Meta<typeof CollapseButton>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const CollapseExample = () => {
-  return (
-    <div className="flex flex-col gap-4">
-      <CollapseButton direction="left" />
-      <CollapseButton direction="right" />
-    </div>
-  );
+/**
+ * The collapse handle as used on a sidebar rail — hover it to see the chevron
+ * animate toward the `direction` it controls. Switch `direction` and `variant`
+ * from the Controls panel.
+ * @summary Hoverable panel-collapse chevron.
+ */
+export const Default: Story = {
+  args: {
+    direction: "left",
+    variant: "light",
+  },
 };

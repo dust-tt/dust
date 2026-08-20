@@ -182,16 +182,28 @@ function AnimatedDots() {
 }
 
 export interface ImageGenerationPlaceholderProps {
+  /** Image URL; while unset the animated generating state is shown, and setting it triggers the reveal. */
   src?: string | null;
   alt?: string;
+  /** Loading text shown over the shimmer (defaults to "Creating image"). */
   label?: string;
+  /** Width and height of the square placeholder, in pixels (defaults to 260). */
   size?: number;
+  /** When true, fills the parent (absolute inset-0) instead of using `size`. */
   fill?: boolean;
   className?: string;
 }
 
 const EASE_OUT_QUART = "cubic-bezier(0.165, 0.84, 0.44, 1)";
 
+/**
+ * A square placeholder that shows an animated "generating" state and then
+ * smoothly reveals the finished image once `src` is set. Use it while an image
+ * is being generated or fetched asynchronously to get a graceful reveal rather
+ * than a layout jump; for generic indeterminate waits use Spinner instead.
+ *
+ * @summary Animated placeholder revealing a generated image.
+ */
 export function ImageGenerationPlaceholder({
   src,
   alt = "Generated image",

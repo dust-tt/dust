@@ -106,7 +106,7 @@ describe("CreditCostPopover", () => {
     mockUseAgentMessageConsumption.mockReset();
   });
 
-  it("shows the tool breakdown and opens conversation consumption", () => {
+  it("shows the tool breakdown and opens credit usage", () => {
     mockUseAgentMessageConsumption.mockReturnValue({
       consumption: {
         billedCredits: 12,
@@ -139,12 +139,10 @@ describe("CreditCostPopover", () => {
     expect(screen.getByText("Message consumption")).toBeInTheDocument();
     expect(screen.getByText("Charged")).toBeInTheDocument();
     expect(screen.getByText("15 credits")).toBeInTheDocument();
-    expect(screen.getByText("Agent work and context")).toBeInTheDocument();
+    expect(screen.getByText("Context and reasoning")).toBeInTheDocument();
     expect(screen.getByText("Sub-agents")).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Conversation consumption" })
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Credit usage" }));
 
     expect(mockOpenPanel).toHaveBeenCalledWith({ type: "credits" });
   });
@@ -197,7 +195,7 @@ describe("CreditCostPopover", () => {
     expect(screen.getByText("282 credits")).toBeInTheDocument();
   });
 
-  it("hides the conversation consumption button when the credits panel is open", () => {
+  it("hides the credit usage button when the credits panel is open", () => {
     mockSidePanelContext.currentPanel = "credits";
     mockUseAgentMessageConsumption.mockReturnValue({
       consumption: { billedCredits: 10, details: null },
@@ -208,7 +206,7 @@ describe("CreditCostPopover", () => {
     render(<CreditCostPopover {...defaultProps} />);
 
     expect(
-      screen.queryByRole("button", { name: "Conversation consumption" })
+      screen.queryByRole("button", { name: "Credit usage" })
     ).not.toBeInTheDocument();
   });
 

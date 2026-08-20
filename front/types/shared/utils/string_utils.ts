@@ -115,6 +115,8 @@ const SPECIAL_CASES = {
   github: "GitHub",
   hubspot: "HubSpot",
   mcp: "MCP",
+  webbrowser: "Web browsing",
+  websearch: "Web search",
   id: "ID",
 };
 

@@ -302,10 +302,10 @@ describe("createSpaceAndGroup", () => {
       if (result.isOk()) {
         const pod = result.value;
         const creator = userAuth.getNonNullableUser();
-        const { groupsToProcess, allGroupMemberships } =
+        const { groupsToProcess, allGroupMemberships, editorGroupModelId } =
           await pod.fetchManualGroupsMemberships(userAuth);
         const editorGroup = groupsToProcess.find(
-          (group) => group.kind === "space_editors"
+          (group) => group.id === editorGroupModelId
         );
 
         expect(editorGroup).toBeDefined();
@@ -355,10 +355,10 @@ describe("createSpaceAndGroup", () => {
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         const pod = result.value;
-        const { groupsToProcess } =
+        const { groupsToProcess, editorGroupModelId } =
           await pod.fetchManualGroupsMemberships(userAuth);
         const editorGroup = groupsToProcess.find(
-          (group) => group.kind === "space_editors"
+          (group) => group.id === editorGroupModelId
         );
         expect(editorGroup).toBeDefined();
 
@@ -1361,6 +1361,46 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       expect(skillAfter).not.toBeNull();
       expect(skillAfter!.requestedSpaceIds).not.toContain(space!.id);
       expect(skillAfter!.requestedSpaceIds).toHaveLength(0);
+    });
+
+    it("should clean an archived skill's requestedSpaceIds too", async () => {
+      // An archived skill keeps its references, and a dangling one makes it unfetchable — so it
+      // could never be restored. The cleanup must not be limited to active skills.
+      const spaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space With Archived Skill",
+          isRestricted: false,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(spaceResult.isOk()).toBe(true);
+      const space = spaceResult.isOk() ? spaceResult.value : null;
+      expect(space).not.toBeNull();
+
+      const skill = await SkillFactory.create(adminAuth, {
+        name: "Archived Skill Referencing A Space",
+        requestedSpaceIds: [space!.id],
+      });
+      await skill.archive(adminAuth);
+
+      const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+        adminAuth,
+        space!,
+        true // force delete
+      );
+      expect(deleteResult.isOk()).toBe(true);
+
+      // `fetchById` and friends default to active skills, so read it back as archived.
+      const archivedSkills = await SkillResource.listByWorkspace(adminAuth, {
+        status: "archived",
+      });
+      const skillAfter = archivedSkills.find((s) => s.id === skill.id);
+      expect(skillAfter).toBeDefined();
+      expect(skillAfter!.requestedSpaceIds).not.toContain(space!.id);
     });
 
     it("should preserve additional skill requestedSpaceIds when deleting a dependency space", async () => {

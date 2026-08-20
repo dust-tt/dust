@@ -13,6 +13,7 @@ type InteractiveImageGridSize = keyof typeof SIZE_CLASSES;
 
 interface InteractiveImageGridProps {
   className?: string;
+  /** Images to lay out; set `isLoading`/`isGenerating` for placeholders and `downloadUrl` to enable downloading. */
   images: {
     alt: string;
     downloadUrl?: string;
@@ -21,10 +22,21 @@ interface InteractiveImageGridProps {
     isGenerating?: boolean;
     title: string;
   }[];
+  /** When provided, images show a remove (X) hover button instead of a download one. */
   onClose?: () => void;
+  /** Tile size of a single image ("sm" 96px, "md" 192px, "lg" 320px); grids of several images adapt to the container. */
   size?: InteractiveImageGridSize;
 }
 
+/**
+ * A responsive grid that arranges one or many conversation images into an
+ * adaptive layout, opening a shared ImageZoomDialog with previous/next
+ * navigation on click. Use it to display a set of agent-generated or attached
+ * images together, including mixed loading states; for a single image with
+ * finer control over title position and zoom, use ImagePreview directly.
+ *
+ * @summary Adaptive grid of zoomable images.
+ */
 function InteractiveImageGrid({
   className,
   images,

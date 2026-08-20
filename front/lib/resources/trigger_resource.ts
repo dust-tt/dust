@@ -65,6 +65,8 @@ export async function resolveTriggerSpaceId(
   return new Ok(pod.id);
 }
 
+export class TriggerExecutionModeForbiddenError extends Error {}
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -1042,6 +1044,66 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         );
       }
     }
+
+    return new Ok(undefined);
+  }
+
+  private async canSetExecutionMode(
+    auth: Authenticator,
+    executionMode: TriggerExecutionMode
+  ): Promise<boolean> {
+    if (!auth.isManager() && this.editor !== auth.getNonNullableUser().id) {
+      return false;
+    }
+
+    switch (executionMode) {
+      case "user_pool":
+        return true;
+      case "workspace_pool":
+        return auth.hasWorkspacePermission("use_workspace_pool", "trigger");
+      default:
+        assertNever(executionMode);
+    }
+  }
+
+  async setExecutionMode(
+    auth: Authenticator,
+    executionMode: TriggerExecutionMode
+  ): Promise<Result<undefined, Error>> {
+    if (!(await this.canSetExecutionMode(auth, executionMode))) {
+      return new Err(
+        new TriggerExecutionModeForbiddenError(
+          "You don't have permission to change this trigger's pool."
+        )
+      );
+    }
+
+    if (this.executionMode === executionMode) {
+      return new Ok(undefined);
+    }
+
+    const previousExecutionMode = this.executionMode;
+
+    try {
+      await this.update({ executionMode });
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "trigger.pool_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("trigger", { sId: this.sId, name: this.name }),
+      ],
+      metadata: {
+        trigger_type: this.kind,
+        agent_id: this.agentConfigurationId,
+        previous_execution_mode: previousExecutionMode,
+        execution_mode: executionMode,
+      },
+    });
 
     return new Ok(undefined);
   }

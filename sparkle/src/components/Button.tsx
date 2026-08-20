@@ -274,22 +274,45 @@ export type RegularButtonProps = ButtonProps;
 export interface ButtonProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "size">,
     Omit<LinkWrapperProps, "children" | "className"> {
+  /** Button size (`xs` / `sm` / `md`); legacy sizes (`icon`, `mini`, ...) are remapped. */
   size?: ButtonSizeType | LegacyButtonSizeType;
+  /** Visual style; legacy `*-secondary` variants remap to their `*-ghost` equivalents. */
   variant?: ButtonVariantType | LegacyButtonVariantType;
+  /** Legacy no-op kept for backward compatibility. */
   hasLighterFont?: boolean;
+  /** Render fully round (pill) corners. */
   isRounded?: boolean;
+  /** Button text; omit it (with an `icon`) for an icon-only button. */
   label?: string;
+  /** Leading icon component or element. */
   icon?: ButtonIconType;
+  /** Trailing icon component or element. */
   iconRight?: ButtonIconType;
+  /** Append a dropdown chevron, marking the button as a menu trigger. */
   isSelect?: boolean;
+  /** Show a centered spinner and block interaction while keeping the resting size. */
   isLoading?: boolean;
+  /** Show an inline Counter (requires `counterValue`). */
   isCounter?: boolean;
+  /** Value displayed in the inline counter. */
   counterValue?: string;
+  /** Pulse the button's ring to draw attention. */
   isPulsing?: boolean;
+  /** Tooltip label; required for icon-only buttons. */
   tooltip?: string;
+  /** Keyboard shortcut hint displayed in the tooltip. */
   tooltipShortcut?: string;
 }
 
+/**
+ * Lets users trigger an action or event — submitting a form, opening a dialog, or
+ * confirming a choice — in several visual variants and three sizes (xs / sm / md),
+ * with leading/trailing icons, loading and disabled states, an inline counter, and
+ * a dropdown-chevron affordance (`isSelect`). Use a single `highlight` button per
+ * view with `outline` or ghost variants for secondary actions; give icon-only
+ * buttons a `tooltip` and set `isLoading` during async work.
+ * @summary Action button.
+ */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {

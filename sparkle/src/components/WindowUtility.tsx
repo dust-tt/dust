@@ -34,7 +34,14 @@ interface WindowSizeState {
   activeBreakpoint: keyof typeof breakpoints;
 }
 
-// Custom hook to get window size and active breakpoint
+/**
+ * Hook returning the current window `width`, `height`, and the matching
+ * `activeBreakpoint` name from the exported `breakpoints` map, updating on resize. Use
+ * it for JS-driven responsive behavior that CSS breakpoints cannot express (dimensions
+ * are undefined until the first layout effect runs, e.g. during SSR).
+ *
+ * @summary Window size and breakpoint hook.
+ */
 export function useWindowSize() {
   const [windowSize, setWindowSize] = useState<WindowSizeState>({
     width: undefined,

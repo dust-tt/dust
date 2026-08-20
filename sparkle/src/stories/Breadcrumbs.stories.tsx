@@ -1,5 +1,5 @@
-import type { Meta } from "@storybook/react";
-import React from "react";
+import type { Meta, StoryObj } from "@storybook/react";
+import { fn } from "storybook/test";
 
 import { Breadcrumbs, Building04, Folder, Home01 } from "../index_with_tw_base";
 
@@ -31,73 +31,51 @@ const meta = {
 } satisfies Meta<typeof Breadcrumbs>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-type BreadcrumbsExampleProps = {
-  size?: "xs" | "sm";
+/**
+ * A typical three-level trail: intermediate items are clickable (via `href`
+ * or `onClick`) and the last item is the current, non-interactive location.
+ * @summary Default short trail with a current location.
+ */
+export const ShortTrail: Story = {
+  args: {
+    items: [
+      { label: "Home", href: "#", icon: Home01 },
+      { label: "Spaces", onClick: fn() },
+      { label: "My Space" },
+    ],
+  },
 };
 
-export const BreadcrumbsExample = (args: BreadcrumbsExampleProps) => {
-  const items0 = [{ label: "Home", icon: Home01 }];
+/**
+ * Trails longer than five items collapse their middle segments into an
+ * ellipsis menu: the first two and last two items stay visible, and the
+ * hidden ones are reachable from the ellipsis dropdown.
+ * @summary Long trail collapsing into an ellipsis menu.
+ */
+export const EllipsisCollapse: Story = {
+  args: {
+    items: [
+      { label: "Home", href: "#", icon: Home01 },
+      { label: "Company Space", href: "#", icon: Building04 },
+      { label: "Data Sources", href: "#" },
+      { label: "Quarterly Reports", href: "#", icon: Folder },
+      { label: "2025", href: "#", icon: Folder },
+      { label: "Q4", href: "#", icon: Folder },
+      { label: "Drafts", href: "#", icon: Folder },
+      { label: "Board deck" },
+    ],
+  },
+};
 
-  const items1 = [
-    { label: "Home", href: "#", icon: Home01 },
-    { label: "Spaces", onClick: () => alert("Spaces clicked!") },
-    { label: "My Space" },
-  ];
-  const items2 = [
-    { label: "Home", href: "#", icon: Home01 },
-    { label: "Spaces", href: "#", icon: Building04 },
-    { label: "My Space", href: "#" },
-    { label: "loooong name in the end, like very very long long" },
-  ];
-
-  const items3 = [
-    { label: "Home", href: "#", icon: Home01 },
-    {
-      label: "Middle long name, oh very looong folder name in the middle",
-      href: "#",
-      icon: Building04,
-    },
-    { label: "My Space", href: "#" },
-    { label: "Data Sources", href: ".." },
-    { label: "Folder1", href: "#", icon: Folder },
-    { label: "With ellipsis", href: "#" },
-  ];
-
-  const items4 = [
-    { label: "Home", href: "#", icon: Home01 },
-    {
-      label: "Middle long name, oh very looong folder name in the middle",
-      href: "#",
-      icon: Building04,
-    },
-    { label: "My Space", href: "#" },
-    { label: "Data Sources" },
-    { label: "Folder1", href: "#", icon: Folder },
-    { label: "Folder2", href: "#", icon: Folder },
-    { label: "Folder3", href: "#", icon: Folder },
-    { label: "With ellipsis", href: "#" },
-  ];
-
-  const items5 = [
-    { label: "Home", href: "#", icon: Home01 },
-    {
-      label: "Long, oh very looong folder name in the middle",
-      href: "#",
-      icon: Building04,
-    },
-    { label: "My Space", href: "#" },
-    { label: "Data Sources" },
-  ];
-
-  return (
-    <div className="flex flex-col gap-4 pb-8">
-      <Breadcrumbs items={items0} {...args} />
-      <Breadcrumbs items={items1} {...args} />
-      <Breadcrumbs items={items2} {...args} />
-      <Breadcrumbs items={items4} {...args} />
-      <Breadcrumbs items={items3} {...args} />
-      <Breadcrumbs items={items5} {...args} />
-    </div>
-  );
+/**
+ * A single-item trail — the root of the hierarchy — renders as one
+ * non-interactive segment with its icon.
+ * @summary Single root item.
+ */
+export const SingleItem: Story = {
+  args: {
+    items: [{ label: "Home", icon: Home01 }],
+  },
 };

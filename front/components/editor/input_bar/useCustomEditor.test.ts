@@ -2,27 +2,40 @@ import {
   InputBarSlashSuggestionExtension,
   inputBarSlashSuggestionPluginKey,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
-import { buildEditorExtensions } from "@app/components/editor/input_bar/useCustomEditor";
+import useCustomEditor, {
+  buildEditorExtensions,
+} from "@app/components/editor/input_bar/useCustomEditor";
 import type { WorkspaceType } from "@app/types/user";
+import { act, renderHook } from "@testing-library/react";
 import { Editor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+
+const owner = {
+  id: 0,
+  sId: "wId",
+  name: "MeMeMe AlwaysMe",
+  role: "user",
+  segmentation: null,
+  whiteListedProviders: null,
+  defaultEmbeddingProvider: null,
+  metadata: null,
+  metronomeCustomerId: null,
+  sharingPolicy: "all_scopes",
+  regionalModelsOnly: false,
+} satisfies WorkspaceType;
 
 describe("buildEditorExtensions", () => {
   let editor: Editor;
-  const owner = {
-    id: 0,
-    sId: "wId",
-    name: "MeMeMe AlwaysMe",
-    role: "user",
-    segmentation: null,
-    whiteListedProviders: null,
-    defaultEmbeddingProvider: null,
-    metadata: null,
-    metronomeCustomerId: null,
-    sharingPolicy: "all_scopes",
-    regionalModelsOnly: false,
-  } satisfies WorkspaceType;
 
   function createSlashSuggestionEditor() {
     return new Editor({
@@ -248,5 +261,83 @@ describe("buildEditorExtensions", () => {
     expect(
       inputBarSlashSuggestionPluginKey.getState(editor.state)?.active
     ).toBe(false);
+  });
+});
+
+describe("useCustomEditor placeholder override", () => {
+  beforeAll(() => {
+    // jsdom does not implement matchMedia (used by useIsMobile).
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }))
+    );
+  });
+
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function renderEditorHook() {
+    const initialProps: { placeholderOverride: string | null } = {
+      placeholderOverride: null,
+    };
+    const { result, rerender } = renderHook(
+      ({ placeholderOverride }: { placeholderOverride: string | null }) =>
+        useCustomEditor({
+          onEnterKeyDown: vi.fn(),
+          disableAutoFocus: true,
+          owner,
+          conversationId: "cId",
+          placeholderOverride,
+        }),
+      { initialProps }
+    );
+
+    const editor = result.current.editor;
+    if (!editor) {
+      throw new Error("Editor was not initialized");
+    }
+
+    return { editor, result, rerender };
+  }
+
+  function getPlaceholderText(editor: Editor) {
+    return editor.view.dom.querySelector("p")?.getAttribute("data-placeholder");
+  }
+
+  it("updates the placeholder without recreating the editor", () => {
+    const { editor, result, rerender } = renderEditorHook();
+
+    expect(getPlaceholderText(editor)).toBe("Get work done");
+
+    rerender({ placeholderOverride: "Add a follow-up..." });
+
+    expect(result.current.editor).toBe(editor);
+    expect(getPlaceholderText(editor)).toBe("Add a follow-up...");
+
+    rerender({ placeholderOverride: null });
+
+    expect(result.current.editor).toBe(editor);
+    expect(getPlaceholderText(editor)).toBe("Get work done");
+  });
+
+  it("preserves content and selection across placeholder changes", () => {
+    const { editor, result, rerender } = renderEditorHook();
+
+    act(() => {
+      editor.commands.setContent("hello");
+      editor.commands.setTextSelection(3);
+    });
+
+    rerender({ placeholderOverride: "Add a follow-up..." });
+
+    expect(result.current.editor).toBe(editor);
+    expect(editor.getText()).toBe("hello");
+    expect(editor.state.selection.from).toBe(3);
   });
 });

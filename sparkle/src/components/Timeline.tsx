@@ -38,6 +38,14 @@ export interface TimelineProps extends React.HTMLAttributes<HTMLDivElement> {
   bounded?: boolean;
 }
 
+/**
+ * Displays a vertical sequence of events with connecting markers; each `Timeline.Item`
+ * takes a `title`, optional `meta` and `description`, and a `variant` that styles its
+ * marker. Use it to show ordered, time-based progressions such as version history,
+ * activity feeds, or process steps, conveying state through the item variants.
+ *
+ * @summary Vertical event timeline.
+ */
 function Timeline({
   className,
   children,
@@ -68,10 +76,19 @@ export interface TimelineItemProps
     VariantProps<typeof markerVariants> {
   title?: string;
   description?: React.ReactNode;
+  /** Small metadata line rendered between the title and description, e.g. a date or author. */
   meta?: React.ReactNode;
+  /** Set by the parent Timeline; suppresses the connecting line below the item. */
   isLast?: boolean;
 }
 
+/**
+ * One event in a `Timeline`: a marker and connecting line beside a `title`, optional
+ * `meta` and `description`, and arbitrary children for richer content. The `variant`
+ * (`complete` / `current` / `upcoming`) conveys the event's state through its marker.
+ *
+ * @summary Single timeline event.
+ */
 const TimelineItem = React.forwardRef<HTMLDivElement, TimelineItemProps>(
   (
     {

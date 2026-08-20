@@ -46,9 +46,7 @@ app.post(
     const groupsToLeave = await space.fetchGroupResources(auth, {
       groupReferences: groupReferencesToLeave,
     });
-    const editorGroup = groupsToLeave.find(
-      (group) => group.kind === "space_editors"
-    );
+    const editorGroup = await space.fetchManualEditorGroup(auth);
 
     if (editorGroup) {
       const activeEditors = await editorGroup.getActiveMembers(auth);

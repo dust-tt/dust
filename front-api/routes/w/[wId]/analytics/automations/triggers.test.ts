@@ -50,6 +50,7 @@ const TRIGGERS: GetAutomationTriggersResponse = {
       webhookIcon: null,
       runCount: 720,
       credits: 2448,
+      executionMode: "user_pool",
     },
     {
       triggerId: "trg2",
@@ -75,6 +76,7 @@ const TRIGGERS: GetAutomationTriggersResponse = {
       webhookIcon: "ActionFlagIcon",
       runCount: 12,
       credits: 48,
+      executionMode: "workspace_pool",
     },
   ],
 };

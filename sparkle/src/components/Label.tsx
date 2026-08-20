@@ -21,9 +21,18 @@ const labelVariants = cva(
 export interface LabelProps
   extends React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>,
     VariantProps<typeof labelVariants> {
+  /** Renders the label in the muted color, for secondary or optional captions. */
   isMuted?: boolean;
 }
 
+/**
+ * A short caption that names a form control or a piece of content. Use it to
+ * label inputs, checkboxes, radio items, and other form controls, associating
+ * it with a control via `htmlFor` so clicking the label focuses the control;
+ * use `isMuted` to de-emphasise optional or helper labels.
+ *
+ * @summary Caption for a form control.
+ */
 const Label = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,
   LabelProps

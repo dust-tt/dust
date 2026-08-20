@@ -30,7 +30,7 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
   ConsumptionScopeDimension,
   string
 > = {
-  agent: "agent.id",
+  agent: "agent.attributed_id",
   user: "user.id",
   api_key: "api_key_name",
   // Multi-valued: a member can belong to several groups at once.

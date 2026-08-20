@@ -233,7 +233,6 @@ export function PodConversationsTab({
                 space={podInfo}
                 disableAutoFocus={false}
                 isFloating={false}
-                placeholder={`Get work done...`}
                 defaultAgentId={defaultAgentId}
                 isDefaultAgentLoading={isPodMetadataLoading}
                 defaultSkills={defaultSkills}

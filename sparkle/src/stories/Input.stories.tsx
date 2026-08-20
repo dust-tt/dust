@@ -3,7 +3,7 @@ import React from "react";
 
 import { INPUT_SIZES } from "@sparkle/components/Input";
 
-import { Image03, Input, SearchMd } from "../index_with_tw_base";
+import { Input, SearchMd } from "../index_with_tw_base";
 
 const MESSAGE_STATUSES = ["info", "default", "error"] as const;
 
@@ -74,7 +74,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/**
+ * Interactive single input — tweak any prop from the Controls panel to
+ * explore the full API.
+ * @summary Controls sandbox for the Input props.
+ */
 export const Playground: Story = {
+  tags: ["!manifest"],
   args: {
     size: "md",
     placeholder: "Enter text...",
@@ -88,7 +94,13 @@ export const Playground: Story = {
   },
 };
 
+/**
+ * The three input sizes (sm / md / lg) stacked side by side for design
+ * review.
+ * @summary Size scale gallery.
+ */
 export const Sizes: Story = {
+  tags: ["!manifest"],
   render: () => (
     <div className="flex w-72 flex-col gap-4">
       {INPUT_SIZES.map((size) => (
@@ -98,31 +110,35 @@ export const Sizes: Story = {
   ),
 };
 
-export const WithIcons: Story = {
-  render: () => (
-    <div className="flex w-72 flex-col gap-4">
-      <Input placeholder="Search…" icon={SearchMd} />
-      <Input placeholder="With trailing icon" iconRight={Image03} />
-      <Input placeholder="Both" icon={SearchMd} iconRight={Image03} />
-    </div>
-  ),
+/**
+ * A leading icon clarifies the field's purpose — here a search field. Use
+ * `iconRight` for a trailing icon instead, or combine both.
+ * @summary Input with a leading icon.
+ */
+export const WithLeadingIcon: Story = {
+  args: {
+    placeholder: "Search…",
+    icon: SearchMd,
+  },
 };
 
-export const WithPrefixSuffix: Story = {
-  render: () => (
-    <div className="flex w-72 flex-col gap-4">
-      <Input
-        placeholder="0.00"
-        prefix={<span className="text-faint">$</span>}
-      />
-      <Input
-        placeholder="12,890"
-        suffix={<span className="text-faint">cr</span>}
-      />
-    </div>
-  ),
+/**
+ * A `prefix` renders static content inside the field before the value —
+ * here a currency symbol. Use `suffix` for a unit shown after the value.
+ * @summary Input with a static prefix.
+ */
+export const WithPrefix: Story = {
+  args: {
+    placeholder: "0.00",
+    prefix: <span className="text-faint">$</span>,
+  },
 };
 
+/**
+ * Failed validation combines `isError` for the red border with an error
+ * `message` explaining how to fix the value.
+ * @summary Error state with validation message.
+ */
 export const WithError: Story = {
   args: {
     placeholder: "Enter text...",
@@ -134,6 +150,11 @@ export const WithError: Story = {
   },
 };
 
+/**
+ * A disabled input keeps its value visible but blocks interaction — use it
+ * for fields the user cannot edit in the current context.
+ * @summary Disabled input.
+ */
 export const Disabled: Story = {
   args: {
     placeholder: "Disabled input",
@@ -143,6 +164,11 @@ export const Disabled: Story = {
   },
 };
 
+/**
+ * Neutral helper text below the field via `messageStatus="info"` — for
+ * constraints, formats, or hints that are not errors.
+ * @summary Input with an info helper message.
+ */
 export const WithInfoMessage: Story = {
   args: {
     placeholder: "Enter your name",
@@ -150,91 +176,4 @@ export const WithInfoMessage: Story = {
     message: "Name must be unique",
     messageStatus: "info",
   },
-};
-
-export const AllVariants: Story = {
-  render: () => (
-    <div className="flex flex-col gap-20">
-      <div className="grid grid-cols-3 gap-4">
-        <Input
-          placeholder="placeholder"
-          name="input"
-          message="Name must be unique"
-          messageStatus="info"
-        />
-        <Input
-          placeholder="placeholder"
-          name="input"
-          value="value"
-          message="errored because it's a very long message"
-          messageStatus="error"
-        />
-        <Input
-          placeholder="placeholder"
-          name="input"
-          value="value"
-          message="Default message"
-        />
-        <Input
-          placeholder="placeholder"
-          name="input"
-          value="value"
-          message="errored because it's a very long message"
-          messageStatus="error"
-        />
-        <Input
-          placeholder="placeholder"
-          name="input"
-          value="disabled"
-          disabled
-          messageStatus="error"
-        />
-      </div>
-      <div className="grid grid-cols-3 gap-4">
-        <Input placeholder="placeholder" name="input" />
-        <Input
-          placeholder="placeholder"
-          name="input"
-          value="value"
-          message="errored because it's a very long message"
-          messageStatus="error"
-        />
-        <Input
-          placeholder="placeholder"
-          name="input"
-          value="value"
-          message="Default message"
-        />
-        <Input
-          placeholder="placeholder"
-          name="input"
-          value="value"
-          message="errored because it's a very long message"
-          messageStatus="error"
-        />
-        <Input
-          placeholder="placeholder"
-          name="input"
-          value="test"
-          messageStatus="error"
-        />
-      </div>
-      <div className="grid grid-cols-3 gap-4">
-        <Input
-          placeholder="placeholder"
-          name="input"
-          label="Firstname"
-          isError
-        />
-        <Input
-          placeholder="placeholder"
-          name="input"
-          label="Lastname"
-          message="Input your lastname"
-          messageStatus="info"
-          isError
-        />
-      </div>
-    </div>
-  ),
 };

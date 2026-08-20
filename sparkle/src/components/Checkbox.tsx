@@ -66,10 +66,21 @@ interface CheckboxProps
       "checked" | "defaultChecked"
     >,
     VariantProps<typeof checkboxIndicatorStyles> {
+  /** Checked state: `true`, `false`, or `"partial"` for the indeterminate state. */
   checked?: CheckBoxStateType;
+  /** Tooltip shown when hovering the checkbox. */
   tooltip?: string;
 }
 
+/**
+ * Lets users turn an individual option on or off, or pick several options from a
+ * list, supporting checked, unchecked, and indeterminate (`"partial"`) states.
+ * Reserve `"partial"` for a parent controlling a partially-selected group, and
+ * always associate a label. For a single choice among mutually exclusive options,
+ * use RadioGroup instead; for a setting that takes effect immediately, consider
+ * SliderToggle.
+ * @summary On/off option checkbox.
+ */
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
@@ -102,9 +113,14 @@ const Checkbox = React.forwardRef<
 Checkbox.displayName = CheckboxPrimitive.Root.displayName;
 
 interface CheckboxWithTextProps extends CheckboxProps {
+  /** Label displayed next to the checkbox, associated for click-to-toggle. */
   text: string;
 }
 
+/**
+ * A Checkbox with an associated inline text label (click the label to toggle).
+ * @summary Checkbox with inline label.
+ */
 function CheckboxWithText({
   text,
   tooltip,
@@ -131,9 +147,14 @@ function CheckboxWithText({
 }
 
 interface CheckboxWithTextAndDescriptionProps extends CheckboxWithTextProps {
+  /** Secondary muted text displayed under the label. */
   description: string;
 }
 
+/**
+ * A Checkbox with an associated label and a muted description underneath.
+ * @summary Checkbox with label and description.
+ */
 function CheckBoxWithTextAndDescription({
   text,
   description,

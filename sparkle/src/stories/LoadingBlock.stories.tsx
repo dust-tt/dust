@@ -1,10 +1,11 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import { LoadingBlock } from "@sparkle/components";
 
 const meta = {
   title: "Feedback & Status/LoadingBlock",
+  component: LoadingBlock,
   parameters: {
     docs: {
       description: {
@@ -20,21 +21,29 @@ const meta = {
       },
     },
   },
-} satisfies Meta;
+} satisfies Meta<typeof LoadingBlock>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-export function Demo() {
-  return (
-    <div className="flex flex-col gap-6">
-      <SkeletonDemo />
-      <SkeletonDemo2 />
-    </div>
-  );
-}
+/**
+ * A single block shaped purely through \`className\` — here one line of
+ * text. This is the whole API: the component takes no other props.
+ * @summary Single skeleton block sized via className.
+ */
+export const SingleBlock: Story = {
+  args: {
+    className: "h-4 w-[250px]",
+  },
+};
 
-export function SkeletonDemo() {
-  return (
+/**
+ * Blocks composed to stand in for a media card: a large rounded thumbnail
+ * above two text lines of decreasing width.
+ * @summary Card-shaped skeleton composition.
+ */
+export const CardPlaceholder: Story = {
+  render: () => (
     <div className="flex flex-col space-y-3">
       <LoadingBlock className="h-[125px] w-[250px] rounded-xl" />
       <div className="space-y-2">
@@ -42,11 +51,16 @@ export function SkeletonDemo() {
         <LoadingBlock className="h-4 w-[200px]" />
       </div>
     </div>
-  );
-}
+  ),
+};
 
-export function SkeletonDemo2() {
-  return (
+/**
+ * Blocks composed to stand in for a list row: a circular avatar
+ * (\`rounded-full\`) next to two text lines.
+ * @summary List-row skeleton with a circular avatar.
+ */
+export const ListItemPlaceholder: Story = {
+  render: () => (
     <div className="flex items-center space-x-4">
       <LoadingBlock className="h-12 w-12 rounded-full" />
       <div className="space-y-2">
@@ -54,5 +68,5 @@ export function SkeletonDemo2() {
         <LoadingBlock className="h-4 w-[200px]" />
       </div>
     </div>
-  );
-}
+  ),
+};

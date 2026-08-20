@@ -9,13 +9,20 @@ interface LinkBlockProps {
   href?: string;
   children: React.ReactNode;
   className?: string;
+  /** hast node from react-markdown; its position is used to skip re-renders during streaming. */
   node?: MarkdownNode;
+  /** Click handler for the anchor, e.g. to intercept in-app navigation. */
   onClick?: React.MouseEventHandler<HTMLAnchorElement>;
   rel?: string;
   target?: React.HTMLAttributeAnchorTarget;
   title?: string;
 }
 
+/**
+ * Renders links inside Markdown output as highlighted anchors, defaulting to
+ * `target="_blank"` with `rel="noopener noreferrer"` when no target is given.
+ * @summary Link renderer for Markdown.
+ */
 export const LinkBlock = memo(
   ({
     href,
