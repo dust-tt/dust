@@ -639,6 +639,31 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("## AVAILABLE SKILLS");
   });
 
+  it("should make skill activation conservative for dust-light", () => {
+    const sections = constructPromptMultiActions(authenticator1, {
+      userMessage: userMessage1,
+      agentConfiguration: {
+        ...withoutModel(agentConfig1),
+        sId: GLOBAL_AGENTS_SID.DUST_LIGHT,
+        name: "dust-light",
+      },
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
+      hasAvailableActions: true,
+      systemSkills: [],
+    });
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain(
+      "When in doubt, do not enable extra skills. For Go Deep, only enable it when the user explicitly requests an extensive investigation."
+    );
+    expect(text).toContain(
+      "A routine task needing several tool calls is not enough."
+    );
+    expect(text).not.toContain(
+      "When in doubt about enabling a skill, prefer enabling it"
+    );
+  });
+
   it("should point agents to the Computer for uploaded files when Computer is available", () => {
     const params = {
       userMessage: userMessage1,

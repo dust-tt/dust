@@ -4,11 +4,13 @@ import {
   renderFavoriteSkillsUserMessage,
 } from "@app/lib/api/assistant/skills_rendering";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { mockFullAgentMessage } from "@app/tests/utils/conversation_test_factories";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { TextContent } from "@app/types/assistant/generation";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
@@ -254,6 +256,35 @@ The following skills were set as favorites by the user and are also available fo
         },
       ],
     });
+  });
+
+  it("renders explicit-only Go Deep guidance for dust-light", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const goDeep = await SkillResource.fetchById(authenticator, "go-deep");
+
+    if (!goDeep) {
+      throw new Error("Expected the Go Deep skill to exist.");
+    }
+
+    const message = renderEquippedSkillsUserMessage([goDeep], {
+      agentId: GLOBAL_AGENTS_SID.DUST_LIGHT,
+    });
+    const text = message?.content[0];
+
+    expect(text?.type).toBe("text");
+    if (text?.type !== "text") {
+      throw new Error("Expected rendered Go Deep guidance to be text.");
+    }
+    expect(text.text).toContain(
+      "Enable only when the user explicitly asks for a deep dive"
+    );
+    expect(text.text).toContain(
+      "Do not enable it merely because a routine task needs several tool calls."
+    );
+    expect(text.text).not.toContain(
+      "When in doubt, prefer enabling this skill"
+    );
+    expect(text.text).not.toContain("more than 3");
   });
 
   it("folds user-edited tool inputs into the tool result content", async () => {
