@@ -161,8 +161,8 @@ function ModelsBreakdown({ isDark, models }: ModelsBreakdownProps) {
   }
 
   return (
-    <section className="space-y-4">
-      <h3 className="text-xs font-semibold text-muted-foreground">Models</h3>
+    <section className="mt-6 space-y-4 border-t border-border pt-6">
+      <h3 className="text-base font-semibold text-foreground">Per Models</h3>
       <div className="space-y-2">
         {models.map((model) => (
           <ModelRow
@@ -184,34 +184,59 @@ function AgentBreakdown({ agent }: AgentBreakdownProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <section className="space-y-4">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <div className="flex min-w-0 items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <CollapsibleTrigger
-              aria-label={`${isOpen ? "Collapse" : "Expand"} credit details for ${agent.name}`}
-              className="size-11 shrink-0 justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <Avatar
-              name={agent.name}
-              visual={agent.pictureUrl ?? undefined}
-              size="xs"
-            />
-            <h3 className="truncate text-base font-medium text-foreground">
-              {agent.name}
-            </h3>
-          </div>
-          <span className="shrink-0 text-base text-muted-foreground">
+    <Collapsible
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      className="rounded-xl border border-border bg-background"
+    >
+      <div className="flex min-w-0 items-center justify-between gap-3 px-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Avatar
+            name={agent.name}
+            visual={agent.pictureUrl ?? undefined}
+            size="xs"
+          />
+          <h4 className="truncate text-base font-medium text-foreground">
+            {agent.name}
+          </h4>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <span className="text-base text-muted-foreground">
             {formatCreditValue(agent.billedCredits)}
           </span>
-        </div>
-        <CollapsibleContent className="pt-4">
-          <ToolBreakdownCards
-            agentWorkCredits={agent.agentWorkCredits}
-            tools={agent.tools}
+          <CollapsibleTrigger
+            aria-label={`${isOpen ? "Collapse" : "Expand"} credit details for ${agent.name}`}
+            className="size-11 shrink-0 justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-ring"
           />
-        </CollapsibleContent>
-      </Collapsible>
+        </div>
+      </div>
+      <CollapsibleContent className="px-2 pb-2 pt-2">
+        <ToolBreakdownCards
+          agentWorkCredits={agent.agentWorkCredits}
+          tools={agent.tools}
+        />
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+interface AgentsBreakdownProps {
+  agents: ConversationConsumptionAgentDetails[];
+}
+
+function AgentsBreakdown({ agents }: AgentsBreakdownProps) {
+  if (agents.length <= 1) {
+    return null;
+  }
+
+  return (
+    <section className="mt-6 space-y-4 border-t border-border pt-6">
+      <h3 className="text-base font-semibold text-foreground">Per Agents</h3>
+      <div className="space-y-2">
+        {agents.map((agent) => (
+          <AgentBreakdown key={agent.agentId} agent={agent} />
+        ))}
+      </div>
     </section>
   );
 }
@@ -228,10 +253,12 @@ export function ConversationCreditUsageBreakdown({
   const { isDark } = useTheme();
 
   return (
-    <div className="space-y-6 px-4 py-6">
+    <div className="px-4 py-6">
       <section className="space-y-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Total</h2>
+          <h2 className="text-base font-semibold text-foreground">
+            Total consumption
+          </h2>
           <div className="mt-1 flex items-end gap-1">
             <span className="text-2xl font-semibold leading-8 text-foreground">
               {formatCredits(billedCredits)}
@@ -249,10 +276,7 @@ export function ConversationCreditUsageBreakdown({
 
       <ModelsBreakdown isDark={isDark} models={details.models} />
 
-      {details.agents.length > 1 &&
-        details.agents.map((agent) => (
-          <AgentBreakdown key={agent.agentId} agent={agent} />
-        ))}
+      <AgentsBreakdown agents={details.agents} />
     </div>
   );
 }
