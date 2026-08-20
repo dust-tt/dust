@@ -3,11 +3,12 @@ import { GPT_5_1, GPT_5_2 } from "@app/lib/model_constructors/types/models";
 import { describe, expect, it } from "vitest";
 
 describe("openAIReasoningSummaryForModel", () => {
-  it("uses concise summaries starting with GPT-5.2", () => {
-    expect(openAIReasoningSummaryForModel(GPT_5_2)).toBe("concise");
+  it("uses concise summaries for supported models when enabled", () => {
+    expect(openAIReasoningSummaryForModel(GPT_5_2, true)).toBe("concise");
   });
 
-  it("retains automatic summaries for GPT-5.1", () => {
-    expect(openAIReasoningSummaryForModel(GPT_5_1)).toBe("auto");
+  it("retains automatic summaries when disabled or unsupported", () => {
+    expect(openAIReasoningSummaryForModel(GPT_5_2, false)).toBe("auto");
+    expect(openAIReasoningSummaryForModel(GPT_5_1, true)).toBe("auto");
   });
 });

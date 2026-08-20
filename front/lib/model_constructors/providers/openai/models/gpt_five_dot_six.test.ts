@@ -91,9 +91,10 @@ describe("GPT 5.6 model configurations", () => {
     expect(payload.max_output_tokens).toBe(128_000);
   });
 
-  it("requests concise reasoning summaries for streaming and batch", () => {
+  it("requests concise reasoning summaries for streaming and batch when enabled", () => {
     const config =
       OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream.configSchema.parse({});
+    const conciseConfig = { ...config, conciseReasoningSummary: true };
     const payload = { conversation: { system: [], messages: [] } };
     const stream = new OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream({
       OPENAI_API_KEY: "test",
@@ -103,11 +104,14 @@ describe("GPT 5.6 model configurations", () => {
     });
 
     expect(stream.buildRequestPayload(payload, config).reasoning?.summary).toBe(
-      "concise"
+      "auto"
     );
-    expect(batch.buildRequestPayload(payload, config).reasoning?.summary).toBe(
-      "concise"
-    );
+    expect(
+      stream.buildRequestPayload(payload, conciseConfig).reasoning?.summary
+    ).toBe("concise");
+    expect(
+      batch.buildRequestPayload(payload, conciseConfig).reasoning?.summary
+    ).toBe("concise");
   });
 
   it("gates the Terra long-context endpoint behind its feature flag", () => {
