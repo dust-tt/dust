@@ -66,12 +66,12 @@ function buildToolDetails({
   actions,
   items,
   reconciledCreditAmounts,
-  toolDetailsOverridesByActionId,
+  toolDetailsOverridesByActionModelId,
 }: {
   actions: AgentMCPActionResource[];
   items: AgentMessageConsumptionItemResource[];
   reconciledCreditAmounts: ReconciledCreditAmounts;
-  toolDetailsOverridesByActionId?: ReadonlyMap<
+  toolDetailsOverridesByActionModelId?: ReadonlyMap<
     ModelId,
     ToolConsumptionDetailsOverride
   >;
@@ -94,7 +94,7 @@ function buildToolDetails({
     }
 
     const serialized = action.toJSON();
-    const override = toolDetailsOverridesByActionId?.get(action.id);
+    const override = toolDetailsOverridesByActionModelId?.get(action.id);
     const identity = override?.identity ?? toolIdentity(serialized);
     const current = groupedTools.get(identity);
     const additionalAttributedCredits =
@@ -189,11 +189,11 @@ function buildModelDetails({
 function buildMessageConsumptionDetails({
   actions,
   allocation,
-  toolDetailsOverridesByActionId,
+  toolDetailsOverridesByActionModelId,
 }: {
   actions: AgentMCPActionResource[];
   allocation: MessageConsumptionAllocation;
-  toolDetailsOverridesByActionId?: ReadonlyMap<
+  toolDetailsOverridesByActionModelId?: ReadonlyMap<
     ModelId,
     ToolConsumptionDetailsOverride
   >;
@@ -205,7 +205,7 @@ function buildMessageConsumptionDetails({
     actions,
     items,
     reconciledCreditAmounts,
-    toolDetailsOverridesByActionId,
+    toolDetailsOverridesByActionModelId,
   });
   if (!tools) {
     return null;
@@ -233,7 +233,7 @@ export function buildLatestAvailableMessageConsumptionDetails({
   dustRunIds,
   items,
   runs,
-  toolDetailsOverridesByActionId,
+  toolDetailsOverridesByActionModelId,
   usages,
 }: {
   actions: AgentMCPActionResource[];
@@ -241,7 +241,7 @@ export function buildLatestAvailableMessageConsumptionDetails({
   dustRunIds: string[];
   items: AgentMessageConsumptionItemResource[];
   runs: RunResource[];
-  toolDetailsOverridesByActionId?: ReadonlyMap<
+  toolDetailsOverridesByActionModelId?: ReadonlyMap<
     ModelId,
     ToolConsumptionDetailsOverride
   >;
@@ -262,6 +262,6 @@ export function buildLatestAvailableMessageConsumptionDetails({
   return buildMessageConsumptionDetails({
     actions,
     allocation,
-    toolDetailsOverridesByActionId,
+    toolDetailsOverridesByActionModelId,
   });
 }
