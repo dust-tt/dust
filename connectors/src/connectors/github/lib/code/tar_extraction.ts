@@ -25,7 +25,7 @@ import { pipeline } from "stream/promises";
 import * as tar from "tar-stream";
 
 export const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024;
-const MAX_CONCURRENT_GCS_UPLOADS = 200;
+const MAX_CONCURRENT_GCS_UPLOADS = 400;
 const MAX_TARBALL_SPOOL_RETRIES = 3;
 const MAX_TARBALL_EXTRACTION_RETRIES = 3;
 const TARBALL_RETRY_BASE_DELAY_MS = 1000;
@@ -397,6 +397,8 @@ export async function extractGitHubTarballToGCS(
                   filesUploaded,
                   filesSkipped,
                   extractionDurationMs: Date.now() - extractionStartedAtMs,
+                  uploadsInFlight: uploadQueue.pending,
+                  uploadsQueued: uploadQueue.size,
                 },
                 "GitHub tarball extraction progress"
               );
