@@ -14,11 +14,13 @@ const SPINNER_DUST_VARIANTS = [
 const meta = {
   title: "Feedback & Status/SpinnerBrand",
   component: SpinnerBrand,
-  tags: ["autodocs"],
+  tags: ["deprecated", "!manifest", "autodocs"],
   parameters: {
     docs: {
       description: {
-        component: `A branded, Dust-logo loading indicator for indeterminate waits. Pick a **size** (\`xs\` through \`2xl\`) to fit the context and a **variant** to suit the background — \`mono\`, \`mono-white\` (for dark surfaces), \`colored\`, or \`colored-gray\`. The **speed** prop multiplies the animation rate (1 = normal).
+        component: `**Deprecated — use Spinner instead** (or a **LoadingBlock** skeleton when the loading layout is known ahead of time). Kept only as a visual reference for legacy product surfaces.
+
+A branded, Dust-logo loading indicator for indeterminate waits. Pick a **size** (\`xs\` through \`2xl\`) to fit the context and a **variant** to suit the background — \`mono\`, \`mono-white\` (for dark surfaces), \`colored\`, or \`colored-gray\`. The **speed** prop multiplies the animation rate (1 = normal).
 
 **When to use**
 - For prominent, brand-forward loading moments such as app or page initialization.

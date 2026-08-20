@@ -77,13 +77,12 @@ const animationData: Record<SpinnerBrandVariantType, object> = {
 };
 
 /**
- * A branded, Dust-logo loading indicator for indeterminate waits. Use it for prominent,
- * brand-forward loading moments such as app or page initialization, with `mono-white` on
- * dark backgrounds and the colored variants on light surfaces. For a neutral, utilitarian
- * spinner (e.g. inside a button), use `Spinner`; when the loading layout is known ahead
- * of time, prefer a `LoadingBlock` skeleton.
+ * A branded, Dust-logo loading indicator for indeterminate waits.
  *
- * @summary Dust-branded loading indicator.
+ * @deprecated Use Spinner instead (or a LoadingBlock skeleton when the
+ * loading layout is known ahead of time).
+ *
+ * @summary Deprecated Dust-branded loading indicator — use Spinner.
  */
 const SpinnerBrand: React.FC<SpinnerBrandProps> = ({
   size = "md",

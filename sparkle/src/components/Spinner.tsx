@@ -344,8 +344,7 @@ function getCustomHex(variant: string): string | null {
  * Indicates that content is loading or an action is in progress. Use it for indeterminate
  * waits where no progress percentage is available, choosing a `size` to match the context
  * and a `variant` to suit the background — `mono` adapts to light and dark themes. For
- * loading state inside a button, use the Button's `isLoading` prop instead; for
- * brand-forward loading moments, use `SpinnerBrand`.
+ * loading state inside a button, use the Button's `isLoading` prop instead.
  *
  * @summary Indeterminate loading indicator.
  */
