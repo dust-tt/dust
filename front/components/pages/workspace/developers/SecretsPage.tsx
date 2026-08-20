@@ -4,24 +4,61 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   BookOpen01,
   Button,
-  Clipboard,
+  DataTable,
+  DataTableLoadingSkeleton,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Edit04,
   Input,
   Page,
   Plus,
+  SearchInput,
   Trash01,
 } from "@dust-tt/sparkle";
-import { PencilIcon } from "@heroicons/react/20/solid";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
+
+interface SecretRowData {
+  name: string;
+  menuItems?: MenuItem[];
+}
+
+const columns: ColumnDef<SecretRowData>[] = [
+  {
+    id: "name",
+    accessorKey: "name",
+    header: "Name",
+    cell: (info: CellContext<SecretRowData, unknown>) => (
+      <DataTable.CellContent grow>
+        <DataTable.CellContentWithCopy
+          textToCopy={`env.secrets.${info.row.original.name}`}
+        >
+          <span className="font-mono">
+            env.secrets.{info.row.original.name}
+          </span>
+        </DataTable.CellContentWithCopy>
+      </DataTable.CellContent>
+    ),
+    meta: { className: "w-full" },
+  },
+  {
+    id: "actions",
+    header: "",
+    cell: (info: CellContext<SecretRowData, unknown>) => (
+      <DataTable.MoreButton menuItems={info.row.original.menuItems} />
+    ),
+    meta: { className: "w-12" },
+  },
+];
 
 export function SecretsPage() {
   const owner = useWorkspace();
@@ -35,9 +72,11 @@ export function SecretsPage() {
     useState<DustAppSecretType | null>(null);
   const [isNewSecretPromptOpen, setIsNewSecretPromptOpen] = useState(false);
   const [isInputNameDisabled, setIsInputNameDisabled] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const sendNotification = useSendNotification();
 
-  const { secrets } = useDustAppSecrets(owner);
+  const { secrets, isSecretsLoading, isSecretsError } =
+    useDustAppSecrets(owner);
 
   const { submit: handleGenerate, isSubmitting: isGenerating } =
     useSubmitFunction(async (secret: DustAppSecretType) => {
@@ -97,6 +136,34 @@ export function SecretsPage() {
     setIsNewSecretPromptOpen(true);
     setIsInputNameDisabled(true);
   };
+
+  const rows: SecretRowData[] = [...secrets]
+    .filter((secret) =>
+      secret.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((secret) => ({
+      name: secret.name,
+      menuItems: isAdmin
+        ? [
+            {
+              kind: "item",
+              label: "Edit",
+              icon: Edit04,
+              disabled: isGenerating || isRevoking,
+              onClick: () => handleUpdate(secret),
+            },
+            {
+              kind: "item",
+              label: "Delete",
+              icon: Trash01,
+              variant: "warning",
+              disabled: isGenerating || isRevoking,
+              onClick: () => setSecretToRevoke(secret),
+            },
+          ]
+        : undefined,
+    }));
 
   return (
     <>
@@ -174,7 +241,6 @@ export function SecretsPage() {
                 })
               }
             />
-            <p className="text-xs text-muted-foreground"></p>
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{
@@ -195,10 +261,16 @@ export function SecretsPage() {
         <Page.Header
           title="Developer Secrets"
           description="Secrets usable in Dust apps or MCP servers to safely store sensitive data."
-        />{" "}
+        />
         <Page.Vertical align="stretch" gap="md">
-          <Page.Horizontal align="stretch">
-            <div className="w-full" />
+          <div className="flex items-center gap-2">
+            <SearchInput
+              className="flex-grow"
+              name="secrets-search"
+              placeholder="Search secrets"
+              value={searchQuery}
+              onChange={setSearchQuery}
+            />
             <Button
               label="Read the API reference"
               size="sm"
@@ -215,7 +287,7 @@ export function SecretsPage() {
               <Button
                 label="Create Secret"
                 variant="primary"
-                onClick={async () => {
+                onClick={() => {
                   setNewDustAppSecret(defaultSecret);
                   setIsInputNameDisabled(false);
                   setIsNewSecretPromptOpen(true);
@@ -224,66 +296,52 @@ export function SecretsPage() {
                 disabled={isGenerating || isRevoking}
               />
             )}
-          </Page.Horizontal>
-          <div className="w-full space-y-4 divide-y divide-separator">
-            <div className="flex w-full flex-col space-y-4 pt-4">
-              {secrets
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((secret) => (
-                  <div
-                    key={secret.name}
-                    className="flex items-center space-x-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <pre className="rounded bg-muted-background p-2 text-sm text-foreground">
-                        env.secrets.{secret.name}
-                      </pre>
-                      <Button
-                        variant="outline"
-                        icon={Clipboard}
-                        onClick={() => {
-                          const text = `env.secrets.${secret.name}`;
-                          void navigator.clipboard.writeText(text);
-                          sendNotification({
-                            type: "success",
-                            title: "Copied to clipboard",
-                            description: `Copied ${text} to clipboard.`,
-                          });
-                        }}
-                      />
-                    </div>
-                    <div className="flex-grow overflow-hidden"></div>
-                    {isAdmin && (
-                      <>
-                        <div className="flex-none px-2">
-                          <Button
-                            variant="outline"
-                            disabled={isRevoking || isGenerating}
-                            onClick={async () => {
-                              handleUpdate(secret);
-                            }}
-                            icon={PencilIcon}
-                          />
-                        </div>
-                        <div className="flex-none">
-                          <Button
-                            variant="warning"
-                            disabled={isRevoking || isGenerating}
-                            onClick={async () => {
-                              setSecretToRevoke(secret);
-                            }}
-                            icon={Trash01}
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-            </div>
           </div>
+          <SecretsTable
+            isLoading={isSecretsLoading}
+            isError={!!isSecretsError}
+            rows={rows}
+            searchQuery={searchQuery}
+          />
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />
     </>
   );
+}
+
+interface SecretsTableProps {
+  isLoading: boolean;
+  isError: boolean;
+  rows: SecretRowData[];
+  searchQuery: string;
+}
+
+function SecretsTable({
+  isLoading,
+  isError,
+  rows,
+  searchQuery,
+}: SecretsTableProps) {
+  if (isLoading) {
+    return <DataTableLoadingSkeleton showSelectionColumn={false} />;
+  }
+
+  if (isError) {
+    return (
+      <p className="py-8 text-center text-muted-foreground">
+        Failed to load secrets.
+      </p>
+    );
+  }
+
+  if (rows.length === 0) {
+    return (
+      <p className="py-8 text-center text-muted-foreground">
+        {searchQuery ? "No matching secrets found" : "No secrets created yet."}
+      </p>
+    );
+  }
+
+  return <DataTable data={rows} columns={columns} />;
 }
