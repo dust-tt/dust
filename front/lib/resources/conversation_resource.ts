@@ -909,10 +909,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       agentMessageModelId,
       costCredits,
-    }: { agentMessageModelId: ModelId; costCredits: number | null }
+      totalCostCredits,
+    }: {
+      agentMessageModelId: ModelId;
+      costCredits: number | null;
+      // Left unchanged when omitted. The finalize path always passes it so that
+      // `costCredits` (own cost) and `totalCostCredits` (own + run_agent
+      // sub-agents) are written together in a single, idempotent UPDATE.
+      totalCostCredits?: number | null;
+    }
   ): Promise<void> {
     await AgentMessageModel.update(
-      { costCredits },
+      { costCredits, totalCostCredits },
       {
         where: {
           id: agentMessageModelId,
@@ -923,48 +931,53 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
-   * Adds `delta` credits to the `totalCostCredits` of each of the given agent
-   * messages (identified by their `messages.sId`). `totalCostCredits` is the sum
-   * of a message's own `costCredits` and that of all its `run_agent` sub-agents;
-   * callers pass the message itself plus its `run_agent` ancestors (discovered on
-   * the application side via `listAgenticAncestors`), so whenever one message's
-   * own cost changes by `delta`, the same delta is applied to every ancestor
-   * whose subtree contains it.
+   * Sums the `totalCostCredits` of the direct `run_agent` sub-agents spawned by
+   * an agent message. Non-recursive: since a sub-agent's own `totalCostCredits`
+   * already includes its entire run_agent subtree, summing only the direct
+   * children yields the full sub-agent cost. Handovers run in the parent
+   * conversation and are billed there directly, so they are excluded.
    *
-   * The propagation is additive and therefore order-independent: a sub-agent may
-   * finalize before or after its parent, or be re-finalized on retry, and the
-   * running totals stay correct as long as each finalize applies its own delta
-   * once.
+   * Callers add this to the message's own `costCredits` to obtain its
+   * `totalCostCredits`. This assumes each direct sub-agent has already finalized
+   * (written its `totalCostCredits`) by the time the parent finalizes.
    */
-  static async incrementTotalCostCreditsForAgentMessages(
+  static async sumDirectSubAgentTotalCostCredits(
     auth: Authenticator,
-    { agentMessageIds, delta }: { agentMessageIds: string[]; delta: number }
-  ): Promise<void> {
-    if (delta === 0 || agentMessageIds.length === 0) {
-      return;
-    }
-
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<number> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Flat bulk update keyed by `messages.sId` (no recursion): the agent
-    // message identifier is carried on its wrapping message row, so we resolve
-    // each sId back to its `agent_messages` row via `messages.agentMessageId`.
-    // NULL-safe accumulate via COALESCE since the column defaults to NULL.
+    // `agentMessageId` is a `messages.sId`; the direct sub-agents are the agent
+    // message replies to user messages whose `agenticOriginMessageId` points at
+    // it with a run_agent type. One level, no recursion.
     const query = `
-      UPDATE agent_messages am
-      SET "totalCostCredits" = COALESCE(am."totalCostCredits", 0) + :delta
-      FROM messages m
-      WHERE m."agentMessageId" = am.id
-        AND m."workspaceId" = :workspaceId
-        AND am."workspaceId" = :workspaceId
-        AND m."sId" IN (:agentMessageIds)
+      SELECT SUM(COALESCE(am."totalCostCredits", 0))::float AS total_credits
+      FROM user_messages um
+      JOIN messages user_msg
+        ON user_msg."userMessageId" = um.id
+       AND user_msg."workspaceId" = um."workspaceId"
+      JOIN messages reply
+        ON reply."parentId" = user_msg.id
+       AND reply."workspaceId" = um."workspaceId"
+       AND reply."agentMessageId" IS NOT NULL
+      JOIN agent_messages am
+        ON am.id = reply."agentMessageId"
+       AND am."workspaceId" = um."workspaceId"
+      WHERE um."workspaceId" = :workspaceId
+        AND um."agenticOriginMessageId" = :agentMessageId
+        AND um."agenticMessageType" = 'run_agent'
     `;
 
-    // biome-ignore lint/plugin/noRawSql: NULL-safe accumulate with a sId→agent_message join is not expressible via Sequelize's increment helper.
-    await frontSequelize.query(query, {
-      type: QueryTypes.UPDATE,
-      replacements: { workspaceId, delta, agentMessageIds },
-    });
+    // biome-ignore lint/plugin/noRawSql: multi-join aggregate over sub-agent replies has no concise Sequelize equivalent.
+    const rows = await frontSequelize.query<{ total_credits: number | null }>(
+      query,
+      {
+        type: QueryTypes.SELECT,
+        replacements: { workspaceId, agentMessageId },
+      }
+    );
+
+    return rows[0]?.total_credits ?? 0;
   }
 
   /**
@@ -3342,10 +3355,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ): Promise<{
     agentConfigurationId: string;
     agentMessageId: string;
-    // Whether the parent spawned this message via run_agent (separate sub-agent
-    // conversation) or agent_handover (same conversation). Lets callers walk
-    // only run_agent edges when needed.
-    agenticMessageType: "run_agent" | "agent_handover";
     conversationModelId: ModelId;
   } | null> {
     const owner = auth.getNonNullableWorkspace();
@@ -3375,17 +3384,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: UserMessageModel,
           as: "userMessage",
           required: true,
-          attributes: ["agenticOriginMessageId", "agenticMessageType"],
+          attributes: ["agenticOriginMessageId"],
         },
       ],
     });
 
-    const originUserMessage = parentMessage?.userMessage;
-    // `agenticMessageType` and `agenticOriginMessageId` are always set together
-    // (enforced by a model validation hook), so both are present here or neither.
-    const agenticOriginMessageId = originUserMessage?.agenticOriginMessageId;
-    const agenticMessageType = originUserMessage?.agenticMessageType;
-    if (!agenticOriginMessageId || !agenticMessageType) {
+    const agenticOriginMessageId =
+      parentMessage?.userMessage?.agenticOriginMessageId;
+    if (!agenticOriginMessageId) {
       return null;
     }
 
@@ -3413,7 +3419,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       agentConfigurationId:
         agenticOriginMessage.agentMessage.agentConfigurationId,
       agentMessageId: agenticOriginMessage.sId,
-      agenticMessageType,
       conversationModelId: agenticOriginMessage.conversationId,
     };
   }

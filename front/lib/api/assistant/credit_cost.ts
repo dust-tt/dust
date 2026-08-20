@@ -1,7 +1,6 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
-import { listAgenticAncestors } from "@app/lib/api/assistant/conversation/agentic_ancestors";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
@@ -26,11 +25,6 @@ import {
 import logger from "@app/logger/logger";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
-
-// Bounds the application-side walk up the run_agent ancestor chain when rolling
-// a message's cost into its parents' `totalCostCredits`. run_agent nesting is
-// shallow in practice; this caps the number of per-level lookups per finalize.
-const MAX_RUN_AGENT_ANCESTOR_DEPTH = 10;
 
 interface CreditActionMinimalInput {
   toolName: string;
@@ -88,9 +82,8 @@ export async function computeAndStoreAgentMessageCredits(
   auth: Authenticator,
   {
     agentMessageId,
-    conversationId,
     dustRunIds,
-  }: { agentMessageId: string; conversationId: string; dustRunIds?: string[] }
+  }: { agentMessageId: string; dustRunIds?: string[] }
 ): Promise<number | null> {
   const creditContext =
     await ConversationResource.fetchAgentMessageCreditContext(auth, {
@@ -160,9 +153,25 @@ export async function computeAndStoreAgentMessageCredits(
     contextOrigin: triggeringUserMessageOrigin,
   });
 
+  // The message-level total is its own cost plus the cost of all its run_agent
+  // sub-agents. Since a sub-agent's own `totalCostCredits` already includes its
+  // whole subtree, summing only the direct sub-agents yields the full total.
+  // This assumes sub-agents have finalized (written their `totalCostCredits`)
+  // before the parent does. Both values are absolute (recomputed from scratch)
+  // and written together, so the whole store is idempotent under Temporal retry.
+  const subAgentTotalCostCredits =
+    await ConversationResource.sumDirectSubAgentTotalCostCredits(auth, {
+      agentMessageId,
+    });
+  const totalCostCredits =
+    costCredits === null && subAgentTotalCostCredits === 0
+      ? null
+      : (costCredits ?? 0) + subAgentTotalCostCredits;
+
   await ConversationResource.updateAgentMessageCostCredits(auth, {
     agentMessageModelId,
     costCredits,
+    totalCostCredits,
   });
 
   // `costCredits` is the message-level running total (recomputed from all
@@ -174,35 +183,6 @@ export async function computeAndStoreAgentMessageCredits(
   // finalizes would over-count. A retry with no new usage yields a 0 delta.
   const recordedCostDelta =
     costCredits !== null ? costCredits - (previousCostCredits ?? 0) : 0;
-
-  // Roll the same delta up into this message's `totalCostCredits` and that of
-  // every run_agent ancestor, so the message-level total (own cost + all
-  // sub-agent costs) can be read directly instead of walking the sub-agent tree
-  // at read time. Additive and order-independent across parent/child finalizes.
-  // Ancestors are discovered on the application side (bounded loop), not via a
-  // recursive SQL query. Handovers run in the parent conversation and are billed
-  // there directly, so the walk stops at non-run_agent edges.
-  if (recordedCostDelta !== 0) {
-    const agentMessageIdsToCredit = [agentMessageId];
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      conversationId
-    );
-    if (conversation) {
-      const runAgentAncestors = await listAgenticAncestors(auth, conversation, {
-        agentMessageId,
-        maxAncestors: MAX_RUN_AGENT_ANCESTOR_DEPTH,
-        onlyRunAgent: true,
-      });
-      agentMessageIdsToCredit.push(
-        ...runAgentAncestors.map((ancestor) => ancestor.agentMessageId)
-      );
-    }
-    await ConversationResource.incrementTotalCostCreditsForAgentMessages(auth, {
-      agentMessageIds: agentMessageIdsToCredit,
-      delta: recordedCostDelta,
-    });
-  }
 
   const user = auth.user();
   const plan = auth.plan();
