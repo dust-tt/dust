@@ -92,7 +92,6 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/messages/:mId/consumption
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       billedCredits: BILLED_CREDITS,
-      subAgentBilledCredits: 0,
       totalBilledCredits: BILLED_CREDITS,
       details: null,
     });
@@ -169,7 +168,6 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/messages/:mId/consumption
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       billedCredits: BILLED_CREDITS,
-      subAgentBilledCredits: SUB_AGENT_BILLED_CREDITS,
       totalBilledCredits: BILLED_CREDITS + SUB_AGENT_BILLED_CREDITS,
       details: null,
     });
