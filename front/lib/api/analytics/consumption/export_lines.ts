@@ -18,14 +18,6 @@ import type { estypes } from "@elastic/elasticsearch";
 
 const EXPORT_PAGE_SIZE = 10_000;
 
-function getAttributedAgentId(
-  agent: AgentMessageConsumptionAnalyticsData["agent"]
-): string {
-  // Documents indexed before the attributed identity migration can still be
-  // returned while the asynchronous backfill is completing.
-  return agent.attributed_id ?? agent.id;
-}
-
 type ConsumptionLineExportRow = {
   completedAt: string;
   conversationId: string;
@@ -169,7 +161,7 @@ async function buildConsumptionLineExportRows(
     sourceLabels,
   ] = await Promise.all([
     resolveDimensionLabels(auth, "agent", [
-      ...new Set(docs.map((doc) => getAttributedAgentId(doc.agent))),
+      ...new Set(docs.map((doc) => doc.agent.attributed_id)),
     ]),
     resolveDimensionLabels(auth, "user", [
       ...new Set(removeNulls(docs.map((doc) => doc.user?.id))),
@@ -193,7 +185,7 @@ async function buildConsumptionLineExportRows(
 
   return docs.map((doc) => {
     const { agent, model, user, tool } = doc;
-    const agentId = getAttributedAgentId(agent);
+    const agentId = agent.attributed_id;
     // Older documents indexed before these buckets shipped don't carry them.
     const gross = doc.gross_credit_micro ?? {
       system: 0,
