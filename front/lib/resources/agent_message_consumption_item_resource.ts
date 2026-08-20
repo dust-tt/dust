@@ -655,6 +655,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         parentMessages: directFacts.messages,
         visitedConversationIds: new Set([conversation.sId]),
         maxAttributionVersion,
+        maxDepth: MAX_CONVERSATION_DEPTH,
       });
 
     return { messages: [...directFacts.messages, ...descendantMessages] };
@@ -666,10 +667,12 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       parentMessages,
       visitedConversationIds,
       maxAttributionVersion,
+      maxDepth,
     }: {
       parentMessages: ConversationConsumptionMessageFacts[];
       visitedConversationIds: ReadonlySet<string>;
       maxAttributionVersion: number;
+      maxDepth: number;
     }
   ): Promise<ConversationConsumptionMessageFacts[]> {
     const messages: ConversationConsumptionMessageFacts[] = [];
@@ -678,7 +681,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
 
     for (
       let depth = 1;
-      currentParentMessages.length > 0 && depth <= MAX_CONVERSATION_DEPTH;
+      currentParentMessages.length > 0 && depth <= maxDepth;
       depth++
     ) {
       const childConversationIds: string[] = [];
@@ -881,6 +884,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         ],
         visitedConversationIds: new Set([conversation.sId]),
         maxAttributionVersion,
+        maxDepth: 1,
       });
 
     return {

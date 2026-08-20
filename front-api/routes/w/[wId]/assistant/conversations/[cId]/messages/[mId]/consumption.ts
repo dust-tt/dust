@@ -22,7 +22,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/consumption:
  *   get:
  *     summary: Get an agent message credit attribution
- *     description: Returns direct, recursively spawned sub-agent, and total billed credits, plus an additive attribution of the message and its sub-agents reconciled exclusively through model input rows.
+ *     description: Returns direct, recursively spawned sub-agent, and total billed credits, plus an additive attribution of the message and its direct sub-agents reconciled exclusively through model input rows.
  *     tags:
  *       - Private Messages
  *     parameters:
@@ -67,7 +67,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                 details:
  *                   type: object
  *                   nullable: true
- *                   description: Additive attribution of the message and its recursively spawned sub-agents, reconciled to totalBilledCredits through model input rows. Null when any billed message lacks a complete stored attribution or the descendant graph is incomplete.
+ *                   description: Additive attribution of the message and its direct sub-agents, reconciled to totalBilledCredits through model input rows. Deeper sub-agent charges remain in agentWorkCredits. Null when any expanded billed message lacks a complete stored attribution or the direct descendant graph is incomplete.
  *                   required:
  *                     - attributionVersion
  *                     - agentWorkCredits
@@ -75,10 +75,10 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                   properties:
  *                     attributionVersion:
  *                       type: integer
- *                       description: Oldest attribution version contributing to this aggregate.
+ *                       description: Oldest attribution version contributing to the expanded aggregate.
  *                     agentWorkCredits:
  *                       type: number
- *                       description: Agent work across the message and its sub-agents after assigning billing reconciliation exclusively to model input rows.
+ *                       description: Agent work across the message and its direct sub-agents after assigning billing reconciliation exclusively to model input rows, plus charges from deeper sub-agents.
  *                     tools:
  *                       type: array
  *                       items:

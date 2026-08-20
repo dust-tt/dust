@@ -34,9 +34,9 @@ export type AgentMessageConsumptionModelDetails = {
 };
 
 export type AgentMessageConsumptionDetails = {
-  /** Oldest attribution version contributing to this message and sub-agent aggregate. */
+  /** Oldest attribution version contributing to this message and direct sub-agent aggregate. */
   attributionVersion: number;
-  /** Agent work across this message and its sub-agents after input-only reconciliation. */
+  /** Agent work across this message and its direct sub-agents, plus deeper sub-agent charges. */
   agentWorkCredits: number;
   tools: AgentMessageConsumptionToolDetails[];
 };
