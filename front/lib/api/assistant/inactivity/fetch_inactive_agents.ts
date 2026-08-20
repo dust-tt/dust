@@ -1,3 +1,4 @@
+import { fetchFirstVersionCreatedAtByAgentId } from "@app/lib/api/assistant/configuration/agent";
 import type { AgentInactivitySnapshot } from "@app/lib/api/assistant/inactivity/policy";
 import type { Authenticator } from "@app/lib/auth";
 import { MentionResource } from "@app/lib/resources/mention_resource";
@@ -12,11 +13,6 @@ import { MentionResource } from "@app/lib/resources/mention_resource";
  * Status and triggers deliberately do not come from here — `fetchArchivalFacts` in the caller is the
  * permission-filtered read and the authority on those.
  */
-
-// TODO(2026-08-19 INACTIVE_AGENT_ARCHIVAL): run EXPLAIN (ANALYZE, BUFFERS) before enabling the
-// nightly workflow. Measured volumetry suggests nothing is needed — worst workspace ~7.3k active
-// agents, ~5.2k candidates at 30 days, two index seeks per agent — and the suspected bottleneck is the
-// `ORDER BY "sId"` sort, since no index covers (workspaceId, status, "sId"). Measure before adding it.
 
 /** The part of a snapshot this provides; derived so the two cannot drift. */
 export type InactiveAgentCandidate = Pick<
@@ -48,21 +44,34 @@ export interface InactiveAgentsPage {
 
 export async function fetchInactiveAgents(
   auth: Authenticator,
-  { cutoffAt, page: { cursor, limit } }: InactiveAgentsFetchInput
+  { cutoffAt, page }: InactiveAgentsFetchInput
 ): Promise<InactiveAgentsPage> {
-  const candidates = await MentionResource.listAgentsNotMentionedSince(auth, {
+  const idleAgents = await MentionResource.listAgentsNotMentionedSince(auth, {
     notMentionedSince: cutoffAt,
-    cursor,
-    // One extra row, to tell "this page is full" apart from "there is more after it".
-    limit: limit + 1,
   });
 
-  const hasMore = candidates.length > limit;
-  const agents = hasMore ? candidates.slice(0, limit) : candidates;
+  // The slice bounds what the caller mutates; the cursor steps past agents the rules keep refusing.
+  const { cursor, limit } = page;
+  const fromCursor = cursor
+    ? idleAgents.filter(({ agentId }) => agentId > cursor)
+    : idleAgents;
 
-  // From the last agent, not the page length: with `limit: 0` the lookahead still finds a candidate.
-  const lastAgent = agents.at(-1);
-  const nextCursor = hasMore && lastAgent ? lastAgent.agentId : null;
+  const hasMore = fromCursor.length > limit;
+  const pageAgents = fromCursor.slice(0, limit);
+
+  const createdAtByAgentId = await fetchFirstVersionCreatedAtByAgentId(
+    auth,
+    pageAgents.map(({ agentId }) => agentId)
+  );
+
+  // No first-version date: skip, rather than archive on a date we could not establish.
+  const agents = pageAgents.flatMap(({ agentId, lastMentionedAt }) => {
+    const createdAt = createdAtByAgentId.get(agentId);
+
+    return createdAt ? [{ agentId, createdAt, lastMentionedAt }] : [];
+  });
+
+  const nextCursor = hasMore ? pageAgents[pageAgents.length - 1].agentId : null;
 
   return { agents, nextCursor };
 }
