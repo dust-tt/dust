@@ -34,6 +34,7 @@ const TRIGGER: AutomationTriggerRow = {
   runCount: 0,
   credits: 0,
   status: "enabled",
+  executionMode: "user_pool",
 };
 
 describe("AutomationsTriggerBreakdown", () => {

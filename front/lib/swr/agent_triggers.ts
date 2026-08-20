@@ -11,6 +11,7 @@ import type { GetTriggerEstimationResponseBody } from "@app/lib/triggers/trigger
 import type {
   GetTriggersResponseBody,
   GetUserTriggersResponseBody,
+  PatchTriggerExecutionModeRequestBody,
   PatchTriggerStatusRequestBody,
   PatchTriggersRequestBody,
   PostTextAsCronRuleRequestBody,
@@ -21,7 +22,10 @@ import type {
   PostWebhookFilterGeneratorRequestBody,
   PostWebhookFilterGeneratorResponseBody,
 } from "@app/types/api/assistant/configuration/triggers/webhook_filter_generator";
-import type { ScheduleConfig } from "@app/types/assistant/triggers";
+import type {
+  ScheduleConfig,
+  TriggerExecutionMode,
+} from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
@@ -306,6 +310,60 @@ export function useUpdateTriggerStatus({
   );
 
   return updateTriggerStatus;
+}
+
+export function useUpdateTriggerExecutionMode({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const updateTriggerExecutionMode = useCallback(
+    async ({
+      agentConfigurationId,
+      triggerId,
+      executionMode,
+    }: {
+      agentConfigurationId: string;
+      triggerId: string;
+      executionMode: TriggerExecutionMode;
+    }): Promise<boolean> => {
+      const response = await clientFetch(
+        `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/execution_mode`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            executionMode,
+          } satisfies PatchTriggerExecutionModeRequestBody),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await getErrorFromResponse(response);
+        sendNotification({
+          type: "error",
+          title: "Failed to update the trigger pool",
+          description: `Error: ${errorData.message}`,
+        });
+        return false;
+      }
+
+      sendNotification({
+        type: "success",
+        title: "Trigger pool updated",
+        description:
+          executionMode === "workspace_pool"
+            ? "This trigger now runs on the workspace's credits."
+            : "This trigger now runs on its editor's credits.",
+      });
+      return true;
+    },
+    [workspaceId, sendNotification]
+  );
+
+  return updateTriggerExecutionMode;
 }
 
 function responseToScheduleConfig(
