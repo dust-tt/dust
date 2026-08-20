@@ -39,7 +39,7 @@ function StatBlock({
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <h4 className="text-xs font-semibold text-muted-foreground">{label}</h4>
-      <div className="flex min-w-0 items-baseline gap-2 text-xs">
+      <div className="min-w-0 text-xs">
         <div className="truncate">{primaryText}</div>
         {captionTooltipLabel ? (
           <Tooltip
@@ -77,9 +77,9 @@ function CreditDestinationBlock({
     return (
       <div className="flex min-w-0 flex-col gap-2">
         <h4 className="text-xs font-semibold text-muted-foreground">
-          Where the credits go
+          What model is used
         </h4>
-        <div className="flex items-baseline gap-2">
+        <div className="min-w-0 text-xs">
           <LoadingBlock className="h-4 w-24" />
           <LoadingBlock className="h-3 w-20" />
         </div>
@@ -91,7 +91,7 @@ function CreditDestinationBlock({
     return (
       <div className="flex min-w-0 flex-col gap-2">
         <h4 className="text-xs font-semibold text-muted-foreground">
-          Where the credits go
+          What model is used
         </h4>
         <span className="text-xs text-muted-foreground">
           {isBreakdownError
