@@ -93,7 +93,6 @@ export async function getAgentMessageConsumption(
           identity: subAgent.agentConfigurationId
             ? `sub-agent:${subAgent.agentConfigurationId}`
             : `sub-agent-action:${subAgent.action.id}`,
-          isSubAgent: true,
           label: agentLabel
             ? `Run ${agentLabel.name}`
             : getToolAggregateDisplayLabel(subAgent.action.toJSON()),

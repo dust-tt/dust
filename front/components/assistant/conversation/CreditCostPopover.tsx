@@ -17,7 +17,7 @@ import {
 import type { ComponentType, ReactElement } from "react";
 import { useId, useRef, useState } from "react";
 
-const MAX_VISIBLE_OTHER_TOOLS = 3;
+const MAX_VISIBLE_TOOLS = 3;
 
 function toolDescription(tool: AgentMessageConsumptionToolDetails): string {
   const descriptions = [toolUsageLabel(tool.callCount)];
@@ -113,13 +113,8 @@ export function CreditCostPopover({
         (left, right) => right.attributedCredits - left.attributedCredits
       )
     : [];
-  const subAgentTools = rankedTools.filter((tool) => tool.isSubAgent);
-  const otherTools = rankedTools.filter((tool) => !tool.isSubAgent);
-  const visibleTools = [
-    ...subAgentTools,
-    ...otherTools.slice(0, MAX_VISIBLE_OTHER_TOOLS),
-  ].sort((left, right) => right.attributedCredits - left.attributedCredits);
-  const remainingTools = otherTools.slice(MAX_VISIBLE_OTHER_TOOLS);
+  const visibleTools = rankedTools.slice(0, MAX_VISIBLE_TOOLS);
+  const remainingTools = rankedTools.slice(MAX_VISIBLE_TOOLS);
   const remainingToolCredits = remainingTools.reduce(
     (total, tool) => total + tool.attributedCredits,
     0
