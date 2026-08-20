@@ -290,18 +290,24 @@ describe("useCustomEditor placeholder override", () => {
     vi.useRealTimers();
   });
 
+  interface EditorHookProps {
+    placeholderOverride: string | null;
+    animatePlaceholder?: boolean;
+  }
+
   function renderEditorHook() {
-    const initialProps: { placeholderOverride: string | null } = {
+    const initialProps: EditorHookProps = {
       placeholderOverride: null,
     };
     const { result, rerender } = renderHook(
-      ({ placeholderOverride }: { placeholderOverride: string | null }) =>
+      ({ placeholderOverride, animatePlaceholder }: EditorHookProps) =>
         useCustomEditor({
           onEnterKeyDown: vi.fn(),
           disableAutoFocus: true,
           owner,
           conversationId: "cId",
           placeholderOverride,
+          animatePlaceholder,
         }),
       { initialProps }
     );
@@ -318,12 +324,15 @@ describe("useCustomEditor placeholder override", () => {
     return editor.view.dom.querySelector("p")?.getAttribute("data-placeholder");
   }
 
-  it("types the new placeholder without recreating the editor", () => {
+  it("types the animated placeholder without recreating the editor", () => {
     const { editor, result, rerender } = renderEditorHook();
 
     expect(getPlaceholderText(editor)).toBe("Get work done");
 
-    rerender({ placeholderOverride: "Add a follow-up..." });
+    rerender({
+      placeholderOverride: "Add a follow-up...",
+      animatePlaceholder: true,
+    });
 
     // Typing starts from the first character.
     expect(result.current.editor).toBe(editor);
@@ -334,12 +343,20 @@ describe("useCustomEditor placeholder override", () => {
     });
 
     expect(getPlaceholderText(editor)).toBe("Add a follow-up...");
+  });
 
-    rerender({ placeholderOverride: null });
+  it("swaps the placeholder instantly when not animated", () => {
+    const { editor, result, rerender } = renderEditorHook();
 
+    rerender({
+      placeholderOverride: "Add a follow-up...",
+      animatePlaceholder: true,
+    });
     act(() => {
       vi.runAllTimers();
     });
+
+    rerender({ placeholderOverride: null });
 
     expect(result.current.editor).toBe(editor);
     expect(getPlaceholderText(editor)).toBe("Get work done");
@@ -353,7 +370,10 @@ describe("useCustomEditor placeholder override", () => {
       editor.commands.setTextSelection(3);
     });
 
-    rerender({ placeholderOverride: "Add a follow-up..." });
+    rerender({
+      placeholderOverride: "Add a follow-up...",
+      animatePlaceholder: true,
+    });
 
     expect(result.current.editor).toBe(editor);
     expect(editor.getText()).toBe("hello");

@@ -353,6 +353,8 @@ export interface CustomEditorProps {
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
   placeholderOverride?: string | null;
+  // When true, placeholder changes are typed character by character.
+  animatePlaceholder?: boolean;
   onSuggestionActiveChangeRef?: React.RefObject<
     ((active: boolean) => void) | undefined
   >;
@@ -541,6 +543,7 @@ const useCustomEditor = ({
   onFirstAgentMentionPasteRef,
   slashSuggestion,
   placeholderOverride,
+  animatePlaceholder,
   onSuggestionActiveChangeRef,
 }: CustomEditorProps) => {
   // Read through a ref so placeholder changes don't rebuild the editor.
@@ -595,13 +598,20 @@ const useCustomEditor = ({
     [conversationId]
   );
 
-  // Type the new placeholder character by character, like the sidebar
-  // conversation titles. The Placeholder extension only re-reads placeholderRef
-  // on a state update, so dispatch an empty transaction for each character.
-  // Skipped on mount since the ref starts in sync with the override.
+  // Apply placeholder changes. With animatePlaceholder, type the new
+  // placeholder character by character, like the sidebar conversation titles.
+  // The Placeholder extension only re-reads placeholderRef on a state update,
+  // so dispatch an empty transaction for each change. Skipped on mount since
+  // the ref starts in sync with the override.
   useEffect(() => {
     const target = placeholderOverride ?? INPUT_BAR_DEFAULT_PLACEHOLDER;
     if (!editor || editor.isDestroyed || placeholderRef.current === target) {
+      return;
+    }
+
+    if (!animatePlaceholder) {
+      placeholderRef.current = target;
+      editor.view.dispatch(editor.state.tr);
       return;
     }
 
@@ -621,7 +631,7 @@ const useCustomEditor = ({
     }, PLACEHOLDER_TYPING_INTERVAL_MS);
 
     return () => clearInterval(typingEffect);
-  }, [editor, placeholderOverride]);
+  }, [editor, placeholderOverride, animatePlaceholder]);
 
   const isMobileViewport = useIsMobile();
   const editorService = useEditorService(editor, isMobileViewport);
