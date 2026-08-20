@@ -1241,13 +1241,8 @@ describe("SpaceResource", () => {
               workspaceId: workspace.id,
               managementMode: "manual",
             },
-            { members: [projectMemberGroup] }
+            { members: [projectMemberGroup], editors: [projectEditorGroup] }
           );
-
-          await GroupSpaceEditorResource.makeNew(adminAuth, {
-            group: projectEditorGroup,
-            space: projectSpace,
-          });
 
           await ProjectMetadataResource.makeNew(adminAuth, projectSpace, {
             description: "Admin controlled",
