@@ -54,7 +54,7 @@ export function FreePlanSeatsSection({
       </div>
 
       <ProgressBar
-        className="h-1"
+        className="h-1 w-full"
         values={[
           { value: fillPercent, className: "bg-foreground" },
           { value: 100 - fillPercent, className: "bg-black/[0.08]" },
