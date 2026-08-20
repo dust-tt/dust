@@ -1538,11 +1538,14 @@ export class Authenticator {
   /**
    * Shadow-compare (#9479) for the group_permissions rollout: while the `group_permissions_shadow`
    * flag is on for the workspace, compare two composed decisions for the same check — the served
-   * `legacyAcls` and the `candidateAcls` (the same roles routed through the group_permissions
-   * table) — and log mismatches so a Datadog monitor can confirm parity before the flip (#9480).
-   * The caller builds both shapes. Fire-and-forget: never changes the served result and swallows its
-   * own failures. (Inlined rather than reusing `lib/api/permissions/shadow` to avoid an auth <->
-   * shadow import cycle.)
+   * `getAccessControlLists` and the `candidateAcls` (the same roles routed through the
+   * group_permissions table) — and log mismatches so a Datadog monitor can confirm parity before a
+   * flip. The caller builds both shapes. Fire-and-forget: never changes the served result and
+   * swallows its own failures. (Inlined rather than reusing `lib/api/permissions/shadow` to avoid an
+   * auth <-> shadow import cycle.)
+   *
+   * Retained (currently unused) for the remaining resource migrations onto group_permissions —
+   * spaces no longer shadow-compare, but other resource types still need to.
    */
   shadowComparePermission(
     verb: GrantVerb,

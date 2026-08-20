@@ -1,5 +1,4 @@
 import { loadAllModels } from "@app/admin/db";
-import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -30,10 +29,6 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@app/lib/api/permissions/legacy_acls", () => ({
-  isLegacyAclsEnabled: vi.fn(() => false),
-}));
 
 describe("SpaceResource", () => {
   describe("updatePermissions", () => {
@@ -2493,8 +2488,6 @@ describe("SpaceResource group_permissions enforcement", () => {
   let memberUser: UserResource;
 
   beforeEach(async () => {
-    vi.mocked(isLegacyAclsEnabled).mockReturnValue(false);
-
     workspace = await WorkspaceFactory.basic();
     const adminUser = await UserFactory.basic();
     memberUser = await UserFactory.basic();
@@ -2563,27 +2556,6 @@ describe("SpaceResource group_permissions enforcement", () => {
     );
 
     expect(space.canRead(memberAuth)).toBe(false);
-  });
-
-  it("falls back to the inline group when the use_legacy_acls kill switch is on", async () => {
-    const space = await setupRestrictedSpaceWithMember();
-    await GroupPermissionResource.deleteAllForResource(adminAuth, {
-      resourceType: "space",
-      resourceId: space.id,
-    });
-
-    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      memberUser.sId,
-      workspace.sId
-    );
-
-    // No grant row: the table-backed path denies.
-    expect(space.canRead(memberAuth)).toBe(false);
-
-    // The kill-switch restores the pre-migration decision, taken from group membership.
-    vi.mocked(isLegacyAclsEnabled).mockReturnValue(true);
-    expect(space.canRead(memberAuth)).toBe(true);
-    expect(space.canWrite(memberAuth)).toBe(true);
   });
 
   it("refreshes the caller's grant snapshot after opening a space", async () => {
