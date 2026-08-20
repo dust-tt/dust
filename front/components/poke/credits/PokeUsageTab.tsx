@@ -317,7 +317,7 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
         </span>
       </div>
       <ProgressBar
-        className="h-2 bg-muted-foreground/10"
+        className="h-2 w-full bg-muted-foreground/10"
         values={[
           { value: consumedPct, className: "bg-highlight" },
           { value: 100 - consumedPct, className: "bg-transparent" },
