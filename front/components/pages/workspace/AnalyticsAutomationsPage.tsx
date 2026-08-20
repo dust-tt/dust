@@ -39,8 +39,8 @@ export function AnalyticsAutomationsPage() {
     <Page.Vertical align="stretch" gap="xl">
       <Page.Header
         title={
-            <div className="flex max-w-[700px] flex-col gap-1">
           <div className="flex w-full flex-row justify-between">
+            <div className="flex flex-col gap-1">
               <Page.H variant="h3">Automations</Page.H>
               <Page.P variant="secondary">
                 Everything that runs on its own: who set it up, how often it
@@ -57,14 +57,12 @@ export function AnalyticsAutomationsPage() {
 
       <AutomationsOverview owner={owner} period={period} />
 
-      <div className="flex flex-col gap-8">
-        <AutomationsTriggersTable
-          owner={owner}
-          period={period}
-          filter={filter}
-          onFilterChange={setFilter}
-        />
-      </div>
+      <AutomationsTriggersTable
+        owner={owner}
+        period={period}
+        filter={filter}
+        onFilterChange={setFilter}
+      />
     </Page.Vertical>
   );
 }
