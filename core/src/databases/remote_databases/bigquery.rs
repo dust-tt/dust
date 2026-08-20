@@ -3,7 +3,7 @@ use tracing::info;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use futures::future::try_join_all;
+use futures::future::{join_all, try_join_all};
 use gcp_bigquery_client::{
     error::{BQError, NestedResponseError, ResponseError},
     model::{
@@ -334,6 +334,123 @@ impl BigQueryRemoteDatabase {
         })
     }
 
+    // Fetch the metadata of a table from its fully qualified `project.dataset.table` name.
+    async fn get_table_metadata(
+        &self,
+        table_name: &str,
+    ) -> Result<gcp_bigquery_client::model::table::Table> {
+        let (dataset_key, table_id) = table_name
+            .rsplit_once('.')
+            .ok_or(anyhow!("Invalid table name: {}", table_name))?;
+        let (project_id, dataset_id) = dataset_key
+            .rsplit_once('.')
+            .ok_or(anyhow!("Invalid table name: {}", table_name))?;
+
+        self.client
+            .table()
+            .get(project_id, dataset_id, table_id, None)
+            .await
+            .map_err(|e| anyhow!("Error getting table metadata of {}: {}", table_name, e))
+    }
+
+    // Columns a query must filter on to be planned at all: BigQuery refuses to plan a query
+    // reading from a table declared with `require_partition_filter` unless it has a predicate
+    // referencing only the partitioning column, and that requirement propagates to the views
+    // reading from that table.
+    fn required_partition_filter_columns(
+        table: &gcp_bigquery_client::model::table::Table,
+    ) -> Vec<String> {
+        if !table.require_partition_filter.unwrap_or(false) {
+            return vec![];
+        }
+
+        let mut columns = vec![];
+
+        if let Some(time_partitioning) = &table.time_partitioning {
+            // Without a field, the table is partitioned on the `_PARTITIONTIME` pseudo-column.
+            columns.push(
+                time_partitioning
+                    .field
+                    .clone()
+                    .unwrap_or("_PARTITIONTIME".to_string()),
+            );
+        }
+
+        if let Some(field) = table
+            .range_partitioning
+            .as_ref()
+            .and_then(|range_partitioning| range_partitioning.field.as_ref())
+        {
+            columns.push(field.clone());
+        }
+
+        columns
+    }
+
+    // Get the query plan of a plain SELECT on an allowed table or view, to resolve the tables it
+    // actually reads. Filter on the partitioning columns the tables involved require, otherwise
+    // BigQuery would not plan the query at all. `IS NULL` is used as it references the partitioning
+    // column only, which is what makes a filter eligible for partition elimination, and it is valid
+    // whatever the column type is (including the `_PARTITIONTIME` pseudo-column).
+    async fn get_allowed_table_query_plan(
+        &self,
+        dataset_key: &str,
+        table_name: &str,
+        required_partition_columns: &HashSet<String>,
+    ) -> Result<BigQueryQueryPlan, QueryDatabaseError> {
+        let select = format!("SELECT * FROM `{dataset_key}`.`{table_name}`");
+        let full_name = format!("{dataset_key}.{table_name}");
+
+        // The metadata is only needed to filter on partitioning columns, so fall back to a plain
+        // SELECT when it cannot be read: that is all a table requiring no partition filter needs.
+        let metadata = match self.get_table_metadata(&full_name).await {
+            Ok(metadata) => metadata,
+            Err(e) => {
+                info!(
+                    remote_database = "bigquery",
+                    table = full_name.as_str(),
+                    error = e.to_string(),
+                    "Failed to get allowed table metadata",
+                );
+
+                return self.get_query_plan(select.as_str()).await;
+            }
+        };
+
+        // The allowed table may be partitioned itself, and only exposes the partitioning columns of
+        // the tables it reads from if it selects them when it is a view. Filtering on a column it
+        // does not expose would make the query invalid, hence the intersection with its own
+        // columns. Its own partitioning columns are always valid, including the `_PARTITIONTIME`
+        // pseudo-column, which is not part of its schema.
+        let mut filter_columns: HashSet<String> = metadata
+            .schema
+            .fields
+            .iter()
+            .flatten()
+            .map(|field| field.name.clone())
+            .filter(|name| required_partition_columns.contains(name))
+            .collect();
+        filter_columns.extend(Self::required_partition_filter_columns(&metadata));
+
+        let mut filter_columns = filter_columns.into_iter().collect::<Vec<_>>();
+        filter_columns.sort();
+
+        let query = match filter_columns.is_empty() {
+            true => select,
+            false => format!(
+                "{} WHERE {}",
+                select,
+                filter_columns
+                    .iter()
+                    .map(|c| format!("`{c}` IS NULL"))
+                    .collect::<Vec<_>>()
+                    .join(" AND ")
+            ),
+        };
+
+        self.get_query_plan(query.as_str()).await
+    }
+
     pub async fn check_if_all_forbidden_tables_are_part_of_allowed_views(
         &self,
         allowed_tables: &HashSet<String>,
@@ -370,6 +487,37 @@ impl BigQueryRemoteDatabase {
             .map(|t| t.clone())
             .collect::<HashSet<_>>();
 
+        // The forbidden tables are the physical tables the allowed views read from, so the ones
+        // requiring a partition filter to be queried, directly or through a view. Their
+        // partitioning columns are needed to build plannable queries below.
+        let mut required_partition_columns = HashSet::<String>::new();
+        for (table, metadata) in forbidden_tables.iter().zip(
+            join_all(
+                forbidden_tables
+                    .iter()
+                    .map(|table| self.get_table_metadata(table)),
+            )
+            .await,
+        ) {
+            match metadata {
+                Ok(metadata) => required_partition_columns
+                    .extend(Self::required_partition_filter_columns(&metadata)),
+                // The service account may not be allowed to read the metadata of a table it only
+                // has access to through an authorized view. If that table requires a partition
+                // filter, the plan queries below will fail and be reported as unresolved.
+                Err(e) => info!(
+                    remote_database = "bigquery",
+                    table = table,
+                    error = e.to_string(),
+                    "Failed to get forbidden table metadata",
+                ),
+            }
+        }
+
+        // Allowed tables whose query plan could not be retrieved: if the query ends up rejected,
+        // these are the most likely cause, so they are reported instead of being silently dropped.
+        let mut unresolved_allowed_tables: Vec<String> = vec![];
+
         for (dataset_key, dataset) in dataset_details.iter() {
             // Skip if there are no longer any forbidden tables remaining.
             if remaining_forbidden_tables.is_empty() {
@@ -381,21 +529,34 @@ impl BigQueryRemoteDatabase {
             for view_name in &dataset.allowed_table_names {
                 // Do a simple SELECT to check the query plan of the view and get the affected tables.
                 // Do not use the view definition as if the view is an authorized view, it might use tables unauthorized directly for the service account.
-                let query = format!("SELECT * FROM `{dataset_key}`.`{view_name}`");
-
                 // Use dry-run to get the query plan - this will work for both tables and views
-                if let Ok(plan) = self.get_query_plan(query.as_str()).await {
-                    // Remove all affected tables from the remaining forbidden tables.
-                    remaining_forbidden_tables.retain(|table| {
-                        !plan
-                            .affected_tables
-                            .iter()
-                            .any(|affected_table| affected_table == table)
-                    });
+                match self
+                    .get_allowed_table_query_plan(
+                        dataset_key,
+                        view_name,
+                        &required_partition_columns,
+                    )
+                    .await
+                {
+                    Ok(plan) => {
+                        // Remove all affected tables from the remaining forbidden tables.
+                        remaining_forbidden_tables.retain(|table| {
+                            !plan
+                                .affected_tables
+                                .iter()
+                                .any(|affected_table| affected_table == table)
+                        });
 
-                    if remaining_forbidden_tables.is_empty() {
-                        // Skip the rest of the views as there are no remaining forbidden tables.
-                        break;
+                        if remaining_forbidden_tables.is_empty() {
+                            // Skip the rest of the views as there are no remaining forbidden tables.
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        // Keep checking the other allowed tables, the forbidden tables may be
+                        // reachable from one of them.
+                        unresolved_allowed_tables
+                            .push(format!("`{dataset_key}`.`{view_name}` ({e})"));
                     }
                 }
             }
@@ -416,13 +577,22 @@ impl BigQueryRemoteDatabase {
                     .map(|t| t.to_string())
                     .collect::<Vec<_>>()
                     .join(", "),
+                unresolved_allowed_tables = unresolved_allowed_tables.join(" | "),
                 "Query uses tables that are not allowed",
             );
 
+            let unresolved_details = match unresolved_allowed_tables.is_empty() {
+                true => String::new(),
+                false => format!(
+                    ". Could not resolve the tables read by: {}",
+                    unresolved_allowed_tables.join(" | ")
+                ),
+            };
+
             Err(QueryDatabaseError::ExecutionError(
                 format!(
-                    "Query is using tables that are not part of allowed tables: {:?}",
-                    remaining_forbidden_tables
+                    "Query is using tables that are not part of allowed tables: {:?}{}",
+                    remaining_forbidden_tables, unresolved_details
                 ),
                 None,
             ))?
