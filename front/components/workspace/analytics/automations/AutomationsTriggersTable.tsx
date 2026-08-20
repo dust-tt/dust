@@ -24,6 +24,7 @@ import {
   useUpdateTriggerExecutionMode,
   useUpdateTriggerStatus,
 } from "@app/lib/swr/agent_triggers";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type {
   TriggerExecutionMode,
@@ -72,7 +73,9 @@ const POOL_OPTIONS: { value: TriggerExecutionMode; label: string }[] = [
 ];
 
 function PoolCell({ row }: { row: TriggerRowData }) {
+  const { hasPermission } = useWorkspacePermissions();
   const isWorkspacePool = row.displayExecutionMode === "workspace_pool";
+  const canSetPool = hasPermission("use_workspace_pool", "trigger");
 
   return (
     <DropdownMenu>
@@ -81,7 +84,7 @@ function PoolCell({ row }: { row: TriggerRowData }) {
           variant="ghost"
           size="xs"
           isSelect
-          disabled={row.isExecutionModePending}
+          disabled={row.isExecutionModePending || !canSetPool}
           className={isWorkspacePool ? "text-highlight" : undefined}
           label={isWorkspacePool ? "Workspace" : "Member"}
         />
