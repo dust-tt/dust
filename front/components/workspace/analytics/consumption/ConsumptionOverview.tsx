@@ -2,6 +2,7 @@ import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import { timeAgoFrom } from "@app/lib/utils";
+import { Page } from "@dust-tt/sparkle";
 
 interface ConsumptionOverviewProps {
   workspaceId: string;
@@ -36,7 +37,7 @@ export function ConsumptionOverview({
   ];
 
   return (
-    <p className="text-sm text-muted-foreground">
+    <Page.P variant="secondary">
       {header.map((item, index) => (
         <span key={item}>
           {index > 0 && (
@@ -47,6 +48,6 @@ export function ConsumptionOverview({
           {item}
         </span>
       ))}
-    </p>
+    </Page.P>
   );
 }
