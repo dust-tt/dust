@@ -26,6 +26,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import capitalize from "lodash/capitalize";
 import { useMemo, useState } from "react";
 import { prettifyGroupName } from "./utils";
 
@@ -307,13 +308,7 @@ function buildColumns({
                     ? "warning"
                     : "primary"
               }
-              label={
-                status === "active"
-                  ? "Active"
-                  : status === "capped"
-                    ? "Capped"
-                    : "Revoked"
-              }
+              label={capitalize(status)}
             />
           </DataTable.CellContent>
         );
@@ -486,13 +481,7 @@ export function APIKeysList({
             {(["active", "capped", "revoked"] as const).map((status) => (
               <DropdownMenuCheckboxItem
                 key={status}
-                label={
-                  status === "active"
-                    ? "Active"
-                    : status === "capped"
-                      ? "Capped"
-                      : "Revoked"
-                }
+                label={capitalize(status)}
                 checked={statusFilters.has(status)}
                 onCheckedChange={() => {
                   setStatusFilters((current) =>
