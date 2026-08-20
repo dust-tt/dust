@@ -30,17 +30,26 @@ export async function listHandler(
   _params: Record<string, never>,
   { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const podResult = await getPod(auth, { toolContext: { runContext } });
+  const podResult = await getPod(
+    auth,
+    { toolContext: { runContext } },
+    {
+      hiddenPodFallback: true,
+    }
+  );
   if (podResult.isErr()) {
     return new Err(podResult.error);
   }
 
-  const sandboxFunctions = await SandboxFunctionResource.listBySpace(
-    auth,
-    podResult.value.pod
-  );
+  const { pod } = podResult.value;
+  const sandboxFunctions = await SandboxFunctionResource.listBySpace(auth, pod);
 
+  // The pod's id leads the listing: a Frame's fully qualified references need it, and in a
+  // standalone conversation this is where the model learns which pod its app lives in at all.
   return new Ok([
-    { type: "text", text: formatSandboxFunctionsList(sandboxFunctions) },
+    {
+      type: "text",
+      text: `Pod: ${pod.sId} (app root \`pod-${pod.sId}\`)\n\n${formatSandboxFunctionsList(sandboxFunctions)}`,
+    },
   ]);
 }

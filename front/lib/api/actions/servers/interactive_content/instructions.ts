@@ -439,14 +439,12 @@ export const buildInteractiveContentInstructions = ({
       ? UPDATING_SECTION_COMPUTER_FIRST
       : UPDATING_SECTION_FILES_FIRST,
     validationFixExample: VALIDATION_FIX_EXAMPLE_SOURCE_EDIT,
-    podSections: joinPodSections(
-      isPod
-        ? [
-            POD_APP_SECTION,
-            ...(hasPodFunctions
-              ? [podStorageSection(podFunctionsSkillName)]
-              : []),
-          ]
-        : []
-    ),
+    // The app layout is Pod-shaped guidance and only makes sense with a Pod to lay it out in. The
+    // storage decision is not: a standalone conversation gets a hidden Pod of its own the moment it
+    // needs one, so the Frame's data belongs behind pod functions there too, and the model has to
+    // know that before it reaches for `useState`.
+    podSections: joinPodSections([
+      ...(isPod ? [POD_APP_SECTION] : []),
+      ...(hasPodFunctions ? [podStorageSection(podFunctionsSkillName)] : []),
+    ]),
   });

@@ -51,7 +51,52 @@ export const podFunctionsSkill = {
     "Frame whose entries users add and expect to find again), or whenever a Frame needs a " +
     "server-side capability it cannot hold itself, such as calling another tool or using a " +
     "workspace secret.",
-  instructions: `Pod functions are versioned, typed functions published on the Pod's own
+  mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
+  version: 9,
+  icon: "PuzzleIcon",
+  isRestricted: async (auth: Authenticator) => {
+    const flags = await getFeatureFlags(auth);
+
+    return !flags.includes("sandbox_functions");
+  },
+  // Functions belong to a pod, but a standalone conversation gets a hidden one of its own, so the
+  // skill is available wherever there is a conversation to hang that pod off.
+  isDisabledForAgentLoop: (agentLoopData) => !agentLoopData.conversation,
+  // Equipped in conversations but not auto-enabled.
+  getAutoEnabledOrEquippedForAgentLoop: () => "equipped",
+  fetchInstructions: async (_auth, params) => {
+    const conversation = params.agentLoopData?.conversation;
+    if (!conversation || isPodConversation(conversation)) {
+      return POD_FUNCTIONS_INSTRUCTIONS;
+    }
+
+    return `${HIDDEN_POD_PREAMBLE}\n${POD_FUNCTIONS_INSTRUCTIONS}`;
+  },
+} as const satisfies GlobalSkillDefinition;
+
+/**
+ * Prepended when the conversation is not in a Pod: it still gets the whole pod-functions contract
+ * below, addressed at the Pod the platform keeps for it alone. The Pod's id is not known here —
+ * it is created on the first app tool call and reported by the list tool — so the preamble sends
+ * the model there rather than naming it.
+ */
+const HIDDEN_POD_PREAMBLE = `\
+#### This conversation's app runtime
+
+This conversation is not in a Pod, but it still has one of its own to hold its apps, created for
+this conversation and nothing else. Call \`${toolName("list")}\` before anything else: it reports
+that Pod's id, and wherever the contract below says \`pod-<podId>\`, it means that id. Keep this
+conversation's whole app in \`pod-<podId>/<AppName>/\` exactly as described below.
+
+That Pod is invisible: the user does not see it, cannot open it, and has no idea it exists. So never
+mention it, and never explain Pods, pod functions or publishing to the user. From their side the
+Frame simply works and remembers what they put into it.
+
+\`${CREATE_FRAME_TOOL}\` still creates the Frame in the conversation, so move it into its app folder
+with \`${FILES_MOVE_TOOL}\` before \`${PUBLISH_FRAME_TOOL}\`, exactly as below.
+`;
+
+const POD_FUNCTIONS_INSTRUCTIONS = `Pod functions are versioned, typed functions published on the Pod's own
 Computer: a persistent environment shared across every conversation in the Pod, not the one
 scoped to this conversation. Each one is a TypeScript module with zod-typed input and output,
 bundled at publish time and reusable across conversations in the same Pod, callable from a
@@ -472,19 +517,4 @@ Split capabilities across functions rather than branching inside one. A \`list-n
 one \`notes\` function taking an \`action\` field is not. If a capability must be restricted to an
 app-specific subset of users, keep that list in the database and check it against
 \`currentUser().sId\` — the platform tells you the caller's standing (workspace member, Pod
-member, Pod editor), not what your app allows them to do.`,
-  mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
-  version: 8,
-  icon: "PuzzleIcon",
-  isRestricted: async (auth: Authenticator) => {
-    const flags = await getFeatureFlags(auth);
-
-    return !flags.includes("sandbox_functions");
-  },
-  // Functions are Pod-scoped, so the skill is hidden outside a Pod conversation.
-  isDisabledForAgentLoop: (agentLoopData) =>
-    !agentLoopData.conversation ||
-    !isPodConversation(agentLoopData.conversation),
-  // Equipped in Pod conversations but not auto-enabled.
-  getAutoEnabledOrEquippedForAgentLoop: () => "equipped",
-} as const satisfies GlobalSkillDefinition;
+member, Pod editor), not what your app allows them to do.`;

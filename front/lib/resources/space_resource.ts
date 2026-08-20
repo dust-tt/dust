@@ -1,5 +1,6 @@
 import { isDatabaseFileSystemPodName } from "@app/lib/api/file_system/storage_mode";
 import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
+import { HIDDEN_POD_NAME_PREFIX } from "@app/lib/api/projects/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
@@ -112,6 +113,13 @@ class SpaceGroupReference {
 //   project's editor (`admin`) and member (`member`) groups, so it is what marks an actual member.
 const REGULAR_SPACE_MEMBERSHIP_VERB: GrantVerb = "read";
 const POD_SPACE_MEMBERSHIP_VERB: GrantVerb = "write";
+
+// Hidden pods exist only to hold a standalone conversation's Frame apps, so they are left out of
+// every listing that shows a user their Pods. They are still fetchable by id and by name, which is
+// all their owning conversation and the app tools need.
+const EXCLUDE_HIDDEN_PODS = {
+  name: { [Op.notILike]: `${HIDDEN_POD_NAME_PREFIX}%` },
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SpaceResource extends BaseResource<SpaceModel> {
@@ -445,6 +453,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           ? { id: { [Op.in]: podSpaces.resourceIds } }
           : {}),
         kind: "project",
+        ...EXCLUDE_HIDDEN_PODS,
       },
     });
   }
@@ -453,7 +462,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator
   ): Promise<SpaceResource[]> {
     return this.baseFetch(auth, {
-      where: { kind: "project" },
+      where: { kind: "project", ...EXCLUDE_HIDDEN_PODS },
     });
   }
 
@@ -484,7 +493,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const spaces = await this.baseFetch(auth, {
       where: {
         kind: "project",
-        ...(query?.trim() && { name: { [Op.iLike]: `%${query}%` } }),
+        name: {
+          ...EXCLUDE_HIDDEN_PODS.name,
+          ...(query?.trim() && { [Op.iLike]: `%${query}%` }),
+        },
         ...(pagination.lastValue && {
           [Op.and]: [
             Sequelize.where(
