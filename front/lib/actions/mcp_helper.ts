@@ -147,7 +147,10 @@ export const mcpServerViewSortingFn = (
   a: MCPServerViewType,
   b: MCPServerViewType
 ) => {
-  return mcpServersSortingFn({ mcpServer: a.server }, { mcpServer: b.server });
+  return mcpServersSortingFn(
+    { mcpServer: a.server, mcpServerView: a },
+    { mcpServer: b.server, mcpServerView: b }
+  );
 };
 
 export const mcpServersSortingFn = (

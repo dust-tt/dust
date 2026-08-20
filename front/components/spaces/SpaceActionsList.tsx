@@ -8,12 +8,12 @@ import {
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAddMCPServerToSpace,
-  useAvailableMCPServers,
   useMCPServerViews,
+  useMCPServerViewsNotActivated,
   useRemoveMCPServerViewFromSpace,
 } from "@app/lib/swr/mcp_servers";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
@@ -65,10 +65,8 @@ export const SpaceActionsList = ({
     });
   const { addToSpace } = useAddMCPServerToSpace(owner);
   const { removeFromSpace } = useRemoveMCPServerViewFromSpace(owner);
-  const { mutateAvailableMCPServers } = useAvailableMCPServers({
-    owner,
-    space,
-  });
+  const { mutateMCPServerViews: mutateActivableMCPServerViews } =
+    useMCPServerViewsNotActivated({ owner, space, disabled: true });
 
   const [shouldOpenToolsMenu, setShouldOpenToolsMenu] = React.useState(false);
   React.useEffect(() => {
@@ -87,16 +85,16 @@ export const SpaceActionsList = ({
     urlPrefix: "table",
   });
 
-  const onAddServer = async (server: MCPServerType) => {
-    await addToSpace(server, space);
+  const onAddServerView = async (serverView: MCPServerViewType) => {
+    await addToSpace(serverView.server, space);
     await mutateMCPServerViews();
-    await mutateAvailableMCPServers();
+    await mutateActivableMCPServerViews();
   };
 
   const onRemoveServer = async (sId: string) => {
     await removeFromSpace(serverViews.find((view) => view.sId === sId)!, space);
     await mutateMCPServerViews();
-    await mutateAvailableMCPServers();
+    await mutateActivableMCPServerViews();
   };
 
   const getTableColumns = (): ColumnDef<RowData, string>[] => {
@@ -191,7 +189,7 @@ export const SpaceActionsList = ({
           <SpaceManagedActionsViewsModel
             space={space}
             owner={owner}
-            onAddServer={onAddServer}
+            onAddServerView={onAddServerView}
             shouldOpenMenu={shouldOpenToolsMenu}
             onOpenMenuHandled={() => setShouldOpenToolsMenu(false)}
           />
