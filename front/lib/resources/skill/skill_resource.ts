@@ -584,8 +584,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * Grants the creating user the skill's `editor` grant, which `grantToUser` holds in one
-   * regular_auto group per skill. Skills no longer carry a `skill_editors` group of their own:
-   * editorship lives entirely in `group_permissions`.
+   * regular_auto group per skill. Skills do not carry an editor group of their own: editorship
+   * lives entirely in `group_permissions`.
    */
   private static async grantCreatorAsEditor(
     auth: Authenticator,
