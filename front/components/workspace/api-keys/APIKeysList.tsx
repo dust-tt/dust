@@ -1,4 +1,5 @@
 import { formatCredits } from "@app/lib/client/credits";
+import { timeAgoFrom } from "@app/lib/utils";
 import type { GroupType } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -52,6 +53,8 @@ interface APIKeyRowData {
   secret: string;
   status: APIKeyStatus;
   monthlyCap: string;
+  createdAt: number;
+  lastUsedAt: number | null;
   menuItems: MenuItem[];
 }
 
@@ -135,6 +138,10 @@ function matchesAPIKeySearch(row: APIKeyRowData, search: string): boolean {
     row.status,
     ...row.spaces,
   ].some((value) => value.toLowerCase().includes(normalizedSearch));
+}
+
+function formatRelativeTime(timestamp: number): string {
+  return `${timeAgoFrom(timestamp, { useLongFormat: true })} ago`;
 }
 
 function buildColumns({
@@ -248,6 +255,36 @@ function buildColumns({
         <DataTable.BasicCellContent
           className="tabular-nums"
           label={info.row.original.monthlyCap}
+        />
+      ),
+    },
+    {
+      id: "createdAt",
+      accessorKey: "createdAt",
+      header: "Created",
+      enableSorting: false,
+      meta: { className: "h-16 w-32", headerAlign: "left" },
+      cell: (info) => (
+        <DataTable.BasicCellContent
+          className="whitespace-nowrap"
+          label={formatRelativeTime(info.row.original.createdAt)}
+        />
+      ),
+    },
+    {
+      id: "lastUsedAt",
+      accessorKey: "lastUsedAt",
+      header: "Last used",
+      enableSorting: false,
+      meta: { className: "h-16 w-32", headerAlign: "left" },
+      cell: (info) => (
+        <DataTable.BasicCellContent
+          className="whitespace-nowrap"
+          label={
+            info.row.original.lastUsedAt
+              ? formatRelativeTime(info.row.original.lastUsedAt)
+              : "Never"
+          }
         />
       ),
     },
@@ -373,6 +410,8 @@ export function APIKeysList({
             showLegacyUsdMonthlyCap,
             showCreditMonthlyCap,
           }),
+          createdAt: key.createdAt,
+          lastUsedAt: key.lastUsedAt,
           menuItems,
         };
       }),
@@ -497,9 +536,11 @@ export function APIKeysList({
             columns={columns}
             className="min-w-[720px]"
             columnsBreakpoints={{
-              key: "lg",
+              key: "xl",
               spaces: "md",
               monthlyCap: "sm",
+              createdAt: "lg",
+              lastUsedAt: "md",
             }}
           />
         </div>
