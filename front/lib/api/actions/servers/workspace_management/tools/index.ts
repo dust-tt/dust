@@ -1,10 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  workspaceAdminGuard,
-  workspaceManagerGuard,
-} from "@app/lib/actions/mcp_internal_actions/utils";
+import { workspaceAdminGuard } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentViewType } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import {
   DEFAULT_PAGE_SIZE,
@@ -114,11 +111,6 @@ const handlers: ToolHandlers<typeof WORKSPACE_MANAGEMENT_TOOLS_METADATA> = {
     { view, namePrefix, cursor, limit },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
-    }
-
     const resolvedView = view ?? "all";
     const viewDenied = guardAgentView(auth, resolvedView);
     if (viewDenied) {
@@ -168,11 +160,6 @@ const handlers: ToolHandlers<typeof WORKSPACE_MANAGEMENT_TOOLS_METADATA> = {
   },
 
   [GET_AGENT_DETAILS_TOOL_NAME]: async ({ agentId }, { auth }) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
-    }
-
     const agents = await getAgentConfigurations(auth, {
       agentIds: [agentId],
       variant: "full",
@@ -228,11 +215,6 @@ const handlers: ToolHandlers<typeof WORKSPACE_MANAGEMENT_TOOLS_METADATA> = {
     { availability, status, kind, includeUsage, cursor, limit },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
-    }
-
     const resolvedKind = kind ?? "custom";
 
     const skills = await SkillResource.listByWorkspace(auth, {
@@ -286,11 +268,6 @@ const handlers: ToolHandlers<typeof WORKSPACE_MANAGEMENT_TOOLS_METADATA> = {
   },
 
   [GET_SKILL_DETAILS_TOOL_NAME]: async ({ skillId }, { auth }) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
-    }
-
     const skill = await SkillResource.fetchById(auth, skillId);
     if (!skill) {
       return new Ok([

@@ -88,18 +88,47 @@ describe("workspace_management tools", () => {
     "get_agent_details",
     "list_skills",
     "get_skill_details",
-  ])("%s refuses callers below manager", async (toolName) => {
+  ])("%s is available to regular members", async (toolName) => {
     const { authenticator } = await createResourceTest({ role: "user" });
     expect(authenticator.isManager()).toBe(false);
 
     const result = await getToolByName(toolName).handler(
-      {},
+      // The get_* tools need an id; an unknown one exercises the not-found path, which is
+      // enough to show the tool is not refused outright.
+      { agentId: "unknown", skillId: "unknown" },
+      createTestExtra(authenticator)
+    );
+
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("only lists the agents a regular member may read", async () => {
+    const { workspace, authenticator } = await createResourceTest({
+      role: "user",
+    });
+    await setupOtherMembersAgents(workspace);
+
+    const { agents } = await callToolJson("list_agents", {}, authenticator);
+
+    const names = agents.map((a: { name: string }) => a.name);
+    expect(names).toContain("Published Agent");
+    expect(names).not.toContain("Unpublished Agent");
+    expect(names).not.toContain("Restricted Space Agent");
+  });
+
+  it("refuses all_unrestricted for regular members", async () => {
+    const { authenticator } = await createResourceTest({ role: "user" });
+
+    const result = await getToolByName("list_agents").handler(
+      { view: "all_unrestricted" },
       createTestExtra(authenticator)
     );
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("admins");
+      expect(result.error.message).toBe(
+        "This tool is restricted to workspace admins."
+      );
     }
   });
 

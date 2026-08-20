@@ -128,8 +128,7 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     name: LIST_AGENTS_TOOL_NAME,
     description:
       "List the workspace's agents. Use this to inventory which agents exist, " +
-      "whether they are published, and who can edit them. Admin and manager " +
-      "only.",
+      "whether they are published, and who can edit them.",
     schema: listAgentsSchema,
     stake: "never_ask",
     displayLabels: {
@@ -144,8 +143,7 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     description:
       "Return an agent's full configuration: name, description, scope, model, " +
       "equipped skills and capabilities, and its complete system prompt and " +
-      "instructions. Use this to inspect what an agent actually does. Admin " +
-      "and manager only.",
+      "instructions. Use this to inspect what an agent actually does.",
     schema: getAgentDetailsSchema,
     stake: "never_ask",
     displayLabels: {
@@ -159,7 +157,7 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     name: LIST_SKILLS_TOOL_NAME,
     description:
       "List the workspace's skills. Use this to inventory which skills exist " +
-      "and who can reach them. Admin and manager only.",
+      "and who can reach them.",
     schema: listSkillsSchema,
     stake: "never_ask",
     displayLabels: {
@@ -174,7 +172,7 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     description:
       "Return a skill's full details: descriptions, availability, status, the " +
       "tools it equips, and its instructions. Dust's built-in skills keep their " +
-      "instructions private, so those come back empty. Admin and manager only.",
+      "instructions private, so those come back empty.",
     schema: getSkillSchema,
     stake: "never_ask",
     displayLabels: {
