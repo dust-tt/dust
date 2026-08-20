@@ -737,7 +737,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       ],
       where: {
         workspaceId,
-        conversationId: { [Op.in]: Object.keys(conversationIdsByModelId) },
+        conversationId: { [Op.in]: [...conversationIdsByModelId.keys()] },
       },
       order: [["id", "ASC"]],
     });
