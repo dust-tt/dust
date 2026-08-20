@@ -62,6 +62,12 @@ describe("ConversationCreditUsageBreakdown", () => {
       <ConversationCreditUsageBreakdown billedCredits={20} details={details} />
     );
 
+    expect(
+      screen.getByRole("heading", { name: "Total consumption" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Per Models" })
+    ).toBeInTheDocument();
     expect(screen.getByText("Calendar tool")).toBeInTheDocument();
     expect(screen.getByText("6.5 credits")).toBeInTheDocument();
     expect(screen.getByText("4.5 credits")).toBeInTheDocument();
@@ -74,9 +80,12 @@ describe("ConversationCreditUsageBreakdown", () => {
     expect(screen.getByText("GPT-5 Mini")).toBeInTheDocument();
     expect(screen.getByText("15 credits")).toBeInTheDocument();
     expect(screen.queryByText("Research agent")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Per Agents" })
+    ).not.toBeInTheDocument();
   });
 
-  it("collapses agent breakdowns by default in multi-agent conversations", () => {
+  it("collapses agent breakdowns by default and expands them from the row", () => {
     const agent = {
       pictureUrl: null,
       billedCredits: 10,
@@ -110,14 +119,13 @@ describe("ConversationCreditUsageBreakdown", () => {
 
     expect(screen.getByText("Research agent")).toBeInTheDocument();
     expect(screen.getByText("Writing agent")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Per Agents" })
+    ).toBeInTheDocument();
     expect(screen.queryByText("Search tool")).not.toBeInTheDocument();
     expect(screen.queryByText("Writing tool")).not.toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Expand credit details for Research agent",
-      })
-    );
+    fireEvent.click(screen.getByText("Research agent"));
 
     expect(screen.getByText("Search tool")).toBeInTheDocument();
     expect(screen.queryByText("Writing tool")).not.toBeInTheDocument();
