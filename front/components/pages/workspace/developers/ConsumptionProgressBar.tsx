@@ -1,4 +1,4 @@
-import { cn, Page } from "@dust-tt/sparkle";
+import { Page, ProgressBar } from "@dust-tt/sparkle";
 
 interface ConsumptionProgressBarProps {
   consumed: number;
@@ -12,15 +12,16 @@ export function ConsumptionProgressBar({
   const percentage = total > 0 ? Math.min((consumed / total) * 100, 100) : 0;
 
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10">
-      <div
-        className={cn(
-          "h-full rounded-full transition-all",
-          percentage > 80 ? "bg-warning-700" : "bg-primary"
-        )}
-        style={{ width: `${percentage}%` }}
-      />
-    </div>
+    <ProgressBar
+      className="h-2 bg-muted-foreground/10"
+      values={[
+        {
+          value: percentage,
+          className: percentage > 80 ? "bg-warning-700" : "bg-primary",
+        },
+        { value: 100 - percentage, className: "bg-transparent" },
+      ]}
+    />
   );
 }
 
