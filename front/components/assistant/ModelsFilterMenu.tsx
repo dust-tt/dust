@@ -12,6 +12,7 @@ import type {
   ModelConfigurationType,
   ModelMakerIdType,
 } from "@app/types/assistant/models/types";
+import { removeNulls } from "@app/types/shared/utils/general";
 import {
   BarFull,
   BarHalf,
@@ -94,10 +95,12 @@ export function ModelsFilterMenu({
   }
   const makerGroups = groupModelsByMaker(concreteModelConfigs).map((group) => ({
     makerId: group.makerId,
-    models: group.models.flatMap((model) => {
-      const filterModel = modelsById.get(model.modelId);
-      return filterModel ? [filterModel] : [];
-    }),
+    models: removeNulls(
+      group.models.map((model) => {
+        const filterModel = modelsById.get(model.modelId);
+        return filterModel ?? null;
+      })
+    ),
   }));
   const makerByModelId = new Map<string, ModelMakerIdType>(
     makerGroups.flatMap((group) =>
