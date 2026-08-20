@@ -1,3 +1,4 @@
+import type { ModelTierId } from "@app/components/model_picker/modelPickerUtils";
 import {
   buildModelPickerCatalog,
   MODEL_TIERS,
@@ -13,6 +14,9 @@ import type {
 } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
 import {
+  BarFull,
+  BarHalf,
+  BarLow,
   Button,
   Check,
   ChevronDown,
@@ -46,13 +50,23 @@ interface ModelsFilterMenuProps {
   isCompact?: boolean;
 }
 
+const TIER_ICON: Record<ModelTierId, ComponentType> = {
+  fast: BarLow,
+  standard: BarHalf,
+  complex: BarFull,
+};
+
+type TierModelFilter = AgentModelFilterType & {
+  tierId: ModelTierId;
+};
+
 interface AgentModelMakerGroup {
   makerId: ModelMakerIdType;
   models: AgentModelFilterType[];
 }
 
 interface ModelsFilterCatalog {
-  tierModels: AgentModelFilterType[];
+  tierModels: TierModelFilter[];
   makerGroups: AgentModelMakerGroup[];
   makerByModelId: Map<string, ModelMakerIdType>;
   unknownModels: AgentModelFilterType[];
@@ -66,7 +80,9 @@ function buildModelsFilterCatalog(
   const tierModels = removeNulls(
     MODEL_TIERS.map((tier) => {
       const model = modelsById.get(tier.metaModelId);
-      return model ? { ...model, displayName: tier.name } : null;
+      return model
+        ? { ...model, displayName: tier.name, tierId: tier.id }
+        : null;
     })
   );
 
@@ -310,7 +326,6 @@ export function ModelsFilterMenu({
   setSelectedModels,
   isCompact = false,
 }: ModelsFilterMenuProps) {
-  const { isDark } = useTheme();
   const [isDropdownOpen, setDropdownOpen] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
   const [moreModelsExpanded, setMoreModelsExpanded] = useState(false);
@@ -366,22 +381,14 @@ export function ModelsFilterMenu({
 
   const moreModelsBody = isSearching ? (
     searchResults.length > 0 ? (
-      searchResults.map((model) => {
-        const makerId = makerByModelId.get(model.modelId);
-        return (
-          <ModelFilterItem
-            key={model.modelId}
-            model={model}
-            icon={
-              makerId !== undefined
-                ? getModelMakerLogo(makerId, isDark)
-                : undefined
-            }
-            isSelected={selectedModelIds.has(model.modelId)}
-            onToggle={toggleModel}
-          />
-        );
-      })
+      searchResults.map((model) => (
+        <ModelFilterItem
+          key={model.modelId}
+          model={model}
+          isSelected={selectedModelIds.has(model.modelId)}
+          onToggle={toggleModel}
+        />
+      ))
     ) : (
       <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
         No models found
@@ -454,6 +461,7 @@ export function ModelsFilterMenu({
               <ModelFilterItem
                 key={model.modelId}
                 model={model}
+                icon={TIER_ICON[model.tierId]}
                 isSelected={selectedModelIds.has(model.modelId)}
                 onToggle={toggleModel}
               />
