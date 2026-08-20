@@ -97,6 +97,7 @@
   "trigger.email_received": 3,
   "trigger.enabled": 2,
   "trigger.fired": 3,
+  "trigger.pool_updated": 1,
   "user.advanced_model_access_updated": 1,
   "user.identity_merged": 4,
   "user.login": 3,
