@@ -47,7 +47,11 @@ import {
   Tooltip,
   XCircle,
 } from "@dust-tt/sparkle";
-import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 import type { Transition, Variants } from "framer-motion";
 import {
   AnimatePresence,
@@ -70,6 +74,14 @@ import {
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const ATTRIBUTION_PAGE_SIZE = 25;
 const ATTRIBUTION_MAX_ROW_COUNT = 1_000;
+const DEFAULT_ATTRIBUTION_SORTING: SortingState = [
+  { id: "credits", desc: true },
+];
+
+const ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS = new Set([
+  "credits",
+  "costShare",
+]);
 
 type AttributionTransitionDirection = -1 | 0 | 1;
 
@@ -171,7 +183,7 @@ function VsPrevCell({
         <Tooltip
           label="Not enough data to compute"
           tooltipTriggerAsChild
-          trigger={<span className="text-sm text-muted-foreground">N.A</span>}
+          trigger={<span className="text-sm text-muted-foreground">--</span>}
         />
       </DataTable.CellContent>
     );
@@ -217,6 +229,7 @@ function buildColumns({
       id: "name",
       accessorKey: "name",
       header: "Name",
+      enableSorting: false,
       meta: { sizeRatio: 32, headerAlign: "left" },
       cell: (info) => {
         const row = info.row.original;
@@ -282,7 +295,11 @@ function buildColumns({
     },
     {
       id: "costShare",
-      header: "Cost share",
+      // Same denominator (totalCredits) for every row, so ranking by cost
+      // share is the same order as ranking by credits
+      accessorFn: (row) => (totalCredits > 0 ? row.credits / totalCredits : 0),
+      header: "Consumption share",
+      enableSorting: true,
       meta: { sizeRatio: 20, headerAlign: "left" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-start">
@@ -310,6 +327,7 @@ function buildColumns({
       id: "avgCredits",
       accessorKey: "avgCredits",
       header: avgLabel,
+      enableSorting: false,
       meta: { sizeRatio: 22, headerAlign: "right" },
       cell: (info) => (
         <DataTable.BasicCellContent
@@ -321,6 +339,7 @@ function buildColumns({
     {
       id: "vsPrev",
       header: "vs prev",
+      enableSorting: false,
       meta: { sizeRatio: 18, headerAlign: "right" },
       cell: (info) => (
         <VsPrevCell
@@ -422,7 +441,29 @@ function AttributionRows({
     pageIndex: 0,
     pageSize: ATTRIBUTION_PAGE_SIZE,
   });
+  const [sorting, setSorting] = useState<SortingState>(
+    DEFAULT_ATTRIBUTION_SORTING
+  );
   const shouldReduceMotion = useReducedMotion();
+
+  // A new sort order invalidates the current page's offset into it, so jump
+  // back to the first page whenever it changes.
+  const handleSortingChange: typeof setSorting = (updater) => {
+    setSorting(updater);
+    setPagination((current) => ({ ...current, pageIndex: 0 }));
+  };
+
+  const activeSort = sorting[0];
+  // Ranking is always by credits: only forward asc/desc when the sorted
+  // column actually rides that ranking, so sorting by anything else keeps
+  // fetching pages in the default credits-desc order and reorders them
+  // locally instead.
+  const sortOrder =
+    activeSort?.id &&
+    ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS.has(activeSort.id) &&
+    !activeSort.desc
+      ? "asc"
+      : "desc";
 
   const {
     rows,
@@ -439,6 +480,7 @@ function AttributionRows({
     offset: pagination.pageIndex * pagination.pageSize,
     search,
     filter,
+    sortOrder,
   });
   const cappedRowCount = Math.min(totalCount, ATTRIBUTION_MAX_ROW_COUNT);
 
@@ -522,6 +564,8 @@ function AttributionRows({
             skeletonRowCount={skeletonRowCount}
             hasAvatar={hasAvatar}
             isAvatarRounded={dimension === "user"}
+            sorting={sorting}
+            onSortingChange={handleSortingChange}
           />
         </div>
         {paginationControls}
@@ -553,6 +597,8 @@ function AttributionRows({
               filter={filter}
               onViewAll={onViewAll}
               expandedRowId={expandedRowId}
+              sorting={sorting}
+              onSortingChange={handleSortingChange}
             />
           </div>
         )}

@@ -1,10 +1,12 @@
 import {
   makeApiKeySpendLimitAwuCreditsRateLimitKey,
+  makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace,
   makeSpendLimitAwuCreditsRateLimitKeyForUser,
   makeSpendLimitCycleWindowBounds,
 } from "@app/lib/api/assistant/rate_limits";
 import { computeCreditUsageStatus } from "@app/lib/api/credits/usage_status";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import { getProgrammaticUsageFilterClause } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import type { BillingCycle } from "@app/lib/client/subscription";
 import { listPerUserCreditBalanceAlertsForWorkspace } from "@app/lib/metronome/alerts/per_user_credit_balance";
@@ -18,7 +20,7 @@ import {
 } from "@app/lib/metronome/alerts/spend_limits";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import {
-  listCustomerPerUserCreditBalances,
+  getCachedCustomerPerUserCreditBalances,
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
 import {
@@ -508,6 +510,68 @@ export async function getEsConsumedAwuCreditsForApiKey(
   return consumedByApiKeyName.get(apiKeyName) ?? 0;
 }
 
+/**
+ * The workspace's Elasticsearch-derived *programmatic* AWU consumption for the
+ * current billing cycle. `usage_type` is not a stored analytics field, so
+ * programmatic usage is identified with `getProgrammaticUsageFilterClause`
+ * (auth_method=api_key / no or programmatic context_origin) — the same split the
+ * analytics dashboards use. Used to lazily seed / resync the programmatic
+ * spend-cap counter. Returns the consumption, or `null` when it can't be
+ * determined (no billing cycle, or the analytics read failed) — callers must
+ * treat `null` as "unknown", never as 0, so a transient ES outage doesn't erase
+ * a live counter on resync.
+ */
+export async function getEsConsumedProgrammaticAwuCredits(
+  auth: Authenticator,
+  { cycle }: { cycle?: BillingCycle }
+): Promise<number | null> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const resolvedCycle = cycle ?? (await resolveMetronomeCycle(workspace));
+  if (!resolvedCycle) {
+    return null;
+  }
+  const { cycleStart, cycleEnd } = resolvedCycle;
+
+  const result = await searchAnalytics<
+    never,
+    { credits?: estypes.AggregationsSumAggregate }
+  >(
+    {
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          getProgrammaticUsageFilterClause(),
+          {
+            range: {
+              timestamp: {
+                gte: cycleStart.toISOString(),
+                lte: cycleEnd.toISOString(),
+              },
+            },
+          },
+        ],
+      },
+    },
+    {
+      aggregations: { credits: { sum: { field: "cost.billable_awu" } } },
+      size: 0,
+    }
+  );
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, workspaceId: workspace.sId },
+      "[MembersUsage] Failed to read programmatic consumed credits from analytics index"
+    );
+    return null;
+  }
+
+  return Math.max(
+    0,
+    Math.round(result.value.aggregations?.credits?.value ?? 0)
+  );
+}
+
 async function fetchPerUserUsageCreditsForMembersTable({
   workspaceId,
   metronomeCustomerId,
@@ -634,7 +698,7 @@ async function fetchFreeSeatCreditsForMembersTable({
   if (!metronomeCustomerId) {
     return { freeBalanceByUserId, freeStartingByUserId };
   }
-  const perUserCreditBalances = await listCustomerPerUserCreditBalances({
+  const perUserCreditBalances = await getCachedCustomerPerUserCreditBalances({
     metronomeCustomerId,
     contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
   });
@@ -1086,6 +1150,57 @@ export async function resyncApiKeySpendLimitCountersFromEsUsage(
   return new Ok({ updatedKeyCount: results.filter(Boolean).length });
 }
 
+/**
+ * Backfill/repair the workspace programmatic spend-cap counter from
+ * Elasticsearch, overwriting it (SET) with the programmatic AWU consumption for
+ * the current cycle. No-op (not seeded) when there is no positive programmatic
+ * cap — that case defers to the programmatic credit-state machine, not the
+ * counter.
+ */
+export async function resyncProgrammaticSpendLimitCounterFromEsUsage(
+  auth: Authenticator
+): Promise<Result<{ programmaticCounterSeeded: boolean }, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  const cap = config?.programmaticMonthlyCapAwuCredits ?? 0;
+  if (cap <= 0) {
+    return new Ok({ programmaticCounterSeeded: false });
+  }
+
+  const cycle = await resolveMetronomeCycle(workspace);
+  if (!cycle) {
+    return new Err(
+      new Error("No active Metronome billing period to resync against.")
+    );
+  }
+  const bounds = makeSpendLimitCycleWindowBounds(
+    cycle.cycleStart,
+    cycle.cycleEnd
+  );
+
+  const consumed = await getEsConsumedProgrammaticAwuCredits(auth, { cycle });
+  if (consumed === null) {
+    // The Elasticsearch read failed: skip the SET so a transient outage can't
+    // overwrite a valid live counter with 0 and disable the backup cap.
+    return new Err(
+      new Error(
+        "Failed to read programmatic consumption from Elasticsearch; skipped resync to avoid erasing the counter."
+      )
+    );
+  }
+  const setResult = await setFixedWindowCount({
+    key: makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace(
+      workspace
+    ),
+    bounds,
+    value: Math.max(0, Math.round(consumed)),
+    logger,
+  });
+  return new Ok({ programmaticCounterSeeded: setResult.isOk() });
+}
+
 export type GetMemberUsageResponseBody = {
   member: MemberUsageType | null;
   // Optional for backward compatibility with clients deployed before target
@@ -1192,7 +1307,7 @@ export async function getMemberUsage({
   let freeSeatBalanceAwu: number | null = null;
   let freeSeatAllowanceAwu: number | null = null;
   if (membership.seatType === "free" && metronomeCustomerId) {
-    const balances = await listCustomerPerUserCreditBalances({
+    const balances = await getCachedCustomerPerUserCreditBalances({
       metronomeCustomerId,
       contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
     });

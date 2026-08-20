@@ -43,8 +43,8 @@ export function AnalyticsAutomationsPage() {
             <div className="flex max-w-[700px] flex-col gap-1">
               <Page.H variant="h3">Automations</Page.H>
               <Page.P variant="secondary">
-                Everything that runs on its own: what it costs, how often, and
-                who set it up.
+                Everything that runs on its own: who set it up, how often it
+                runs, what it costs.
               </Page.P>
             </div>
             <ConsumptionPeriodSelector

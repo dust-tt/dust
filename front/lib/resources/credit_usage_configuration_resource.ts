@@ -124,6 +124,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       usageCapCredits: number | null;
       allowMemberUpgradeRequests: boolean;
       upgradeRequestEmailEnabled: boolean;
+      requireUpgradeRequestReason: boolean;
       defaultPoolCapAwuCredits: number;
       programmaticMonthlyCapAwuCredits: number;
       autoSeatUpgradeEnabled: boolean;
@@ -191,6 +192,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       usageCapCredits: this.usageCapCredits,
       allowMemberUpgradeRequests: this.allowMemberUpgradeRequests,
       upgradeRequestEmailEnabled: this.upgradeRequestEmailEnabled,
+      requireUpgradeRequestReason: this.requireUpgradeRequestReason,
       defaultPoolCapAwuCredits: this.defaultPoolCapAwuCredits,
       programmaticMonthlyCapAwuCredits: this.programmaticMonthlyCapAwuCredits,
       balanceThresholdAwuCredits: this.balanceThresholdAwuCredits,
@@ -207,6 +209,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       usageCapCredits: this.usageCapCredits,
       allowMemberUpgradeRequests: String(this.allowMemberUpgradeRequests),
       upgradeRequestEmailEnabled: String(this.upgradeRequestEmailEnabled),
+      requireUpgradeRequestReason: String(this.requireUpgradeRequestReason),
       defaultPoolCapAwuCredits: this.defaultPoolCapAwuCredits,
       programmaticMonthlyCapAwuCredits: this.programmaticMonthlyCapAwuCredits,
       balanceThresholdAwuCredits: this.balanceThresholdAwuCredits,

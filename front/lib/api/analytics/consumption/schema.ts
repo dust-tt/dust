@@ -1,6 +1,9 @@
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/period";
-import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
+import {
+  CONSUMPTION_SCOPE_FILTER_KEYS,
+  CONSUMPTION_TOP_SORT_ORDER,
+} from "@app/lib/api/analytics/consumption/scope";
 import { z } from "zod";
 
 /** Shared validation for consumption analytics periods and filters. */
@@ -46,6 +49,9 @@ export const ConsumptionTopBodySchema = ConsumptionBodySchema.extend({
     .transform((limit) => limit ?? DEFAULT_CONSUMPTION_TOP_LIMIT),
   offset: z.number().int().nonnegative().default(0),
   search: z.string().trim().optional(),
+  // Always ranks by gross credits; see the comment on
+  // CONSUMPTION_TOP_SORT_ORDER for why other metrics aren't supported yet.
+  sortOrder: z.enum(CONSUMPTION_TOP_SORT_ORDER).optional().default("desc"),
 });
 
 export type ConsumptionTopBody = z.infer<typeof ConsumptionTopBodySchema>;

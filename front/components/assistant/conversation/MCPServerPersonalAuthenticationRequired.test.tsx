@@ -59,7 +59,7 @@ vi.mock("@app/lib/api/assistant/conversation/can_current_user_respond", () => ({
 }));
 
 vi.mock("@app/components/resources/resources_icons", () => ({
-  getAvatarFromIcon: () => null,
+  getIcon: () => null,
 }));
 
 vi.mock("@app/components/oauth/PersonalAuthCredentialOverrides", () => ({
@@ -72,21 +72,8 @@ vi.mock("@app/types/oauth/lib", () => ({
 }));
 
 vi.mock("@dust-tt/sparkle", () => ({
-  ActionCardBlock: ({
-    title,
-    description,
-    actions,
-  }: {
-    title: string;
-    description?: React.ReactNode;
-    actions?: React.ReactNode;
-  }) => (
-    <div>
-      <div>{title}</div>
-      <div>{description}</div>
-      <div>{actions}</div>
-    </div>
-  ),
+  Avatar: () => null,
+  Card: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   Button: ({
     label,
     onClick,
@@ -101,6 +88,7 @@ vi.mock("@dust-tt/sparkle", () => ({
     </button>
   ),
   Check: () => null,
+  Key01: () => null,
   XClose: () => null,
 }));
 
@@ -175,6 +163,19 @@ describe("MCPServerPersonalAuthenticationRequired", () => {
     refreshBlockedActionsMock.mockResolvedValue(undefined);
   });
 
+  it("explains why access is needed and that the account remains connected", () => {
+    renderCard();
+
+    expect(
+      screen.getByText("Dust needs access to GitHub to complete this action.")
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "Once connected, GitHub will remain connected for future requests."
+      )
+    ).toBeDefined();
+  });
+
   it("removes the completed action before refreshing blocked actions", async () => {
     const user = userEvent.setup();
     renderCard();
@@ -192,7 +193,7 @@ describe("MCPServerPersonalAuthenticationRequired", () => {
     );
   });
 
-  it("keeps Skip enabled while a connection attempt is in flight", async () => {
+  it("keeps Decline enabled while a connection attempt is in flight", async () => {
     const user = userEvent.setup();
     const pending = deferred<{ success: boolean }>();
     createPersonalConnectionMock.mockReturnValue(pending.promise);
@@ -201,8 +202,8 @@ describe("MCPServerPersonalAuthenticationRequired", () => {
 
     await user.click(screen.getByRole("button", { name: /Connect/i }));
 
-    // The connection promise is still pending, but Skip must remain clickable.
-    expect(screen.getByRole("button", { name: /Skip/i })).not.toBeDisabled();
+    // The connection promise is still pending, but Decline must remain clickable.
+    expect(screen.getByRole("button", { name: /Decline/i })).not.toBeDisabled();
 
     await act(async () => {
       pending.resolve({ success: true });
@@ -210,7 +211,7 @@ describe("MCPServerPersonalAuthenticationRequired", () => {
     });
   });
 
-  it("does not resolve completed when the user skips mid-connection", async () => {
+  it("does not resolve completed when the user declines mid-connection", async () => {
     const user = userEvent.setup();
     const pending = deferred<{ success: boolean }>();
     createPersonalConnectionMock.mockReturnValue(pending.promise);
@@ -218,9 +219,9 @@ describe("MCPServerPersonalAuthenticationRequired", () => {
     renderCard();
 
     await user.click(screen.getByRole("button", { name: /Connect/i }));
-    await user.click(screen.getByRole("button", { name: /Skip/i }));
+    await user.click(screen.getByRole("button", { name: /Decline/i }));
 
-    // Connection finishes *after* the user already skipped.
+    // Connection finishes *after* the user already declined.
     await act(async () => {
       pending.resolve({ success: true });
       await pending.promise;

@@ -1,6 +1,7 @@
 import { DEFAULT_AUTOMATION_TRIGGERS_LIMIT } from "@app/lib/api/analytics/automations/schema";
 import type { GetAutomationTriggersResponse } from "@app/lib/api/analytics/automations/triggers";
 import { fetchAutomationTriggers } from "@app/lib/api/analytics/automations/triggers";
+import { CARDINALITY_PRECISION_THRESHOLD } from "@app/lib/api/analytics/consumption/scope";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -181,6 +182,52 @@ describe("POST /api/w/:wId/analytics/automations/triggers", () => {
       error: { type: "invalid_request_error" },
     });
     expect(vi.mocked(fetchAutomationTriggers)).not.toHaveBeenCalled();
+  });
+
+  it("returns every trigger as CSV, ignoring the requested page", async () => {
+    vi.mocked(fetchAutomationTriggers).mockResolvedValue(new Ok(TRIGGERS));
+    const { workspace } = await setupTest();
+
+    const response = await postTriggersRequest(workspace.sId, {
+      limit: 10,
+      offset: 20,
+      format: "csv",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toContain("text/csv");
+    expect(vi.mocked(fetchAutomationTriggers)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        limit: CARDINALITY_PRECISION_THRESHOLD,
+        offset: 0,
+      })
+    );
+    const csv = await response.text();
+    expect(csv).toContain("Competitor watch");
+    expect(csv).toContain("Inbound triage");
+  });
+
+  it("forwards the period, search and filter to the CSV export", async () => {
+    vi.mocked(fetchAutomationTriggers).mockResolvedValue(new Ok(TRIGGERS));
+    const { workspace } = await setupTest();
+
+    const response = await postTriggersRequest(workspace.sId, {
+      period: "days",
+      days: 7,
+      search: "  competitor  ",
+      filter: { agentIds: ["agent1"], kinds: ["schedule"] },
+      format: "csv",
+    });
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchAutomationTriggers)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        search: "competitor",
+        filter: { agentIds: ["agent1"], kinds: ["schedule"] },
+      })
+    );
   });
 
   it("returns 500 when the search fails", async () => {

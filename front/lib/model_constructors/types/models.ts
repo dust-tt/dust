@@ -1,5 +1,6 @@
 export const GPT_5_6_SOL = "gpt-5.6-sol" as const;
 export const GPT_5_6_TERRA = "gpt-5.6-terra" as const;
+export const GPT_5_6_TERRA_LONG_CONTEXT = "gpt-5.6-terra-long-context" as const;
 export const GPT_5_6_LUNA = "gpt-5.6-luna" as const;
 export const GPT_5_5 = "gpt-5.5" as const;
 export const GPT_5_4 = "gpt-5.4" as const;
@@ -55,6 +56,7 @@ export const NOOP_MODEL = "noop" as const;
 export const MODELS = [
   GPT_5_6_SOL,
   GPT_5_6_TERRA,
+  GPT_5_6_TERRA_LONG_CONTEXT,
   GPT_5_6_LUNA,
   GPT_5_5,
   GPT_5_4,

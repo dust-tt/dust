@@ -98,8 +98,10 @@ export function CreditCostPopover({
     });
 
   const ownCredits = consumption?.billedCredits ?? credits ?? 0;
-  const childCredits = subAgentCredits ?? 0;
-  const totalCredits = ownCredits + childCredits;
+  const childCredits =
+    consumption?.subAgentBilledCredits ?? subAgentCredits ?? 0;
+  const totalCredits =
+    consumption?.totalBilledCredits ?? ownCredits + childCredits;
   const details = consumption?.details;
 
   if (totalCredits <= 0) {
@@ -138,7 +140,7 @@ export function CreditCostPopover({
       }}
     >
       <Tooltip
-        label="View credit breakdown"
+        label="View consumption breakdown"
         tooltipTriggerAsChild
         trigger={<PopoverTrigger asChild>{trigger}</PopoverTrigger>}
       />
@@ -159,7 +161,7 @@ export function CreditCostPopover({
           id={headingId}
           className="mb-1 text-sm font-semibold text-muted-foreground"
         >
-          Message credits
+          Message consumption
         </h2>
         <section aria-label="Charge summary">
           <dl>
@@ -172,7 +174,7 @@ export function CreditCostPopover({
 
         <hr className="-mx-3 border-t border-border" />
 
-        <section aria-label="Credit breakdown">
+        <section aria-label="Consumption breakdown">
           {isConsumptionLoading && !consumption ? (
             <div
               aria-busy="true"
@@ -231,7 +233,7 @@ export function CreditCostPopover({
             <Button
               variant="highlight-ghost"
               size="sm"
-              label="Conversation credits"
+              label="Conversation consumption"
               className="w-full"
               onClick={() => {
                 preventTriggerFocusOnCloseRef.current = true;

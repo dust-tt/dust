@@ -14,8 +14,17 @@ import type {
   ConversationConsumptionToolDetails,
 } from "@app/types/assistant/conversation_consumption";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import { Avatar, Chip, DustLogoSquare, Icon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Chip,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  DustLogoSquare,
+  Icon,
+} from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
+import { useState } from "react";
 
 const MAX_VISIBLE_TOOLS = 3;
 
@@ -172,28 +181,37 @@ interface AgentBreakdownProps {
 }
 
 function AgentBreakdown({ agent }: AgentBreakdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
     <section className="space-y-4">
-      <div className="flex min-w-0 items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <Avatar
-            name={agent.name}
-            visual={agent.pictureUrl ?? undefined}
-            size="xs"
-            isRounded
-          />
-          <h3 className="truncate text-base font-medium text-foreground">
-            {agent.name}
-          </h3>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <CollapsibleTrigger
+              aria-label={`${isOpen ? "Collapse" : "Expand"} credit details for ${agent.name}`}
+              className="size-11 shrink-0 justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <Avatar
+              name={agent.name}
+              visual={agent.pictureUrl ?? undefined}
+              size="xs"
+            />
+            <h3 className="truncate text-base font-medium text-foreground">
+              {agent.name}
+            </h3>
+          </div>
+          <span className="shrink-0 text-base text-muted-foreground">
+            {formatCreditValue(agent.billedCredits)}
+          </span>
         </div>
-        <span className="shrink-0 text-xs text-muted-foreground">
-          {formatCreditValue(agent.billedCredits)}
-        </span>
-      </div>
-      <ToolBreakdownCards
-        agentWorkCredits={agent.agentWorkCredits}
-        tools={agent.tools}
-      />
+        <CollapsibleContent className="pt-4">
+          <ToolBreakdownCards
+            agentWorkCredits={agent.agentWorkCredits}
+            tools={agent.tools}
+          />
+        </CollapsibleContent>
+      </Collapsible>
     </section>
   );
 }

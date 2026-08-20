@@ -14,6 +14,13 @@ import type { Readable } from "stream";
 export type { FileSystemEntry } from "@app/types/api/file_system/types";
 
 /**
+ * Identity of the node a write or mkdir touched. `nodeId` is the stable id that survives every move
+ * and rename, so it is what a feature stores when it must find the same file or directory again
+ * later. The GCS backend stores plain objects with no node table and reports null.
+ */
+export type FileSystemNodeIdentity = { nodeId: number | null };
+
+/**
  * Backend-agnostic file system interface.
  *
  * All paths are scoped paths (`{scopedPrefix}/{relPath}`, e.g. `conversation-{cId}/report.pdf`).
@@ -72,7 +79,7 @@ export interface FileSystemBackend {
     scopedPath: string,
     content: Buffer | string | Readable,
     contentType: string
-  ): Promise<Result<void, DustFileSystemError>>;
+  ): Promise<Result<FileSystemNodeIdentity, DustFileSystemError>>;
 
   /**
    * Create a directory placeholder at `scopedPath`.
@@ -80,7 +87,12 @@ export interface FileSystemBackend {
    */
   mkdir(
     scopedPath: string
-  ): Promise<Result<FileSystemDirectoryEntry, DustFileSystemError>>;
+  ): Promise<
+    Result<
+      { entry: FileSystemDirectoryEntry } & FileSystemNodeIdentity,
+      DustFileSystemError
+    >
+  >;
 
   /**
    * Returns `Err("not_found")` when the path does not exist and `ignoreNotFound` is false.

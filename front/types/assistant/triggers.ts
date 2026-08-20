@@ -67,7 +67,8 @@ export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
 
 export const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 42;
 
-export type TriggerExecutionMode = "fair_use" | "programmatic";
+export const TRIGGER_EXECUTION_MODES = ["user_pool", "workspace_pool"] as const;
+export type TriggerExecutionMode = (typeof TRIGGER_EXECUTION_MODES)[number];
 
 export const TRIGGER_STATUSES = [
   "enabled",
@@ -160,6 +161,7 @@ const TriggerBaseSchema = z.object({
   naturalLanguageDescription: z.string().nullable(),
   origin: z.enum(["user", "agent", "system"]),
   spaceId: z.string().nullable(),
+  executionMode: z.enum(TRIGGER_EXECUTION_MODES),
 });
 
 export const FullTriggerSchema = z.discriminatedUnion("kind", [
@@ -172,7 +174,6 @@ export const FullTriggerSchema = z.discriminatedUnion("kind", [
     configuration: WebhookConfigSchema,
     executionPerDayLimitOverride: z.number().nullable(),
     webhookSourceViewId: z.string().nullable(),
-    executionMode: z.enum(["fair_use", "programmatic"]).nullable(),
   }),
 ]);
 
@@ -187,7 +188,6 @@ export function isValidTriggerKind(kind: string): kind is TriggerKind {
 export type WebhookTriggerType = TriggerType & {
   kind: "webhook";
   webhookSourceViewId: string;
-  executionMode: TriggerExecutionMode | null;
   executionPerDayLimitOverride: number | null;
 };
 

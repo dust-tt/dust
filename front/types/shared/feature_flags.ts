@@ -56,6 +56,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Use GPT 5.6 Luna (high reasoning) as the default model for the @dust agent",
     stage: "on_demand",
   },
+  gpt_5_6_terra_long_context: {
+    description: "Access to GPT 5.6 Terra with its full context window",
+    stage: "on_demand",
+  },
   dust_agent_sonnet_5_default: {
     description: "Use Claude Sonnet 5 as the default model for the @dust agent",
     stage: "dust_only",
@@ -330,6 +334,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   pod_frame_tabs: {
     description:
       "Allow adding frames from the pod file system as custom tabs (title, icon, order) on the pod.",
+    stage: "dust_only",
+  },
+  pod_applications: {
+    description:
+      "Enable the Pod Apps UI: browse, import, clone, export and delete the apps published on a Pod.",
     stage: "dust_only",
   },
   group_permissions_shadow: {

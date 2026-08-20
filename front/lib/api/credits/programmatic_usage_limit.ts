@@ -1,7 +1,9 @@
+import { makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace } from "@app/lib/api/assistant/rate_limits";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import { getEsConsumedProgrammaticAwuCredits } from "@app/lib/api/credits/members_usage";
 import { reconcileProgrammatic } from "@app/lib/api/metronome/reconcile_credit_state";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
@@ -11,6 +13,13 @@ import {
 } from "@app/lib/metronome/alerts/programmatic_cap";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
+import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
+import {
+  addFixedWindowCount,
+  readFixedWindowCountWithLazySeed,
+} from "@app/lib/utils/rate_limiter";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -132,4 +141,101 @@ export async function syncProgrammaticUsageLimit({
   });
 
   return new Ok(undefined);
+}
+
+/**
+ * Reads the workspace programmatic spend-cap counter, lazily seeding it from
+ * Elasticsearch (programmatic-only AWU for the current cycle) on a 0 read.
+ * Mirrors the per-user / per-key lazy seed. Returns the effective count, or
+ * `null` on a Redis read error (caller fails open).
+ */
+async function readProgrammaticSpendLimitCountWithLazySeed(
+  auth: Authenticator,
+  { redisKey, bounds }: { redisKey: string; bounds: FixedWindowBounds }
+): Promise<number | null> {
+  return readFixedWindowCountWithLazySeed({
+    key: redisKey,
+    bounds,
+    logger,
+    fetchSeedValue: () => getEsConsumedProgrammaticAwuCredits(auth, {}),
+  });
+}
+
+/**
+ * Synchronous, Metronome-independent enforcement of the workspace programmatic
+ * spend cap, read at message-send time from the Redis fixed-window counter over
+ * the current contract billing cycle. Runs alongside the Metronome-driven
+ * `isProgrammaticApiBlocked` as a faster, independent backup.
+ *
+ * Only enforces a *positive* cap: a cap of 0 means "always depleted", which is
+ * owned by the programmatic credit-state machine (`isProgrammaticApiBlocked`),
+ * not a threshold — so the backup defers to it there. Returns `false` (does not
+ * block) with no positive cap, no billing period, or on a Redis read error
+ * (fail-open).
+ */
+export async function isProgrammaticSpendLimitRateCapReached(
+  auth: Authenticator
+): Promise<boolean> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  const threshold = config?.programmaticMonthlyCapAwuCredits ?? 0;
+  if (threshold <= 0) {
+    return false;
+  }
+
+  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  if (!bounds) {
+    return false;
+  }
+
+  const count = await readProgrammaticSpendLimitCountWithLazySeed(auth, {
+    redisKey:
+      makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace(workspace),
+    bounds,
+  });
+  if (count === null) {
+    logger.error(
+      { workspaceId: workspace.sId },
+      "[ProgrammaticSpendLimitRateCap] Failed to read fixed-window count; allowing message"
+    );
+    return false;
+  }
+
+  return count >= threshold;
+}
+
+/**
+ * Adds `incrementBy` AWU credits to the workspace programmatic spend-cap counter
+ * for the current contract billing cycle. Records for every workspace (the cap
+ * is resolved at enforcement/read time, not here). `incrementBy` is the
+ * newly-accrued delta for a message. No-op when the billing period can't be
+ * resolved.
+ */
+export async function recordProgrammaticSpendLimitUsage(
+  auth: Authenticator,
+  { incrementBy }: { incrementBy: number }
+): Promise<void> {
+  // Only whole positive credits are recordable (the counter is an integer
+  // INCRBY); skip anything else rather than letting it reach the counter.
+  if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
+    return;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+
+  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  if (!bounds) {
+    return;
+  }
+
+  await addFixedWindowCount({
+    key: makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace(
+      workspace
+    ),
+    bounds,
+    incrementBy,
+    logger,
+  });
 }

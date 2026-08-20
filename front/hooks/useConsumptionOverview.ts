@@ -27,14 +27,14 @@ export function useConsumptionOverview({
     filter: normalizedConsumptionFilter(filter),
   };
 
-  const { data, error, isValidating } = useConsumptionQuery<
+  const { data, error, isLoading, isValidating } = useConsumptionQuery<
     ConsumptionBody,
     GetConsumptionOverviewResponse
   >({ url, body, disabled });
 
   return {
     overview: data ?? null,
-    isOverviewLoading: !error && !data && !disabled,
+    isOverviewLoading: isLoading,
     isOverviewError: error,
     isOverviewValidating: isValidating,
   };

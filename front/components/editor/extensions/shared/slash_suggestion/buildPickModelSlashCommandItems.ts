@@ -1,10 +1,8 @@
 import type { SelectModelSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import { SELECT_MODEL_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import type {
-  ModelTierId,
-  Selection,
-} from "@app/components/model_picker/modelPickerUtils";
+import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
+import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import {
   buildModelSelection,
   buildTierSelection,
@@ -22,14 +20,7 @@ import type {
 import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
-import { BarFull, BarHalf, BarLow } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
-
-const TIER_ICON: Record<ModelTierId, ComponentType> = {
-  fast: BarLow,
-  standard: BarHalf,
-  complex: BarFull,
-};
 
 // Match the model picker's effort slider: light/medium/high only. `none` is not
 // a selectable effort row for reasoning models — it only appears as the single
@@ -88,7 +79,7 @@ function buildTierSlashCommandItems({
       action: SELECT_MODEL_SLASH_COMMAND_ACTION,
       data: { selection },
       description: getTierResolvedModelLabel(tier.id, streams),
-      icon: TIER_ICON[tier.id],
+      icon: MODEL_TIER_ICON[tier.id],
       id: `tier-${tier.id}`,
       label: tier.name,
     });

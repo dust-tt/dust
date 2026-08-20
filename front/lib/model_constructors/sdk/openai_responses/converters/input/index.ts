@@ -22,6 +22,7 @@ import type {
   Payload,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
+import type { Model } from "@app/lib/model_constructors/types/models";
 import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/model_constructors/types/tool_search";
 import type {
   ResponseCreateParams,
@@ -49,6 +50,7 @@ export function WithOpenAIResponsesInputConverter<
     assistantToolCallRequestToInputItem = assistantToolCallRequestToInputItem;
     assistantProviderPassthroughMessageToInputItems =
       assistantProviderPassthroughMessageToInputItems;
+    modelToHostModel = (modelId: Model): string => modelId;
 
     conversationToInput(
       conversation: Payload["conversation"]
@@ -86,7 +88,7 @@ export function WithOpenAIResponsesInputConverter<
       });
 
       return {
-        model: this.constructor.model,
+        model: this.modelToHostModel(this.constructor.model),
         max_output_tokens: this.constructor.maxOutputTokens,
         ...(cacheKey ? { prompt_cache_key: cacheKey } : {}),
         input: [

@@ -7,6 +7,7 @@ import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/action
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
@@ -15,7 +16,10 @@ import {
   AGENT_LOOP_SUBAGENT_HARD_CAP,
   checkCostAndSubagentsThresholds,
 } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
-import { RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS } from "@app/temporal/agent_loop/config";
+import {
+  MODEL_ACTIVITY_HEARTBEAT_INTERVAL_MS,
+  RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS,
+} from "@app/temporal/agent_loop/config";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
@@ -31,7 +35,7 @@ import {
 } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 import { startActiveObservation } from "@langfuse/tracing";
-import { Context } from "@temporalio/activity";
+import { Context, heartbeat } from "@temporalio/activity";
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
@@ -79,15 +83,27 @@ export async function runModelAndCreateActionsActivity({
   step: number;
   forceDisableToolUse?: boolean;
 }): Promise<RunModelAndCreateActionsResult | null> {
-  return tracer.trace("runModelAndCreateActionsActivity", async () =>
-    _runModelAndCreateActionsActivity({
-      authType,
-      checkForResume,
-      runAgentArgs,
-      runIds,
-      step,
-      forceDisableToolUse,
-    })
+  // The pre-stream setup (agent data loading, MCP tools listing, conversation rendering) can
+  // stall past the heartbeat timeout, e.g. on a hung MCP server's tools/list call: heartbeat
+  // immediately and periodically for the whole activity. The LLM stream adds its own heartbeats.
+  heartbeat();
+
+  return withPeriodicHeartbeat(
+    () =>
+      tracer.trace("runModelAndCreateActionsActivity", async () =>
+        _runModelAndCreateActionsActivity({
+          authType,
+          checkForResume,
+          runAgentArgs,
+          runIds,
+          step,
+          forceDisableToolUse,
+        })
+      ),
+    {
+      intervalMs: MODEL_ACTIVITY_HEARTBEAT_INTERVAL_MS,
+      heartbeatFn: () => heartbeat(),
+    }
   );
 }
 

@@ -93,6 +93,59 @@ describe("DatabaseFileSystemBackend", () => {
     );
   });
 
+  it("returns the id of the node a write or mkdir touched", async () => {
+    const { auth, conversation, dustFileSystem, pod, scope } =
+      await databaseFileSystem();
+    fileStorageMock.setFileMetadata(() => ({
+      size: "5",
+      contentType: "text/plain",
+      contentEncoding: "identity",
+    }));
+
+    const directory = await dustFileSystem.mkdir(
+      `conversation-${conversation.sId}/reports`
+    );
+    assert(directory.isOk());
+    expect(directory.value.entry).toMatchObject({
+      isDirectory: true,
+      fileName: "reports",
+    });
+    expect(directory.value.nodeId).not.toBeNull();
+
+    const written = await dustFileSystem.write(
+      `conversation-${conversation.sId}/reports/report.txt`,
+      "hello",
+      "text/plain"
+    );
+    assert(written.isOk());
+    const { nodeId } = written.value;
+    assert(nodeId !== null);
+
+    // Overwriting reports the node that already carries the name, not a new one.
+    const overwritten = await dustFileSystem.write(
+      `conversation-${conversation.sId}/reports/report.txt`,
+      "world",
+      "text/plain"
+    );
+    assert(overwritten.isOk());
+    expect(overwritten.value.nodeId).toBe(nodeId);
+
+    // The id is what a caller may hold onto: it still names the same file
+    // after a move, which a path would not.
+    const moved = await dustFileSystem.move({
+      src: `conversation-${conversation.sId}/reports/report.txt`,
+      dest: `pod-${pod.sId}/report.txt`,
+    });
+    assert(moved.isOk());
+    const node = await FileSystemNodeResource.fetchById(auth, scope, nodeId);
+    expect(node).toMatchObject({
+      id: nodeId,
+      rootKind: "pod",
+      rootId: pod.sId,
+      name: "report.txt",
+    });
+  });
+
   it("preserves the inode while moving a file from a conversation to its Pod", async () => {
     const { auth, conversation, dustFileSystem, pod, scope, conversationRoot } =
       await databaseFileSystem();

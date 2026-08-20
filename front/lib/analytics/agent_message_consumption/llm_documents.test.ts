@@ -2,11 +2,9 @@ import { buildLlmConsumptionDocuments } from "@app/lib/analytics/agent_message_c
 import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
 import { buildLatestMessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
-import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { RunResource } from "@app/lib/resources/run_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -74,10 +72,6 @@ describe("buildLlmConsumptionDocuments", () => {
       },
       { where: { id: agentMessageModelId, workspaceId: workspace.id } }
     );
-    await RunResource.setUsageTypeForRuns(auth, {
-      runs: [run],
-      usageType: USAGE_TYPE_USER,
-    });
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation,
       agentMessageModelId,

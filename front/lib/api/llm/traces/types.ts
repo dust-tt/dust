@@ -46,7 +46,7 @@ interface LLMTraceContextBase {
   userId?: string;
   /**
    * Origin of the triggering user message, set for agent_conversation calls.
-   * Used to classify free (unbilled) usage at the LLM call site.
+   * Used to classify usage as free, user, or programmatic at the LLM call site.
    */
   userMessageOrigin?: UserMessageOrigin;
 }

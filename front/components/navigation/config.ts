@@ -384,7 +384,7 @@ export const subNavigationAdmin = ({
 
   nav.push({
     id: "api",
-    label: "API & Programmatic",
+    label: "Programmatic Usage",
     menus: [
       {
         id: "api_keys",
@@ -399,7 +399,7 @@ export const subNavigationAdmin = ({
         : [
             {
               id: "credits_usage" as const,
-              label: "Programmatic Usage",
+              label: "Credits Usage",
               icon: Zap,
               href: `/w/${owner.sId}/developers/credits-usage`,
               current: isCurrent("credits_usage"),

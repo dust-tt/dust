@@ -7,7 +7,7 @@ import type {
 } from "@app/scripts/seed/factories";
 import {
   createSeedContext,
-  seedAgents,
+  seedAgent,
   seedSkill,
   seedSpace,
   seedUsers,
@@ -18,7 +18,11 @@ import * as fs from "fs";
 import * as path from "path";
 
 export interface Assets {
-  agents: AgentAsset[];
+  agents: {
+    incidentReporter: AgentAsset;
+    alfredUnpublishedAgent: AgentAsset;
+    alfredPrivateSpaceAgent: AgentAsset;
+  };
   users: UserAsset[];
   skills: {
     alfredSkill: SkillAsset;
@@ -45,6 +49,7 @@ const ALFRED_USER_ID = "SeedUserAlfred";
 const BOB_USER_ID = "SeedUserBob";
 const CHARLY_USER_ID = "SeedUserCharly";
 const RESTRICTED_SPACE_NAME = "Governance Restricted Space";
+const PRIVATE_SPACE_NAME = "Governance Private Space";
 
 makeScript({}, async ({ execute }, logger) => {
   const { agents, users, skills } = loadAssets();
@@ -73,11 +78,18 @@ makeScript({}, async ({ execute }, logger) => {
   logger.info("Seeding groups...");
   await seedGovernanceGroups(ctx, { alfred, bob, charly });
 
-  // 3. Create a restricted space holding the current user and Bob.
+  // 3. Create a restricted space holding the current user and Bob, and a private space holding
+  // Alfred only, which the current user cannot access.
   logger.info("Seeding the restricted space...");
   const restrictedSpace = await seedSpace(ctx, {
     name: RESTRICTED_SPACE_NAME,
     members: bob ? [bob] : [],
+  });
+  logger.info("Seeding the private space...");
+  const privateSpace = await seedSpace(ctx, {
+    name: PRIVATE_SPACE_NAME,
+    members: alfred ? [alfred] : [],
+    withContextUser: false,
   });
 
   // 4. Open skill creation to everyone
@@ -106,10 +118,19 @@ makeScript({}, async ({ execute }, logger) => {
     spaces: restrictedSpace ? [restrictedSpace] : [],
   });
 
-  // 6. Create an agent edited by the current user that uses Alfred's unpublished skill.
+  // 6. Create an agent edited by the current user that uses Alfred's unpublished skill, plus two
+  // agents owned by Alfred that the current user does not see: an unpublished one they do not
+  // edit, and a published one requiring the private space they are not a member of.
   logger.info("Seeding agents...");
-  await seedAgents(ctx, agents, {
+  await seedAgent(ctx, agents.incidentReporter, {
     skills: alfredSkill ? [alfredSkill] : [],
+  });
+  logger.info("Seeding Alfred's unpublished agent...");
+  await seedAgent(ctx, agents.alfredUnpublishedAgent, { owner: alfred });
+  logger.info("Seeding Alfred's private space agent...");
+  await seedAgent(ctx, agents.alfredPrivateSpaceAgent, {
+    owner: alfred,
+    spaces: privateSpace ? [privateSpace] : [],
   });
 
   logger.info("Governance seed completed");

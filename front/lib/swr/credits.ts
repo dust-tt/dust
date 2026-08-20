@@ -412,7 +412,12 @@ export function useMyUsage({
   const { data, error } = useSWRWithDefaults(
     `/api/w/${workspaceId}/credits/my-usage`,
     myUsageFetcher,
-    { disabled }
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60_000,
+      disabled,
+    }
   );
 
   return {

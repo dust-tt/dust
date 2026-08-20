@@ -69,7 +69,9 @@ export function PodPage() {
   const { hasFeature } = useFeatureFlags();
   const podId = useActivePodId();
   const hasFrameTabs = hasFeature("pod_frame_tabs");
-  const hasApps = hasFeature("sandbox_functions");
+  // Pod Apps sit on top of Pod Functions, so both flags are required.
+  const hasApps =
+    hasFeature("sandbox_functions") && hasFeature("pod_applications");
   const [editingFrameTab, setEditingFrameTab] = useState<PodFrameTab | null>(
     null
   );
@@ -129,6 +131,13 @@ export function PodPage() {
     () => buildPodNavItemsBeforeSettings(frameTabs, tabsOrder, navVisibility),
     [frameTabs, tabsOrder, navVisibility]
   );
+
+  // Drop an Apps selection (persisted preference or deep link) when the flag is off.
+  useEffect(() => {
+    if (currentTab === "apps" && !hasApps) {
+      handleTabChange("conversations");
+    }
+  }, [currentTab, handleTabChange, hasApps]);
 
   // Drop frame-tab selection when the flag is off or the tab was removed
   // (including restored preference pointing at a deleted tab).
@@ -247,6 +256,7 @@ export function PodPage() {
           setPodUiPreferences={setPodUiPreferences}
           mutatePodInfo={mutatePodInfo}
           frameTabs={frameTabs}
+          hasApps={hasApps}
         />
       </NavTabPill>
 

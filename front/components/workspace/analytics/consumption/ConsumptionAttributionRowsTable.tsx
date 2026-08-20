@@ -12,7 +12,11 @@ import {
   Icon,
   LoadingBlock,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  OnChangeFn,
+  SortingState,
+} from "@tanstack/react-table";
 import {
   flexRender,
   getCoreRowModel,
@@ -112,6 +116,8 @@ interface ConsumptionAttributionRowsTableProps {
   skeletonRowCount?: number;
   hasAvatar?: boolean;
   isAvatarRounded?: boolean;
+  sorting: SortingState;
+  onSortingChange: OnChangeFn<SortingState>;
 }
 
 export function ConsumptionAttributionRowsTable({
@@ -127,10 +133,14 @@ export function ConsumptionAttributionRowsTable({
   skeletonRowCount = ATTRIBUTION_SKELETON_ROW_COUNT,
   hasAvatar = false,
   isAvatarRounded = false,
+  sorting,
+  onSortingChange,
 }: ConsumptionAttributionRowsTableProps) {
   const table = useReactTable({
     data,
     columns,
+    state: { sorting },
+    onSortingChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });

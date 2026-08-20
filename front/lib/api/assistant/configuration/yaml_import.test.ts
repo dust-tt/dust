@@ -30,6 +30,9 @@ async function createPatchableAgent({
 
   const space = await SpaceFactory.regular(workspace);
   await GroupSpaceFactory.associate(space, globalGroup);
+  // `associate` seeds the space's group_permissions; refresh so this long-lived `auth`'s snapshot
+  // picks up the grant (space access is served from the table).
+  await auth.refresh();
 
   const tag = await TagFactory.create(workspace, { name: "yaml-import-test" });
   const template = await TemplateFactory.published();

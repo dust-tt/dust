@@ -2,7 +2,7 @@ import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/
 import { TRIGGER_STATUS_LABELS } from "@app/components/triggers/TriggerStatusChip";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { getTriggerStatusOwner } from "@app/types/assistant/triggers";
-import { Label, SliderToggle, Tooltip } from "@dust-tt/sparkle";
+import { Label, Lock01, SliderToggle, Tooltip } from "@dust-tt/sparkle";
 import { useController, useFormContext } from "react-hook-form";
 
 interface TriggerStatusToggleProps {
@@ -31,6 +31,7 @@ export function TriggerStatusToggle({
     <SliderToggle
       disabled={!isEditor || isStatusLocked}
       selected={isEnabled}
+      icon={isStatusLocked ? Lock01 : undefined}
       onClick={() => setStatus(isEnabled ? "disabled" : "enabled")}
     />
   );

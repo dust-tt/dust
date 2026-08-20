@@ -22,7 +22,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/consumption:
  *   get:
  *     summary: Get an agent message credit attribution
- *     description: Returns exact billed credits and an additive attribution reconciled exclusively through model input rows.
+ *     description: Returns direct, recursively spawned sub-agent, and total billed credits, plus an additive attribution reconciled exclusively through model input rows.
  *     tags:
  *       - Private Messages
  *     parameters:
@@ -57,7 +57,13 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                 billedCredits:
  *                   type: number
  *                   nullable: true
- *                   description: Authoritative credits billed for this agent message.
+ *                   description: Authoritative credits billed directly for this agent message, excluding sub-agents.
+ *                 subAgentBilledCredits:
+ *                   type: number
+ *                   description: Credits billed by sub-agents recursively spawned from this message.
+ *                 totalBilledCredits:
+ *                   type: number
+ *                   description: Total credits billed by this message and its recursively spawned sub-agents.
  *                 details:
  *                   type: object
  *                   nullable: true

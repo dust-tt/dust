@@ -182,8 +182,9 @@ export function loadAllModels() {
     ProviderModel,
     CloneModel,
     KeyModel,
-    FileModel,
+    // FileSystemNodeModel first: files references it through fileSystemNodeId.
     FileSystemNodeModel,
+    FileModel,
     FileSystemMutationModel,
     FileSystemBlobCleanupModel,
     SandboxFunctionModel,

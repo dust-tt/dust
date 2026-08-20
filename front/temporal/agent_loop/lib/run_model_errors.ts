@@ -10,6 +10,17 @@ const RUN_MODEL_LLM_UNRESPONSIVE_ERROR_TYPES = new Set<LLMErrorType>([
   "timeout_error",
 ]);
 
+const MODEL_INTERRUPTION_ERROR_TYPE = "ModelInterruption";
+
+// Same pattern as makeToolInterruptionError: a retryable failure so Temporal reruns the step on
+// another worker when the current one is shutting down.
+export function makeModelInterruptionError(): ApplicationFailure {
+  return ApplicationFailure.retryable(
+    "Model activity interrupted by worker shutdown",
+    MODEL_INTERRUPTION_ERROR_TYPE
+  );
+}
+
 export function makeRunModelLLMError({
   type,
   message,

@@ -41,6 +41,7 @@ import {
   DataTable,
   Icon,
   LoadingBlock,
+  ProgressBar,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -252,7 +253,6 @@ export function AwuUsageBar({
     poolLimit !== null ? Math.max(0, consumedFromPool - poolLimit) : 0;
 
   const sections: Array<{
-    key: string;
     value: number;
     className: string;
     label: string;
@@ -260,7 +260,6 @@ export function AwuUsageBar({
   const creditLabel = isFreeWithBalance ? "lifetime credits" : "seat allowance";
   if (seatConsumed > 0) {
     sections.push({
-      key: "seat-consumed",
       value: seatConsumed,
       className: seatColors.fill,
       label: `${formatCredits(seatConsumed)} of ${formatCredits(allowance)} ${creditLabel} used`,
@@ -268,7 +267,6 @@ export function AwuUsageBar({
   }
   if (seatRemaining > 0) {
     sections.push({
-      key: "seat-remaining",
       value: seatRemaining,
       className: seatColors.track,
       label: `${formatCredits(seatRemaining)} of ${formatCredits(allowance)} ${creditLabel} remaining`,
@@ -276,7 +274,6 @@ export function AwuUsageBar({
   }
   if (poolConsumed > 0) {
     sections.push({
-      key: "pool-consumed",
       value: poolConsumed,
       className: MUTED_BAR_CLASSES.fill,
       label: `${formatCredits(poolConsumed)} credits used from the workspace pool`,
@@ -284,7 +281,6 @@ export function AwuUsageBar({
   }
   if (poolRemaining !== null && poolRemaining > 0) {
     sections.push({
-      key: "pool-remaining",
       value: poolRemaining,
       className: MUTED_BAR_CLASSES.track,
       label: `${formatCredits(poolRemaining)} credits remaining before spend limit`,
@@ -293,6 +289,13 @@ export function AwuUsageBar({
   // Overage is surfaced in the tooltip only, not as a bar segment.
 
   const total = sections.reduce((sum, s) => sum + s.value, 0);
+  const usedPercentage =
+    total > 0
+      ? Math.min(
+          100,
+          Math.max(0, ((seatConsumed + poolConsumed) / total) * 100)
+        )
+      : 0;
 
   const hasSeatSections = seatConsumed > 0 || seatRemaining > 0;
   // Only surface the pool when there's actually a pool to spend from: a finite
@@ -359,26 +362,22 @@ export function AwuUsageBar({
     ) : null;
 
   const bar = (
-    <div className="flex w-full items-center">
-      <div className="flex w-full items-center gap-px">
-        {total > 0 ? (
-          sections.map((s) => (
-            <div
-              key={s.key}
-              className="flex h-3 items-center"
-              style={{ width: `${(s.value / total) * 100}%` }}
-            >
-              <div
-                className={`h-1 w-full rounded-full ${s.className} transition-all`}
-              />
-            </div>
-          ))
-        ) : (
-          <div
-            className={`h-1 w-full rounded-full ${MUTED_BAR_CLASSES.track}`}
-          />
-        )}
-      </div>
+    <div className="flex h-3 w-full items-center">
+      <ProgressBar
+        aria-label="Member credit usage"
+        aria-valuenow={usedPercentage}
+        aria-valuetext={
+          sections.length > 0
+            ? sections.map((section) => section.label).join(", ")
+            : "No credits available"
+        }
+        className="h-1 w-full gap-px bg-transparent"
+        values={
+          sections.length > 0
+            ? sections.map(({ value, className }) => ({ value, className }))
+            : [{ value: 1, className: MUTED_BAR_CLASSES.track }]
+        }
+      />
     </div>
   );
 

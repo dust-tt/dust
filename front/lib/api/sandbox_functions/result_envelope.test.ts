@@ -134,7 +134,7 @@ describe("normalizeSandboxFunctionResult", () => {
     });
   });
 
-  it("rejects an unsupported protocol version without falling through to legacy parsers", () => {
+  it("rejects an unsupported protocol version without falling through to the bare outcome parser", () => {
     expect(
       normalizeSandboxFunctionResult({
         protocolVersion: 4,
@@ -150,7 +150,7 @@ describe("normalizeSandboxFunctionResult", () => {
     });
   });
 
-  it("rejects a non-integer protocol version without falling through to legacy parsers", () => {
+  it("rejects a non-integer protocol version without falling through to the bare outcome parser", () => {
     expect(
       normalizeSandboxFunctionResult({
         protocolVersion: 3.5,
@@ -204,53 +204,6 @@ describe("normalizeSandboxFunctionResult", () => {
     });
   });
 
-  it("normalizes successful callbacks from the previous runner image", () => {
-    expect(
-      normalizeSandboxFunctionResult({
-        ok: true,
-        response: {
-          status: 200,
-          headers: { "content-type": "application/json" },
-          body: Buffer.from(JSON.stringify({ hello: "legacy" })).toString(
-            "base64"
-          ),
-          encoding: "base64",
-        },
-      })
-    ).toEqual({ ok: true, output: { hello: "legacy" } });
-  });
-
-  it("normalizes non-2xx and threw errors from the previous runner image", () => {
-    expect(
-      normalizeSandboxFunctionResult({
-        ok: true,
-        response: {
-          status: 500,
-          headers: {},
-          body: Buffer.from("boom").toString("base64"),
-          encoding: "base64",
-        },
-      })
-    ).toEqual({
-      ok: false,
-      error: {
-        code: "http_error",
-        message: "Function returned HTTP 500: boom",
-        status: 500,
-      },
-    });
-
-    expect(
-      normalizeSandboxFunctionResult({
-        ok: false,
-        error: { kind: "threw", message: "boom" },
-      })
-    ).toEqual({
-      ok: false,
-      error: { code: "threw", message: "boom" },
-    });
-  });
-
   it("fails malformed envelopes with the stable invalid-envelope message", () => {
     for (const result of [null, {}, { ok: true }]) {
       expect(normalizeSandboxFunctionResult(result)).toEqual({
@@ -292,7 +245,7 @@ describe("extractResultSpillPointer", () => {
     ).toEqual(pointer);
   });
 
-  it("returns null for inline outcomes and legacy shapes", () => {
+  it("returns null for inline outcomes", () => {
     for (const value of [
       { ok: true, output: { hello: "world" } },
       { ok: false, error: { code: "threw", message: "boom" } },
@@ -301,7 +254,6 @@ describe("extractResultSpillPointer", () => {
         delivery: "stdout",
         outcome: { ok: true, output: 1 },
       },
-      { ok: true, response: { status: 200 } },
       null,
       "not-an-envelope",
     ]) {

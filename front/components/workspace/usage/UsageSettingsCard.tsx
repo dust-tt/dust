@@ -36,33 +36,27 @@ export function UsageSettingsCard({
   const { usageSettings, isUsageSettingsLoading } = useUsageSettings({
     workspaceId,
   });
-  const { doUpdateUsageSettings } = useUpdateUsageSettings({ workspaceId });
+  const { doUpdateUsageSettings, isUpdatingUsageSettings } =
+    useUpdateUsageSettings({ workspaceId });
 
-  const [isSavingAllowUpgradeRequest, setIsSavingAllowUpgradeRequest] =
-    useState(false);
-  const [isSavingAutoSeatUpgrade, setIsSavingAutoSeatUpgrade] = useState(false);
   const [isEditingDefaultLimit, setIsEditingDefaultLimit] = useState(false);
 
   const handleToggleAllowUpgradeRequest = async () => {
-    setIsSavingAllowUpgradeRequest(true);
-    try {
-      await doUpdateUsageSettings({
-        allowUpgradeRequest: !usageSettings.allowUpgradeRequest,
-      });
-    } finally {
-      setIsSavingAllowUpgradeRequest(false);
-    }
+    await doUpdateUsageSettings({
+      allowUpgradeRequest: !usageSettings.allowUpgradeRequest,
+    });
+  };
+
+  const handleToggleRequireUpgradeRequestReason = async () => {
+    await doUpdateUsageSettings({
+      requireUpgradeRequestReason: !usageSettings.requireUpgradeRequestReason,
+    });
   };
 
   const handleToggleAutoSeatUpgrade = async () => {
-    setIsSavingAutoSeatUpgrade(true);
-    try {
-      await doUpdateUsageSettings({
-        autoSeatUpgradeEnabled: !usageSettings.autoSeatUpgradeEnabled,
-      });
-    } finally {
-      setIsSavingAutoSeatUpgrade(false);
-    }
+    await doUpdateUsageSettings({
+      autoSeatUpgradeEnabled: !usageSettings.autoSeatUpgradeEnabled,
+    });
   };
 
   const currentDefaultLimit = defaultUserSpendLimit?.awuCredits ?? 0;
@@ -133,14 +127,36 @@ export function UsageSettingsCard({
             <SliderToggle
               selected={usageSettings.allowUpgradeRequest}
               disabled={
-                readOnly ||
-                isSavingAllowUpgradeRequest ||
-                isUsageSettingsLoading
+                readOnly || isUpdatingUsageSettings || isUsageSettingsLoading
               }
               onClick={() => void handleToggleAllowUpgradeRequest()}
             />
           }
         />
+        <LockedSection
+          locked={!usageSettings.allowUpgradeRequest}
+          tooltipContent="Enable upgrade requests to enable this setting"
+        >
+          <SettingsList.Row
+            title="Require a reason for upgrade requests"
+            description="Members must explain why they need an upgrade before their request can be submitted."
+            action={
+              <SliderToggle
+                selected={
+                  usageSettings.allowUpgradeRequest &&
+                  usageSettings.requireUpgradeRequestReason
+                }
+                disabled={
+                  readOnly ||
+                  isUpdatingUsageSettings ||
+                  isUsageSettingsLoading ||
+                  !usageSettings.allowUpgradeRequest
+                }
+                onClick={() => void handleToggleRequireUpgradeRequestReason()}
+              />
+            }
+          />
+        </LockedSection>
         <SettingsList.Row
           title="Auto-upgrade seats"
           description={
@@ -166,7 +182,7 @@ export function UsageSettingsCard({
               }
               disabled={
                 readOnly ||
-                isSavingAutoSeatUpgrade ||
+                isUpdatingUsageSettings ||
                 isUsageSettingsLoading ||
                 !usageSettings.autoSeatUpgradeAvailable
               }

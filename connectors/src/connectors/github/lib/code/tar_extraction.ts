@@ -26,8 +26,10 @@ import * as tar from "tar-stream";
 
 export const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024;
 const MAX_CONCURRENT_GCS_UPLOADS = 200;
+const MAX_TARBALL_SPOOL_RETRIES = 3;
 const MAX_TARBALL_EXTRACTION_RETRIES = 3;
 const TARBALL_RETRY_BASE_DELAY_MS = 1000;
+const EXTRACTION_PROGRESS_LOG_INTERVAL = 1000;
 
 const ZLIB_ERROR_CODES = ["Z_BUF_ERROR", "Z_DATA_ERROR"] as const;
 type ZlibErrorCode = (typeof ZLIB_ERROR_CODES)[number];
@@ -140,7 +142,7 @@ function shouldProcessFile(
   // Check extension whitelist and filename whitelist.
   const isWhitelisted = isSupportedFile(fileName);
   if (!isWhitelisted) {
-    childLogger.info(
+    childLogger.debug(
       { path: header.name, fileName },
       "File not whitelisted, skipping."
     );
@@ -189,6 +191,108 @@ function parseGitHubPath(
   }
 }
 
+/**
+ * Spool the GitHub tarball into a single GCS object at full network speed.
+ *
+ * Extraction (per-file GCS uploads) is orders of magnitude slower than the raw download.
+ * When both share one pipeline, upload backpressure stalls the GitHub socket until
+ * codeload closes it, and every retry re-downloads from scratch. Spooling keeps the
+ * GitHub connection open only for the duration of the download, and lets extraction
+ * retries re-read from GCS instead of GitHub.
+ */
+async function spoolTarballToGCS(
+  tarballStreamProvider: TarballStreamProvider,
+  gcsManager: GCSRepositoryManager,
+  tarballGcsPath: string,
+  childLogger: Logger
+): Promise<Result<{ bytesSpooled: number }, TarballNotFoundError>> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < MAX_TARBALL_SPOOL_RETRIES; attempt++) {
+    const downloadStartedAtMs = Date.now();
+    let bytesReceived = 0;
+    let contentLength: number | null = null;
+
+    try {
+      const streamResult = await tarballStreamProvider.getStream();
+
+      // If the stream provider returns an error (e.g., tarball not found), propagate it.
+      if (streamResult.isErr()) {
+        return new Err(streamResult.error);
+      }
+
+      const { stream: tarballStream } = streamResult.value;
+      contentLength = streamResult.value.contentLength;
+
+      // Track bytes received for content-length validation.
+      // Use Buffer.byteLength for strings to handle multi-byte characters correctly.
+      tarballStream.on("data", (chunk: Buffer | string) => {
+        bytesReceived += Buffer.isBuffer(chunk)
+          ? chunk.length
+          : Buffer.byteLength(chunk, "utf8");
+      });
+
+      await gcsManager.uploadTarballStream(tarballGcsPath, tarballStream);
+
+      // Validate content-length if provided.
+      if (contentLength !== null && bytesReceived < contentLength) {
+        throw new Error(
+          `Incomplete tarball download: received ${bytesReceived} bytes, expected ${contentLength} bytes`
+        );
+      }
+
+      childLogger.info(
+        {
+          bytesReceived,
+          contentLength,
+          downloadDurationMs: Date.now() - downloadStartedAtMs,
+        },
+        "Spooled GitHub tarball to GCS"
+      );
+
+      return new Ok({ bytesSpooled: bytesReceived });
+    } catch (error) {
+      lastError = error;
+
+      const spoolContext = {
+        ...describeGithubError(error),
+        error,
+        bytesReceived,
+        contentLength,
+        downloadDurationMs: Date.now() - downloadStartedAtMs,
+        maxSpoolAttempts: MAX_TARBALL_SPOOL_RETRIES,
+        missingBytes:
+          contentLength !== null ? contentLength - bytesReceived : null,
+        spoolAttempt: attempt,
+      };
+
+      // Check if this is a retryable error.
+      if (
+        isRetryableStreamError(error) &&
+        attempt < MAX_TARBALL_SPOOL_RETRIES - 1
+      ) {
+        const delayMs = TARBALL_RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+        childLogger.warn(
+          { ...spoolContext, delay: delayMs },
+          "Retryable stream error while spooling tarball to GCS, will retry"
+        );
+        await setTimeoutAsync(delayMs);
+        continue;
+      }
+
+      // Non-retryable error or max retries reached.
+      childLogger.error(
+        spoolContext,
+        "Non-retryable error or max retries reached while spooling tarball to GCS"
+      );
+      throw error;
+    }
+  }
+
+  // This should not be reached, but just in case.
+  throw lastError;
+}
+
 export async function extractGitHubTarballToGCS(
   tarballStreamProvider: TarballStreamProvider,
   { repoId, connectorId }: TarExtractionOptions,
@@ -204,9 +308,13 @@ export async function extractGitHubTarballToGCS(
   // Initialize GCS manager.
   const gcsManager = new GCSRepositoryManager();
   const gcsBasePath = gcsManager.generateBasePath(connectorId, repoId);
+  // The tarball is spooled outside gcsBasePath so index creation, which lists every
+  // object under the base path, never sees it. The bucket lifecycle policy deletes it.
+  const tarballGcsPath = gcsManager.generateTarballGcsPath(connectorId, repoId);
 
   const childLogger = logger.child({
     gcsBasePath,
+    tarballGcsPath,
   });
 
   childLogger.info(
@@ -214,12 +322,24 @@ export async function extractGitHubTarballToGCS(
     "Starting GitHub tarball extraction to GCS"
   );
 
+  const spoolResult = await spoolTarballToGCS(
+    tarballStreamProvider,
+    gcsManager,
+    tarballGcsPath,
+    childLogger
+  );
+
+  if (spoolResult.isErr()) {
+    return new Err(spoolResult.error);
+  }
+
+  const { bytesSpooled } = spoolResult.value;
+
   let lastError: unknown;
   for (let attempt = 0; attempt < MAX_TARBALL_EXTRACTION_RETRIES; attempt++) {
     let filesUploaded = 0;
     let filesSkipped = 0;
-    let contentLength: number | null = null;
-    const downloadStartedAtMs = Date.now();
+    const extractionStartedAtMs = Date.now();
     const seenDirs = new Set<string>();
 
     // Create upload queue to limit concurrent GCS uploads.
@@ -271,7 +391,17 @@ export async function extractGitHubTarballToGCS(
 
             // Upload file to GCS using hybrid approach.
             filesUploaded++;
-            childLogger.info(
+            if (filesUploaded % EXTRACTION_PROGRESS_LOG_INTERVAL === 0) {
+              childLogger.info(
+                {
+                  filesUploaded,
+                  filesSkipped,
+                  extractionDurationMs: Date.now() - extractionStartedAtMs,
+                },
+                "GitHub tarball extraction progress"
+              );
+            }
+            childLogger.debug(
               { gcsPath, fileName, filePath, filesUploaded, size: header.size },
               "Uploading file to GCS"
             );
@@ -298,7 +428,7 @@ export async function extractGitHubTarballToGCS(
           } else {
             // Skip filtered file but must drain stream to prevent backpressure.
             filesSkipped++;
-            childLogger.info(
+            childLogger.debug(
               { fileName: header.name },
               "Skipping file (filtered out)"
             );
@@ -325,7 +455,7 @@ export async function extractGitHubTarballToGCS(
 
           if (shouldInclude && cleanPath) {
             seenDirs.add(cleanPath);
-            childLogger.info(
+            childLogger.debug(
               { dirPath: cleanPath },
               "Found directory in tarball"
             );
@@ -335,7 +465,7 @@ export async function extractGitHubTarballToGCS(
           drainAndNext();
         } else {
           // Skip non-file/directory entries but drain to prevent backpressure.
-          childLogger.info(
+          childLogger.debug(
             { fileName: header.name, type: header.type },
             "Skipping non-file/directory entry"
           );
@@ -359,37 +489,27 @@ export async function extractGitHubTarballToGCS(
     });
 
     try {
-      // Get a fresh stream for this attempt.
-      const streamResult = await tarballStreamProvider.getStream();
+      // Get a fresh read stream over the spooled tarball for this attempt.
+      const tarballStream = gcsManager.createTarballReadStream(tarballGcsPath);
 
-      // If the stream provider returns an error (e.g., tarball not found), propagate it.
-      if (streamResult.isErr()) {
-        return new Err(streamResult.error);
-      }
-
-      const { stream: tarballStream } = streamResult.value;
-      contentLength = streamResult.value.contentLength;
-
-      // Track bytes received for content-length validation.
-      // Use Buffer.byteLength for strings to handle multi-byte characters correctly.
+      // Track bytes received to validate against the spooled size.
       tarballStream.on("data", (chunk: Buffer | string) => {
         bytesReceived += Buffer.isBuffer(chunk)
           ? chunk.length
           : Buffer.byteLength(chunk, "utf8");
       });
 
-      // Stream: GitHub tarball -> gunzip -> tar extract -> GCS upload.
+      // Stream: spooled GCS tarball -> gunzip -> tar extract -> GCS upload.
       await pipeline(tarballStream, gunzip(), extract);
 
-      // Validate content-length if provided.
-      if (contentLength !== null && bytesReceived < contentLength) {
+      if (bytesReceived < bytesSpooled) {
         throw new Error(
-          `Incomplete tarball download: received ${bytesReceived} bytes, expected ${contentLength} bytes`
+          `Incomplete tarball read from GCS: received ${bytesReceived} bytes, expected ${bytesSpooled} bytes`
         );
       }
 
       childLogger.info(
-        { repoId, connectorId, bytesReceived, contentLength },
+        { repoId, connectorId, bytesReceived, bytesSpooled },
         "Tarball extraction completed"
       );
 
@@ -440,36 +560,35 @@ export async function extractGitHubTarballToGCS(
     } catch (error) {
       lastError = error;
 
-      const downloadContext = {
-        ...describeGithubError(error),
+      const extractionContext = {
         error,
         bytesReceived,
-        contentLength,
-        downloadDurationMs: Date.now() - downloadStartedAtMs,
+        bytesSpooled,
         extractionAttempt: attempt,
+        extractionDurationMs: Date.now() - extractionStartedAtMs,
         filesUploaded,
         maxExtractionAttempts: MAX_TARBALL_EXTRACTION_RETRIES,
-        missingBytes:
-          contentLength !== null ? contentLength - bytesReceived : null,
+        missingBytes: bytesSpooled - bytesReceived,
       };
 
-      // Check if this is a retryable error.
+      // Check if this is a retryable error. Retries re-read the spooled tarball from
+      // GCS, so they never re-download from GitHub.
       if (
         isRetryableStreamError(error) &&
         attempt < MAX_TARBALL_EXTRACTION_RETRIES - 1
       ) {
-        const delay = TARBALL_RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+        const delayMs = TARBALL_RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
         childLogger.warn(
-          { ...downloadContext, delay },
+          { ...extractionContext, delay: delayMs },
           "Retryable stream error during tarball extraction, will retry"
         );
-        await setTimeoutAsync(delay);
+        await setTimeoutAsync(delayMs);
         continue;
       }
 
       // Non-retryable error or max retries reached.
       childLogger.error(
-        downloadContext,
+        extractionContext,
         "Non-retryable error or max retries reached during tarball extraction"
       );
       throw error;

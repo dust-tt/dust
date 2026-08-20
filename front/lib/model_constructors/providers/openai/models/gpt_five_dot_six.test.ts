@@ -1,13 +1,19 @@
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import { DustOpenAIGptFiveDotSixTerraLongContextGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_terra_long_context_global_openai_responses";
+import { isEndpointAvailable } from "@app/lib/llms/stream/utils/is_endpoint_available";
 import { OpenAIGptFiveDotSixLunaEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_luna_eu_openai_responses";
 import { OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_luna_global_openai_responses";
 import { OpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_sol_eu_openai_responses";
 import { OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_sol_global_openai_responses";
 import { OpenAIGptFiveDotSixTerraEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_terra_eu_openai_responses";
 import { OpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_terra_global_openai_responses";
+import { OpenAIGptFiveDotSixTerraLongContextEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_terra_long_context_eu_openai_responses";
+import { OpenAIGptFiveDotSixTerraLongContextGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_terra_long_context_global_openai_responses";
+import { GPT_5_6_TERRA_LONG_CONTEXT } from "@app/lib/model_constructors/types/models";
 import {
   GPT_5_6_LUNA_MODEL_CONFIG,
   GPT_5_6_SOL_MODEL_CONFIG,
+  GPT_5_6_TERRA_LONG_CONTEXT_MODEL_CONFIG,
   GPT_5_6_TERRA_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
@@ -63,5 +69,53 @@ describe("GPT 5.6 model configurations", () => {
       expect(endpoint.contextSize).toBe(EXPECTED_CONTEXT_SIZE);
       expect(endpoint.maxOutputTokens).toBe(EXPECTED_MAX_OUTPUT_TOKENS);
     }
+  });
+
+  it("exposes Terra long context as a separate provider-backed model", () => {
+    const endpoint =
+      OpenAIGptFiveDotSixTerraLongContextGlobalOpenAIResponsesStream;
+    const instance = new endpoint({ OPENAI_API_KEY: "test" });
+    const payload = instance.buildRequestPayload(
+      { conversation: { system: [], messages: [] } },
+      endpoint.configSchema.parse({})
+    );
+
+    expect(endpoint.contextSize).toBe(1_050_000);
+    expect(endpoint.maxOutputTokens).toBe(128_000);
+    expect(
+      OpenAIGptFiveDotSixTerraLongContextEuropeOpenAIResponsesStream.contextSize
+    ).toBe(1_050_000);
+    expect(GPT_5_6_TERRA_LONG_CONTEXT_MODEL_CONFIG.contextSize).toBe(1_050_000);
+    expect(payload.model).toBe("gpt-5.6-terra");
+    expect(payload.max_output_tokens).toBe(128_000);
+  });
+
+  it("gates the Terra long-context endpoint behind its feature flag", () => {
+    const workspace = {
+      featureFlags: [],
+      isEnterprise: true,
+      isCreditPriced: true,
+    };
+    const modelFilter = {
+      model: { eq: GPT_5_6_TERRA_LONG_CONTEXT },
+    };
+
+    expect(
+      isEndpointAvailable(
+        DustOpenAIGptFiveDotSixTerraLongContextGlobalOpenAIResponsesStream,
+        workspace,
+        modelFilter
+      )
+    ).toBe(false);
+    expect(
+      isEndpointAvailable(
+        DustOpenAIGptFiveDotSixTerraLongContextGlobalOpenAIResponsesStream,
+        {
+          ...workspace,
+          featureFlags: ["gpt_5_6_terra_long_context"],
+        },
+        modelFilter
+      )
+    ).toBe(true);
   });
 });

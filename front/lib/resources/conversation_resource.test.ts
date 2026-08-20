@@ -19,10 +19,7 @@ import { ConversationForkResource } from "@app/lib/resources/conversation_fork_r
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import {
-  createAccessControlListFromSpacesWithMap,
-  createSpaceIdToGroupsMap,
-} from "@app/lib/resources/permission_utils";
+import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -1340,72 +1337,33 @@ describe("fetchMCPServerViews", () => {
   });
 });
 
-describe("createResourcePermissionsFromSpacesWithMap", () => {
+describe("canReadRequestedSpaces", () => {
   let auth: Authenticator;
   let globalSpace: SpaceResource;
-  let regularSpace: SpaceResource;
-  let spaceIdToGroupsMap: Map<number, string[]>;
+  let spaceById: Map<number, SpaceResource>;
 
   beforeEach(async () => {
-    const {
-      authenticator,
-      globalSpace: gs,
-      workspace,
-    } = await createResourceTest({
+    const { authenticator, globalSpace: gs } = await createResourceTest({
       role: "admin",
     });
 
     auth = authenticator;
     globalSpace = gs;
-    regularSpace = await SpaceFactory.regular(workspace);
-
-    const allSpaces = [globalSpace, regularSpace];
-    spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, allSpaces);
+    spaceById = new Map([[globalSpace.id, globalSpace]]);
   });
 
-  it("should resolve space ids to group permissions", () => {
-    const permissions = createAccessControlListFromSpacesWithMap(
-      spaceIdToGroupsMap,
-      [globalSpace.id],
-      auth.getNonNullableWorkspace().id
+  it("returns true when the caller can read every requested space", () => {
+    expect(canReadRequestedSpaces(auth, spaceById, [globalSpace.id])).toBe(
+      true
     );
-
-    expect(permissions).toBeDefined();
-    expect(Array.isArray(permissions)).toBe(true);
-    expect(permissions.length).toBeGreaterThan(0);
-    expect(permissions[0]).toHaveProperty("groups");
   });
 
-  it("should handle multiple space ids", () => {
-    const permissions = createAccessControlListFromSpacesWithMap(
-      spaceIdToGroupsMap,
-      [globalSpace.id, regularSpace.id],
-      auth.getNonNullableWorkspace().id
-    );
-
-    expect(permissions).toBeDefined();
-    expect(permissions.length).toBeGreaterThan(0);
+  it("treats a requested space missing from the map as not readable", () => {
+    expect(canReadRequestedSpaces(auth, spaceById, [99999])).toBe(false);
   });
 
-  it("should throw assertion error for missing spaces", () => {
-    expect(() =>
-      createAccessControlListFromSpacesWithMap(
-        spaceIdToGroupsMap,
-        [99999], // Non-existent space Id.
-        auth.getNonNullableWorkspace().id
-      )
-    ).toThrow("No group IDs found for space ID 99999");
-  });
-
-  it("should handle empty space ids array", () => {
-    const permissions = createAccessControlListFromSpacesWithMap(
-      spaceIdToGroupsMap,
-      [],
-      auth.getNonNullableWorkspace().id
-    );
-
-    expect(permissions).toBeDefined();
-    expect(permissions).toEqual([]);
+  it("returns true for an empty requested-space list", () => {
+    expect(canReadRequestedSpaces(auth, spaceById, [])).toBe(true);
   });
 });
 

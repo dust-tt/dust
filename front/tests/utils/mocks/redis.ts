@@ -117,9 +117,18 @@ class RedisMock {
           return "OK";
         }
       ),
-      del: vi.fn(async (key: string) => {
-        this.stringStore.delete(key);
-        hashStore.delete(key);
+      del: vi.fn(async (keyOrKeys: string | string[]) => {
+        const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
+        let deleted = 0;
+        for (const key of keys) {
+          if (this.stringStore.delete(key)) {
+            deleted += 1;
+          }
+          if (hashStore.delete(key)) {
+            deleted += 1;
+          }
+        }
+        return deleted;
       }),
       ttl: vi.fn(async (key: string) => {
         const entry = this.stringStore.get(key);

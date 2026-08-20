@@ -1,3 +1,4 @@
+import { defineCachedResourceList } from "@app/lib/api/resources/cached_resource_lookup";
 import type { Authenticator } from "@app/lib/auth";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -19,6 +20,16 @@ const listForWorkspaceQuery = new RequestCachedQuery<
   FeatureFlagResource[]
 >();
 
+const FEATURE_FLAG_CACHE_VERSION = 1;
+
+type CachedFeatureFlagData = {
+  id: ModelId;
+  workspaceId: ModelId;
+  name: WhitelistableFeature;
+  createdAt: number;
+  updatedAt: number;
+};
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -35,18 +46,56 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
     super(FeatureFlagModel, blob);
   }
 
+  private static async listForWorkspaceFromDatabase(
+    workspaceModelId: ModelId,
+    transaction?: Transaction
+  ): Promise<FeatureFlagResource[]> {
+    const flags = await FeatureFlagModel.findAll({
+      where: { workspaceId: workspaceModelId },
+      transaction,
+    });
+
+    return flags
+      .map((flag) => new FeatureFlagResource(FeatureFlagModel, flag.get()))
+      .filter((flag) => isWhitelistableFeature(flag.name));
+  }
+
+  private static readonly listForWorkspaceCache = defineCachedResourceList<
+    ModelId,
+    CachedFeatureFlagData[],
+    FeatureFlagResource
+  >({
+    id: "feature_flags_by_workspace",
+    version: FEATURE_FLAG_CACHE_VERSION,
+    key: (workspaceModelId) => String(workspaceModelId),
+    loadFromDatabase: FeatureFlagResource.listForWorkspaceFromDatabase,
+    toSnapshot: (flags) =>
+      flags.map((flag) => ({
+        id: flag.id,
+        workspaceId: flag.workspaceId,
+        name: flag.name,
+        createdAt: flag.createdAt.getTime(),
+        updatedAt: flag.updatedAt.getTime(),
+      })),
+    fromSnapshot: (flags) =>
+      flags.map(
+        (flag) =>
+          new FeatureFlagResource(FeatureFlagModel, {
+            id: flag.id,
+            workspaceId: flag.workspaceId,
+            name: flag.name,
+            createdAt: new Date(flag.createdAt),
+            updatedAt: new Date(flag.updatedAt),
+          })
+      ),
+  });
+
   static async listForWorkspace(
     workspace: WorkspaceResource | WorkspaceType | LightWorkspaceType
   ): Promise<FeatureFlagResource[]> {
-    return listForWorkspaceQuery.get(workspace.id, async () => {
-      const flags = await FeatureFlagModel.findAll({
-        where: { workspaceId: workspace.id },
-      });
-
-      return flags
-        .map((f) => new FeatureFlagResource(FeatureFlagModel, f.get()))
-        .filter((flag) => isWhitelistableFeature(flag.name));
-    });
+    return listForWorkspaceQuery.get(workspace.id, () =>
+      FeatureFlagResource.listForWorkspaceCache.fetch(workspace.id)
+    );
   }
 
   static async isEnabledForWorkspace(
@@ -71,6 +120,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
       workspaceId: workspace.id,
       name,
     });
+    await FeatureFlagResource.listForWorkspaceCache.invalidate(workspace.id);
   }
 
   static async disable(
@@ -83,6 +133,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
         name,
       },
     });
+    await FeatureFlagResource.listForWorkspaceCache.invalidate(workspace.id);
     return count > 0;
   }
 
@@ -104,6 +155,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
           name,
         }))
       );
+      await FeatureFlagResource.listForWorkspaceCache.invalidate(workspace.id);
     }
   }
 
@@ -117,6 +169,43 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
         name: names,
       },
     });
+    await FeatureFlagResource.listForWorkspaceCache.invalidate(workspace.id);
+  }
+
+  static async disableForAllWorkspaces(
+    name: WhitelistableFeature
+  ): Promise<number> {
+    const flags = await FeatureFlagModel.findAll({
+      attributes: ["workspaceId"],
+      where: { name },
+      // WORKSPACE_ISOLATION_BYPASS: this maintenance operation intentionally disables one flag across all workspaces.
+      // @ts-expect-error -- Cross-workspace query by design.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+    const workspaceModelIds = Array.from(
+      new Set(flags.map((flag) => flag.workspaceId))
+    );
+
+    const deleted = await FeatureFlagModel.destroy({
+      where: { name },
+      // WORKSPACE_ISOLATION_BYPASS: this maintenance operation intentionally disables one flag across all workspaces.
+      // @ts-expect-error -- Cross-workspace mutation by design.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    await FeatureFlagResource.listForWorkspaceCache.invalidateMany(
+      workspaceModelIds
+    );
+
+    return deleted;
+  }
+
+  static async countForAllWorkspaces(
+    name: WhitelistableFeature
+  ): Promise<number> {
+    return FeatureFlagModel.count({ where: { name } });
   }
 
   static async deleteAllForWorkspace(
@@ -129,6 +218,10 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
       where: { workspaceId: workspace.id },
       transaction,
     });
+    await FeatureFlagResource.listForWorkspaceCache.invalidate(
+      workspace.id,
+      transaction
+    );
   }
 
   // Count/delete rows for a flag name that is no longer in WHITELISTABLE_FEATURES.
@@ -151,6 +244,10 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
       },
       transaction,
     });
+    await FeatureFlagResource.listForWorkspaceCache.invalidate(
+      this.workspaceId,
+      transaction
+    );
     return new Ok(this.id);
   }
 }

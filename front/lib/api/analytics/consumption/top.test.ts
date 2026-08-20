@@ -729,4 +729,33 @@ describe("consumption top rankings", () => {
     expect(result.value.agents[0].credits).toBe(3);
     expect(result.value.agents[0].previousCredits).toBeNull();
   });
+
+  it("ranks ascending when sortOrder is asc", async () => {
+    const { auth } = await setup();
+    mockLabels({ agent1: "@dust" });
+    mockAggs({
+      buckets: [
+        {
+          key: "agent1",
+          doc_count: 1,
+          credit_micro: { value: 3_000_000 },
+          messages: { value: 1 },
+        },
+      ],
+      totalMicro: 3_000_000,
+    });
+
+    const result = await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 10,
+      sortOrder: "asc",
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const [, options] = rankingSearchCall();
+    expect(options?.aggregations?.by_group?.terms).toMatchObject({
+      order: { credit_micro: "asc" },
+    });
+  });
 });

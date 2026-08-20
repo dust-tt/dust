@@ -37,6 +37,7 @@ export function useAutomationsTriggers({
     offset,
     search: search?.trim(),
     filter,
+    format: "json",
   };
 
   const { data, error, isLoading, isValidating } = useConsumptionQuery<

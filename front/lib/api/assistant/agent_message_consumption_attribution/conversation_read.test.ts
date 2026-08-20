@@ -9,6 +9,7 @@ import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { describe, expect, it } from "vitest";
 
@@ -135,7 +136,7 @@ describe("getConversationConsumption", () => {
         agentWorkCredits: 5,
         tools: [
           {
-            label: "Test Tool",
+            label: "Test tool",
             callCount: 1,
             attributedCredits: 5,
             directCredits: 3,
@@ -346,9 +347,15 @@ describe("getConversationConsumption", () => {
     });
   });
 
-  it("includes direct and nested run-agent messages from child conversations", async () => {
-    const { auth, workspace, conversation, agentMessage, runUsageModelId } =
-      await setupMessage();
+  it("attributes hidden helper credits to their parent agent", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      agentMessage,
+      agentConfiguration,
+      runUsageModelId,
+    } = await setupMessage();
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation,
       agentMessageModelId: agentMessage.agentMessageId,
@@ -360,10 +367,6 @@ describe("getConversationConsumption", () => {
     const childAgent = await AgentConfigurationFactory.createTestAgent(auth, {
       name: `Child ${generateRandomModelSId()}`,
     });
-    const grandChildAgent = await AgentConfigurationFactory.createTestAgent(
-      auth,
-      { name: `Grandchild ${generateRandomModelSId()}` }
-    );
     const runAgentServerId = internalMCPServerNameToSId({
       name: "run_agent",
       workspaceId: workspace.id,
@@ -480,7 +483,7 @@ describe("getConversationConsumption", () => {
       depth: 1,
     });
     await createAttributedSubAgent({
-      agentConfigurationId: grandChildAgent.sId,
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST_TASK,
       originMessageId: child.messageId,
       parentAgentMessageModelId: child.agentMessageModelId,
       parentConversationModelId: child.conversationModelId,
@@ -488,18 +491,31 @@ describe("getConversationConsumption", () => {
       depth: 2,
     });
 
-    await expect(
-      getConversationConsumption(auth, { conversation })
-    ).resolves.toMatchObject({
-      billedCredits: BILLED_CREDITS + 7 + 3,
-      details: {
-        agentWorkCredits: BILLED_CREDITS + 7 + 3,
-        agents: expect.arrayContaining([
-          expect.objectContaining({ billedCredits: BILLED_CREDITS }),
-          expect.objectContaining({ billedCredits: 7 }),
-          expect.objectContaining({ billedCredits: 3 }),
-        ]),
-      },
+    const consumption = await getConversationConsumption(auth, {
+      conversation,
     });
+
+    expect(consumption).toMatchObject({
+      billedCredits: BILLED_CREDITS + 7 + 3,
+      details: { agentWorkCredits: BILLED_CREDITS + 7 + 3 },
+    });
+    expect(
+      consumption.details?.agents.map(({ agentId, billedCredits }) => ({
+        agentId,
+        billedCredits,
+      }))
+    ).toEqual(
+      expect.arrayContaining([
+        {
+          agentId: agentConfiguration.sId,
+          billedCredits: BILLED_CREDITS,
+        },
+        { agentId: childAgent.sId, billedCredits: 7 + 3 },
+      ])
+    );
+    expect(consumption.details?.agents).toHaveLength(2);
+    expect(consumption.details?.agents).not.toContainEqual(
+      expect.objectContaining({ agentId: GLOBAL_AGENTS_SID.DUST_TASK })
+    );
   });
 });

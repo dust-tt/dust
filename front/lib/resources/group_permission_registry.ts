@@ -148,47 +148,31 @@ export function grantTypesForVerb(
   });
 }
 
-// Verbs a grant type confers at `level`; empty when the role is not valid at that level, or the
-// resource type is unknown (e.g. a stale grant row for a removed type).
-export function verbsForGrantAtLevel(
+// Verbs a grant type confers at any of `levels`; empty when the role is not valid at those levels,
+// or the resource type is unknown (e.g. a stale grant row for a removed type).
+export function verbsForGrantAtLevels(
   grantType: ConcreteGrantType,
   resourceType: ConcreteResourceType,
-  level: GrantLevel
+  levels: ReadonlySet<GrantLevel>
 ): GrantVerb[] {
   const role = ROLE_REGISTRY[resourceType]?.[grantType];
-  if (!role || !role.levels.includes(level)) {
+  if (!role || !role.levels.some((level) => levels.has(level))) {
     return [];
   }
   return [...role.verbs];
 }
 
-// Every verb valid at `level` on `resourceType` — used to expand a "*" grant.
-function allVerbsForResourceAtLevel(
+// Every verb valid at any of `levels` on `resourceType` — used to expand a "*" grant.
+function allVerbsForResourceAtLevels(
   resourceType: ConcreteResourceType,
-  level: GrantLevel
+  levels: ReadonlySet<GrantLevel>
 ): GrantVerb[] {
   const verbs = new Set<GrantVerb>();
   for (const role of Object.values(ROLE_REGISTRY[resourceType] ?? {})) {
-    if (role.levels.includes(level)) {
+    if (role.levels.some((level) => levels.has(level))) {
       for (const verb of role.verbs) {
         verbs.add(verb);
       }
-    }
-  }
-  return [...verbs];
-}
-
-// The verbs a "*" grant confers on `resourceType`. At WHOLE_TYPE_RESOURCE_ID the wildcard stands
-// for the type and for every instance of it, so the instance-level roles count alongside the
-// type-level ones; on a concrete id only the instance-level roles apply.
-function allVerbsForWildcard(
-  resourceType: ConcreteResourceType,
-  level: GrantLevel
-): GrantVerb[] {
-  const verbs = new Set(allVerbsForResourceAtLevel(resourceType, "instance"));
-  if (level === "type") {
-    for (const verb of allVerbsForResourceAtLevel(resourceType, "type")) {
-      verbs.add(verb);
     }
   }
   return [...verbs];
@@ -199,9 +183,9 @@ export function allWorkspacePermissions(): WorkspacePermissions {
   const permissions = emptyWorkspacePermissions();
   for (const resourceType of GROUP_PERMISSION_RESOURCE_TYPES) {
     if (isConcreteResourceType(resourceType)) {
-      permissions[resourceType] = allVerbsForResourceAtLevel(
+      permissions[resourceType] = allVerbsForResourceAtLevels(
         resourceType,
-        "type"
+        new Set<GrantLevel>(["type"])
       );
     }
   }
@@ -321,9 +305,12 @@ export class GroupPermissions {
     };
 
     for (const { grantType, resourceType, resourceId } of grants) {
-      // A "*" grant / -1 resourceId are always type-wide; concrete ids are instance-level.
-      const level: GrantLevel =
-        resourceId === WHOLE_TYPE_RESOURCE_ID ? "type" : "instance";
+      // A whole-type grant applies both to the type itself and to all its instances.
+      const levels = new Set<GrantLevel>(
+        resourceId === WHOLE_TYPE_RESOURCE_ID
+          ? ["type", "instance"]
+          : ["instance"]
+      );
       const resourceTypes =
         resourceType === "*"
           ? GROUP_PERMISSION_RESOURCE_TYPES.filter(isConcreteResourceType)
@@ -336,8 +323,8 @@ export class GroupPermissions {
         }
         const verbs =
           grantType === "*"
-            ? allVerbsForWildcard(rt, level)
-            : verbsForGrantAtLevel(grantType, rt, level);
+            ? allVerbsForResourceAtLevels(rt, levels)
+            : verbsForGrantAtLevels(grantType, rt, levels);
         add(rt, resourceId, verbsToMask(verbs));
       }
     }

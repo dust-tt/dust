@@ -1,5 +1,10 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
+import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import {
+  DSBX_PATH_ENV,
   runWithInvocationEnv,
   TOOLS_API_URL_ENV,
   TOOLS_SANDBOX_TOKEN_ENV,
@@ -9,139 +14,121 @@ import {
 } from "@dust/pod";
 
 const BASE_URL = "https://front.test/api/v1/w/w_test";
-
-// The server-view resolution cache is keyed by token and persists for the
-// process (module state), so every test uses a unique token to stay isolated.
-let tokenCounter = 0;
-function uniqueToken(): string {
-  tokenCounter += 1;
-  return `sandbox-token-${tokenCounter}`;
-}
-
-interface RecordedRequest {
-  method: string;
-  url: string;
-  headers: Record<string, string>;
-  body: unknown;
-}
-
-type FetchHandler = (request: RecordedRequest) => Response | Promise<Response>;
-
-let requests: RecordedRequest[];
-let handler: FetchHandler;
-
-const realFetch = globalThis.fetch;
-
-function jsonResponse(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
-
-function serverViewsResponse(views: { sId: string; name: string }[]): Response {
-  return jsonResponse(200, {
-    serverViews: views.map(({ sId, name }) => ({
-      sId,
-      server: { name, sId: `srv_${name}`, tools: [] },
-    })),
-  });
-}
+const TOKEN = "sandbox-token";
 
 /**
- * Route requests like the front sandbox-actions API: GET /sandbox/actions
- * lists server views, POST /sandbox/actions/call creates an action, GET
- * /sandbox/actions/{aId} polls it. Tests override `handler` (or the
- * per-route helpers' response queues) to shape each scenario.
+ * A fake dsbx executable: a shell script that records its argv, stdin, and
+ * the credentials it received, then plays back the scenario files sitting
+ * next to it (stdout, stderr, exit_code, sleep_seconds). Each test gets a
+ * fresh temp dir so scenarios and recordings never bleed across tests.
  */
-function installFetchMock(): void {
-  const mocked: typeof fetch = Object.assign(
-    async (input: string | URL | Request, init?: RequestInit) => {
-      const url =
-        typeof input === "string"
-          ? input
-          : input instanceof URL
-            ? input.toString()
-            : input.url;
-      const headers: Record<string, string> = {};
-      for (const [key, value] of new Headers(init?.headers).entries()) {
-        headers[key] = value;
-      }
-      const request: RecordedRequest = {
-        method: init?.method ?? "GET",
-        url,
-        headers,
-        body:
-          typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
-      };
-      requests.push(request);
-      return handler(request);
-    },
-    { preconnect: realFetch.preconnect }
-  );
-  globalThis.fetch = mocked;
+interface FakeDsbx {
+  readonly dir: string;
+  readonly path: string;
 }
 
-/** Sequence responses: each call consumes the next entry; the last repeats. */
-function sequence(...responses: (Response | Error)[]): FetchHandler {
-  let index = 0;
-  return () => {
-    const step = responses[Math.min(index, responses.length - 1)];
-    index += 1;
-    if (step instanceof Error) {
-      throw step;
-    }
-    // Response bodies are single-use; clone so a repeated final entry works.
-    return step.clone();
-  };
-}
-
-/**
- * Standard happy-path routing: resolution finds `serverName`, the call
- * returns `actionId`, and polling replays `pollResponses` in order (last
- * repeats).
- */
-function routeToolCall({
-  serverName,
-  viewId,
-  actionId,
-  pollResponses,
+function makeFakeDsbx({
+  stdout,
+  stderr,
+  exitCode,
+  sleepSeconds,
+  holdPipeSeconds,
 }: {
-  serverName: string;
-  viewId: string;
-  actionId: string;
-  pollResponses: (Response | Error)[];
-}): void {
-  const poll = sequence(...pollResponses);
-  handler = (request) => {
-    if (request.method === "GET" && request.url.includes("?server=")) {
-      return serverViewsResponse([{ sId: viewId, name: serverName }]);
-    }
-    if (request.method === "POST" && request.url.endsWith("/actions/call")) {
-      return jsonResponse(202, { status: "pending", actionId });
-    }
-    if (request.method === "GET" && request.url.endsWith(`/${actionId}`)) {
-      return poll(request);
-    }
-    throw new Error(`Unexpected request: ${request.method} ${request.url}`);
-  };
+  stdout?: string;
+  stderr?: string;
+  exitCode?: number;
+  sleepSeconds?: number;
+  /** Leave a background child holding the stdout pipe open after exit. */
+  holdPipeSeconds?: number;
+} = {}): FakeDsbx {
+  const dir = mkdtempSync(join(tmpdir(), "fake-dsbx-"));
+  const path = join(dir, "dsbx");
+  writeFileSync(
+    path,
+    [
+      "#!/bin/sh",
+      'dir="$(dirname "$0")"',
+      'printf \'%s\\n\' "$@" > "$dir/argv"',
+      'cat > "$dir/stdin"',
+      'printf \'%s\' "$DUST_API_URL" > "$dir/env_api_url"',
+      'printf \'%s\' "$DUST_SANDBOX_TOKEN" > "$dir/env_token"',
+      'if [ -f "$dir/sleep_seconds" ]; then sleep "$(cat "$dir/sleep_seconds")"; fi',
+      'if [ -f "$dir/stderr" ]; then cat "$dir/stderr" >&2; fi',
+      'if [ -f "$dir/stdout" ]; then cat "$dir/stdout"; fi',
+      // The background sleep inherits the stdout fd, keeping the pipe open
+      // after this script exits.
+      'if [ -f "$dir/hold_pipe_seconds" ]; then sleep "$(cat "$dir/hold_pipe_seconds")" & fi',
+      'if [ -f "$dir/exit_code" ]; then exit "$(cat "$dir/exit_code")"; fi',
+      "exit 0",
+    ].join("\n"),
+    { mode: 0o755 }
+  );
+  chmodSync(path, 0o755);
+  if (stdout !== undefined) {
+    writeFileSync(join(dir, "stdout"), stdout);
+  }
+  if (stderr !== undefined) {
+    writeFileSync(join(dir, "stderr"), stderr);
+  }
+  if (exitCode !== undefined) {
+    writeFileSync(join(dir, "exit_code"), String(exitCode));
+  }
+  if (sleepSeconds !== undefined) {
+    writeFileSync(join(dir, "sleep_seconds"), String(sleepSeconds));
+  }
+  if (holdPipeSeconds !== undefined) {
+    writeFileSync(join(dir, "hold_pipe_seconds"), String(holdPipeSeconds));
+  }
+  return { dir, path };
 }
 
-function successPoll(
-  output: unknown[],
-  {
-    actionStatus = "succeeded",
-    structuredContent,
-  }: { actionStatus?: string; structuredContent?: unknown } = {}
-): Response {
-  return jsonResponse(200, {
-    status: "success",
-    action: {
-      status: actionStatus,
-      output,
-      ...(structuredContent === undefined ? {} : { structuredContent }),
-    },
+function recorded(fake: FakeDsbx, name: string): string {
+  return readFileSync(join(fake.dir, name), "utf8");
+}
+
+function resultJson(overrides: Partial<Record<string, unknown>> = {}): string {
+  return JSON.stringify({
+    content: [{ type: "text", text: "3 results" }],
+    isError: false,
+    ...overrides,
   });
+}
+
+function envelopeJson(error: Record<string, unknown>): string {
+  return JSON.stringify({ error });
+}
+
+/** Run tools.call inside an invocation context wired to the fake binary. */
+function callThroughFake(
+  fake: FakeDsbx,
+  {
+    server = "slack",
+    tool = "search",
+    args,
+    timeoutMs,
+    env,
+  }: {
+    server?: string;
+    tool?: string;
+    args?: Record<string, unknown>;
+    timeoutMs?: number;
+    env?: Record<string, string>;
+  } = {}
+): Promise<ToolCallResult> {
+  return runWithInvocationEnv(
+    env ?? {
+      [TOOLS_API_URL_ENV]: BASE_URL,
+      [TOOLS_SANDBOX_TOKEN_ENV]: TOKEN,
+      [DSBX_PATH_ENV]: fake.path,
+    },
+    () =>
+      tools.call(
+        server,
+        tool,
+        args,
+        timeoutMs === undefined ? undefined : { timeoutMs }
+      )
+  );
 }
 
 async function expectToolCallError(
@@ -155,422 +142,252 @@ async function expectToolCallError(
       return err;
     }
   }
-  throw new Error("Expected the call to throw a ToolCallError");
+  throw new Error("expected the call to throw a ToolCallError");
 }
 
-beforeEach(() => {
-  requests = [];
-  handler = () => {
-    throw new Error("No fetch handler installed for this test");
-  };
-  installFetchMock();
-  process.env[TOOLS_API_URL_ENV] = BASE_URL;
-  process.env[TOOLS_SANDBOX_TOKEN_ENV] = uniqueToken();
-});
-
-afterEach(() => {
-  globalThis.fetch = realFetch;
-  delete process.env[TOOLS_API_URL_ENV];
-  delete process.env[TOOLS_SANDBOX_TOKEN_ENV];
-});
-
 describe("tools.call", () => {
-  test("resolves the server, POSTs JSON args verbatim, and returns the result", async () => {
-    routeToolCall({
-      serverName: "slack_personal",
-      viewId: "msv_1",
-      actionId: "act_1",
-      pollResponses: [successPoll([{ type: "text", text: "hello" }])],
+  test("spawns dsbx with the delegation argv and returns the parsed result", async () => {
+    const fake = makeFakeDsbx({ stdout: resultJson() });
+    const result = await callThroughFake(fake, {
+      args: { query: "budget", count: 2, filter: { status: "active" } },
     });
 
-    const args = {
-      query: "release notes",
-      limit: 20,
-      exhaustive: false,
-      channels: ["C123", "C456"],
-      filter: { after: "2026-01-01" },
-    };
-    const result = await tools.call("slack_personal", "search_messages", args);
-
-    expect(result).toBeInstanceOf(ToolCallResult);
     expect(result.isError).toBe(false);
-    expect(result.content).toEqual([{ type: "text", text: "hello" }]);
-    expect(result.structuredContent).toBeUndefined();
-
-    // Wire shape: server resolution, then the call with args as a real JSON
-    // object (numbers stay numbers, booleans stay booleans, no __file__).
-    const [listRequest, callRequest] = requests;
-    expect(listRequest?.url).toBe(
-      `${BASE_URL}/sandbox/actions?server=slack_personal&light=true`
+    expect(result.text()).toBe("3 results");
+    expect(recorded(fake, "argv")).toBe(
+      "tools\n--json\n--args-json\n-\nslack\nsearch\n"
     );
-    expect(callRequest?.url).toBe(`${BASE_URL}/sandbox/actions/call`);
-    expect(callRequest?.body).toEqual({
-      serverViewId: "msv_1",
-      toolName: "search_messages",
-      arguments: args,
+    // Args travel over stdin as one verbatim JSON object: no argv limits, no
+    // scalar coercion.
+    expect(JSON.parse(recorded(fake, "stdin"))).toEqual({
+      query: "budget",
+      count: 2,
+      filter: { status: "active" },
     });
-    expect(callRequest?.headers["authorization"]).toBe(
-      `Bearer ${process.env[TOOLS_SANDBOX_TOKEN_ENV]}`
-    );
+    expect(recorded(fake, "env_api_url")).toBe(BASE_URL);
+    expect(recorded(fake, "env_token")).toBe(TOKEN);
   });
 
-  test("omitted args are sent as an empty object", async () => {
-    routeToolCall({
-      serverName: "fathom",
-      viewId: "msv_f",
-      actionId: "act_f",
-      pollResponses: [successPoll([])],
-    });
-
-    await tools.call("fathom", "list_meetings");
-
-    const callRequest = requests.find((r) => r.method === "POST");
-    expect(callRequest?.body).toEqual({
-      serverViewId: "msv_f",
-      toolName: "list_meetings",
-      arguments: {},
-    });
+  test("omitted args are sent as an empty JSON object", async () => {
+    const fake = makeFakeDsbx({ stdout: resultJson() });
+    await callThroughFake(fake);
+    expect(recorded(fake, "stdin")).toBe("{}");
   });
 
-  test("keeps polling while the action is pending", async () => {
-    routeToolCall({
-      serverName: "hubspot",
-      viewId: "msv_h",
-      actionId: "act_h",
-      pollResponses: [
-        jsonResponse(202, { status: "pending", actionId: "act_h" }),
-        successPoll([{ type: "text", text: "done" }]),
-      ],
+  test("a tool-level error resolves with isError true instead of throwing", async () => {
+    // dsbx exits 1 when the tool reported an error, with the result payload
+    // still on stdout.
+    const fake = makeFakeDsbx({
+      stdout: resultJson({
+        content: [{ type: "text", text: "tool exploded" }],
+        isError: true,
+      }),
+      exitCode: 1,
     });
-
-    const result = await tools.call("hubspot", "search_crm_objects", {
-      query: "acme",
-    });
-
-    expect(result.text()).toBe("done");
-    const polls = requests.filter((r) => r.url.endsWith("/act_h"));
-    expect(polls.length).toBe(2);
-  });
-
-  test("an errored action resolves with isError true instead of throwing", async () => {
-    routeToolCall({
-      serverName: "hubspot",
-      viewId: "msv_h",
-      actionId: "act_err",
-      pollResponses: [
-        successPoll([{ type: "text", text: "boom" }], {
-          actionStatus: "errored",
-        }),
-      ],
-    });
-
-    const result = await tools.call("hubspot", "search_crm_objects", {});
+    const result = await callThroughFake(fake);
     expect(result.isError).toBe(true);
-    expect(result.text()).toBe("boom");
-  });
-
-  test("a rejected action throws a terminal `rejected` error", async () => {
-    routeToolCall({
-      serverName: "hubspot",
-      viewId: "msv_h",
-      actionId: "act_rej",
-      pollResponses: [jsonResponse(403, { status: "rejected" })],
-    });
-
-    const error = await expectToolCallError(
-      tools.call("hubspot", "search_crm_objects", {})
-    );
-    expect(error.code).toBe("rejected");
-    expect(error.retryable).toBe(false);
+    expect(result.text()).toBe("tool exploded");
   });
 
   test("passes structuredContent through when the platform delivers one", async () => {
-    const structured = { meetings: [{ id: 1 }], nextCursor: null };
-    routeToolCall({
-      serverName: "fathom",
-      viewId: "msv_f",
-      actionId: "act_s",
-      pollResponses: [
-        successPoll([{ type: "text", text: "1 meeting" }], {
-          structuredContent: structured,
-        }),
-      ],
+    const fake = makeFakeDsbx({
+      stdout: resultJson({ structuredContent: { rows: [1, 2] } }),
     });
-
-    const result = await tools.call("fathom", "list_meetings", {});
-    expect(result.structuredContent).toEqual(structured);
-    expect(result.json()).toEqual(structured);
+    const result = await callThroughFake(fake);
+    expect(result.structuredContent).toEqual({ rows: [1, 2] });
+    expect(result.json()).toEqual({ rows: [1, 2] });
   });
 });
 
 describe("environment handling", () => {
   test("throws missing_env without DUST_API_URL", async () => {
-    delete process.env[TOOLS_API_URL_ENV];
-    const error = await expectToolCallError(tools.call("slack", "search", {}));
+    const fake = makeFakeDsbx({ stdout: resultJson() });
+    const error = await expectToolCallError(
+      callThroughFake(fake, {
+        env: { [TOOLS_SANDBOX_TOKEN_ENV]: TOKEN, [DSBX_PATH_ENV]: fake.path },
+      })
+    );
     expect(error.code).toBe("missing_env");
     expect(error.retryable).toBe(false);
     expect(error.message).toContain(TOOLS_API_URL_ENV);
-    expect(requests.length).toBe(0);
   });
 
   test("throws missing_env without DUST_SANDBOX_TOKEN", async () => {
-    delete process.env[TOOLS_SANDBOX_TOKEN_ENV];
-    const error = await expectToolCallError(tools.call("slack", "search", {}));
+    const fake = makeFakeDsbx({ stdout: resultJson() });
+    const error = await expectToolCallError(
+      callThroughFake(fake, {
+        env: { [TOOLS_API_URL_ENV]: BASE_URL, [DSBX_PATH_ENV]: fake.path },
+      })
+    );
     expect(error.code).toBe("missing_env");
     expect(error.message).toContain(TOOLS_SANDBOX_TOKEN_ENV);
   });
 
-  test("reads the invocation context env, not process.env, inside a context", async () => {
-    routeToolCall({
-      serverName: "slack",
-      viewId: "msv_ctx",
-      actionId: "act_ctx",
-      pollResponses: [successPoll([])],
-    });
-
-    const contextToken = uniqueToken();
-    await runWithInvocationEnv(
-      {
-        [TOOLS_API_URL_ENV]: BASE_URL,
-        [TOOLS_SANDBOX_TOKEN_ENV]: contextToken,
-      },
-      () => tools.call("slack", "search", {})
-    );
-
-    // Every request authenticates with the context token even though
-    // process.env carries a different one.
-    for (const request of requests) {
-      expect(request.headers["authorization"]).toBe(`Bearer ${contextToken}`);
+  test("the child gets the invocation's credentials, not process.env's", async () => {
+    // In a resident worker one process serves concurrent invocations;
+    // process.env may carry another (scrubbed or stale) token. The spawn env
+    // must carry the invocation context's values.
+    const processToken = process.env[TOOLS_SANDBOX_TOKEN_ENV];
+    process.env[TOOLS_SANDBOX_TOKEN_ENV] = "process-env-token";
+    try {
+      const fake = makeFakeDsbx({ stdout: resultJson() });
+      await callThroughFake(fake, {
+        env: {
+          [TOOLS_API_URL_ENV]: BASE_URL,
+          [TOOLS_SANDBOX_TOKEN_ENV]: "invocation-token",
+          [DSBX_PATH_ENV]: fake.path,
+        },
+      });
+      expect(recorded(fake, "env_token")).toBe("invocation-token");
+    } finally {
+      if (processToken === undefined) {
+        delete process.env[TOOLS_SANDBOX_TOKEN_ENV];
+      } else {
+        process.env[TOOLS_SANDBOX_TOKEN_ENV] = processToken;
+      }
     }
   });
 });
 
-describe("server-name resolution", () => {
-  test("throws server_not_found when the server is not available", async () => {
-    handler = () => serverViewsResponse([]);
-    const error = await expectToolCallError(
-      tools.call("nonexistent", "some_tool", {})
-    );
-    expect(error.code).toBe("server_not_found");
-    expect(error.retryable).toBe(false);
-    expect(error.message).toContain("nonexistent");
-  });
-
-  test("caches resolution per invocation token", async () => {
-    routeToolCall({
-      serverName: "slack",
-      viewId: "msv_c",
-      actionId: "act_c",
-      pollResponses: [successPoll([])],
-    });
-
-    await tools.call("slack", "search", {});
-    await tools.call("slack", "list", {});
-
-    const listings = requests.filter((r) => r.url.includes("?server="));
-    expect(listings.length).toBe(1);
-  });
-
-  test("a new invocation token re-resolves", async () => {
-    routeToolCall({
-      serverName: "slack",
-      viewId: "msv_c",
-      actionId: "act_c",
-      pollResponses: [successPoll([])],
-    });
-
-    await tools.call("slack", "search", {});
-    process.env[TOOLS_SANDBOX_TOKEN_ENV] = uniqueToken();
-    await tools.call("slack", "search", {});
-
-    const listings = requests.filter((r) => r.url.includes("?server="));
-    expect(listings.length).toBe(2);
-  });
-
-  test("a failed resolution is not cached", async () => {
-    let listCalls = 0;
-    handler = (request) => {
-      if (request.url.includes("?server=")) {
-        listCalls += 1;
-        if (listCalls === 1) {
-          return jsonResponse(500, {
-            error: { type: "internal_server_error", message: "boom" },
-          });
-        }
-        return serverViewsResponse([{ sId: "msv_r", name: "slack" }]);
-      }
-      if (request.method === "POST") {
-        return jsonResponse(202, { status: "pending", actionId: "act_r" });
-      }
-      return successPoll([]);
-    };
-
-    const first = await expectToolCallError(tools.call("slack", "search", {}));
-    expect(first.code).toBe("server_error");
-    expect(first.retryable).toBe(true);
-
-    const result = await tools.call("slack", "search", {});
-    expect(result.isError).toBe(false);
-    expect(listCalls).toBe(2);
-  });
-
-  test("a network failure during resolution is retryable", async () => {
-    handler = () => {
-      throw new TypeError("Unable to connect");
-    };
-    const error = await expectToolCallError(tools.call("slack", "search", {}));
-    expect(error.code).toBe("network_error");
-    expect(error.retryable).toBe(true);
-  });
-});
-
-describe("HTTP error classification", () => {
-  async function callFailingWith(status: number, body: unknown) {
-    handler = (request) => {
-      if (request.url.includes("?server=")) {
-        return serverViewsResponse([{ sId: "msv_e", name: "slack" }]);
-      }
-      return jsonResponse(status, body);
-    };
-    return expectToolCallError(tools.call("slack", "search", {}));
-  }
-
-  test("401 -> invalid_token, terminal (per-invocation JWT)", async () => {
-    const error = await callFailingWith(401, {
-      error: {
-        type: "invalid_sandbox_token_error",
-        message: "The sandbox token is invalid or expired.",
-      },
-    });
-    expect(error.code).toBe("invalid_token");
-    expect(error.retryable).toBe(false);
-    expect(error.status).toBe(401);
-  });
-
-  test("403 -> permission_denied surfacing front's message", async () => {
-    const error = await callFailingWith(403, {
-      error: {
-        type: "invalid_request_error",
+describe("error envelope classification", () => {
+  test("a typed envelope surfaces code, message, retryable, and status", async () => {
+    const fake = makeFakeDsbx({
+      stdout: envelopeJson({
+        code: "fast_function_called_tools",
         message:
-          "This Pod function is published as fast and cannot call tools. " +
-          "Publish it with executionMode `durable` to let it call tools.",
-      },
+          "This Pod function is published as fast and cannot call tools.",
+        retryable: false,
+        status: 403,
+      }),
+      exitCode: 12,
     });
-    expect(error.code).toBe("permission_denied");
+    const error = await expectToolCallError(callThroughFake(fake));
+    expect(error.code).toBe("fast_function_called_tools");
     expect(error.retryable).toBe(false);
+    expect(error.status).toBe(403);
     expect(error.message).toContain("published as fast");
   });
 
-  test("400 -> invalid_request", async () => {
-    const error = await callFailingWith(400, {
-      error: { type: "invalid_request_error", message: "Unknown tool." },
+  test("rate_limited stays retryable", async () => {
+    const fake = makeFakeDsbx({
+      stdout: envelopeJson({
+        code: "rate_limited",
+        message: "Too many requests.",
+        retryable: true,
+        status: 429,
+      }),
+      exitCode: 13,
     });
-    expect(error.code).toBe("invalid_request");
-    expect(error.retryable).toBe(false);
-  });
-
-  test("404 -> not_found", async () => {
-    const error = await callFailingWith(404, {
-      error: { type: "invalid_request_error", message: "No such view." },
-    });
-    expect(error.code).toBe("not_found");
-    expect(error.retryable).toBe(false);
-  });
-
-  test("429 -> rate_limited, retryable", async () => {
-    const error = await callFailingWith(429, {
-      error: { type: "rate_limit_error", message: "Slow down." },
-    });
+    const error = await expectToolCallError(callThroughFake(fake));
     expect(error.code).toBe("rate_limited");
     expect(error.retryable).toBe(true);
+    expect(error.status).toBe(429);
   });
 
-  test("a non-JSON error body is classified by status with a snippet", async () => {
-    handler = (request) => {
-      if (request.url.includes("?server=")) {
-        return serverViewsResponse([{ sId: "msv_e", name: "slack" }]);
-      }
-      return new Response("Bad Gateway", { status: 502 });
-    };
-    const error = await expectToolCallError(tools.call("slack", "search", {}));
-    expect(error.code).toBe("server_error");
+  test("tool_output_unavailable carries no status and stays retryable", async () => {
+    const fake = makeFakeDsbx({
+      stdout: envelopeJson({
+        code: "tool_output_unavailable",
+        message: "offloaded tool output never became readable",
+        retryable: true,
+      }),
+      exitCode: 15,
+    });
+    const error = await expectToolCallError(callThroughFake(fake));
+    expect(error.code).toBe("tool_output_unavailable");
     expect(error.retryable).toBe(true);
-    expect(error.message).toContain("Bad Gateway");
+    expect(error.status).toBeUndefined();
   });
 
-  test("a network failure on the POST is not retryable (call may exist)", async () => {
-    handler = (request) => {
-      if (request.url.includes("?server=")) {
-        return serverViewsResponse([{ sId: "msv_e", name: "slack" }]);
-      }
-      throw new TypeError("socket closed");
-    };
-    const error = await expectToolCallError(tools.call("slack", "search", {}));
-    expect(error.code).toBe("network_error");
-    expect(error.retryable).toBe(false);
+  test("an envelope code this client does not know degrades to unknown", async () => {
+    // The envelope contract is append-only: a newer dsbx may emit codes this
+    // client has never heard of. Message and retryable flag still carry.
+    const fake = makeFakeDsbx({
+      stdout: envelopeJson({
+        code: "code_from_the_future",
+        message: "something new",
+        retryable: true,
+      }),
+      exitCode: 10,
+    });
+    const error = await expectToolCallError(callThroughFake(fake));
+    expect(error.code).toBe("unknown");
+    expect(error.retryable).toBe(true);
+    expect(error.message).toBe("something new");
   });
 
-  test("an unparseable success body is invalid_response", async () => {
-    handler = (request) => {
-      if (request.url.includes("?server=")) {
-        return serverViewsResponse([{ sId: "msv_e", name: "slack" }]);
-      }
-      return new Response("not json", { status: 200 });
-    };
-    const error = await expectToolCallError(tools.call("slack", "search", {}));
-    expect(error.code).toBe("invalid_response");
+  test("dsbx-side validation failures arrive as unknown with the message", async () => {
+    // e.g. a typo'd server name: dsbx bails before any tool call and emits
+    // the generic envelope.
+    const fake = makeFakeDsbx({
+      stdout: envelopeJson({
+        code: "unknown",
+        message: "server 'slak' not found",
+        retryable: false,
+      }),
+      exitCode: 1,
+    });
+    const error = await expectToolCallError(callThroughFake(fake));
+    expect(error.code).toBe("unknown");
     expect(error.retryable).toBe(false);
+    expect(error.message).toContain("server 'slak' not found");
   });
 });
 
-describe("polling resilience", () => {
-  test("retries transient network errors while polling, then succeeds", async () => {
-    routeToolCall({
-      serverName: "slack",
-      viewId: "msv_p",
-      actionId: "act_p",
-      pollResponses: [
-        new TypeError("connection reset"),
-        successPoll([{ type: "text", text: "recovered" }]),
-      ],
-    });
-
-    const result = await tools.call("slack", "search", {});
-    expect(result.text()).toBe("recovered");
-    const polls = requests.filter((r) => r.url.endsWith("/act_p"));
-    expect(polls.length).toBe(2);
+describe("process failures", () => {
+  test("an unparseable stdout on exit 0 is invalid_response", async () => {
+    const fake = makeFakeDsbx({ stdout: "not json at all" });
+    const error = await expectToolCallError(callThroughFake(fake));
+    expect(error.code).toBe("invalid_response");
+    expect(error.retryable).toBe(false);
+    expect(error.message).toContain("not json at all");
   });
 
-  test("an API error while polling is terminal, not retried", async () => {
-    routeToolCall({
-      serverName: "slack",
-      viewId: "msv_p",
-      actionId: "act_term",
-      pollResponses: [
-        jsonResponse(404, {
-          error: { type: "action_not_found", message: "Action not found." },
-        }),
-      ],
+  test("a non-zero exit without an envelope is exec_error with the stderr tail", async () => {
+    // e.g. a clap usage error (exit 2): stderr prose, no stdout contract.
+    const fake = makeFakeDsbx({
+      stderr: "error: unexpected argument",
+      exitCode: 2,
     });
-
-    const error = await expectToolCallError(tools.call("slack", "search", {}));
-    expect(error.code).toBe("not_found");
-    const polls = requests.filter((r) => r.url.endsWith("/act_term"));
-    expect(polls.length).toBe(1);
+    const error = await expectToolCallError(callThroughFake(fake));
+    expect(error.code).toBe("exec_error");
+    expect(error.retryable).toBe(false);
+    expect(error.message).toContain("exited 2");
+    expect(error.message).toContain("unexpected argument");
   });
 
-  test("times out when the action stays pending past the deadline", async () => {
-    routeToolCall({
-      serverName: "slack",
-      viewId: "msv_p",
-      actionId: "act_slow",
-      pollResponses: [
-        jsonResponse(202, { status: "pending", actionId: "act_slow" }),
-      ],
-    });
-
+  test("a missing dsbx binary is exec_error naming the path", async () => {
     const error = await expectToolCallError(
-      tools.call("slack", "search", {}, { timeoutMs: 0 })
+      runWithInvocationEnv(
+        {
+          [TOOLS_API_URL_ENV]: BASE_URL,
+          [TOOLS_SANDBOX_TOKEN_ENV]: TOKEN,
+          [DSBX_PATH_ENV]: "/nonexistent/dsbx-test-12345",
+        },
+        () => tools.call("slack", "search", {})
+      )
+    );
+    expect(error.code).toBe("exec_error");
+    expect(error.retryable).toBe(false);
+    expect(error.message).toContain("/nonexistent/dsbx-test-12345");
+  });
+
+  test("kills the child and throws timeout past timeoutMs", async () => {
+    const fake = makeFakeDsbx({ stdout: resultJson(), sleepSeconds: 30 });
+    const error = await expectToolCallError(
+      callThroughFake(fake, { timeoutMs: 150 })
+    );
+    expect(error.code).toBe("timeout");
+    expect(error.retryable).toBe(false);
+    expect(error.message).toContain("slack.search");
+  });
+
+  test("throws timeout when an exited child's pipe never reaches EOF", async () => {
+    // The child exits promptly but a stray descendant inherited the stdout
+    // fd: the drain must be bounded by the same deadline, not hang forever.
+    const fake = makeFakeDsbx({ stdout: resultJson(), holdPipeSeconds: 30 });
+    const error = await expectToolCallError(
+      callThroughFake(fake, { timeoutMs: 150 })
     );
     expect(error.code).toBe("timeout");
     expect(error.retryable).toBe(false);

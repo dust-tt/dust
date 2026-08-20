@@ -367,11 +367,12 @@
             "in": "query",
             "name": "view",
             "required": false,
-            "description": "The view to use when retrieving agents:\n- all: Retrieves all non-private agents (default if not authenticated)\n- list: Retrieves all active agents accessible to the user (default if authenticated)\n- published: Retrieves all agents with published scope\n- global: Retrieves all global agents\n- favorites: Retrieves all agents marked as favorites by the user (only available to authenticated users)\n",
+            "description": "The view to use when retrieving agents:\n- all: Retrieves all non-private agents (default if not authenticated)\n- list: Retrieves all active agents accessible to the user (default if authenticated)\n- published: Retrieves all agents with published scope\n- global: Retrieves all global agents\n- favorites: Retrieves all agents marked as favorites by the user (only available to authenticated users)\n- all_unrestricted: Retrieves every active agent of the workspace, including unpublished agents the caller does not edit and agents requesting spaces the caller cannot access. Requires an admin key.\n",
             "schema": {
               "type": "string",
               "enum": [
                 "all",
+                "all_unrestricted",
                 "list",
                 "workspace",
                 "published",
@@ -424,6 +425,9 @@
           },
           "401": {
             "description": "Unauthorized. Invalid or missing authentication token, or attempting to access restricted views without authentication."
+          },
+          "403": {
+            "description": "Forbidden. The all_unrestricted view requires a workspace admin."
           },
           "404": {
             "description": "Workspace not found."
@@ -896,6 +900,7 @@
                       "handle",
                       "description",
                       "scope",
+                      "avatar_url",
                       "max_steps_per_run",
                       "visualization_enabled"
                     ],
@@ -5780,9 +5785,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Table"
+                  "type": "object",
+                  "properties": {
+                    "tables": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Table"
+                      }
+                    }
                   }
                 }
               }
@@ -5882,7 +5892,12 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Table"
+                  "type": "object",
+                  "properties": {
+                    "table": {
+                      "$ref": "#/components/schemas/Table"
+                    }
+                  }
                 }
               }
             }
@@ -7287,7 +7302,7 @@
     "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/consumption": {
       "get": {
         "summary": "Get an agent message credit attribution",
-        "description": "Returns exact billed credits and an additive attribution reconciled exclusively through model input rows.",
+        "description": "Returns direct, recursively spawned sub-agent, and total billed credits, plus an additive attribution reconciled exclusively through model input rows.",
         "tags": [
           "Private Messages"
         ],
@@ -7337,7 +7352,15 @@
                     "billedCredits": {
                       "type": "number",
                       "nullable": true,
-                      "description": "Authoritative credits billed for this agent message."
+                      "description": "Authoritative credits billed directly for this agent message, excluding sub-agents."
+                    },
+                    "subAgentBilledCredits": {
+                      "type": "number",
+                      "description": "Credits billed by sub-agents recursively spawned from this message."
+                    },
+                    "totalBilledCredits": {
+                      "type": "number",
+                      "description": "Total credits billed by this message and its recursively spawned sub-agents."
                     },
                     "details": {
                       "type": "object",

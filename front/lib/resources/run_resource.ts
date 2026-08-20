@@ -75,7 +75,7 @@ interface PendingRunUsageParameters {
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
   region: Region | null;
-  usageType?: UsageType;
+  usageType: UsageType;
 }
 
 type FetchRunOptions<T extends boolean> = {
@@ -123,7 +123,7 @@ export class RunResource extends BaseResource<RunModel> {
           cacheCreationTokens: null,
           costMicroUsd: 0,
           isBatch: false,
-          usageType: usage.usageType ?? null,
+          usageType: usage.usageType,
           usageState: "pending",
         },
         { transaction }
@@ -271,8 +271,8 @@ export class RunResource extends BaseResource<RunModel> {
     );
   }
 
-  // Stamp the billing usage type onto the usage rows of the given runs.
-  static async setUsageTypeForRuns(
+  // Classify legacy usage rows without ever changing an existing classification.
+  static async setUsageTypeForRunsIfMissing(
     auth: Authenticator,
     { runs, usageType }: { runs: RunResource[]; usageType: UsageType }
   ): Promise<void> {
@@ -285,6 +285,7 @@ export class RunResource extends BaseResource<RunModel> {
       {
         where: {
           runId: { [Op.in]: runModelIds },
+          usageType: null,
           workspaceId: auth.getNonNullableWorkspace().id,
         },
       }
@@ -449,14 +450,12 @@ export class RunResource extends BaseResource<RunModel> {
    * Run usage.
    */
 
-  // `usageType` tags the created rows with their billing usage type. Pass it for
-  // operations whose type is known at creation (e.g. internal/utility LLM calls
-  // are free); leave it undefined for agent-conversation runs, which the usage
-  // queue classifies from the triggering message origin.
+  // Billing classification is immutable event-time metadata. Every new usage
+  // row must be classified when it is created.
   async recordRunUsage(
     auth: Authenticator,
     usages: RunUsageType[],
-    { usageType }: { usageType?: UsageType } = {}
+    { usageType }: { usageType: UsageType }
   ) {
     await RunUsageModel.bulkCreate(
       usages.map(
@@ -484,7 +483,7 @@ export class RunResource extends BaseResource<RunModel> {
           cacheCreationTokens: cacheCreationTokens ?? null,
           costMicroUsd,
           isBatch,
-          usageType: usageType ?? null,
+          usageType,
           usageState: "reported",
         })
       )
@@ -551,8 +550,8 @@ export class RunResource extends BaseResource<RunModel> {
     }: {
       isBatch?: boolean;
       inferenceRegion?: InferenceRegionType;
-      usageType?: UsageType;
-    } = {}
+      usageType: UsageType;
+    }
   ) {
     const runUsage = this.tokenUsageToRunUsage(usage, modelId, {
       isBatch,
@@ -589,15 +588,14 @@ export class RunResource extends BaseResource<RunModel> {
   async finalizePendingRunUsage(
     auth: Authenticator,
     runUsageModelId: ModelId,
-    usages: RunUsageType[],
-    { usageType }: { usageType?: UsageType } = {}
+    usages: RunUsageType[]
   ): Promise<boolean> {
     const [firstUsage, ...additionalUsages] = usages;
     if (!firstUsage) {
       return false;
     }
 
-    const [updatedCount] = await RunUsageModel.update(
+    const [updatedCount, updatedUsages] = await RunUsageModel.update(
       {
         providerId: firstUsage.providerId,
         modelId: firstUsage.modelId,
@@ -608,10 +606,10 @@ export class RunResource extends BaseResource<RunModel> {
         cacheCreationTokens: firstUsage.cacheCreationTokens ?? null,
         costMicroUsd: firstUsage.costMicroUsd,
         isBatch: firstUsage.isBatch,
-        usageType: usageType ?? null,
         usageState: "reported",
       },
       {
+        returning: true,
         where: {
           id: runUsageModelId,
           runId: this.id,
@@ -628,6 +626,12 @@ export class RunResource extends BaseResource<RunModel> {
     }
 
     if (additionalUsages.length > 0) {
+      const usageType = updatedUsages[0]?.usageType;
+      if (!usageType) {
+        throw new Error(
+          "Cannot record additional usage for a run without a billing classification"
+        );
+      }
       await this.recordRunUsage(auth, additionalUsages, { usageType });
     }
     this.emitRunUsageMetrics([firstUsage]);
@@ -641,10 +645,8 @@ export class RunResource extends BaseResource<RunModel> {
     modelId: ModelIdType,
     {
       inferenceRegion = "global",
-      usageType,
     }: {
       inferenceRegion?: InferenceRegionType;
-      usageType?: UsageType;
     } = {}
   ): Promise<number | undefined> {
     const runUsage = this.tokenUsageToRunUsage(usage, modelId, {
@@ -658,8 +660,7 @@ export class RunResource extends BaseResource<RunModel> {
     const wasFinalized = await this.finalizePendingRunUsage(
       auth,
       runUsageModelId,
-      [runUsage],
-      { usageType }
+      [runUsage]
     );
     return wasFinalized ? runUsage.costMicroUsd : undefined;
   }

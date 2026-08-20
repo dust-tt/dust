@@ -626,7 +626,14 @@ export async function createProjectFolder(
     return fsResult;
   }
 
-  return fsResult.value.mkdir(podScopedPath(space.sId, relativeDirPath));
+  const created = await fsResult.value.mkdir(
+    podScopedPath(space.sId, relativeDirPath)
+  );
+  if (created.isErr()) {
+    return created;
+  }
+  // The handler serializes this entry to the client, so the node id stays here.
+  return new Ok(created.value.entry);
 }
 
 /**

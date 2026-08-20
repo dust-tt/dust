@@ -28,10 +28,13 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
+import { isProgrammaticUsageFromContext } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
+import { getUsageType } from "@app/lib/metronome/events";
+import type { UsageType } from "@app/lib/metronome/types";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -271,6 +274,8 @@ export abstract class LLM<
           continue;
         }
 
+        const { tokenUsage, ...rest } = buffer.currentOutput;
+
         // Logging before it gets stopped and retried downstream
         if (currentEvent.type === "error") {
           // Temporary: track LLM error metric
@@ -298,18 +303,45 @@ export abstract class LLM<
           // Temporary: track LLM success metric
           getStatsDClient().increment("llm_success.count", 1, metricTags);
 
-          logger.info(
-            {
-              llmEventType: "success",
-              router: this.router,
-              modelId: this.modelId,
-              inferenceProvider: this.metadata.inferenceProvider,
-              region: this.metadata.region,
-              context: this.context,
-              traceId: this.traceId,
-            },
-            "LLM Success"
-          );
+          const logContext = {
+            router: this.router,
+            modelId: this.modelId,
+            inferenceProvider: this.metadata.inferenceProvider,
+            region: this.metadata.region,
+            context: this.context,
+            traceId: this.traceId,
+          };
+
+          if (tokenUsage) {
+            logger.info(
+              { llmEventType: "success", ...logContext },
+              "LLM Success"
+            );
+          } else {
+            getStatsDClient().increment(
+              "llm_success_without_usage.count",
+              1,
+              metricTags
+            );
+            this.generation.updateTrace({
+              tags: ["success_without_usage:true"],
+            });
+            this.generation.update({
+              level: "WARNING",
+              statusMessage:
+                "LLM completed successfully without reporting token usage.",
+            });
+            logger.warn(
+              {
+                llmEventType: "success_without_usage",
+                ...logContext,
+                outputContentLength: rest.content?.length ?? 0,
+                reasoningLength: rest.reasoning?.length ?? 0,
+                toolCallCount: rest.toolCalls?.length ?? 0,
+              },
+              "LLM Success without usage"
+            );
+          }
         }
 
         const durationMs = Date.now() - startTime;
@@ -317,8 +349,6 @@ export abstract class LLM<
         buffer
           .writeToGCS({ durationMs, startTime, timeToFirstEventMs })
           .catch(() => {});
-
-        const { tokenUsage, ...rest } = buffer.currentOutput;
 
         this.generation.update({
           output: { ...rest },
@@ -523,6 +553,7 @@ export abstract class LLM<
     results: BatchResult
   ): Promise<BatchResultWithRunIds> {
     const enrichedResults: BatchResultWithRunIds = new Map();
+    const usageType = this.getUsageType();
 
     for (const [customId, events] of results) {
       const traceId = createLLMTraceId(randomUUID());
@@ -542,7 +573,11 @@ export abstract class LLM<
             this.authenticator,
             event.content,
             this.modelId,
-            { isBatch: true, inferenceRegion: this.metadata.inferenceRegion }
+            {
+              isBatch: true,
+              inferenceRegion: this.metadata.inferenceRegion,
+              usageType,
+            }
           );
         }
       }
@@ -751,11 +786,25 @@ export abstract class LLM<
     }
   }
 
-  private getUsageType() {
-    // Calls without tracing context cannot be attributed to a billable agent conversation,
-    // so keep them free until the caller provides that context.
-    return !this.context || isFreeUsageContext(this.context)
-      ? USAGE_TYPE_FREE
-      : undefined;
+  private getUsageType(): UsageType {
+    // Calls without tracing context and non-agent utility calls are free.
+    if (!this.context || isFreeUsageContext(this.context)) {
+      return USAGE_TYPE_FREE;
+    }
+
+    const userMessageOrigin = this.context.userMessageOrigin;
+    if (!userMessageOrigin) {
+      throw new Error(
+        "Agent conversation LLM context is missing userMessageOrigin"
+      );
+    }
+
+    return getUsageType(
+      isProgrammaticUsageFromContext({
+        authMethod: this.authenticator.authMethod(),
+        userMessageOrigin,
+      }),
+      userMessageOrigin
+    );
   }
 }

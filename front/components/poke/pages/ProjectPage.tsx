@@ -1,4 +1,5 @@
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
+import { GroupPermissionsDataTable } from "@app/components/poke/group_permissions/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { ProjectConnectorKnowledgeDataTable } from "@app/components/poke/projects/connector_knowledge/table";
@@ -63,6 +64,11 @@ export function ProjectPage({ details }: ProjectPageProps) {
           <DataSourceViewsDataTable owner={owner} spaceId={space.sId} />
           <ProjectPodFunctionDataTable owner={owner} projectId={space.sId} />
           <ProjectPodDatabaseDataTable owner={owner} projectId={space.sId} />
+          <GroupPermissionsDataTable
+            owner={owner}
+            resourceType="space"
+            resourceId={space.id}
+          />
         </div>
       </div>
     </>
