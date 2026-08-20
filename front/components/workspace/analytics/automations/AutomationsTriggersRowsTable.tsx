@@ -10,6 +10,7 @@ import {
   cn,
   DataTable,
   Icon,
+  LoadingBlock,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -24,6 +25,88 @@ export type TriggerRowData = AutomationTriggerRow & {
   onClick: () => void;
 };
 
+interface TriggerSkeletonCellProps {
+  columnId: string;
+  rowIndex: number;
+}
+
+function TriggerSkeletonCell({ columnId, rowIndex }: TriggerSkeletonCellProps) {
+  switch (columnId) {
+    case "name":
+      return (
+        <div className="flex h-12 items-center">
+          <LoadingBlock
+            className={cn(
+              "h-3",
+              ["w-32", "w-48", "w-28", "w-40", "w-36"][rowIndex % 5]
+            )}
+          />
+        </div>
+      );
+    case "editor":
+      return (
+        <div className="flex h-12 items-center gap-2">
+          <LoadingBlock className="h-7 w-7 shrink-0 rounded-full" />
+          <LoadingBlock
+            className={cn(
+              "h-3",
+              ["w-16", "w-20", "w-14", "w-24"][rowIndex % 4]
+            )}
+          />
+        </div>
+      );
+    case "agent":
+      return (
+        <div className="flex h-12 items-center gap-2">
+          <LoadingBlock className="h-5 w-5 shrink-0 rounded-sm" />
+          <LoadingBlock
+            className={cn(
+              "h-3",
+              ["w-20", "w-28", "w-16", "w-24"][rowIndex % 4]
+            )}
+          />
+        </div>
+      );
+    case "type":
+      return (
+        <div className="flex h-12 items-center justify-center">
+          <LoadingBlock className="h-4 w-4" />
+        </div>
+      );
+    case "credits":
+      return (
+        <div className="flex h-12 items-center justify-end">
+          <LoadingBlock
+            className={cn(
+              "h-3",
+              ["w-10", "w-14", "w-12", "w-16"][rowIndex % 4]
+            )}
+          />
+        </div>
+      );
+    case "pool":
+      return (
+        <div className="flex h-12 items-center">
+          <LoadingBlock className="h-6 w-20 rounded-[9px]" />
+        </div>
+      );
+    case "status":
+      return (
+        <div className="flex h-12 items-center justify-center">
+          <LoadingBlock className="h-5 w-8 rounded-full" />
+        </div>
+      );
+    case "details":
+      return (
+        <div className="flex h-12 items-center justify-end">
+          <LoadingBlock className="h-4 w-4" />
+        </div>
+      );
+    default:
+      return null;
+  }
+}
+
 interface AutomationsTriggersRowsTableProps<T extends TriggerRowData> {
   data: T[];
   columns: ColumnDef<T>[];
@@ -32,6 +115,8 @@ interface AutomationsTriggersRowsTableProps<T extends TriggerRowData> {
   expandedRowId: string | null;
   medianRunCount: number;
   medianCostPerRun: number;
+  isLoading?: boolean;
+  skeletonRowCount: number;
 }
 
 export function AutomationsTriggersRowsTable<T extends TriggerRowData>({
@@ -42,6 +127,8 @@ export function AutomationsTriggersRowsTable<T extends TriggerRowData>({
   expandedRowId,
   medianRunCount,
   medianCostPerRun,
+  isLoading = false,
+  skeletonRowCount,
 }: AutomationsTriggersRowsTableProps<T>) {
   const table = useReactTable({
     data,
@@ -97,45 +184,70 @@ export function AutomationsTriggersRowsTable<T extends TriggerRowData>({
         ))}
       </DataTable.Header>
       <DataTable.Body>
-        {table.getRowModel().rows.map((row) => (
-          <Fragment key={row.id}>
-            <DataTable.Row
-              widthClassName="w-full"
-              onClick={row.original.onClick}
-              rowData={row.original}
-            >
-              {row.getVisibleCells().map((cell) => (
-                <DataTable.Cell column={cell.column} key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </DataTable.Cell>
-              ))}
-            </DataTable.Row>
-            <tr>
-              <td className="max-w-0" colSpan={row.getVisibleCells().length}>
-                <Collapsible open={expandedRowId === row.original.triggerId}>
-                  <CollapsibleContent
-                    animated={false}
-                    className={cn(
-                      "transition-none ease-enter motion-reduce:animate-none",
-                      "data-[state=open]:animate-in data-[state=open]:fade-in-0",
-                      "data-[state=open]:slide-in-from-top-1 data-[state=open]:duration-enter",
-                      "data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
-                      "data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-exit"
-                    )}
-                  >
-                    <AutomationsTriggerBreakdown
-                      workspaceId={workspaceId}
-                      trigger={row.original}
-                      period={period}
-                      medianRunCount={medianRunCount}
-                      medianCostPerRun={medianCostPerRun}
+        {isLoading
+          ? Array.from({ length: skeletonRowCount }, (_, rowIndex) => (
+              <DataTable.Row
+                key={rowIndex}
+                widthClassName="w-full"
+                aria-hidden="true"
+              >
+                {table.getAllLeafColumns().map((column) => (
+                  <DataTable.Cell column={column} key={column.id}>
+                    <TriggerSkeletonCell
+                      columnId={column.id}
+                      rowIndex={rowIndex}
                     />
-                  </CollapsibleContent>
-                </Collapsible>
-              </td>
-            </tr>
-          </Fragment>
-        ))}
+                  </DataTable.Cell>
+                ))}
+              </DataTable.Row>
+            ))
+          : table.getRowModel().rows.map((row) => (
+              <Fragment key={row.id}>
+                <DataTable.Row
+                  widthClassName="w-full"
+                  onClick={row.original.onClick}
+                  rowData={row.original}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <DataTable.Cell column={cell.column} key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </DataTable.Cell>
+                  ))}
+                </DataTable.Row>
+                <tr>
+                  <td
+                    className="max-w-0"
+                    colSpan={row.getVisibleCells().length}
+                  >
+                    <Collapsible
+                      open={expandedRowId === row.original.triggerId}
+                    >
+                      <CollapsibleContent
+                        animated={false}
+                        className={cn(
+                          "transition-none ease-enter motion-reduce:animate-none",
+                          "data-[state=open]:animate-in data-[state=open]:fade-in-0",
+                          "data-[state=open]:slide-in-from-top-1 data-[state=open]:duration-enter",
+                          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
+                          "data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-exit"
+                        )}
+                      >
+                        <AutomationsTriggerBreakdown
+                          workspaceId={workspaceId}
+                          trigger={row.original}
+                          period={period}
+                          medianRunCount={medianRunCount}
+                          medianCostPerRun={medianCostPerRun}
+                        />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </td>
+                </tr>
+              </Fragment>
+            ))}
       </DataTable.Body>
     </DataTable.Root>
   );

@@ -40,7 +40,6 @@ import {
   ChevronUp,
   Clock,
   DataTable,
-  DataTableLoadingSkeleton,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -670,11 +669,22 @@ function TriggersTableBody({
     [expandedRowId, showPoolColumn]
   );
 
-  if (isLoading) {
-    return (
-      <DataTableLoadingSkeleton showSelectionColumn={false} showTrailingCell />
-    );
-  }
+  const firstRowIndex = pagination.pageIndex * pagination.pageSize;
+  const skeletonRowCount =
+    totalCount > firstRowIndex
+      ? Math.min(pagination.pageSize, totalCount - firstRowIndex)
+      : pagination.pageSize;
+  const paginationControls = totalCount > pagination.pageSize && (
+    <div className="mt-2 p-1">
+      <Pagination
+        size="xs"
+        showDetails={false}
+        pagination={pagination}
+        setPagination={setPagination}
+        rowCount={totalCount}
+      />
+    </div>
+  );
 
   if (isError) {
     return (
@@ -684,7 +694,7 @@ function TriggersTableBody({
     );
   }
 
-  if (rows.length === 0) {
+  if (!isLoading && rows.length === 0) {
     return (
       <div className="text-sm text-muted-foreground">
         {search.trim()
@@ -695,7 +705,7 @@ function TriggersTableBody({
   }
 
   return (
-    <div>
+    <div aria-busy={isLoading || undefined}>
       <div className="overflow-x-auto">
         <AutomationsTriggersRowsTable
           data={rows}
@@ -705,19 +715,11 @@ function TriggersTableBody({
           expandedRowId={expandedRowId}
           medianRunCount={medianRunCount}
           medianCostPerRun={medianCostPerRun}
+          isLoading={isLoading}
+          skeletonRowCount={skeletonRowCount}
         />
       </div>
-      {totalCount > pagination.pageSize && (
-        <div className="mt-2 p-1">
-          <Pagination
-            size="xs"
-            showDetails={false}
-            pagination={pagination}
-            setPagination={setPagination}
-            rowCount={totalCount}
-          />
-        </div>
-      )}
+      {paginationControls}
     </div>
   );
 }
