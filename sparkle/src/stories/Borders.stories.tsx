@@ -17,7 +17,7 @@ const meta = {
     layout: "padded",
     docs: {
       description: {
-        component: `The border scale: corner radii (\`rounded-*\`) and stroke widths (\`border-*\`). Each token is shown as a reference row: live specimen, a click-to-copy class chip, its computed value (read from the compiled CSS), and a description of intended use. Border *colors* are structural color tokens — see the Surface & Structural table in **Foundations/Colors** (\`border\`, \`border-dark\`, \`border-focus\`, \`border-warning\`).`,
+        component: `The border scale: corner radii (\`rounded-*\`), squircle corner shapes (\`rounded-squircle-*\`), and stroke widths (\`border-*\`). Each token is shown as a reference row: live specimen, a click-to-copy class chip, its computed value (read from the compiled CSS), and a description of intended use. Border *colors* are structural color tokens — see the Surface & Structural table in **Foundations/Colors** (\`border\`, \`border-dark\`, \`border-focus\`, \`border-warning\`).`,
       },
     },
   },
@@ -187,6 +187,43 @@ export const BorderRadius: Story = {
           {
             name: "rounded-full",
             description: "Avatars, pills, and status dots.",
+          },
+        ]}
+      />
+    </Section>
+  ),
+};
+
+export const CornerShape: Story = {
+  render: () => (
+    <Section
+      title="Corner Shape (Squircle)"
+      description={
+        <div className="flex flex-col gap-2 text-sm text-primary-600">
+          <p>
+            Squircle corners use <code>corner-shape: squircle</code> (a
+            superellipse curve, smoother than a plain radius) on hero surfaces
+            like the Composer card. In browsers without{" "}
+            <code>corner-shape</code> support, the utility falls back to a
+            standard <code>24px</code> radius — the Value column shows which one
+            your browser renders.
+          </p>
+          <p>
+            Overlays layered on a squircle surface must follow its shape: use{" "}
+            <code>rounded-[inherit] [corner-shape:inherit]</code> on the overlay
+            instead of repeating the utility.
+          </p>
+        </div>
+      }
+    >
+      <BorderTable
+        kind="radius"
+        rows={[
+          {
+            name: "rounded-squircle-40",
+            specimenClassName: "rounded-squircle-40 w-44",
+            description:
+              "40px squircle for large floating surfaces (Composer). Falls back to rounded-3xl-equivalent 24px where corner-shape is unsupported.",
           },
         ]}
       />
