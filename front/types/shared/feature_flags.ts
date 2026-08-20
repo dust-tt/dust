@@ -346,6 +346,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable the Pod Apps UI: browse, import, clone, export and delete the apps published on a Pod.",
     stage: "dust_only",
   },
+  top_level_apps: {
+    description:
+      "Expose Apps as a top-level concept with a full-screen conversation-and-preview builder, backed by one Pod per App.",
+    stage: "dust_only",
+  },
   group_permissions_shadow: {
     description:
       "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",

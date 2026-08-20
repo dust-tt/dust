@@ -22,6 +22,13 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
    * (Space DataSourceViews) to this Pod. Opt-in; gated by `admin_controlled_pods`.
    */
   declare isAdminControlled: CreationOptional<boolean>;
+  /**
+   * When true, this Pod is an App: it is surfaced under Apps rather than Pods and rendered by the
+   * full-screen App builder. Gated by `top_level_apps`.
+   */
+  declare isApp: CreationOptional<boolean>;
+  /** sId of the App's single continuous conversation. Only set when `isApp`. */
+  declare appConversationId: CreationOptional<string | null>;
   declare spaceId: ForeignKey<SpaceModel["id"]>;
 
   declare description: string | null;
@@ -72,6 +79,16 @@ ProjectMetadataModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    isApp: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    appConversationId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
     },
     initialTodoAnalysisLookback: {
       type: DataTypes.STRING,

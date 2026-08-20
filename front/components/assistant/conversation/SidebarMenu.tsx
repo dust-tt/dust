@@ -1,3 +1,4 @@
+import { AppsSidebarSection } from "@app/components/app/AppsSidebarSection";
 import {
   ConversationMenu,
   useConversationMenu,
@@ -797,54 +798,57 @@ export function AgentSidebarMenu({
     );
 
     return (
-      <NavigationList className="mx-sidebar-side-spacing flex-shrink-0">
-        <NavigationListCollapsibleSection
-          label="Pods"
-          type="collapse"
-          visibleItems={VISIBLE_PODS}
-          overflowCount={hiddenOverflowCount}
-          overflowHasActivity={hiddenOverflowHasActivity}
-          open={!isPodsSectionCollapsed}
-          onOpenChange={(open) => setPodsSectionCollapsed(!open)}
-          action={
-            <>
-              {nonStarredSummary.length > 0 && (
-                <Button
-                  size="xs"
-                  icon={Plus}
-                  label="New"
-                  variant="ghost-secondary"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsCreatePodModalOpen(true);
-                  }}
-                />
-              )}
-              <PodsBrowsePopover owner={owner} />
-            </>
-          }
-        >
-          {isSummaryLoading ? (
-            <div className="flex items-center justify-center">
-              <Spinner size="xs" />
-            </div>
-          ) : nonStarredSummary.length > 0 ? (
-            renderPodsList({
-              owner,
-              summary: nonStarredSummary,
-              titleFilter: sidebarTitleFilter,
-              moveConversationToPod: moveConversationToPod,
-            })
-          ) : (
-            <NavigationListItem
-              label="Create a Pod"
-              icon={Plus}
-              onClick={() => setIsCreatePodModalOpen(true)}
-            />
-          )}
-        </NavigationListCollapsibleSection>
-      </NavigationList>
+      <>
+        <AppsSidebarSection owner={owner} />
+        <NavigationList className="mx-sidebar-side-spacing flex-shrink-0">
+          <NavigationListCollapsibleSection
+            label="Pods"
+            type="collapse"
+            visibleItems={VISIBLE_PODS}
+            overflowCount={hiddenOverflowCount}
+            overflowHasActivity={hiddenOverflowHasActivity}
+            open={!isPodsSectionCollapsed}
+            onOpenChange={(open) => setPodsSectionCollapsed(!open)}
+            action={
+              <>
+                {nonStarredSummary.length > 0 && (
+                  <Button
+                    size="xs"
+                    icon={Plus}
+                    label="New"
+                    variant="ghost-secondary"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsCreatePodModalOpen(true);
+                    }}
+                  />
+                )}
+                <PodsBrowsePopover owner={owner} />
+              </>
+            }
+          >
+            {isSummaryLoading ? (
+              <div className="flex items-center justify-center">
+                <Spinner size="xs" />
+              </div>
+            ) : nonStarredSummary.length > 0 ? (
+              renderPodsList({
+                owner,
+                summary: nonStarredSummary,
+                titleFilter: sidebarTitleFilter,
+                moveConversationToPod: moveConversationToPod,
+              })
+            ) : (
+              <NavigationListItem
+                label="Create a Pod"
+                icon={Plus}
+                onClick={() => setIsCreatePodModalOpen(true)}
+              />
+            )}
+          </NavigationListCollapsibleSection>
+        </NavigationList>
+      </>
     );
   }, [
     owner,
