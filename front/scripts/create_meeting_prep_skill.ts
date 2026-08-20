@@ -7,8 +7,6 @@ import {
   SkillConfigurationModel,
   SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
-import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -17,7 +15,6 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
-import { AGENT_GROUP_PREFIX } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Transaction } from "sequelize";
 
@@ -355,24 +352,6 @@ async function createMeetingPrepSkill(
         requestedSpaceIds: [],
         icon: SKILL_ICON,
         availability: DEFAULT_SKILL_AVAILABILITY,
-      },
-      { transaction }
-    );
-
-    const editorGroup = await GroupResource.makeNew(
-      {
-        workspaceId: workspace.id,
-        name: `${AGENT_GROUP_PREFIX} ${SKILL_NAME} (skill:${createdSkill.id})`,
-        kind: "agent_editors",
-      },
-      { transaction }
-    );
-
-    await GroupSkillModel.create(
-      {
-        groupId: editorGroup.id,
-        skillConfigurationId: createdSkill.id,
-        workspaceId: workspace.id,
       },
       { transaction }
     );
