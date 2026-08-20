@@ -191,7 +191,7 @@ function AgentBreakdown({ agent }: AgentBreakdownProps) {
     >
       <CollapsibleTrigger
         aria-label={`${isOpen ? "Collapse" : "Expand"} credit details for ${agent.name}`}
-        className="min-h-11 flex-row-reverse justify-between rounded-xl px-2 text-left focus-visible:ring-2 focus-visible:ring-ring"
+        className="min-h-11 flex-row-reverse justify-between rounded-xl p-2 text-left focus-visible:ring-2 focus-visible:ring-ring"
       >
         <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
@@ -209,7 +209,7 @@ function AgentBreakdown({ agent }: AgentBreakdownProps) {
           </span>
         </div>
       </CollapsibleTrigger>
-      <CollapsibleContent className="px-2 pb-2 pt-2">
+      <CollapsibleContent className="p-2">
         <ToolBreakdownCards
           agentWorkCredits={agent.agentWorkCredits}
           tools={agent.tools}
@@ -224,6 +224,7 @@ interface AgentsBreakdownProps {
 }
 
 function AgentsBreakdown({ agents }: AgentsBreakdownProps) {
+  // We hide the section entirely if there is only one agent.
   if (agents.length <= 1) {
     return null;
   }
@@ -258,7 +259,7 @@ export function ConversationCreditUsageBreakdown({
           <h2 className="text-base font-semibold text-foreground">
             Total consumption
           </h2>
-          <div className="mt-1 flex items-end gap-1">
+          <div className="flex items-end gap-1">
             <span className="text-2xl font-semibold leading-8 text-foreground">
               {formatCredits(billedCredits)}
             </span>
