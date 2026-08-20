@@ -12,6 +12,7 @@ import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_
 import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
@@ -25,9 +26,9 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import tracer from "@app/logger/tracer";
-import type { GrantVerb } from "@app/types/group_permissions";
+import type { GrantType, GrantVerb } from "@app/types/group_permissions";
 import { SPACE_EDITOR_GRANT_TYPE } from "@app/types/group_permissions";
-import type { GroupKind, GroupType } from "@app/types/groups";
+import type { GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
   PROJECT_EDITOR_GROUP_PREFIX,
@@ -43,7 +44,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { GroupSpaceKind, SpaceKind, SpaceType } from "@app/types/space";
+import type { SpaceKind, SpaceType } from "@app/types/space";
 import assert from "assert";
 import type {
   Attributes,
@@ -60,25 +61,22 @@ import { Op, Sequelize } from "sequelize";
 export interface SpaceResource extends ReadonlyAttributesType<SpaceModel> {}
 
 /**
- * Lightweight representation of a group_vaults join row. It carries enough
- * data to enforce space permissions without fetching the full group and adding
- * a second join. This is slated to be superseded by the upcoming
- * GroupPermission model.
+ * Lightweight representation of a space's associated group. Carries only what the space's grant row
+ * holds — the group id and the grant type it confers — so it can be built straight from a
+ * `group_permissions` row.
  */
 class SpaceGroupReference {
   constructor(
     readonly groupId: ModelId,
-    readonly groupKind: GroupKind,
-    readonly groupSpaceKind: GroupSpaceKind,
+    readonly grantType: GrantType,
     readonly workspaceId: ModelId
   ) {}
 
-  static fromGroupSpaceModel(groupSpace: GroupSpaceModel) {
+  static fromGrant(grant: GroupPermissionModel): SpaceGroupReference {
     return new SpaceGroupReference(
-      groupSpace.groupId,
-      groupSpace.groupKind,
-      groupSpace.kind,
-      groupSpace.workspaceId
+      grant.groupId,
+      grant.grantType,
+      grant.workspaceId
     );
   }
 
@@ -89,16 +87,12 @@ class SpaceGroupReference {
     });
   }
 
-  isGlobal(): boolean {
-    return this.groupKind === "global";
-  }
-
-  isRegularAuto(): boolean {
-    return this.groupKind === "regular_auto";
-  }
-
-  isProvisioned(): boolean {
-    return this.groupKind === "provisioned";
+  // A `reader` grant is read-only (viewer) access. It is held by the workspace global group on open
+  // spaces (attached as a viewer), and additionally by the member group on open *regular* spaces
+  // (where every group only reads — write comes from the role grants). Presence of any reader grant
+  // therefore means the space is open; such groups never confer membership by themselves.
+  isReader(): boolean {
+    return this.grantType === "reader";
   }
 }
 
@@ -130,10 +124,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   static fromModel(space: SpaceModel) {
+    // Groups come from the space's `group_permissions` grants (the `spaceGrants` include), not
+    // `group_vaults`. Each grant is eager-loaded with its `group` so the reference carries the kind.
     return new SpaceResource(
       SpaceModel,
       space.get(),
-      space.groupSpaces.map(SpaceGroupReference.fromGroupSpaceModel)
+      (space.spaceGrants ?? []).map(SpaceGroupReference.fromGrant)
     );
   }
 
@@ -169,20 +165,18 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return withTransaction(async (t: Transaction) => {
       const space = await SpaceModel.create(blob, { transaction: t });
       const { members, editors = [] } = groups;
-      const groupSpaces: GroupSpaceModel[] = [];
 
+      // Dual-write the `group_vaults` association rows (kept in sync until the table is dropped).
       for (const memberGroup of members) {
-        groupSpaces.push(
-          await GroupSpaceModel.create(
-            {
-              groupId: memberGroup.id,
-              groupKind: memberGroup.kind,
-              vaultId: space.id,
-              workspaceId: space.workspaceId,
-              kind: "member",
-            },
-            { transaction: t }
-          )
+        await GroupSpaceModel.create(
+          {
+            groupId: memberGroup.id,
+            groupKind: memberGroup.kind,
+            vaultId: space.id,
+            workspaceId: space.workspaceId,
+            kind: "member",
+          },
+          { transaction: t }
         );
       }
       if (editors.length > 0) {
@@ -191,26 +185,20 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           "Only projects can have editor groups."
         );
         for (const editorGroup of editors) {
-          groupSpaces.push(
-            await GroupSpaceModel.create(
-              {
-                groupId: editorGroup.id,
-                groupKind: editorGroup.kind,
-                vaultId: space.id,
-                workspaceId: space.workspaceId,
-                kind: "project_editor",
-              },
-              { transaction: t }
-            )
+          await GroupSpaceModel.create(
+            {
+              groupId: editorGroup.id,
+              groupKind: editorGroup.kind,
+              vaultId: space.id,
+              workspaceId: space.workspaceId,
+              kind: "project_editor",
+            },
+            { transaction: t }
           );
         }
       }
 
-      const spaceResource = new this(
-        SpaceModel,
-        space.get(),
-        groupSpaces.map(SpaceGroupReference.fromGroupSpaceModel)
-      );
+      const spaceResource = new this(SpaceModel, space.get(), []);
 
       // Write group_permissions directly from the created associations, so a space is never
       // persisted without its grants. `auth` only needs to be in the space's workspace: the write
@@ -222,7 +210,22 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         transaction: t,
       });
 
-      return spaceResource;
+      // Re-read the grants just written so `this.groups` reflects the space's actual grant set
+      // (its source of truth). No `group` join needed: the reference only carries the grant type.
+      const spaceGrants = await GroupPermissionModel.findAll({
+        where: {
+          workspaceId: space.workspaceId,
+          resourceType: "space",
+          resourceId: space.id,
+        },
+        transaction: t,
+      });
+
+      return new this(
+        SpaceModel,
+        space.get(),
+        spaceGrants.map(SpaceGroupReference.fromGrant)
+      );
     }, transaction);
   }
 
@@ -352,12 +355,18 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   ) {
     const includeClauses: Includeable[] = [
       {
-        as: "groupSpaces",
-        model: GroupSpaceModel,
+        as: "spaceGrants",
+        model: GroupPermissionModel,
         // A where on an include implies required: true;
-        // pass this required: false to keep the original behavior intact
+        // pass this required: false to keep the original behavior intact.
         required: false,
-        where: { workspaceId: auth.getNonNullableWorkspace().id },
+        // workspaceId + resourceType make the (workspaceId, resourceType, resourceId) index usable
+        // for the join on resourceId; resourceType is also required for correctness since resourceId
+        // is polymorphic.
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          resourceType: "space",
+        },
       },
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       ...(includes || []),
@@ -538,12 +547,19 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     groups: (GroupResource | GroupType)[],
     options?: { includeConversationsSpace?: boolean }
   ) {
-    const groupSpaces = await GroupSpaceModel.findAll({
+    // The spaces these groups have any grant on (group -> spaces direction), from group_permissions.
+    // Served by the (workspaceId, groupId) index; resourceType pins it to space grants.
+    const spaceGrants = await GroupPermissionModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         groupId: groups.map((g) => g.id),
+        resourceType: "space",
       },
+      attributes: ["resourceId"],
     });
+    const grantedSpaceModelIds = [
+      ...new Set(spaceGrants.map((grant) => grant.resourceId)),
+    ];
 
     const allExceptConversations: Exclude<SpaceKind, "conversations">[] = [
       "system",
@@ -557,13 +573,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     if (options?.includeConversationsSpace) {
       spaces = await this.baseFetch(auth, {
         where: {
-          id: groupSpaces.map((v) => v.vaultId),
+          id: grantedSpaceModelIds,
         },
       });
     } else {
       spaces = await this.baseFetch(auth, {
         where: {
-          id: groupSpaces.map((v) => v.vaultId),
+          id: grantedSpaceModelIds,
           kind: {
             [Op.in]: allExceptConversations,
           },
@@ -713,8 +729,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       },
       include: [
         {
-          as: "groupSpaces",
-          model: GroupSpaceModel,
+          as: "spaceGrants",
+          model: GroupPermissionModel,
+          required: false,
+          // No workspaceId here (cross-workspace bypass); resourceType is still required since
+          // resourceId is polymorphic. Space ids are globally unique, so the join stays correct.
+          where: { resourceType: "space" },
         },
       ],
       includeDeleted: true,
@@ -751,14 +771,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     options: { hardDelete: boolean; transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     const { hardDelete, transaction } = options;
-    // Provisioned groups are not tied to any space, we don't delete them.
-    const groupReferencesToMaybeDelete = this.groups.filter(
-      (group) => !group.isProvisioned()
+    // Only the space's own auto-created (regular_auto) groups are deleted with it. The workspace
+    // global group and provisioned (IdP-owned) groups are shared and left untouched, so they are
+    // excluded here rather than relying on the association-count guard below.
+    const groupsToMaybeDelete = await this.fetchRegularAutoGroups(
+      auth,
+      transaction
     );
-    const groupsToMaybeDelete = await this.fetchGroupResources(auth, {
-      groupReferences: groupReferencesToMaybeDelete,
-      transaction,
-    });
 
     await GroupSpaceModel.destroy({
       where: {
@@ -1006,8 +1025,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
       // If the space should be restricted and was not restricted before, remove the global group.
       if (!wasRestricted && isRestricted) {
-        const globalGroupReference = this.groups.find((group) =>
-          group.isGlobal()
+        const globalGroupReference = this.groups.find(
+          (group) => group.groupId === globalGroup.id
         );
         assert(
           globalGroupReference,
@@ -1154,13 +1173,18 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         const groupIds = params.groupIds;
         const editorGroupIds = params.editorGroupIds;
 
-        // Remove existing external groups
-        const existingExternalGroups = this.groups.filter(
-          (g) => g.groupKind === "provisioned"
-        );
-        for (const group of existingExternalGroups) {
-          await this.removeGroup(auth, group, t);
-        }
+        // Remove existing provisioned associations, read straight from group_vaults rather than
+        // `this.groups` (now sourced from group_permissions). Switching to manual mode drops the
+        // provisioned grants but leaves the group_vaults rows, so `this.groups` would not list them
+        // and the re-insert below would hit the (vaultId, groupId) unique constraint.
+        await GroupSpaceModel.destroy({
+          where: {
+            vaultId: this.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+            groupKind: "provisioned",
+          },
+          transaction: t,
+        });
 
         // Add the new groups
         const selectedGroupsResult = await GroupResource.fetchByIds(
@@ -1731,6 +1755,34 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return this.cachedManualEditorGroup;
   }
 
+  // The space's auto-created (regular_auto) groups: its manual member group and, for projects, its
+  // editor group. Resolved from `group_permissions` (not `this.groups`, whose grant references
+  // cannot tell a regular_auto group from the global group by grant type). Empty in group management
+  // mode, where the space's groups are provisioned (IdP-owned) rather than auto-created.
+  async fetchRegularAutoGroups(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<GroupResource[]> {
+    return GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
+      resourceType: "space",
+      resourceId: this.id,
+      transaction,
+    });
+  }
+
+  // The groups that make up this space's membership: its member group and, for projects, its editor
+  // group (regular_auto in manual mode, provisioned in group mode). Groups holding only a read-only
+  // (`reader`) grant are excluded — the workspace global group attached to open spaces as a viewer,
+  // and on open regular spaces the member group too, since an open space confers access to everyone
+  // rather than through a member group. Use this to list who actually belongs to the space.
+  async fetchMembershipGroups(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<GroupResource[]> {
+    const groupReferences = this.groups.filter((group) => !group.isReader());
+    return this.fetchGroupResources(auth, { groupReferences, transaction });
+  }
+
   // The space's manual member group: the regular_auto group holding this space's membership. A
   // project space has two regular_auto groups (member + editor), so the editor group (identified
   // by its `admin` grant in `group_permissions`) is excluded; a regular space has exactly one.
@@ -1739,18 +1791,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     transaction?: Transaction
   ): Promise<GroupResource> {
     const editorGroup = await this.fetchManualEditorGroup(auth, transaction);
-    const memberReferences = this.groups.filter(
-      (group) => group.isRegularAuto() && group.groupId !== editorGroup?.id
+    const autoGroups = await this.fetchRegularAutoGroups(auth, transaction);
+    const memberGroups = autoGroups.filter(
+      (group) => group.id !== editorGroup?.id
     );
     assert(
-      memberReferences.length === 1,
-      `Expected exactly one member group for the space, but found ${memberReferences.length}.`
+      memberGroups.length === 1,
+      `Expected exactly one member group for the space, but found ${memberGroups.length}.`
     );
-    const [memberGroup] = await this.fetchGroupResources(auth, {
-      groupReferences: memberReferences,
-      transaction,
-    });
-    return memberGroup;
+    return memberGroups[0];
   }
 
   /**
@@ -1801,35 +1850,19 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // TODO(projects): update this method to check groups whose group_vaults relationship is
     // to remove the complexity of checking the global group based on the space type.
 
-    // Provisioned groups carry no grants on manually-managed spaces (see spaceGroupRoles).
-    const groups =
-      this.managementMode === "manual"
-        ? this.groups.filter((group) => !group.isProvisioned())
-        : this.groups;
+    const groups = this.groups;
 
     switch (this.kind) {
       case "regular":
-        for (const group of groups) {
-          // In regular spaces, having the global group means that you are a member.
-          if (group.isGlobal()) {
-            return true;
-          }
-          if (hasGroup(group.groupId)) {
-            return true;
-          }
-        }
-        return false;
+        // An open regular space grants membership to every workspace member.
+        return this.isOpen() || groups.some((group) => hasGroup(group.groupId));
       case "project":
-        for (const group of groups) {
-          // Ignore the global group for project spaces as it means that the group is public but not that you are a member.
-          if (group.isGlobal()) {
-            continue;
-          }
-          if (hasGroup(group.groupId)) {
-            return true;
-          }
-        }
-        return false;
+        // The global group is attached to open projects as a public viewer (a reader grant), which
+        // makes the project visible but does not make you a member; membership comes from the other
+        // groups.
+        return groups.some(
+          (group) => !group.isReader() && hasGroup(group.groupId)
+        );
       case "global":
         return true;
       case "conversations":
@@ -2183,7 +2216,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   isOpen() {
-    return this.groups.some((group) => group.isGlobal());
+    // A space is open when it has a reader (viewer) grant: the workspace global group is attached as
+    // a viewer on open spaces (restricted spaces have no reader grant). See
+    // `SpaceGroupReference.isReader`.
+    return this.groups.some((group) => group.isReader());
   }
 
   isDeletable() {
@@ -2206,9 +2242,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
-    const memberGroup = await this.fetchManualMemberGroup(auth, transaction);
-    const editorGroup = await this.fetchManualEditorGroup(auth, transaction);
-    const groups = [memberGroup, ...(editorGroup ? [editorGroup] : [])];
+    const groups = await this.fetchRegularAutoGroups(auth, transaction);
 
     for (const group of groups) {
       await group.suspendMembers(auth, { transaction });
@@ -2222,9 +2256,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
-    const memberGroup = await this.fetchManualMemberGroup(auth, transaction);
-    const editorGroup = await this.fetchManualEditorGroup(auth, transaction);
-    const groups = [memberGroup, ...(editorGroup ? [editorGroup] : [])];
+    const groups = await this.fetchRegularAutoGroups(auth, transaction);
 
     for (const group of groups) {
       await group.restoreMembers(auth, { transaction });
@@ -2249,12 +2281,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     allGroupMemberships: GroupMembershipModel[];
     editorGroupModelId: ModelId | null;
   }> {
-    const groupReferences = this.groups.filter((group) =>
-      group.isRegularAuto()
-    );
-    const groupsToProcess = await this.fetchGroupResources(auth, {
-      groupReferences,
-    });
+    const groupsToProcess = await this.fetchRegularAutoGroups(auth);
     const editorGroup = await this.fetchManualEditorGroup(auth);
     const editorGroupModelId = editorGroup?.id ?? null;
 
@@ -2330,30 +2357,42 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return result;
     }
 
-    // Manual group references (regular + editor) per space.
-    const manualGroupReferencesBySpaceModelId = new Map<
-      ModelId,
-      SpaceGroupReference[]
-    >();
-    const allGroupReferences = new Map<ModelId, SpaceGroupReference>();
+    // Fetch every space grant's group once, then keep the regular_auto ones (a space's manual
+    // member + editor groups). Grant type cannot identify them (an open regular space's member group
+    // holds a `reader` grant like the global group), so kind is resolved from the fetched groups.
+    const allGroupModelIds = new Set<ModelId>();
     for (const space of spaces) {
-      const groupReferences = space.groups.filter(
-        (group) => group.groupKind === "regular_auto"
-      );
-      manualGroupReferencesBySpaceModelId.set(space.id, groupReferences);
-      groupReferences.forEach((group) =>
-        allGroupReferences.set(group.groupId, group)
+      for (const group of space.groups) {
+        allGroupModelIds.add(group.groupId);
+      }
+    }
+    const allGroups = await GroupResource.fetchByModelIds(auth, [
+      ...allGroupModelIds,
+    ]);
+    const regularAutoGroups = allGroups.filter((group) =>
+      group.isRegularAuto()
+    );
+    const regularAutoGroupModelIds = new Set(
+      regularAutoGroups.map((group) => group.id)
+    );
+
+    // The regular_auto group ids per space.
+    const manualGroupModelIdsBySpaceModelId = new Map<ModelId, ModelId[]>();
+    for (const space of spaces) {
+      manualGroupModelIdsBySpaceModelId.set(
+        space.id,
+        space.groups
+          .map((group) => group.groupId)
+          .filter((groupId) => regularAutoGroupModelIds.has(groupId))
       );
     }
 
-    const allGroups = await GroupResource.fetchByModelIds(
-      auth,
-      [...allGroupReferences.values()].map((group) => group.groupId)
-    );
-
     // Single query for the active memberships across every group.
     const userModelIdsByGroupModelId =
-      await GroupResource.getActiveMembershipsForGroups(auth, allGroups);
+      await GroupResource.getActiveMembershipsForGroups(
+        auth,
+        regularAutoGroups
+      );
 
     // Single query for all the users referenced by those memberships.
     const allUserModelIds = new Set<ModelId>();
@@ -2367,10 +2406,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     // Reassemble the distinct member set for each space.
     for (const space of spaces) {
-      const groups = manualGroupReferencesBySpaceModelId.get(space.id) ?? [];
+      const groupModelIds =
+        manualGroupModelIdsBySpaceModelId.get(space.id) ?? [];
       const byId = new Map<ModelId, UserResource>();
-      for (const group of groups) {
-        for (const userModelId of userModelIdsByGroupModelId[group.groupId] ??
+      for (const groupModelId of groupModelIds) {
+        for (const userModelId of userModelIdsByGroupModelId[groupModelId] ??
           []) {
           const user = usersByModelId.get(userModelId);
           if (user && !byId.has(user.id)) {

@@ -39,7 +39,7 @@ import {
 } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   getResourceIdFromSId,
@@ -784,16 +784,17 @@ export class Authenticator {
       requestedSpaceIds.add(spaceId);
     }
 
-    const spaceGroups = await GroupSpaceModel.findAll({
+    const spaceGrants = await GroupPermissionModel.findAll({
       where: {
-        vaultId: [...requestedSpaceIds],
+        resourceType: "space",
+        resourceId: [...requestedSpaceIds],
         workspaceId,
       },
       attributes: ["groupId"],
     });
 
     const allowedGroupIds = new Set(
-      spaceGroups.map((sg) => Number(sg.groupId) as ModelId)
+      spaceGrants.map((grant) => Number(grant.groupId) as ModelId)
     );
 
     return new Ok(userGroupIds.filter((id) => allowedGroupIds.has(id)));
@@ -860,16 +861,17 @@ export class Authenticator {
       }
     }
 
-    const spaceGroups = await GroupSpaceModel.findAll({
+    const spaceGrants = await GroupPermissionModel.findAll({
       where: {
-        vaultId: [...allowedSpaceIds],
+        resourceType: "space",
+        resourceId: [...allowedSpaceIds],
         workspaceId,
       },
       attributes: ["groupId"],
     });
 
     const allowedGroupIds = new Set(
-      spaceGroups.map((sg) => Number(sg.groupId) as ModelId)
+      spaceGrants.map((grant) => Number(grant.groupId) as ModelId)
     );
 
     return new Ok(userGroupIds.filter((id) => allowedGroupIds.has(id)));

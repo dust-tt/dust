@@ -142,9 +142,7 @@ async function setupSandboxFunction({
     workspace,
   });
   if (addCallerToSpace) {
-    const [memberGroup] = await space.fetchGroupResources(adminAuth, {
-      groupReferences: space.groups.filter((group) => group.isRegularAuto()),
-    });
+    const [memberGroup] = await space.fetchRegularAutoGroups(adminAuth);
     if (!memberGroup) {
       throw new Error("Expected the project member group to exist.");
     }

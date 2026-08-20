@@ -11,6 +11,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
@@ -742,6 +743,43 @@ describe("SpaceResource", () => {
       });
     });
 
+    it("re-attaches a provisioned group after switching group -> manual -> group", async () => {
+      // Regression: switching to manual drops the provisioned grant but leaves the group_vaults
+      // row; space.groups is now sourced from group_permissions, so re-attaching must still clean
+      // the stale group_vaults row or the (vaultId, groupId) unique constraint fires.
+      const provisioned = await GroupFactory.provisioned(workspace, "Prov");
+      let space = await SpaceFactory.regular(workspace);
+
+      const toGroup = await space.updatePermissions(adminAuth, {
+        name: space.name,
+        isRestricted: true,
+        managementMode: "group",
+        groupIds: [provisioned.sId],
+        editorGroupIds: [],
+      });
+      expect(toGroup.isOk()).toBe(true);
+
+      space = (await SpaceResource.fetchById(adminAuth, space.sId))!;
+      const toManual = await space.updatePermissions(adminAuth, {
+        name: space.name,
+        isRestricted: true,
+        managementMode: "manual",
+        memberIds: [],
+        editorIds: [],
+      });
+      expect(toManual.isOk()).toBe(true);
+
+      space = (await SpaceResource.fetchById(adminAuth, space.sId))!;
+      const toGroupAgain = await space.updatePermissions(adminAuth, {
+        name: space.name,
+        isRestricted: true,
+        managementMode: "group",
+        groupIds: [provisioned.sId],
+        editorGroupIds: [],
+      });
+      expect(toGroupAgain.isOk()).toBe(true);
+    });
+
     describe("restricted/open state changes", () => {
       it("should add global group when changing from restricted to open", async () => {
         // Start with restricted space (no global group)
@@ -767,11 +805,16 @@ describe("SpaceResource", () => {
       });
 
       it("should remove global group when changing from open to restricted", async () => {
-        // First add global group to make it open
-        await GroupSpaceMemberResource.makeNew(adminAuth, {
-          group: globalGroup,
-          space: regularSpace,
+        // First make it open through updatePermissions so both the group_vaults association and the
+        // group_permissions grant are written (space.groups is sourced from group_permissions).
+        const openResult = await regularSpace.updatePermissions(adminAuth, {
+          name: "Test Space",
+          isRestricted: false,
+          managementMode: "manual",
+          memberIds: [user1.sId],
+          editorIds: [],
         });
+        expect(openResult.isOk()).toBe(true);
 
         // Reload space to get updated groups
         const spaceWithGlobalGroup = await SpaceResource.fetchById(
@@ -1578,6 +1621,81 @@ describe("SpaceResource", () => {
     });
   });
 
+  describe("isOpen", () => {
+    let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+    let adminAuth: Authenticator;
+
+    beforeEach(async () => {
+      workspace = await WorkspaceFactory.basic();
+      const adminUser = await UserFactory.basic();
+      const { globalGroup, systemGroup } =
+        await GroupFactory.defaults(workspace);
+      await MembershipFactory.associate(workspace, adminUser, {
+        role: "admin",
+      });
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceResource.makeDefaultsForWorkspace(internalAdminAuth, {
+        globalGroup,
+        systemGroup,
+      });
+      adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        workspace.sId
+      );
+    });
+
+    // `isOpen` is read from the space's `group_permissions` grants, so re-fetch after each change
+    // rather than trusting the in-memory instance.
+    const refetchIsOpen = async (space: SpaceResource): Promise<boolean> => {
+      const refetched = await SpaceResource.fetchById(adminAuth, space.sId);
+      expect(refetched).not.toBeNull();
+      return refetched!.isOpen();
+    };
+
+    it("is false for a restricted space and true once opened", async () => {
+      const space = await SpaceFactory.regular(workspace);
+      expect(await refetchIsOpen(space)).toBe(false);
+
+      const openResult = await space.updatePermissions(adminAuth, {
+        name: space.name,
+        isRestricted: false,
+        managementMode: "manual",
+        memberIds: [],
+        editorIds: [],
+      });
+      expect(openResult.isOk()).toBe(true);
+
+      expect(await refetchIsOpen(space)).toBe(true);
+    });
+
+    it("flips back to false when an open space is restricted again", async () => {
+      const space = await SpaceFactory.regular(workspace);
+      const openResult = await space.updatePermissions(adminAuth, {
+        name: space.name,
+        isRestricted: false,
+        managementMode: "manual",
+        memberIds: [],
+        editorIds: [],
+      });
+      expect(openResult.isOk()).toBe(true);
+      expect(await refetchIsOpen(space)).toBe(true);
+
+      const opened = await SpaceResource.fetchById(adminAuth, space.sId);
+      const restrictResult = await opened!.updatePermissions(adminAuth, {
+        name: space.name,
+        isRestricted: true,
+        managementMode: "manual",
+        memberIds: [],
+        editorIds: [],
+      });
+      expect(restrictResult.isOk()).toBe(true);
+
+      expect(await refetchIsOpen(space)).toBe(false);
+    });
+  });
+
   describe("listWorkspaceSpaces", () => {
     let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
     let adminAuth: Authenticator;
@@ -1625,7 +1743,7 @@ describe("SpaceResource", () => {
       expect(spaces.some((s) => s.id === regularSpace.id)).toBe(true);
     });
 
-    it("hydrates group references directly from group vaults", async () => {
+    it("hydrates group references from the space's group_permissions grants", async () => {
       const regularSpace = await SpaceFactory.regular(workspace);
       const [groupReference] = regularSpace.groups;
       const findAllSpy = vi.spyOn(SpaceModel, "findAll");
@@ -1640,24 +1758,16 @@ describe("SpaceResource", () => {
         expect.objectContaining({
           include: expect.arrayContaining([
             expect.objectContaining({
-              as: "groupSpaces",
-              model: GroupSpaceModel,
+              as: "spaceGrants",
+              model: GroupPermissionModel,
             }),
-          ]),
-        })
-      );
-      expect(findAllSpy).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          include: expect.arrayContaining([
-            expect.objectContaining({ model: GroupResource.model }),
           ]),
         })
       );
       expect(fetchedSpace?.groups).toEqual([
         expect.objectContaining({
           groupId: groupReference.groupId,
-          groupKind: "regular_auto",
-          groupSpaceKind: "member",
+          grantType: "member",
           workspaceId: workspace.id,
         }),
       ]);
@@ -1888,12 +1998,8 @@ describe("SpaceResource", () => {
 
     it("should return project spaces only for members", async () => {
       const projectSpace = await SpaceFactory.project(workspace);
-      const projectGroupReference = projectSpace.groups.find((group) =>
-        group.isRegularAuto()
-      );
-      const [projectGroup] = await projectSpace.fetchGroupResources(adminAuth, {
-        groupReferences: projectGroupReference ? [projectGroupReference] : [],
-      });
+      const [projectGroup] =
+        await projectSpace.fetchRegularAutoGroups(adminAuth);
 
       // User is not a member, should not see it
       const userSpaces =
@@ -2514,11 +2620,7 @@ describe("SpaceResource group_permissions enforcement", () => {
   // grants nothing, so access flows purely through the group — isolating the group-vs-table check.
   async function setupRestrictedSpaceWithMember(): Promise<SpaceResource> {
     const space = await SpaceFactory.regular(workspace);
-    const memberGroupRef = space.groups.find((g) => g.isRegularAuto());
-    expect(memberGroupRef).toBeDefined();
-    const [memberGroup] = await GroupResource.fetchByModelIds(adminAuth, [
-      memberGroupRef!.groupId,
-    ]);
+    const [memberGroup] = await space.fetchRegularAutoGroups(adminAuth);
     expect(memberGroup).toBeDefined();
     await memberGroup.dangerouslyAddMember(adminAuth, {
       user: memberUser.toJSON(),
