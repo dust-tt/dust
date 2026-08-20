@@ -4,6 +4,7 @@ import type { GroupType } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { RoleType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
@@ -147,10 +148,6 @@ function matchesAPIKeySearch(row: APIKeyRowData, search: string): boolean {
     row.status,
     ...row.spaces,
   ].some((value) => value.toLowerCase().includes(normalizedSearch));
-}
-
-function formatRelativeTime(timestamp: number): string {
-  return `${timeAgoFrom(timestamp, { useLongFormat: true })} ago`;
 }
 
 function buildColumns({
@@ -298,7 +295,9 @@ function buildColumns({
           className="whitespace-nowrap"
           label={
             info.row.original.lastUsedAt
-              ? formatRelativeTime(info.row.original.lastUsedAt)
+              ? `${timeAgoFrom(info.row.original.lastUsedAt, {
+                  useLongFormat: true,
+                })} ago`
               : "Never"
           }
         />
@@ -602,8 +601,8 @@ export function APIKeysList({
           <Separator />
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-foreground">
-              {filteredRows.length.toLocaleString()} API{" "}
-              {filteredRows.length === 1 ? "key" : "keys"}
+              {filteredRows.length.toLocaleString()} API key
+              {pluralize(filteredRows.length)}
             </span>
             {filteredRows.length > 0 && (
               <div className="flex items-center gap-3">
