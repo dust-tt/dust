@@ -13,7 +13,7 @@ export function ConsumptionProgressBar({
 
   return (
     <ProgressBar
-      className="h-2 bg-muted-foreground/10"
+      className="h-2 w-full bg-muted-foreground/10"
       values={[
         {
           value: percentage,
