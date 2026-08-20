@@ -201,7 +201,7 @@ function AgentBreakdown({ agent }: AgentBreakdownProps) {
           </h4>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <span className="text-base text-muted-foreground">
+          <span className="text-base font-semibold text-muted-foreground">
             {formatCreditValue(agent.billedCredits)}
           </span>
           <CollapsibleTrigger
