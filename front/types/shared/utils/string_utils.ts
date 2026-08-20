@@ -118,7 +118,7 @@ const SPECIAL_CASES = {
   id: "ID",
 };
 
-// Create a single regex pattern for all special cases
+// Match "id" in "user id", but not inside "video".
 const SPECIAL_CASES_PATTERN = new RegExp(
   `\\b(?:${Object.keys(SPECIAL_CASES).join("|")})\\b`,
   "g"
