@@ -48,6 +48,7 @@ app.get(
         canRequestUpgrade: false,
         hasPendingUpgradeRequest: false,
         willAutoUpgrade: false,
+        requireReason: false,
       });
     }
 
@@ -71,10 +72,14 @@ app.get(
     const programmaticCreditStatus: ProgrammaticCreditStatus =
       programmaticState === "depleted" ? "depleted" : "active";
 
-    const { canRequestUpgrade, hasPendingUpgradeRequest, willAutoUpgrade } =
-      await getUpgradeRequestAvailabilityForUser(auth, {
-        isNearOrAtLimit: userNearCreditLimit || userBlockedReason !== null,
-      });
+    const {
+      canRequestUpgrade,
+      hasPendingUpgradeRequest,
+      willAutoUpgrade,
+      requireReason,
+    } = await getUpgradeRequestAvailabilityForUser(auth, {
+      isNearOrAtLimit: userNearCreditLimit || userBlockedReason !== null,
+    });
 
     return ctx.json({
       userNearCreditLimit,
@@ -86,6 +91,7 @@ app.get(
       canRequestUpgrade,
       hasPendingUpgradeRequest,
       willAutoUpgrade,
+      requireReason,
     });
   }
 );

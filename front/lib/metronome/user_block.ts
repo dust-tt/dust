@@ -82,6 +82,7 @@ export type GetWorkspaceUsageStatusResponseBody = {
   canRequestUpgrade: boolean;
   hasPendingUpgradeRequest: boolean;
   willAutoUpgrade: boolean;
+  requireReason: boolean;
 };
 
 export type GetFairUseCreditsResponseBody = {

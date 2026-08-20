@@ -1,3 +1,5 @@
+import { Authenticator } from "@app/lib/auth";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
@@ -6,6 +8,10 @@ import { describe, expect, it } from "vitest";
 
 function upgradeRequestsUrl(wId: string) {
   return `/api/w/${wId}/credits/upgrade-requests`;
+}
+
+function usageConfigurationUrl(wId: string) {
+  return `/api/w/${wId}/credits/usage-configuration`;
 }
 
 async function creditPricedWorkspace(): Promise<WorkspaceType> {
@@ -132,6 +138,71 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       );
     });
 
+    it("returns 400 when the workspace requires a reason and none is given", async () => {
+      const workspace = await creditPricedWorkspace();
+
+      await createPrivateApiMockRequest({
+        method: "PATCH",
+        role: "admin",
+        workspace,
+      });
+      await honoApp.request(usageConfigurationUrl(workspace.sId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requireUpgradeRequestReason: true }),
+      });
+
+      await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+        workspace,
+      });
+      const response = await honoApp.request(
+        upgradeRequestsUrl(workspace.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        }
+      );
+
+      expect(response.status).toBe(400);
+      expect((await response.json()).error.type).toBe("invalid_request_error");
+    });
+
+    it("allows the request when the workspace requires a reason and one is given", async () => {
+      const workspace = await creditPricedWorkspace();
+
+      await createPrivateApiMockRequest({
+        method: "PATCH",
+        role: "admin",
+        workspace,
+      });
+      await honoApp.request(usageConfigurationUrl(workspace.sId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requireUpgradeRequestReason: true }),
+      });
+
+      await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+        workspace,
+      });
+      const response = await honoApp.request(
+        upgradeRequestsUrl(workspace.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: "Need more credits for a demo." }),
+        }
+      );
+
+      expect(response.status).toBe(200);
+      const { request } = await response.json();
+      expect(request.reason).toBe("Need more credits for a demo.");
+    });
+
     it("is idempotent — a second request reuses the pending one", async () => {
       const workspace = await creditPricedWorkspace();
       const { membership, response: first } =
@@ -148,6 +219,48 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
 
       expect(second.status).toBe(200);
       expect((await second.json()).request.sId).toBe(firstSId);
+    });
+
+    it("reuses the pending request on retry once the reason requirement is enabled after creation", async () => {
+      const workspace = await creditPricedWorkspace();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const configResult = await CreditUsageConfigurationResource.makeNew(
+        adminAuth,
+        {
+          allowMemberUpgradeRequests: true,
+          upgradeRequestEmailEnabled: false,
+          requireUpgradeRequestReason: false,
+          defaultDiscountPercent: 0,
+          usageCapCredits: null,
+        }
+      );
+      if (configResult.isErr()) {
+        throw configResult.error;
+      }
+      const config = configResult.value;
+
+      const { response: first } = await createMemberRequest(workspace);
+      const firstSId = (await first.json()).request.sId;
+
+      // Simulate the workspace toggling the reason requirement on after the
+      // first request already succeeded.
+      await config.updateConfiguration(adminAuth, {
+        requireUpgradeRequestReason: true,
+      });
+
+      // Same authenticated member retries with no reason (e.g. a network
+      // retry from an older client); it must reuse the existing pending
+      // request rather than being rejected.
+      const retry = await honoApp.request(upgradeRequestsUrl(workspace.sId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+
+      expect(retry.status).toBe(200);
+      expect((await retry.json()).request.sId).toBe(firstSId);
     });
   });
 
