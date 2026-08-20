@@ -1,8 +1,10 @@
 #!/usr/bin/env bun
 // Embedded runner for `dsbx function` and `dsbx db`. Subcommands:
 //   runner run <path>                            stdin request envelope -> stdout Output JSON
-//   runner serve <functionsDir> <socketPath>     warm worker: serve invocations of any function
-//                                                in <functionsDir> over a unix socket until idle
+//   runner serve <functionsDir> <socketPath> [eagerName]
+//                                                warm worker: serve invocations of any function
+//                                                in <functionsDir> over a unix socket until idle,
+//                                                eagerly importing [eagerName] and its app first
 //   runner get <path>                            -> stdout FunctionSchema JSON (or {error})
 //   runner build <src> <outBundle> <outSchema>   bundle + extract schema to files
 //   runner db-reconcile <dbPath> <schemaFile>    additive-only DDL reconcile -> stdout envelope
@@ -171,15 +173,15 @@ async function main(): Promise<number> {
     case "get":
       return getHandler(handlerPath);
     case "serve": {
-      const [functionsDir, socketPath] = rest;
+      const [functionsDir, socketPath, eagerName] = rest;
       if (!functionsDir || !socketPath) {
         process.stderr.write(
-          "usage: runner serve <functions-dir> <socket-path>\n"
+          "usage: runner serve <functions-dir> <socket-path> [eager-name]\n"
         );
         return 2;
       }
       // Never returns: the worker exits itself (idle, lifetime, staleness).
-      return serve(functionsDir, socketPath);
+      return serve(functionsDir, socketPath, eagerName);
     }
     default:
       process.stderr.write(`runner: unknown command "${command}"\n`);
