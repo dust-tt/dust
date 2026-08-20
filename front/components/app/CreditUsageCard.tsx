@@ -51,7 +51,7 @@ export function CreditUsageCard({
         </div>
         <ProgressBar
           aria-label={`${label} used`}
-          className="h-1 bg-border"
+          className="h-1 w-full bg-border"
           values={[
             { value: usedPercentage, className: TONE_BAR_CLASSES[tone] },
             { value: 100 - usedPercentage, className: "bg-transparent" },
