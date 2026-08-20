@@ -32,7 +32,9 @@ import {
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
-import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
+import useCustomEditor, {
+  INPUT_BAR_DEFAULT_PLACEHOLDER,
+} from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
@@ -1599,7 +1601,8 @@ const InputBarContainer = ({
   const showSendButton = !isVoiceActive || isSubmitting;
   const compactPreviewText = editorService.getTrimmedText();
   const compactDisplayPlaceholder =
-    (disableInput ? submitBlockMessage : placeholder) ?? "Get work done";
+    (disableInput ? submitBlockMessage : placeholder) ??
+    INPUT_BAR_DEFAULT_PLACEHOLDER;
 
   useEffect(() => {
     onVoiceActiveChange?.(isVoiceActive);

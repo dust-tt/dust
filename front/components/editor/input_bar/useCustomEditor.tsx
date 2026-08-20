@@ -42,7 +42,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 const SUBMIT_COOLDOWN_MS = 750;
-const INPUT_BAR_DEFAULT_PLACEHOLDER = "Get work done";
+export const INPUT_BAR_DEFAULT_PLACEHOLDER = "Get work done";
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {
   const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
@@ -368,7 +368,7 @@ export const buildEditorExtensions = ({
   onAgentSelect,
   onFirstAgentMentionPasteRef,
   slashSuggestion,
-  placeholderOverride,
+  placeholderOverrideRef,
   onSuggestionActiveChangeRef,
 }: {
   owner: WorkspaceType;
@@ -384,7 +384,7 @@ export const buildEditorExtensions = ({
     ((agentId: string) => void) | undefined
   >;
   slashSuggestion?: CustomEditorProps["slashSuggestion"];
-  placeholderOverride?: string | null;
+  placeholderOverrideRef?: React.RefObject<string | null | undefined>;
   onSuggestionActiveChangeRef?: CustomEditorProps["onSuggestionActiveChangeRef"];
 }) => {
   const notifySuggestionActiveChange = (active: boolean) => {
@@ -479,7 +479,7 @@ export const buildEditorExtensions = ({
         if (node.type.name !== "paragraph") {
           return "";
         }
-        return placeholderOverride ?? INPUT_BAR_DEFAULT_PLACEHOLDER;
+        return placeholderOverrideRef?.current ?? INPUT_BAR_DEFAULT_PLACEHOLDER;
       },
       emptyNodeClass:
         "first:before:text-faint dark:first:before:text-stone-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
@@ -541,6 +541,9 @@ const useCustomEditor = ({
   placeholderOverride,
   onSuggestionActiveChangeRef,
 }: CustomEditorProps) => {
+  // Read through a ref so placeholder changes don't rebuild the editor.
+  const placeholderOverrideRef = useRef(placeholderOverride);
+
   const editor = useEditor(
     {
       autofocus: disableAutoFocus ? false : "end",
@@ -556,7 +559,7 @@ const useCustomEditor = ({
         onAgentSelect,
         onFirstAgentMentionPasteRef,
         slashSuggestion,
-        placeholderOverride,
+        placeholderOverrideRef,
         onSuggestionActiveChangeRef,
       }),
       shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
@@ -585,9 +588,17 @@ const useCustomEditor = ({
       immediatelyRender: false,
     },
     // Important to watch for conversationId changes to reset the editor state when switching conversations.
-    // placeholderOverride is included so the placeholder text updates when the blocked-state reason changes.
-    [conversationId, placeholderOverride]
+    [conversationId]
   );
+
+  // The Placeholder extension only re-reads placeholderOverrideRef on a state
+  // update, so dispatch an empty transaction when the override changes.
+  useEffect(() => {
+    placeholderOverrideRef.current = placeholderOverride;
+    if (editor && !editor.isDestroyed) {
+      editor.view.dispatch(editor.state.tr);
+    }
+  }, [editor, placeholderOverride]);
 
   const isMobileViewport = useIsMobile();
   const editorService = useEditorService(editor, isMobileViewport);

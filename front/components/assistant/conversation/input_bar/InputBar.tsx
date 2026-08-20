@@ -59,6 +59,10 @@ import React, {
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
+// Placeholder shown while the agent is generating, when a submitted message
+// is queued as a follow-up.
+const INPUT_BAR_QUEUE_PLACEHOLDER = "Add a follow-up";
+
 type SelectedSpacesState = {
   key: string;
   spaceIds: string[];
@@ -250,6 +254,15 @@ export const InputBar = React.memo(function InputBar({
   const isBlockedByAgentSwitch = agentSwitchBlockMessage !== null;
   const isBlockedForSubmission =
     isBlockedByAgentSwitch || submitBlockMessage !== null;
+
+  // A message submitted while the agent is generating (same signal as the Stop
+  // button) is queued as a follow-up.
+  const willQueueMessage = useMemo(
+    () =>
+      !!conversation &&
+      getConversationGeneratingMessages(conversation.sId).length > 0,
+    [conversation, getConversationGeneratingMessages]
+  );
 
   // Tools selection
 
@@ -795,7 +808,9 @@ export const InputBar = React.memo(function InputBar({
             disableAgentSelector={isBlockedByAgentSwitch}
             disableInput={disableInput}
             submitBlockMessage={submitBlockMessage ?? agentSwitchBlockMessage}
-            placeholder={placeholder}
+            placeholder={
+              willQueueMessage ? INPUT_BAR_QUEUE_PLACEHOLDER : placeholder
+            }
             onShake={handleShake}
             isCompact={effectiveIsCompact}
             onExpandInputBar={onExpandInputBar}
