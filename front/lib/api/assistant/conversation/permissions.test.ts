@@ -10,6 +10,8 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -401,6 +403,50 @@ describe("canAgentBeUsedInProjectConversation", () => {
         conversation: conversationJson,
       })
     ).resolves.toBe(true);
+  });
+
+  it("rejects the agent when a project member reaches the restricted space only through a provisioned group on a manually-managed space", async () => {
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+
+    await addUserToSpaceRegularGroup(internalAdminAuth, projectSpace, userJson);
+
+    // The user's only link to the restricted space is a provisioned group. Provisioned groups
+    // carry no grants on manually-managed spaces (see spaceGroupRoles), so the user is not a
+    // member of the space.
+    const provisionedGroup = await GroupFactory.provisioned(
+      workspace,
+      faker.string.alphanumeric(8)
+    );
+    await GroupFactory.withMembers(internalAdminAuth, provisionedGroup, [user]);
+    await GroupSpaceFactory.associate(restrictedSpace, provisionedGroup);
+
+    await auth.refresh();
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      spaceId: projectSpace.id,
+    });
+    const conversationJson = await fetchConversationWithoutContent(
+      conversation.sId
+    );
+
+    await expect(
+      canAgentBeUsedInProjectConversation(auth, {
+        configuration: lightConfiguration([
+          projectSpace.sId,
+          restrictedSpace.sId,
+        ]),
+        conversation: conversationJson,
+      })
+    ).resolves.toBe(false);
   });
 
   it("allows the agent when all project members belong to required restricted spaces mixed with open spaces", async () => {

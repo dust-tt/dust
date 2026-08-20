@@ -1783,9 +1783,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   ): boolean {
     // TODO(projects): update this method to check groups whose group_vaults relationship is
     // to remove the complexity of checking the global group based on the space type.
+
+    // Provisioned groups carry no grants on manually-managed spaces (see spaceGroupRoles).
+    const groups =
+      this.managementMode === "manual"
+        ? this.groups.filter((group) => !group.isProvisioned())
+        : this.groups;
+
     switch (this.kind) {
       case "regular":
-        for (const group of this.groups) {
+        for (const group of groups) {
           // In regular spaces, having the global group means that you are a member.
           if (group.isGlobal()) {
             return true;
@@ -1796,7 +1803,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         }
         return false;
       case "project":
-        for (const group of this.groups) {
+        for (const group of groups) {
           // Ignore the global group for project spaces as it means that the group is public but not that you are a member.
           if (group.isGlobal()) {
             continue;
