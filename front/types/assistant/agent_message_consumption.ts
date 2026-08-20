@@ -20,7 +20,7 @@ export type AgentMessageConsumptionToolDetails = {
   internalMCPServerName: InternalMCPServerNameType | null;
   toolName: string;
   callCount: number;
-  /** Share of the authoritative bill after reconciling exclusively through model input rows. */
+  /** Share of the total bill. Run-agent tools include their direct sub-agent's bill. */
   attributedCredits: number;
   directCredits: number;
   pending: boolean;
@@ -35,16 +35,16 @@ export type AgentMessageConsumptionModelDetails = {
 
 export type AgentMessageConsumptionDetails = {
   attributionVersion: number;
-  /** Agent work after assigning the billing reconciliation exclusively to model input rows. */
+  /** Non-tool work for the originating message after input-only billing reconciliation. */
   agentWorkCredits: number;
   tools: AgentMessageConsumptionToolDetails[];
 };
 
 export type AgentMessageConsumptionResponse = {
   billedCredits: number | null;
-  /** Credits billed by sub-agents spawned from this message. */
+  /** Credits billed by direct sub-agents spawned from this message. */
   subAgentBilledCredits?: number;
-  /** Total credits billed by this message and its recursively spawned sub-agents. */
+  /** Total credits billed by this message and its direct sub-agents. */
   totalBilledCredits?: number;
   details: AgentMessageConsumptionDetails | null;
 };

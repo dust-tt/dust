@@ -29,6 +29,12 @@ export type ConversationConsumptionMessageFacts = {
   actions: AgentMCPActionResource[];
 };
 
+export type SubAgentConsumptionFacts = {
+  action: AgentMCPActionResource;
+  agentConfigurationId: string | null;
+  billedCredits: number;
+};
+
 type ConsumptionItemEvidenceBase = {
   grossAttributedCreditAmountMicro: number;
 };
@@ -800,6 +806,109 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         })
       ),
     };
+  }
+
+  /** Attributes each direct child conversation's bill to the run-agent action that spawned it. */
+  static async fetchDirectSubAgentConsumptionFacts(
+    auth: Authenticator,
+    {
+      conversation,
+      actions,
+    }: {
+      conversation: ConversationResource;
+      actions: AgentMCPActionResource[];
+    }
+  ): Promise<SubAgentConsumptionFacts[]> {
+    const roots = actions.flatMap((action) => {
+      const childConversationId = action.getRunAgentChildConversationId();
+      return childConversationId && childConversationId !== conversation.sId
+        ? [{ action, childConversationId }]
+        : [];
+    });
+    if (roots.length === 0) {
+      return [];
+    }
+
+    const childConversations = await ConversationResource.fetchByIds(
+      auth,
+      [...new Set(roots.map((root) => root.childConversationId))],
+      { includeDeleted: true }
+    );
+    const childConversationBySId = new Map(
+      childConversations.map((childConversation) => [
+        childConversation.sId,
+        childConversation,
+      ])
+    );
+    const rootActionIdsByConversationModelId = new Map<ModelId, Set<ModelId>>();
+    for (const root of roots) {
+      const childConversation = childConversationBySId.get(
+        root.childConversationId
+      );
+      if (!childConversation) {
+        continue;
+      }
+      const rootActionIds =
+        rootActionIdsByConversationModelId.get(childConversation.id) ??
+        new Set<ModelId>();
+      rootActionIds.add(root.action.id);
+      rootActionIdsByConversationModelId.set(
+        childConversation.id,
+        rootActionIds
+      );
+    }
+
+    const factsByActionId = new Map<ModelId, SubAgentConsumptionFacts>(
+      roots.map(({ action }) => [
+        action.id,
+        { action, agentConfigurationId: null, billedCredits: 0 },
+      ])
+    );
+    if (rootActionIdsByConversationModelId.size === 0) {
+      return [...factsByActionId.values()];
+    }
+
+    const agentMessages = await AgentMessageModel.findAll({
+      attributes: [
+        "id",
+        "agentConfigurationId",
+        "conversationId",
+        "costCredits",
+      ],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: {
+          [Op.in]: [...rootActionIdsByConversationModelId.keys()],
+        },
+      },
+      order: [["id", "ASC"]],
+    });
+    for (const agentMessage of agentMessages) {
+      const rootActionIds = rootActionIdsByConversationModelId.get(
+        agentMessage.conversationId
+      );
+      if (!rootActionIds) {
+        continue;
+      }
+
+      for (const rootActionId of rootActionIds) {
+        const facts = factsByActionId.get(rootActionId);
+        if (!facts) {
+          continue;
+        }
+        factsByActionId.set(rootActionId, {
+          ...facts,
+          agentConfigurationId:
+            facts.agentConfigurationId ?? agentMessage.agentConfigurationId,
+          billedCredits: facts.billedCredits + (agentMessage.costCredits ?? 0),
+        });
+      }
+    }
+
+    return roots.flatMap(({ action }) => {
+      const facts = factsByActionId.get(action.id);
+      return facts ? [facts] : [];
+    });
   }
 
   /**
