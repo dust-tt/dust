@@ -19,6 +19,7 @@ import {
   BookOpen01,
   Button,
   DataTableLoadingSkeleton,
+  LoadingBlock,
   Page,
 } from "@dust-tt/sparkle";
 import get from "lodash/get";
@@ -177,12 +178,18 @@ export function APIKeys({ owner }: APIKeysProps) {
 
   if (isKeysLoading || isGroupsLoading) {
     return (
-      <div className="rounded-xl border border-border bg-panel-background p-4">
-        <DataTableLoadingSkeleton
-          showSelectionColumn={false}
-          showTrailingCell
-        />
-      </div>
+      <Page.Vertical align="stretch" gap="xl">
+        <Page.Horizontal align="right">
+          <LoadingBlock className="h-8 w-full rounded-xl sm:w-32" />
+          <LoadingBlock className="h-8 w-full rounded-xl sm:w-36" />
+        </Page.Horizontal>
+        <div className="rounded-xl border border-border bg-panel-background p-4">
+          <DataTableLoadingSkeleton
+            showSelectionColumn={false}
+            showTrailingCell
+          />
+        </div>
+      </Page.Vertical>
     );
   }
 
