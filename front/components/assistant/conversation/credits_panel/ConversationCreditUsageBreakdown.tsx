@@ -97,8 +97,8 @@ function ToolBreakdownCards({
     <div className="grid grid-cols-2 gap-4">
       <div className="col-span-2">
         <CreditBreakdownCard
-          label="Agent work and context"
-          description="Longer conversations require more context to process"
+          label="Context and reasoning"
+          description="Agents use credits to process the conversation history and context. Longer conversations consume more credits."
           value={agentWorkCredits}
           icon={InternalActionIcons.ActionBrainIcon}
         />
@@ -162,7 +162,7 @@ function ModelsBreakdown({ isDark, models }: ModelsBreakdownProps) {
 
   return (
     <section className="mt-6 space-y-4 border-t border-border pt-6">
-      <h3 className="text-base font-semibold text-foreground">Per Models</h3>
+      <h3 className="text-base font-semibold text-foreground">By model</h3>
       <div className="space-y-2">
         {models.map((model) => (
           <ModelRow
@@ -257,7 +257,7 @@ export function ConversationCreditUsageBreakdown({
       <section className="space-y-4">
         <div>
           <h2 className="text-base font-semibold text-foreground">
-            Total consumption
+            Total credits consumed
           </h2>
           <div className="flex items-end gap-1">
             <span className="text-2xl font-semibold leading-8 text-foreground">

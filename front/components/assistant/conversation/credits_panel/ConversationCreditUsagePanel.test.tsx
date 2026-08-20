@@ -62,7 +62,7 @@ describe("ConversationCreditUsagePanel", () => {
       <ConversationCreditUsagePanel conversation={conversation} owner={owner} />
     );
 
-    expect(screen.getByText("Conversation consumption")).toBeInTheDocument();
+    expect(screen.getByText("Credit usage")).toBeInTheDocument();
     expect(screen.getByText("No usage yet")).toBeInTheDocument();
     expect(
       screen.getByText("Updates once a message is fully processed.")
