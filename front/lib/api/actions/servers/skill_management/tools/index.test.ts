@@ -292,7 +292,7 @@ describe("skill_management enable_skill tool", () => {
     expect(mockUpsertSkillFilesToConversation).not.toHaveBeenCalled();
   });
 
-  it("does not enable skills outside the agent loop allow-list and reports a distinct not-equipped error", async () => {
+  it("does not enable skills outside the agent loop allow-list and reports a not-found error", async () => {
     mockListForAgentLoop.mockResolvedValue({
       enabledSkills: [],
       equippedSkills: [],
@@ -307,7 +307,7 @@ describe("skill_management enable_skill tool", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("not equipped");
+      expect(result.error.message).toContain("not found");
     }
     expect(mockEnableForAgent).not.toHaveBeenCalled();
     expect(mockUpsertSkillFilesToConversation).not.toHaveBeenCalled();
