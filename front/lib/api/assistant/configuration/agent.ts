@@ -290,6 +290,30 @@ async function fetchLatestWorkspaceAgentModels(
 }
 
 /**
+ * When each agent first appeared. Not the active row's `createdAt`: upgrading inserts a new row, so
+ * that date is really the last edit.
+ */
+export async function fetchFirstVersionCreatedAtByAgentId(
+  auth: Authenticator,
+  agentIds: string[]
+): Promise<Map<string, Date>> {
+  if (agentIds.length === 0) {
+    return new Map();
+  }
+
+  const firstVersions = await AgentConfigurationModel.findAll({
+    attributes: ["sId", "createdAt"],
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      sId: { [Op.in]: agentIds },
+      version: 0,
+    },
+  });
+
+  return new Map(firstVersions.map(({ sId, createdAt }) => [sId, createdAt]));
+}
+
+/**
  * Get the latest versions of multiple agents.
  */
 export async function getAgentConfigurations<V extends AgentFetchVariant>(

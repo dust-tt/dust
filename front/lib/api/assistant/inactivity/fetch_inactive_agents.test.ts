@@ -240,6 +240,26 @@ describe("fetchInactiveAgents", () => {
     expect(page.nextCursor).toBeNull();
   });
 
+  it("never returns a global agent, whatever its mentions", async () => {
+    // Global agents have no row in `agent_configurations`, which is what the query selects from
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agent = await createAgedAgent(authenticator, {
+      name: "Idle custom agent",
+      createdAt: daysBeforeCutoff(90),
+    });
+    await MentionFactory.agentMentionedAt(authenticator, {
+      agentId: "dust",
+      mentionedAt: daysBeforeCutoff(90),
+    });
+
+    const page = await fetchInactiveAgents(authenticator, {
+      cutoffAt: CUTOFF_AT,
+      page: { cursor: null, limit: 50 },
+    });
+
+    expect(page.agents.map(({ agentId }) => agentId)).toEqual([agent.sId]);
+  });
+
   it("does not return another workspace's agents", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const other = await createResourceTest({ role: "admin" });

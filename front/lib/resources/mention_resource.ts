@@ -14,10 +14,9 @@ import type {
 } from "sequelize";
 import { QueryTypes } from "sequelize";
 
-/** One agent, with the two dates the archival rules compare against a cutoff. */
+/** One agent and when it was last mentioned, null if it never was. */
 export interface AgentIdleRow {
   agentId: string;
-  createdAt: Date;
   lastMentionedAt: Date | null;
 }
 
@@ -28,36 +27,24 @@ function isAgentIdleRow(row: unknown): row is AgentIdleRow {
     return false;
   }
 
-  if (
-    !("agentId" in row) ||
-    !("createdAt" in row) ||
-    !("lastMentionedAt" in row)
-  ) {
+  if (!("agentId" in row) || !("lastMentionedAt" in row)) {
     return false;
   }
 
   return (
     typeof row.agentId === "string" &&
-    row.createdAt instanceof Date &&
     (row.lastMentionedAt === null || row.lastMentionedAt instanceof Date)
   );
 }
 
 // Driven by the agents, with mentions as an anti-join: the set is defined by absence, and an agent
-// nobody ever mentioned has no row here to select. Hand-written because the query builder cannot
-// express an anti-join against an aggregate over another table.
+// nobody ever mentioned has no row here to select. The LATERAL reads one row per agent — the newest
+// mention — instead of every mention of every agent.
 const AGENTS_NOT_MENTIONED_SINCE_QUERY = `
   SELECT
     agent."sId" AS "agentId",
-    first_version."createdAt" AS "createdAt",
     last_mention."lastMentionedAt" AS "lastMentionedAt"
   FROM agent_configurations agent
-  JOIN LATERAL (
-    SELECT MIN(version_row."createdAt") AS "createdAt"
-    FROM agent_configurations version_row
-    WHERE version_row."workspaceId" = agent."workspaceId"
-      AND version_row."sId" = agent."sId"
-  ) first_version ON true
   LEFT JOIN LATERAL (
     SELECT MAX(mention."createdAt") AS "lastMentionedAt"
     FROM mentions mention
@@ -66,14 +53,11 @@ const AGENTS_NOT_MENTIONED_SINCE_QUERY = `
   ) last_mention ON true
   WHERE agent."workspaceId" = $workspaceId
     AND agent.status = 'active'
-    AND first_version."createdAt" < $notMentionedSince
-    AND ($cursor::text IS NULL OR agent."sId" > $cursor)
     AND (
       last_mention."lastMentionedAt" IS NULL
       OR last_mention."lastMentionedAt" < $notMentionedSince
     )
   ORDER BY agent."sId"
-  LIMIT $limit
 `;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -100,27 +84,16 @@ export class MentionResource extends BaseResource<MentionModel> {
   }
 
   /**
-   * The workspace's active agents not mentioned since `notMentionedSince`, keyed from `cursor`, with
-   * when each was last mentioned. Every mention counts whatever its `status` or `dismissed` flag —
-   * somebody reached for the agent.
+   * The workspace's active agents not mentioned since `notMentionedSince`, with when each last was.
    *
-   * Also filters on `status = 'active'` (which leaves exactly one row per logical agent) and on the
-   * agent having first appeared before the cutoff. Both stay *broader or equal* to the rules in
-   * `lib/api/assistant/inactivity/policy.ts`, which remain the authority.
+   * Global agents cannot appear: they have no row in `agent_configurations`, which is what stops a
+   * workspace policy from archiving one. Every mention counts, whatever its status.
    */
   static async listAgentsNotMentionedSince(
     auth: Authenticator,
-    {
-      notMentionedSince,
-      cursor,
-      limit,
-    }: {
-      notMentionedSince: Date;
-      cursor: string | null;
-      limit: number;
-    }
+    { notMentionedSince }: { notMentionedSince: Date }
   ): Promise<AgentIdleRow[]> {
-    // biome-ignore lint/plugin/noRawSql: an anti-join the query builder cannot express, see above.
+    // biome-ignore lint/plugin/noRawSql: needs a LATERAL, which the query builder cannot express.
     const rows: unknown[] = await frontSequelize.query(
       AGENTS_NOT_MENTIONED_SINCE_QUERY,
       {
@@ -128,8 +101,6 @@ export class MentionResource extends BaseResource<MentionModel> {
         bind: {
           workspaceId: auth.getNonNullableWorkspace().id,
           notMentionedSince,
-          cursor,
-          limit,
         },
       }
     );
