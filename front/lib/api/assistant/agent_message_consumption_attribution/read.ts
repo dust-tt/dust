@@ -130,7 +130,7 @@ export async function getAgentMessageConsumption(
     auth,
     agentConfigurationIds
   );
-  const toolDetailsOverridesByActionId = new Map<
+  const toolDetailsOverridesByActionModelId = new Map<
     ModelId,
     ToolConsumptionDetailsOverride
   >(
@@ -159,7 +159,7 @@ export async function getAgentMessageConsumption(
     dustRunIds: facts.dustRunIds,
     items: facts.items,
     runs,
-    toolDetailsOverridesByActionId,
+    toolDetailsOverridesByActionModelId,
     usages,
   });
   if (!details) {
