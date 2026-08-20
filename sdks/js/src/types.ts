@@ -821,6 +821,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "enforce_premium_model_message_limit"
   | "editable_tool_inputs"
   | "skip_free_usage_rate_limit"
+  | "trigger_pool_choice"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

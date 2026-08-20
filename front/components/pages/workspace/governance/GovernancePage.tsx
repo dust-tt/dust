@@ -41,6 +41,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import {
   ActionFrame,
+  Clock,
   CloudArrowLeftRight,
   ContentMessage,
   Cube01,
@@ -83,6 +84,7 @@ function groupGovernancePermissionsBySection(
   skills: GovernancePermission[];
   frames: GovernancePermission[];
   billingAndSecurity: GovernancePermission[];
+  triggers: GovernancePermission[];
 } {
   const resolve = (specs: CapabilitySpec[]): GovernancePermission[] =>
     removeNulls(
@@ -94,6 +96,7 @@ function groupGovernancePermissionsBySection(
     skills: resolve(GOVERNANCE_CAPABILITIES.skill),
     frames: resolve(GOVERNANCE_CAPABILITIES.frame),
     billingAndSecurity: resolve(GOVERNANCE_CAPABILITIES.billingAndSecurity),
+    triggers: resolve(GOVERNANCE_CAPABILITIES.trigger),
   };
 }
 
@@ -117,7 +120,7 @@ export const GovernancePage = () => {
   const isLoading = isGroupsLoading || isGovernancePermissionsLoading;
   const isError = isGroupsError || isGovernancePermissionsError;
 
-  const { agents, skills, frames, billingAndSecurity } =
+  const { agents, skills, frames, billingAndSecurity, triggers } =
     groupGovernancePermissionsBySection(governancePermissions);
 
   const framePermissions = frames.filter((permission) =>
@@ -130,7 +133,7 @@ export const GovernancePage = () => {
   };
 
   const sections: {
-    id: "agents" | "skills" | "frame" | "billing";
+    id: "agents" | "skills" | "frame" | "automations" | "billing";
     label: string;
     icon: ComponentType;
     governancePermissions: GovernancePermission[];
@@ -147,6 +150,16 @@ export const GovernancePage = () => {
       icon: PuzzlePiece01,
       governancePermissions: skills,
     },
+    ...(triggers.length > 0
+      ? [
+          {
+            id: "automations" as const,
+            label: "Automations",
+            icon: Clock,
+            governancePermissions: triggers,
+          },
+        ]
+      : []),
     ...(framePermissions.length > 0 || isAdmin
       ? [
           {
