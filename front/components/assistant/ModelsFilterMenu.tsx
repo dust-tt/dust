@@ -171,108 +171,6 @@ export function ModelsFilterMenu({
     selectedModelIds.has(model.modelId)
   );
 
-  const moreModels = (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger onClick={(event) => event.stopPropagation()}>
-        <span className="grow truncate text-left">More models</span>
-        {hasSelectedConcreteModel && (
-          <Icon visual={Check} size="sm" className="text-muted-foreground" />
-        )}
-        <Icon
-          visual={ChevronRight}
-          size="xs"
-          className="text-muted-foreground"
-        />
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent
-        className="max-h-112 w-64 overflow-y-auto"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="sticky top-0 z-10 bg-overlay-background">
-          <DropdownMenuSearchbar
-            autoFocus={!isCompact}
-            name="search-models"
-            placeholder="Search for model"
-            value={modelSearch}
-            onChange={setModelSearch}
-          />
-        </div>
-        {isSearching ? (
-          searchResults.length > 0 ? (
-            searchResults.map((model) => (
-              <ModelFilterItem
-                key={model.modelId}
-                model={model}
-                isSelected={selectedModelIds.has(model.modelId)}
-                onToggle={toggleModel}
-              />
-            ))
-          ) : (
-            <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-              No models found
-            </div>
-          )
-        ) : (
-          <>
-            {makerGroups.map((maker) => (
-              <DropdownMenuSub key={maker.makerId}>
-                <DropdownMenuSubTrigger>
-                  <Icon
-                    visual={getModelMakerLogo(maker.makerId, isDark)}
-                    size="sm"
-                  />
-                  <span className="grow truncate text-left">
-                    {getModelMakerDisplayName(maker.makerId)}
-                  </span>
-                  {maker.models.some((model) =>
-                    selectedModelIds.has(model.modelId)
-                  ) && (
-                    <Icon
-                      visual={Check}
-                      size="sm"
-                      className="text-muted-foreground"
-                    />
-                  )}
-                  <Icon
-                    visual={ChevronRight}
-                    size="xs"
-                    className="text-muted-foreground"
-                  />
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent
-                  className="max-h-96 w-64 overflow-y-auto"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  {maker.models.map((model) => (
-                    <ModelFilterItem
-                      key={model.modelId}
-                      model={model}
-                      isSelected={selectedModelIds.has(model.modelId)}
-                      onToggle={toggleModel}
-                    />
-                  ))}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-            ))}
-            {unknownModels.length > 0 && (
-              <>
-                <DropdownMenuLabel label="Other models" />
-                {unknownModels.map((model) => (
-                  <ModelFilterItem
-                    key={model.modelId}
-                    model={model}
-                    isSelected={selectedModelIds.has(model.modelId)}
-                    onToggle={toggleModel}
-                  />
-                ))}
-              </>
-            )}
-          </>
-        )}
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
-  );
-
   return (
     <DropdownMenu
       open={isDropdownOpen}
@@ -309,7 +207,113 @@ export function ModelsFilterMenu({
             {tierModels.length > 0 && concreteModels.length > 0 && (
               <DropdownMenuSeparator />
             )}
-            {concreteModels.length > 0 && moreModels}
+            {concreteModels.length > 0 && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <span className="grow truncate text-left">More models</span>
+                  {hasSelectedConcreteModel && (
+                    <Icon
+                      visual={Check}
+                      size="sm"
+                      className="text-muted-foreground"
+                    />
+                  )}
+                  <Icon
+                    visual={ChevronRight}
+                    size="xs"
+                    className="text-muted-foreground"
+                  />
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent
+                  className="max-h-112 w-64 overflow-y-auto"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="sticky top-0 z-10 bg-overlay-background">
+                    <DropdownMenuSearchbar
+                      autoFocus={!isCompact}
+                      name="search-models"
+                      placeholder="Search for model"
+                      value={modelSearch}
+                      onChange={setModelSearch}
+                    />
+                  </div>
+                  {isSearching ? (
+                    searchResults.length > 0 ? (
+                      searchResults.map((model) => (
+                        <ModelFilterItem
+                          key={model.modelId}
+                          model={model}
+                          isSelected={selectedModelIds.has(model.modelId)}
+                          onToggle={toggleModel}
+                        />
+                      ))
+                    ) : (
+                      <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+                        No models found
+                      </div>
+                    )
+                  ) : (
+                    <>
+                      {makerGroups.map((maker) => (
+                        <DropdownMenuSub key={maker.makerId}>
+                          <DropdownMenuSubTrigger>
+                            <Icon
+                              visual={getModelMakerLogo(maker.makerId, isDark)}
+                              size="sm"
+                            />
+                            <span className="grow truncate text-left">
+                              {getModelMakerDisplayName(maker.makerId)}
+                            </span>
+                            {maker.models.some((model) =>
+                              selectedModelIds.has(model.modelId)
+                            ) && (
+                              <Icon
+                                visual={Check}
+                                size="sm"
+                                className="text-muted-foreground"
+                              />
+                            )}
+                            <Icon
+                              visual={ChevronRight}
+                              size="xs"
+                              className="text-muted-foreground"
+                            />
+                          </DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent
+                            className="max-h-96 w-64 overflow-y-auto"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            {maker.models.map((model) => (
+                              <ModelFilterItem
+                                key={model.modelId}
+                                model={model}
+                                isSelected={selectedModelIds.has(model.modelId)}
+                                onToggle={toggleModel}
+                              />
+                            ))}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                      ))}
+                      {unknownModels.length > 0 && (
+                        <>
+                          <DropdownMenuLabel label="Other models" />
+                          {unknownModels.map((model) => (
+                            <ModelFilterItem
+                              key={model.modelId}
+                              model={model}
+                              isSelected={selectedModelIds.has(model.modelId)}
+                              onToggle={toggleModel}
+                            />
+                          ))}
+                        </>
+                      )}
+                    </>
+                  )}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
           </>
         ) : (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
