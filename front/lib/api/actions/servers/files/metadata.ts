@@ -368,6 +368,11 @@ const EDIT_TOOL = {
     "`old_string` must match the file content exactly, including whitespace and indentation. " +
     "Fails if `old_string` is not found or if the number of occurrences does not match " +
     "`expected_replacements` (default 1); make `old_string` unique by including surrounding lines. " +
+    "To make several changes to the same file in one call, pass `edits` (instead of " +
+    "`old_string`/`new_string`): an array of replacements applied in order, each matching against " +
+    "the result of the previous ones. The batch is all-or-nothing: if any edit fails to match, " +
+    "the file is left untouched. " +
+    "Success messages include the resulting line count and a sha256 prefix of the final content. " +
     `Files larger than ${CREATE_CONTENT_MAX_BYTES / 1024} KB cannot be edited with this tool, ` +
     `except Frame source files, which get a higher, ${FRAME_SOURCE_MAX_BYTES / 1024} KB cap. ` +
     "Editing a Frame source file updates only its source, never the rendered Frame directly.",
@@ -380,10 +385,17 @@ const EDIT_TOOL = {
     old_string: z
       .string()
       .min(1)
+      .optional()
       .describe(
-        "Exact text to replace, matching the file content character for character"
+        "Exact text to replace, matching the file content character for character. " +
+          "Required unless `edits` is provided."
       ),
-    new_string: z.string().describe("Text to replace `old_string` with"),
+    new_string: z
+      .string()
+      .optional()
+      .describe(
+        "Text to replace `old_string` with. Required unless `edits` is provided."
+      ),
     expected_replacements: z
       .number()
       .int()
@@ -391,6 +403,33 @@ const EDIT_TOOL = {
       .optional()
       .describe(
         "Number of occurrences expected to be replaced (default 1). The edit fails if the actual count differs."
+      ),
+    edits: z
+      .array(
+        z.object({
+          old_string: z
+            .string()
+            .min(1)
+            .describe(
+              "Exact text to replace, matching the file content (as transformed by the previous edits in the batch) character for character"
+            ),
+          new_string: z.string().describe("Text to replace `old_string` with"),
+          expected_replacements: z
+            .number()
+            .int()
+            .min(1)
+            .optional()
+            .describe(
+              "Number of occurrences expected to be replaced (default 1). The whole batch fails if the actual count differs."
+            ),
+        })
+      )
+      .min(1)
+      .optional()
+      .describe(
+        "Batch of replacements applied in order and written all-or-nothing: either every edit " +
+          "matches and the file is written once, or nothing is written. " +
+          "Use instead of `old_string`/`new_string` for multi-step changes, never alongside them."
       ),
   },
   stake: "never_ask" as const,
