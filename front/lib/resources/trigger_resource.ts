@@ -1048,14 +1048,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
-  private async canSetExecutionMode(
+  private static async canUseExecutionMode(
     auth: Authenticator,
     executionMode: TriggerExecutionMode
   ): Promise<boolean> {
-    if (!auth.isManager() && this.editor !== auth.getNonNullableUser().id) {
-      return false;
-    }
-
     switch (executionMode) {
       case "user_pool":
         return true;
@@ -1064,6 +1060,17 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       default:
         assertNever(executionMode);
     }
+  }
+
+  private async canSetExecutionMode(
+    auth: Authenticator,
+    executionMode: TriggerExecutionMode
+  ): Promise<boolean> {
+    if (!auth.isManager() && this.editor !== auth.getNonNullableUser().id) {
+      return false;
+    }
+
+    return TriggerResource.canUseExecutionMode(auth, executionMode);
   }
 
   async setExecutionMode(

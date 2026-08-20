@@ -223,6 +223,7 @@ function serializeTrigger(
         configuration: trigger.configuration,
         kind: trigger.kind,
         executionPerDayLimitOverride: trigger.executionPerDayLimitOverride,
+        executionMode: trigger.executionMode,
         webhookSourceViewId: trigger.webhookSourceViewId,
         spaceId: trigger.spaceId ?? null,
       };
@@ -235,6 +236,7 @@ function serializeTrigger(
         naturalLanguageDescription: trigger.naturalLanguageDescription,
         configuration: trigger.configuration,
         kind: trigger.kind,
+        executionMode: trigger.executionMode,
         spaceId: trigger.spaceId ?? null,
       };
     default:

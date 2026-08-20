@@ -1,4 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getFeatureFlags } from "@app/lib/auth";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import {
   resolveTriggerSpaceId,
@@ -7,7 +8,9 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { GetTriggersResponseBody } from "@app/types/api/assistant/configuration/triggers";
+import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
 import { TriggerSchema } from "@app/types/assistant/triggers";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -31,6 +34,17 @@ const PatchTriggersRequestBodySchema = z.object({
 const PostTriggersRequestBodySchema = z.object({
   triggers: z.array(TriggerSchema),
 });
+
+function requestedExecutionMode(
+  trigger: { executionMode?: TriggerExecutionMode },
+  featureFlags: WhitelistableFeature[]
+): TriggerExecutionMode | undefined {
+  if (!featureFlags.includes("trigger_pool_choice")) {
+    return undefined;
+  }
+
+  return trigger.executionMode;
+}
 
 function isWebhookTriggerData(trigger: {
   kind: string;
@@ -198,6 +212,7 @@ app.patch(
 
     const { triggers } = ctx.req.valid("json");
     const workspace = auth.getNonNullableWorkspace();
+    const featureFlags = await getFeatureFlags(auth);
 
     for (const triggerData of triggers) {
       const triggerToUpdate = userTriggers.find(
@@ -254,6 +269,23 @@ app.patch(
         ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
         : null;
 
+      const executionMode = requestedExecutionMode(
+        validatedTrigger,
+        featureFlags
+      );
+      if (
+        executionMode &&
+        !(await triggerToUpdate.canSetExecutionMode(auth, executionMode))
+      ) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "You don't have permission to change this trigger's pool.",
+          },
+        });
+      }
+
       const spaceIdRes = await resolveTriggerSpaceId(
         auth,
         validatedTrigger.spaceId
@@ -297,6 +329,31 @@ app.patch(
           },
         });
       }
+
+      if (executionMode) {
+        const executionModeRes = await triggerToUpdate.setExecutionMode(
+          auth,
+          executionMode
+        );
+        if (executionModeRes.isErr()) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              agentConfigurationId: aId,
+              triggerId: triggerData.sId,
+              error: executionModeRes.error,
+            },
+            "Failed to update trigger execution mode"
+          );
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: `Failed to update trigger ${triggerData.name}.`,
+            },
+          });
+        }
+      }
     }
 
     return ctx.body(null, 204);
@@ -330,6 +387,7 @@ app.post(
 
     const { triggers } = ctx.req.valid("json");
     const workspace = auth.getNonNullableWorkspace();
+    const featureFlags = await getFeatureFlags(auth);
 
     for (const triggerData of triggers) {
       const triggerValidation = TriggerSchema.safeParse({
@@ -353,6 +411,18 @@ app.post(
       const executionPerDay = isWebhookTriggerData(validatedTrigger)
         ? validatedTrigger.executionPerDayLimitOverride
         : null;
+
+      const executionMode =
+        requestedExecutionMode(validatedTrigger, featureFlags) ?? "user_pool";
+      if (!(await TriggerResource.canUseExecutionMode(auth, executionMode))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "You don't have permission to use the workspace pool.",
+          },
+        });
+      }
 
       const spaceIdRes = await resolveTriggerSpaceId(
         auth,
@@ -380,7 +450,7 @@ app.post(
         editor: auth.getNonNullableUser().id,
         webhookSourceViewId,
         executionPerDayLimitOverride: executionPerDay,
-        executionMode: "user_pool",
+        executionMode,
         origin: "user",
         spaceId: spaceIdRes.value,
       });

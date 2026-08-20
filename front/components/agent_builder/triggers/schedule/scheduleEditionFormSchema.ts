@@ -7,6 +7,7 @@ import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import {
   isCronScheduleConfig,
   isIntervalScheduleConfig,
+  TRIGGER_EXECUTION_MODES,
 } from "@app/types/assistant/triggers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { UserType } from "@app/types/user";
@@ -21,6 +22,7 @@ const commonFields = {
   naturalLanguageDescription: z.string().optional(),
   customPrompt: z.string(),
   timezone: z.string().min(1, "Timezone is required"),
+  executionMode: z.enum(TRIGGER_EXECUTION_MODES).default("user_pool"),
   spaceId: z.string().nullable(),
 };
 
@@ -56,6 +58,7 @@ export function getScheduleFormDefaultValues(
     status: trigger?.status ?? "enabled",
     naturalLanguageDescription: trigger?.naturalLanguageDescription ?? "",
     customPrompt: trigger?.customPrompt ?? "",
+    executionMode: trigger?.executionMode ?? "user_pool",
     spaceId: trigger?.spaceId ?? null,
   };
 
@@ -132,6 +135,7 @@ export function formValuesToScheduleTriggerData({
     naturalLanguageDescription:
       schedule.naturalLanguageDescription?.trim() ?? null,
     customPrompt: schedule.customPrompt?.trim() ?? null,
+    executionMode: schedule.executionMode,
     editorName:
       editTrigger?.kind === "schedule"
         ? editTrigger.editorName

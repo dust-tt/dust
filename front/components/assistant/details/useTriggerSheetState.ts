@@ -175,6 +175,7 @@ export function useTriggerSheetState({
             naturalLanguageDescription: triggerData.naturalLanguageDescription,
             configuration: triggerData.configuration,
             status: triggerData.status,
+            executionMode: triggerData.executionMode,
             spaceId: triggerData.spaceId,
           };
 
@@ -211,6 +212,7 @@ export function useTriggerSheetState({
             webhookSourceViewId: triggerData.webhookSourceViewId ?? "",
             executionPerDayLimitOverride:
               triggerData.executionPerDayLimitOverride ?? 0,
+            executionMode: triggerData.executionMode,
             status: triggerData.status,
             spaceId: triggerData.spaceId,
           };
