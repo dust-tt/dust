@@ -40,6 +40,23 @@ function getPolicyBucket() {
   return getBucketInstance(config.getEgressPolicyBucket());
 }
 
+// Pod sIds that have their own egress policy file. Pods store policies at
+// w/{wId}/sandboxes/{podSId}.json; the `vlt_` prefix (spaces' sId prefix)
+// isolates Pod (space) policies from the conversation-owned files sharing that
+// directory. One prefix list instead of a read per Pod, so the admin surfaces
+// scale with the Pods that actually diverged from the workspace baseline, not
+// the total Pod count.
+export async function listPodSIdsWithEgressPolicy(
+  auth: Authenticator
+): Promise<string[]> {
+  const prefix = `w/${auth.getNonNullableWorkspace().sId}/sandboxes/vlt_`;
+  const { files } = await getPolicyBucket().getAllFilesByPrefix({ prefix });
+  return files.flatMap((file) => {
+    const match = file.name.match(/\/sandboxes\/(vlt_[^/]+)\.json$/);
+    return match ? [match[1]] : [];
+  });
+}
+
 // Reads a policy file, distinguishing "absent" (Ok(null)) from real errors so
 // callers can fall back across layouts without masking failures.
 async function fetchPolicyAtPath(
