@@ -169,7 +169,7 @@ function buildColumns({
       accessorFn: (row) => row.name,
       header: "Name",
       enableSorting: true,
-      meta: { className: "h-16 w-56", headerAlign: "left" },
+      meta: { className: "h-16", headerAlign: "left" },
       cell: (info) => (
         <div className="flex flex-col justify-center">
           <span className="truncate text-sm font-medium text-foreground">
@@ -186,7 +186,10 @@ function buildColumns({
       accessorKey: "scope",
       header: "Scope",
       enableSorting: false,
-      meta: { className: "h-16 w-28", headerAlign: "left" },
+      meta: {
+        className: "hidden h-16 w-24 @sm-table:table-cell",
+        headerAlign: "left",
+      },
       cell: (info) => (
         <DataTable.CellContent>
           <Chip
@@ -202,7 +205,10 @@ function buildColumns({
       accessorKey: "secret",
       header: "Key",
       enableSorting: false,
-      meta: { className: "h-16 w-40", headerAlign: "left" },
+      meta: {
+        className: "hidden h-16 w-20 @md-table:table-cell",
+        headerAlign: "left",
+      },
       cell: (info) => (
         <DataTable.BasicCellContent
           className="font-mono text-muted-foreground"
@@ -215,7 +221,10 @@ function buildColumns({
       accessorFn: (row) => row.spaces.join(", "),
       header: "Spaces",
       enableSorting: false,
-      meta: { className: "h-16 w-48", headerAlign: "left" },
+      meta: {
+        className: "hidden h-16 w-24 @md-table:table-cell",
+        headerAlign: "left",
+      },
       cell: (info) => {
         const spaces = info.row.original.spaces;
         const [firstSpace, ...remainingSpaces] = spaces;
@@ -260,7 +269,10 @@ function buildColumns({
       accessorKey: "monthlyCap",
       header: capLabel,
       enableSorting: false,
-      meta: { className: "h-16 w-32", headerAlign: "left" },
+      meta: {
+        className: "hidden h-16 w-20 @sm-table:table-cell",
+        headerAlign: "left",
+      },
       cell: (info) => (
         <DataTable.BasicCellContent
           className="tabular-nums"
@@ -273,7 +285,10 @@ function buildColumns({
       accessorKey: "createdAt",
       header: "Created",
       enableSorting: true,
-      meta: { className: "h-16 w-36 min-w-36", headerAlign: "left" },
+      meta: {
+        className: "hidden h-16 w-28 @md-table:table-cell",
+        headerAlign: "left",
+      },
       cell: (info) => (
         <DataTable.BasicCellContent
           className="whitespace-nowrap"
@@ -286,7 +301,10 @@ function buildColumns({
       accessorKey: "lastUsedAt",
       header: "Last used",
       enableSorting: true,
-      meta: { className: "h-16 w-36 min-w-36", headerAlign: "left" },
+      meta: {
+        className: "hidden h-16 w-28 @sm-table:table-cell",
+        headerAlign: "left",
+      },
       cell: (info) => (
         <DataTable.BasicCellContent
           className="whitespace-nowrap"
@@ -303,7 +321,7 @@ function buildColumns({
       accessorKey: "status",
       header: "Status",
       enableSorting: false,
-      meta: { className: "h-16 w-28", headerAlign: "left" },
+      meta: { className: "h-16 w-16", headerAlign: "left" },
       cell: (info) => {
         const status = info.row.original.status;
         return (
@@ -327,7 +345,10 @@ function buildColumns({
       id: "revoke",
       header: "",
       enableSorting: false,
-      meta: { className: "h-16 w-24", headerAlign: "right" },
+      meta: {
+        className: "hidden h-16 w-20 @xs-table:table-cell",
+        headerAlign: "right",
+      },
       cell: (info) =>
         info.row.original.key.status === "active" ? (
           <DataTable.CellContent className="w-full justify-end">
@@ -345,7 +366,7 @@ function buildColumns({
       id: "actions",
       header: "",
       enableSorting: false,
-      meta: { className: "h-16 w-12" },
+      meta: { className: "h-16 w-10" },
       cell: (info) =>
         info.row.original.menuItems.length > 0 ? (
           <DataTable.CellContent className="w-full justify-end">
@@ -580,24 +601,16 @@ export function APIKeysList({
               No API keys match these filters.
             </div>
           ) : (
-            <div className="dd-privacy-mask overflow-x-auto">
+            <div className="dd-privacy-mask">
               <DataTable
                 data={paginatedRows}
                 columns={columns}
-                className="min-w-3xl"
                 sorting={sorting}
                 setSorting={(nextSorting) => {
                   setSorting(nextSorting);
                   resetPagination();
                 }}
                 isServerSideSorting
-                columnsBreakpoints={{
-                  key: "xl",
-                  spaces: "md",
-                  monthlyCap: "sm",
-                  createdAt: "lg",
-                  lastUsedAt: "md",
-                }}
               />
             </div>
           )}
