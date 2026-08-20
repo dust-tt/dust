@@ -572,9 +572,11 @@ export function AssistantsTable({
     ]
   );
 
+  const selectionSet = useMemo(() => new Set(selection), [selection]);
+
   const selectedAgents = useMemo(
-    () => agents.filter((a) => selection.includes(a.sId)),
-    [agents, selection]
+    () => agents.filter((a) => selectionSet.has(a.sId)),
+    [agents, selectionSet]
   );
 
   const selectableRowIds = useMemo(
@@ -589,11 +591,12 @@ export function AssistantsTable({
     const start = pagination.pageIndex * pagination.pageSize;
     return rows.slice(start, start + pagination.pageSize);
   }, [rows, pagination]);
-  const pageSelectedCount = useMemo(() => {
-    const selectionSet = new Set(selection);
-    return pageRows.filter((row) => row.canArchive && selectionSet.has(row.sId))
-      .length;
-  }, [pageRows, selection]);
+  const pageSelectedCount = useMemo(
+    () =>
+      pageRows.filter((row) => row.canArchive && selectionSet.has(row.sId))
+        .length,
+    [pageRows, selectionSet]
+  );
 
   return (
     <>
