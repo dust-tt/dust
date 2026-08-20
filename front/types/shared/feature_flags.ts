@@ -51,6 +51,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to internal global agents (dust-edge, dust-quick, dust-oai, dust-goog, custom model agents and their variants)",
     stage: "dust_only",
   },
+  dust_light_agent: {
+    description:
+      "Access to the lighter and faster GPT-5.6 Luna-powered @dust-light agent",
+    stage: "dust_only",
+  },
   dust_agent_gpt_5_6_luna_default: {
     description:
       "Use GPT 5.6 Luna (high reasoning) as the default model for the @dust agent",

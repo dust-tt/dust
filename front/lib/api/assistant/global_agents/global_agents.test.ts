@@ -257,6 +257,63 @@ describe("getGlobalAgents custom model agents", () => {
 });
 
 describe("getGlobalAgents OpenAI Dust agents", () => {
+  it("gates the light Dust agent behind its dedicated feature flag", async () => {
+    const auth = await createAuthenticatorWithFlags([
+      "dust_internal_global_agents",
+    ]);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [GLOBAL_AGENTS_SID.DUST_LIGHT],
+      "light"
+    );
+
+    expect(agents).toEqual([]);
+  });
+
+  it("configures the light Dust agent for fast, focused answers", async () => {
+    const auth = await createAuthenticatorWithFlags(["dust_light_agent"]);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [GLOBAL_AGENTS_SID.DUST, GLOBAL_AGENTS_SID.DUST_LIGHT],
+      "full"
+    );
+    const dustAgent = agents.find(
+      (agent) => agent.sId === GLOBAL_AGENTS_SID.DUST
+    );
+    const lightAgent = agents.find(
+      (agent) => agent.sId === GLOBAL_AGENTS_SID.DUST_LIGHT
+    );
+
+    if (
+      !dustAgent?.instructions ||
+      !lightAgent?.instructions ||
+      !lightAgent.skills
+    ) {
+      throw new Error("Expected both Dust agents to have full configurations.");
+    }
+
+    expect(lightAgent.model).toMatchObject({
+      providerId: "openai",
+      modelId: GPT_5_6_LUNA_MODEL_ID,
+      reasoningEffort: "light",
+    });
+    expect(lightAgent.instructions).toContain(
+      "Prefer answering without tools when the request can be handled from existing knowledge or context."
+    );
+    expect(lightAgent.instructions).toContain(
+      "Avoid calling the same tool repeatedly unless the request genuinely requires it."
+    );
+    expect(lightAgent.instructions).toContain(
+      "Do not enable Go Deep by default. Only enable it when the user explicitly asks"
+    );
+    expect(lightAgent.instructions.length).toBeLessThan(
+      dustAgent.instructions.length
+    );
+    expect(lightAgent.skills).toContain("go-deep");
+  });
+
   it("uses GPT 5.6 Luna with high reasoning as the flagged Dust default", async () => {
     const auth = await createAuthenticatorWithFlags([
       "dust_agent_gpt_5_6_luna_default",

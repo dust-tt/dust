@@ -97,6 +97,28 @@ interface DustLikeGlobalAgentArgs {
   preferSonnet5DefaultModel?: boolean;
 }
 
+function buildLightAgentInstructions(hasDeepDive: boolean): string {
+  const goDeepInstruction = hasDeepDive
+    ? "- Do not enable Go Deep by default. Only enable it when the user explicitly asks for a deep dive, deep research, comprehensive analysis, or another clearly extensive investigation."
+    : "";
+
+  return `<primary_goal>
+Answer the user's request directly and quickly. Use internal knowledge, company data, or the public internet only when needed.
+</primary_goal>
+
+<guidelines>
+${globalAgentGuidelines}
+
+- Prefer answering without tools when the request can be handled from existing knowledge or context.
+- When tools are needed, use the fewest focused calls that can answer the request. Stop once you have enough information.
+- Avoid calling the same tool repeatedly unless the request genuinely requires it.
+- Keep searches narrow. Do not perform broad or exhaustive research unless the user asks for it.
+- Use company data for private or internal information and the internet for recent public information.
+${goDeepInstruction}
+- For clear Dust platform support requests, enable the "Dust Support" skill before answering.
+</guidelines>`;
+}
+
 const INSTRUCTION_SECTIONS = {
   primary: `<primary_goal>
 You are an AI agent created by Dust to answer questions using your internal knowledge, the public internet and the user's internal company data sources.
@@ -269,6 +291,7 @@ function _getDustLikeGlobalAgent(
     preferredReasoningEffort,
     requiredPreferredModelConfiguration,
     omittedThinking,
+    instructionsOverride,
   }: {
     agentId: GLOBAL_AGENTS_SID;
     name: string;
@@ -276,6 +299,7 @@ function _getDustLikeGlobalAgent(
     preferredReasoningEffort?: ReasoningEffort;
     requiredPreferredModelConfiguration?: boolean;
     omittedThinking?: boolean;
+    instructionsOverride?: string;
   }
 ): (AgentConfigurationType & { omittedThinking?: boolean }) | null {
   const { agent_memory: agentMemoryMCPServerView } = mcpServerViews;
@@ -349,10 +373,12 @@ function _getDustLikeGlobalAgent(
   const hasAgentMemory =
     agentMemoryMCPServerView !== null && !featureFlags.includes("user_memory");
 
-  const instructions = buildInstructions({
-    hasDeepDive,
-    hasAgentMemory,
-  });
+  const instructions =
+    instructionsOverride ??
+    buildInstructions({
+      hasDeepDive,
+      hasAgentMemory,
+    });
 
   const dustAgent = {
     id: -1,
@@ -625,8 +651,9 @@ export function _getDustLightGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_LIGHT,
     name: "dust-light",
-    preferredModelConfiguration: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredModelConfiguration: GPT_5_6_LUNA_MODEL_CONFIG,
     preferredReasoningEffort: "light",
+    instructionsOverride: buildLightAgentInstructions(args.hasDeepDive),
   });
 }
 
