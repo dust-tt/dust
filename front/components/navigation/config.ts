@@ -384,7 +384,7 @@ export const subNavigationAdmin = ({
 
   nav.push({
     id: "api",
-    label: "Programmatic Usage",
+    label: "API & Programmatic",
     menus: [
       {
         id: "api_keys",
