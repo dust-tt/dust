@@ -98,13 +98,13 @@ export interface IconButtonProps
 }
 
 /**
- * A compact, label-less button rendered as a single icon, available in several
- * visual variants and sizes with an optional tooltip to convey its meaning.
- * Use it for dense toolbars or inline controls with self-explanatory actions
- * (settings, close, edit); for a call-to-action that benefits from a label,
- * prefer Button.
+ * A compact, label-less button rendered as a single icon.
  *
- * @summary Compact icon-only button.
+ * @deprecated Use Button with an `icon` and no `label` instead (pass a
+ * `tooltip` to keep the action accessible), e.g.
+ * `<Button icon={Settings01} tooltip="Settings" variant="ghost" size="sm" />`.
+ *
+ * @summary Deprecated icon-only button — use Button with an icon.
  */
 const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
   (

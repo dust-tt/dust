@@ -4,11 +4,14 @@ import { Settings01, IconButton } from "../index_with_tw_base";
 
 const meta = {
   title: "Actions/IconButton",
+  tags: ["deprecated", "!manifest"],
   component: IconButton,
   parameters: {
     docs: {
       description: {
-        component: `A compact, label-less button rendered as a single **icon**. It comes in several visual **variant**s (\`primary\`, \`highlight\`, \`ghost\`, …) and **size**s, and accepts an optional \`tooltip\` to convey its meaning.
+        component: `**Deprecated — use Button with an \`icon\` and no \`label\` instead** (keep a \`tooltip\` so the action stays accessible): \`<Button icon={Settings01} tooltip="Settings" variant="ghost" size="sm" />\`. See the **IconButtons** story under Actions/Button. Kept only as a visual reference for legacy product surfaces.
+
+A compact, label-less button rendered as a single **icon**. It comes in several visual **variant**s (\`primary\`, \`highlight\`, \`ghost\`, …) and **size**s, and accepts an optional \`tooltip\` to convey its meaning.
 
 **When to use**
 - For dense toolbars or inline controls where a full labelled button would be too large.
