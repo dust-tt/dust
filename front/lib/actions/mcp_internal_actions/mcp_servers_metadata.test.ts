@@ -18,8 +18,8 @@
  *   Example: `UPDATE_MCP_METADATA_SNAPSHOT=1 NODE_ENV=test npm test lib/actions/mcp_internal_actions/mcp_servers_metadata.test.ts`
  *
  * Note: This test uses a mock authenticator and does not require database access for the
- * metadata extraction itself. The auth is only used during server instantiation, not during
- * tool registration.
+ * metadata extraction itself. Some servers gate tool registration on auth methods, so the
+ * mock must include those (isAdmin, isManager, user, etc.).
  */
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
@@ -109,11 +109,9 @@ function sortToolsStakes(
 
 /**
  * Creates a minimal mock authenticator for testing.
- * This mock is only used to instantiate MCP servers - the auth is not
- * actually used during tool registration, only during tool execution.
- *
- * Note: We include a mock user because some servers (e.g., agent_memory)
- * have conditional tool registration based on user presence.
+ * Used to instantiate MCP servers so we can list registered tools. Some servers
+ * gate registration on auth (e.g. agent_memory on user presence, workspace_people
+ * on isManager), so the mock must include those methods.
  */
 function createMockAuthenticator(): Authenticator {
   const mockWorkspace = {
@@ -133,6 +131,7 @@ function createMockAuthenticator(): Authenticator {
     getNonNullableWorkspace: () => mockWorkspace,
     workspace: () => mockWorkspace,
     isAdmin: () => true,
+    isManager: () => true,
     isBuilder: () => true,
     isUser: () => true,
     isDustSuperUser: () => true,
