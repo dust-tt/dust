@@ -208,12 +208,17 @@ function buildColumns({
         className: "hidden h-16 w-28 @lg-table:table-cell",
         headerAlign: "left",
       },
-      cell: (info) => (
-        <DataTable.BasicCellContent
-          className="font-mono text-muted-foreground"
-          label={info.row.original.secret}
-        />
-      ),
+      cell: (info) => {
+        const secret = info.row.original.secret;
+        const suffix = secret.slice(-4);
+
+        return (
+          <div className="flex w-full min-w-0 items-center font-mono text-sm text-muted-foreground">
+            <span className="min-w-0 truncate">{secret.slice(0, -4)}</span>
+            <span className="shrink-0">{suffix}</span>
+          </div>
+        );
+      },
     },
     {
       id: "spaces",
