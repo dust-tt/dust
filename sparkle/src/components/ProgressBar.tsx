@@ -27,17 +27,42 @@ const progressBarFillVariants = cva("h-full rounded-full", {
 export interface ProgressBarProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, "children">,
     VariantProps<typeof progressBarVariants> {
+  /** Progress value from 0 to 100; values outside the range are clamped. */
   percentage: number;
+  /**
+   * Accessible name announced by screen readers for the progressbar role.
+   * Name what is progressing (e.g. "Upload progress").
+   */
+  label?: string;
 }
 
+/**
+ * A slim determinate progress indicator for a known completion percentage.
+ * Exposes the `progressbar` role with value semantics; pass `label` to name
+ * what is progressing for screen readers.
+ *
+ * For indeterminate waits with no percentage, use Spinner instead.
+ *
+ * @summary Determinate progress indicator (0-100%).
+ */
 export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
-  ({ percentage, variant = "default", className, ...props }, ref) => {
+  (
+    {
+      percentage,
+      label = "Progress",
+      variant = "default",
+      className,
+      ...props
+    },
+    ref
+  ) => {
     const clampedPercentage = Math.min(100, Math.max(0, percentage));
 
     return (
       <div
         ref={ref}
         role="progressbar"
+        aria-label={label}
         aria-valuenow={clampedPercentage}
         aria-valuemin={0}
         aria-valuemax={100}

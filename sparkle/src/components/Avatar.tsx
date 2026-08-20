@@ -167,21 +167,40 @@ const getTextVariant = (name: string) => {
 
 export interface AvatarProps {
   size?: AvatarSizeType;
+  /** Entity name; used for the initials fallback, its color, and the image alt text. */
   name?: string;
+  /** Emoji to display instead of an image or initials. */
   emoji?: string;
+  /** Image URL (including emoji URLs) or an arbitrary React node to render. */
   visual?: string | React.ReactNode;
+  /** Invoked on click; its presence also applies the clickable hover style. */
   onClick?: () => void;
+  /** Apply the clickable hover style without providing an `onClick`. */
   clickable?: boolean;
+  /** Show a breathing animation, e.g. while the entity is working. */
   busy?: boolean;
+  /** Render as a circle instead of the size-proportional rounded square. */
   isRounded?: boolean;
+  /** Background Tailwind class used behind initials, emoji, or icons. */
   backgroundColor?: string;
+  /** Background as a raw hex color, taking precedence over `backgroundColor`. */
   hexBgColor?: string;
   className?: string;
   disabled?: boolean;
+  /** Icon component to display instead of an image, emoji, or initials. */
   icon?: React.ComponentType<{ className?: string }>;
+  /** Tailwind text-color class for the `icon` (default `text-foreground`). */
   iconColor?: string;
 }
 
+/**
+ * Represents a user, agent, or entity with an image, emoji, icon, or initials
+ * fallback, in a range of sizes with busy and clickable states. Use it to identify
+ * the author of a message, a workspace member, or an agent; always provide a `name`
+ * for a sensible fallback. For a group of entities, use Avatar.Stack (AvatarSet)
+ * rather than several loose avatars.
+ * @summary Entity avatar with fallbacks.
+ */
 export function Avatar({
   size,
   name,
@@ -271,11 +290,15 @@ type AvatarStackSizeType = (typeof AVATAR_STACK_SIZES)[number];
 
 export interface AvatarStackProps {
   avatars: AvatarProps[];
+  /** Max avatars shown before collapsing the rest into a "+N" counter. */
   nbVisibleItems?: number;
   size?: AvatarStackSizeType;
+  /** Slightly scale down avatars deeper in the stack for a depth effect (default true). */
   hasMagnifier?: boolean;
+  /** Forwarded to the Tooltip's `tooltipTriggerAsChild`. */
   tooltipTriggerAsChild?: boolean;
   orientation?: "horizontal" | "vertical";
+  /** Which end of the list renders on top of the overlap: `first` or `last`. */
   onTop?: "first" | "last";
 }
 
@@ -285,6 +308,11 @@ const sizeClassesPx: Record<AvatarStackSizeType, number> = {
   md: 40,
 };
 
+/**
+ * An overlapping stack of Avatars that expands on hover, collapsing extras into a
+ * "+N" counter and listing all names in a tooltip.
+ * @summary Overlapping avatar stack.
+ */
 Avatar.Stack = function ({
   avatars,
   nbVisibleItems,

@@ -46,14 +46,27 @@ const barVariants = cva("flex flex-row items-center gap-3 px-4", {
 
 interface BarProps extends VariantProps<typeof barVariants> {
   title?: React.ReactElement | string;
+  /** Extra content rendered next to the title. */
   description?: React.ReactNode;
+  /** Tooltip shown when hovering the title. */
   tooltip?: string;
+  /** Actions anchored to the left edge, before the title. */
   leftActions?: React.ReactNode;
+  /** Actions rendered after the title, before the flexible gap. */
   centerActions?: React.ReactNode;
+  /** Actions anchored to the right edge. */
   rightActions?: React.ReactNode;
   className?: string;
 }
 
+/**
+ * A header or footer action bar that anchors a page, panel, or modal with a title,
+ * optional description, and left/center/right action slots. Set `position` to `top`
+ * or `bottom`, and `variant` to `full` (spans the viewport) or `default` (scoped to
+ * its parent container). Use Bar.ButtonBar for ready-made action layouts; for a
+ * floating, transient action surface over content, use HoveringBar instead.
+ * @summary Page or panel action bar.
+ */
 export function Bar({
   title,
   description,
@@ -127,6 +140,11 @@ export type BarButtonBarProps =
   | BarButtonBarValidateProps
   | BarButtonBarConversationProps;
 
+/**
+ * Ready-made action layouts for a Bar: `close`, `back`, `validate`
+ * (cancel/save pair), or `conversation` (delete/share).
+ * @summary Preset Bar action layouts.
+ */
 Bar.ButtonBar = function (props: BarButtonBarProps) {
   switch (props.variant) {
     case "back":
@@ -193,6 +211,11 @@ interface BarHeaderProps {
   size?: "sm" | "md";
 }
 
+/**
+ * Convenience wrapper for a top-positioned Bar with a required title. Use it to
+ * frame a page or panel with a persistent header.
+ * @summary Top-positioned Bar.
+ */
 export function BarHeader({
   title,
   description,
@@ -232,6 +255,11 @@ interface BarFooterProps {
   size?: "sm" | "md";
 }
 
+/**
+ * Convenience wrapper for a bottom-positioned Bar, e.g. to pin save/cancel
+ * controls under a scrolling form.
+ * @summary Bottom-positioned Bar.
+ */
 export function BarFooter({
   leftActions,
   rightActions,

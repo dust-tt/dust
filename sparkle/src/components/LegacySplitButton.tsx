@@ -18,10 +18,20 @@ const flexSeparatorVariants: Record<ButtonVariantType, string> = {
 };
 
 export interface LegacyFlexSplitButtonProps extends Omit<ButtonProps, "size"> {
+  /** Classes applied to the wrapping container element. */
   containerClassName?: string;
+  /** Button element attached on the right of the main action, typically a chevron opening a menu; disabled while the main button is loading. */
   splitAction: React.ReactElement<React.ComponentProps<typeof Button>>;
 }
 
+/**
+ * Legacy split button: a primary labelled action joined to an attached
+ * `splitAction` (typically a chevron button opening a menu of related
+ * options). Kept only as a visual reference for legacy product surfaces.
+ *
+ * @deprecated Use SplitButton instead.
+ * @summary Deprecated legacy split button.
+ */
 const LegacyFlexSplitButton = React.forwardRef<
   HTMLButtonElement,
   LegacyFlexSplitButtonProps

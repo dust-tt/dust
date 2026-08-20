@@ -3,6 +3,13 @@ import React from "react";
 const PUZZLE_PATH =
   "M30 17h22c0-8 6-14 14-14s14 6 14 14h18c7 0 12 5 12 12v18c8 0 14 6 14 14s-6 14-14 14v19c0 7-5 12-12 12H80c0-8-6-14-14-14s-14 6-14 14H30c-7 0-12-5-12-12V75C10 75 4 69 4 61s6-14 14-14V29c0-7 5-12 12-12Z";
 
+/**
+ * A compact puzzle-shaped loading indicator for buttons and other inline
+ * loading states. Use it when you want the playful puzzle treatment; for a
+ * standard async button prefer the Button's own `isLoading` prop, and use
+ * plain Spinner for generic loading elsewhere.
+ * @summary Puzzle-shaped inline loading indicator.
+ */
 export function PuzzleSpinner() {
   const puzzleClipId = React.useId();
 

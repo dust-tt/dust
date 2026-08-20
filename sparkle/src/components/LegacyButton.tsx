@@ -358,15 +358,25 @@ const selectButtonSizeVariants = cva("", {
 
 type CommonButtonProps = Omit<MetaButtonProps, "children"> &
   Omit<LinkWrapperProps, "children"> & {
+    /** Appends a dropdown chevron, signalling the button opens a menu. */
     isSelect?: boolean;
+    /** Replaces the icon with a spinner and disables interaction during async work. */
     isLoading?: boolean;
+    /** Continuously pulses the button ring to draw attention. */
     isPulsing?: boolean;
+    /** Pulses the button ring briefly (a few seconds) when set to true. */
     briefPulse?: boolean;
+    /** Tooltip shown on hover; also used as the accessible label when none is set. */
     tooltip?: string;
+    /** Keyboard shortcut displayed inside the tooltip. */
     tooltipShortcut?: string;
+    /** Shows an inline Counter badge with `counterValue`. */
     isCounter?: boolean;
+    /** Value displayed in the counter badge when `isCounter` is true. */
     counterValue?: string;
+    /** Renders the button fully rounded (pill shape). */
     isRounded?: boolean;
+    /** Uses a lighter (normal-weight) font for the label. */
     hasLighterFont?: boolean;
   };
 
@@ -390,6 +400,15 @@ export type RegularButtonProps = CommonButtonProps & {
 
 export type ButtonProps = IconOnlyButtonProps | RegularButtonProps;
 
+/**
+ * Legacy button for triggering actions, with several visual variants and sizes,
+ * icons, loading and pulsing states, an inline counter, and a dropdown-chevron
+ * affordance (`isSelect`). Kept only as a visual reference for legacy product
+ * surfaces.
+ *
+ * @deprecated Use Button instead.
+ * @summary Deprecated legacy action button.
+ */
 const LegacyButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {

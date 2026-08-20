@@ -13,12 +13,16 @@ import { Check } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
+/** Visual selection indicator: `radio` for single-select lists, `checkbox` for multi-select lists. */
 export type OptionCardSelectionIndicator = "radio" | "checkbox";
 
 interface OptionCardSharedProps {
+  /** Badge conveying ordering or quantity, shown at the start of the card; hidden when undefined. */
   counterValue?: number;
+  /** Whether the card reflects the current choice (applies selected styling and `aria-pressed`). */
   selected?: boolean;
   disabled?: boolean;
+  /** Suppress the hover background on unselected cards. */
   disableHover?: boolean;
   className?: string;
   onFocusCapture?: React.FocusEventHandler<HTMLDivElement>;
@@ -26,10 +30,13 @@ interface OptionCardSharedProps {
 }
 
 interface OptionCardOptionProps extends OptionCardSharedProps {
+  /** Standard choice card showing a label and optional description (the default). */
   type?: "option";
   label: string;
   description?: string | null;
+  /** Trailing radio or checkbox visual making the selection mode unambiguous. */
   selectionIndicator?: OptionCardSelectionIndicator;
+  /** Called when the card is clicked or activated with Enter/Space; without it the card is display-only. */
   onClick?: () => void;
 }
 
@@ -39,6 +46,7 @@ interface OptionCardInputProps extends OptionCardSharedProps {
   // card keeps the same chrome and counter.
   type: "input";
   value: string;
+  /** Called with the new text value on every change. */
   onChange: (value: string) => void;
   placeholder?: string;
   // Accessible name for the field (screen readers). Falls back to the
@@ -54,6 +62,15 @@ interface OptionCardInputProps extends OptionCardSharedProps {
 
 export type OptionCardProps = OptionCardOptionProps | OptionCardInputProps;
 
+/**
+ * A selectable card representing one choice the user can pick in response to
+ * an agent prompt, with a label, optional description, counter badge, and an
+ * optional radio/checkbox selection indicator; `type="input"` turns it into a
+ * free-text "type something else" option. Use it to present a small set of
+ * options the user selects before the agent continues; for one-tap suggested
+ * prompts that send immediately, use QuickReplyBlock instead.
+ * @summary Selectable option card for agent prompts.
+ */
 export function OptionCard(props: OptionCardProps) {
   const {
     counterValue,

@@ -24,10 +24,20 @@ const hoveringBarVariants = cva(
 
 export interface HoveringBarProps
   extends VariantProps<typeof hoveringBarVariants> {
+  /** Actions to display, typically icon Buttons; use HoveringBar.Separator to group them. */
   children: React.ReactNode;
   className?: string;
 }
 
+/**
+ * A compact floating toolbar that groups contextual actions, typically surfaced
+ * over a selection or hovered element (e.g. a rich-text formatting bar). Compose
+ * it from Button children and insert HoveringBar.Separator to visually group
+ * related actions. Use it for inline, contextual action clusters such as
+ * text-formatting controls or selection menus.
+ *
+ * @summary Floating contextual action toolbar.
+ */
 export function HoveringBar({ children, className, size }: HoveringBarProps) {
   return (
     <div className={cn(hoveringBarVariants({ size }), className)}>

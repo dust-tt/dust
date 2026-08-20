@@ -5,7 +5,6 @@ import { Hoverable, HOVERABLE_VARIANTS } from "@sparkle/components/Hoverable";
 
 const meta = {
   title: "Effects & Motion/Hoverable",
-  tags: ["a11y-issues"],
   component: Hoverable,
   parameters: {
     layout: "padded",

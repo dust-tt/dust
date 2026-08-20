@@ -6,6 +6,15 @@ import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
+/**
+ * Switches between sibling views within the same region, built on Radix Tabs. Compose it
+ * from `Tabs` (root, controlled via `value`/`defaultValue`), `TabsList`, `TabsTrigger`,
+ * and `TabsContent`, pairing each trigger with a content panel sharing the same `value`.
+ * Use it to organize related content into peer views toggled without leaving the page;
+ * for pill-styled, sidebar-oriented section switching, use `NavTabPill` instead.
+ *
+ * @summary Tabbed view switcher.
+ */
 const Tabs = TabsPrimitive.Root;
 
 const tabsTriggerVariants = cva(
@@ -63,6 +72,13 @@ const TabsList = React.forwardRef<
 ));
 TabsList.displayName = TabsPrimitive.List.displayName;
 
+/**
+ * A single tab button rendered as a Sparkle `Button`, with a `label`, optional `icon`,
+ * and a `tooltip` — always provide the tooltip for icon-only triggers so they remain
+ * identifiable. Supports link navigation props (`href`, `target`, ...) and counters.
+ *
+ * @summary Tab trigger button.
+ */
 const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> &

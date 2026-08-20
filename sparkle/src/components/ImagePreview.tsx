@@ -85,16 +85,32 @@ interface ImagePreviewProps
     VariantProps<typeof overlayVariants> {
   imgSrc: string;
   alt?: string;
+  /** Label shown in the hover overlay; also used as the download filename. */
   title?: string;
+  /** When set (and no `onClose`), a download button is shown on hover. */
   downloadUrl?: string;
+  /** Shows a spinner instead of the image while it loads. */
   isLoading?: boolean;
+  /** Shows the animated ImageGenerationPlaceholder while the image is being generated. */
   isGenerating?: boolean;
+  /** Invoked when the remove (X) hover button is clicked; takes precedence over the download button. */
   onClose?: (e: React.MouseEvent) => void;
+  /** Invoked when the image is clicked; overrides the built-in zoom dialog behavior. */
   onClick?: (e: React.MouseEvent) => void;
   className?: string;
+  /** When true (default), clicking the image opens an ImageZoomDialog. */
   manageZoomDialog?: boolean;
 }
 
+/**
+ * Displays a single image from a conversation with hover affordances: a hover
+ * title, an optional remove (`onClose`) or download (`downloadUrl`) button, a
+ * loading skeleton state, and a click-to-zoom dialog. Use it to render an image
+ * attachment or an agent-generated image inline in a message; for multiple
+ * images, use InteractiveImageGrid, which composes this component.
+ *
+ * @summary Conversation image with hover actions and zoom.
+ */
 const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
   (
     {

@@ -17,16 +17,20 @@ const faviconVariants = cva("", {
 });
 
 interface FaviconIconProps {
+  /** Direct URL of the favicon image; takes precedence over websiteUrl. */
   faviconUrl?: string;
+  /** Website URL whose domain is used to derive a favicon via Google's favicon service. */
   websiteUrl?: string;
+  /** Icon size: "sm" (12px), "md" (20px), or "lg" (24px). */
   size?: "sm" | "md" | "lg";
   className?: string;
 }
 
 /**
- * Component that displays a website favicon with fallback to Globe01
- * If faviconUrl is provided, uses that. If websiteUrl is provided, generates favicon URL.
- * Falls back to Globe01 if favicon fails to load.
+ * Displays a website's favicon, from faviconUrl when provided or derived from
+ * websiteUrl's domain otherwise, falling back to a globe icon while loading
+ * or on failure. Use it to represent external websites or links compactly.
+ * @summary Website favicon with globe fallback.
  */
 export function FaviconIcon({
   faviconUrl,

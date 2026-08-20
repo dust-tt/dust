@@ -310,6 +310,12 @@ interface StyledMermaidGraphProps {
   className?: string;
 }
 
+/**
+ * Renders its string children as a Mermaid diagram with the Dust theme,
+ * without the code/diagram toggle of CodeBlockWithExtendedSupport. Used when
+ * a chart should always display as a diagram.
+ * @summary Standalone themed Mermaid diagram.
+ */
 export function StyledMermaidGraph({
   children,
   className,
@@ -325,11 +331,21 @@ export function StyledMermaidGraph({
 
 interface CodeBlockWithExtendedSupportProps {
   children?: React.ReactNode;
+  /** CSS class carrying the `language-<lang>` token used to detect mermaid/json/csv handling. */
   className?: string;
+  /** When true, delegates directly to an inline CodeBlock with no extras. */
   inline?: boolean;
+  /** hast node from react-markdown; its position is used to skip re-renders during streaming. */
   node?: MarkdownNode;
 }
 
+/**
+ * Renders fenced code blocks inside Markdown output, extending CodeBlock with
+ * copy/download actions and language-aware views: valid Mermaid code gets a
+ * rendered diagram toggle, and valid JSON gets a raw/pretty toggle (persisted
+ * in localStorage) backed by PrettyJsonViewer.
+ * @summary Fenced-code renderer with Mermaid and JSON views.
+ */
 export const CodeBlockWithExtendedSupport = memo(
   ({ children, className, inline }: CodeBlockWithExtendedSupportProps) => {
     const validChildrenContent = String(children).trim();

@@ -25,16 +25,31 @@ function stepCenter(index: number, lastIndex: number): string {
 }
 
 export interface SliderStepsProps {
+  /** Total number of selectable positions on the track. */
   stepCount: number;
+  /** Currently selected step, as a 0-based index. */
   value: number;
+  /** Called with the 0-based index of the step the selection snapped to. */
   onChange: (index: number) => void;
+  /** 0-based indices rendered with a padlock and skipped when snapping. */
   lockedSteps?: number[];
   disabled?: boolean;
   className?: string;
   ariaLabel?: string;
+  /** Per-step tooltip content, shown for the step under the pointer (locked steps included). */
   stepTooltips?: React.ReactNode[];
 }
 
+/**
+ * A stepped slider for choosing one of a few ordered levels, from the same family as
+ * `SliderToggle` (same track, fill and knob). Dots mark the available positions, hovering
+ * past the knob previews the fill up to the step it would snap to, and `lockedSteps` are
+ * rendered with a padlock and skipped when snapping. Use it for a setting with a small
+ * ordered scale that applies immediately (e.g. reasoning effort levels), rendering your
+ * own labels beneath it; for a binary setting, prefer `SliderToggle`.
+ *
+ * @summary Stepped slider for ordered levels.
+ */
 export function SliderSteps({
   stepCount,
   value,

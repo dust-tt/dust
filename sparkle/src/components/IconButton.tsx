@@ -85,13 +85,27 @@ export interface IconButtonProps
     React.ComponentPropsWithoutRef<typeof Button>,
     "label" | "variant"
   > {
+  /** Visual style of the icon (color scheme for rest/hover/active states). */
   variant?: IconButtonVariantType;
+  /** Invoked when the button is clicked. */
   onClick?: MouseEventHandler<HTMLButtonElement>;
+  /** Tooltip shown on hover; strongly recommended since the button has no label. */
   tooltip?: string;
+  /** Which side of the button the tooltip appears on. */
   tooltipPosition?: React.ComponentProps<typeof Tooltip>["side"];
+  /** The icon component to render. */
   icon: ComponentType;
 }
 
+/**
+ * A compact, label-less button rendered as a single icon, available in several
+ * visual variants and sizes with an optional tooltip to convey its meaning.
+ * Use it for dense toolbars or inline controls with self-explanatory actions
+ * (settings, close, edit); for a call-to-action that benefits from a label,
+ * prefer Button.
+ *
+ * @summary Compact icon-only button.
+ */
 const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
   (
     {

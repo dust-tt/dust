@@ -2,13 +2,23 @@ import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 
 interface RainbowEffectProps {
+  /** Render the children without any glow. */
   disabled?: boolean;
+  /** Class applied to the inner layer wrapping the children. */
   className?: string;
+  /** Class applied to the outer positioning wrapper. */
   containerClassName?: string;
   children: React.ReactNode;
+  /** How far the glow spreads; drive it from state, e.g. `medium` at rest and `large` when focused. */
   size?: "small" | "medium" | "large"; // Define the size prop with specific options
 }
 
+/**
+ * Wraps a child element in an animated, multicolor glow that bleeds out from
+ * behind it. Use it to draw attention to a primary input or call-to-action
+ * when it becomes focused or active, on one focal element at a time.
+ * @summary Animated rainbow glow behind an element.
+ */
 export function RainbowEffect({
   children,
   disabled,

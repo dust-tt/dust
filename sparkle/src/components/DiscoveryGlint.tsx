@@ -167,16 +167,33 @@ GlintStreaks.displayName = "GlintStreaks";
 
 export interface DiscoveryGlintProps {
   children: React.ReactNode;
+  /** Turns the whole effect on or off — toggling it shifts no layout. */
   isActive?: boolean;
+  /** Enables the pulsing ring half of the effect. */
   isBouncing?: boolean;
+  /** Enables the sweeping light streaks half of the effect. */
   isSweeping?: boolean;
+  /** Seconds between effect cycles; raising it spaces the effect out instead of slowing it down. */
   intervalSeconds?: number;
+  /** Duration of the streak sweep, which starts the moment the pulse ends. */
   sweepDurationMs?: number;
+  /** Duration of the double ring pulse at the start of each cycle. */
   pulseDurationMs?: number;
+  /** Delay before the first cycle starts. */
   startDelaySeconds?: number;
+  /** The wrapper is inline-flex by default — pass "flex w-full" for block-level targets such as a sidebar row. */
   className?: string;
 }
 
+/**
+ * Draws attention to a control the user has not discovered yet: a blue ring
+ * that pulses periodically with diagonal light streaks sweeping across, as a
+ * pointer-events-none overlay that changes no layout, box, or hit area and
+ * mirrors the wrapped element's corner radius. Use it for a short, time-boxed
+ * campaign pointing at one newly shipped control — never on more than one
+ * element per screen; motion is dropped under prefers-reduced-motion.
+ * @summary Pulsing glint overlay for feature discovery.
+ */
 export function DiscoveryGlint({
   children,
   isActive = true,

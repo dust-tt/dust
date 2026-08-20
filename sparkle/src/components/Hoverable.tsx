@@ -25,7 +25,10 @@ const hoverableVariants: Record<HoverableVariantType, string> = {
   ),
   highlight: cn(
     "font-medium",
-    "text-highlight",
+    // highlight-700 instead of highlight (500): 500 is 3.2:1 on white, below
+    // the 4.5:1 WCAG AA floor for body text; 700 passes in both themes (the
+    // dark theme inverts the scale, mapping 700 to blue-300).
+    "text-highlight-700",
     "hover:text-highlight-light",
     "active:text-highlight-dark"
   ),
@@ -69,6 +72,18 @@ export interface HoverableProps
   extends MetaHoverableProps,
     Omit<LinkWrapperProps, "children"> {}
 
+/**
+ * An inline text element that reveals interactivity on hover — underline plus
+ * a highlight color shift. Renders a link when `href` is set, otherwise a
+ * clickable span for `onClick` handlers.
+ *
+ * Use `variant="highlight"` for link-colored text, `primary` for
+ * foreground-colored labels that light up on hover, and the default
+ * `invisible` for text that only shows affordance when hovered. For a real
+ * button with padding and variants, use Button instead.
+ *
+ * @summary Inline hover-underlined text link or trigger.
+ */
 const Hoverable = React.forwardRef<HTMLElement, HoverableProps>(
   ({ href, target, rel, children, variant, className, ...props }, ref) => {
     const innerElement = (

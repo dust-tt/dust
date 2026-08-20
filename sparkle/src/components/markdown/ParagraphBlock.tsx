@@ -25,6 +25,12 @@ interface ParagraphBlockProps {
   node?: MarkdownNode;
 }
 
+/**
+ * Renders paragraphs inside Markdown output (as a `div` so nested block
+ * content stays valid), applying the typography and spacing options from
+ * MarkdownStyleContext.
+ * @summary Paragraph renderer for Markdown.
+ */
 export const ParagraphBlock = memo(
   ({ children }: ParagraphBlockProps) => {
     const { textColor, forcedTextSize, compactSpacing } = useMarkdownStyle();

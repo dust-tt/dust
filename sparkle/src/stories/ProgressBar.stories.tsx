@@ -5,7 +5,6 @@ import { ProgressBar } from "../components/ProgressBar";
 
 const meta = {
   title: "Data Display/ProgressBar",
-  tags: ["a11y-issues"],
   component: ProgressBar,
   parameters: {
     docs: {
@@ -23,6 +22,7 @@ const meta = {
   },
   args: {
     percentage: 40,
+    label: "Upload progress",
   },
   argTypes: {
     percentage: {

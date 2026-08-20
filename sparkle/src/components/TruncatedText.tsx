@@ -4,11 +4,22 @@ import React from "react";
 
 interface TruncatedTextProps extends React.HTMLAttributes<HTMLDivElement> {
   children: string | React.ReactNode;
+  /** Number of lines to clamp the text to (defaults to 2). */
   lineClamp?: number;
+  /** Forwarded to the Tooltip: renders its content in a portal (defaults to true). */
   mountPortal?: boolean;
+  /** Forwarded to the Tooltip: element to portal the content into. */
   mountPortalContainer?: HTMLElement;
 }
 
+/**
+ * Clamps text to a number of lines and, only when the text is actually cut off, wraps it
+ * in a `Tooltip` revealing the full content on hover. Use it for labels or descriptions
+ * that may overflow their container; for collapsing tall rich content behind a
+ * show-more toggle, use `TruncatedContent` instead.
+ *
+ * @summary Line-clamped text with overflow tooltip.
+ */
 export const TruncatedText: React.FC<TruncatedTextProps> = ({
   children,
   className,
