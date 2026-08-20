@@ -297,7 +297,7 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
     expect(lightAgent.model).toMatchObject({
       providerId: "openai",
       modelId: GPT_5_6_LUNA_MODEL_ID,
-      reasoningEffort: "light",
+      reasoningEffort: "high",
     });
     expect(lightAgent.instructions).toContain(
       "Prefer answering without tools when the request can be handled from existing knowledge or context."

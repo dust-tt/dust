@@ -652,7 +652,7 @@ export function _getDustLightGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_LIGHT,
     name: "dust-light",
     preferredModelConfiguration: GPT_5_6_LUNA_MODEL_CONFIG,
-    preferredReasoningEffort: "light",
+    preferredReasoningEffort: "high",
     instructionsOverride: buildLightAgentInstructions(args.hasDeepDive),
   });
 }
