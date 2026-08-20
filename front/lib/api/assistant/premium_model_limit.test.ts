@@ -1,4 +1,8 @@
 import { applyPremiumModelFairUse } from "@app/lib/api/assistant/premium_model_limit";
+import {
+  PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK,
+  PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
+} from "@app/lib/api/assistant/rate_limits";
 import type { Authenticator, AuthMethodType } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
@@ -43,8 +47,6 @@ const BALANCED_MODEL: ResolvedRequestedModel = {
 };
 
 const EXPECTED_KEY = "workspace:42:user:7:premium_model_message_count";
-const EXPECTED_WINDOW_SECONDS = 7 * 24 * 60 * 60;
-const EXPECTED_LIMIT = 25;
 
 // Minimal stand-in for the Authenticator class exposing only the members the gate reads. A class
 // instance can't be constructed structurally, so a single `as unknown as` is the standard test-mock
@@ -130,8 +132,8 @@ describe("applyPremiumModelFairUse", () => {
     expect(mockRateLimiter).toHaveBeenCalledWith(
       expect.objectContaining({
         key: EXPECTED_KEY,
-        maxPerTimeframe: EXPECTED_LIMIT,
-        timeframeSeconds: EXPECTED_WINDOW_SECONDS,
+        maxPerTimeframe: PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK,
+        timeframeSeconds: PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
       })
     );
   });
