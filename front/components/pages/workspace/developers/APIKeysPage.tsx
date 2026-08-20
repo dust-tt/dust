@@ -361,7 +361,7 @@ export function APIKeysPage() {
       <Page.Header
         title={
           <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
-            <div className="flex max-w-[700px] flex-col gap-1">
+            <div className="flex max-w-2xl flex-col gap-1">
               <Page.H variant="h3">API Keys</Page.H>
               <Page.P variant="secondary">
                 Create and manage API keys, track what they consume, and control
