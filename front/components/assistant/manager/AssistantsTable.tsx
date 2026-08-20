@@ -574,16 +574,28 @@ export function AssistantsTable({
 
   const selectionSet = useMemo(() => new Set(selection), [selection]);
 
-  const selectedAgents = useMemo(
-    () => agents.filter((a) => selectionSet.has(a.sId)),
-    [agents, selectionSet]
-  );
-
   const selectableRowIds = useMemo(
     () => rows.filter((row) => row.canArchive).map((row) => row.sId),
     [rows]
   );
   const totalSelectableCount = selectableRowIds.length;
+
+  const agentsBySId = useMemo(
+    () => new Map(agents.map((a) => [a.sId, a])),
+    [agents]
+  );
+
+  // Only rows that are actually selectable (`canArchive`) can end up in bulk actions, even if
+  // `selection` (owned by the parent, and not reset on every scope change) still references an
+  // agent that is no longer selectable in the current view.
+  const selectedAgents = useMemo(
+    () =>
+      selectableRowIds
+        .filter((sId) => selectionSet.has(sId))
+        .map((sId) => agentsBySId.get(sId))
+        .filter((a): a is LightAgentConfigurationType => !!a),
+    [selectableRowIds, selectionSet, agentsBySId]
+  );
 
   // `rows` is exactly the `data` DataTable paginates over (no separate filtering happens
   // before pagination), so slicing it directly matches the rows actually shown on this page.

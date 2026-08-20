@@ -97,6 +97,27 @@ export function ManageAgentsPage() {
     return selectedTab && isValidTab(selectedTab) ? selectedTab : "all_custom";
   }, [selectedTab]);
 
+  // The selection is scoped to the current tab/search/filter combination: an agent that drops
+  // out of view (tab switch, search, or filter change) should drop out of the selection too.
+  const selectionScopeKey = [
+    activeTab,
+    assistantSearch,
+    selectedTags
+      .map((t) => t.sId)
+      .sort()
+      .join(","),
+    selectedModels
+      .map((m) => m.modelId)
+      .sort()
+      .join(","),
+  ].join("|");
+  const [prevSelectionScopeKey, setPrevSelectionScopeKey] =
+    useState(selectionScopeKey);
+  if (selectionScopeKey !== prevSelectionScopeKey) {
+    setPrevSelectionScopeKey(selectionScopeKey);
+    setSelection([]);
+  }
+
   // only fetch the agents that are relevant to the current scope, except when
   // user searches: search across all agents
   const {
