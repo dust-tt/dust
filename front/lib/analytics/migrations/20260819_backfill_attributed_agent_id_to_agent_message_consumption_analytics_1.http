@@ -24,20 +24,3 @@ POST /front.agent_message_consumption_analytics_1/_update_by_query?wait_for_comp
     }
   }
 }
-
-### Run after the update task completes. The reader rollout is safe only when
-### this count is zero.
-GET /front.agent_message_consumption_analytics_1/_count
-{
-  "query": {
-    "bool": {
-      "must_not": [
-        {
-          "exists": {
-            "field": "agent.attributed_id"
-          }
-        }
-      ]
-    }
-  }
-}
