@@ -168,7 +168,7 @@ function buildColumns({
       accessorFn: (row) => row.name,
       header: "Name",
       enableSorting: true,
-      meta: { className: "h-16", headerAlign: "left" },
+      meta: { className: "h-16 w-40", headerAlign: "left" },
       cell: (info) => (
         <div className="flex flex-col justify-center">
           <span className="truncate text-sm font-medium text-foreground">
@@ -186,7 +186,7 @@ function buildColumns({
       header: "Scope",
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-24 @sm-table:table-cell",
+        className: "hidden h-16 w-28 @lg-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => (
@@ -205,7 +205,7 @@ function buildColumns({
       header: "Key",
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-20 @md-table:table-cell",
+        className: "hidden h-16 w-28 @lg-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => (
@@ -221,7 +221,7 @@ function buildColumns({
       header: "Spaces",
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-24 @md-table:table-cell",
+        className: "hidden h-16 w-40 @md-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => {
@@ -269,7 +269,7 @@ function buildColumns({
       header: capLabel,
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-20 @lg-table:table-cell",
+        className: "hidden h-16 w-28 @xl-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => (
@@ -285,7 +285,7 @@ function buildColumns({
       header: "Last used",
       enableSorting: true,
       meta: {
-        className: "hidden h-16 w-28 @sm-table:table-cell",
+        className: "hidden h-16 w-32 @sm-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => (
@@ -304,7 +304,7 @@ function buildColumns({
       accessorKey: "status",
       header: "Status",
       enableSorting: false,
-      meta: { className: "h-16 w-16", headerAlign: "left" },
+      meta: { className: "h-16 w-20", headerAlign: "left" },
       cell: (info) => {
         const status = info.row.original.status;
         return (
