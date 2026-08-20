@@ -95,11 +95,38 @@ export const Recording: Story = {
   },
 };
 
+const TranscribingLoopDemo = () => {
+  const [status, setStatus] = React.useState<VoicePickerStatus>("transcribing");
+
+  React.useEffect(() => {
+    // Story scaffolding: restart the transcribing phase every few seconds so
+    // the fake-progress climb stays visible instead of parking at 99%.
+    const loop = window.setInterval(() => {
+      setStatus("idle");
+      window.setTimeout(() => setStatus("transcribing"), 400);
+    }, 4500);
+    return () => window.clearInterval(loop);
+  }, []);
+
+  return (
+    <VoicePicker
+      status={status}
+      level={0}
+      elapsedSeconds={0}
+      size="xs"
+      showStopLabel
+      {...noopRecordingHandlers}
+    />
+  );
+};
+
 /**
  * After stop, keep `status` at `transcribing` until your speech-to-text call
- * resolves; the button shows a busy state.
+ * resolves. The percentage is a fake-progress estimate: it climbs toward 99%
+ * and holds there until you flip `status` back — it never reaches 100% on its
+ * own. The demo restarts the phase every few seconds so the climb is visible.
  *
- * @summary Waiting for transcription to complete.
+ * @summary Waiting for transcription (fake progress holds at 99%).
  */
 export const Transcribing: Story = {
   args: {
@@ -110,6 +137,7 @@ export const Transcribing: Story = {
     showStopLabel: true,
     ...noopRecordingHandlers,
   },
+  render: () => <TranscribingLoopDemo />,
 };
 
 /**
@@ -196,7 +224,8 @@ function VoicePickerDemo({
     }, 1000);
 
     levelIntervalRef.current = window.setInterval(() => {
-      setLevel(Math.random());
+      // Deterministic sawtooth so the waveform animates reproducibly.
+      setLevel((previous) => (previous + 0.23) % 1);
     }, 200);
 
     return () => {
