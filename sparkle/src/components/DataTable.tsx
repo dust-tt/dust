@@ -116,12 +116,6 @@ interface DataTableProps<TData extends TBaseData> {
   enableSortingRemoval?: boolean;
   /** Omit the default bottom divider on tbody rows (e.g. dense custom lists). */
   hideRowDivider?: boolean;
-  /**
-   * When `enableRowSelection` is set and the row also has an `onClick` (e.g. to open a
-   * details panel), clicking anywhere in the row toggles selection by default. Set this to
-   * restrict selection toggling to the selection column's checkbox, leaving the rest of the
-   * row free to trigger `onClick`.
-   */
   disableRowClickSelection?: boolean;
 }
 
