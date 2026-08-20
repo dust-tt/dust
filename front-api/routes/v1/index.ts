@@ -13,11 +13,12 @@ app.route("/auth/:action", publicAuthActionApp);
 app.route("/me", publicMeApp);
 app.route("/public/branding", publicBrandingApp);
 app.route("/public/frames/:token", publicFramesTokenApp);
-// Triggers is mounted before the workspace app so it does not inherit
-// publicApiAuth (it uses its own URL secret-based authentication).
+// Own-auth routes mounted BEFORE the authed workspace app (CODING_RULES [API4]):
+// they must precede the catch-all sibling — Hono scans in registration order
+// ([API1]). Posture locked by front-api/app.test.ts.
+// Triggers uses its own URL secret-based authentication, not publicApiAuth.
 app.route("/w/:wId/triggers", publicWorkspaceTriggersApp);
-// Sandbox is mounted before the workspace app so it does not inherit
-// publicApiAuth — it uses `sandboxAuth`, which accepts only sandbox tokens.
+// Sandbox uses `sandboxAuth`, which accepts only sandbox tokens, not publicApiAuth.
 app.route("/w/:wId/sandbox", publicWorkspaceSandboxApp);
 app.route("/w/:wId", publicWorkspaceApp);
 

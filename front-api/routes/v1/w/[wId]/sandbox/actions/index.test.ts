@@ -19,6 +19,9 @@ function getSandboxActions(workspace: { sId: string }, token: string) {
 }
 
 describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
+  // Posture lock (CODING_RULES [API4]): sandbox is mounted before /v1/w/:wId so
+  // it runs sandboxAuth, not publicApiAuth. A sandbox token reaching the handler
+  // (200) proves the dedicated sandbox sub-app handled it — don't remove.
   it("returns server views when Computer is enabled", async () => {
     const { token, workspace } = await createSandboxTokenTestContext();
 

@@ -226,6 +226,11 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
     expect(data.error.message).toBe("Invalid webhook path.");
   });
 
+  // Posture lock (CODING_RULES [API4]): triggers is mounted before /v1/w/:wId so
+  // it authenticates via the URL secret, not publicApiAuth. A POST with a valid
+  // secret and NO Authorization header returning 200 proves publicApiAuth is not
+  // in the chain (the GET test above shows it 401s when it falls through) — don't
+  // remove.
   it("returns 200 when webhook URL secret is valid", async () => {
     const { workspace } = await createPublicApiMockRequest();
 
