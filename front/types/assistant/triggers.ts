@@ -133,6 +133,7 @@ export const TriggerSchema = z.discriminatedUnion("kind", [
     configuration: ScheduleConfigSchema,
     editor: z.number().optional(),
     status: TriggerStatusSchema.optional(),
+    executionMode: z.enum(TRIGGER_EXECUTION_MODES).optional(),
     spaceId: z.string().nullable().optional(),
   }),
   z.object({
@@ -145,6 +146,7 @@ export const TriggerSchema = z.discriminatedUnion("kind", [
     executionPerDayLimitOverride: z.number(),
     editor: z.number().optional(),
     status: TriggerStatusSchema.optional(),
+    executionMode: z.enum(TRIGGER_EXECUTION_MODES).optional(),
     spaceId: z.string().nullable().optional(),
   }),
 ]);

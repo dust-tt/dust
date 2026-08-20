@@ -99,6 +99,7 @@ const scheduleTriggerSchema = z.object({
   configuration: scheduleConfigSchema,
   editor: z.number().nullable(),
   editorName: z.string().optional(),
+  executionMode: z.enum(TRIGGER_EXECUTION_MODES),
   spaceId: z.string().nullable().optional(),
 });
 

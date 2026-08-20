@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -30,6 +31,16 @@ async function createOtherEditorAuth(workspace: WorkspaceType) {
   const otherUser = await UserFactory.basic();
   await MembershipFactory.associate(workspace, otherUser, { role: "user" });
   return Authenticator.fromUserIdAndWorkspaceId(otherUser.sId, workspace.sId);
+}
+
+async function grantWorkspacePoolToEverybody(workspace: WorkspaceType) {
+  const adminAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
+  );
+  await GroupPermissionResource.setForEverybody(adminAuth, {
+    grantType: "use_workspace_pool",
+    resourceType: "trigger",
+  });
 }
 
 describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/execution_mode", () => {
@@ -70,6 +81,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/ex
       workspace.sId
     );
     await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
+    await grantWorkspacePoolToEverybody(workspace);
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const trigger = await TriggerFactory.webhook(auth, {
       agentConfigurationId: agent.sId,
@@ -125,6 +137,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/ex
       workspace.sId
     );
     await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
+    await grantWorkspacePoolToEverybody(workspace);
     const editorAuth = await createOtherEditorAuth(workspace);
     const agent = await AgentConfigurationFactory.createTestAgent(editorAuth);
     const trigger = await TriggerFactory.webhook(editorAuth, {

@@ -72,6 +72,20 @@ export class TriggerExecutionModeForbiddenError extends Error {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface TriggerResource extends ReadonlyAttributesType<TriggerModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+async function canUseExecutionMode(
+  auth: Authenticator,
+  executionMode: TriggerExecutionMode
+): Promise<boolean> {
+  switch (executionMode) {
+    case "user_pool":
+      return true;
+    case "workspace_pool":
+      return auth.hasWorkspacePermission("use_workspace_pool", "trigger");
+    default:
+      assertNever(executionMode);
+  }
+}
+
 export class TriggerResource extends BaseResource<TriggerModel> {
   static model: ModelStatic<TriggerModel> = TriggerModel;
 
@@ -87,6 +101,14 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     blob: CreationAttributes<TriggerModel>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<TriggerResource, Error>> {
+    if (!(await canUseExecutionMode(auth, blob.executionMode))) {
+      return new Err(
+        new TriggerExecutionModeForbiddenError(
+          "You don't have permission to charge this trigger to the workspace."
+        )
+      );
+    }
+
     const trigger = await TriggerModel.create(blob, {
       transaction,
     });
@@ -1048,29 +1070,13 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
-  private async canSetExecutionMode(
-    auth: Authenticator,
-    executionMode: TriggerExecutionMode
-  ): Promise<boolean> {
-    if (!auth.isManager() && this.editor !== auth.getNonNullableUser().id) {
-      return false;
-    }
-
-    switch (executionMode) {
-      case "user_pool":
-        return true;
-      case "workspace_pool":
-        return auth.hasWorkspacePermission("use_workspace_pool", "trigger");
-      default:
-        assertNever(executionMode);
-    }
-  }
-
   async setExecutionMode(
     auth: Authenticator,
     executionMode: TriggerExecutionMode
   ): Promise<Result<undefined, Error>> {
-    if (!(await this.canSetExecutionMode(auth, executionMode))) {
+    const isEditor =
+      auth.isManager() || this.editor === auth.getNonNullableUser().id;
+    if (!isEditor || !(await canUseExecutionMode(auth, executionMode))) {
       return new Err(
         new TriggerExecutionModeForbiddenError(
           "You don't have permission to change this trigger's pool."
