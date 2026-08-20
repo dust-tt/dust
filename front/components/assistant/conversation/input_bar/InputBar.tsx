@@ -60,7 +60,7 @@ import React, {
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
 // Placeholder shown when a submitted message would be queued.
-const INPUT_BAR_QUEUE_PLACEHOLDER = "Add a follow-up";
+const INPUT_BAR_QUEUE_PLACEHOLDER = "Add a follow-up...";
 
 type SelectedSpacesState = {
   key: string;

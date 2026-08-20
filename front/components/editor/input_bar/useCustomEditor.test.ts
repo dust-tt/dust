@@ -313,17 +313,17 @@ describe("useCustomEditor placeholder override", () => {
   it("updates the placeholder without recreating the editor", () => {
     const { editor, result, rerender } = renderEditorHook();
 
-    expect(getPlaceholderText(editor)).toBe("Get work done");
+    expect(getPlaceholderText(editor)).toBe("Get work done...");
 
-    rerender({ placeholderOverride: "Add a follow-up" });
+    rerender({ placeholderOverride: "Add a follow-up..." });
 
     expect(result.current.editor).toBe(editor);
-    expect(getPlaceholderText(editor)).toBe("Add a follow-up");
+    expect(getPlaceholderText(editor)).toBe("Add a follow-up...");
 
     rerender({ placeholderOverride: null });
 
     expect(result.current.editor).toBe(editor);
-    expect(getPlaceholderText(editor)).toBe("Get work done");
+    expect(getPlaceholderText(editor)).toBe("Get work done...");
   });
 
   it("preserves content and selection across placeholder changes", () => {
@@ -334,7 +334,7 @@ describe("useCustomEditor placeholder override", () => {
       editor.commands.setTextSelection(3);
     });
 
-    rerender({ placeholderOverride: "Add a follow-up" });
+    rerender({ placeholderOverride: "Add a follow-up..." });
 
     expect(result.current.editor).toBe(editor);
     expect(editor.getText()).toBe("hello");

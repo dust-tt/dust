@@ -42,7 +42,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 const SUBMIT_COOLDOWN_MS = 750;
-export const INPUT_BAR_DEFAULT_PLACEHOLDER = "Get work done";
+export const INPUT_BAR_DEFAULT_PLACEHOLDER = "Get work done...";
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {
   const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
