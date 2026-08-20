@@ -4,7 +4,7 @@ import React from "react";
 import { AspectRatio } from "../index_with_tw_base";
 
 const meta = {
-  title: "Layout/AspectRatio",
+  title: "Foundations/AspectRatio",
   component: AspectRatio,
   parameters: {
     docs: {
