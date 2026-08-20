@@ -53,8 +53,8 @@ function postBreakdownRequest(wId: string, body: Record<string, unknown>) {
 }
 
 describe("POST /api/w/:wId/analytics/automations/trigger-breakdown", () => {
-  it("returns 403 for managers", async () => {
-    const { workspace } = await setupTest({ role: "manager" });
+  it("returns 403 for regular users", async () => {
+    const { workspace } = await setupTest({ role: "user" });
 
     const response = await postBreakdownRequest(workspace.sId, {
       triggerId: "trg1",
@@ -62,6 +62,20 @@ describe("POST /api/w/:wId/analytics/automations/trigger-breakdown", () => {
 
     expect(response.status).toBe(403);
     expect(vi.mocked(fetchAutomationTriggerBreakdown)).not.toHaveBeenCalled();
+  });
+
+  it("returns the breakdown for managers", async () => {
+    vi.mocked(fetchAutomationTriggerBreakdown).mockResolvedValue(
+      new Ok(BREAKDOWN)
+    );
+    const { workspace } = await setupTest({ role: "manager" });
+
+    const response = await postBreakdownRequest(workspace.sId, {
+      triggerId: "trg1",
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(BREAKDOWN);
   });
 
   it("returns the breakdown for admins", async () => {
