@@ -271,12 +271,12 @@ async function spoolTarballToGCS(
         isRetryableStreamError(error) &&
         attempt < MAX_TARBALL_SPOOL_RETRIES - 1
       ) {
-        const delay = TARBALL_RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+        const delayMs = TARBALL_RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
         childLogger.warn(
-          { ...spoolContext, delay },
+          { ...spoolContext, delay: delayMs },
           "Retryable stream error while spooling tarball to GCS, will retry"
         );
-        await setTimeoutAsync(delay);
+        await setTimeoutAsync(delayMs);
         continue;
       }
 
@@ -577,12 +577,12 @@ export async function extractGitHubTarballToGCS(
         isRetryableStreamError(error) &&
         attempt < MAX_TARBALL_EXTRACTION_RETRIES - 1
       ) {
-        const delay = TARBALL_RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+        const delayMs = TARBALL_RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
         childLogger.warn(
-          { ...extractionContext, delay },
+          { ...extractionContext, delay: delayMs },
           "Retryable stream error during tarball extraction, will retry"
         );
-        await setTimeoutAsync(delay);
+        await setTimeoutAsync(delayMs);
         continue;
       }
 
