@@ -265,7 +265,7 @@ function buildColumns({
       accessorKey: "createdAt",
       header: "Created",
       enableSorting: false,
-      meta: { className: "h-16 w-32", headerAlign: "left" },
+      meta: { className: "h-16 w-36 min-w-36", headerAlign: "left" },
       cell: (info) => (
         <DataTable.BasicCellContent
           className="whitespace-nowrap"
@@ -278,7 +278,7 @@ function buildColumns({
       accessorKey: "lastUsedAt",
       header: "Last used",
       enableSorting: false,
-      meta: { className: "h-16 w-32", headerAlign: "left" },
+      meta: { className: "h-16 w-36 min-w-36", headerAlign: "left" },
       cell: (info) => (
         <DataTable.BasicCellContent
           className="whitespace-nowrap"
