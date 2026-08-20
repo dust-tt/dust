@@ -69,7 +69,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta: Meta<typeof Composer> = {
-  title: "Composer/Composer",
+  title: "Product/Conversation/Composer",
   component: Composer,
   parameters: {
     docs: {
