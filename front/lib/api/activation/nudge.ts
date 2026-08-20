@@ -3,7 +3,8 @@ import {
   createConversation,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
-import { Authenticator } from "@app/lib/auth";
+import { isNonCreditPricedUserSpendLimitReached } from "@app/lib/api/users/spend_limit";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { isUserBlocked } from "@app/lib/metronome/user_block";
 import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
@@ -19,6 +20,7 @@ import {
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { ACTIVATION_NUDGE_ORIGIN } from "@app/types/assistant/conversation";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -64,23 +66,21 @@ export function getActivationNudgeMaxUnansweredCount(
   return DEFAULT_ACTIVATION_NUDGE_MAX_UNANSWERED_COUNT;
 }
 
-// A pod is "dead" once it can no longer receive nudges for reasons unrelated
-// to nudge history: it was archived, or its target user was removed from or
-// left the workspace.
-async function isPodDead(
+function isPodDead(pod: SpaceResource): boolean {
+  return pod.deletedAt !== null;
+}
+
+// The pod owner is still an active, non-revoked member of this workspace
+// (membership has started and has not been ended).
+async function hasActivePodOwnerMembership(
   auth: Authenticator,
-  pod: SpaceResource,
   activationPod: ActivationPodResource
 ): Promise<boolean> {
-  if (pod.deletedAt !== null) {
-    return true;
-  }
-
   const [targetUser] = await UserResource.fetchByModelIds([
     activationPod.userId,
   ]);
   if (!targetUser) {
-    return true;
+    return false;
   }
 
   const activeMembership =
@@ -89,35 +89,71 @@ async function isPodDead(
       workspace: auth.getNonNullableWorkspace(),
     });
 
-  return activeMembership === null;
+  return activeMembership !== null;
 }
 
-// Gates re-nudging a pod on four conditions: the pod is dead, the user is
-// blocked on credit, the pod was nudged within the frequency cap window, or its
-// recent nudges went unanswered.
+function isCreditPricedWorkspace(auth: Authenticator): boolean {
+  const workspace = auth.getNonNullableWorkspace();
+  const plan = auth.plan();
+  return Boolean(
+    workspace.metronomeCustomerId && plan && isCreditPricedPlan(plan)
+  );
+}
+
+// Whether this pod can be nudged right now.
+// Always applied: archived pod; owner is not an active, non-revoked member;
+// credit/seat (or the legacy spend cap). Skipped when overrideChecks is set
+// (poke one-off): BYOK, frequency cap, unanswered-nudge limit.
 export async function isEligibleForNudge(
   auth: Authenticator,
   {
     pod,
     activationPod,
     user,
+    overrideChecks = false,
   }: {
     pod: SpaceResource;
     activationPod: ActivationPodResource;
     user: UserResource | null;
+    overrideChecks?: boolean;
   }
 ): Promise<boolean> {
-  if (await isPodDead(auth, pod, activationPod)) {
+  if (isPodDead(pod)) {
+    return false;
+  }
+
+  if (!(await hasActivePodOwnerMembership(auth, activationPod))) {
     return false;
   }
 
   if (user) {
-    const workspace = renderLightWorkspaceType({
-      workspace: auth.getNonNullableWorkspace(),
-    });
-    if (await isUserBlocked(workspace, user)) {
-      return false;
+    if (isCreditPricedWorkspace(auth)) {
+      const workspace = renderLightWorkspaceType({
+        workspace: auth.getNonNullableWorkspace(),
+      });
+      if (await isUserBlocked(workspace, user)) {
+        return false;
+      }
+    } else {
+      // Legacy plans: `seatType === "none"` is the backfill/default, not a
+      // block, so skip isUserBlocked. The matching conversation-posting gate
+      // is the non-CP spend cap when that flag is on.
+      const flags = await getFeatureFlags(auth);
+      if (
+        flags.includes("enforce_user_spend_limit_rate_cap") &&
+        (await isNonCreditPricedUserSpendLimitReached(auth, { user }))
+      ) {
+        return false;
+      }
     }
+  }
+
+  if (overrideChecks) {
+    return true;
+  }
+
+  if (auth.plan()?.isByok) {
+    return false;
   }
 
   const maxUnansweredCount = getActivationNudgeMaxUnansweredCount(auth);
@@ -192,8 +228,7 @@ function buildActivationNudgeContent(
  * executes under the target user's authenticator, so the agent sees exactly
  * what they can see, and they stay a participant of the conversation.
  *
- * Callers are expected to have gated on `isEligibleForNudge`, except for the
- * poke plugin, which nudges on demand.
+ * Callers are expected to have gated on `isEligibleForNudge`.
  */
 export async function postActivationNudge(
   auth: Authenticator,

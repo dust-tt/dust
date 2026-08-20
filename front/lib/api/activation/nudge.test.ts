@@ -16,19 +16,30 @@ import {
   DEFAULT_ACTIVATION_NUDGE_MAX_UNANSWERED_COUNT,
 } from "@app/temporal/activation_scheduler/config";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockIsUserBlocked } = vi.hoisted(() => ({
-  mockIsUserBlocked: vi.fn(),
-}));
+const { mockIsUserBlocked, mockIsNonCreditPricedUserSpendLimitReached } =
+  vi.hoisted(() => ({
+    mockIsUserBlocked: vi.fn(),
+    mockIsNonCreditPricedUserSpendLimitReached: vi.fn(),
+  }));
 
 vi.mock("@app/lib/metronome/user_block", () => ({
   isUserBlocked: mockIsUserBlocked,
+}));
+
+vi.mock("@app/lib/api/users/spend_limit", () => ({
+  isNonCreditPricedUserSpendLimitReached:
+    mockIsNonCreditPricedUserSpendLimitReached,
 }));
 
 vi.mock("@app/temporal/agent_loop/client", () => ({
@@ -145,6 +156,8 @@ describe("isEligibleForNudge", () => {
   beforeEach(() => {
     mockIsUserBlocked.mockReset();
     mockIsUserBlocked.mockResolvedValue(null);
+    mockIsNonCreditPricedUserSpendLimitReached.mockReset();
+    mockIsNonCreditPricedUserSpendLimitReached.mockResolvedValue(false);
   });
 
   it("is eligible when the pod has never been nudged", async () => {
@@ -182,8 +195,8 @@ describe("isEligibleForNudge", () => {
     ).toBe(false);
   });
 
-  it("is not eligible when the pod's user is blocked, even if never nudged", async () => {
-    mockIsUserBlocked.mockResolvedValue("credits_exhausted");
+  it("is eligible on a legacy plan even when isUserBlocked would report no_seat", async () => {
+    mockIsUserBlocked.mockResolvedValue("no_seat");
     const { authenticator, user, globalSpace } = await createResourceTest({
       role: "admin",
     });
@@ -194,6 +207,170 @@ describe("isEligibleForNudge", () => {
         pod: globalSpace,
         activationPod,
         user,
+      })
+    ).toBe(true);
+    expect(mockIsUserBlocked).not.toHaveBeenCalled();
+  });
+
+  it("is not eligible on a legacy plan when the spend cap is reached", async () => {
+    mockIsNonCreditPricedUserSpendLimitReached.mockResolvedValue(true);
+    const { authenticator, user, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(
+      authenticator,
+      "enforce_user_spend_limit_rate_cap"
+    );
+    const authWithFlag = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      authenticator.getNonNullableWorkspace().sId
+    );
+    const activationPod = await createActivationPod(authWithFlag, globalSpace);
+
+    expect(
+      await isEligibleForNudge(authWithFlag, {
+        pod: globalSpace,
+        activationPod,
+        user,
+      })
+    ).toBe(false);
+    expect(mockIsNonCreditPricedUserSpendLimitReached).toHaveBeenCalled();
+  });
+
+  it("is not eligible when a credit-priced user is blocked, even if never nudged", async () => {
+    mockIsUserBlocked.mockResolvedValue("credits_exhausted");
+    const workspace = await WorkspaceFactory.creditPriced();
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+    const authenticator = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const { globalSpace } = await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
+    const activationPod = await createActivationPod(authenticator, globalSpace);
+
+    expect(
+      await isEligibleForNudge(authenticator, {
+        pod: globalSpace,
+        activationPod,
+        user,
+      })
+    ).toBe(false);
+    expect(mockIsUserBlocked).toHaveBeenCalled();
+  });
+
+  it("still blocks a credit-priced user when overrideChecks is set", async () => {
+    mockIsUserBlocked.mockResolvedValue("credits_exhausted");
+    const workspace = await WorkspaceFactory.creditPriced();
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+    const authenticator = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const { globalSpace } = await SpaceFactory.defaults(
+      await Authenticator.internalAdminForWorkspace(workspace.sId)
+    );
+    const activationPod = await createActivationPod(authenticator, globalSpace);
+
+    expect(
+      await isEligibleForNudge(authenticator, {
+        pod: globalSpace,
+        activationPod,
+        user,
+        overrideChecks: true,
+      })
+    ).toBe(false);
+  });
+
+  it("is not eligible on a BYOK workspace, even if never nudged", async () => {
+    const { authenticator, user, globalSpace } = await createResourceTest({
+      role: "admin",
+      isByok: true,
+    });
+    const activationPod = await createActivationPod(authenticator, globalSpace);
+
+    expect(
+      await isEligibleForNudge(authenticator, {
+        pod: globalSpace,
+        activationPod,
+        user,
+      })
+    ).toBe(false);
+  });
+
+  it("is eligible on a BYOK workspace when overrideChecks is set", async () => {
+    const { authenticator, user, globalSpace } = await createResourceTest({
+      role: "admin",
+      isByok: true,
+    });
+    const activationPod = await createActivationPod(authenticator, globalSpace);
+
+    expect(
+      await isEligibleForNudge(authenticator, {
+        pod: globalSpace,
+        activationPod,
+        user,
+        overrideChecks: true,
+      })
+    ).toBe(true);
+  });
+
+  it("skips the frequency cap when overrideChecks is set", async () => {
+    const { authenticator, workspace, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
+    const activationPod = await createActivationPod(authenticator, globalSpace);
+    await createNudge(authenticator, {
+      workspace,
+      pod: globalSpace,
+      nudgedAt: new Date(),
+    });
+
+    expect(
+      await isEligibleForNudge(authenticator, {
+        pod: globalSpace,
+        activationPod,
+        user: null,
+        overrideChecks: true,
+      })
+    ).toBe(true);
+  });
+
+  it("still blocks an archived pod when overrideChecks is set", async () => {
+    const { authenticator, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
+    const activationPod = await createActivationPod(authenticator, globalSpace);
+
+    // biome-ignore lint/plugin/noRawSql: only way to backdate a paranoid model's deletedAt in tests.
+    await frontSequelize.query(
+      `UPDATE vaults SET "deletedAt" = :deletedAt WHERE id = :id AND "workspaceId" = :workspaceId`,
+      {
+        replacements: {
+          deletedAt: new Date().toISOString(),
+          id: globalSpace.id,
+          workspaceId: authenticator.getNonNullableWorkspace().id,
+        },
+      }
+    );
+    const archivedPod = await SpaceResource.fetchById(
+      authenticator,
+      globalSpace.sId,
+      { includeDeleted: true }
+    );
+    if (!archivedPod) {
+      throw new Error("Expected the archived pod to still be fetchable.");
+    }
+
+    expect(
+      await isEligibleForNudge(authenticator, {
+        pod: archivedPod,
+        activationPod,
+        user: null,
+        overrideChecks: true,
       })
     ).toBe(false);
   });
@@ -333,7 +510,7 @@ describe("isEligibleForNudge", () => {
     ).toBe(false);
   });
 
-  it("is not eligible when the target user left the workspace (dead)", async () => {
+  it("is not eligible when the target user no longer has an active membership", async () => {
     const { workspace, user, globalSpace } = await createResourceTest({
       role: "user",
     });
@@ -350,6 +527,28 @@ describe("isEligibleForNudge", () => {
         pod: globalSpace,
         activationPod,
         user: null,
+      })
+    ).toBe(false);
+  });
+
+  it("still blocks a revoked membership when overrideChecks is set", async () => {
+    const { workspace, user, globalSpace } = await createResourceTest({
+      role: "user",
+    });
+    const authenticator = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const activationPod = await createActivationPod(authenticator, globalSpace);
+
+    await MembershipResource.revokeMembership({ user, workspace });
+
+    expect(
+      await isEligibleForNudge(authenticator, {
+        pod: globalSpace,
+        activationPod,
+        user: null,
+        overrideChecks: true,
       })
     ).toBe(false);
   });
