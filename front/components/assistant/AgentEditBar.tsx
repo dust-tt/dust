@@ -39,10 +39,8 @@ type AgentEditBarProps = {
   onClear: () => void;
   onSelectAll: () => void;
   selectedAgents: LightAgentConfigurationType[];
-  pageCount: number;
+  pageSelectedCount: number;
   totalCount: number;
-  isAllSelected: boolean;
-  hasMorePagesToSelect: boolean;
   owner: WorkspaceType;
   tags: TagType[];
   mutateAgentConfigurations: () => Promise<any>;
@@ -56,10 +54,8 @@ export const AgentEditBar = ({
   onClear,
   onSelectAll,
   selectedAgents,
-  pageCount,
+  pageSelectedCount,
   totalCount,
-  isAllSelected,
-  hasMorePagesToSelect,
   owner,
   tags,
   mutateAgentConfigurations,
@@ -79,6 +75,8 @@ export const AgentEditBar = ({
   if (selectedCount === 0) {
     return null;
   }
+
+  const isAllSelected = totalCount > 0 && selectedCount === totalCount;
 
   const filteredTags = tags
     .filter((t) => canPublishAgents || t.kind !== "protected")
@@ -107,27 +105,28 @@ export const AgentEditBar = ({
       >
         {isAllSelected ? (
           <span>
-            {selectedCount} {agentsLabel(selectedCount)} selected.
-          </span>
-        ) : hasMorePagesToSelect ? (
-          <span>
-            All {pageCount} {agentsLabel(pageCount)} on this page are selected.
+            {selectedCount} {agentsLabel(selectedCount)} are selected.
           </span>
         ) : (
-          <span>
-            {selectedCount} {agentsLabel(selectedCount)} selected
-          </span>
+          <>
+            <span>
+              {pageSelectedCount} {agentsLabel(pageSelectedCount)} selected on
+              this page
+            </span>
+            <Hoverable variant="highlight" onClick={onSelectAll}>
+              Select all {totalCount} {agentsLabel(totalCount)}
+            </Hoverable>
+          </>
         )}
-        {hasMorePagesToSelect && (
-          <Hoverable variant="highlight" onClick={onSelectAll}>
-            Select all {totalCount} {agentsLabel(totalCount)}
-          </Hoverable>
-        )}
-        <Hoverable variant="highlight" onClick={onClear}>
-          Clear
-        </Hoverable>
       </div>
       {isLoading && <Spinner size="xs" variant="dark" />}
+      <Button
+        size="xs"
+        variant="ghost"
+        label="Clear"
+        onClick={onClear}
+        disabled={isLoading}
+      />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button

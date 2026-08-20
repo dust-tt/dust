@@ -582,16 +582,18 @@ export function AssistantsTable({
     [rows]
   );
   const totalSelectableCount = selectableRowIds.length;
-  const pageSelectableIds = useMemo(() => {
+
+  // `rows` is exactly the `data` DataTable paginates over (no separate filtering happens
+  // before pagination), so slicing it directly matches the rows actually shown on this page.
+  const pageRows = useMemo(() => {
     const start = pagination.pageIndex * pagination.pageSize;
-    return selectableRowIds.slice(start, start + pagination.pageSize);
-  }, [selectableRowIds, pagination]);
-  const isAllSelected =
-    totalSelectableCount > 0 && selection.length === totalSelectableCount;
-  const hasMorePagesToSelect =
-    !isAllSelected &&
-    pageSelectableIds.length > 0 &&
-    pageSelectableIds.every((id) => selection.includes(id));
+    return rows.slice(start, start + pagination.pageSize);
+  }, [rows, pagination]);
+  const pageSelectedCount = useMemo(() => {
+    const selectionSet = new Set(selection);
+    return pageRows.filter((row) => row.canArchive && selectionSet.has(row.sId))
+      .length;
+  }, [pageRows, selection]);
 
   return (
     <>
@@ -611,10 +613,8 @@ export function AssistantsTable({
         selectedAgents={selectedAgents}
         tags={sortedTags}
         mutateAgentConfigurations={mutateAgentConfigurations}
-        pageCount={pageSelectableIds.length}
+        pageSelectedCount={pageSelectedCount}
         totalCount={totalSelectableCount}
-        isAllSelected={isAllSelected}
-        hasMorePagesToSelect={hasMorePagesToSelect}
         onClear={() => setSelection([])}
         onSelectAll={() => setSelection(selectableRowIds)}
       />
@@ -628,6 +628,7 @@ export function AssistantsTable({
             setPagination={setPagination}
             getRowId={(row) => row.sId}
             enableRowSelection={(row) => row.original.canArchive}
+            disableRowClickSelection
             rowSelection={rowSelection}
             setRowSelection={(newRowSelection) => {
               setSelection(

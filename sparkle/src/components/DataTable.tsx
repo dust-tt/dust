@@ -116,6 +116,13 @@ interface DataTableProps<TData extends TBaseData> {
   enableSortingRemoval?: boolean;
   /** Omit the default bottom divider on tbody rows (e.g. dense custom lists). */
   hideRowDivider?: boolean;
+  /**
+   * When `enableRowSelection` is set and the row also has an `onClick` (e.g. to open a
+   * details panel), clicking anywhere in the row toggles selection by default. Set this to
+   * restrict selection toggling to the selection column's checkbox, leaving the rest of the
+   * row free to trigger `onClick`.
+   */
+  disableRowClickSelection?: boolean;
 }
 
 export function DataTable<TData extends TBaseData>({
@@ -141,6 +148,7 @@ export function DataTable<TData extends TBaseData>({
   getRowId,
   enableSortingRemoval = true,
   hideRowDivider = false,
+  disableRowClickSelection = false,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -299,7 +307,9 @@ export function DataTable<TData extends TBaseData>({
                 key={row.id}
                 hideBottomBorder={hideRowDivider}
                 onClick={
-                  enableRowSelection ? handleRowClick : row.original.onClick
+                  enableRowSelection && !disableRowClickSelection
+                    ? handleRowClick
+                    : row.original.onClick
                 }
                 onDoubleClick={row.original.onDoubleClick}
                 rowData={row.original}
@@ -376,6 +386,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
   getRowId,
   containerRef,
   hideRowDivider = false,
+  disableRowClickSelection = false,
 }: ScrollableDataTableProps<TData>) {
   const windowSize = useWindowSize();
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -657,7 +668,9 @@ export function ScrollableDataTable<TData extends TBaseData>({
                   widthClassName={widthClassName}
                   hideBottomBorder={hideRowDivider}
                   onClick={
-                    enableRowSelection ? handleRowClick : row.original.onClick
+                    enableRowSelection && !disableRowClickSelection
+                      ? handleRowClick
+                      : row.original.onClick
                   }
                   onDoubleClick={row.original.onDoubleClick}
                   rowData={row.original}
