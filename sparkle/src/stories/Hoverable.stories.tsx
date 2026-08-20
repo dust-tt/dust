@@ -4,7 +4,7 @@ import { fn } from "storybook/test";
 import { Hoverable, HOVERABLE_VARIANTS } from "@sparkle/components/Hoverable";
 
 const meta = {
-  title: "Effects & Motion/Hoverable",
+  title: "Actions/Hoverable",
   component: Hoverable,
   parameters: {
     layout: "padded",
