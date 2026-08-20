@@ -12,6 +12,7 @@ import type {
   Selection,
 } from "@app/components/model_picker/modelPickerUtils";
 import {
+  buildModelPickerCatalog,
   buildModelSelection,
   buildTierSelection,
   getInitialEffort,
@@ -19,7 +20,6 @@ import {
   getModelTier,
   getModelWithReasoningEffortLabel,
   getTierLockReason,
-  groupModelsByMaker,
   isPremiumModel,
   isSameSelection,
   resolveShownSelection,
@@ -170,12 +170,10 @@ export function ModelPicker({
 
   const canRevert = !isSameSelection(shown.display, agentDefault.display);
 
-  // Concrete, selectable models (meta-models are surfaced as tiers instead).
-  const allModels = useMemo<ModelConfigurationType[]>(
-    () =>
-      models.filter(
-        (model) => !isModelStreamId(model.modelId) && model.isSelectable
-      ),
+  // Concrete, selectable models (meta-models are surfaced as tiers instead),
+  // grouped in the same catalog order as other model-picker surfaces.
+  const { concreteModels: allModels, makerGroups } = useMemo(
+    () => buildModelPickerCatalog(models.filter((model) => model.isSelectable)),
     [models]
   );
 
@@ -185,10 +183,6 @@ export function ModelPicker({
     () => models.filter((model) => isModelStreamId(model.modelId)),
     [models]
   );
-
-  // Group models by maker, preserving first-seen order of both makers and
-  // models within each maker.
-  const makerGroups = useMemo(() => groupModelsByMaker(allModels), [allModels]);
 
   const commit = (
     selection: Selection,

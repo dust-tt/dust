@@ -1,6 +1,6 @@
 import type { ModelTierId } from "@app/components/model_picker/modelPickerUtils";
 import {
-  groupModelsByMaker,
+  buildModelPickerCatalog,
   MODEL_TIERS,
 } from "@app/components/model_picker/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
@@ -75,10 +75,14 @@ export function ModelsFilterMenu({
   );
   const modelsById = new Map(models.map((model) => [model.modelId, model]));
 
-  const tierModels = removeNulls(MODEL_TIERS.map((tier) => {
-    const model = modelsById.get(tier.metaModelId);
-    return model ? { ...model, displayName: tier.name, tierId: tier.id } : null;
-  }));
+  const tierModels = removeNulls(
+    MODEL_TIERS.map((tier) => {
+      const model = modelsById.get(tier.metaModelId);
+      return model
+        ? { ...model, displayName: tier.name, tierId: tier.id }
+        : null;
+    })
+  );
   // Keep the same model and maker ordering as the Composer picker, while only
   // showing models that are actually used by agents in this workspace.
   const knownModelIds = new Set<string>();
@@ -93,7 +97,9 @@ export function ModelsFilterMenu({
       concreteModelConfigs.push(model);
     }
   }
-  const makerGroups = groupModelsByMaker(concreteModelConfigs).map((group) => ({
+  const { makerGroups: modelConfigGroups } =
+    buildModelPickerCatalog(concreteModelConfigs);
+  const makerGroups = modelConfigGroups.map((group) => ({
     makerId: group.makerId,
     models: removeNulls(
       group.models.map((model) => {
@@ -340,10 +346,7 @@ export function ModelsFilterMenu({
           isCounter={selectedModels.length > 0}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="w-84"
-        align="start"
-      >
+      <DropdownMenuContent className="w-84" align="start">
         {models.length > 0 ? (
           <>
             <DropdownMenuLabel label="Model" />

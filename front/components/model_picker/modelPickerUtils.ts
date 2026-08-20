@@ -178,8 +178,8 @@ export interface MakerGroup {
   models: ModelConfigurationType[];
 }
 
-export function groupModelsByMaker(
-  models: ModelConfigurationType[]
+function groupModelsByMaker(
+  models: readonly ModelConfigurationType[]
 ): MakerGroup[] {
   const groups = new Map<ModelMakerIdType, ModelConfigurationType[]>();
   for (const model of models) {
@@ -195,6 +195,24 @@ export function groupModelsByMaker(
     makerId,
     models: makerModels,
   }));
+}
+
+export interface ModelPickerCatalog {
+  concreteModels: ModelConfigurationType[];
+  makerGroups: MakerGroup[];
+}
+
+export function buildModelPickerCatalog(
+  models: readonly ModelConfigurationType[]
+): ModelPickerCatalog {
+  const concreteModels = models.filter(
+    (model) => !isModelStreamId(model.modelId)
+  );
+
+  return {
+    concreteModels,
+    makerGroups: groupModelsByMaker(concreteModels),
+  };
 }
 
 export type EffortLockReason = "unsupported" | "premium" | "model_tier";
