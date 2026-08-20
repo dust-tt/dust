@@ -81,7 +81,6 @@ const makeTool = (
   overrides: Partial<AgentMessageConsumptionToolDetails> = {}
 ): AgentMessageConsumptionToolDetails => ({
   label,
-  isSubAgent: false,
   internalMCPServerName: null,
   toolName,
   callCount: 1,
@@ -118,11 +117,9 @@ describe("CreditCostPopover", () => {
           agentWorkCredits: 4,
           tools: [
             makeTool("run_research", "Run Research agent", 12, {
-              isSubAgent: true,
               internalMCPServerName: "run_agent",
             }),
             makeTool("run_writer", "Run Writer agent", 8, {
-              isSubAgent: true,
               internalMCPServerName: "agent_delegation",
             }),
             makeTool("files", "File tool", 2),
@@ -143,12 +140,12 @@ describe("CreditCostPopover", () => {
     expect(screen.getByText("7.1 credits")).toBeInTheDocument();
     expect(screen.getByText("Run Research agent")).toBeInTheDocument();
     expect(screen.getByText("Run Writer agent")).toBeInTheDocument();
-    expect(screen.getByText("Search tool")).toBeInTheDocument();
-    expect(screen.getByText("Web tool")).toBeInTheDocument();
+    expect(screen.queryByText("Search tool")).not.toBeInTheDocument();
+    expect(screen.queryByText("Web tool")).not.toBeInTheDocument();
     expect(screen.queryByText("File tool")).not.toBeInTheDocument();
     expect(screen.queryByText("Title tool")).not.toBeInTheDocument();
-    expect(screen.getByText("2 other tools")).toBeInTheDocument();
-    expect(screen.getAllByText("2 uses")).toHaveLength(2);
+    expect(screen.getByText("4 other tools")).toBeInTheDocument();
+    expect(screen.getByText("4 uses")).toBeInTheDocument();
     expect(screen.getByText("Message consumption")).toBeInTheDocument();
     expect(screen.getByText("Charged")).toBeInTheDocument();
     expect(screen.getByText("30 credits")).toBeInTheDocument();
@@ -197,7 +194,6 @@ describe("CreditCostPopover", () => {
           agentWorkCredits: 5,
           tools: [
             makeTool("run_dust", "Run dust", 295, {
-              isSubAgent: true,
               internalMCPServerName: "run_agent",
               callCount: 4,
             }),

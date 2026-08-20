@@ -85,7 +85,6 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                         type: object
  *                         required:
  *                           - label
- *                           - isSubAgent
  *                           - internalMCPServerName
  *                           - toolName
  *                           - callCount
@@ -95,9 +94,6 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                         properties:
  *                           label:
  *                             type: string
- *                           isSubAgent:
- *                             type: boolean
- *                             description: Whether this row includes consumption billed by a spawned sub-agent.
  *                           internalMCPServerName:
  *                             type: string
  *                             nullable: true

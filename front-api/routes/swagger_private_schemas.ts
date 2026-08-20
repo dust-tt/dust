@@ -145,7 +145,6 @@
  *       type: object
  *       required:
  *         - label
- *         - isSubAgent
  *         - internalMCPServerName
  *         - toolName
  *         - callCount
@@ -155,9 +154,6 @@
  *       properties:
  *         label:
  *           type: string
- *         isSubAgent:
- *           type: boolean
- *           description: Whether this row includes consumption billed by a spawned sub-agent.
  *         internalMCPServerName:
  *           type: string
  *           nullable: true
