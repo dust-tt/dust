@@ -232,7 +232,7 @@ function buildColumns({
         return (
           <div className="flex min-w-0 items-center gap-2">
             <Icon visual={Building07} size="sm" className="shrink-0" />
-            <span className="min-w-0 truncate">
+            <span className="min-w-0 truncate text-sm">
               {firstSpace ?? "No spaces"}
             </span>
             {remainingSpaces.length > 0 && (
