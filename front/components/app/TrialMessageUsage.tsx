@@ -67,7 +67,7 @@ export function TrialMessageUsage({
         </span>
       </div>
       <ProgressBar
-        className="h-2 bg-primary-100"
+        className="h-2 w-full bg-primary-100"
         values={[
           {
             value: Math.min(percentage * 100, 100),
