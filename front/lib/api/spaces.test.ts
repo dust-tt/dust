@@ -302,10 +302,10 @@ describe("createSpaceAndGroup", () => {
       if (result.isOk()) {
         const pod = result.value;
         const creator = userAuth.getNonNullableUser();
-        const { groupsToProcess, allGroupMemberships } =
+        const { groupsToProcess, allGroupMemberships, editorGroupModelId } =
           await pod.fetchManualGroupsMemberships(userAuth);
         const editorGroup = groupsToProcess.find(
-          (group) => group.kind === "space_editors"
+          (group) => group.id === editorGroupModelId
         );
 
         expect(editorGroup).toBeDefined();
@@ -355,10 +355,10 @@ describe("createSpaceAndGroup", () => {
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         const pod = result.value;
-        const { groupsToProcess } =
+        const { groupsToProcess, editorGroupModelId } =
           await pod.fetchManualGroupsMemberships(userAuth);
         const editorGroup = groupsToProcess.find(
-          (group) => group.kind === "space_editors"
+          (group) => group.id === editorGroupModelId
         );
         expect(editorGroup).toBeDefined();
 

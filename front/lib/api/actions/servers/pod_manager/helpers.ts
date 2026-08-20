@@ -249,7 +249,7 @@ export async function resolvePodUserRolesBySId(
   auth: Authenticator,
   pod: SpaceResource
 ): Promise<Map<string, "editor" | "member">> {
-  const { groupsToProcess, allGroupMemberships } =
+  const { groupsToProcess, allGroupMemberships, editorGroupModelId } =
     await pod.fetchManualGroupsMemberships(auth, {
       shouldIncludeAllMembers: false,
     });
@@ -267,7 +267,7 @@ export async function resolvePodUserRolesBySId(
 
     const previous = membershipByUserId.get(membership.userId);
     membershipByUserId.set(membership.userId, {
-      isEditor: Boolean(previous?.isEditor) || group.kind === "space_editors",
+      isEditor: Boolean(previous?.isEditor) || group.id === editorGroupModelId,
     });
   }
 

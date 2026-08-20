@@ -739,7 +739,7 @@ export async function createSpaceAndGroup(
         {
           name: `${PROJECT_EDITOR_GROUP_PREFIX} ${name}`,
           workspaceId: owner.id,
-          kind: "space_editors",
+          kind: "regular_auto",
         },
         { transaction: t, memberIds: [creator.id] }
       );

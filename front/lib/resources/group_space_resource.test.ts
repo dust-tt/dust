@@ -142,20 +142,20 @@ describe("GroupSpaceEditorResource", () => {
       ).rejects.toThrow("Editor groups only apply to project spaces");
     });
 
-    it("should throw an assertion error when group is not a space editor or provisioned group", async () => {
-      const regularGroup = await GroupResource.makeNew({
-        name: "Regular Group",
+    it("should throw an assertion error when group is not a valid editor group kind", async () => {
+      const manualGroup = await GroupResource.makeNew({
+        name: "Manual Group",
         workspaceId: workspace.id,
-        kind: "regular_auto",
+        kind: "regular_manual",
       });
 
       await expect(
         GroupSpaceEditorResource.makeNew(auth, {
-          group: regularGroup,
+          group: manualGroup,
           space: projectSpace,
         })
       ).rejects.toThrow(
-        "Only space editor or provisioned groups can be an editor group"
+        "Only regular_auto, space_editors or provisioned groups can be an editor group"
       );
     });
 
@@ -219,11 +219,11 @@ describe("GroupSpaceEditorResource", () => {
     // creating orphaned GroupSpace records. The assertion is still valid in production
     // if data integrity issues occur.
 
-    it("should throw an assertion error when group is not matching the management mode", async () => {
-      const regularGroup = await GroupResource.makeNew({
-        name: "Regular Group",
+    it("should throw an assertion error when the group kind is not a valid editor kind", async () => {
+      const manualGroup = await GroupResource.makeNew({
+        name: "Manual Group",
         workspaceId: workspace.id,
-        kind: "regular_auto",
+        kind: "regular_manual",
       });
 
       // Delete existing editor groups
@@ -235,22 +235,21 @@ describe("GroupSpaceEditorResource", () => {
         },
       });
 
-      // Create a GroupSpaceModel with a non-editor group
+      // Create a GroupSpaceModel linking a group whose kind is not a valid editor kind.
       await GroupSpaceModel.create({
-        groupId: regularGroup.id,
-        groupKind: regularGroup.kind,
+        groupId: manualGroup.id,
+        groupKind: manualGroup.kind,
         vaultId: projectSpace.id,
         workspaceId: workspace.id,
         kind: "project_editor",
       });
 
-      // When filtering on management mode, the group won't be found because it doesn't match the expected kind
       await expect(
         GroupSpaceEditorResource.fetchBySpace({
           space: projectSpace,
         })
       ).rejects.toThrow(
-        "Only space_editors or provisioned groups can be editor groups"
+        "Only regular_auto, space_editors or provisioned groups can be editor groups"
       );
     });
   });

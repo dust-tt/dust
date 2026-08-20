@@ -90,6 +90,15 @@ export function isSkillEditorGroupKind(value: GroupKind): boolean {
   return value === "skill_editors";
 }
 
+// Transitional: space editor groups are being migrated from the "space_editors" kind to
+// "regular_auto". Until the backfill has run and the kind is removed, editor-group lookups must
+// accept both kinds. Remove this constant (and the "space_editors" entry) once the migration
+// completes.
+export const MIGRATING_SPACE_EDITOR_GROUP_KINDS: GroupKind[] = [
+  "regular_auto",
+  "space_editors",
+];
+
 export type GroupType = {
   id: ModelId;
   name: string;

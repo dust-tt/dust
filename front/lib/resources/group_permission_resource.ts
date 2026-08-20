@@ -27,6 +27,7 @@ import {
   isGroupPermissionResourceType,
   WHOLE_TYPE_RESOURCE_ID,
 } from "@app/types/group_permissions";
+import type { GroupKind } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -283,11 +284,16 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       grantType,
       resourceType,
       resourceId,
+      // Transitional: while space editor groups are being migrated off the "space_editors" kind
+      // onto "regular_auto", callers pass ["regular_auto", "space_editors"] so the lookup also
+      // finds not-yet-backfilled editor groups. Drop the override once "space_editors" is removed.
+      groupKinds = ["regular_auto"],
       transaction,
     }: {
       grantType: GrantType;
       resourceType: GroupPermissionResourceType;
       resourceId: number;
+      groupKinds?: GroupKind[];
       transaction?: Transaction;
     }
   ): Promise<GroupResource | null> {
@@ -307,7 +313,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
 
     const groupIds = [...new Set(grants.map((grant) => grant.groupId))];
     const autoGroups = await GroupResource.fetchByModelIds(auth, groupIds, {
-      groupKinds: ["regular_auto"],
+      groupKinds,
       transaction,
     });
 

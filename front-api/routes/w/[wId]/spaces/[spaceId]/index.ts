@@ -267,7 +267,7 @@ app.get(
     const shouldIncludeAllMembers =
       ctx.req.query("includeAllMembers") === "true";
 
-    const { groupsToProcess, allGroupMemberships } =
+    const { groupsToProcess, allGroupMemberships, editorGroupModelId } =
       await space.fetchManualGroupsMemberships(auth, {
         shouldIncludeAllMembers,
       });
@@ -293,7 +293,7 @@ app.get(
             const groupMemberships = membershipMap.get(group.id);
             return groupMembers.map((member) => ({
               ...member.toJSON(),
-              isEditor: group.kind === "space_editors",
+              isEditor: group.id === editorGroupModelId,
               joinedAt: groupMemberships?.get(member.id),
             }));
           },

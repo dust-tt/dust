@@ -42,8 +42,8 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
   ): Promise<GroupSpaceEditorResource> {
     assert(space.isProject(), "Editor groups only apply to project spaces");
     assert(
-      group.isSpaceEditor() || group.isProvisioned(),
-      "Only space editor or provisioned groups can be an editor group"
+      group.isRegularAuto() || group.isSpaceEditor() || group.isProvisioned(),
+      "Only regular_auto, space_editors or provisioned groups can be an editor group"
     );
     const groupSpace = await GroupSpaceModel.create(
       {
@@ -104,24 +104,29 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
         "One and only one group must exist for editor group space"
       );
       assert(
-        groupModel.kind === "space_editors" ||
+        groupModel.kind === "regular_auto" ||
+          groupModel.kind === "space_editors" ||
           groupModel.kind === "provisioned",
-        "Only space_editors or provisioned groups can be editor groups"
+        "Only regular_auto, space_editors or provisioned groups can be editor groups"
       );
 
       if (filterOnManagementMode) {
-        // Keep only space_editors groups in manual mode, provisioned groups in provisioned mode
-        const filterOnKind =
-          space.managementMode === "manual" ? "space_editors" : "provisioned";
-        if (groupModel.kind !== filterOnKind) {
+        // Manual mode uses the auto editor group (regular_auto, or space_editors pre-migration);
+        // provisioned mode uses the provisioned group.
+        const isProvisionedGroup = groupModel.kind === "provisioned";
+        const keep =
+          space.managementMode === "manual"
+            ? !isProvisionedGroup
+            : isProvisionedGroup;
+        if (!keep) {
           return null;
         }
       }
 
       const group = new GroupResource(GroupModel, groupModel.get());
       assert(
-        group.isSpaceEditor() || group.isProvisioned(),
-        "Only space editors or provisioned groups can be an editor group"
+        group.isRegularAuto() || group.isSpaceEditor() || group.isProvisioned(),
+        "Only regular_auto, space editors or provisioned groups can be an editor group"
       );
 
       return new this(GroupSpaceModel, groupSpace.get(), space, group);
@@ -147,8 +152,9 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
       // Editor group stays empty while admin-controlled.
       return false;
     }
-    const acls = await this.getAccessControlLists(auth);
-    return auth.hasPermissionForAcls("write", acls);
+    // Editing the editor group is gated on administrating the space; never rely on the editor
+    // group's own ACL / canWrite (the "space_editors" kind is being removed).
+    return this.space.canAdministrate(auth);
   }
 
   async canRemoveMember(
@@ -160,8 +166,9 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
     if (!skipCheckLastMember && editorsCount <= 1) {
       return false;
     }
-    const acls = await this.getAccessControlLists(auth);
-    return auth.hasPermissionForAcls("write", acls);
+    // Editing the editor group is gated on administrating the space; never rely on the editor
+    // group's own ACL / canWrite (the "space_editors" kind is being removed).
+    return this.space.canAdministrate(auth);
   }
 
   async getAccessControlLists(
