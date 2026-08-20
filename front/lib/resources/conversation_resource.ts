@@ -947,37 +947,50 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ): Promise<number> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // `agentMessageId` is a `messages.sId`; the direct sub-agents are the agent
-    // message replies to user messages whose `agenticOriginMessageId` points at
-    // it with a run_agent type. One level, no recursion.
-    const query = `
-      SELECT SUM(COALESCE(am."totalCostCredits", 0))::float AS total_credits
-      FROM user_messages um
-      JOIN messages user_msg
-        ON user_msg."userMessageId" = um.id
-       AND user_msg."workspaceId" = um."workspaceId"
-      JOIN messages reply
-        ON reply."parentId" = user_msg.id
-       AND reply."workspaceId" = um."workspaceId"
-       AND reply."agentMessageId" IS NOT NULL
-      JOIN agent_messages am
-        ON am.id = reply."agentMessageId"
-       AND am."workspaceId" = um."workspaceId"
-      WHERE um."workspaceId" = :workspaceId
-        AND um."agenticOriginMessageId" = :agentMessageId
-        AND um."agenticMessageType" = 'run_agent'
-    `;
+    // `agentMessageId` is a `messages.sId`. Direct sub-agents are the agent
+    // message replies to the user messages whose `agenticOriginMessageId` points
+    // at it with a run_agent type. Resolve in two indexed lookups: first the
+    // triggering user message rows, then their agent replies.
+    const subAgentUserMessageRows = await MessageModel.findAll({
+      where: { workspaceId },
+      attributes: ["id"],
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+          attributes: [],
+          where: {
+            agenticOriginMessageId: agentMessageId,
+            agenticMessageType: "run_agent",
+          },
+        },
+      ],
+    });
+    if (subAgentUserMessageRows.length === 0) {
+      return 0;
+    }
 
-    // biome-ignore lint/plugin/noRawSql: multi-join aggregate over sub-agent replies has no concise Sequelize equivalent.
-    const rows = await frontSequelize.query<{ total_credits: number | null }>(
-      query,
-      {
-        type: QueryTypes.SELECT,
-        replacements: { workspaceId, agentMessageId },
-      }
+    const subAgentReplies = await MessageModel.findAll({
+      where: {
+        workspaceId,
+        parentId: { [Op.in]: subAgentUserMessageRows.map((m) => m.id) },
+      },
+      attributes: ["id"],
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["totalCostCredits"],
+        },
+      ],
+    });
+
+    return subAgentReplies.reduce(
+      (sum, reply) => sum + (reply.agentMessage?.totalCostCredits ?? 0),
+      0
     );
-
-    return rows[0]?.total_credits ?? 0;
   }
 
   /**
