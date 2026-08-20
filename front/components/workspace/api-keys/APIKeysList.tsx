@@ -28,7 +28,11 @@ import {
   Separator,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 import capitalize from "lodash/capitalize";
 import { useMemo, useState } from "react";
 import { prettifyGroupName } from "./utils";
@@ -164,7 +168,7 @@ function buildColumns({
       id: "name",
       accessorFn: (row) => row.name,
       header: "Name",
-      enableSorting: false,
+      enableSorting: true,
       meta: { className: "h-16 w-56", headerAlign: "left" },
       cell: (info) => (
         <div className="flex flex-col justify-center">
@@ -268,7 +272,7 @@ function buildColumns({
       id: "createdAt",
       accessorKey: "createdAt",
       header: "Created",
-      enableSorting: false,
+      enableSorting: true,
       meta: { className: "h-16 w-36 min-w-36", headerAlign: "left" },
       cell: (info) => (
         <DataTable.BasicCellContent
@@ -281,7 +285,7 @@ function buildColumns({
       id: "lastUsedAt",
       accessorKey: "lastUsedAt",
       header: "Last used",
-      enableSorting: false,
+      enableSorting: true,
       meta: { className: "h-16 w-36 min-w-36", headerAlign: "left" },
       cell: (info) => (
         <DataTable.BasicCellContent
@@ -378,6 +382,7 @@ export function APIKeysList({
     pageIndex: 0,
     pageSize: API_KEYS_PAGE_SIZE,
   });
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   const actionsDisabled = isRevoking || isGenerating;
   const rows = useMemo<APIKeyRowData[]>(
@@ -443,13 +448,35 @@ export function APIKeysList({
       return matchesSearch && matchesStatus && matchesScope;
     });
   }, [rows, scopeFilters, search, statusFilters]);
+  const sortedRows = useMemo(() => {
+    const activeSort = sorting[0];
+    if (!activeSort) {
+      return filteredRows;
+    }
+
+    return [...filteredRows].sort((left, right) => {
+      let comparison = 0;
+      switch (activeSort.id) {
+        case "name":
+          comparison = left.name.localeCompare(right.name);
+          break;
+        case "createdAt":
+          comparison = left.createdAt - right.createdAt;
+          break;
+        case "lastUsedAt":
+          comparison = (left.lastUsedAt ?? 0) - (right.lastUsedAt ?? 0);
+          break;
+      }
+      return activeSort.desc ? -comparison : comparison;
+    });
+  }, [filteredRows, sorting]);
 
   const pageCount = Math.max(
     1,
-    Math.ceil(filteredRows.length / pagination.pageSize)
+    Math.ceil(sortedRows.length / pagination.pageSize)
   );
   const pageIndex = Math.min(pagination.pageIndex, pageCount - 1);
-  const paginatedRows = filteredRows.slice(
+  const paginatedRows = sortedRows.slice(
     pageIndex * pagination.pageSize,
     (pageIndex + 1) * pagination.pageSize
   );
@@ -558,6 +585,12 @@ export function APIKeysList({
                 data={paginatedRows}
                 columns={columns}
                 className="min-w-3xl"
+                sorting={sorting}
+                setSorting={(nextSorting) => {
+                  setSorting(nextSorting);
+                  resetPagination();
+                }}
+                isServerSideSorting
                 columnsBreakpoints={{
                   key: "xl",
                   spaces: "md",
