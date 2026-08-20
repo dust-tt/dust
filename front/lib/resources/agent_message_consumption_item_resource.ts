@@ -713,10 +713,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     messages: ConversationConsumptionMessageFacts[];
   }> {
     const workspaceId = auth.getNonNullableWorkspace().id;
-    const conversationModelIds = conversations.map(
-      (conversation) => conversation.id
-    );
-    const conversationSIdsByModelId = new Map(
+    const conversationIdsByModelId = new Map(
       conversations.map((conversation) => [conversation.id, conversation.sId])
     );
     const parentAgentIdsByConversationModelId = new Map(
@@ -740,12 +737,13 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       ],
       where: {
         workspaceId,
-        conversationId: { [Op.in]: conversationModelIds },
+        conversationId: { [Op.in]: Object.keys(conversationIdsByModelId) },
       },
       order: [["id", "ASC"]],
     });
+
     const messageFacts = agentMessages.map((agentMessage) => {
-      const conversationId = conversationSIdsByModelId.get(
+      const conversationId = conversationIdsByModelId.get(
         agentMessage.conversationId
       );
       assert(conversationId, "Agent message conversation not found.");
@@ -763,6 +761,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         status: agentMessage.status,
       };
     });
+
     const fetchedAgentMessageModelIds = messageFacts.map(
       (message) => message.agentMessageModelId
     );
