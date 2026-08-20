@@ -47,6 +47,39 @@ interface AgentModelMakerGroup {
   models: AgentModelFilterType[];
 }
 
+interface ModelFilterItemProps {
+  model: AgentModelFilterType;
+  icon?: ComponentType;
+  isSelected: boolean;
+  onToggle: (model: AgentModelFilterType) => void;
+}
+
+function ModelFilterItem({
+  model,
+  icon,
+  isSelected,
+  onToggle,
+}: ModelFilterItemProps) {
+  return (
+    <DropdownMenuItem
+      role="menuitemcheckbox"
+      aria-checked={isSelected}
+      label={model.displayName}
+      icon={icon}
+      truncateText
+      endComponent={
+        isSelected ? (
+          <Icon visual={Check} size="sm" className="text-muted-foreground" />
+        ) : undefined
+      }
+      onSelect={(event) => {
+        event.preventDefault();
+        onToggle(model);
+      }}
+    />
+  );
+}
+
 export function ModelsFilterMenu({
   models,
   selectedModels,
@@ -134,30 +167,6 @@ export function ModelsFilterMenu({
     );
   };
 
-  const renderModel = (model: AgentModelFilterType, icon?: ComponentType) => {
-    const isSelected = selectedModelIds.has(model.modelId);
-
-    return (
-      <DropdownMenuItem
-        key={model.modelId}
-        role="menuitemcheckbox"
-        aria-checked={isSelected}
-        label={model.displayName}
-        icon={icon}
-        truncateText
-        endComponent={
-          isSelected ? (
-            <Icon visual={Check} size="sm" className="text-muted-foreground" />
-          ) : undefined
-        }
-        onSelect={(event) => {
-          event.preventDefault();
-          toggleModel(model);
-        }}
-      />
-    );
-  };
-
   const searchbar = (
     <div className="sticky top-0 z-10 bg-overlay-background">
       <DropdownMenuSearchbar
@@ -172,7 +181,14 @@ export function ModelsFilterMenu({
 
   const body = isSearching ? (
     searchResults.length > 0 ? (
-      searchResults.map((model) => renderModel(model))
+      searchResults.map((model) => (
+        <ModelFilterItem
+          key={model.modelId}
+          model={model}
+          isSelected={selectedModelIds.has(model.modelId)}
+          onToggle={toggleModel}
+        />
+      ))
     ) : (
       <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
         No models found
@@ -206,14 +222,28 @@ export function ModelsFilterMenu({
             className="max-h-96 w-64 overflow-y-auto"
             onClick={(event) => event.stopPropagation()}
           >
-            {maker.models.map((model) => renderModel(model))}
+            {maker.models.map((model) => (
+              <ModelFilterItem
+                key={model.modelId}
+                model={model}
+                isSelected={selectedModelIds.has(model.modelId)}
+                onToggle={toggleModel}
+              />
+            ))}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
       ))}
       {unknownModels.length > 0 && (
         <>
           <DropdownMenuLabel label="Other models" />
-          {unknownModels.map((model) => renderModel(model))}
+          {unknownModels.map((model) => (
+            <ModelFilterItem
+              key={model.modelId}
+              model={model}
+              isSelected={selectedModelIds.has(model.modelId)}
+              onToggle={toggleModel}
+            />
+          ))}
         </>
       )}
     </>
@@ -270,9 +300,15 @@ export function ModelsFilterMenu({
         {models.length > 0 ? (
           <>
             <DropdownMenuLabel label="Model" />
-            {tierModels.map((model) =>
-              renderModel(model, MODEL_TIER_ICON[model.tierId])
-            )}
+            {tierModels.map((model) => (
+              <ModelFilterItem
+                key={model.modelId}
+                model={model}
+                icon={MODEL_TIER_ICON[model.tierId]}
+                isSelected={selectedModelIds.has(model.modelId)}
+                onToggle={toggleModel}
+              />
+            ))}
             {tierModels.length > 0 && concreteModels.length > 0 && (
               <DropdownMenuSeparator />
             )}
