@@ -1,4 +1,4 @@
-import { CoinsStacked01, cn } from "@dust-tt/sparkle";
+import { CoinsStacked01, cn, ProgressBar } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 export type CreditUsageTone = "on_target" | "elevated" | "critical";
@@ -49,19 +49,14 @@ export function CreditUsageCard({
           </div>
           <span className={TONE_TEXT_CLASSES[tone]}>{usedPercentage}%</span>
         </div>
-        <div
+        <ProgressBar
           aria-label={`${label} used`}
-          aria-valuemax={100}
-          aria-valuemin={0}
-          aria-valuenow={usedPercentage}
-          className="h-1 w-full overflow-hidden rounded-full bg-border"
-          role="progressbar"
-        >
-          <div
-            className={cn("h-full rounded-full", TONE_BAR_CLASSES[tone])}
-            style={{ width: `${usedPercentage}%` }}
-          />
-        </div>
+          className="h-1 bg-border"
+          values={[
+            { value: usedPercentage, className: TONE_BAR_CLASSES[tone] },
+            { value: 100 - usedPercentage, className: "bg-transparent" },
+          ]}
+        />
       </div>
       <div className="text-xs font-medium text-muted-foreground">
         {children}
