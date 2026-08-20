@@ -29,14 +29,6 @@ interface APIKeysProps {
   owner: WorkspaceType;
 }
 
-function APIKeysLoading() {
-  return (
-    <div className="rounded-xl border border-border bg-panel-background p-4">
-      <DataTableLoadingSkeleton showSelectionColumn={false} showTrailingCell />
-    </div>
-  );
-}
-
 export function APIKeys({ owner }: APIKeysProps) {
   const { mutate } = useSWRConfig();
   const { subscription } = useAuth();
@@ -184,7 +176,14 @@ export function APIKeys({ owner }: APIKeysProps) {
     });
 
   if (isKeysLoading || isGroupsLoading) {
-    return <APIKeysLoading />;
+    return (
+      <div className="rounded-xl border border-border bg-panel-background p-4">
+        <DataTableLoadingSkeleton
+          showSelectionColumn={false}
+          showTrailingCell
+        />
+      </div>
+    );
   }
 
   if (isKeysError || isGroupsError) {
