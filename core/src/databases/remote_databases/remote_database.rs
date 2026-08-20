@@ -9,7 +9,9 @@ pub const QUERY_TIMEOUT: Duration = Duration::from_secs(120);
 use crate::{
     databases::{
         database::{QueryDatabaseError, QueryResult, SqlDialect},
-        remote_databases::snowflake::snowflake::SnowflakeRemoteDatabase,
+        remote_databases::{
+            databricks::DatabricksRemoteDatabase, snowflake::snowflake::SnowflakeRemoteDatabase,
+        },
         table::Table,
         table_schema::TableSchema,
     },
@@ -50,6 +52,10 @@ pub async fn get_remote_database(
                     Ok(Box::new(db) as Box<dyn RemoteDatabase + Sync + Send>)
                 }
                 CredentialProvider::Bigquery => get_bigquery_remote_database(content).await,
+                CredentialProvider::Databricks => {
+                    let db = DatabricksRemoteDatabase::new(content).map_err(|e| anyhow!("{e}"))?;
+                    Ok(Box::new(db) as Box<dyn RemoteDatabase + Sync + Send>)
+                }
                 provider => Err(anyhow!("Provider {} is not a remote database", provider)),
             }
         }
