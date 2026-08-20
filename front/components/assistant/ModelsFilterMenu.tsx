@@ -1,3 +1,4 @@
+import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type { ModelTierId } from "@app/components/model_picker/modelPickerUtils";
 import {
   buildModelPickerCatalog,
@@ -14,9 +15,6 @@ import type {
 } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
 import {
-  BarFull,
-  BarHalf,
-  BarLow,
   Button,
   Check,
   ChevronDown,
@@ -49,12 +47,6 @@ interface ModelsFilterMenuProps {
   setSelectedModels: (models: AgentModelFilterType[]) => void;
   isCompact?: boolean;
 }
-
-const TIER_ICON: Record<ModelTierId, ComponentType> = {
-  fast: BarLow,
-  standard: BarHalf,
-  complex: BarFull,
-};
 
 type TierModelFilter = AgentModelFilterType & {
   tierId: ModelTierId;
@@ -151,6 +143,7 @@ function ModelFilterItem({
       icon={icon}
       truncateText
       checked={isSelected}
+      indicatorPosition="end"
       onCheckedChange={() => onToggle(model)}
       // Keep the menu open so several models can be toggled in a row.
       onSelect={(event) => event.preventDefault()}
@@ -461,7 +454,7 @@ export function ModelsFilterMenu({
               <ModelFilterItem
                 key={model.modelId}
                 model={model}
-                icon={TIER_ICON[model.tierId]}
+                icon={MODEL_TIER_ICON[model.tierId]}
                 isSelected={selectedModelIds.has(model.modelId)}
                 onToggle={toggleModel}
               />

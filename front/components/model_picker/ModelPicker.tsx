@@ -1,4 +1,5 @@
 import { ModelPickerContent } from "@app/components/model_picker/ModelPickerContent";
+import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type {
   ModelPickerSelectTrigger,
   ModelPickerSurface,
@@ -40,22 +41,9 @@ import type {
 } from "@app/types/assistant/models/types";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  BarFull,
-  BarHalf,
-  BarLow,
-  Button,
-  DropdownMenu,
-  DropdownMenuTrigger,
-} from "@dust-tt/sparkle";
-import type { ComponentType, MutableRefObject } from "react";
+import { Button, DropdownMenu, DropdownMenuTrigger } from "@dust-tt/sparkle";
+import type { MutableRefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-
-const TIER_BUTTON_ICON: Record<ModelTierId, ComponentType> = {
-  fast: BarLow,
-  standard: BarHalf,
-  complex: BarFull,
-};
 
 export interface ModelPickerProps {
   agentModel: AgentModelConfigurationType | null;
@@ -315,7 +303,7 @@ export function ModelPicker({
 
   const buttonIcon =
     shown.display.kind === "tier"
-      ? TIER_BUTTON_ICON[shown.display.tierId]
+      ? MODEL_TIER_ICON[shown.display.tierId]
       : getModelMakerLogo(getModelMaker(shown.display.model), isDark);
 
   const label =
