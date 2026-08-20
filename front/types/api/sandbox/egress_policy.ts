@@ -29,3 +29,12 @@ export type PostPodEgressPolicyRequestResponseBody = {
   policy: EgressPolicy;
   outcome: SandboxEgressRequestOutcome;
 };
+
+// The Pods that have their own egress policy, for the admin scope selector.
+export type GetEgressPolicyPodsResponseBody = {
+  pods: { sId: string; name: string }[];
+};
+
+export type GetPodEgressPoliciesBulkResponseBody = {
+  policies: { podId: string; policy: EgressPolicy }[];
+};
