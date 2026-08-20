@@ -37,7 +37,7 @@ const PostTriggersRequestBodySchema = z.object({
 });
 
 function requestedExecutionMode(
-  trigger: { executionMode?: TriggerExecutionMode },
+  trigger: z.infer<typeof TriggerSchema>,
   featureFlags: WhitelistableFeature[]
 ): TriggerExecutionMode | undefined {
   if (!featureFlags.includes("trigger_pool_choice")) {

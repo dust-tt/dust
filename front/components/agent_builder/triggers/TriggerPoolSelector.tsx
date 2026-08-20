@@ -42,7 +42,7 @@ export function TriggerPoolSelector({
     <div className="space-y-1">
       <Label htmlFor="trigger-pool">Credits</Label>
       <p className="text-sm text-muted-foreground">
-        Where the credits spent by this trigger's runs are taken from.
+        Which pool this trigger's runs take credits from.
       </p>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
