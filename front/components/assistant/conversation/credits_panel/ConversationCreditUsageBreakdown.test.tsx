@@ -85,7 +85,7 @@ describe("ConversationCreditUsageBreakdown", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("collapses agent breakdowns by default in multi-agent conversations", () => {
+  it("collapses agent breakdowns by default and expands them from the row", () => {
     const agent = {
       pictureUrl: null,
       billedCredits: 10,
@@ -125,11 +125,7 @@ describe("ConversationCreditUsageBreakdown", () => {
     expect(screen.queryByText("Search tool")).not.toBeInTheDocument();
     expect(screen.queryByText("Writing tool")).not.toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Expand credit details for Research agent",
-      })
-    );
+    fireEvent.click(screen.getByText("Research agent"));
 
     expect(screen.getByText("Search tool")).toBeInTheDocument();
     expect(screen.queryByText("Writing tool")).not.toBeInTheDocument();

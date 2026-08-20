@@ -189,27 +189,26 @@ function AgentBreakdown({ agent }: AgentBreakdownProps) {
       onOpenChange={setIsOpen}
       className="rounded-xl border border-border bg-background"
     >
-      <div className="flex min-w-0 items-center justify-between gap-3 px-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <Avatar
-            name={agent.name}
-            visual={agent.pictureUrl ?? undefined}
-            size="xs"
-          />
-          <h4 className="truncate text-base font-medium text-foreground">
-            {agent.name}
-          </h4>
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <span className="text-base font-semibold text-muted-foreground">
+      <CollapsibleTrigger
+        aria-label={`${isOpen ? "Collapse" : "Expand"} credit details for ${agent.name}`}
+        className="min-h-11 flex-row-reverse justify-between rounded-xl px-2 text-left focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Avatar
+              name={agent.name}
+              visual={agent.pictureUrl ?? undefined}
+              size="xs"
+            />
+            <span className="truncate text-base font-medium text-foreground">
+              {agent.name}
+            </span>
+          </div>
+          <span className="shrink-0 text-base font-semibold text-muted-foreground">
             {formatCreditValue(agent.billedCredits)}
           </span>
-          <CollapsibleTrigger
-            aria-label={`${isOpen ? "Collapse" : "Expand"} credit details for ${agent.name}`}
-            className="size-11 shrink-0 justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-ring"
-          />
         </div>
-      </div>
+      </CollapsibleTrigger>
       <CollapsibleContent className="px-2 pb-2 pt-2">
         <ToolBreakdownCards
           agentWorkCredits={agent.agentWorkCredits}
