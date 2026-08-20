@@ -22,7 +22,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/consumption:
  *   get:
  *     summary: Get an agent message credit attribution
- *     description: Returns direct, recursively spawned sub-agent, and total billed credits, plus an additive attribution reconciled exclusively through model input rows.
+ *     description: Returns direct, sub-agent, and total billed credits. Run-agent tool rows combine invocation cost with the bill of their direct sub-agent.
  *     tags:
  *       - Private Messages
  *     parameters:
@@ -60,14 +60,14 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                   description: Authoritative credits billed directly for this agent message, excluding sub-agents.
  *                 subAgentBilledCredits:
  *                   type: number
- *                   description: Credits billed by sub-agents recursively spawned from this message.
+ *                   description: Credits billed by direct sub-agents spawned from this message.
  *                 totalBilledCredits:
  *                   type: number
- *                   description: Total credits billed by this message and its recursively spawned sub-agents.
+ *                   description: Total credits billed by this message and its direct sub-agents.
  *                 details:
  *                   type: object
  *                   nullable: true
- *                   description: Additive attribution reconciled to the bill through model input rows, using the newest complete stored attribution version. Null when no stored version is complete.
+ *                   description: Additive attribution reconciled to totalBilledCredits through model input rows. Each run-agent tool row includes its direct sub-agent's bill. Null when no stored version is complete.
  *                   required:
  *                     - attributionVersion
  *                     - agentWorkCredits
@@ -78,7 +78,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                       description: Attribution version used for this breakdown.
  *                     agentWorkCredits:
  *                       type: number
- *                       description: Agent work after assigning billing reconciliation exclusively to model input rows.
+ *                       description: Non-tool work for the originating message after assigning billing reconciliation exclusively to model input rows.
  *                     tools:
  *                       type: array
  *                       items:
@@ -103,7 +103,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                             type: integer
  *                           attributedCredits:
  *                             type: number
- *                             description: Share of billed credits after input-only reconciliation.
+ *                             description: Share of total billed credits after input-only reconciliation. Run-agent tools include their direct sub-agent's bill.
  *                           directCredits:
  *                             type: number
  *                           pending:

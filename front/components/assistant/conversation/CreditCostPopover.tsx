@@ -17,7 +17,14 @@ import {
 import type { ComponentType, ReactElement } from "react";
 import { useId, useRef, useState } from "react";
 
-const MAX_VISIBLE_TOOLS = 3;
+const MAX_VISIBLE_OTHER_TOOLS = 3;
+
+function isSubAgentTool(tool: AgentMessageConsumptionToolDetails): boolean {
+  return (
+    tool.internalMCPServerName === "run_agent" ||
+    tool.internalMCPServerName === "agent_delegation"
+  );
+}
 
 function toolDescription(tool: AgentMessageConsumptionToolDetails): string {
   const descriptions = [toolUsageLabel(tool.callCount)];
@@ -113,8 +120,13 @@ export function CreditCostPopover({
         (left, right) => right.attributedCredits - left.attributedCredits
       )
     : [];
-  const visibleTools = rankedTools.slice(0, MAX_VISIBLE_TOOLS);
-  const remainingTools = rankedTools.slice(MAX_VISIBLE_TOOLS);
+  const subAgentTools = rankedTools.filter(isSubAgentTool);
+  const otherTools = rankedTools.filter((tool) => !isSubAgentTool(tool));
+  const visibleTools = [
+    ...subAgentTools,
+    ...otherTools.slice(0, MAX_VISIBLE_OTHER_TOOLS),
+  ].sort((left, right) => right.attributedCredits - left.attributedCredits);
+  const remainingTools = otherTools.slice(MAX_VISIBLE_OTHER_TOOLS);
   const remainingToolCredits = remainingTools.reduce(
     (total, tool) => total + tool.attributedCredits,
     0
@@ -191,13 +203,6 @@ export function CreditCostPopover({
                 value={formatCreditValue(details.agentWorkCredits)}
                 icon={InternalActionIcons.ActionBrainIcon}
               />
-              {childCredits > 0 && (
-                <CreditDetailRow
-                  label="Sub-agents"
-                  value={formatCreditValue(childCredits)}
-                  icon={InternalActionIcons.ActionRobotIcon}
-                />
-              )}
               {visibleTools.map((tool) => (
                 <CreditDetailRow
                   key={`${tool.internalMCPServerName ?? "external"}:${tool.toolName}:${tool.label}`}

@@ -12,6 +12,7 @@ import type {
   AgentMessageConsumptionDetails,
   AgentMessageConsumptionModelDetails,
 } from "@app/types/assistant/agent_message_consumption";
+import type { ModelId } from "@app/types/shared/model_id";
 import type {
   MessageConsumptionAllocation,
   ReconciledCreditAmounts,
@@ -20,6 +21,12 @@ import { buildLatestMessageConsumptionAllocation } from "./allocation";
 
 export type MessageConsumptionDetails = AgentMessageConsumptionDetails & {
   models: AgentMessageConsumptionModelDetails[];
+};
+
+export type ToolConsumptionDetailsOverride = {
+  additionalAttributedCredits: number;
+  identity: string;
+  label: string;
 };
 
 function buildConsumptionTotals({
@@ -59,12 +66,18 @@ function buildToolDetails({
   actions,
   items,
   reconciledCreditAmounts,
+  toolDetailsOverridesByActionId,
 }: {
   actions: AgentMCPActionResource[];
   items: AgentMessageConsumptionItemResource[];
   reconciledCreditAmounts: ReconciledCreditAmounts;
+  toolDetailsOverridesByActionId?: ReadonlyMap<
+    ModelId,
+    ToolConsumptionDetailsOverride
+  >;
 }): MessageConsumptionDetails["tools"] | null {
   const actionByModelId = new Map(actions.map((action) => [action.id, action]));
+  const actionIdsWithAppliedAdditionalCredits = new Set<ModelId>();
   const groupedTools = new Map<
     string,
     MessageConsumptionDetails["tools"][number] & { firstStep: number }
@@ -81,11 +94,17 @@ function buildToolDetails({
     }
 
     const serialized = action.toJSON();
-    const identity = toolIdentity(serialized);
+    const override = toolDetailsOverridesByActionId?.get(action.id);
+    const identity = override?.identity ?? toolIdentity(serialized);
     const current = groupedTools.get(identity);
-    const attributedCredits = microCreditsToCredits(
-      reconciledCreditAmounts.byItem.get(item) ?? 0
-    );
+    const additionalAttributedCredits =
+      override && !actionIdsWithAppliedAdditionalCredits.has(action.id)
+        ? override.additionalAttributedCredits
+        : 0;
+    actionIdsWithAppliedAdditionalCredits.add(action.id);
+    const attributedCredits =
+      microCreditsToCredits(reconciledCreditAmounts.byItem.get(item) ?? 0) +
+      additionalAttributedCredits;
     const directCredits = microCreditsToCredits(
       item.directCreditAmountMicro ?? 0
     );
@@ -103,7 +122,7 @@ function buildToolDetails({
     }
 
     groupedTools.set(identity, {
-      label: getToolAggregateDisplayLabel(serialized),
+      label: override?.label ?? getToolAggregateDisplayLabel(serialized),
       internalMCPServerName: serialized.internalMCPServerName,
       toolName: serialized.toolName,
       callCount: 1,
@@ -170,9 +189,14 @@ function buildModelDetails({
 function buildMessageConsumptionDetails({
   actions,
   allocation,
+  toolDetailsOverridesByActionId,
 }: {
   actions: AgentMCPActionResource[];
   allocation: MessageConsumptionAllocation;
+  toolDetailsOverridesByActionId?: ReadonlyMap<
+    ModelId,
+    ToolConsumptionDetailsOverride
+  >;
 }): MessageConsumptionDetails | null {
   const { attributionVersion, items, messageUsages, reconciledCreditAmounts } =
     allocation;
@@ -181,6 +205,7 @@ function buildMessageConsumptionDetails({
     actions,
     items,
     reconciledCreditAmounts,
+    toolDetailsOverridesByActionId,
   });
   if (!tools) {
     return null;
@@ -208,6 +233,7 @@ export function buildLatestAvailableMessageConsumptionDetails({
   dustRunIds,
   items,
   runs,
+  toolDetailsOverridesByActionId,
   usages,
 }: {
   actions: AgentMCPActionResource[];
@@ -215,6 +241,10 @@ export function buildLatestAvailableMessageConsumptionDetails({
   dustRunIds: string[];
   items: AgentMessageConsumptionItemResource[];
   runs: RunResource[];
+  toolDetailsOverridesByActionId?: ReadonlyMap<
+    ModelId,
+    ToolConsumptionDetailsOverride
+  >;
   usages: RunUsageWithRunKeyType[];
 }): MessageConsumptionDetails | null {
   const allocation = buildLatestMessageConsumptionAllocation({
@@ -229,5 +259,9 @@ export function buildLatestAvailableMessageConsumptionDetails({
     return null;
   }
 
-  return buildMessageConsumptionDetails({ actions, allocation });
+  return buildMessageConsumptionDetails({
+    actions,
+    allocation,
+    toolDetailsOverridesByActionId,
+  });
 }
