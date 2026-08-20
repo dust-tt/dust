@@ -2,27 +2,40 @@ import {
   InputBarSlashSuggestionExtension,
   inputBarSlashSuggestionPluginKey,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
-import { buildEditorExtensions } from "@app/components/editor/input_bar/useCustomEditor";
+import useCustomEditor, {
+  buildEditorExtensions,
+} from "@app/components/editor/input_bar/useCustomEditor";
 import type { WorkspaceType } from "@app/types/user";
+import { act, renderHook } from "@testing-library/react";
 import { Editor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+
+const owner = {
+  id: 0,
+  sId: "wId",
+  name: "MeMeMe AlwaysMe",
+  role: "user",
+  segmentation: null,
+  whiteListedProviders: null,
+  defaultEmbeddingProvider: null,
+  metadata: null,
+  metronomeCustomerId: null,
+  sharingPolicy: "all_scopes",
+  regionalModelsOnly: false,
+} satisfies WorkspaceType;
 
 describe("buildEditorExtensions", () => {
   let editor: Editor;
-  const owner = {
-    id: 0,
-    sId: "wId",
-    name: "MeMeMe AlwaysMe",
-    role: "user",
-    segmentation: null,
-    whiteListedProviders: null,
-    defaultEmbeddingProvider: null,
-    metadata: null,
-    metronomeCustomerId: null,
-    sharingPolicy: "all_scopes",
-    regionalModelsOnly: false,
-  } satisfies WorkspaceType;
 
   function createSlashSuggestionEditor() {
     return new Editor({
@@ -248,5 +261,88 @@ describe("buildEditorExtensions", () => {
     expect(
       inputBarSlashSuggestionPluginKey.getState(editor.state)?.active
     ).toBe(false);
+  });
+});
+
+describe("useCustomEditor placeholder override", () => {
+  beforeAll(() => {
+    // jsdom does not implement matchMedia (used by useIsMobile).
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }))
+    );
+  });
+
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function renderEditorHook() {
+    const initialProps: { placeholderOverride: string | null } = {
+      placeholderOverride: null,
+    };
+    return renderHook(
+      ({ placeholderOverride }: { placeholderOverride: string | null }) =>
+        useCustomEditor({
+          onEnterKeyDown: vi.fn(),
+          disableAutoFocus: true,
+          owner,
+          conversationId: "cId",
+          placeholderOverride,
+        }),
+      { initialProps }
+    );
+  }
+
+  function getPlaceholderText(editor: Editor | null) {
+    return (
+      editor?.view.dom.querySelector("p")?.getAttribute("data-placeholder") ??
+      null
+    );
+  }
+
+  it("updates the placeholder without recreating the editor", () => {
+    const { result, rerender } = renderEditorHook();
+
+    const editor = result.current.editor;
+    expect(editor).not.toBeNull();
+    expect(getPlaceholderText(editor)).toBe("Get work done");
+
+    rerender({ placeholderOverride: "Add a follow-up" });
+
+    expect(result.current.editor).toBe(editor);
+    expect(getPlaceholderText(editor)).toBe("Add a follow-up");
+
+    rerender({ placeholderOverride: null });
+
+    expect(result.current.editor).toBe(editor);
+    expect(getPlaceholderText(editor)).toBe("Get work done");
+  });
+
+  it("preserves content and selection across placeholder changes", () => {
+    const { result, rerender } = renderEditorHook();
+
+    const editor = result.current.editor;
+    expect(editor).not.toBeNull();
+
+    act(() => {
+      editor?.commands.setContent("hello");
+      editor?.commands.setTextSelection(3);
+    });
+
+    rerender({ placeholderOverride: "Add a follow-up" });
+
+    expect(result.current.editor).toBe(editor);
+    expect(editor?.getText()).toBe("hello");
+    expect(editor?.state.selection.from).toBe(3);
   });
 });
