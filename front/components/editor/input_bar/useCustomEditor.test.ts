@@ -282,6 +282,14 @@ describe("useCustomEditor placeholder override", () => {
     vi.unstubAllGlobals();
   });
 
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   function renderEditorHook() {
     const initialProps: { placeholderOverride: string | null } = {
       placeholderOverride: null,
@@ -310,17 +318,28 @@ describe("useCustomEditor placeholder override", () => {
     return editor.view.dom.querySelector("p")?.getAttribute("data-placeholder");
   }
 
-  it("updates the placeholder without recreating the editor", () => {
+  it("types the new placeholder without recreating the editor", () => {
     const { editor, result, rerender } = renderEditorHook();
 
     expect(getPlaceholderText(editor)).toBe("Get work done");
 
     rerender({ placeholderOverride: "Add a follow-up..." });
 
+    // Typing starts from the first character.
     expect(result.current.editor).toBe(editor);
+    expect(getPlaceholderText(editor)).toBe("A");
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
     expect(getPlaceholderText(editor)).toBe("Add a follow-up...");
 
     rerender({ placeholderOverride: null });
+
+    act(() => {
+      vi.runAllTimers();
+    });
 
     expect(result.current.editor).toBe(editor);
     expect(getPlaceholderText(editor)).toBe("Get work done");
