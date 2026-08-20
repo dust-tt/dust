@@ -13,11 +13,13 @@ import {
   getMessagePreviewText,
   shouldSendNotificationForAgentAnswer,
   shouldSkipConversation,
+  shouldSkipConversationExternalNotification,
   shouldSkipNewProjectConversation,
   triggerConversationUnreadNotifications,
 } from "@app/lib/notifications/workflows/conversation-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -35,6 +37,7 @@ import {
 } from "@app/types/notification_preferences";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
+import { areConversationExternalNotificationsEnabled } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock Novu client for notification sending tests
@@ -1592,5 +1595,56 @@ describe("getEmailSummary", () => {
     });
 
     expect(result).toBe(expectedStrippedSummary);
+  });
+});
+
+describe("areConversationExternalNotificationsEnabled", () => {
+  const owner = (
+    metadata: LightWorkspaceType["metadata"]
+  ): LightWorkspaceType => ({ metadata }) as LightWorkspaceType;
+
+  it("is enabled when metadata is missing", () => {
+    expect(areConversationExternalNotificationsEnabled(owner(null))).toBe(true);
+    expect(areConversationExternalNotificationsEnabled(owner(undefined))).toBe(
+      true
+    );
+    expect(areConversationExternalNotificationsEnabled(owner({}))).toBe(true);
+  });
+
+  it("is enabled when explicitly true", () => {
+    expect(
+      areConversationExternalNotificationsEnabled(
+        owner({ allowConversationExternalNotifications: true })
+      )
+    ).toBe(true);
+  });
+
+  it("is disabled when explicitly false", () => {
+    expect(
+      areConversationExternalNotificationsEnabled(
+        owner({ allowConversationExternalNotifications: false })
+      )
+    ).toBe(false);
+  });
+});
+
+describe("shouldSkipConversationExternalNotification", () => {
+  it("does not skip by default", async () => {
+    const { workspace } = await createResourceTest({ role: "admin" });
+
+    expect(
+      await shouldSkipConversationExternalNotification(workspace.sId)
+    ).toBe(false);
+  });
+
+  it("skips when the workspace disables conversation email and Slack", async () => {
+    const { workspace } = await createResourceTest({ role: "admin" });
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      allowConversationExternalNotifications: false,
+    });
+
+    expect(
+      await shouldSkipConversationExternalNotification(workspace.sId)
+    ).toBe(true);
   });
 });

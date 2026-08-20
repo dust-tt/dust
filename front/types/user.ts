@@ -112,6 +112,14 @@ export function isWorkspaceAnalyticsEnabled(
   return owner.metadata?.disableWorkspaceAnalytics !== true;
 }
 
+// Conversation unread email and Slack are on by default. Admins can turn them
+// off workspace-wide; in-app Dust notifications are not affected.
+export function areConversationExternalNotificationsEnabled(
+  owner: LightWorkspaceType
+): boolean {
+  return owner.metadata?.allowConversationExternalNotifications !== false;
+}
+
 // When enabled, members can run published agents even if the agent's model
 // requires a tier above their own access. Disabled by default: such runs are
 // blocked. Admins can opt in via the workspace settings.

@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getNovuClient } from "@app/lib/notifications";
 import { triggerActivationNewConversationEmail } from "@app/lib/notifications/workflows/activation-new-conversation";
+import { shouldSkipConversationExternalNotification } from "@app/lib/notifications/workflows/conversation-unread";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -252,13 +253,22 @@ export async function areForYouNotificationsEnabled(
  * the notification starts only after the reply exists.
  *
  * Runs only if the conversation belongs to an activation pod and was started
- * by the activation nudge workflow. Respects the target user's For You toggle
- * and "Notify me about" condition; Email frequency does not apply.
+ * by the activation nudge workflow. Respects the workspace email/Slack setting,
+ * the target user's For You toggle, and "Notify me about" condition; Email
+ * frequency does not apply.
  */
 export async function notifyActivationConversationAgentReplied(
   auth: Authenticator,
   { conversationId }: { conversationId: string }
 ): Promise<void> {
+  if (
+    await shouldSkipConversationExternalNotification(
+      auth.getNonNullableWorkspace().sId
+    )
+  ) {
+    return;
+  }
+
   const conversationResource = await ConversationResource.fetchById(
     auth,
     conversationId,

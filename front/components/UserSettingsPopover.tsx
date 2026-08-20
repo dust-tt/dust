@@ -1,7 +1,6 @@
 import { UsageUpgradeButton } from "@app/components/credits/UsageUpgradeButton";
 import { MarkdownEditor } from "@app/components/editor/MarkdownEditor";
 import {
-  ForYouNotificationPreferences,
   NotificationPreferences,
   useNotificationPreferencesForm,
 } from "@app/components/me/NotificationPreferences";
@@ -35,6 +34,7 @@ import {
   useUserMemory,
   useWorkspaceUsageStatus,
 } from "@app/lib/swr/user";
+import { useAuthContext } from "@app/lib/swr/workspaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import {
   MAX_USER_MEMORY_CHARS,
@@ -43,7 +43,10 @@ import {
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
-import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
+import {
+  ANONYMOUS_USER_IMAGE_URL,
+  areConversationExternalNotificationsEnabled,
+} from "@app/types/user";
 import {
   Avatar,
   BarChart01,
@@ -731,37 +734,29 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
               disabled={sound.isLoading}
             />
           </div>
-          {showNotificationPreferences && (
+          {showNotificationPreferences && notif.status === "error" && (
+            <ContentMessageInline variant="warning" icon={InfoCircle}>
+              We couldn't load your notification settings. Please try again
+              later.
+            </ContentMessageInline>
+          )}
+          {showNotificationPreferences && notif.status !== "error" && (
             <div className="flex flex-col gap-4">
               <Page.SectionHeader
                 title="Other channels"
                 description="Choose where else to receive notifications"
               />
-              {notif.status === "error" ? (
-                <ContentMessageInline variant="warning" icon={InfoCircle}>
-                  We couldn't load your notification settings. Please try again
-                  later.
-                </ContentMessageInline>
-              ) : (
-                <NotificationPreferences
-                  control={notif.control}
-                  displaySlackOption={notif.displaySlackOption}
-                  workflowEnabled={notif.workflowEnabled}
-                />
-              )}
+              <NotificationPreferences
+                control={notif.control}
+                displaySlackOption={notif.displaySlackOption}
+                displayForYouOption={displayForYouOption}
+                workflowEnabled={notif.workflowEnabled}
+                conversationExternalNotificationsEnabled={areConversationExternalNotificationsEnabled(
+                  owner
+                )}
+              />
             </div>
           )}
-          {showNotificationPreferences &&
-            displayForYouOption &&
-            notif.status !== "error" && (
-              <div className="flex flex-col gap-4">
-                <Page.SectionHeader
-                  title="For you"
-                  description="Recommendation emails from your learning space"
-                />
-                <ForYouNotificationPreferences control={notif.control} />
-              </div>
-            )}
         </>
       )}
     </SectionContent>
@@ -936,6 +931,10 @@ export function UserSettingsPopover({
   const { pendingInvitations, isPendingInvitationsLoading } =
     usePendingInvitations({ workspaceId: owner.sId, disabled: !open });
   const hasPendingInvitations = pendingInvitations.length > 0;
+  const { mutateAuthContext } = useAuthContext({
+    workspaceId: owner.sId,
+    disabled: true,
+  });
 
   // "Memory" is gated on the user_memory feature flag; "Invitations" only
   // appears when the user has pending invitations.
@@ -956,8 +955,9 @@ export function UserSettingsPopover({
   useEffect(() => {
     if (open) {
       setActiveSection("personal");
+      void mutateAuthContext();
     }
-  }, [open]);
+  }, [open, mutateAuthContext]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -11,6 +11,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -414,6 +415,19 @@ describe("notifyActivationConversationAgentReplied", () => {
 
   test("does not trigger the activation email when For You notifications are disabled", async () => {
     await user.setMetadata(FOR_YOU_NOTIFICATION_METADATA_KEY, "false");
+    const conversation = await createNudgeConversation();
+
+    await notifyActivationConversationAgentReplied(auth, {
+      conversationId: conversation.sId,
+    });
+
+    expect(vi.mocked(getNovuClient)).not.toHaveBeenCalled();
+  });
+
+  test("does not trigger the activation email when the workspace disables email and Slack", async () => {
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      allowConversationExternalNotifications: false,
+    });
     const conversation = await createNudgeConversation();
 
     await notifyActivationConversationAgentReplied(auth, {
