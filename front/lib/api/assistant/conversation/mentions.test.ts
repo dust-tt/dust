@@ -13,7 +13,6 @@ import {
   ConversationModel,
   ConversationParticipantModel,
   MentionModel,
-  UserConversationReadsModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -1767,16 +1766,9 @@ describe("createUserMessage", () => {
         userId: mentionedUser.id,
       },
     });
-    const conversationRead = await UserConversationReadsModel.findOne({
-      where: {
-        workspaceId: workspace.id,
-        conversationId: conversation.id,
-        userId: mentionedUser.id,
-      },
-    });
 
     expect(participant).not.toBeNull();
-    expect(conversationRead?.lastReadAt).toBeUndefined();
+    expect(participant?.lastReadAt).toBeNull();
     expect(participant?.action).toBe("subscribed");
   });
 
