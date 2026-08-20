@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Chip,
   DataTable,
+  DataTableLoadingSkeleton,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -22,6 +23,7 @@ import {
   Edit04,
   FilterFunnel01,
   Icon,
+  LoadingBlock,
   SearchInput,
   Separator,
   Tooltip,
@@ -38,6 +40,8 @@ type APIKeyStatus = "active" | "capped" | "revoked";
 interface APIKeysListProps {
   keys: KeyType[];
   groupsById: Record<ModelId, GroupType>;
+  isLoading: boolean;
+  isError: boolean;
   isRevoking: boolean;
   isGenerating: boolean;
   onRevoke: (key: KeyType) => Promise<void>;
@@ -354,6 +358,8 @@ function buildColumns({
 export function APIKeysList({
   keys,
   groupsById,
+  isLoading,
+  isError,
   isRevoking,
   isGenerating,
   onRevoke,
@@ -454,7 +460,10 @@ export function APIKeysList({
   };
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-border bg-panel-background p-4">
+    <div
+      className="flex flex-col gap-4 rounded-xl border border-border bg-panel-background p-4"
+      aria-busy={isLoading}
+    >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <SearchInput
           name="api-keys-search"
@@ -511,73 +520,99 @@ export function APIKeysList({
         </DropdownMenu>
       </div>
 
-      {keys.length === 0 ? (
-        <div className="py-8 text-center text-sm text-muted-foreground">
-          Create an API key to start using Dust programmatically.
-        </div>
-      ) : filteredRows.length === 0 ? (
-        <div className="py-8 text-center text-sm text-muted-foreground">
-          No API keys match these filters.
-        </div>
-      ) : (
-        <div className="dd-privacy-mask overflow-x-auto">
-          <DataTable
-            data={paginatedRows}
-            columns={columns}
-            className="min-w-[720px]"
-            columnsBreakpoints={{
-              key: "xl",
-              spaces: "md",
-              monthlyCap: "sm",
-              createdAt: "lg",
-              lastUsedAt: "md",
-            }}
+      {isLoading ? (
+        <>
+          <DataTableLoadingSkeleton
+            showSelectionColumn={false}
+            showTrailingCell
           />
-        </div>
-      )}
-
-      <Separator />
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-foreground">
-          {filteredRows.length.toLocaleString()} API{" "}
-          {filteredRows.length === 1 ? "key" : "keys"}
-        </span>
-        {filteredRows.length > 0 && (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">
-              Page {pageIndex + 1} of {pageCount}
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                icon={ChevronLeft}
-                aria-label="Previous page"
-                size="sm"
-                variant="outline"
-                disabled={pageIndex === 0}
-                onClick={() =>
-                  setPagination((current) => ({
-                    ...current,
-                    pageIndex: Math.max(0, pageIndex - 1),
-                  }))
-                }
-              />
-              <Button
-                icon={ChevronRight}
-                aria-label="Next page"
-                size="sm"
-                variant="outline"
-                disabled={pageIndex >= pageCount - 1}
-                onClick={() =>
-                  setPagination((current) => ({
-                    ...current,
-                    pageIndex: Math.min(pageCount - 1, pageIndex + 1),
-                  }))
-                }
-              />
+          <Separator />
+          <div className="flex items-center justify-between">
+            <LoadingBlock className="h-4 w-20" />
+            <div className="flex items-center gap-3">
+              <LoadingBlock className="h-4 w-24" />
+              <div className="flex items-center gap-2">
+                <LoadingBlock className="h-8 w-8 rounded-xl" />
+                <LoadingBlock className="h-8 w-8 rounded-xl" />
+              </div>
             </div>
           </div>
-        )}
-      </div>
+        </>
+      ) : isError ? (
+        <div className="py-8 text-center text-sm text-muted-foreground">
+          Failed to load API keys.
+        </div>
+      ) : (
+        <>
+          {keys.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              Create an API key to start using Dust programmatically.
+            </div>
+          ) : filteredRows.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              No API keys match these filters.
+            </div>
+          ) : (
+            <div className="dd-privacy-mask overflow-x-auto">
+              <DataTable
+                data={paginatedRows}
+                columns={columns}
+                className="min-w-[720px]"
+                columnsBreakpoints={{
+                  key: "xl",
+                  spaces: "md",
+                  monthlyCap: "sm",
+                  createdAt: "lg",
+                  lastUsedAt: "md",
+                }}
+              />
+            </div>
+          )}
+
+          <Separator />
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-foreground">
+              {filteredRows.length.toLocaleString()} API{" "}
+              {filteredRows.length === 1 ? "key" : "keys"}
+            </span>
+            {filteredRows.length > 0 && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">
+                  Page {pageIndex + 1} of {pageCount}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    icon={ChevronLeft}
+                    aria-label="Previous page"
+                    size="sm"
+                    variant="outline"
+                    disabled={pageIndex === 0}
+                    onClick={() =>
+                      setPagination((current) => ({
+                        ...current,
+                        pageIndex: Math.max(0, pageIndex - 1),
+                      }))
+                    }
+                  />
+                  <Button
+                    icon={ChevronRight}
+                    aria-label="Next page"
+                    size="sm"
+                    variant="outline"
+                    disabled={pageIndex >= pageCount - 1}
+                    onClick={() =>
+                      setPagination((current) => ({
+                        ...current,
+                        pageIndex: Math.min(pageCount - 1, pageIndex + 1),
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

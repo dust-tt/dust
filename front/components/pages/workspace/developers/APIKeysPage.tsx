@@ -15,13 +15,7 @@ import type { KeyType } from "@app/types/key";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
-import {
-  BookOpen01,
-  Button,
-  DataTableLoadingSkeleton,
-  LoadingBlock,
-  Page,
-} from "@dust-tt/sparkle";
+import { BookOpen01, Button, Page } from "@dust-tt/sparkle";
 import get from "lodash/get";
 import { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -40,6 +34,8 @@ export function APIKeys({ owner }: APIKeysProps) {
 
   const { isKeysError, isKeysLoading, keys } = useKeys(owner);
   const { groups, isGroupsError, isGroupsLoading } = useGroups({ owner });
+  const isDataLoading = isKeysLoading || isGroupsLoading;
+  const isDataError = Boolean(isKeysError || isGroupsError);
 
   const groupsById = useMemo(() => {
     return groups.reduce<Record<ModelId, GroupType>>((acc, group) => {
@@ -176,31 +172,6 @@ export function APIKeys({ owner }: APIKeysProps) {
       }
     });
 
-  if (isKeysLoading || isGroupsLoading) {
-    return (
-      <Page.Vertical align="stretch" gap="xl">
-        <Page.Horizontal align="right">
-          <LoadingBlock className="h-8 w-full rounded-xl sm:w-32" />
-          <LoadingBlock className="h-8 w-full rounded-xl sm:w-36" />
-        </Page.Horizontal>
-        <div className="rounded-xl border border-border bg-panel-background p-4">
-          <DataTableLoadingSkeleton
-            showSelectionColumn={false}
-            showTrailingCell
-          />
-        </div>
-      </Page.Vertical>
-    );
-  }
-
-  if (isKeysError || isGroupsError) {
-    return (
-      <div className="rounded-xl border border-border bg-panel-background p-4 text-sm text-muted-foreground">
-        Failed to load API keys.
-      </div>
-    );
-  }
-
   return (
     <>
       <APIKeyCreationSheet
@@ -226,6 +197,7 @@ export function APIKeys({ owner }: APIKeysProps) {
           />
           <NewAPIKeyDialog
             groups={groups}
+            disabled={isGroupsLoading || Boolean(isGroupsError)}
             isGenerating={isGenerating}
             isRevoking={isRevoking}
             onCreate={handleGenerate}
@@ -235,6 +207,8 @@ export function APIKeys({ owner }: APIKeysProps) {
         <APIKeysList
           keys={keys}
           groupsById={groupsById}
+          isLoading={isDataLoading}
+          isError={isDataError}
           isRevoking={isRevoking}
           isGenerating={isGenerating}
           onRevoke={handleRevoke}
