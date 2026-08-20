@@ -179,19 +179,22 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       conversation,
     });
 
-    const loadedFilesList = mountResult.value.loadedPaths
-      .map((p) => `  - ${p}`)
-      .join("\n");
+    const { loadedPaths } = mountResult.value;
+    const loadedFilesList = loadedPaths.map((p) => `  - ${p}`).join("\n");
 
-    const text = wasAlreadyEnabled
-      ? mountResult.value.loadedPaths.length > 0
-        ? `Skill "${skill.name}" was already enabled, but some files were missing and have ` +
-          `been additionally loaded:\n\n${loadedFilesList}`
-        : `Skill "${skill.name}" was already enabled.`
-      : `Skill "${skill.name}" has been enabled.` +
-        (mountResult.value.loadedPaths.length > 0
-          ? `\n\nSkill files successfully loaded:\n${loadedFilesList}`
-          : "");
+    let text: string;
+    if (!wasAlreadyEnabled) {
+      text = `Skill "${skill.name}" has been enabled.`;
+      if (loadedPaths.length > 0) {
+        text += `\n\nSkill files successfully loaded:\n${loadedFilesList}`;
+      }
+    } else if (loadedPaths.length > 0) {
+      text =
+        `Skill "${skill.name}" was already enabled, but some files were missing and ` +
+        `have been additionally loaded:\n\n${loadedFilesList}`;
+    } else {
+      text = `Skill "${skill.name}" was already enabled.`;
+    }
 
     return new Ok([makeEnableSkillResultOutput({ skillId: skill.sId, text })]);
   },
