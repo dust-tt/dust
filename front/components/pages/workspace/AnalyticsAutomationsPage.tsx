@@ -36,11 +36,11 @@ export function AnalyticsAutomationsPage() {
   }
 
   return (
-    <Page.Vertical align="stretch" gap="none">
+    <Page.Vertical align="stretch" gap="xl">
       <Page.Header
         title={
-          <div className="flex w-full flex-row justify-between gap-4">
             <div className="flex max-w-[700px] flex-col gap-1">
+          <div className="flex w-full flex-row justify-between">
               <Page.H variant="h3">Automations</Page.H>
               <Page.P variant="secondary">
                 Everything that runs on its own: who set it up, how often it
@@ -54,8 +54,10 @@ export function AnalyticsAutomationsPage() {
           </div>
         }
       />
-      <div className="flex flex-col gap-8 pb-8 pt-4">
-        <AutomationsOverview workspaceId={owner.sId} period={period} />
+
+      <AutomationsOverview owner={owner} period={period} />
+
+      <div className="flex flex-col gap-8">
         <AutomationsTriggersTable
           owner={owner}
           period={period}
