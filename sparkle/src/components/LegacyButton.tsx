@@ -264,6 +264,11 @@ export interface MetaButtonProps
   isRounded?: boolean;
 }
 
+/**
+ * Unstyled base of the legacy button.
+ *
+ * @deprecated Part of the LegacyButton implementation — use Button instead.
+ */
 const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
   (
     {
