@@ -2,6 +2,7 @@ import { formatSandboxFunctionInvocations } from "@app/lib/api/actions/servers/s
 import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/access_tokens";
 import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import { SandboxExecTimeoutError } from "@app/lib/api/sandbox/provider";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import type {
   NormalizedSandboxFunctionOutcome,
@@ -1178,6 +1179,54 @@ describe("SandboxFunctionInvocationResource", () => {
       code: "invocation_failed",
       message: "function produced no output",
     });
+  });
+
+  it("classifies a provider exec timeout as invocation_timeout naming the budgets", async () => {
+    const { authenticator, sandboxFunction, sandbox, invocation } =
+      await setupExecutionTest();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Err(new SandboxExecTimeoutError(120_000))
+    );
+
+    // The invocation ran and timed out: the outcome is recorded here, not returned as an error
+    // for the caller (or a workflow retry) to re-run a function that may have written already.
+    const executionResult = await invocation.execute(authenticator);
+    expect(executionResult.isOk()).toBe(true);
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("errored");
+    expect(refetched?.error).toEqual({
+      code: "invocation_timeout",
+      message:
+        "The Pod function did not return within 120s: fast functions must return within 10s " +
+        "and durable functions within 120s. Reduce the work, or split it into a durable " +
+        "refresh and a fast read.",
+    });
+  });
+
+  it("returns non-timeout exec failures to the caller unclassified", async () => {
+    const { authenticator, sandboxFunction, sandbox, invocation } =
+      await setupExecutionTest();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Err(new Error("connection reset"))
+    );
+
+    const executionResult = await invocation.execute(authenticator);
+    expect(executionResult.isErr()).toBe(true);
+    if (executionResult.isOk()) {
+      throw new Error("expected an error");
+    }
+    expect(executionResult.error.message).toBe("connection reset");
+
+    // The caller owns the terminal transition on this path.
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("created");
   });
 });
 
