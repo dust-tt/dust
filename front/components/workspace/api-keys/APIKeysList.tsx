@@ -557,7 +557,7 @@ export function APIKeysList({
               <DataTable
                 data={paginatedRows}
                 columns={columns}
-                className="min-w-[720px]"
+                className="min-w-3xl"
                 columnsBreakpoints={{
                   key: "xl",
                   spaces: "md",
