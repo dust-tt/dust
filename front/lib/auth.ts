@@ -1546,13 +1546,13 @@ export class Authenticator {
    */
   shadowComparePermission(
     verb: GrantVerb,
-    legacyAcls: AccessControlList[],
+    resource: WithAccessControl,
     candidateAcls: AccessControlList[],
-    context: Record<string, string | number | boolean | null>
+    context?: Record<string, string | number | boolean | null>
   ): void {
     void this.runShadowComparePermission(
       verb,
-      legacyAcls,
+      resource,
       candidateAcls,
       context
     );
@@ -1560,9 +1560,9 @@ export class Authenticator {
 
   private async runShadowComparePermission(
     verb: GrantVerb,
-    legacyAcls: AccessControlList[],
+    resource: WithAccessControl,
     candidateAcls: AccessControlList[],
-    context: Record<string, string | number | boolean | null>
+    context?: Record<string, string | number | boolean | null>
   ): Promise<void> {
     try {
       const flags = await getFeatureFlags(this);
@@ -1570,18 +1570,40 @@ export class Authenticator {
         return;
       }
 
-      const legacyResult = this.hasPermissionForAcls(verb, legacyAcls);
+      const currentAcl = resource.getAccessControlLists(this);
+      const currentResult = this.hasPermissionForAcls(verb, currentAcl);
       const candidateResult = this.hasPermissionForAcls(verb, candidateAcls);
 
       // The literal message is the Datadog monitor key — keep it stable.
-      if (legacyResult !== candidateResult) {
+      if (currentResult !== candidateResult) {
+        const reloadedPermissions = await Authenticator.resolvePermissions({
+          workspace: this._workspace,
+          groupModelIds: this._groupModelIds,
+        });
+        const reloadedPermissionsAcl = resource.getAccessControlLists({
+          ...this,
+          _permissions: reloadedPermissions,
+        });
+        const reloadedPermissionsResult = this.hasPermissionForAcls(
+          verb,
+          reloadedPermissionsAcl
+        );
+
         logger.warn(
           {
             ...context,
-            legacyResult,
+            permission: verb,
+            userId: this.user()?.sId ?? null,
+            workspaceId: this.workspace()?.sId,
+            currentResult,
             candidateResult,
-            legacyAcls,
+            currentAcl,
             candidateAcls,
+            groups: this._groupModelIds,
+            permissions: this._permissions.toJSON(),
+            reloadedPermissionsAcl,
+            reloadedPermissionsResult,
+            reloadedPermission: reloadedPermissions.toJSON(),
           },
           "group_permissions_shadow_mismatch"
         );
