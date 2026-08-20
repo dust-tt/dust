@@ -1601,12 +1601,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List skills that use any of the given MCP server view IDs.
-   * Used during space deletion to find skills that need to be updated.
+   * List skills that use any of the given MCP server view IDs. Used during space deletion to find
+   * skills that need to be updated. Defaults to active skills; pass `status` to widen.
    */
   static async listByMCPServerViewIds(
     auth: Authenticator,
-    mcpServerViewIds: ModelId[]
+    mcpServerViewIds: ModelId[],
+    { status = "active" }: { status?: SkillStatus | SkillStatus[] } = {}
   ): Promise<SkillResource[]> {
     if (mcpServerViewIds.length === 0) {
       return [];
@@ -1636,7 +1637,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         id: {
           [Op.in]: skillIds,
         },
-        status: "active",
+        status,
       },
       onlyCustom: true,
     });
@@ -1650,13 +1651,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     dataSourceViewIds: ModelId[],
     {
+      status = "active",
       withInstructions = true,
       withTools = true,
       withFileAttachments = true,
     }: Pick<
       SkillConfigurationFindOptions,
       "withInstructions" | "withTools" | "withFileAttachments"
-    > = {}
+    > & { status?: SkillStatus | SkillStatus[] } = {}
   ): Promise<SkillResource[]> {
     if (dataSourceViewIds.length === 0) {
       return [];
@@ -1686,7 +1688,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         id: {
           [Op.in]: skillIds,
         },
-        status: "active",
+        status,
       },
       onlyCustom: true,
       withInstructions,
@@ -1748,20 +1750,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List active skills whose requestedSpaceIds contains the given space. Used
-   * during space deletion to find skills that reference the space even when
-   * they have no MCP server view or data source view located in it.
+   * List skills whose requestedSpaceIds contains the given space. Used during space deletion to
+   * find skills that reference the space even when they have no MCP server view or data source
+   * view located in it. Defaults to active skills; pass `status` to widen (space deletion must
+   * clean archived skills too, or their dangling reference makes them unfetchable for good).
    */
   static async listByRequestedSpaceId(
     auth: Authenticator,
-    spaceModelId: ModelId
+    spaceModelId: ModelId,
+    { status = "active" }: { status?: SkillStatus | SkillStatus[] } = {}
   ): Promise<SkillResource[]> {
     return this.baseFetch(auth, {
       where: {
         requestedSpaceIds: {
           [Op.contains]: [spaceModelId],
         },
-        status: "active",
+        status,
       },
       onlyCustom: true,
     });
