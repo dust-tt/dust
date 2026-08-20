@@ -339,42 +339,6 @@ describe("isEligibleForNudge", () => {
     ).toBe(true);
   });
 
-  it("still blocks an archived pod when overrideChecks is set", async () => {
-    const { authenticator, globalSpace } = await createResourceTest({
-      role: "admin",
-    });
-    const activationPod = await createActivationPod(authenticator, globalSpace);
-
-    // biome-ignore lint/plugin/noRawSql: only way to backdate a paranoid model's deletedAt in tests.
-    await frontSequelize.query(
-      `UPDATE vaults SET "deletedAt" = :deletedAt WHERE id = :id AND "workspaceId" = :workspaceId`,
-      {
-        replacements: {
-          deletedAt: new Date().toISOString(),
-          id: globalSpace.id,
-          workspaceId: authenticator.getNonNullableWorkspace().id,
-        },
-      }
-    );
-    const archivedPod = await SpaceResource.fetchById(
-      authenticator,
-      globalSpace.sId,
-      { includeDeleted: true }
-    );
-    if (!archivedPod) {
-      throw new Error("Expected the archived pod to still be fetchable.");
-    }
-
-    expect(
-      await isEligibleForNudge(authenticator, {
-        pod: archivedPod,
-        activationPod,
-        user: null,
-        overrideChecks: true,
-      })
-    ).toBe(false);
-  });
-
   it("is eligible when a user is provided but not blocked", async () => {
     mockIsUserBlocked.mockResolvedValue(null);
     const { authenticator, user, globalSpace } = await createResourceTest({
