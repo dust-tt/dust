@@ -33,6 +33,9 @@
     "agent": {
       "type": "object",
       "properties": {
+        "attributed_id": {
+          "type": "keyword"
+        },
         "id": {
           "type": "keyword"
         },

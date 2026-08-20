@@ -52,6 +52,7 @@ beforeEach(() => {
 const LLM_DOC: AgentMessageConsumptionAnalyticsLlmData = {
   workspace_id: "w1",
   agent: {
+    attributed_id: "agent1",
     id: "agent1",
     version: "1",
     tag_ids: ["tag1"],

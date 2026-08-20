@@ -10,8 +10,8 @@ import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/
  * Projects one complete message attribution into the document grain of the consumption index:
  * one LLM document per run usage and one tool document per action.
  *
- * Documents stay with the agent message that incurred the cost. Agent ancestry supports rollups,
- * but sub-agent costs are not reassigned to their parent.
+ * Documents stay with the agent message and execution agent that incurred the cost. The separate
+ * attributed agent identity rolls hidden helpers up to their user-facing parent for analytics.
  *
  * A regular tool document includes the cost of emitting its call, carrying its result into model
  * context, and its direct charge. Current attribution records a tool called through Computer with
