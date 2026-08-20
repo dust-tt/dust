@@ -1048,7 +1048,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
-  async canSetExecutionMode(
+  private async canSetExecutionMode(
     auth: Authenticator,
     executionMode: TriggerExecutionMode
   ): Promise<boolean> {
