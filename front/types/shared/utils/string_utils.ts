@@ -115,11 +115,12 @@ const SPECIAL_CASES = {
   github: "GitHub",
   hubspot: "HubSpot",
   mcp: "MCP",
+  id: "ID",
 };
 
-// Create a single regex pattern for all special cases
+// Match "id" in "user id", but not inside "video".
 const SPECIAL_CASES_PATTERN = new RegExp(
-  Object.keys(SPECIAL_CASES).join("|"),
+  `\\b(?:${Object.keys(SPECIAL_CASES).join("|")})\\b`,
   "g"
 );
 
