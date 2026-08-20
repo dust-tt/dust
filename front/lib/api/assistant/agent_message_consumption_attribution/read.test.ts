@@ -1,3 +1,4 @@
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { getAgentMessageConsumption } from "@app/lib/api/assistant/agent_message_consumption_attribution/read";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
@@ -58,6 +59,7 @@ async function setupMessage() {
     run,
     runUsageModelId,
     agentMessage,
+    agentConfiguration,
   };
 }
 
@@ -159,6 +161,167 @@ describe("getAgentMessageConsumption", () => {
             directCredits: 4,
             pending: false,
             toolName: "test_tool",
+          }),
+        ],
+      },
+    });
+  });
+
+  it("attributes sub-agent costs to their agent work and tools", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      run,
+      runUsageModelId,
+      agentMessage,
+      agentConfiguration,
+    } = await setupMessage();
+    const childConversationData = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfiguration.sId,
+      messagesCreatedAt: [],
+      depth: 1,
+    });
+    const childConversation = await ConversationResource.fetchById(
+      auth,
+      childConversationData.sId
+    );
+    if (!childConversation) {
+      throw new Error("Just-created child conversation not found.");
+    }
+    const { run: childRun, runUsageModelId: childRunUsageModelId } =
+      await RunFactory.createWithUsage(auth, {
+        inputTokens: 100,
+        outputTokens: 20,
+        reasoningTokens: 5,
+      });
+    const { messageRow: childUserMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation: childConversationData,
+        content: "Research this",
+        agenticMessageType: "run_agent",
+        agenticOriginMessageId: agentMessage.sId,
+        authorless: true,
+      });
+    const { agentMessage: childAgentMessage } =
+      await ConversationFactory.createAgentMessage(auth, {
+        workspace,
+        conversation: childConversationData,
+        agentConfig: agentConfiguration,
+        parentMessageModelId: childUserMessage.id,
+        rank: 1,
+        runIds: [childRun.dustRunId],
+      });
+    await ConversationResource.updateAgentMessageCostCredits(auth, {
+      agentMessageModelId: childAgentMessage.agentMessageId,
+      costCredits: 20,
+    });
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: childAgentMessage.agentMessageId,
+      status: "succeeded",
+    });
+
+    const runAgentServerId = internalMCPServerNameToSId({
+      name: "run_agent",
+      workspaceId: workspace.id,
+      prefix: 1,
+    });
+    const { action: runAgentAction } = await AgentMCPActionFactory.create(
+      auth,
+      {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId: agentMessage.agentMessageId,
+        status: "succeeded",
+        dustRunId: run.dustRunId,
+        functionCallName: "run_dust-task",
+        toolName: "run_dust-task",
+        toolServerId: runAgentServerId,
+      }
+    );
+    await runAgentAction.updateStepContext({
+      ...runAgentAction.stepContext,
+      resumeState: {
+        conversationId: childConversation.sId,
+        userMessageId: childUserMessage.sId,
+      },
+    });
+    const { action: websearchAction } = await AgentMCPActionFactory.create(
+      auth,
+      {
+        workspace,
+        conversationModelId: childConversation.id,
+        agentMessageModelId: childAgentMessage.agentMessageId,
+        status: "succeeded",
+        dustRunId: childRun.dustRunId,
+        functionCallName: "websearch",
+        toolName: "websearch",
+        mcpServerName: "web_search_&_browse",
+      }
+    );
+
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation,
+      agentMessageModelId: agentMessage.agentMessageId,
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      records: [
+        ...modelRecords(runUsageModelId),
+        {
+          itemType: "tool",
+          runUsageModelId,
+          action: runAgentAction,
+          inputTokensCount: 20,
+          outputTokensCount: 5,
+          grossAttributedCreditAmountMicro: 6_000_000,
+          directCreditAmountMicro: 4_000_000,
+        },
+      ],
+      pendingToolItems: [],
+    });
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation: childConversation,
+      agentMessageModelId: childAgentMessage.agentMessageId,
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      records: [
+        ...modelRecords(childRunUsageModelId),
+        {
+          itemType: "tool",
+          runUsageModelId: childRunUsageModelId,
+          action: websearchAction,
+          inputTokensCount: 50,
+          outputTokensCount: 5,
+          grossAttributedCreditAmountMicro: 16_000_000,
+          directCreditAmountMicro: 15_000_000,
+        },
+      ],
+      pendingToolItems: [],
+    });
+
+    const consumption = await getAgentMessageConsumption(auth, {
+      conversation,
+      agentMessageId: agentMessage.sId,
+    });
+
+    expect(consumption).toMatchObject({
+      billedCredits: BILLED_CREDITS,
+      subAgentBilledCredits: 20,
+      totalBilledCredits: BILLED_CREDITS + 20,
+      details: {
+        attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        agentWorkCredits: 8,
+        tools: [
+          expect.objectContaining({
+            toolName: "websearch",
+            callCount: 1,
+            attributedCredits: 16,
+          }),
+          expect.objectContaining({
+            toolName: "run_dust-task",
+            callCount: 1,
+            attributedCredits: 6,
           }),
         ],
       },

@@ -34,8 +34,9 @@ export type AgentMessageConsumptionModelDetails = {
 };
 
 export type AgentMessageConsumptionDetails = {
+  /** Oldest attribution version contributing to this message and sub-agent aggregate. */
   attributionVersion: number;
-  /** Agent work after assigning the billing reconciliation exclusively to model input rows. */
+  /** Agent work across this message and its sub-agents after input-only reconciliation. */
   agentWorkCredits: number;
   tools: AgentMessageConsumptionToolDetails[];
 };
