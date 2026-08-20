@@ -17,6 +17,8 @@ export type AgentMessageConsumptionItemType =
 
 export type AgentMessageConsumptionToolDetails = {
   label: string;
+  /** Whether this row includes consumption billed by a spawned sub-agent. */
+  isSubAgent: boolean;
   internalMCPServerName: InternalMCPServerNameType | null;
   toolName: string;
   callCount: number;

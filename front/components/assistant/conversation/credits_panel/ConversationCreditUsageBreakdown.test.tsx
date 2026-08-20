@@ -17,6 +17,7 @@ function makeTool(
 ): ConversationConsumptionToolDetails {
   return {
     label,
+    isSubAgent: false,
     internalMCPServerName: null,
     toolName,
     callCount: 1,

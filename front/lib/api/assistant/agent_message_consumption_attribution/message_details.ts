@@ -26,6 +26,7 @@ export type MessageConsumptionDetails = AgentMessageConsumptionDetails & {
 export type ToolConsumptionDetailsOverride = {
   additionalAttributedCredits: number;
   identity: string;
+  isSubAgent: boolean;
   label: string;
 };
 
@@ -123,6 +124,7 @@ function buildToolDetails({
 
     groupedTools.set(identity, {
       label: override?.label ?? getToolAggregateDisplayLabel(serialized),
+      isSubAgent: override?.isSubAgent ?? false,
       internalMCPServerName: serialized.internalMCPServerName,
       toolName: serialized.toolName,
       callCount: 1,

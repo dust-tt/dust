@@ -137,6 +137,7 @@ describe("getConversationConsumption", () => {
         tools: [
           {
             label: "Test tool",
+            isSubAgent: false,
             callCount: 1,
             attributedCredits: 5,
             directCredits: 3,
