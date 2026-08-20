@@ -1,6 +1,6 @@
 import { AGENT_MESSAGE_COMPLETED_EVENT } from "@app/lib/notifications/events";
 import { useTrialMessageUsage } from "@app/lib/swr/trial_message_usage";
-import { Button, cn, LinkWrapper } from "@dust-tt/sparkle";
+import { Button, cn, LinkWrapper, ProgressBar } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 
 const MESSAGE_USAGE_CRITICAL_THRESHOLD = 0.9;
@@ -66,20 +66,19 @@ export function TrialMessageUsage({
           / {limit}
         </span>
       </div>
-      <div
-        className={cn(
-          "h-2 w-full overflow-hidden rounded-full",
-          "bg-primary-100"
-        )}
-      >
-        <div
-          className={cn(
-            "h-full rounded-full transition-all",
-            isCritical ? "bg-warning-700" : "bg-foreground"
-          )}
-          style={{ width: `${Math.min(percentage * 100, 100)}%` }}
-        />
-      </div>
+      <ProgressBar
+        className="h-2 w-full bg-primary-100"
+        values={[
+          {
+            value: Math.min(percentage * 100, 100),
+            className: isCritical ? "bg-warning-700" : "bg-foreground",
+          },
+          {
+            value: 100 - Math.min(percentage * 100, 100),
+            className: "bg-transparent",
+          },
+        ]}
+      />
       {isAtLimit && isAdmin && (
         <div className="mt-3">
           <LinkWrapper
