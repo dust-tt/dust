@@ -270,7 +270,7 @@ function buildColumns({
       header: capLabel,
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-20 @sm-table:table-cell",
+        className: "hidden h-16 w-20 @lg-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => (
@@ -286,7 +286,7 @@ function buildColumns({
       header: "Created",
       enableSorting: true,
       meta: {
-        className: "hidden h-16 w-28 @md-table:table-cell",
+        className: "hidden h-16 w-28 @lg-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => (
