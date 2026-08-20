@@ -369,11 +369,11 @@ describe("getAgentMessageConsumption", () => {
 
     expect(consumption).toMatchObject({
       billedCredits: BILLED_CREDITS,
-      subAgentBilledCredits: 23,
-      totalBilledCredits: BILLED_CREDITS + 23,
+      subAgentBilledCredits: 20,
+      totalBilledCredits: BILLED_CREDITS + 20,
       details: {
         attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-        agentWorkCredits: 11,
+        agentWorkCredits: 8,
         tools: [
           expect.objectContaining({
             toolName: "websearch",

@@ -908,16 +908,20 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  static async getSubAgentCostCreditsByMessageId(
+  /**
+   * Recursively sums the `costCredits` of every sub-agent spawned by a single
+   * origin agent message (one recursive query, `maxDepth`-bounded). Only counts
+   * sub-agents whose triggering user message is a `run_agent` agentic origin
+   * (`agent_handover` and non-agentic origins are excluded). Single-message by
+   * design (and avoids an N+1); returns `0` when there are no sub-agents.
+   */
+  static async sumSubAgentCostCreditsByMessageId(
     auth: Authenticator,
     {
       agentMessageId,
       maxDepth = 10,
     }: { agentMessageId: string; maxDepth?: number }
-  ): Promise<{
-    directBilledCredits: number;
-    totalBilledCredits: number;
-  }> {
+  ): Promise<number> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const query = `
@@ -967,16 +971,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         WHERE s.depth < :maxDepth
       )
       SELECT
-        (SUM(COALESCE(cost_credits, 0)) FILTER (WHERE depth = 1))::float
-                                                  AS direct_credits,
-        SUM(COALESCE(cost_credits, 0))::float      AS total_credits,
-        MAX(depth)::int                            AS max_depth
+        SUM(COALESCE(cost_credits, 0))::float AS total_credits,
+        MAX(depth)::int                       AS max_depth
       FROM sub_agents
     `;
 
     // biome-ignore lint/plugin/noRawSql: recursive CTE has no Sequelize equivalent.
     const rows = await frontSequelize.query<{
-      direct_credits: number | null;
       total_credits: number | null;
       max_depth: number | null;
     }>(query, {
@@ -987,7 +988,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // No sub-agents: the CTE is empty and SUM/MAX over zero rows return NULL.
     const row = rows[0];
     if (!row || row.total_credits === null) {
-      return { directBilledCredits: 0, totalBilledCredits: 0 };
+      return 0;
     }
 
     if (row.max_depth !== null && row.max_depth >= maxDepth) {
@@ -1001,29 +1002,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       );
     }
 
-    return {
-      directBilledCredits: row.direct_credits ?? 0,
-      totalBilledCredits: row.total_credits,
-    };
-  }
-
-  /**
-   * Recursively sums the `costCredits` of every sub-agent spawned by a single
-   * origin agent message (one recursive query, `maxDepth`-bounded). Only counts
-   * sub-agents whose triggering user message is a `run_agent` agentic origin
-   * (`agent_handover` and non-agentic origins are excluded). Single-message by
-   * design (and avoids an N+1); returns `0` when there are no sub-agents.
-   */
-  static async sumSubAgentCostCreditsByMessageId(
-    auth: Authenticator,
-    options: { agentMessageId: string; maxDepth?: number }
-  ): Promise<number> {
-    const { totalBilledCredits } = await this.getSubAgentCostCreditsByMessageId(
-      auth,
-      options
-    );
-
-    return totalBilledCredits;
+    return row.total_credits;
   }
 
   private static getOptions(
