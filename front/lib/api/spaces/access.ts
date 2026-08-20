@@ -51,8 +51,8 @@ export interface UserWithoutSpaceAccess {
  * For each of `users`, the spaces among `spaces` they cannot read.
  *
  * Unlike {@link listUsersWithoutAccessToSpaces} this takes already-fetched resources and performs
- * no permission check of its own: it is meant for callers that hold the spaces because they are
- * about to write them (skill requirements, editor lists), and that have established their own
+ * no permission check of its own: it is meant for callers that already hold the spaces (skill
+ * requirements, editor lists, project agent mention checks) and that have established their own
  * access separately. Users are assumed to be active workspace members.
  */
 export async function listUsersWithoutAccessToSpaceResources(
