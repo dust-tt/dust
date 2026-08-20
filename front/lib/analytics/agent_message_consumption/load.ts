@@ -26,7 +26,10 @@ import type {
   AgentMessageConsumptionAnalyticsUsageType,
   AgentMessageConsumptionAnalyticsUser,
 } from "@app/types/assistant/analytics";
-import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import {
+  getAgentUsageAttributedId,
+  isGlobalAgentId,
+} from "@app/types/assistant/assistant";
 import type {
   AgentMessageStatus,
   UserMessageOrigin,
@@ -261,6 +264,10 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   )
     .map((ancestor) => ancestor.agentConfigurationId)
     .reverse();
+  const attributedAgentId = getAgentUsageAttributedId({
+    agentId: agentMessage.agentConfigurationId,
+    parentAgentId: ancestorAgentIds.at(-1),
+  });
   const agentTagIds = await loadAgentTagIds(auth, agentMessage);
   const user = await loadAnalyticsUser({
     completedAt: agentMessage.completedAt,
@@ -277,6 +284,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   return {
     actions,
     agent: {
+      attributed_id: attributedAgentId,
       id: agentMessage.agentConfigurationId,
       version: agentMessage.agentConfigurationVersion.toString(),
       tag_ids: agentTagIds,
