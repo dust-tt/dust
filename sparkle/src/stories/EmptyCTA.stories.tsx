@@ -4,7 +4,7 @@ import React from "react";
 import { Button, EmptyCTA, EmptyCTAButton } from "@sparkle/components";
 import { DownloadCloud01, Plus } from "@sparkle/icons/v2-stroke";
 
-const meta = {
+const meta: Meta<typeof EmptyCTA> = {
   title: "Feedback & Status/EmptyCTA",
   component: EmptyCTA,
   parameters: {
@@ -22,7 +22,7 @@ const meta = {
       },
     },
   },
-} satisfies Meta<typeof EmptyCTA>;
+};
 
 export default meta;
 type Story = StoryObj<typeof meta>;

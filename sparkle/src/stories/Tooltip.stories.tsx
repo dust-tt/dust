@@ -12,7 +12,7 @@ import {
   TooltipTrigger,
 } from "../index_with_tw_base";
 
-const meta = {
+const meta: Meta<typeof Tooltip> = {
   title: "Overlays/Tooltip",
   tags: ["a11y-issues"],
   component: Tooltip,
@@ -32,7 +32,7 @@ const meta = {
       },
     },
   },
-} satisfies Meta<typeof Tooltip>;
+};
 
 export default meta;
 

@@ -3,7 +3,7 @@ import React from "react";
 
 import { Container } from "../index_with_tw_base";
 
-const meta = {
+const meta: Meta<typeof Container> = {
   title: "Layout/Container",
   component: Container,
   parameters: {
@@ -20,7 +20,7 @@ const meta = {
       },
     },
   },
-} satisfies Meta<typeof Container>;
+};
 
 export default meta;
 type Story = StoryObj<typeof meta>;

@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { NotificationButton } from "@sparkle/components";
 import { InfoCircle } from "@sparkle/icons";
 
-const meta = {
+const meta: Meta<typeof NotificationButton> = {
   title: "Feedback & Status/NotificationButton",
   component: NotificationButton,
   tags: ["a11y-issues"],
@@ -21,7 +21,7 @@ const meta = {
       },
     },
   },
-} satisfies Meta<typeof NotificationButton>;
+};
 
 export default meta;
 type Story = StoryObj<typeof meta>;
