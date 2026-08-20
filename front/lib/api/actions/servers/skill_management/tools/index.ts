@@ -150,7 +150,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
 
     if (!skill) {
       return new Err(
-        new MCPError(`Skill "${skillName}" is not equipped for this agent.`, {
+        new MCPError(`Skill "${skillName}" not found`, {
           tracked: false,
         })
       );
@@ -179,17 +179,19 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       conversation,
     });
 
-    const fileMessage =
-      mountResult.value.loadedPaths.length > 0
-        ? "Skill files successfully loaded:\n" +
-          mountResult.value.loadedPaths.map((p) => `  - ${p}`).join("\n")
-        : null;
+    const loadedFilesList = mountResult.value.loadedPaths
+      .map((p) => `  - ${p}`)
+      .join("\n");
 
-    const text =
-      (wasAlreadyEnabled
-        ? `Skill "${skill.name}" was already enabled.`
-        : `Skill "${skill.name}" has been enabled.`) +
-      (fileMessage ? `\n\n${fileMessage}` : "");
+    const text = wasAlreadyEnabled
+      ? mountResult.value.loadedPaths.length > 0
+        ? `Skill "${skill.name}" was already enabled, but some files were missing and have ` +
+          `been additionally loaded:\n\n${loadedFilesList}`
+        : `Skill "${skill.name}" was already enabled.`
+      : `Skill "${skill.name}" has been enabled.` +
+        (mountResult.value.loadedPaths.length > 0
+          ? `\n\nSkill files successfully loaded:\n${loadedFilesList}`
+          : "");
 
     return new Ok([makeEnableSkillResultOutput({ skillId: skill.sId, text })]);
   },

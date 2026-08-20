@@ -87,7 +87,7 @@ export async function upsertSkillFilesToConversation(
     if (existsResult.isErr()) {
       return new Err(
         new Error(
-          `Failed to check skill file(s): ${expectedPaths.slice(index).join(", ")} (${existsResult.error.message})`
+          `Failed to check skill file: ${scopedPath} (${existsResult.error.message})`
         )
       );
     }
@@ -123,7 +123,7 @@ export async function upsertSkillFilesToConversation(
 
       return new Err(
         new Error(
-          `Failed to write skill file(s): ${scopedPath} (${writeResult.error.message})`
+          `Failed to write skill file: ${scopedPath} (${writeResult.error.message})`
         )
       );
     }
