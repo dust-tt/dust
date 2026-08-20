@@ -196,6 +196,8 @@ export class GCSRepositoryManager {
         metadata: {
           contentType: options?.contentType || "text/plain",
         },
+        // Resumable uploads add a round trip per object, too slow for small files.
+        resumable: false,
       });
 
       if (options?.metadata) {

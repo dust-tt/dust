@@ -397,6 +397,8 @@ export async function extractGitHubTarballToGCS(
                   filesUploaded,
                   filesSkipped,
                   extractionDurationMs: Date.now() - extractionStartedAtMs,
+                  uploadsInFlight: uploadQueue.pending,
+                  uploadsQueued: uploadQueue.size,
                 },
                 "GitHub tarball extraction progress"
               );
