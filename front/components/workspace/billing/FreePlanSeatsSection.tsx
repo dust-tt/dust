@@ -1,7 +1,7 @@
 import { useFreeSeatCounts } from "@app/lib/swr/memberships";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Icon, InfoSquare, Spinner } from "@dust-tt/sparkle";
+import { Icon, InfoSquare, ProgressBar, Spinner } from "@dust-tt/sparkle";
 
 interface FreePlanSeatsSectionProps {
   owner: LightWorkspaceType;
@@ -53,17 +53,13 @@ export function FreePlanSeatsSection({
         <p className="text-sm text-foreground">{description}</p>
       </div>
 
-      <div className="flex h-1 w-full gap-0.5">
-        {fillPercent > 0 && (
-          <div
-            className="h-full shrink-0 rounded-lg bg-foreground"
-            style={{ width: `${fillPercent}%` }}
-          />
-        )}
-        {!isAtCapacity && (
-          <div className="h-full min-w-0 flex-1 rounded-lg bg-black/[0.08]" />
-        )}
-      </div>
+      <ProgressBar
+        className="h-1"
+        values={[
+          { value: fillPercent, className: "bg-foreground" },
+          { value: 100 - fillPercent, className: "bg-black/[0.08]" },
+        ]}
+      />
     </div>
   );
 }
