@@ -88,7 +88,6 @@
     "@slack/web-api": "^7.10.0",
     "@stripe/react-stripe-js": "^3.10.0",
     "@stripe/stripe-js": "^5.10.0",
-    "@tailwindcss/forms": "^0.5.9",
     "@tanstack/react-table": "^8.13.0",
     "@tanstack/table-core": "^8.13.0",
     "@temporalio/activity": "1.15.1",
