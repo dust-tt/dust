@@ -100,28 +100,32 @@ const getTableColumns = ({
         ).some((isSelected) => isSelected);
 
         return (
-          <Checkbox
-            checked={
-              areAllPageRowsSelected ? true : hasSelection ? "partial" : false
-            }
-            disabled={
-              !info.table.getRowModel().rows.some((row) => row.getCanSelect())
-            }
-            tooltip={
-              areAllPageRowsSelected ? "Clear selection" : "Select all on page"
-            }
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                info.table.toggleAllPageRowsSelected(true);
-              } else {
-                // Unticking clears the whole selection across pages.
-                info.table.resetRowSelection();
+          <DataTable.CellContent className="size-full items-center justify-center">
+            <Checkbox
+              checked={
+                areAllPageRowsSelected ? true : hasSelection ? "partial" : false
               }
-            }}
-          />
+              disabled={
+                !info.table.getRowModel().rows.some((row) => row.getCanSelect())
+              }
+              tooltip={
+                areAllPageRowsSelected
+                  ? "Clear selection"
+                  : "Select all on page"
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  info.table.toggleAllPageRowsSelected(true);
+                } else {
+                  // Unticking clears the whole selection across pages.
+                  info.table.resetRowSelection();
+                }
+              }}
+            />
+          </DataTable.CellContent>
         );
       },
       accessorKey: "select",
@@ -131,6 +135,7 @@ const getTableColumns = ({
         }
 
         const checkboxId = `select-agent-${info.row.id}`;
+        const agentName = info.row.original.name;
 
         return (
           // A `label` wrapping the checkbox makes the whole cell (not just the
@@ -138,27 +143,31 @@ const getTableColumns = ({
           // keyboard handling to maintain. `stopPropagation` only keeps the
           // click from also reaching the row's `onClick`, which opens the
           // agent details panel; the actual toggle happens through
-          // `Checkbox`'s own `onCheckedChange`.
+          // `Checkbox`'s own `onCheckedChange`. The column drops the cell's
+          // default padding (see `meta.className` below) so this label fills
+          // the entire cell, matching the hover treatment other full-cell
+          // controls (e.g. the attribution table's filter button) use.
           <Label
             htmlFor={checkboxId}
-            className="flex size-full cursor-pointer items-center justify-center"
+            className="flex size-full cursor-pointer items-center justify-center hover:bg-muted-background"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <DataTable.CellContent>
-              <Checkbox
-                id={checkboxId}
-                checked={info.row.getIsSelected()}
-                onCheckedChange={(checked) =>
-                  info.row.toggleSelected(!!checked)
-                }
-              />
-            </DataTable.CellContent>
+            <Checkbox
+              id={checkboxId}
+              aria-label={
+                info.row.getIsSelected()
+                  ? `Deselect ${agentName}`
+                  : `Select ${agentName}`
+              }
+              checked={info.row.getIsSelected()}
+              onCheckedChange={(checked) => info.row.toggleSelected(!!checked)}
+            />
           </Label>
         );
       },
       meta: {
-        className: "w-10",
+        className: "w-10 p-0",
       },
       enableSorting: false,
     },
