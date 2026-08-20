@@ -32,12 +32,11 @@ export function TriggerPoolSelector({
   const { hasFeature } = useFeatureFlags();
   const { hasPermission } = useWorkspacePermissions();
 
-  if (
-    !hasFeature("trigger_pool_choice") ||
-    !hasPermission("use_workspace_pool", "trigger")
-  ) {
+  if (!hasFeature("trigger_pool_choice")) {
     return null;
   }
+
+  const canSetPool = hasPermission("use_workspace_pool", "trigger");
 
   return (
     <div className="space-y-1">
@@ -52,7 +51,7 @@ export function TriggerPoolSelector({
             variant="outline"
             isSelect
             className="w-fit"
-            disabled={!isEditor}
+            disabled={!isEditor || !canSetPool}
             label={
               POOL_OPTIONS.find((option) => option.value === field.value)
                 ?.label ?? "Select"
@@ -65,7 +64,7 @@ export function TriggerPoolSelector({
             <DropdownMenuItem
               key={value}
               label={label}
-              disabled={!isEditor}
+              disabled={!isEditor || !canSetPool}
               onClick={() => field.onChange(value)}
             />
           ))}
