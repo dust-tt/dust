@@ -213,7 +213,6 @@
     "stripe": "^14.2.0",
     "swr": "^2.2.4",
     "tailwind-merge": "^2.2.1",
-    "tailwind-scrollbar-hide": "^1.1.7",
     "tailwindcss": "^4.3.0",
     "tldts": "^7.0.27",
     "tmp": "^0.2.5",
