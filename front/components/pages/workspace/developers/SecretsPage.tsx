@@ -4,7 +4,6 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
-import type { MenuItem } from "@dust-tt/sparkle";
 import {
   BookOpen01,
   Button,
@@ -29,7 +28,9 @@ import { useSWRConfig } from "swr";
 
 interface SecretRowData {
   name: string;
-  menuItems?: MenuItem[];
+  isActionDisabled: boolean;
+  onClick?: () => void;
+  onDelete?: () => void;
 }
 
 const columns: ColumnDef<SecretRowData>[] = [
@@ -53,10 +54,42 @@ const columns: ColumnDef<SecretRowData>[] = [
   {
     id: "actions",
     header: "",
-    cell: (info: CellContext<SecretRowData, unknown>) => (
-      <DataTable.MoreButton menuItems={info.row.original.menuItems} />
-    ),
-    meta: { className: "w-12" },
+    cell: (info: CellContext<SecretRowData, unknown>) => {
+      const { isActionDisabled, onClick, onDelete } = info.row.original;
+      if (!onClick || !onDelete) {
+        return null;
+      }
+
+      return (
+        <DataTable.CellContent>
+          <div className="flex gap-1 opacity-0 focus-within:opacity-100 group-hover/dt-row:opacity-100">
+            <Button
+              size="xs"
+              variant="ghost"
+              icon={Edit04}
+              tooltip="Edit"
+              disabled={isActionDisabled}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick();
+              }}
+            />
+            <Button
+              size="xs"
+              variant="warning-ghost"
+              icon={Trash01}
+              tooltip="Delete"
+              disabled={isActionDisabled}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            />
+          </div>
+        </DataTable.CellContent>
+      );
+    },
+    meta: { className: "w-20" },
   },
 ];
 
@@ -144,25 +177,9 @@ export function SecretsPage() {
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((secret) => ({
       name: secret.name,
-      menuItems: isAdmin
-        ? [
-            {
-              kind: "item",
-              label: "Edit",
-              icon: Edit04,
-              disabled: isGenerating || isRevoking,
-              onClick: () => handleUpdate(secret),
-            },
-            {
-              kind: "item",
-              label: "Delete",
-              icon: Trash01,
-              variant: "warning",
-              disabled: isGenerating || isRevoking,
-              onClick: () => setSecretToRevoke(secret),
-            },
-          ]
-        : undefined,
+      isActionDisabled: isGenerating || isRevoking,
+      onClick: isAdmin ? () => handleUpdate(secret) : undefined,
+      onDelete: isAdmin ? () => setSecretToRevoke(secret) : undefined,
     }));
 
   return (
