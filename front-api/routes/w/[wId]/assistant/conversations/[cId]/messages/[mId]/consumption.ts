@@ -22,7 +22,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/consumption:
  *   get:
  *     summary: Get an agent message credit attribution
- *     description: Returns billed credits and an additive attribution for the message and its direct sub-agents, reconciled exclusively through model input rows.
+ *     description: Returns direct, recursively spawned sub-agent, and total billed credits, plus an additive attribution reconciled exclusively through model input rows.
  *     tags:
  *       - Private Messages
  *     parameters:
@@ -60,14 +60,14 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                   description: Authoritative credits billed directly for this agent message, excluding sub-agents.
  *                 subAgentBilledCredits:
  *                   type: number
- *                   description: Credits billed by direct sub-agents spawned from this message.
+ *                   description: Credits billed by sub-agents recursively spawned from this message.
  *                 totalBilledCredits:
  *                   type: number
- *                   description: Total credits billed by this message and its direct sub-agents.
+ *                   description: Total credits billed by this message and its recursively spawned sub-agents.
  *                 details:
  *                   type: object
  *                   nullable: true
- *                   description: Additive attribution of the message and its direct sub-agents, reconciled to totalBilledCredits through model input rows. Null when any billed message lacks a complete stored attribution.
+ *                   description: Additive attribution reconciled to the bill through model input rows, using the newest complete stored attribution version. Null when no stored version is complete.
  *                   required:
  *                     - attributionVersion
  *                     - agentWorkCredits
@@ -75,10 +75,10 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                   properties:
  *                     attributionVersion:
  *                       type: integer
- *                       description: Oldest attribution version contributing to the expanded aggregate.
+ *                       description: Attribution version used for this breakdown.
  *                     agentWorkCredits:
  *                       type: number
- *                       description: Agent work across the message and its direct sub-agents after assigning billing reconciliation exclusively to model input rows.
+ *                       description: Agent work after assigning billing reconciliation exclusively to model input rows.
  *                     tools:
  *                       type: array
  *                       items:

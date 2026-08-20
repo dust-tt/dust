@@ -73,7 +73,7 @@ function mergeModelDetails(
   );
 }
 
-export function aggregateMessageDetails(
+function aggregateMessageDetails(
   details: MessageConsumptionDetails[]
 ): Omit<ConversationConsumptionDetails, "agents"> {
   return {
