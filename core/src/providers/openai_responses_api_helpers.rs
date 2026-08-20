@@ -102,21 +102,6 @@ pub struct OpenAIResponseReasoningConfig {
     pub summary: Option<String>,
 }
 
-fn reasoning_summary_for_model(model_id: &str) -> &'static str {
-    let supports_concise = ["gpt-5.2", "gpt-5.4", "gpt-5.5", "gpt-5.6"]
-        .iter()
-        .any(|family| {
-            model_id == *family
-                || matches!(model_id.strip_prefix(family), Some(suffix) if suffix.starts_with('-'))
-        });
-
-    if supports_concise {
-        "concise"
-    } else {
-        "auto"
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIResponseAPITool {
     #[serde(rename = "type")]
@@ -598,7 +583,7 @@ pub async fn openai_responses_api_completion(
         (
             Some(OpenAIResponseReasoningConfig {
                 effort: reasoning_effort,
-                summary: Some(reasoning_summary_for_model(&model_id).to_string()),
+                summary: Some("auto".to_string()),
             }),
             Some(vec!["reasoning.encrypted_content".to_string()]),
         )
@@ -1276,13 +1261,6 @@ mod tests {
         TextContentType, UserChatMessage,
     };
     use crate::providers::llm::ChatMessageRole;
-
-    #[test]
-    fn test_reasoning_summary_for_model() {
-        assert_eq!(reasoning_summary_for_model("gpt-5.2"), "concise");
-        assert_eq!(reasoning_summary_for_model("gpt-5.1"), "auto");
-        assert_eq!(reasoning_summary_for_model("o4-mini"), "auto");
-    }
 
     #[test]
     fn test_simple_text_input() {
