@@ -167,7 +167,7 @@ describe("getAgentMessageConsumption", () => {
     });
   });
 
-  it("attributes sub-agent costs to their agent work and tools", async () => {
+  it("attributes direct sub-agent tools without expanding deeper descendants", async () => {
     const {
       auth,
       workspace,
@@ -262,6 +262,59 @@ describe("getAgentMessageConsumption", () => {
         mcpServerName: "web_search_&_browse",
       }
     );
+    const grandChildConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfiguration.sId,
+      messagesCreatedAt: [],
+      depth: 2,
+    });
+    const { messageRow: grandChildUserMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation: grandChildConversation,
+        content: "Research this further",
+        agenticMessageType: "run_agent",
+        agenticOriginMessageId: childAgentMessage.sId,
+        authorless: true,
+      });
+    const { agentMessage: grandChildAgentMessage } =
+      await ConversationFactory.createAgentMessage(auth, {
+        workspace,
+        conversation: grandChildConversation,
+        agentConfig: agentConfiguration,
+        parentMessageModelId: grandChildUserMessage.id,
+        rank: 1,
+      });
+    await ConversationResource.updateAgentMessageCostCredits(auth, {
+      agentMessageModelId: grandChildAgentMessage.agentMessageId,
+      costCredits: 3,
+    });
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: grandChildAgentMessage.agentMessageId,
+      status: "succeeded",
+    });
+    const { action: nestedRunAgentAction } = await AgentMCPActionFactory.create(
+      auth,
+      {
+        workspace,
+        conversationModelId: childConversation.id,
+        agentMessageModelId: childAgentMessage.agentMessageId,
+        status: "succeeded",
+        dustRunId: childRun.dustRunId,
+        step: 2,
+        functionCallName: "run_dust-task",
+        toolName: "run_dust-task",
+        toolServerId: runAgentServerId,
+      }
+    );
+    await nestedRunAgentAction.updateStepContext({
+      ...nestedRunAgentAction.stepContext,
+      resumeState: {
+        conversationId: grandChildConversation.sId,
+        userMessageId: grandChildUserMessage.sId,
+      },
+    });
 
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation,
@@ -293,8 +346,17 @@ describe("getAgentMessageConsumption", () => {
           action: websearchAction,
           inputTokensCount: 50,
           outputTokensCount: 5,
-          grossAttributedCreditAmountMicro: 16_000_000,
-          directCreditAmountMicro: 15_000_000,
+          grossAttributedCreditAmountMicro: 13_000_000,
+          directCreditAmountMicro: 12_000_000,
+        },
+        {
+          itemType: "tool",
+          runUsageModelId: childRunUsageModelId,
+          action: nestedRunAgentAction,
+          inputTokensCount: 20,
+          outputTokensCount: 5,
+          grossAttributedCreditAmountMicro: 3_000_000,
+          directCreditAmountMicro: 2_000_000,
         },
       ],
       pendingToolItems: [],
@@ -307,21 +369,21 @@ describe("getAgentMessageConsumption", () => {
 
     expect(consumption).toMatchObject({
       billedCredits: BILLED_CREDITS,
-      subAgentBilledCredits: 20,
-      totalBilledCredits: BILLED_CREDITS + 20,
+      subAgentBilledCredits: 23,
+      totalBilledCredits: BILLED_CREDITS + 23,
       details: {
         attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-        agentWorkCredits: 8,
+        agentWorkCredits: 11,
         tools: [
           expect.objectContaining({
             toolName: "websearch",
             callCount: 1,
-            attributedCredits: 16,
+            attributedCredits: 13,
           }),
           expect.objectContaining({
             toolName: "run_dust-task",
-            callCount: 1,
-            attributedCredits: 6,
+            callCount: 2,
+            attributedCredits: 9,
           }),
         ],
       },

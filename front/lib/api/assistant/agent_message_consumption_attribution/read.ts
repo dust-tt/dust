@@ -9,11 +9,10 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import type { AgentMessageConsumptionResponse } from "@app/types/assistant/agent_message_consumption";
 
 /**
- * Builds the end-user explanation for one agent message and its recursively spawned sub-agents.
- * Provider and token facts stay behind this interface. Each billed message uses its newest complete
- * attribution version, then the same aggregation as the conversation breakdown merges their tools.
- * If any billed message cannot be explained, the exact bill remains available while details are
- * withheld.
+ * Builds the end-user explanation for one agent message and its direct sub-agents. Provider and
+ * token facts stay behind this interface. Each expanded message uses its newest complete attribution
+ * version, then the same aggregation as the conversation breakdown merges their tools. Deeper
+ * sub-agent charges remain in agent work so the breakdown still reconciles to the recursive bill.
  */
 export async function getAgentMessageConsumption(
   auth: Authenticator,
@@ -37,10 +36,12 @@ export async function getAgentMessageConsumption(
     return null;
   }
 
-  const subAgentBilledCredits =
-    await ConversationResource.sumSubAgentCostCreditsByMessageId(auth, {
-      agentMessageId,
-    });
+  const {
+    directBilledCredits: directSubAgentBilledCredits,
+    totalBilledCredits: subAgentBilledCredits,
+  } = await ConversationResource.getSubAgentCostCreditsByMessageId(auth, {
+    agentMessageId,
+  });
   const totalBilledCredits = (facts.billedCredits ?? 0) + subAgentBilledCredits;
 
   const unavailableResponse: AgentMessageConsumptionResponse = {
@@ -54,9 +55,11 @@ export async function getAgentMessageConsumption(
     (total, message) => total + (message.billedCredits ?? 0),
     0
   );
-  if (attributedSubAgentBilledCredits !== subAgentBilledCredits) {
+  if (attributedSubAgentBilledCredits !== directSubAgentBilledCredits) {
     return unavailableResponse;
   }
+  const unexpandedSubAgentBilledCredits =
+    subAgentBilledCredits - directSubAgentBilledCredits;
 
   const billedMessages = [
     {
@@ -96,8 +99,11 @@ export async function getAgentMessageConsumption(
     (detail): detail is MessageConsumptionDetails => detail !== null
   );
 
-  const { models: _models, ...messageDetails } =
-    aggregateMessageDetails(completeDetails);
+  const {
+    models: _models,
+    agentWorkCredits,
+    ...messageDetails
+  } = aggregateMessageDetails(completeDetails);
 
   return {
     billedCredits: facts.billedCredits,
@@ -107,6 +113,7 @@ export async function getAgentMessageConsumption(
       attributionVersion: Math.min(
         ...completeDetails.map((detail) => detail.attributionVersion)
       ),
+      agentWorkCredits: agentWorkCredits + unexpandedSubAgentBilledCredits,
       ...messageDetails,
     },
   };
