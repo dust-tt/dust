@@ -39,6 +39,7 @@ import {
   DataTable,
   Edit04,
   Eye,
+  Label,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -129,24 +130,31 @@ const getTableColumns = ({
           return null;
         }
 
+        const checkboxId = `select-agent-${info.row.id}`;
+
         return (
-          // The whole cell (not just the checkbox) toggles selection, since the
-          // checkbox alone is a small target and a missclick opens the agent
-          // details panel via the row's `onClick`. The click also reaches the
-          // checkbox itself, so the toggle is only handled here to avoid
-          // double-toggling.
-          <div
-            className="flex size-full items-center justify-center"
-            onClick={(e) => {
-              e.stopPropagation();
-              info.row.toggleSelected();
-            }}
+          // A `label` wrapping the checkbox makes the whole cell (not just the
+          // small checkbox) toggle selection, natively and with no separate
+          // keyboard handling to maintain. `stopPropagation` only keeps the
+          // click from also reaching the row's `onClick`, which opens the
+          // agent details panel; the actual toggle happens through
+          // `Checkbox`'s own `onCheckedChange`.
+          <Label
+            htmlFor={checkboxId}
+            className="flex size-full cursor-pointer items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
           >
             <DataTable.CellContent>
-              <Checkbox checked={info.row.getIsSelected()} />
+              <Checkbox
+                id={checkboxId}
+                checked={info.row.getIsSelected()}
+                onCheckedChange={(checked) =>
+                  info.row.toggleSelected(!!checked)
+                }
+              />
             </DataTable.CellContent>
-          </div>
+          </Label>
         );
       },
       meta: {
