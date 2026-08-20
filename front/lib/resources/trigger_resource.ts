@@ -1046,6 +1046,58 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
+  async canSetExecutionMode(
+    auth: Authenticator,
+    executionMode: TriggerExecutionMode
+  ): Promise<boolean> {
+    if (!auth.isManager() && this.editor !== auth.getNonNullableUser().id) {
+      return false;
+    }
+
+    switch (executionMode) {
+      case "user_pool":
+        return true;
+      case "workspace_pool":
+        return auth.hasWorkspacePermission("use_workspace_pool", "trigger");
+      default:
+        assertNever(executionMode);
+    }
+  }
+
+  async setExecutionMode(
+    auth: Authenticator,
+    executionMode: TriggerExecutionMode
+  ): Promise<Result<undefined, Error>> {
+    if (this.executionMode === executionMode) {
+      return new Ok(undefined);
+    }
+
+    const previousExecutionMode = this.executionMode;
+
+    try {
+      await this.update({ executionMode });
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "trigger.pool_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("trigger", { sId: this.sId, name: this.name }),
+      ],
+      metadata: {
+        trigger_type: this.kind,
+        agent_id: this.agentConfigurationId,
+        previous_execution_mode: previousExecutionMode,
+        execution_mode: executionMode,
+      },
+    });
+
+    return new Ok(undefined);
+  }
+
   /**
    * Updates webhook-specific settings (execution limit and mode).
    * Used by poke plugins for admin-level trigger configuration.
