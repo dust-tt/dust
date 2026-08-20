@@ -161,7 +161,7 @@ async function buildConsumptionLineExportRows(
     sourceLabels,
   ] = await Promise.all([
     resolveDimensionLabels(auth, "agent", [
-      ...new Set(docs.map((doc) => doc.agent.id)),
+      ...new Set(docs.map((doc) => doc.agent.attributed_id)),
     ]),
     resolveDimensionLabels(auth, "user", [
       ...new Set(removeNulls(docs.map((doc) => doc.user?.id))),
@@ -185,6 +185,7 @@ async function buildConsumptionLineExportRows(
 
   return docs.map((doc) => {
     const { agent, model, user, tool } = doc;
+    const agentId = agent.attributed_id;
     // Older documents indexed before these buckets shipped don't carry them.
     const gross = doc.gross_credit_micro ?? {
       system: 0,
@@ -202,8 +203,8 @@ async function buildConsumptionLineExportRows(
       spaceId: doc.space_id ?? "",
       agentMessageId: doc.agent_message_id,
       consumptionType: doc.consumption_type,
-      agentId: agent.id,
-      agentName: agentLabels.get(agent.id)?.name ?? agent.id,
+      agentId,
+      agentName: agentLabels.get(agentId)?.name ?? agentId,
       agentVersion: agent.version ?? "",
       agentTagIds: (agent.tag_ids ?? []).join("; "),
       agentRootId: agent.root_id ?? "",
