@@ -19,9 +19,6 @@ import {
   Hoverable,
 } from "@dust-tt/sparkle";
 
-// Matches ContentMessageInline's "info" variant. ContentMessageInline itself can't be reused
-// here: it only slots literal `ContentMessageAction` elements into its action area, and the
-// dropdown/dialog triggers below aren't that.
 const BAR_CLASSNAME =
   "flex items-center gap-2 rounded-xl border bg-orange-50 border-orange-100 p-3 dark:bg-golden-950 dark:border-golden-900";
 const BAR_TEXT_CLASSNAME = "text-xs text-orange-800 dark:text-golden-100";

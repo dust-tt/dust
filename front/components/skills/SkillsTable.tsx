@@ -441,9 +441,6 @@ export function SkillsTable({
     [skills]
   );
 
-  // Only rows that are actually selectable can end up in bulk actions, even if
-  // `rowSelection` (owned by the parent, and not reset on every scope change) still
-  // references a skill that is no longer selectable in the current view.
   const selectedSkills = useMemo(
     () =>
       selectableRowIds
@@ -455,8 +452,6 @@ export function SkillsTable({
     [selectableRowIds, selectionSet, skillsBySId]
   );
 
-  // `rows` is exactly the `data` DataTable paginates over (no separate filtering happens
-  // before pagination), so slicing it directly matches the rows actually shown on this page.
   const pageRows = useMemo(() => {
     const start = pagination.pageIndex * pagination.pageSize;
     return rows.slice(start, start + pagination.pageSize);
