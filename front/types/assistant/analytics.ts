@@ -115,7 +115,7 @@ export type AgentMessageConsumptionAnalyticsUsageType =
 
 export interface AgentMessageConsumptionAnalyticsAgent {
   // Agent used for analytics grouping. Hidden helpers are attributed to their
-  // immediate parent; every other agent is attributed to itself.
+  // immediate parent. Every other agent is attributed to itself.
   attributed_id: string;
   // Agent that executed the message. Kept distinct from `attributed_id` so the
   // underlying execution remains inspectable.
