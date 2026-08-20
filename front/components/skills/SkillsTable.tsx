@@ -19,6 +19,7 @@ import {
   DataTable,
   Edit04,
   Eye,
+  Label,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -235,49 +236,61 @@ const selectionColumn = {
     );
 
     return (
-      <Checkbox
-        checked={
-          areAllPageRowsSelected ? true : hasSelection ? "partial" : false
-        }
-        disabled={
-          !info.table.getRowModel().rows.some((row) => row.getCanSelect())
-        }
-        tooltip={
-          areAllPageRowsSelected ? "Clear selection" : "Select all on page"
-        }
-        onClick={(e) => {
-          e.stopPropagation();
-        }}
-        onCheckedChange={(checked) => {
-          if (checked) {
-            info.table.toggleAllPageRowsSelected(true);
-          } else {
-            // Unticking clears the whole selection across pages.
-            info.table.resetRowSelection();
+      <DataTable.CellContent className="size-full items-center justify-center">
+        <Checkbox
+          checked={
+            areAllPageRowsSelected ? true : hasSelection ? "partial" : false
           }
-        }}
-      />
+          disabled={
+            !info.table.getRowModel().rows.some((row) => row.getCanSelect())
+          }
+          tooltip={
+            areAllPageRowsSelected ? "Clear selection" : "Select all on page"
+          }
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+          onCheckedChange={(checked) => {
+            if (checked) {
+              info.table.toggleAllPageRowsSelected(true);
+            } else {
+              // Unticking clears the whole selection across pages.
+              info.table.resetRowSelection();
+            }
+          }}
+        />
+      </DataTable.CellContent>
     );
   },
   accessorKey: "select",
-  cell: (info: CellContext<RowData, boolean>) => (
-    // Selecting a row must not also trigger the row's `onClick` (which opens
-    // the skill details panel).
-    <div
-      onClick={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
-    >
-      <DataTable.CellContent>
+  cell: (info: CellContext<RowData, boolean>) => {
+    const checkboxId = `select-skill-${info.row.id}`;
+    const skillName = info.row.original.name;
+
+    return (
+      // `stopPropagation` only keeps the click from also reaching the row's `onClick`
+      <Label
+        htmlFor={checkboxId}
+        className="flex size-full cursor-pointer items-center justify-center hover:bg-muted-background"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         <Checkbox
+          id={checkboxId}
+          aria-label={
+            info.row.getIsSelected()
+              ? `Deselect ${skillName}`
+              : `Select ${skillName}`
+          }
           checked={info.row.getIsSelected()}
           disabled={!info.row.getCanSelect()}
           onCheckedChange={(checked) => info.row.toggleSelected(!!checked)}
         />
-      </DataTable.CellContent>
-    </div>
-  ),
+      </Label>
+    );
+  },
   meta: {
-    className: "w-10",
+    className: "w-10 p-0",
   },
   enableSorting: false,
 };
