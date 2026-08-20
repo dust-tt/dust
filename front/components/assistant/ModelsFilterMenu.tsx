@@ -293,7 +293,7 @@ export function ModelsFilterMenu({
           isCounter={selectedModels.length > 0}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-84" align="start">
+      <DropdownMenuContent className="w-80" align="start">
         {models.length > 0 ? (
           <>
             <DropdownMenuLabel label="Model" />
