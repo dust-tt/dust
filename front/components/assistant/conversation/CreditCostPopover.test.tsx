@@ -81,6 +81,7 @@ const makeTool = (
   overrides: Partial<AgentMessageConsumptionToolDetails> = {}
 ): AgentMessageConsumptionToolDetails => ({
   label,
+  isSubAgent: false,
   internalMCPServerName: null,
   toolName,
   callCount: 1,
@@ -117,9 +118,11 @@ describe("CreditCostPopover", () => {
           agentWorkCredits: 4,
           tools: [
             makeTool("run_research", "Run Research agent", 12, {
+              isSubAgent: true,
               internalMCPServerName: "run_agent",
             }),
             makeTool("run_writer", "Run Writer agent", 8, {
+              isSubAgent: true,
               internalMCPServerName: "agent_delegation",
             }),
             makeTool("files", "File tool", 2),
@@ -194,6 +197,7 @@ describe("CreditCostPopover", () => {
           agentWorkCredits: 5,
           tools: [
             makeTool("run_dust", "Run dust", 295, {
+              isSubAgent: true,
               internalMCPServerName: "run_agent",
               callCount: 4,
             }),

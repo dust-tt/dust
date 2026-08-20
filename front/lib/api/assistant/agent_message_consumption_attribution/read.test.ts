@@ -326,6 +326,7 @@ describe("getAgentMessageConsumption", () => {
         tools: [
           expect.objectContaining({
             label: "Run Research agent",
+            isSubAgent: true,
             callCount: 1,
             attributedCredits: 26,
             directCredits: 4,

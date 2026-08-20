@@ -19,13 +19,6 @@ import { useId, useRef, useState } from "react";
 
 const MAX_VISIBLE_OTHER_TOOLS = 3;
 
-function isSubAgentTool(tool: AgentMessageConsumptionToolDetails): boolean {
-  return (
-    tool.internalMCPServerName === "run_agent" ||
-    tool.internalMCPServerName === "agent_delegation"
-  );
-}
-
 function toolDescription(tool: AgentMessageConsumptionToolDetails): string {
   const descriptions = [toolUsageLabel(tool.callCount)];
 
@@ -120,8 +113,8 @@ export function CreditCostPopover({
         (left, right) => right.attributedCredits - left.attributedCredits
       )
     : [];
-  const subAgentTools = rankedTools.filter(isSubAgentTool);
-  const otherTools = rankedTools.filter((tool) => !isSubAgentTool(tool));
+  const subAgentTools = rankedTools.filter((tool) => tool.isSubAgent);
+  const otherTools = rankedTools.filter((tool) => !tool.isSubAgent);
   const visibleTools = [
     ...subAgentTools,
     ...otherTools.slice(0, MAX_VISIBLE_OTHER_TOOLS),
