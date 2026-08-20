@@ -12,7 +12,7 @@ import {
 } from "@sparkle/index_with_tw_base";
 
 const meta = {
-  title: "Effects/DiscoveryGlint",
+  title: "Effects & Motion/DiscoveryGlint",
   component: DiscoveryGlint,
   tags: ["autodocs"],
   parameters: {
