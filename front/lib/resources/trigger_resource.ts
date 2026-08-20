@@ -87,6 +87,14 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     blob: CreationAttributes<TriggerModel>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<TriggerResource, Error>> {
+    if (!(await this.canUseExecutionMode(auth, blob.executionMode))) {
+      return new Err(
+        new TriggerExecutionModeForbiddenError(
+          "You don't have permission to charge this trigger to the workspace."
+        )
+      );
+    }
+
     const trigger = await TriggerModel.create(blob, {
       transaction,
     });

@@ -274,19 +274,6 @@ app.patch(
         validatedTrigger,
         featureFlags
       );
-      if (
-        executionMode &&
-        !(await triggerToUpdate.canSetExecutionMode(auth, executionMode))
-      ) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "You don't have permission to change this trigger's pool.",
-          },
-        });
-      }
-
       const spaceIdRes = await resolveTriggerSpaceId(
         auth,
         validatedTrigger.spaceId
@@ -297,36 +284,6 @@ app.patch(
           api_error: {
             type: "invalid_request_error",
             message: spaceIdRes.error,
-          },
-        });
-      }
-
-      const updatedTrigger = await TriggerResource.update(
-        auth,
-        triggerData.sId,
-        {
-          ...validatedTrigger,
-          status: validatedTrigger.status ?? "enabled",
-          webhookSourceViewId,
-          spaceId: spaceIdRes.value,
-        }
-      );
-
-      if (updatedTrigger.isErr()) {
-        logger.error(
-          {
-            workspaceId: workspace.sId,
-            agentConfigurationId: aId,
-            triggerId: triggerData.sId,
-            error: updatedTrigger.error,
-          },
-          "Failed to update trigger"
-        );
-        return apiError(ctx, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `Failed to update trigger ${triggerData.name}.`,
           },
         });
       }
@@ -366,6 +323,36 @@ app.patch(
             },
           });
         }
+      }
+
+      const updatedTrigger = await TriggerResource.update(
+        auth,
+        triggerData.sId,
+        {
+          ...validatedTrigger,
+          status: validatedTrigger.status ?? "enabled",
+          webhookSourceViewId,
+          spaceId: spaceIdRes.value,
+        }
+      );
+
+      if (updatedTrigger.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            agentConfigurationId: aId,
+            triggerId: triggerData.sId,
+            error: updatedTrigger.error,
+          },
+          "Failed to update trigger"
+        );
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: `Failed to update trigger ${triggerData.name}.`,
+          },
+        });
       }
     }
 
@@ -427,15 +414,6 @@ app.post(
 
       const executionMode =
         requestedExecutionMode(validatedTrigger, featureFlags) ?? "user_pool";
-      if (!(await TriggerResource.canUseExecutionMode(auth, executionMode))) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "You don't have permission to use the workspace pool.",
-          },
-        });
-      }
 
       const spaceIdRes = await resolveTriggerSpaceId(
         auth,
@@ -469,6 +447,16 @@ app.post(
       });
 
       if (newTrigger.isErr()) {
+        if (newTrigger.error instanceof TriggerExecutionModeForbiddenError) {
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: newTrigger.error.message,
+            },
+          });
+        }
+
         logger.error(
           {
             workspaceId: workspace.sId,
