@@ -94,11 +94,25 @@ export const menuStyleClasses = {
   shortcut: "ml-auto",
 };
 
+/**
+ * A menu of actions or options revealed from a trigger — Sparkle's action or
+ * overflow menu, built on Radix DropdownMenu. Compose it from
+ * DropdownMenuTrigger and DropdownMenuContent, with items, checkbox/radio
+ * items, groups, submenus, a searchbar, and tag lists. Use it for secondary
+ * or overflow actions, or to pick one value from a longer list than a
+ * RadioGroup comfortably shows.
+ * @summary Action/overflow menu opened from a trigger.
+ */
 const DropdownMenu = DropdownMenuPrimitive.Root;
+/** Groups related menu items. */
 const DropdownMenuGroup = DropdownMenuPrimitive.Group;
+/** Portals menu content to another part of the DOM. */
 const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
+/** Root of a nested submenu (pair with DropdownMenuSubTrigger and DropdownMenuSubContent). */
 const DropdownMenuSub = DropdownMenuPrimitive.Sub;
+/** Groups DropdownMenuRadioItems into a single-choice set. */
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
+/** Element that opens the menu (wrap a Button with asChild). */
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
 interface LabelAndIconProps {
@@ -208,6 +222,7 @@ const ItemWithLabelIconAndDescription = <
   );
 };
 
+/** Menu item that opens a nested submenu, with a trailing chevron. */
 const DropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
   MutuallyExclusiveProps<
@@ -251,9 +266,11 @@ interface DropdownMenuSubContentProps
   extends React.ComponentPropsWithoutRef<
     typeof DropdownMenuPrimitive.SubContent
   > {
+  /** Sticky header content (e.g. a DropdownMenuSearchbar); also gives the submenu a fixed height. */
   dropdownHeaders?: React.ReactNode;
 }
 
+/** Scrollable panel of a nested submenu; always portaled to keep its elevation shadow. */
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   DropdownMenuSubContentProps
@@ -352,16 +369,24 @@ function setDropdownSearchInputValue(
 
 interface DropdownMenuContentProps
   extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
+  /** Renders the menu in a portal (default true); set false to render inline. */
   mountPortal?: boolean;
+  /** Custom DOM element to portal the menu into. */
   mountPortalContainer?: HTMLElement;
+  /** Sticky header content (e.g. a DropdownMenuSearchbar); also gives the menu a fixed height. */
   dropdownHeaders?: React.ReactNode;
+  /** itemId of the item to treat as highlighted (see scrollHighlightedItemIntoView). */
   highlightedItemId?: string;
+  /** Skips Radix's focus return to the trigger when the menu closes (default true). */
   preventAutoFocusOnClose?: boolean;
   onOpenAutoFocus?: (e: React.FocusEvent<HTMLDivElement>) => void;
+  /** Ref to the search input that typed characters should be routed to. */
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
+  /** Scrolls the item matching highlightedItemId into view when it changes. */
   scrollHighlightedItemIntoView?: boolean;
 }
 
+/** The menu panel: portaled, animated, scrollable, with typed characters routed to an embedded searchbar. */
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   DropdownMenuContentProps
@@ -529,18 +554,25 @@ DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
 export type DropdownMenuItemProps = MutuallyExclusiveProps<
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
+    /** Indents the item to align with checkbox/radio items. */
     inset?: boolean;
+    /** Stable id used by DropdownMenuContent's highlightedItemId scrolling. */
     itemId?: string;
+    /** "warning" styles the item red for destructive actions. */
     variant?: ItemVariantType;
+    /** Tooltip shown on hover over the item. */
     tooltip?: React.ReactNode;
   } & Omit<LinkWrapperProps, "children" | "className">,
   LabelAndIconProps & {
     description?: string;
+    /** Truncates label and description instead of wrapping. */
     truncateText?: boolean;
+    /** Trailing node on the right of the label (e.g. a shortcut or chip). */
     endComponent?: React.ReactNode;
   }
 >;
 
+/** Standard menu item with label, leading icon, description, and optional link behavior. */
 const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
   DropdownMenuItemProps
@@ -645,6 +677,7 @@ export type DropdownMenuCheckboxItemProps = React.ComponentPropsWithoutRef<
   truncateText?: React.ComponentProps<typeof DropdownMenuItem>["truncateText"];
 };
 
+/** Menu item with a leading check indicator, for multi-select options. */
 const DropdownMenuCheckboxItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
   DropdownMenuCheckboxItemProps
@@ -680,6 +713,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
 DropdownMenuCheckboxItem.displayName =
   DropdownMenuPrimitive.CheckboxItem.displayName;
 
+/** Menu item with a radio indicator, for single-choice selection inside a DropdownMenuRadioGroup. */
 const DropdownMenuRadioItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
   MutuallyExclusiveProps<
@@ -725,10 +759,13 @@ interface DropdownMenuTagItemProps
   size?: React.ComponentProps<typeof Chip>["size"];
   color?: React.ComponentProps<typeof Chip>["color"];
   icon?: React.ComponentProps<typeof Chip>["icon"];
+  /** Called when the tag's remove affordance is clicked; enables the remove button. */
   onRemove?: () => void;
+  /** Called when the tag chip itself is clicked. */
   onClick?: () => void;
 }
 
+/** Menu item rendered as a Chip tag, optionally removable. */
 const DropdownMenuTagItem = React.forwardRef<
   HTMLDivElement,
   DropdownMenuTagItemProps
@@ -772,6 +809,7 @@ interface DropdownMenuTagListProps {
   className?: string;
 }
 
+/** Wrapping row layout for DropdownMenuTagItems. */
 const DropdownMenuTagList = React.forwardRef<
   HTMLDivElement,
   DropdownMenuTagListProps
@@ -785,6 +823,7 @@ const DropdownMenuTagList = React.forwardRef<
 
 DropdownMenuTagList.displayName = "DropdownMenuTagList";
 
+/** Non-interactive section heading inside the menu. */
 const DropdownMenuLabel = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Label>,
   MutuallyExclusiveProps<
@@ -809,6 +848,7 @@ const DropdownMenuLabel = React.forwardRef<
 ));
 DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
 
+/** Thin divider between groups of menu items. */
 const DropdownMenuSeparator = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
@@ -825,6 +865,7 @@ type DropdownMenuShortcutProps = React.HTMLAttributes<HTMLSpanElement> & {
   shortcut?: KeyboardShortcutProps["shortcut"];
 };
 
+/** Right-aligned keyboard shortcut hint for a menu item. */
 const DropdownMenuShortcut = ({
   className,
   shortcut,
@@ -852,10 +893,13 @@ const DropdownMenuShortcut = ({
 DropdownMenuShortcut.displayName = "DropdownMenuShortcut";
 
 interface DropdownMenuSearchbarProps extends SearchInputProps {
+  /** Trailing node rendered next to the search input (e.g. an action Button). */
   button?: React.ReactNode;
+  /** Focuses the search input when the menu opens. */
   autoFocus?: boolean;
 }
 
+/** Search input header for a menu — use it for large, searchable datasets rather than an unbounded list; Enter activates the first result. */
 const DropdownMenuSearchbar = React.forwardRef<
   HTMLInputElement,
   DropdownMenuSearchbarProps
@@ -945,8 +989,11 @@ export interface DropdownMenuFilterOption<T extends string = string> {
 }
 
 interface DropdownMenuFiltersProps<T extends string> {
+  /** The filter options to render as toggle buttons. */
   filters: DropdownMenuFilterOption<T>[];
+  /** Currently selected filter values. */
   selectedValues: T[];
+  /** Called with the value of a filter button when it is clicked. */
   onSelectFilter: (value: T) => void;
   className?: string;
 }
@@ -983,6 +1030,7 @@ const DropdownMenuFiltersInner = <T extends string>(
   );
 };
 
+/** Row of toggleable filter buttons for narrowing the menu's items. */
 const DropdownMenuFilters = React.forwardRef(DropdownMenuFiltersInner) as {
   <T extends string>(
     props: DropdownMenuFiltersProps<T> & React.RefAttributes<HTMLDivElement>
@@ -1013,15 +1061,22 @@ DropdownTooltip.displayName = "DropdownTooltip";
 export interface DropdownTooltipTriggerProps {
   children: React.ReactElement;
   className?: string;
+  /** Tooltip body text. */
   description: string;
+  /** Optional media (e.g. an image) rendered above the description. */
   media?: React.ReactNode;
+  /** Renders the tooltip in a portal (default true). */
   mountPortal?: boolean;
+  /** Custom DOM element to portal the tooltip into. */
   mountPortalContainer?: HTMLElement;
+  /** Called when the tooltip opens or closes. */
   onVisibilityChange?: (visible: boolean) => void;
+  /** Side of the trigger the tooltip appears on (default "right"). */
   side?: "left" | "right" | "top" | "bottom";
   sideOffset?: number;
 }
 
+/** Wraps a menu item to show a rich tooltip (media + description) beside it on hover. */
 const DropdownTooltipTrigger = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Trigger>,
   DropdownTooltipTriggerProps
@@ -1108,11 +1163,13 @@ DropdownTooltipTrigger.displayName = "DropdownTooltipTrigger";
 
 interface DropdownMenuStaticItemProps {
   label: string;
+  /** Muted value displayed on the right of the label. */
   value?: string;
   children?: React.ReactNode;
   className?: string;
 }
 
+/** Non-interactive label/value row inside the menu (e.g. usage or status info). */
 const DropdownMenuStaticItem = React.forwardRef<
   HTMLDivElement,
   DropdownMenuStaticItemProps

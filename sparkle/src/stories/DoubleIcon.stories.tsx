@@ -1,11 +1,22 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import { DoubleIcon } from "@sparkle/components";
 
 import { DriveLogo, NotionLogo, SlackLogo } from "@sparkle/logo";
-import { File02, Folder } from "@sparkle/icons/v2-stroke";
-import { MessageDotsCircle } from "@sparkle/icons/v2-stroke";
+import { File02, Folder, MessageDotsCircle } from "@sparkle/icons/v2-stroke";
+
+const MAIN_ICONS = {
+  Folder: Folder,
+  File02: File02,
+  MessageDotsCircle: MessageDotsCircle,
+} as const;
+
+const SECONDARY_ICONS = {
+  DriveLogo: DriveLogo,
+  NotionLogo: NotionLogo,
+  SlackLogo: SlackLogo,
+} as const;
 
 const meta = {
   title: "Data Display/DoubleIcon",
@@ -24,47 +35,75 @@ const meta = {
       },
     },
   },
+  args: {
+    size: "md",
+    mainIcon: Folder,
+    secondaryIcon: DriveLogo,
+  },
+  argTypes: {
+    size: {
+      description: "Overall size of the composed icon",
+      options: ["sm", "md", "lg", "xl"],
+      control: { type: "select" },
+    },
+    mainIcon: {
+      description: "The subject glyph",
+      options: Object.keys(MAIN_ICONS),
+      mapping: MAIN_ICONS,
+      control: { type: "select" },
+    },
+    secondaryIcon: {
+      description: "The small qualifier badge (e.g. a provider logo)",
+      options: Object.keys(SECONDARY_ICONS),
+      mapping: SECONDARY_ICONS,
+      control: { type: "select" },
+    },
+  },
+  render: (args) => <DoubleIcon {...args} />,
 } satisfies Meta<typeof DoubleIcon>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const IconPositions = () => (
-  <div className="flex flex-col gap-8">
-    <div className="flex items-center gap-8">
-      <DoubleIcon size="xl" mainIcon={Folder} secondaryIcon={DriveLogo} />{" "}
-      <DoubleIcon size="xl" mainIcon={File02} secondaryIcon={NotionLogo} />{" "}
-      <DoubleIcon
-        size="xl"
-        mainIcon={MessageDotsCircle}
-        secondaryIcon={SlackLogo}
-      />
+/**
+ * A folder qualified by its Google Drive origin — the canonical
+ * content-plus-provider pairing. Swap the icons and size from the Controls
+ * panel.
+ * @summary Content glyph badged with a provider logo.
+ */
+export const Default: Story = {
+  args: {
+    size: "md",
+    mainIcon: Folder,
+    secondaryIcon: DriveLogo,
+  },
+};
+
+/**
+ * Visual reference: three main/secondary pairings rendered at every size
+ * (xl / lg / md / sm) to check badge placement and scale. Kept for design
+ * review.
+ * @summary Size-by-pairing visual reference grid.
+ */
+export const Sizes: Story = {
+  tags: ["!manifest"],
+  render: () => (
+    <div className="flex flex-col gap-8">
+      {(["xl", "lg", "md", "sm"] as const).map((size) => (
+        <div key={size} className="flex items-center gap-8">
+          <DoubleIcon size={size} mainIcon={Folder} secondaryIcon={DriveLogo} />
+          <DoubleIcon
+            size={size}
+            mainIcon={File02}
+            secondaryIcon={NotionLogo}
+          />
+          <DoubleIcon
+            size={size}
+            mainIcon={MessageDotsCircle}
+            secondaryIcon={SlackLogo}
+          />
+        </div>
+      ))}
     </div>
-    <div className="flex items-center gap-8">
-      <DoubleIcon size="lg" mainIcon={Folder} secondaryIcon={DriveLogo} />{" "}
-      <DoubleIcon size="lg" mainIcon={File02} secondaryIcon={NotionLogo} />{" "}
-      <DoubleIcon
-        size="lg"
-        mainIcon={MessageDotsCircle}
-        secondaryIcon={SlackLogo}
-      />
-    </div>
-    <div className="flex items-center gap-8">
-      <DoubleIcon size="md" mainIcon={Folder} secondaryIcon={DriveLogo} />{" "}
-      <DoubleIcon size="md" mainIcon={File02} secondaryIcon={NotionLogo} />{" "}
-      <DoubleIcon
-        size="md"
-        mainIcon={MessageDotsCircle}
-        secondaryIcon={SlackLogo}
-      />
-    </div>
-    <div className="flex items-center gap-8">
-      <DoubleIcon size="sm" mainIcon={Folder} secondaryIcon={DriveLogo} />{" "}
-      <DoubleIcon size="sm" mainIcon={File02} secondaryIcon={NotionLogo} />{" "}
-      <DoubleIcon
-        size="sm"
-        mainIcon={MessageDotsCircle}
-        secondaryIcon={SlackLogo}
-      />
-    </div>
-  </div>
-);
+  ),
+};

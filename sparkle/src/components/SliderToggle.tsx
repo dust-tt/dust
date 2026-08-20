@@ -2,10 +2,13 @@ import { cn } from "@sparkle/lib/utils";
 import React, { type ComponentType, type MouseEventHandler } from "react";
 
 type SliderToggleProps = {
+  /** Called on click when not disabled; flip `selected` in this handler. */
   onClick?: MouseEventHandler<HTMLElement>;
   className?: string;
   disabled?: boolean;
+  /** Whether the toggle is on; the source of truth for its state. */
   selected?: boolean;
+  /** Small icon rendered inside the knob, e.g. a lock to signal a restricted setting. */
   icon?: ComponentType<{ className?: string }>;
   // Mutes the active track color, e.g. to signal a setting that is on but
   // restricted (paired with `icon`) rather than a plain active toggle.
@@ -41,6 +44,15 @@ const stateClasses = {
   ),
 };
 
+/**
+ * A compact on/off switch for toggling a single setting that takes effect immediately,
+ * reflecting state via `selected` and supporting `disabled`. Use it for binary settings
+ * that apply instantly without a separate save action, typically inside a
+ * `SettingsList.Row`. For an option that is part of a form submitted later, or that needs
+ * an inline label and description, prefer `Checkbox`.
+ *
+ * @summary Instant on/off switch.
+ */
 export function SliderToggle({
   onClick,
   disabled = false,

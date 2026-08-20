@@ -13,14 +13,29 @@ export interface InputWithSaveProps
     React.InputHTMLAttributes<HTMLInputElement>,
     "value" | "onChange" | "size"
   > {
+  /** The persisted value shown at rest; the field reverts to it when an edit is abandoned. */
   value?: string | null;
+  /** Right-aligned unit displayed next to the value (e.g. a currency or "%"). */
   unit?: string;
+  /** Called with the draft value on save (Enter or Save click); a spinner shows until the returned promise settles. */
   onSave: (value: string) => Promise<void> | void;
+  /** Sanitizes the draft on focus and on every keystroke (e.g. strip non-digits). */
   normalizeValue?: (value: string) => string;
+  /** Formats the draft for display while editing (e.g. add thousands separators). */
   formatValue?: (value: string) => string;
   className?: string;
 }
 
+/**
+ * A text field with an optional right-aligned unit and an inline save action:
+ * while editing, a Save button appears and saving (Save click or Enter) calls
+ * `onSave` with a spinner until its promise resolves, while blurring or Escape
+ * reverts the edit. Use it for a single value persisted on its own (a quota, a
+ * price, a limit) without a surrounding form; for regular form fields use
+ * Input.
+ *
+ * @summary Text field with inline save action.
+ */
 export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
   (
     {

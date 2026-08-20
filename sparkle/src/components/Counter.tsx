@@ -125,9 +125,17 @@ const counterVariants = cva(
 export interface CounterProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof counterVariants> {
+  /** The count to display. Cap large values for legibility (e.g. show "99+"). */
   value: number;
 }
 
+/**
+ * A small numeric badge that communicates a count — unread items, pending
+ * actions, or results — in several sizes and variants. Use it to show a count
+ * attached to an item, tab, or button (via isInButton); use it for counts,
+ * not arbitrary text.
+ * @summary Numeric count badge.
+ */
 export const Counter = React.forwardRef<HTMLDivElement, CounterProps>(
   (
     {

@@ -22,7 +22,9 @@ function downloadFile(url: string, filename: string) {
 
 interface ImageZoomDialogProps {
   open: boolean;
+  /** Invoked when the dialog requests an open-state change (close button, overlay click, Escape). */
   onOpenChange: (open: boolean) => void;
+  /** The image to display: `title` doubles as the download filename, `downloadUrl` enables the download button, `isLoading` shows a spinner. */
   image: {
     src: string;
     alt?: string;
@@ -30,6 +32,7 @@ interface ImageZoomDialogProps {
     downloadUrl?: string;
     isLoading?: boolean;
   };
+  /** Gallery navigation callbacks; previous/next buttons render only when `hasPrevious`/`hasNext` are true. */
   navigation?: {
     onPrevious: () => void;
     onNext: () => void;
@@ -38,6 +41,14 @@ interface ImageZoomDialogProps {
   };
 }
 
+/**
+ * A full-screen overlay for viewing an image at a larger size, controlled via
+ * `open` / `onOpenChange`, with an optional download affordance and optional
+ * previous/next gallery navigation. Use it to let users inspect an image at
+ * full resolution; for non-image modal content, use Dialog or Sheet instead.
+ *
+ * @summary Full-screen image zoom dialog.
+ */
 function ImageZoomDialog({
   open,
   onOpenChange,

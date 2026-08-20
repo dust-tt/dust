@@ -6,6 +6,7 @@ import {
   SortingState,
 } from "@tanstack/react-table";
 import React, { useCallback, useMemo, useState } from "react";
+import { fn } from "storybook/test";
 
 import {
   DataTable,
@@ -87,12 +88,12 @@ const data: TransformedData[] = [
     avatarUrl: "https://avatars.githubusercontent.com/u/138893015?s=200&v=4",
     avatarTooltipLabel: "Meow",
     roundedAvatar: true,
-    onClick: () => alert("Soupinou clicked"),
+    onClick: fn(),
     menuItems: [
       {
         kind: "item",
         label: "Edit (disabled)",
-        onClick: () => alert("Soupinou clicked"),
+        onClick: fn(),
         disabled: true,
       },
     ],
@@ -106,7 +107,7 @@ const data: TransformedData[] = [
     size: "32kb",
     avatarUrl: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
     roundedAvatar: true,
-    onClick: () => alert("Marketing clicked"),
+    onClick: fn(),
   },
   {
     name: "Design",
@@ -119,7 +120,7 @@ const data: TransformedData[] = [
       {
         kind: "item",
         label: "Edit (disabled)",
-        onClick: () => alert("Design menu clicked"),
+        onClick: fn(),
         disabled: true,
       },
     ],
@@ -141,7 +142,7 @@ const data: TransformedData[] = [
           { id: "space3", name: "Space 3" },
           { id: "space4", name: "Space 4" },
         ],
-        onSelect: (itemId) => console.log("Add to Space", itemId),
+        onSelect: fn(),
       },
       {
         disabled: true,
@@ -153,7 +154,7 @@ const data: TransformedData[] = [
           { id: "space3", name: "Space 3" },
           { id: "space4", name: "Space 4" },
         ],
-        onSelect: (itemId) => console.log("Add to Space", itemId),
+        onSelect: fn(),
       },
       {
         kind: "item",
@@ -172,7 +173,7 @@ const data: TransformedData[] = [
       {
         kind: "item",
         label: "Edit",
-        onClick: () => alert("Design menu clicked"),
+        onClick: fn(),
       },
     ],
   },
@@ -229,7 +230,7 @@ const avatarStackData: TransformedData[] = [
         visual: "https://avatars.githubusercontent.com/u/5?s=200&v=4",
       },
     ],
-    onClick: () => alert("Team Alpha clicked"),
+    onClick: fn(),
   },
   {
     name: "Marketing Team",
@@ -252,7 +253,7 @@ const avatarStackData: TransformedData[] = [
         visual: "https://avatars.githubusercontent.com/u/8?s=200&v=4",
       },
     ],
-    onClick: () => alert("Marketing Team clicked"),
+    onClick: fn(),
   },
   {
     name: "Design Squad",
@@ -280,7 +281,7 @@ const avatarStackData: TransformedData[] = [
       },
     ],
     roundedAvatar: true,
-    onClick: () => alert("Design Squad clicked"),
+    onClick: fn(),
   },
   {
     name: "Large Team",
@@ -319,7 +320,7 @@ const avatarStackData: TransformedData[] = [
         visual: "https://avatars.githubusercontent.com/u/19?s=200&v=4",
       },
     ],
-    onClick: () => alert("Large Team clicked"),
+    onClick: fn(),
   },
 ];
 
@@ -409,8 +410,13 @@ const columns: ColumnDef<Data>[] = [
   },
 ];
 
-// TODO: Fix 'Edit' changing the order of the rows
-export const DataTableExample = () => {
+/**
+ * The standard table: rich cells (avatars, icons, descriptions), a text
+ * filter bound to the `name` column, and a per-row overflow menu whose "Edit"
+ * action opens a dialog.
+ * @summary Filterable table with row action menus.
+ */
+export const Default = () => {
   const [filter, setFilter] = React.useState<string>("");
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [selectedName, setSelectedName] = React.useState("");
@@ -477,7 +483,12 @@ export const DataTableExample = () => {
   );
 };
 
-export const DataTableClientSideSortingExample = () => {
+/**
+ * Controlled client-side sorting: `sorting` / `setSorting` hold the state so
+ * clicking sortable headers reorders the rows in the browser.
+ * @summary Controlled client-side column sorting.
+ */
+export const ClientSideSorting = () => {
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "name", desc: true },
   ]);
@@ -505,7 +516,14 @@ export const DataTableClientSideSortingExample = () => {
   );
 };
 
-export const DataTablePaginatedExample = () => {
+/**
+ * Client-side pagination driven by a controlled `pagination` /
+ * `setPagination` pair (page size 2 to make page changes visible). Pass
+ * `disablePaginationNumbers` to hide the numbered page buttons and keep only
+ * previous / next.
+ * @summary Controlled client-side pagination.
+ */
+export const ClientSidePagination = () => {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 2,
@@ -534,37 +552,15 @@ export const DataTablePaginatedExample = () => {
   );
 };
 
-export const DataTablePaginatedPageButtonsDisabledExample = () => {
-  const [pagination, setPagination] = React.useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 2,
-  });
-  const [filter, setFilter] = React.useState<string>("");
-
-  return (
-    <div className="w-full max-w-4xl overflow-x-auto">
-      <Input
-        name="filter"
-        placeholder="Filter"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-      />
-      <DataTable
-        className="w-full max-w-4xl overflow-x-auto"
-        data={data}
-        filter={filter}
-        filterColumn="name"
-        pagination={pagination}
-        setPagination={setPagination}
-        columns={columns}
-        columnsBreakpoints={{ lastUpdated: "sm" }}
-        disablePaginationNumbers
-      />
-    </div>
-  );
-};
-
-export const DataTablePaginatedServerSideExample = () => {
+/**
+ * Server-side pagination and sorting: the story slices and sorts the dataset
+ * outside the table (simulating an API), passes only the current page as
+ * `data`, and reports the full size via `totalRowCount` with
+ * `isServerSideSorting`. When the backend only knows a lower bound, add
+ * `rowCountIsCapped` to display the total as "N+".
+ * @summary Server-side pagination and sorting.
+ */
+export const ServerSidePagination = () => {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 2,
@@ -576,7 +572,7 @@ export const DataTablePaginatedServerSideExample = () => {
   const rows = useMemo(() => {
     if (sorting.length > 0) {
       const order = sorting[0].desc ? -1 : 1;
-      return data
+      return [...data]
         .sort((a: Data, b: Data) => {
           return (
             a.name.toLowerCase().localeCompare(b.name.toLowerCase()) * order
@@ -591,7 +587,7 @@ export const DataTablePaginatedServerSideExample = () => {
       pagination.pageIndex * pagination.pageSize,
       (pagination.pageIndex + 1) * pagination.pageSize
     );
-  }, [data, pagination, sorting]);
+  }, [pagination, sorting]);
   return (
     <div className="w-full max-w-4xl overflow-x-auto">
       <Input
@@ -618,201 +614,90 @@ export const DataTablePaginatedServerSideExample = () => {
   );
 };
 
-export const DataTablePaginatedServerSideRowCountCappedExample = () => {
-  const [pagination, setPagination] = React.useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 2,
+const createData = (start: number, count: number): TransformedData[] => {
+  return Array.from({ length: count }, (_, i) => {
+    const index = start + i;
+    return {
+      id: index,
+      name: `Item ${index + 1}`,
+      usedBy: (index * 7) % 100,
+      addedBy: `UserUserUserUserUserUserUserUserUserUserUser ${(index % 10) + 1}`,
+      lastUpdated: `2023-08-${(index % 28) + 1}`,
+      size: `${(index * 13) % 200}kb`,
+      menuItems: [{ kind: "item" as const, label: "Edit", onClick: fn() }],
+    };
   });
-  const [sorting, setSorting] = React.useState<SortingState>([
-    { id: "name", desc: true },
-  ]);
-  const [filter, setFilter] = React.useState<string>("");
-  const rows = useMemo(() => {
-    if (sorting.length > 0) {
-      const order = sorting[0].desc ? -1 : 1;
-      return data
-        .sort((a: Data, b: Data) => {
-          return (
-            a.name.toLowerCase().localeCompare(b.name.toLowerCase()) * order
-          );
-        })
-        .slice(
-          pagination.pageIndex * pagination.pageSize,
-          (pagination.pageIndex + 1) * pagination.pageSize
-        );
-    }
-    return data.slice(
-      pagination.pageIndex * pagination.pageSize,
-      (pagination.pageIndex + 1) * pagination.pageSize
-    );
-  }, [data, pagination, sorting]);
+};
+
+/**
+ * Virtualized **ScrollableDataTable** with infinite scrolling inside a fixed
+ * `maxHeight` ("max-h-[500px]"): scrolling to the bottom triggers
+ * `onLoadMore`, which appends a new page after a simulated delay. Pass
+ * `maxHeight` without a value to fill the parent's height instead.
+ * @summary Virtualized infinite-scroll table.
+ */
+export const ScrollableWithMaxHeight = () => {
+  const [filter, setFilter] = useState("");
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [rows, setRows] = useState(() => createData(0, 50));
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load more data when user scrolls to bottom
+  const loadMore = useCallback(() => {
+    setIsLoading(true);
+
+    // Simulate API call delay
+    setTimeout(() => {
+      setRows((prevRows) => [...prevRows, ...createData(prevRows.length, 50)]);
+      setIsLoading(false);
+    }, 1000);
+  }, []);
+
+  const columnsWithSelection: ColumnDef<Data>[] = useMemo(() => {
+    const columnsWithSize = columns.map((column, index) => {
+      return { ...column, meta: { sizeRatio: index % 2 === 0 ? 15 : 10 } };
+    });
+    return [createSelectionColumn<Data>(), ...columnsWithSize];
+  }, []);
+
   return (
-    <div className="w-full max-w-4xl overflow-x-auto">
+    <div className="flex w-full max-w-4xl flex-col gap-4">
       <Input
         name="filter"
         placeholder="Filter"
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
       />
-      <DataTable
-        className="w-full max-w-4xl overflow-x-auto"
+
+      <ScrollableDataTable
         data={rows}
-        totalRowCount={data.length}
-        rowCountIsCapped={true}
         filter={filter}
         filterColumn="name"
-        pagination={pagination}
-        setPagination={setPagination}
-        columns={columns}
-        sorting={sorting}
-        setSorting={setSorting}
-        columnsBreakpoints={{ lastUpdated: "sm" }}
-        isServerSideSorting={true}
+        columns={columnsWithSelection}
+        onLoadMore={loadMore}
+        isLoading={isLoading}
+        maxHeight="max-h-[500px]"
+        rowSelection={rowSelection}
+        setRowSelection={setRowSelection}
+        enableRowSelection={true}
       />
-    </div>
-  );
-};
 
-const createData = (start: number, count: number) => {
-  return Array(count)
-    .fill(0)
-    .map((_, i) => ({
-      id: i,
-      name: `Item ${start + i + 1}`,
-      usedBy: Math.floor(Math.random() * 100),
-      addedBy: `UserUserUserUserUserUserUserUserUserUserUser ${Math.floor(Math.random() * 10) + 1}`,
-      lastUpdated: `2023-08-${Math.floor(Math.random() * 30) + 1}`,
-      size: `${Math.floor(Math.random() * 200)}kb`,
-      menuItems: [
-        { kind: "item", label: "test", onClick: () => console.log("hey") },
-      ],
-    })) as TransformedData[];
-};
-
-export const ScrollableDataTableExample = () => {
-  const [filter, setFilter] = useState("");
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [data, setData] = useState(() => createData(0, 50));
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Load more data when user scrolls to bottom
-  const loadMore = useCallback(() => {
-    setIsLoading(true);
-
-    // Simulate API call delay
-    setTimeout(() => {
-      setData((prevData) => [...prevData, ...createData(prevData.length, 50)]);
-      setIsLoading(false);
-    }, 1000);
-  }, []);
-
-  const columnsWithSize = columns.map((column, index) => {
-    return { ...column, meta: { sizeRatio: index % 2 === 0 ? 15 : 10 } };
-  });
-
-  const columnsWithSelection: ColumnDef<Data>[] = useMemo(
-    () => [createSelectionColumn<Data>(), ...columnsWithSize],
-    []
-  );
-  return (
-    <div className="flex w-full max-w-4xl flex-col gap-6">
-      <h3 className="text-lg font-medium">
-        Virtualized ScrollableDataTable with Infinite Scrolling
-      </h3>
-
-      <div className="flex flex-col gap-4">
-        <Input
-          name="filter"
-          placeholder="Filter"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
-
-        <ScrollableDataTable
-          data={data}
-          filter={filter}
-          filterColumn="name"
-          columns={columnsWithSelection}
-          onLoadMore={loadMore}
-          isLoading={isLoading}
-          maxHeight="max-h-[500px]"
-          rowSelection={rowSelection}
-          setRowSelection={setRowSelection}
-          enableRowSelection={true}
-        />
-
-        <div className="text-sm text-muted-foreground">
-          Loaded {data.length} rows. Scroll to the bottom to load more.
-        </div>
+      <div className="text-sm text-muted-foreground">
+        Loaded {rows.length} rows. Scroll to the bottom to load more.
       </div>
     </div>
   );
 };
 
-export const ScrollableDataTableFullHeightExample = () => {
-  const [filter, setFilter] = useState("");
+/**
+ * Multi-row selection via `createSelectionColumn`: a checkbox column drives
+ * the controlled `rowSelection` state, keyed by `getRowId`. The readout below
+ * the table reflects the current selection count.
+ * @summary Checkbox multi-row selection.
+ */
+export const RowSelection = () => {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [data, setData] = useState(() => createData(0, 50));
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Load more data when user scrolls to bottom
-  const loadMore = useCallback(() => {
-    setIsLoading(true);
-
-    // Simulate API call delay
-    setTimeout(() => {
-      setData((prevData) => [...prevData, ...createData(prevData.length, 50)]);
-      setIsLoading(false);
-    }, 1000);
-  }, []);
-
-  const columnsWithSize = columns.map((column, index) => {
-    return { ...column, meta: { sizeRatio: index % 2 === 0 ? 15 : 10 } };
-  });
-
-  const columnsWithSelection: ColumnDef<Data>[] = useMemo(
-    () => [createSelectionColumn<Data>(), ...columnsWithSize],
-    []
-  );
-  return (
-    <div className="flex w-full max-w-4xl flex-col gap-6">
-      <h3 className="text-lg font-medium">
-        Virtualized ScrollableDataTable with Infinite Scrolling based on parent
-        height
-      </h3>
-
-      <div className="flex h-[400px] flex-col gap-4">
-        <Input
-          name="filter"
-          placeholder="Filter"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
-
-        <ScrollableDataTable
-          data={data}
-          filter={filter}
-          filterColumn="name"
-          columns={columnsWithSelection}
-          onLoadMore={loadMore}
-          isLoading={isLoading}
-          maxHeight
-          rowSelection={rowSelection}
-          setRowSelection={setRowSelection}
-          enableRowSelection={true}
-        />
-
-        <div className="text-sm text-muted-foreground">
-          Loaded {data.length} rows. Scroll to the bottom to load more.
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export const DataTableWithRowSelectionExample = () => {
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [data] = useState<Data[]>(() => createData(0, 10));
+  const [rows] = useState<Data[]>(() => createData(0, 10));
   const [filter, setFilter] = useState("");
 
   const columnsWithSelection: ColumnDef<Data>[] = useMemo(
@@ -821,45 +706,41 @@ export const DataTableWithRowSelectionExample = () => {
   );
 
   return (
-    <div className="flex w-full max-w-4xl flex-col gap-6">
-      <h3 className="text-lg font-medium">DataTable with Row Selection</h3>
+    <div className="flex w-full max-w-4xl flex-col gap-4">
+      <Input
+        name="filter"
+        placeholder="Filter"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
 
-      <div className="flex flex-col gap-4">
-        <Input
-          name="filter"
-          placeholder="Filter"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
+      <DataTable
+        data={rows}
+        filter={filter}
+        filterColumn="name"
+        columns={columnsWithSelection}
+        rowSelection={rowSelection}
+        setRowSelection={setRowSelection}
+        enableRowSelection={true}
+        getRowId={(row) => row.name}
+      />
 
-        <DataTable
-          data={data}
-          filter={filter}
-          filterColumn="name"
-          columns={columnsWithSelection}
-          rowSelection={rowSelection}
-          setRowSelection={setRowSelection}
-          enableRowSelection={true}
-          getRowId={(row) => row.name}
-        />
-
-        <div className="rounded-md border bg-muted/50 p-2">
-          <h4 className="mb-2 font-medium">Selection State:</h4>
-          <pre className="overflow-auto text-xs">
-            {JSON.stringify(rowSelection, null, 2)}
-          </pre>
-          <p className="mt-2 text-sm">
-            Selected {Object.keys(rowSelection).length} of {data.length} rows
-          </p>
-        </div>
+      <div className="text-sm text-muted-foreground">
+        Selected {Object.keys(rowSelection).length} of {rows.length} rows
       </div>
     </div>
   );
 };
 
-export const DataTableWithRadioSelectionExample = () => {
+/**
+ * Single-row selection via `createRadioSelectionColumn` combined with
+ * `enableMultiRowSelection={false}`: picking a row replaces the previous
+ * choice, radio-button style.
+ * @summary Radio single-row selection.
+ */
+export const RadioSelection = () => {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [data] = useState<Data[]>(() => createData(0, 10));
+  const [rows] = useState<Data[]>(() => createData(0, 10));
   const [filter, setFilter] = useState("");
 
   const columnsWithRadioSelection: ColumnDef<Data>[] = useMemo(
@@ -873,41 +754,28 @@ export const DataTableWithRadioSelectionExample = () => {
   );
 
   return (
-    <div className="flex w-full max-w-4xl flex-col gap-6">
-      <h3 className="text-lg font-medium">
-        DataTable with Radio Selection (Single Row)
-      </h3>
+    <div className="flex w-full max-w-4xl flex-col gap-4">
+      <Input
+        name="filter"
+        placeholder="Filter"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
 
-      <div className="flex flex-col gap-4">
-        <Input
-          name="filter"
-          placeholder="Filter"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
+      <DataTable
+        data={rows}
+        filter={filter}
+        filterColumn="name"
+        columns={columnsWithRadioSelection}
+        rowSelection={rowSelection}
+        setRowSelection={setRowSelection}
+        enableRowSelection={true}
+        enableMultiRowSelection={false}
+        getRowId={(row) => row.name}
+      />
 
-        <DataTable
-          data={data}
-          filter={filter}
-          filterColumn="name"
-          columns={columnsWithRadioSelection}
-          rowSelection={rowSelection}
-          setRowSelection={setRowSelection}
-          enableRowSelection={true}
-          enableMultiRowSelection={false}
-          getRowId={(row) => row.name}
-        />
-
-        <div className="rounded-md border bg-muted/50 p-2">
-          <h4 className="mb-2 font-medium">Radio Selection State:</h4>
-          <pre className="overflow-auto text-xs">
-            {JSON.stringify(rowSelection, null, 2)}
-          </pre>
-          <p className="mt-2 text-sm">
-            {selectedRowId ? `Selected: ${selectedRowId}` : "No row selected"}{" "}
-            (only one row can be selected at a time)
-          </p>
-        </div>
+      <div className="text-sm text-muted-foreground">
+        {selectedRowId ? `Selected: ${selectedRowId}` : "No row selected"}
       </div>
     </div>
   );
@@ -992,33 +860,30 @@ const avatarStackColumns: ColumnDef<Data>[] = [
   },
 ];
 
-export const DataTableWithAvatarStackExample = () => {
+/**
+ * Cells rendering a stacked group of member avatars via
+ * **DataTable.CellContent**'s `avatarStack` prop — up to `nbVisibleItems`
+ * avatars are shown, with a count indicator for the rest.
+ * @summary Cells with stacked member avatars.
+ */
+export const WithAvatarStack = () => {
   const [filter, setFilter] = React.useState<string>("");
 
   return (
-    <div className="flex w-full max-w-4xl flex-col gap-6">
-      <h3 className="text-lg font-medium">DataTable with Avatar Stack</h3>
-      <p className="text-sm text-muted-foreground">
-        This example demonstrates the DataTable with avatar stacks showing team
-        members. The avatar stack displays up to 4 visible avatars with a count
-        indicator for additional members.
-      </p>
+    <div className="flex w-full max-w-4xl flex-col gap-4">
+      <Input
+        name="filter"
+        placeholder="Filter teams..."
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
 
-      <div className="flex flex-col gap-4">
-        <Input
-          name="filter"
-          placeholder="Filter teams..."
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
-
-        <DataTable
-          data={avatarStackData}
-          filter={filter}
-          filterColumn="name"
-          columns={avatarStackColumns}
-        />
-      </div>
+      <DataTable
+        data={avatarStackData}
+        filter={filter}
+        filterColumn="name"
+        columns={avatarStackColumns}
+      />
     </div>
   );
 };

@@ -22,22 +22,42 @@ export type VoicePickerStatus =
 type VoicePickerInteractionMode = "hold" | "click";
 
 export interface VoicePickerProps {
+  /** Current lifecycle state, owned by the caller: "idle" | "authorizing_microphone" | "recording" | "transcribing". */
   status: VoicePickerStatus;
+  /** Live audio input level (0-1) driving the waveform display while recording. */
   level: number;
+  /** Elapsed recording time, displayed as m:ss while recording. */
   elapsedSeconds: number;
+  /** Called when a recording should start (press-and-hold begins, or a click while idle). */
   onRecordStart: () => void | Promise<void>;
+  /** Called when the recording should stop (release, stop click, or pointer leaving in hold mode). */
   onRecordStop: () => void | Promise<void>;
+  /** Button size: "xs" | "sm" | "md" (defaults to "xs"). */
   size?: Exclude<RegularButtonSize, "xmini" | "mini">;
   disabled?: boolean;
+  /** Shows a "Stop" label on the button while recording in click-to-toggle mode. */
   showStopLabel?: boolean;
+  /** Tightens the horizontal padding around the timer and waveform. */
   compact?: boolean;
+  /** How long a press must be held (ms) before it counts as hold-to-record rather than a click toggle (defaults to 150). */
   pressDelayMs?: number;
+  /** Extra props forwarded to the underlying Button. */
   buttonProps?: Omit<
     ButtonProps,
     "icon" | "label" | "variant" | "isLoading" | "disabled" | "size"
   >;
 }
 
+/**
+ * A push-to-talk button for capturing voice and transcribing it to text. It is a
+ * controlled component: own the recording lifecycle yourself, keeping `status`, `level`,
+ * and `elapsedSeconds` in state and updating them from your capture logic, with
+ * `onRecordStart` / `onRecordStop` fired by both hold-to-record and click-to-toggle
+ * interactions. Use it to let users dictate input by voice, such as recording a message
+ * before sending.
+ *
+ * @summary Push-to-talk voice recording button.
+ */
 export function VoicePicker({
   status,
   level,

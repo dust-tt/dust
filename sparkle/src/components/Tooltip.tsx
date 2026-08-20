@@ -16,7 +16,9 @@ const TooltipTrigger = TooltipPrimitive.Trigger;
 
 interface TooltipContentProps
   extends React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content> {
+  /** Renders the content in a portal (defaults to true); disable to keep it in the DOM flow. */
   mountPortal?: boolean;
+  /** Element to portal into, overriding the enclosing sheet container detection. */
   mountPortalContainer?: HTMLElement;
 }
 
@@ -66,15 +68,29 @@ const TooltipContent = React.forwardRef<
 );
 
 interface TooltipProps extends TooltipContentProps {
+  /** Element the tooltip is attached to; hovering or focusing it opens the tooltip. */
   trigger: React.ReactNode;
+  /** Passes `asChild` to the Radix trigger so the trigger element itself receives the props. */
   tooltipTriggerAsChild?: boolean;
+  /** Tooltip content; keep it to a few words. */
   label: React.ReactNode;
+  /** Optional keyboard shortcut rendered after the label. */
   shortcut?: KeyboardShortcutProps["shortcut"];
   // Delay (ms) before the tooltip opens on hover. Radix defaults to 700ms,
   // which feels sluggish; 300ms is responsive without triggering accidentally.
   delayDuration?: number;
 }
 
+/**
+ * Displays a brief, contextual label when the user hovers or focuses a trigger — ideal
+ * for clarifying icon-only controls or surfacing a keyboard shortcut. Use this simple
+ * form (a `trigger` plus a `label`, with an optional `shortcut`) for most cases; compose
+ * `TooltipProvider` / `TooltipRoot` / `TooltipTrigger` / `TooltipContent` for full
+ * control over placement and timing. Never place essential information or interactive
+ * elements only inside a tooltip — it is not reachable on touch and disappears on blur.
+ *
+ * @summary Hover/focus label for a trigger.
+ */
 const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(
   (
     {

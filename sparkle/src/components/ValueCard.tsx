@@ -81,12 +81,24 @@ const Footer = ({ className, children }: CardFooterProps) => (
 interface CardProps {
   title: string;
   subtitle?: string;
+  /** Slot for the figure (number, icon, trend); keep it to a single primary value. */
   content: React.ReactNode;
+  /** Optional row rendered below the content, e.g. a trend or link. */
   footer?: React.ReactNode;
+  /** Replaces the content with a small spinner while the value loads. */
   isLoading?: boolean;
   className?: string;
 }
 
+/**
+ * A compact metric card surfacing a single value with a `title`, optional `subtitle`,
+ * and a `content` slot for the figure (number, icon, trend), plus an `isLoading` state.
+ * Use it on dashboards and overviews to highlight a key metric or KPI; for a
+ * non-standard arrangement of the parts, compose them directly with `ComposableCard`
+ * (Root, Header, Title, Subtitle, Content, Footer).
+ *
+ * @summary Compact single-metric card.
+ */
 export const ValueCard = ({
   title,
   subtitle,

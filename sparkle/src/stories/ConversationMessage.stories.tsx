@@ -1,4 +1,5 @@
 import type { Meta } from "@storybook/react";
+import { fn } from "storybook/test";
 import React from "react";
 
 import {
@@ -25,7 +26,7 @@ import {
 
 const meta = {
   title: "Product/Conversation/ConversationMessage",
-  tags: ["a11y-issues"],
+  tags: ["deprecated", "!manifest", "a11y-issues"],
   parameters: {
     docs: {
       description: {
@@ -307,16 +308,12 @@ export const ConversationWithActions = () => {
             {
               icon: Edit04,
               label: "Edit",
-              onClick: () => {
-                console.log("Edit clicked");
-              },
+              onClick: fn(),
             },
             {
               icon: Trash01,
               label: "Delete",
-              onClick: () => {
-                console.log("Delete clicked");
-              },
+              onClick: fn(),
             },
           ]}
         >

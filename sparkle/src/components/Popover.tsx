@@ -11,12 +11,22 @@ const PopoverAnchor = PopoverPrimitive.Anchor;
 
 export interface PopoverContentProps
   extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
+  /** Let the content grow with its container instead of the default fixed width and padding. */
   fullWidth?: boolean;
+  /** Render the content through a portal (default true); disable to keep it in place in the DOM. */
   mountPortal?: boolean;
+  /** Element the portal mounts into; defaults to the enclosing sheet container when present. */
   mountPortalContainer?: HTMLElement;
+  /** Skip returning focus to the trigger when the popover closes (default true). */
   preventAutoFocusOnClose?: boolean;
 }
 
+/**
+ * The floating panel of a popover, styled and animated, rendered through a
+ * portal by default. Use it with PopoverRoot / PopoverTrigger when you need
+ * full control over the popover's structure.
+ * @summary Floating panel of a popover.
+ */
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   PopoverContentProps
@@ -81,11 +91,22 @@ const PopoverContent = React.forwardRef<
 );
 
 interface PopoverProps extends Omit<PopoverContentProps, "content"> {
+  /** Element that opens the popover. */
   trigger: React.ReactNode;
+  /** Render the trigger via Radix `asChild` so the trigger element itself receives the props. */
   popoverTriggerAsChild?: boolean;
+  /** Content displayed inside the popover panel. */
   content: React.ReactNode;
 }
 
+/**
+ * Floating content revealed from a trigger, built on Radix Popover. This
+ * all-in-one API takes `trigger` and `content`; drop to PopoverRoot /
+ * PopoverTrigger / PopoverContent for full control over the structure. To
+ * anchor to an element other than the trigger use AnchoredPopover; for a menu
+ * of actions use Dropdown.
+ * @summary Trigger-anchored floating content.
+ */
 function Popover({
   trigger,
   popoverTriggerAsChild = false,
@@ -103,11 +124,20 @@ function Popover({
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
 interface AnchoredPopoverProps extends PopoverContentProps {
+  /** Whether the popover is shown; the caller owns this state. */
   open: boolean;
+  /** Element to anchor to; the popover tracks its position on scroll and resize. Centers in the viewport when omitted. */
   anchorRef?: React.RefObject<HTMLElement>;
   children: React.ReactNode;
 }
 
+/**
+ * A popover positioned against an arbitrary anchor element instead of a
+ * trigger, tracking the anchor through scrolling and resizing. Use it when
+ * the popover must open next to an element that is not its trigger; for the
+ * common trigger-anchored case, use Popover.
+ * @summary Popover anchored to an arbitrary element.
+ */
 function AnchoredPopover({
   open,
   anchorRef,

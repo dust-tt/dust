@@ -3,6 +3,13 @@ import { useEffect, useRef, useState } from "react";
 
 export type StreamingState = "streaming" | "none" | "cancelled";
 
+/**
+ * Provides a progressively revealed version of `text` while `streamingState`
+ * is "streaming", animating a cursor over `delimiter`-separated parts for a
+ * smooth reveal; returns the full text once streaming ends or is cancelled.
+ * Used by Markdown when `enableAnimation` is set.
+ * @summary Hook animating streamed text reveal.
+ */
 export function useAnimatedText(
   text: string,
   streamingState: StreamingState,

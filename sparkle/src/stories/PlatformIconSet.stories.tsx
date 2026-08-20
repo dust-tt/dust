@@ -5,6 +5,7 @@ import { PLATFORM_LOGOS } from "../logo/platforms";
 
 export default {
   title: "Assets/Platform Logos",
+  tags: ["!manifest"],
   parameters: {
     docs: {
       description: {

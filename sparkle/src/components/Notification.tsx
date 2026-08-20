@@ -17,6 +17,7 @@ import { Icon } from "./Icon";
 const NOTIFICATION_DELAY_MS = 5000;
 
 export type NotificationType = {
+  /** Optional action button shown under the message; clicking it also dismisses the toast. */
   action?: {
     href?: string;
     label: string;
@@ -24,6 +25,7 @@ export type NotificationType = {
   };
   title?: string;
   description?: string;
+  /** Outcome variant driving the icon and its color. */
   type: "success" | "error" | "info" | "warning" | "hello";
 };
 
@@ -65,6 +67,13 @@ function resolveIconColor(type: NotificationType["type"]): string {
   }
 }
 
+/**
+ * The presentational card of a toast notification: icon, title, description,
+ * optional action button, and optional dismiss control. Use it directly for
+ * inline previews; in product code dispatch toasts with useSendNotification
+ * instead.
+ * @summary Presentational notification card.
+ */
 export function NotificationContent({
   type,
   title,
@@ -139,6 +148,14 @@ export function NotificationContent({
   );
 }
 
+/**
+ * A transient toast system that confirms the outcome of an action. Mount a
+ * single Notification.Area near the app root, then dispatch toasts
+ * imperatively with the useSendNotification hook. Use it for brief,
+ * self-dismissing feedback after an action completes; for persistent, inline
+ * status attached to a region, use ContentMessage instead.
+ * @summary Toast notifications dispatched via hook.
+ */
 export const Notification = {
   Area: ({ children }: { children: React.ReactNode }) => {
     const sendNotification = React.useCallback(
@@ -182,4 +199,9 @@ export const Notification = {
   },
 };
 
+/**
+ * Returns the function that dispatches a toast notification, provided by the
+ * nearest Notification.Area.
+ * @summary Hook to dispatch toast notifications.
+ */
 export const useSendNotification = () => React.useContext(NotificationsContext);

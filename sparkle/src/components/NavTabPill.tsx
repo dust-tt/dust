@@ -13,6 +13,14 @@ import {
 import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 
+/**
+ * A pill-styled tab navigation root (controlled via `value`/`defaultValue`),
+ * composed with NavTabPillList, NavTabPillTrigger, and NavTabPillContent.
+ * Use it for primary navigation between top-level sections in compact,
+ * sidebar-style layouts; for standard underlined tabs within a content area,
+ * use Tabs instead.
+ * @summary Pill-styled tab navigation root.
+ */
 const NavTabPill = TabsPrimitive.Root;
 
 const NavTabPillList = React.forwardRef<
@@ -30,6 +38,7 @@ NavTabPillList.displayName = TabsPrimitive.List.displayName;
 interface NavTabPillTriggerProps
   extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>,
     Omit<LinkWrapperProps, "children" | "className"> {
+  /** Icon shown in the pill; the label (children) expands only on the active pill and becomes a tooltip on inactive ones. */
   icon: React.ComponentType<{ className?: string }>;
 }
 

@@ -1,4 +1,4 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React, { useRef } from "react";
 
 import { ConfettiBackground } from "@sparkle/index";
@@ -21,23 +21,45 @@ const meta = {
       },
     },
   },
+  argTypes: {
+    variant: {
+      description: "Particle style of the backdrop",
+      options: ["confetti", "snow"],
+      control: { type: "select" },
+    },
+    width: { control: false },
+    height: { control: false },
+    referentSize: { control: false },
+  },
+  // The component sizes itself from a ref to its container, so the story
+  // render owns that container and wires the ref.
+  render: function Render(args) {
+    const referentRef = useRef<HTMLDivElement>(null);
+    return (
+      <div className="h-[100vh] w-full" ref={referentRef}>
+        <ConfettiBackground {...args} referentSize={referentRef} />
+      </div>
+    );
+  },
 } satisfies Meta<typeof ConfettiBackground>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const ConfettiExample = () => {
-  const referentRef = useRef<HTMLDivElement>(null);
-  return (
-    <div className="h-[100vh] w-full" ref={referentRef}>
-      <ConfettiBackground variant="confetti" referentSize={referentRef} />
-    </div>
-  );
+/**
+ * The festive multicolor variant, for celebrating a success moment such as
+ * completed onboarding or a plan upgrade.
+ * @summary Multicolor confetti backdrop.
+ */
+export const Confetti: Story = {
+  args: { variant: "confetti" },
 };
-export const SnowExample = () => {
-  const referentRef = useRef<HTMLDivElement>(null);
-  return (
-    <div className="h-[100vh] w-full" ref={referentRef}>
-      <ConfettiBackground variant="snow" referentSize={referentRef} />
-    </div>
-  );
+
+/**
+ * The calm variant with white-blue drifting flakes, for seasonal or
+ * decorative ambiance rather than celebration.
+ * @summary Drifting snow backdrop.
+ */
+export const Snow: Story = {
+  args: { variant: "snow" },
 };

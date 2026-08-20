@@ -7,7 +7,7 @@ import { Icon } from "../index_with_tw_base";
 
 const meta = {
   title: "Assets/Icons/All Icons",
-  tags: ["autodocs"],
+  tags: ["!manifest", "autodocs"],
   parameters: {
     docs: {
       description: {

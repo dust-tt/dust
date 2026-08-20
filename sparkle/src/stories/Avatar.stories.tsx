@@ -2,22 +2,10 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import { AVATAR_SIZES } from "@sparkle/components/Avatar";
-import {
-  ActionBeerIcon,
-  ActionFlagIcon,
-  ActionShirtIcon,
-  ActionUmbrellaIcon,
-} from "@sparkle/icons/actions";
-import SvgHome from "@sparkle/icons/actions/Home";
+import { ActionBeerIcon } from "@sparkle/icons/actions";
+import { Star01 } from "@sparkle/icons/v2-stroke";
 
-import {
-  Avatar,
-  DriveLogo,
-  NotionLogo,
-  SlackLogo,
-} from "../index_with_tw_base";
-import { Image01, Sidekick } from "@sparkle/icons/v2-stroke";
-import { Scan, SearchMd, Star01, Table } from "@sparkle/icons/v2-stroke";
+import { Avatar } from "../index_with_tw_base";
 
 const ICONS = {
   none: null,
@@ -28,7 +16,7 @@ const ICONS = {
 const meta = {
   title: "Data Display/Avatar",
   component: Avatar,
-  tags: ["a11y-issues", "autodocs"],
+  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {
@@ -99,6 +87,53 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+// ---------------------------------------------------------------------------
+// Shared fixtures
+// ---------------------------------------------------------------------------
+
+const DROID_AVATARS = [
+  {
+    name: "Isabelle Doe",
+    visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+  },
+  {
+    name: "Rafael Doe",
+    visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+  },
+  {
+    name: "Aria Doe",
+    visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+  },
+  {
+    name: "Omar Doe",
+    visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+  },
+] as const;
+
+const NAME_ONLY_AVATARS = [
+  { name: "Eleanor Wright" },
+  { name: "Mason Johnson" },
+  { name: "Oliver Bennett" },
+  { name: "Sophia Garcia" },
+  { name: "Lucas Adams" },
+  { name: "Ava Torres" },
+  { name: "Liam White" },
+  { name: "Emma Jenkins" },
+  { name: "Noah Martinez" },
+] as const;
+
+// Every fixed size (excludes the container-driven "auto" size).
+const FIXED_SIZES = AVATAR_SIZES.filter((size) => size !== "auto");
+
+// ---------------------------------------------------------------------------
+// Stories
+// ---------------------------------------------------------------------------
+
+/**
+ * Interactive single avatar — tweak any prop from the Controls panel.
+ *
+ * @summary Interactive playground.
+ */
 export const Playground: Story = {
   args: {
     size: "md",
@@ -110,879 +145,233 @@ export const Playground: Story = {
   },
 };
 
-const gridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fill, minmax(60px, 1fr))",
-  gap: "48px 16px",
-};
-
-export const AvatarExample: Story = {
-  render: () => (
-    <div className="flex flex-col gap-4 text-foreground">
-      <div>With nothing</div>
-      <div className="flex gap-4">
-        <Avatar size="xs" />
-        <Avatar size="sm" />
-        <Avatar size="md" />
-        <Avatar size="lg" />
-        <Avatar size="xl" />
-        <Avatar size="2xl" />
-      </div>
-      <div>With name</div>
-      <div className="flex gap-4">
-        <Avatar size="xs" name="Isabelle Doe" />
-        <Avatar size="sm" name="Rafael Doe" />
-        <Avatar size="md" name="Aria Doe" />
-        <Avatar size="lg" name="Omar Doe" />
-        <Avatar size="xl" name="Omar Doe" />
-        <Avatar size="2xl" name="Omar Doe" />
-      </div>
-      <div>With emoji url</div>
-      <div className="flex gap-4">
-        <Avatar
-          size="xs"
-          visual="https://dust.tt/static/emojis/bg-cyan-100/lotus/1fab7"
-        />
-      </div>
-      <div>With emoji</div>
-      <div className="flex gap-4">
-        <Avatar size="xs" emoji="❤️" backgroundColor="bg-red-100" />
-        <Avatar size="sm" emoji="💀" backgroundColor="bg-gray-800" />
-        <Avatar size="md" emoji="😂" backgroundColor="bg-info-200" />
-        <Avatar size="lg" emoji="🧑‍🚀" backgroundColor="bg-gray-200" />
-        <Avatar size="xl" emoji="👕" backgroundColor="bg-blue-200" />
-        <Avatar size="2xl" emoji="👕" backgroundColor="bg-blue-200" />
-      </div>
-      <div className="flex gap-4">
-        <Avatar size="sm" name="Eleanor Wright" />
-        <Avatar size="sm" name="Mason Johnson" />
-        <Avatar size="sm" name="Oliver Bennett" />
-        <Avatar size="sm" name="Sophia Garcia" />
-        <Avatar size="sm" name="Lucas Adams" />
-        <Avatar size="sm" name="Ava Torres" />
-        <Avatar size="sm" name="Liam White" />
-        <Avatar size="sm" name="Emma Jenkins" />
-        <Avatar size="sm" name="Noah Martinez" />
-        <Avatar size="sm" name="Isabella Thompson" />
-        <Avatar size="sm" name="Ethan Roberts" />
-        <Avatar size="sm" name="Charlotte Turner" />
-        <Avatar size="sm" name="Benjamin Foster" />
-        <Avatar size="sm" name="Mia Evans" />
-        <Avatar size="sm" name="Alexander Perry" />
-        <Avatar size="sm" name="Harper Sanchez" />
-        <Avatar size="sm" name="William Murphy" />
-        <Avatar size="sm" name="Lily Phillips" />
-        <Avatar size="sm" name="James Coleman" />
-        <Avatar size="sm" name="Aria Mitchell" />
-      </div>
-      <div>With image</div>
-      <div className="flex gap-4">
-        <Avatar
-          size="xs"
-          name="Isabelle Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
-        />
-        <Avatar
-          size="sm"
-          name="Rafael Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
-        />
-        <Avatar
-          size="md"
-          name="Aria Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
-        />
-        <Avatar
-          size="lg"
-          name="Omar Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
-        />
-      </div>
-      <div>Visual as empty string should be treated as null</div>
-      <div className="flex gap-4">
-        <Avatar size="xs" name="Soupinou Meow" visual={""} />
-      </div>
-      <div>With icon</div>
-      <div className="flex gap-4">
-        <Avatar size="xs" icon={SvgHome} />
-        <Avatar size="xs" icon={DriveLogo} />
-        <Avatar size="sm" icon={ActionBeerIcon} />
-        <Avatar size="sm" icon={NotionLogo} backgroundColor="bg-blue-50" />
-        <Avatar size="md" icon={ActionUmbrellaIcon} />
-        <Avatar size="lg" icon={ActionFlagIcon} />
-        <Avatar size="lg" icon={SlackLogo} hexBgColor="#421D51" />
-        <Avatar size="xl" icon={ActionShirtIcon} />
-        <Avatar size="2xl" icon={Star01} />
-      </div>
-      <div className="heading-2xl">Tools example</div>
-      <div>Remote MCP Servers</div>
-      <div className="flex gap-4">
-        <Avatar size="md" icon={SvgHome} />
-        <Avatar size="md" icon={ActionBeerIcon} />
-        <Avatar size="md" icon={ActionUmbrellaIcon} />
-        <Avatar size="md" icon={ActionFlagIcon} />
-        <Avatar size="md" icon={ActionShirtIcon} />
-        <Avatar size="md" icon={Star01} />
-      </div>
-      <div>Internal Tools Servers</div>
-      <div className="flex gap-4">
-        <Avatar
-          size="md"
-          icon={Table}
-          backgroundColor="bg-gray-700"
-          iconColor="text-gray-50"
-        />
-        <Avatar
-          size="md"
-          icon={SearchMd}
-          backgroundColor="bg-gray-700"
-          iconColor="text-gray-50"
-        />
-        <Avatar
-          size="md"
-          icon={Image01}
-          backgroundColor="bg-gray-700"
-          iconColor="text-gray-50"
-        />
-        <Avatar
-          size="md"
-          icon={Scan}
-          backgroundColor="bg-gray-700"
-          iconColor="text-gray-50"
-        />
-      </div>
-      <div>Platforms integrations</div>
-      <div className="flex gap-4">
-        <Avatar
-          size="md"
-          icon={Sidekick}
-          backgroundColor="bg-warning-200"
-          iconColor="text-warning-800"
-        />
-        <Avatar size="md" icon={DriveLogo} backgroundColor="bg-gray-900" />
-        <Avatar size="md" icon={NotionLogo} backgroundColor="bg-white" />
-        <Avatar size="md" icon={SlackLogo} hexBgColor="#421D51" />
-      </div>
-    </div>
-  ),
-};
-
-export const AvatarStackExample: Story = {
-  render: () => (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-row gap-2">
-        <Avatar.Stack
-          size="xs"
-          nbVisibleItems={3}
-          avatars={[
-            {
-              name: "Isabelle Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-            },
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-            },
-            {
-              name: "Aria Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
-            },
-            {
-              name: "Omar Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
-            },
-          ]}
-        />
-
-        <Avatar.Stack
-          size="xs"
-          nbVisibleItems={6}
-          avatars={[
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-            },
-            { name: "Mason Johnson" },
-            {
-              name: "Omar Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
-            },
-            { name: "Eleanor Wright" },
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-            },
-            { name: "Mason Johnson" },
-            {
-              name: "Omar Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
-            },
-            { name: "Eleanor Wright" },
-          ]}
-        />
-
-        <Avatar.Stack
-          size="xs"
-          nbVisibleItems={3}
-          avatars={[
-            {
-              name: "Isabelle Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-            },
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-            },
-            {
-              name: "Aria Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
-            },
-            { name: "Omar Doe" },
-            { name: "Priya Doe" },
-            { name: "Leo Doe" },
-            { name: "Mia Doe" },
-            { name: "Kai Doe" },
-            { name: "Zara Doe" },
-            { name: "Finn Doe" },
-            { name: "Nova Doe" },
-            { name: "Quinn Doe" },
-            { name: "River Doe" },
-          ]}
-        />
-
-        <Avatar.Stack
-          size="xs"
-          nbVisibleItems={1}
-          avatars={[
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-            },
-          ]}
-        />
-      </div>
-
-      <div className="flex flex-row gap-2">
-        <Avatar.Stack
-          size="sm"
-          nbVisibleItems={4}
-          avatars={[
-            {
-              name: "Isabelle Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-            },
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-            },
-            {
-              name: "Aria Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
-            },
-            {
-              name: "Omar Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
-            },
-          ]}
-        />
-
-        <Avatar.Stack
-          size="sm"
-          nbVisibleItems={3}
-          avatars={[
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-            },
-            { name: "Mason Johnson" },
-            {
-              name: "Omar Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
-            },
-            { name: "Eleanor Wright" },
-          ]}
-        />
-
-        <Avatar.Stack
-          size="sm"
-          nbVisibleItems={3}
-          avatars={[
-            {
-              name: "Isabelle Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-            },
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-            },
-            {
-              name: "Aria Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
-            },
-            { name: "Omar Doe" },
-            { name: "Priya Doe" },
-            { name: "Leo Doe" },
-            { name: "Mia Doe" },
-            { name: "Kai Doe" },
-            { name: "Zara Doe" },
-            { name: "Finn Doe" },
-            { name: "Nova Doe" },
-            { name: "Quinn Doe" },
-            { name: "River Doe" },
-          ]}
-        />
-
-        <Avatar.Stack
-          nbVisibleItems={1}
-          avatars={[
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-            },
-          ]}
-        />
-      </div>
-
-      <div className="flex flex-row gap-4">
-        <Avatar.Stack
-          nbVisibleItems={4}
-          size="md"
-          avatars={[
-            {
-              name: "Isabelle Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-            },
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-            },
-            {
-              name: "Aria Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
-            },
-            {
-              name: "Omar Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
-            },
-          ]}
-        />
-        <Avatar.Stack
-          size="md"
-          nbVisibleItems={3}
-          avatars={[
-            {
-              name: "Isabelle Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-            },
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-            },
-            {
-              name: "Aria Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
-            },
-            {
-              name: "Omar Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
-            },
-          ]}
-        />
-        <Avatar.Stack
-          size="md"
-          nbVisibleItems={3}
-          avatars={[
-            {
-              name: "Isabelle Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-            },
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-            },
-            {
-              name: "Aria Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
-            },
-            { name: "Omar Doe" },
-            { name: "Priya Doe" },
-            { name: "Leo Doe" },
-            { name: "Mia Doe" },
-            { name: "Kai Doe" },
-            { name: "Zara Doe" },
-            { name: "Finn Doe" },
-            { name: "Nova Doe" },
-            { name: "Quinn Doe" },
-            { name: "River Doe" },
-          ]}
-        />
-        <Avatar.Stack
-          size="md"
-          avatars={[
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-            },
-          ]}
-        />
-      </div>
-
-      <div className="mt-8 text-lg font-semibold">Vertical Orientation</div>
-      <div className="flex flex-row items-start gap-4">
-        <Avatar.Stack
-          size="xs"
-          nbVisibleItems={3}
-          orientation="vertical"
-          avatars={[
-            {
-              name: "Isabelle Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-              isRounded: true,
-            },
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-              isRounded: true,
-            },
-            {
-              name: "Aria Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
-            },
-            {
-              name: "Omar Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
-            },
-          ]}
-        />
-
-        <Avatar.Stack
-          size="sm"
-          nbVisibleItems={4}
-          orientation="vertical"
-          avatars={[
-            {
-              name: "Isabelle Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-            },
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-              isRounded: true,
-            },
-            {
-              name: "Aria Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
-            },
-            {
-              name: "Omar Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
-              isRounded: true,
-            },
-          ]}
-        />
-
-        <Avatar.Stack
-          nbVisibleItems={3}
-          size="md"
-          orientation="vertical"
-          avatars={[
-            {
-              name: "Isabelle Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-              isRounded: true,
-            },
-            {
-              name: "Rafael Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-            },
-            {
-              name: "Aria Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
-            },
-            {
-              name: "Omar Doe",
-              visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
-              isRounded: true,
-            },
-          ]}
-        />
-      </div>
-
-      <div className="mt-8 text-lg font-semibold">onTop Prop Examples</div>
-      <div className="flex flex-col gap-4">
-        <div>
-          <div className="mb-2 text-sm font-medium">
-            Horizontal: onTop="last" (default) vs onTop="first"
-          </div>
-          <div className="flex flex-row items-center gap-4">
-            <div className="flex flex-col gap-2">
-              <div className="text-xs text-muted-foreground">
-                onTop="last" (default)
-              </div>
-              <Avatar.Stack
-                size="sm"
-                nbVisibleItems={4}
-                onTop="last"
-                avatars={[
-                  {
-                    name: "Isabelle Doe",
-                    visual:
-                      "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-                  },
-                  {
-                    name: "Rafael Doe",
-                    visual:
-                      "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-                  },
-                  {
-                    name: "Aria Doe",
-                    visual:
-                      "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
-                  },
-                  {
-                    name: "Omar Doe",
-                    visual:
-                      "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
-                  },
-                ]}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <div className="text-xs text-muted-foreground">onTop="first"</div>
-              <div>
-                <Avatar.Stack
-                  size="sm"
-                  nbVisibleItems={4}
-                  onTop="first"
-                  avatars={[
-                    {
-                      name: "Isabelle Doe",
-                      visual:
-                        "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-                    },
-                    {
-                      name: "Rafael Doe",
-                      visual:
-                        "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-                    },
-                    {
-                      name: "Aria Doe",
-                      visual:
-                        "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
-                    },
-                    {
-                      name: "Omar Doe",
-                      visual:
-                        "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
-                    },
-                  ]}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div className="mb-2 text-sm font-medium">
-            Vertical: onTop="last" (default) vs onTop="first"
-          </div>
-          <div className="flex flex-row items-start gap-4">
-            <div className="flex flex-col gap-2">
-              <div className="text-xs text-muted-foreground">
-                onTop="last" (default)
-              </div>
-              <div>
-                <Avatar.Stack
-                  size="sm"
-                  nbVisibleItems={4}
-                  orientation="vertical"
-                  onTop="last"
-                  avatars={[
-                    {
-                      name: "Isabelle Doe",
-                      visual:
-                        "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-                      isRounded: true,
-                    },
-                    {
-                      name: "Rafael Doe",
-                      visual:
-                        "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-                      isRounded: true,
-                    },
-                    {
-                      name: "Aria Doe",
-                      visual:
-                        "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
-                      isRounded: true,
-                    },
-                    {
-                      name: "Omar Doe",
-                      visual:
-                        "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
-                      isRounded: true,
-                    },
-                  ]}
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <div className="text-xs text-muted-foreground">onTop="first"</div>
-              <div>
-                <Avatar.Stack
-                  size="sm"
-                  nbVisibleItems={4}
-                  orientation="vertical"
-                  onTop="first"
-                  avatars={[
-                    {
-                      name: "Isabelle Doe",
-                      visual:
-                        "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-                      isRounded: true,
-                    },
-                    {
-                      name: "Rafael Doe",
-                      visual:
-                        "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
-                      isRounded: true,
-                    },
-                    {
-                      name: "Aria Doe",
-                      visual:
-                        "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
-                      isRounded: true,
-                    },
-                    {
-                      name: "Omar Doe",
-                      visual:
-                        "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
-                      isRounded: true,
-                    },
-                  ]}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  ),
-};
-
-export const AvatarGridExample: Story = {
-  render: () => (
-    <div style={gridStyle}>
-      <Avatar size="auto" />
-      <Avatar size="auto" />
-      <Avatar size="auto" />
-      <Avatar size="auto" />
-      <Avatar size="auto" />
-      <Avatar size="auto" name="Isabelle Doe" />
-      <Avatar size="auto" name="Rafael Doe" />
-      <Avatar size="auto" name="Aria Doe" />
-      <Avatar size="auto" name="Omar Doe" />
-      <Avatar size="auto" name="Omar Doe" />
-      <Avatar size="auto" name="Eleanor Wright" />
-      <Avatar size="auto" name="Mason Johnson" />
-      <Avatar size="auto" name="Oliver Bennett" />
-      <Avatar size="auto" name="Sophia Garcia" />
-      <Avatar size="auto" name="Lucas Adams" />
-      <Avatar size="auto" name="Ava Torres" />
-      <Avatar size="auto" name="Liam White" />
-      <Avatar size="auto" name="Emma Jenkins" />
-      <Avatar size="auto" name="Noah Martinez" />
-      <Avatar size="auto" name="Isabella Thompson" />
-      <Avatar size="auto" name="Ethan Roberts" />
-      <Avatar size="auto" name="Charlotte Turner" />
-      <Avatar size="auto" name="Benjamin Foster" />
-      <Avatar size="auto" name="Mia Evans" />
-      <Avatar size="auto" name="Alexander Perry" />
-      <Avatar size="auto" name="Harper Sanchez" />
-      <Avatar size="auto" name="William Murphy" />
-      <Avatar size="auto" name="Lily Phillips" />
-      <Avatar size="auto" name="James Coleman" />
-      <Avatar size="auto" name="Aria Mitchell" />
-      <Avatar
-        size="auto"
-        name="Isabelle Doe"
-        visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
-      />
-      <Avatar
-        size="auto"
-        name="Rafael Doe"
-        visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
-      />
-      <Avatar
-        size="auto"
-        name="Aria Doe"
-        visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
-      />
-      <Avatar
-        size="auto"
-        name="Omar Doe"
-        visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-      />
-    </div>
-  ),
-};
-
-export const AvatarBusyExample: Story = {
-  render: () => (
-    <div className="flex flex-col gap-4">
-      <div>With nothing</div>
-      <div className="flex gap-4">
-        <Avatar busy size="xs" />
-        <Avatar busy size="sm" />
-        <Avatar busy size="md" />
-        <Avatar busy size="lg" />
-        <Avatar busy size="xl" />
-      </div>
-      <div>With name</div>
-      <div className="flex gap-4">
-        <Avatar busy size="xs" name="Isabelle Doe" />
-        <Avatar busy size="sm" name="Rafael Doe" />
-        <Avatar busy size="md" name="Aria Doe" />
-        <Avatar busy size="lg" name="Omar Doe" />
-        <Avatar busy size="xl" name="Eleanor Doe" />
-      </div>
-      <div className="flex gap-4">
-        <Avatar busy size="sm" name="Eleanor Wright" />
-        <Avatar busy size="sm" name="Mason Johnson" />
-        <Avatar busy size="sm" name="Oliver Bennett" />
-        <Avatar busy size="sm" name="Sophia Garcia" />
-        <Avatar busy size="sm" name="Lucas Adams" />
-        <Avatar busy size="sm" name="Ava Torres" />
-        <Avatar busy size="sm" name="Liam White" />
-        <Avatar busy size="sm" name="Emma Jenkins" />
-        <Avatar busy size="sm" name="Noah Martinez" />
-        <Avatar busy size="sm" name="Isabella Thompson" />
-        <Avatar busy size="sm" name="Ethan Roberts" />
-        <Avatar busy size="sm" name="Charlotte Turner" />
-        <Avatar busy size="sm" name="Benjamin Foster" />
-        <Avatar busy size="sm" name="Mia Evans" />
-        <Avatar busy size="sm" name="Alexander Perry" />
-        <Avatar busy size="sm" name="Harper Sanchez" />
-        <Avatar busy size="sm" name="William Murphy" />
-        <Avatar busy size="sm" name="Lily Phillips" />
-        <Avatar busy size="sm" name="James Coleman" />
-        <Avatar busy size="sm" name="Aria Mitchell" />
-      </div>
-      <div>With image</div>
-      <div className="flex gap-4">
-        <Avatar
-          busy
-          size="xs"
-          name="Isabelle Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
-        />
-        <Avatar
-          busy
-          size="sm"
-          name="Rafael Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
-        />
-        <Avatar
-          busy
-          size="md"
-          name="Aria Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
-        />
-        <Avatar
-          busy
-          size="lg"
-          name="Omar Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-        />
-      </div>
-    </div>
-  ),
-};
-
-export const AvatarClickableExample: Story = {
-  render: () => (
-    <div className="flex flex-col gap-4">
-      <div>With nothing</div>
-      <div className="flex gap-4">
-        <Avatar size="xs" clickable />
-        <Avatar size="sm" clickable />
-        <Avatar size="md" clickable />
-        <Avatar size="lg" clickable />
-      </div>
-      <div>With name</div>
-      <div className="flex gap-4">
-        <Avatar size="xs" name="Isabelle Doe" clickable />
-        <Avatar size="sm" name="Rafael Doe" clickable />
-        <Avatar size="md" name="Aria Doe" clickable />
-        <Avatar size="lg" name="Omar Doe" clickable />
-      </div>
-      <div className="flex gap-4">
-        <Avatar size="sm" name="Eleanor Wright" clickable />
-        <Avatar size="sm" name="Mason Johnson" clickable />
-        <Avatar size="sm" name="Oliver Bennett" clickable />
-        <Avatar size="sm" name="Sophia Garcia" clickable />
-        <Avatar size="sm" name="Lucas Adams" clickable />
-        <Avatar size="sm" name="Ava Torres" clickable />
-        <Avatar size="sm" name="Liam White" clickable />
-        <Avatar size="sm" name="Emma Jenkins" clickable />
-        <Avatar size="sm" name="Noah Martinez" clickable />
-        <Avatar size="sm" name="Isabella Thompson" clickable />
-        <Avatar size="sm" name="Ethan Roberts" clickable />
-        <Avatar size="sm" name="Charlotte Turner" clickable />
-        <Avatar size="sm" name="Benjamin Foster" clickable />
-        <Avatar size="sm" name="Mia Evans" clickable />
-        <Avatar size="sm" name="Alexander Perry" clickable />
-        <Avatar size="sm" name="Harper Sanchez" clickable />
-        <Avatar size="sm" name="William Murphy" clickable />
-        <Avatar size="sm" name="Lily Phillips" clickable />
-        <Avatar size="sm" name="James Coleman" clickable />
-        <Avatar size="sm" name="Aria Mitchell" clickable />
-      </div>
-      <div>With image</div>
-      <div className="flex gap-4">
-        <Avatar
-          size="xs"
-          name="Isabelle Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
-          clickable
-        />
-        <Avatar
-          size="sm"
-          name="Rafael Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
-          clickable
-        />
-        <Avatar
-          size="md"
-          name="Aria Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
-          clickable
-        />
-        <Avatar
-          size="lg"
-          name="Omar Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-          clickable
-        />
-      </div>
-    </div>
-  ),
-};
-
-export const AvatarWithImage: Story = {
-  args: {
-    size: "md",
-    visual: "http://edouardwautier.com/img/me.jpg",
-  },
-};
-export const AvatarWithName: Story = {
+/**
+ * When only a `name` is provided the avatar falls back to the initial on a
+ * deterministic background color. Always pass a name so this fallback (and the
+ * accessible label) works when no image is available.
+ *
+ * @summary Initials fallback from the name.
+ */
+export const WithInitials: Story = {
   args: {
     name: "John Doe",
     size: "md",
   },
 };
-export const AvatarEmpty: Story = {
+
+/**
+ * An emoji avatar, paired with a Tailwind `backgroundColor` class. Used for
+ * user-picked identities like agents or channels.
+ *
+ * @summary Emoji visual with a custom background.
+ */
+export const WithEmoji: Story = {
+  args: {
+    emoji: "🧑‍🚀",
+    backgroundColor: "bg-gray-200",
+    size: "md",
+  },
+};
+
+/**
+ * An image avatar via the `visual` URL. Keep the `name` so initials render
+ * while the image loads or if it fails.
+ *
+ * @summary Image visual with a name fallback.
+ */
+export const WithImage: Story = {
+  args: {
+    size: "md",
+    name: "Aria Doe",
+    visual: "https://dust.tt/static/droidavatar/Droid_Lime_2.jpg",
+  },
+};
+
+/**
+ * An icon avatar, used to represent tools, integrations, or system entities
+ * rather than people. `backgroundColor` and `iconColor` tune the treatment.
+ *
+ * @summary Icon visual for non-person entities.
+ */
+export const WithIcon: Story = {
+  args: {
+    size: "md",
+    icon: ActionBeerIcon,
+    backgroundColor: "bg-gray-700",
+    iconColor: "text-gray-50",
+  },
+};
+
+/**
+ * With no name, image, emoji, or icon, the avatar renders an empty
+ * placeholder. An empty-string `visual` is treated the same as no visual.
+ *
+ * @summary Empty placeholder state.
+ */
+export const Empty: Story = {
   args: {
     size: "md",
   },
+};
+
+/**
+ * `busy` adds a breathing animation to signal that the entity (typically an
+ * agent) is currently working.
+ *
+ * @summary Breathing busy animation.
+ */
+export const Busy: Story = {
+  args: {
+    busy: true,
+    size: "md",
+    name: "Aria Doe",
+    visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+  },
+};
+
+/**
+ * `clickable` adds hover feedback for avatars that act as buttons or links
+ * (e.g. opening a member or agent profile).
+ *
+ * @summary Hover feedback for interactive avatars.
+ */
+export const Clickable: Story = {
+  args: {
+    clickable: true,
+    size: "md",
+    name: "Omar Doe",
+    visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+  },
+};
+
+/**
+ * Visual reference: every fixed size across the main content types (empty,
+ * initials, image). For design review — not a usage example.
+ *
+ * @summary Visual reference of all fixed sizes.
+ */
+export const SizesGallery: Story = {
+  tags: ["!manifest"],
+  render: () => (
+    <div className="flex flex-col gap-4 text-foreground">
+      <div>Empty</div>
+      <div className="flex items-end gap-4">
+        {FIXED_SIZES.map((size) => (
+          <Avatar key={size} size={size} />
+        ))}
+      </div>
+      <div>With name (initials)</div>
+      <div className="flex items-end gap-4">
+        {FIXED_SIZES.map((size) => (
+          <Avatar key={size} size={size} name="Isabelle Doe" />
+        ))}
+      </div>
+      <div>With image</div>
+      <div className="flex items-end gap-4">
+        {FIXED_SIZES.map((size) => (
+          <Avatar
+            key={size}
+            size={size}
+            name="Aria Doe"
+            visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
+          />
+        ))}
+      </div>
+    </div>
+  ),
+};
+
+/**
+ * Internal layout probe for `size="auto"`, where the avatar fills its grid
+ * cell instead of using a fixed size. For design review — not a usage example.
+ *
+ * @summary Visual reference for the auto size in a grid.
+ */
+export const AutoSizeGrid: Story = {
+  tags: ["!manifest"],
+  render: () => (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(60px, 1fr))",
+        gap: "48px 16px",
+      }}
+    >
+      <Avatar size="auto" />
+      <Avatar size="auto" />
+      {NAME_ONLY_AVATARS.map((avatar) => (
+        <Avatar key={avatar.name} size="auto" name={avatar.name} />
+      ))}
+      {DROID_AVATARS.map((avatar) => (
+        <Avatar
+          key={avatar.name}
+          size="auto"
+          name={avatar.name}
+          visual={avatar.visual}
+        />
+      ))}
+    </div>
+  ),
+};
+
+/**
+ * `Avatar.Stack` overlaps a group of avatars, for showing the participants of
+ * a conversation or space in a compact strip.
+ *
+ * @summary Basic overlapping avatar stack.
+ */
+export const StackDefault: Story = {
+  render: () => (
+    <Avatar.Stack size="sm" nbVisibleItems={4} avatars={[...DROID_AVATARS]} />
+  ),
+};
+
+/**
+ * When the group exceeds `nbVisibleItems`, the stack truncates and shows a
+ * "+N" counter for the hidden members.
+ *
+ * @summary Stack truncation with a hidden-count badge.
+ */
+export const StackWithHiddenCount: Story = {
+  render: () => (
+    <Avatar.Stack
+      size="sm"
+      nbVisibleItems={3}
+      avatars={[...DROID_AVATARS, ...NAME_ONLY_AVATARS]}
+    />
+  ),
+};
+
+/**
+ * `orientation="vertical"` stacks the avatars top-to-bottom, for narrow
+ * sidebars or vertical rails.
+ *
+ * @summary Vertical stack orientation.
+ */
+export const StackVertical: Story = {
+  render: () => (
+    <Avatar.Stack
+      size="sm"
+      nbVisibleItems={4}
+      orientation="vertical"
+      avatars={[...DROID_AVATARS]}
+    />
+  ),
+};
+
+/**
+ * `onTop="first"` puts the first avatar on top of the overlap order (the
+ * default is `"last"`), useful when the leading member matters most.
+ *
+ * @summary First avatar on top of the overlap order.
+ */
+export const StackOnTopFirst: Story = {
+  render: () => (
+    <Avatar.Stack
+      size="sm"
+      nbVisibleItems={4}
+      onTop="first"
+      avatars={[...DROID_AVATARS]}
+    />
+  ),
 };

@@ -4,10 +4,20 @@ import React from "react";
 
 interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
+  /** Clamps content to a centered max width (max-w-4xl) — for reading-width content such as forms and articles. */
   fixed?: boolean;
+  /** Opts out of the default responsive horizontal/vertical padding. */
   noPadding?: boolean;
 }
 
+/**
+ * A centered page wrapper with responsive horizontal padding and a built-in
+ * vertical ScrollArea; it also establishes a CSS container context so
+ * descendants can use `@container` queries. Use it as the outermost wrapper
+ * for page or panel content that should scroll and stay centered, giving it a
+ * bounded height (e.g. `h-full`) since it owns the scroll region.
+ * @summary Centered scrollable page wrapper.
+ */
 export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
   (
     { children, fixed = false, noPadding = false, className, ...props },

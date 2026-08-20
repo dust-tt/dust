@@ -3,7 +3,9 @@ import React, { type ReactNode } from "react";
 
 export interface ContainerWithTopBarProps {
   children: ReactNode;
+  /** Content of the sticky bar rendered above children — typically a toolbar of grouped controls. */
   topBar: ReactNode;
+  /** Renders the container border in the warning color to signal an error state. */
   error?: boolean;
   className?: string;
 }

@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 import { useArgs } from "storybook/preview-api";
+import { fn } from "storybook/test";
 
-import { Button, Lock01, SliderToggle } from "../index_with_tw_base";
+import { Lock01, SliderToggle } from "../index_with_tw_base";
 
 const meta = {
   title: "Forms & Inputs/SliderToggle",
@@ -29,55 +30,67 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const SliderToggleBasic: Story = {
+// The component is fully controlled; wire clicks back into the `selected`
+// arg so the story is interactive and stays in sync with the controls panel.
+function ControlledRender(args: React.ComponentProps<typeof SliderToggle>) {
+  const [{ selected }, updateArgs] = useArgs<{ selected: boolean }>();
+  return (
+    <SliderToggle
+      {...args}
+      selected={selected}
+      onClick={() => updateArgs({ selected: !selected })}
+    />
+  );
+}
+
+/**
+ * The standard controlled toggle: `selected` is the source of truth and the
+ * `onClick` handler flips it. Click the toggle to switch it on and off.
+ * @summary Controlled on/off toggle.
+ */
+export const Default: Story = {
   args: {
     selected: false,
   },
-  // The component is fully controlled; wire clicks back into the `selected`
-  // arg so the story is interactive and stays in sync with the controls panel.
-  render: function Render(args) {
-    const [{ selected }, updateArgs] = useArgs<{ selected: boolean }>();
-    return (
-      <SliderToggle
-        {...args}
-        selected={selected}
-        onClick={() => updateArgs({ selected: !selected })}
-      />
-    );
+  render: ControlledRender,
+};
+
+/**
+ * A disabled toggle ignores clicks and mutes the track and knob. Use it when
+ * the setting cannot be changed in the current context.
+ * @summary Non-interactive disabled state.
+ */
+export const Disabled: Story = {
+  args: {
+    selected: false,
+    disabled: true,
+    onClick: fn(),
   },
 };
 
-const InteractiveSliderToggle = ({
-  selected: initialSelected = false,
-  disabled,
-}: {
-  selected?: boolean;
-  disabled?: boolean;
-}) => {
-  const [selected, setSelected] = React.useState(initialSelected);
-  return (
-    <SliderToggle
-      selected={selected}
-      disabled={disabled}
-      onClick={() => setSelected((prev) => !prev)}
-    />
-  );
+/**
+ * Pass `icon` to render a small icon inside the knob — e.g. a lock to signal
+ * the setting is managed elsewhere or requires elevated permissions.
+ * @summary Icon inside the toggle knob.
+ */
+export const WithIcon: Story = {
+  args: {
+    selected: false,
+    icon: Lock01,
+  },
+  render: ControlledRender,
 };
 
-export const SliderExample = () => (
-  <div className="flex items-center gap-2">
-    <Button variant="outline" size="sm" label="Settings" />
-    <InteractiveSliderToggle />
-    <InteractiveSliderToggle selected />
-    <InteractiveSliderToggle disabled />
-    <InteractiveSliderToggle selected disabled />
-  </div>
-);
-
-export const SliderWithIcon = () => (
-  <div className="flex items-center gap-2">
-    <SliderToggle icon={Lock01} selected={false} disabled />
-    <SliderToggle icon={Lock01} selected disabled />
-    <SliderToggle icon={Lock01} selected faded />
-  </div>
-);
+/**
+ * Combine `faded` with `selected` to mute the active track color, signalling
+ * a setting that is on but restricted or externally enforced.
+ * @summary Muted active track for restricted settings.
+ */
+export const Faded: Story = {
+  args: {
+    selected: true,
+    faded: true,
+    icon: Lock01,
+    onClick: fn(),
+  },
+};
