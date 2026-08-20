@@ -131,6 +131,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
   },
+  openai_concise_reasoning_summaries: {
+    description:
+      "Use concise reasoning summaries for supported OpenAI models in the new LLM router",
+    stage: "dust_only",
+  },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
     stage: "on_demand",

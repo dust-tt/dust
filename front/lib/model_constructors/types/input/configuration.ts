@@ -41,6 +41,7 @@ export type ToolSpecification = z.infer<typeof toolSpecificationSchema>;
 export const inputConfigSchema = z.object({
   temperature: temperatureSchema.optional(),
   reasoning: reasoningSchema.optional(),
+  conciseReasoningSummary: z.boolean().optional(),
   tools: z.array(toolSpecificationSchema).optional(),
   forceTool: z.string().optional(),
   // When true, the tools are sent but the model is forbidden from calling them

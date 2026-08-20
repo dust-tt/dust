@@ -55,7 +55,10 @@ export function WithOpenAIResponsesInputConverter<
       assistantProviderPassthroughMessageToInputItems;
     modelToHostModel = (modelId: Model): string => modelId;
 
-    protected reasoningSummaryForModel(_model: Model): OpenAIReasoningSummary {
+    protected reasoningSummaryForModel(
+      _model: Model,
+      _conciseReasoningSummary: boolean
+    ): OpenAIReasoningSummary {
       return "auto";
     }
 
@@ -86,11 +89,15 @@ export function WithOpenAIResponsesInputConverter<
         cacheKey,
         forceTool,
         toolSearchEnabled,
+        conciseReasoningSummary = false,
       } = config;
 
       const reasoningConfig = reasoningToOpenAIResponsesReasoning(
         reasoning,
-        this.reasoningSummaryForModel(this.constructor.model)
+        this.reasoningSummaryForModel(
+          this.constructor.model,
+          conciseReasoningSummary
+        )
       );
       const openAITools = toolSpecsToOpenAITools(tools, {
         forceTool,

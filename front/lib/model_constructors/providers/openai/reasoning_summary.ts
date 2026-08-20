@@ -25,11 +25,13 @@ const MODELS_WITH_CONCISE_REASONING_SUMMARIES: ReadonlySet<Model> = new Set([
 ]);
 
 export function openAIReasoningSummaryForModel(
-  model: Model
+  model: Model,
+  conciseReasoningSummary: boolean
 ): OpenAIReasoningSummary {
   // OpenAI introduced concise reasoning summaries with GPT-5.2.
   // https://developers.openai.com/api/docs/guides/reasoning#reasoning-summaries
-  return MODELS_WITH_CONCISE_REASONING_SUMMARIES.has(model)
+  return conciseReasoningSummary &&
+    MODELS_WITH_CONCISE_REASONING_SUMMARIES.has(model)
     ? "concise"
     : "auto";
 }

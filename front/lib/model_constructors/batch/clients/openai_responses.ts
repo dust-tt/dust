@@ -70,8 +70,11 @@ export abstract class OpenAIResponsesBatch extends WithOpenAIResponsesInputConve
     this.apiKey = OPENAI_API_KEY;
   }
 
-  protected override reasoningSummaryForModel(model: Model) {
-    return openAIReasoningSummaryForModel(model);
+  protected override reasoningSummaryForModel(
+    model: Model,
+    conciseReasoningSummary: boolean
+  ) {
+    return openAIReasoningSummaryForModel(model, conciseReasoningSummary);
   }
 
   // Lazy: `baseUrl` is an abstract field, only set after subclass initializers run.
