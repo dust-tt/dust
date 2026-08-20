@@ -103,8 +103,9 @@ class FileStorageMock {
   }
 
   /**
-   * Makes `file(path).save(...)` reject for paths matching the predicate.
-   * Defaults to never failing. Reset between tests via `reset()`.
+   * Makes `file(path).save(...)` reject, and `file(path).createWriteStream(...)` emit an error,
+   * for paths matching the predicate. Defaults to never failing. Reset between tests via
+   * `reset()`.
    */
   setFileSaveFails(predicate: (filePath: string) => boolean): void {
     this._saveShouldFail = predicate;
@@ -266,11 +267,19 @@ class FileStorageMock {
       createWriteStream: vi
         .fn()
         .mockImplementation((opts?: { contentType?: string }) => {
+          const path = filePath ?? "unknown";
           this._writeStreamCalls.push({
-            filePath: filePath ?? "unknown",
+            filePath: path,
             contentType: opts?.contentType,
           });
-          return new PassThrough();
+          const stream = new PassThrough();
+          if (this._saveShouldFail(path)) {
+            // Deferred so `pipeline()` has already attached its error listeners
+            queueMicrotask(() =>
+              stream.destroy(new Error(`Simulated GCS write failure: ${path}`))
+            );
+          }
+          return stream;
         }),
       delete: vi.fn().mockImplementation(() => {
         this._objectStore.delete(filePath ?? "unknown");
