@@ -1,4 +1,4 @@
-import type { ModelTierId } from "@app/components/model_picker/modelPickerUtils";
+import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import { MODEL_TIERS } from "@app/components/model_picker/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -11,9 +11,6 @@ import {
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
 import {
-  BarFull,
-  BarHalf,
-  BarLow,
   Button,
   Check,
   ChevronRight,
@@ -49,12 +46,6 @@ interface AgentModelMakerGroup {
   makerId: ModelMakerIdType;
   models: AgentModelFilterType[];
 }
-
-const TIER_ICON: Record<ModelTierId, ComponentType> = {
-  fast: BarLow,
-  standard: BarHalf,
-  complex: BarFull,
-};
 
 export function ModelsFilterMenu({
   models,
@@ -280,7 +271,7 @@ export function ModelsFilterMenu({
           <>
             <DropdownMenuLabel label="Model" />
             {tierModels.map((model) =>
-              renderModel(model, TIER_ICON[model.tierId])
+              renderModel(model, MODEL_TIER_ICON[model.tierId])
             )}
             {tierModels.length > 0 && concreteModels.length > 0 && (
               <DropdownMenuSeparator />
