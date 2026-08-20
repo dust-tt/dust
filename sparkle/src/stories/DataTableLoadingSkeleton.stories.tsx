@@ -16,6 +16,7 @@ const meta = {
 
 **Guidelines**
 - Toggle \`showSelectionColumn\` and \`showTrailingCell\` to match the real table's columns.
+- Treat this as a reasonable default. Since cells can render arbitrary custom components, prefer a table-specific skeleton when you need the loading state to match their exact shape.
 - For an indeterminate load with no known layout, use a **Spinner** instead.`,
       },
     },
