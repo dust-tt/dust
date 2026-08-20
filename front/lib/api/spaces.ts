@@ -41,6 +41,7 @@ import {
 } from "@app/temporal/project_task/client";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
 import type { SpaceCategoryInfo } from "@app/types/api/spaces";
+import { SKILL_STATUSES } from "@app/types/assistant/skill_configuration";
 import {
   PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
@@ -340,9 +341,18 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       // (a skill can request a space without holding a live view in it).
       const [skillsWithMCPViews, skillsWithDataSourceViews, skillsWithSpace] =
         await Promise.all([
-          SkillResource.listByMCPServerViewIds(auth, mcpServerViewIds),
-          SkillResource.listByDataSourceViewIds(auth, dataSourceViewIds),
-          SkillResource.listByRequestedSpaceId(auth, space.id),
+          // Every status, not just active: an archived skill keeps its references, and leaving a
+          // deleted space in `requestedSpaceIds` makes the skill unfetchable — so it can never be
+          // restored, or even seen again.
+          SkillResource.listByMCPServerViewIds(auth, mcpServerViewIds, {
+            status: [...SKILL_STATUSES],
+          }),
+          SkillResource.listByDataSourceViewIds(auth, dataSourceViewIds, {
+            status: [...SKILL_STATUSES],
+          }),
+          SkillResource.listByRequestedSpaceId(auth, space.id, {
+            status: [...SKILL_STATUSES],
+          }),
         ]);
 
       // Merge and deduplicate skills.
