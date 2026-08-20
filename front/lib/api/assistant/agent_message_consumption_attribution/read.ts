@@ -5,7 +5,7 @@ import { buildLatestAvailableMessageConsumptionDetails } from "@app/lib/api/assi
 import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemResource as ConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { AgentMessageConsumptionResponse } from "@app/types/assistant/agent_message_consumption";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -38,11 +38,58 @@ export async function getAgentMessageConsumption(
     return null;
   }
 
-  const subAgents =
-    await ConsumptionItemResource.fetchDirectSubAgentConsumptionFacts(auth, {
-      conversation,
-      actions: facts.actions,
+  const directSubAgentRoots = facts.actions.flatMap((action) => {
+    const childConversationId = action.getRunAgentChildConversationId();
+    return childConversationId && childConversationId !== conversation.sId
+      ? [{ action, childConversationId }]
+      : [];
+  });
+  const childConversations = await ConversationResource.fetchByIds(
+    auth,
+    [
+      ...new Set(
+        directSubAgentRoots.map(
+          ({ childConversationId }) => childConversationId
+        )
+      ),
+    ],
+    { includeDeleted: true }
+  );
+  const { messages: childMessages } =
+    childConversations.length > 0
+      ? await ConsumptionItemResource.fetchDirectConversationsConsumptionFacts(
+          auth,
+          {
+            conversations: childConversations,
+            maxAttributionVersion:
+              AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+            parentAgentIdsByConversationId: new Map(),
+          }
+        )
+      : { messages: [] };
+  const subAgentFactsByConversationId = new Map<
+    string,
+    { agentConfigurationId: string | null; billedCredits: number }
+  >();
+  for (const message of childMessages) {
+    const current = subAgentFactsByConversationId.get(message.conversationId);
+    subAgentFactsByConversationId.set(message.conversationId, {
+      agentConfigurationId:
+        current?.agentConfigurationId ?? message.agentConfigurationId,
+      billedCredits:
+        (current?.billedCredits ?? 0) + (message.billedCredits ?? 0),
     });
+  }
+  const subAgents = directSubAgentRoots.map(
+    ({ action, childConversationId }) => {
+      const childFacts = subAgentFactsByConversationId.get(childConversationId);
+      return {
+        action,
+        agentConfigurationId: childFacts?.agentConfigurationId ?? null,
+        billedCredits: childFacts?.billedCredits ?? 0,
+      };
+    }
+  );
   const subAgentBilledCredits = subAgents.reduce(
     (total, subAgent) => total + subAgent.billedCredits,
     0

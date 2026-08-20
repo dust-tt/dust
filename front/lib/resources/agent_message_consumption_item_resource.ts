@@ -20,6 +20,7 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
 
 export type ConversationConsumptionMessageFacts = {
+  conversationId: string;
   agentConfigurationId: string;
   parentAgentConfigurationId: string | null;
   billedCredits: number | null;
@@ -27,12 +28,6 @@ export type ConversationConsumptionMessageFacts = {
   status: AgentMessageStatus;
   items: AgentMessageConsumptionItemResource[];
   actions: AgentMCPActionResource[];
-};
-
-export type SubAgentConsumptionFacts = {
-  action: AgentMCPActionResource;
-  agentConfigurationId: string | null;
-  billedCredits: number;
 };
 
 type ConsumptionItemEvidenceBase = {
@@ -703,7 +698,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     return { messages };
   }
 
-  private static async fetchDirectConversationsConsumptionFacts(
+  static async fetchDirectConversationsConsumptionFacts(
     auth: Authenticator,
     {
       conversations,
@@ -720,6 +715,9 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     const workspaceId = auth.getNonNullableWorkspace().id;
     const conversationModelIds = conversations.map(
       (conversation) => conversation.id
+    );
+    const conversationSIdsByModelId = new Map(
+      conversations.map((conversation) => [conversation.id, conversation.sId])
     );
     const parentAgentIdsByConversationModelId = new Map(
       conversations.flatMap((conversation) => {
@@ -746,16 +744,25 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       },
       order: [["id", "ASC"]],
     });
-    const messageFacts = agentMessages.map((agentMessage) => ({
-      agentMessageModelId: agentMessage.id,
-      agentConfigurationId: agentMessage.agentConfigurationId,
-      parentAgentConfigurationId:
-        parentAgentIdsByConversationModelId.get(agentMessage.conversationId) ??
-        null,
-      billedCredits: agentMessage.costCredits,
-      dustRunIds: agentMessage.runIds ?? [],
-      status: agentMessage.status,
-    }));
+    const messageFacts = agentMessages.map((agentMessage) => {
+      const conversationId = conversationSIdsByModelId.get(
+        agentMessage.conversationId
+      );
+      assert(conversationId, "Agent message conversation not found.");
+
+      return {
+        agentMessageModelId: agentMessage.id,
+        conversationId,
+        agentConfigurationId: agentMessage.agentConfigurationId,
+        parentAgentConfigurationId:
+          parentAgentIdsByConversationModelId.get(
+            agentMessage.conversationId
+          ) ?? null,
+        billedCredits: agentMessage.costCredits,
+        dustRunIds: agentMessage.runIds ?? [],
+        status: agentMessage.status,
+      };
+    });
     const fetchedAgentMessageModelIds = messageFacts.map(
       (message) => message.agentMessageModelId
     );
@@ -806,109 +813,6 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         })
       ),
     };
-  }
-
-  /** Attributes each direct child conversation's bill to the run-agent action that spawned it. */
-  static async fetchDirectSubAgentConsumptionFacts(
-    auth: Authenticator,
-    {
-      conversation,
-      actions,
-    }: {
-      conversation: ConversationResource;
-      actions: AgentMCPActionResource[];
-    }
-  ): Promise<SubAgentConsumptionFacts[]> {
-    const roots = actions.flatMap((action) => {
-      const childConversationId = action.getRunAgentChildConversationId();
-      return childConversationId && childConversationId !== conversation.sId
-        ? [{ action, childConversationId }]
-        : [];
-    });
-    if (roots.length === 0) {
-      return [];
-    }
-
-    const childConversations = await ConversationResource.fetchByIds(
-      auth,
-      [...new Set(roots.map((root) => root.childConversationId))],
-      { includeDeleted: true }
-    );
-    const childConversationBySId = new Map(
-      childConversations.map((childConversation) => [
-        childConversation.sId,
-        childConversation,
-      ])
-    );
-    const rootActionIdsByConversationModelId = new Map<ModelId, Set<ModelId>>();
-    for (const root of roots) {
-      const childConversation = childConversationBySId.get(
-        root.childConversationId
-      );
-      if (!childConversation) {
-        continue;
-      }
-      const rootActionIds =
-        rootActionIdsByConversationModelId.get(childConversation.id) ??
-        new Set<ModelId>();
-      rootActionIds.add(root.action.id);
-      rootActionIdsByConversationModelId.set(
-        childConversation.id,
-        rootActionIds
-      );
-    }
-
-    const factsByActionId = new Map<ModelId, SubAgentConsumptionFacts>(
-      roots.map(({ action }) => [
-        action.id,
-        { action, agentConfigurationId: null, billedCredits: 0 },
-      ])
-    );
-    if (rootActionIdsByConversationModelId.size === 0) {
-      return [...factsByActionId.values()];
-    }
-
-    const agentMessages = await AgentMessageModel.findAll({
-      attributes: [
-        "id",
-        "agentConfigurationId",
-        "conversationId",
-        "costCredits",
-      ],
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        conversationId: {
-          [Op.in]: [...rootActionIdsByConversationModelId.keys()],
-        },
-      },
-      order: [["id", "ASC"]],
-    });
-    for (const agentMessage of agentMessages) {
-      const rootActionIds = rootActionIdsByConversationModelId.get(
-        agentMessage.conversationId
-      );
-      if (!rootActionIds) {
-        continue;
-      }
-
-      for (const rootActionId of rootActionIds) {
-        const facts = factsByActionId.get(rootActionId);
-        if (!facts) {
-          continue;
-        }
-        factsByActionId.set(rootActionId, {
-          ...facts,
-          agentConfigurationId:
-            facts.agentConfigurationId ?? agentMessage.agentConfigurationId,
-          billedCredits: facts.billedCredits + (agentMessage.costCredits ?? 0),
-        });
-      }
-    }
-
-    return roots.flatMap(({ action }) => {
-      const facts = factsByActionId.get(action.id);
-      return facts ? [facts] : [];
-    });
   }
 
   /**
