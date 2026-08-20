@@ -1,7 +1,9 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { conversationScopedPath } from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Readable } from "stream";
@@ -31,12 +33,14 @@ type WritableSkillFile = {
  * everywhere the conversation files are: the `files__*` tools, the sandbox gcsfuse mount
  * (`/files/conversation-{cId}/skills/...`), the conversation files panel, and conversation
  * branching copies. Idempotent: files already present at their deterministic path are left
- * untouched, and re-enabling a skill only writes whatever is still missing.
+ * untouched, and re-enabling a skill only writes whatever is still missing. All-or-nothing per
+ * call: if a write fails partway, the files written by this call are deleted so the agent never
+ * sees a half-mounted skill; files that were already present before this call are left alone.
  *
  * Returns the canonical scoped paths (`conversation-{cId}/skills/...`) of the loaded files, as
  * surfaced by the `files__list` tool.
  */
-export async function loadSkillFilesToConversation(
+export async function upsertSkillFilesToConversation(
   auth: Authenticator,
   {
     skill,
@@ -69,24 +73,16 @@ export async function loadSkillFilesToConversation(
   }
   const fileSystem = fsResult.value;
 
-  const conversationMount = fileSystem
-    .getMounts()
-    .find((m) => m.kind === "conversation" && m.id === conversation.sId);
-  // `forConversation` always creates the conversation mount.
-  if (!conversationMount) {
-    throw new Error("Conversation mount not found.");
-  }
-
-  const expectedPaths = files.map(
-    (file) =>
-      `${conversationMount.scopedPrefix}/skills/${skill.name}/${file.fileName}`
+  const expectedPaths = files.map((file) =>
+    conversationScopedPath({
+      conversationId: conversation.sId,
+      rel: `skills/${skill.name}/${file.fileName}`,
+    })
   );
 
-  const loadedPaths: string[] = [];
+  const missingIndexes: number[] = [];
 
-  for (const [index, file] of files.entries()) {
-    const scopedPath = expectedPaths[index];
-
+  for (const [index, scopedPath] of expectedPaths.entries()) {
     const existsResult = await fileSystem.exists(scopedPath);
     if (existsResult.isErr()) {
       return new Err(
@@ -97,22 +93,46 @@ export async function loadSkillFilesToConversation(
     }
 
     if (!existsResult.value) {
-      const writeResult = await fileSystem.write(
-        scopedPath,
-        file.getContent(),
-        file.contentType
-      );
-      if (writeResult.isErr()) {
-        return new Err(
-          new Error(
-            `Failed to write skill file(s): ${expectedPaths.slice(index).join(", ")} (${writeResult.error.message})`
-          )
-        );
-      }
+      missingIndexes.push(index);
     }
-
-    loadedPaths.push(scopedPath);
   }
 
-  return new Ok({ loadedPaths });
+  const writtenPaths: string[] = [];
+
+  for (const index of missingIndexes) {
+    const scopedPath = expectedPaths[index];
+    const file = files[index];
+
+    const writeResult = await fileSystem.write(
+      scopedPath,
+      file.getContent(),
+      file.contentType
+    );
+    if (writeResult.isErr()) {
+      for (const writtenPath of writtenPaths) {
+        const cleanupResult = await fileSystem.delete(writtenPath, {
+          ignoreNotFound: true,
+        });
+        if (cleanupResult.isErr()) {
+          logger.warn(
+            {
+              scopedPath: writtenPath,
+              error: cleanupResult.error.message,
+            },
+            "Failed to clean up skill file after mount failure."
+          );
+        }
+      }
+
+      return new Err(
+        new Error(
+          `Failed to write skill file(s): ${scopedPath} (${writeResult.error.message})`
+        )
+      );
+    }
+
+    writtenPaths.push(scopedPath);
+  }
+
+  return new Ok({ loadedPaths: expectedPaths });
 }

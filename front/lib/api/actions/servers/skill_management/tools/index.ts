@@ -5,7 +5,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { SKILL_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
-import { loadSkillFilesToConversation } from "@app/lib/api/skills/conversation_files";
+import { upsertSkillFilesToConversation } from "@app/lib/api/skills/conversation_files";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
@@ -41,7 +41,7 @@ function extractSkillIdsFromConversationMessages(
   return [...userMessageSkillIds];
 }
 
-async function ensureSkillFilesMounted(
+async function mountSkillFilesToConversation(
   auth: Authenticator,
   skill: SkillResource,
   conversation: ConversationWithoutContentType
@@ -50,7 +50,7 @@ async function ensureSkillFilesMounted(
     return new Ok({ loadedPaths: [] });
   }
 
-  return loadSkillFilesToConversation(auth, {
+  return upsertSkillFilesToConversation(auth, {
     skill,
     conversation,
   });
@@ -158,7 +158,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
 
     // Mount the skill's files before persisting the enablement: persisting it first would let a
     // failed mount still leave the skill looking "enabled".
-    const mountResult = await ensureSkillFilesMounted(
+    const mountResult = await mountSkillFilesToConversation(
       auth,
       skill,
       conversation

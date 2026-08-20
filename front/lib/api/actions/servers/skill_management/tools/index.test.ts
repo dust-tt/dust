@@ -10,7 +10,7 @@ const {
   mockFetchByIds,
   mockHasFiles,
   mockListForAgentLoop,
-  mockLoadSkillFilesToConversation,
+  mockUpsertSkillFilesToConversation,
 } = vi.hoisted(() => ({
   mockEnableForAgent: vi.fn(),
   mockBatchFetchUsedBySkills: vi.fn(),
@@ -18,11 +18,11 @@ const {
   mockFetchByIds: vi.fn(),
   mockHasFiles: vi.fn(),
   mockListForAgentLoop: vi.fn(),
-  mockLoadSkillFilesToConversation: vi.fn(),
+  mockUpsertSkillFilesToConversation: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/skills/conversation_files", () => ({
-  loadSkillFilesToConversation: mockLoadSkillFilesToConversation,
+  upsertSkillFilesToConversation: mockUpsertSkillFilesToConversation,
 }));
 
 vi.mock("@app/lib/resources/skill/skill_resource", () => ({
@@ -93,7 +93,7 @@ describe("skill_management enable_skill tool", () => {
     mockFetchByIds.mockResolvedValue([]);
     mockEnableForAgent.mockResolvedValue({ wasAlreadyEnabled: false });
     mockHasFiles.mockReturnValue(true);
-    mockLoadSkillFilesToConversation.mockResolvedValue(
+    mockUpsertSkillFilesToConversation.mockResolvedValue(
       new Ok({
         loadedPaths: ["conversation-conversation-id/skills/commit/SKILL.md"],
       })
@@ -141,7 +141,7 @@ describe("skill_management enable_skill tool", () => {
       conversation,
       userMessage,
     });
-    expect(mockLoadSkillFilesToConversation).toHaveBeenCalledWith(auth, {
+    expect(mockUpsertSkillFilesToConversation).toHaveBeenCalledWith(auth, {
       skill,
       conversation,
     });
@@ -165,7 +165,7 @@ describe("skill_management enable_skill tool", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expect(mockLoadSkillFilesToConversation).not.toHaveBeenCalled();
+    expect(mockUpsertSkillFilesToConversation).not.toHaveBeenCalled();
   });
 
   it("enables a favorite-only skill", async () => {
@@ -186,7 +186,7 @@ describe("skill_management enable_skill tool", () => {
   });
 
   it("returns a distinct mount-failure error when a newly enabled skill's file copy fails, without leaving it reported as ready", async () => {
-    mockLoadSkillFilesToConversation.mockResolvedValue(
+    mockUpsertSkillFilesToConversation.mockResolvedValue(
       new Err(
         new Error(
           "Failed to write skill file(s): conversation-conversation-id/skills/commit/sf_query.py (socket hang up)"
@@ -227,7 +227,7 @@ describe("skill_management enable_skill tool", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expect(mockLoadSkillFilesToConversation).toHaveBeenCalledWith(auth, {
+    expect(mockUpsertSkillFilesToConversation).toHaveBeenCalledWith(auth, {
       skill,
       conversation,
     });
@@ -251,7 +251,7 @@ describe("skill_management enable_skill tool", () => {
       favoriteSkills: [],
       systemSkills: [],
     });
-    mockLoadSkillFilesToConversation.mockResolvedValue(
+    mockUpsertSkillFilesToConversation.mockResolvedValue(
       new Err(
         new Error(
           "Failed to write skill file(s): conversation-conversation-id/skills/commit/config/queries.json (ENOENT)"
@@ -289,7 +289,7 @@ describe("skill_management enable_skill tool", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expect(mockLoadSkillFilesToConversation).not.toHaveBeenCalled();
+    expect(mockUpsertSkillFilesToConversation).not.toHaveBeenCalled();
   });
 
   it("does not enable skills outside the agent loop allow-list and reports a distinct not-equipped error", async () => {
@@ -310,7 +310,7 @@ describe("skill_management enable_skill tool", () => {
       expect(result.error.message).toContain("not equipped");
     }
     expect(mockEnableForAgent).not.toHaveBeenCalled();
-    expect(mockLoadSkillFilesToConversation).not.toHaveBeenCalled();
+    expect(mockUpsertSkillFilesToConversation).not.toHaveBeenCalled();
   });
 
   it("enables skills referenced by current root skills", async () => {
