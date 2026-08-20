@@ -774,6 +774,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "noop_model_feature"
   | "notion_private_integration"
   | "allow_old_notion_mcp"
+  | "openai_concise_reasoning_summaries"
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
