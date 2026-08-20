@@ -1,4 +1,3 @@
-import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
@@ -27,12 +26,9 @@ import {
 } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TagType } from "@app/types/tag";
-import { isAdmin } from "@app/types/user";
 import {
-  Button,
   Chip,
   EmptyCTA,
-  ListSelect,
   Page,
   Plus,
   SearchInput,
@@ -85,7 +81,6 @@ export function ManageAgentsPage() {
   const [selectedModels, setSelectedModels] = useState<AgentModelFilterType[]>(
     []
   );
-  const [isBatchEdit, setIsBatchEdit] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
   const isMobile = useIsMobile();
 
@@ -113,10 +108,6 @@ export function ManageAgentsPage() {
     agentsGetView: "manage",
     includes: ["authors", "usage", "feedbacks", "editors"],
   });
-
-  const selectedAgents = agentConfigurations.filter((a) =>
-    selection.includes(a.sId)
-  );
 
   const {
     agentConfigurations: archivedAgentConfigurations,
@@ -296,41 +287,28 @@ export function ManageAgentsPage() {
                 setAssistantSearch(s);
               }}
             />
-            {!isBatchEdit && (
-              <div className="flex gap-2">
-                {isAdmin(owner) && (
-                  <Button
-                    variant="outline"
-                    icon={ListSelect}
-                    label={isMobile ? undefined : "Batch edit"}
-                    tooltip={isMobile ? "Batch edit" : undefined}
-                    onClick={() => {
-                      setIsBatchEdit(true);
-                    }}
-                  />
-                )}
-                <ModelsFilterMenu
-                  models={uniqueModels}
-                  selectedModels={selectedModels}
-                  setSelectedModels={setSelectedModels}
-                  isCompact={isMobile}
-                />
-                <TagsFilterMenu
-                  tags={uniqueTags}
-                  selectedTags={selectedTags}
-                  setSelectedTags={setSelectedTags}
+            <div className="flex gap-2">
+              <ModelsFilterMenu
+                models={uniqueModels}
+                selectedModels={selectedModels}
+                setSelectedModels={setSelectedModels}
+                isCompact={isMobile}
+              />
+              <TagsFilterMenu
+                tags={uniqueTags}
+                selectedTags={selectedTags}
+                setSelectedTags={setSelectedTags}
+                owner={owner}
+                isCompact={isMobile}
+              />
+              {canCreateAgent && (
+                <CreateDropdown
                   owner={owner}
+                  dataGtmLocation="assistantsWorkspace"
                   isCompact={isMobile}
                 />
-                {canCreateAgent && (
-                  <CreateDropdown
-                    owner={owner}
-                    dataGtmLocation="assistantsWorkspace"
-                    isCompact={isMobile}
-                  />
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
           {(selectedModels.length > 0 || selectedTags.length > 0) && (
             <div className="flex flex-row flex-wrap gap-2">
@@ -362,39 +340,26 @@ export function ManageAgentsPage() {
             </div>
           )}
           <div className="flex flex-col pt-3">
-            {isBatchEdit ? (
-              <AgentEditBar
-                onClose={() => {
-                  setIsBatchEdit(false);
-                  setSelection([]);
-                }}
-                owner={owner}
-                selectedAgents={selectedAgents}
-                tags={uniqueTags}
-                mutateAgentConfigurations={mutateAgentConfigurations}
-              />
-            ) : (
-              <Tabs value={activeTab}>
-                <TabsList>
-                  {AGENT_MANAGER_TABS.map((tab) => (
-                    <TabsTrigger
-                      key={tab.id}
-                      value={tab.id}
-                      label={tab.label}
-                      onClick={() => {
-                        setSelectedTab(tab.id);
-                      }}
-                      tooltip={
-                        AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
-                          ?.description
-                      }
-                      isCounter={tab.id !== "archived"}
-                      counterValue={`${agentsByTab[tab.id].length}`}
-                    />
-                  ))}
-                </TabsList>
-              </Tabs>
-            )}
+            <Tabs value={activeTab}>
+              <TabsList>
+                {AGENT_MANAGER_TABS.map((tab) => (
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    label={tab.label}
+                    onClick={() => {
+                      setSelectedTab(tab.id);
+                    }}
+                    tooltip={
+                      AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
+                        ?.description
+                    }
+                    isCounter={tab.id !== "archived"}
+                    counterValue={`${agentsByTab[tab.id].length}`}
+                  />
+                ))}
+              </TabsList>
+            </Tabs>
             {isAgentConfigurationsLoading ||
             isArchivedAgentConfigurationsLoading ? (
               <div className="mt-8 flex justify-center">
@@ -409,7 +374,6 @@ export function ManageAgentsPage() {
               </div>
             ) : agentsByTab[activeTab].length > 0 ? (
               <AssistantsTable
-                isBatchEdit={isBatchEdit}
                 selection={selection}
                 setSelection={setSelection}
                 owner={owner}

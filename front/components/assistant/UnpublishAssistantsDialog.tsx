@@ -5,6 +5,7 @@ import {
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { ButtonProps } from "@dust-tt/sparkle";
 import {
   Button,
   Dialog,
@@ -24,6 +25,7 @@ interface UnpublishAssistantsDialogProps {
   disabled: boolean;
   owner: LightWorkspaceType;
   onSave: () => void;
+  variant?: ButtonProps["variant"];
 }
 
 export function UnpublishAssistantsDialog({
@@ -31,6 +33,7 @@ export function UnpublishAssistantsDialog({
   disabled,
   owner,
   onSave,
+  variant = "outline",
 }: UnpublishAssistantsDialogProps) {
   const [isUnpublishing, setIsUnpublishing] = useState(false);
 
@@ -53,7 +56,7 @@ export function UnpublishAssistantsDialog({
       <DialogTrigger asChild>
         <Button
           size="xs"
-          variant="outline"
+          variant={variant}
           icon={EyeOff}
           label="Unpublish"
           disabled={disabled}
