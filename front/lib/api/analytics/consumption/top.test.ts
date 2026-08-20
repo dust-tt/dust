@@ -183,7 +183,7 @@ describe("consumption top rankings", () => {
     ]);
 
     // Ranked on the attributed agent by gross credits, with a per-message cardinality
-    // sub-agg — a message spans several documents.
+    // sub-aggregation because a message spans several documents.
     const [query, options] = rankingSearchCall();
     expect(query.bool?.filter).toContainEqual({
       range: { completed_at: { gte: PERIOD.startDate, lt: PERIOD.endDate } },
