@@ -2,7 +2,7 @@ import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { useAutomationsOverview } from "@app/hooks/useAutomationsOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
-import type {LightWorkspaceType} from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 
 interface AutomationsOverviewProps {
   owner: LightWorkspaceType;
