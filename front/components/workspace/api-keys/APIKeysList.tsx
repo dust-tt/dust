@@ -15,9 +15,17 @@ import {
   Chip,
   DataTable,
   DataTableLoadingSkeleton,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Edit04,
+  FilterFunnel01,
   Icon,
   LoadingBlock,
+  SearchInput,
   Separator,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -114,6 +122,32 @@ function formatMonthlyCap({
       : `$${(key.monthlyCapMicroUsd / 1_000_000).toFixed(2)}`;
   }
   return "—";
+}
+
+function toggleSetValue<T>(current: ReadonlySet<T>, value: T): ReadonlySet<T> {
+  const next = new Set(current);
+  if (next.has(value)) {
+    next.delete(value);
+  } else {
+    next.add(value);
+  }
+  return next;
+}
+
+function matchesAPIKeySearch(row: APIKeyRowData, search: string): boolean {
+  const normalizedSearch = search.trim().toLowerCase();
+  if (!normalizedSearch) {
+    return true;
+  }
+
+  return [
+    row.name,
+    row.creator,
+    row.secret,
+    row.scope,
+    row.status,
+    ...row.spaces,
+  ].some((value) => value.toLowerCase().includes(normalizedSearch));
 }
 
 function buildColumns({
@@ -345,6 +379,13 @@ export function APIKeysList({
   showLegacyUsdMonthlyCap,
   showCreditMonthlyCap,
 }: APIKeysListProps) {
+  const [search, setSearch] = useState("");
+  const [statusFilters, setStatusFilters] = useState<ReadonlySet<APIKeyStatus>>(
+    new Set()
+  );
+  const [scopeFilters, setScopeFilters] = useState<ReadonlySet<string>>(
+    new Set()
+  );
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: API_KEYS_PAGE_SIZE,
@@ -391,6 +432,10 @@ export function APIKeysList({
     [groupsById, keys, onEditCap, showCreditMonthlyCap, showLegacyUsdMonthlyCap]
   );
 
+  const scopeOptions = useMemo(
+    () => [...new Set(rows.map((row) => row.scope))].sort(),
+    [rows]
+  );
   const columns = useMemo(
     () =>
       buildColumns({
@@ -400,13 +445,23 @@ export function APIKeysList({
       }),
     [actionsDisabled, onRevoke, showCreditMonthlyCap]
   );
+  const filteredRows = useMemo(() => {
+    return rows.filter((row) => {
+      const matchesSearch = matchesAPIKeySearch(row, search);
+      const matchesStatus =
+        statusFilters.size === 0 || statusFilters.has(row.status);
+      const matchesScope =
+        scopeFilters.size === 0 || scopeFilters.has(row.scope);
+      return matchesSearch && matchesStatus && matchesScope;
+    });
+  }, [rows, scopeFilters, search, statusFilters]);
   const sortedRows = useMemo(() => {
     const activeSort = sorting[0];
     if (!activeSort) {
-      return rows;
+      return filteredRows;
     }
 
-    return [...rows].sort((left, right) => {
+    return [...filteredRows].sort((left, right) => {
       let comparison = 0;
       switch (activeSort.id) {
         case "name":
@@ -418,7 +473,7 @@ export function APIKeysList({
       }
       return activeSort.desc ? -comparison : comparison;
     });
-  }, [rows, sorting]);
+  }, [filteredRows, sorting]);
 
   const pageCount = Math.max(
     1,
@@ -429,6 +484,8 @@ export function APIKeysList({
     pageIndex * pagination.pageSize,
     (pageIndex + 1) * pagination.pageSize
   );
+  const appliedFilterCount = statusFilters.size + scopeFilters.size;
+
   const resetPagination = () => {
     setPagination((current) => ({ ...current, pageIndex: 0 }));
   };
@@ -438,6 +495,62 @@ export function APIKeysList({
       className="flex flex-col gap-4 rounded-xl border border-border bg-panel-background p-4"
       aria-busy={isLoading}
     >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <SearchInput
+          name="api-keys-search"
+          placeholder="Search API Key"
+          value={search}
+          onChange={(value) => {
+            setSearch(value);
+            resetPagination();
+          }}
+          className="dd-privacy-mask flex-1"
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={FilterFunnel01}
+              label="Filters"
+              size="sm"
+              variant="outline"
+              isCounter={appliedFilterCount > 0}
+              counterValue={String(appliedFilterCount)}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel label="Status" />
+            {(["active", "capped", "revoked"] as const).map((status) => (
+              <DropdownMenuCheckboxItem
+                key={status}
+                label={capitalize(status)}
+                checked={statusFilters.has(status)}
+                onCheckedChange={() => {
+                  setStatusFilters((current) =>
+                    toggleSetValue(current, status)
+                  );
+                  resetPagination();
+                }}
+                onSelect={(event) => event.preventDefault()}
+              />
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel label="Scope" />
+            {scopeOptions.map((scope) => (
+              <DropdownMenuCheckboxItem
+                key={scope}
+                label={scope}
+                checked={scopeFilters.has(scope)}
+                onCheckedChange={() => {
+                  setScopeFilters((current) => toggleSetValue(current, scope));
+                  resetPagination();
+                }}
+                onSelect={(event) => event.preventDefault()}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       {isLoading ? (
         <>
           <DataTableLoadingSkeleton
@@ -466,6 +579,10 @@ export function APIKeysList({
             <div className="py-8 text-center text-sm text-muted-foreground">
               Create an API key to start using Dust programmatically.
             </div>
+          ) : filteredRows.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              No API keys match these filters.
+            </div>
           ) : (
             <div className="dd-privacy-mask">
               <DataTable
@@ -484,10 +601,10 @@ export function APIKeysList({
           <Separator />
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-foreground">
-              {rows.length.toLocaleString()} API key
-              {pluralize(rows.length)}
+              {filteredRows.length.toLocaleString()} API key
+              {pluralize(filteredRows.length)}
             </span>
-            {rows.length > 0 && (
+            {filteredRows.length > 0 && (
               <div className="flex items-center gap-3">
                 <span className="text-sm text-muted-foreground">
                   Page {pageIndex + 1} of {pageCount}
