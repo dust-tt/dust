@@ -80,7 +80,7 @@ export async function upsertSkillFilesToConversation(
     })
   );
 
-  const missingIndexes: number[] = [];
+  const missing: { file: WritableSkillFile; scopedPath: string }[] = [];
 
   for (const [index, scopedPath] of expectedPaths.entries()) {
     const existsResult = await fileSystem.exists(scopedPath);
@@ -93,16 +93,13 @@ export async function upsertSkillFilesToConversation(
     }
 
     if (!existsResult.value) {
-      missingIndexes.push(index);
+      missing.push({ file: files[index], scopedPath });
     }
   }
 
   const writtenPaths: string[] = [];
 
-  for (const index of missingIndexes) {
-    const scopedPath = expectedPaths[index];
-    const file = files[index];
-
+  for (const { file, scopedPath } of missing) {
     const writeResult = await fileSystem.write(
       scopedPath,
       file.getContent(),
