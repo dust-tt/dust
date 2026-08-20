@@ -214,9 +214,7 @@ makeScript(
     });
     const prompt = systemPromptToText(promptSections);
     const leadingMessages = removeNulls([
-      renderEquippedSkillsUserMessage(equippedSkills, {
-        agentId: agentConfiguration.sId,
-      }),
+      renderEquippedSkillsUserMessage(equippedSkills),
       renderFavoriteSkillsUserMessage(favoriteSkills),
     ]);
 

@@ -6,7 +6,6 @@ import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_acti
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { stripSkillTagPresentationAttributes } from "@app/lib/skills/format";
 import { stripToolTagPresentationAttributes } from "@app/lib/tools/format";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 
 export type EnabledSkill = SkillResource;
@@ -38,23 +37,16 @@ export function getEnabledSkillInstructions(
   return `<${skill.name}>\n${modelInstructions}\n</${skill.name}>`;
 }
 
-function renderSkillList(
-  skills: SkillResource[],
-  { agentId }: { agentId?: string } = {}
-): string {
+function renderSkillList(skills: SkillResource[]): string {
   // Names are rendered as code literals rather than bold text: `skillName` is matched exactly, and
   // a literal is copied verbatim far more reliably than prose. Workspaces tend to develop their own
   // naming conventions, and models otherwise regenerate names to fit the pattern they infer from
   // the list instead of copying them, which never resolves.
   return skills
-    .map(({ sId, name, agentFacingDescription }) => {
-      const description =
-        agentId === GLOBAL_AGENTS_SID.DUST_LIGHT && sId === "go-deep"
-          ? "Enable only when the user explicitly asks for a deep dive, deep research, comprehensive analysis, or another clearly extensive investigation. Do not enable it merely because a routine task needs several tool calls."
-          : agentFacingDescription;
-
-      return `- \`${name}\`: ${description.replaceAll("\n", "\n  ")}`;
-    })
+    .map(
+      ({ name, agentFacingDescription }) =>
+        `- \`${name}\`: ${agentFacingDescription.replaceAll("\n", "\n  ")}`
+    )
     .join("\n");
 }
 
@@ -65,8 +57,7 @@ const EXACT_SKILL_NAME_INSTRUCTION =
   `named. Names are matched exactly, so a modified name will not be found.`;
 
 export function renderEquippedSkillsUserMessage(
-  equippedSkills: SkillResource[],
-  { agentId }: { agentId?: string } = {}
+  equippedSkills: SkillResource[]
 ): UserMessageTypeModel | null {
   if (equippedSkills.length === 0) {
     return null;
@@ -77,7 +68,7 @@ export function renderEquippedSkillsUserMessage(
   return renderSkillMessage(
     `<dust_system>\n` +
       `The following skills are available for use with the ${enableSkillToolName} tool:\n\n` +
-      `${renderSkillList(equippedSkills, { agentId })}\n\n` +
+      `${renderSkillList(equippedSkills)}\n\n` +
       `${EXACT_SKILL_NAME_INSTRUCTION}\n` +
       `</dust_system>`,
     { name: "system" }

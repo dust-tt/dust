@@ -651,9 +651,7 @@ export async function runModel(
   });
   // Only the shared skills message receives the leading skills cache breakpoint.
   const leadingMessages = removeNulls([
-    renderEquippedSkillsUserMessage(equippedSkills, {
-      agentId: agentConfiguration.sId,
-    }),
+    renderEquippedSkillsUserMessage(equippedSkills),
     renderFavoriteSkillsUserMessage(favoriteSkills),
   ]);
 

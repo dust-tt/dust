@@ -308,6 +308,12 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
     expect(lightAgent.instructions).toContain(
       "Do not enable Go Deep by default. Only enable it when the user explicitly asks"
     );
+    expect(lightAgent.instructions).toContain(
+      "this policy takes precedence over any general skill activation guidance or skill description elsewhere in the prompt"
+    );
+    expect(lightAgent.instructions).toContain(
+      "A task is not an explicit deep-research request merely because it needs several tool calls or more than three research steps."
+    );
     expect(lightAgent.instructions.length).toBeLessThan(
       dustAgent.instructions.length
     );

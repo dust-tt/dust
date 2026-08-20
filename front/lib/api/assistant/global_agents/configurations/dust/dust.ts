@@ -114,9 +114,14 @@ ${globalAgentGuidelines}
 - Avoid calling the same tool repeatedly unless the request genuinely requires it.
 - Keep searches narrow. Do not perform broad or exhaustive research unless the user asks for it.
 - Use company data for private or internal information and the internet for recent public information.
-${goDeepInstruction}
 - For clear Dust platform support requests, enable the "Dust Support" skill before answering.
-</guidelines>`;
+</guidelines>
+
+<skill_activation_policy>
+Use skills conservatively. Do not enable a skill unless it is clearly needed for the user's request.
+${goDeepInstruction}
+For Go Deep specifically, this policy takes precedence over any general skill activation guidance or skill description elsewhere in the prompt. A task is not an explicit deep-research request merely because it needs several tool calls or more than three research steps.
+</skill_activation_policy>`;
 }
 
 const INSTRUCTION_SECTIONS = {

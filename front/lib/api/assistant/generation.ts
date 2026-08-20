@@ -188,10 +188,8 @@ function constructToolsSection({
 
 function constructSkillsSection({
   systemSkills,
-  agentId,
 }: {
   systemSkills: SkillResource[];
-  agentId: string;
 }): string {
   const toolDisplayName = `${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}`;
 
@@ -221,9 +219,8 @@ function constructSkillsSection({
     "Do not try to enable unavailable skill tags.\n" +
     "If you need to enable multiple skills, enable those skills in parallel together. " +
     "Do not make tool calls to other tools in parallel to skill-enablement; you may want to revisit after the skill instructions are loaded.\n\n" +
-    (agentId === GLOBAL_AGENTS_SID.DUST_LIGHT
-      ? "When in doubt, do not enable extra skills. For Go Deep, only enable it when the user explicitly requests an extensive investigation. A routine task needing several tool calls is not enough.\n"
-      : "When in doubt about enabling a skill, prefer enabling it as it may give you a new perspective on the currently available context.\n");
+    "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
+    "perspective on the currently available context.\n";
 
   if (systemSkills.length > 0) {
     skillsSection +=
@@ -462,7 +459,6 @@ export function constructPromptMultiActions(
   });
   const skillsSection = constructSkillsSection({
     systemSkills,
-    agentId: agentConfiguration.sId,
   });
   // Auto-enabling promotes the Computer to a system skill, so its instructions are already in this
   // prompt and `enable_skill` will not resolve it.
