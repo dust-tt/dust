@@ -73,6 +73,7 @@ export type PokeWorkspaceInfo = {
   hasDummyFeature: boolean;
   hasMetronomeFeature: boolean;
   membersCount: number;
+  inactiveMembersCount: number;
   metronomeCustomerId: string | null;
   pendingSubscription: SubscriptionType | null;
   // Per-workspace overrides of the plan seat limits, or null when the workspace
@@ -230,10 +231,14 @@ export async function getPokeWorkspaceInfo(
 
   const planLimitOverride = await getWorkspacePlanLimitOverrides(auth);
 
-  const [membersCount, seatPlanResult] = await Promise.all([
+  const [membersCount, allMembersCount, seatPlanResult] = await Promise.all([
     MembershipResource.getMembersCountForWorkspace({
       workspace: owner,
       activeOnly: true,
+    }),
+    MembershipResource.getMembersCountForWorkspace({
+      workspace: owner,
+      activeOnly: false,
     }),
     getSeatPlan(auth),
   ]);
@@ -272,6 +277,7 @@ export async function getPokeWorkspaceInfo(
     hasDummyFeature,
     hasMetronomeFeature,
     membersCount,
+    inactiveMembersCount: allMembersCount - membersCount,
     metronomeCustomerId: workspaceResource.metronomeCustomerId ?? null,
     seatPlan,
     pendingSubscription,
