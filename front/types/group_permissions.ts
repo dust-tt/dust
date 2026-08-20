@@ -27,6 +27,7 @@ export const GRANT_VERBS = [
   "invite",
   "use",
   "make_discoverable",
+  "use_workspace_pool",
 ] as const;
 export type GrantVerb = (typeof GRANT_VERBS)[number];
 
@@ -42,6 +43,7 @@ export const GRANT_TYPES = [
   "invite",
   "use",
   "make_discoverable",
+  "use_workspace_pool",
   "*",
 ] as const;
 export type GrantType = (typeof GRANT_TYPES)[number];
@@ -56,6 +58,7 @@ export const GROUP_PERMISSION_RESOURCE_TYPES = [
   "security",
   "models_tier",
   "dust_app",
+  "trigger",
   "*",
 ] as const;
 export type GroupPermissionResourceType =
@@ -139,6 +142,7 @@ export function emptyWorkspacePermissions(): WorkspacePermissions {
     security: [],
     models_tier: [],
     dust_app: [],
+    trigger: [],
   };
 }
 
@@ -191,4 +195,5 @@ export const GOVERNANCE_CAPABILITIES = {
     { grantType: "admin", resourceType: "billing" },
     { grantType: "admin", resourceType: "security" },
   ],
+  trigger: [{ grantType: "use_workspace_pool", resourceType: "trigger" }],
 } satisfies Record<string, CapabilitySpec[]>;

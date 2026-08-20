@@ -82,6 +82,9 @@ export const ROLE_REGISTRY: Record<
   dust_app: {
     admin: { verbs: ["admin"], levels: ["type"] },
   },
+  trigger: {
+    use_workspace_pool: { verbs: ["use_workspace_pool"], levels: ["type"] },
+  },
 };
 
 interface GrantSpec {
