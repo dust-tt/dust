@@ -20,7 +20,13 @@ import type {
 import type { SubscriptionType } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
-import { AlertCircle, Chip, ContentMessage, Spinner } from "@dust-tt/sparkle";
+import {
+  AlertCircle,
+  Chip,
+  ContentMessage,
+  ProgressBar,
+  Spinner,
+} from "@dust-tt/sparkle";
 
 interface PokeUsageTabProps {
   owner: WorkspaceType;
@@ -310,12 +316,13 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
           credits
         </span>
       </div>
-      <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10">
-        <div
-          className="h-full shrink-0 bg-highlight transition-all"
-          style={{ width: `${consumedPct}%` }}
-        />
-      </div>
+      <ProgressBar
+        className="h-2 bg-muted-foreground/10"
+        values={[
+          { value: consumedPct, className: "bg-highlight" },
+          { value: 100 - consumedPct, className: "bg-transparent" },
+        ]}
+      />
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
         <span>{formatCredits(totalRemainingCredits)} credits remaining</span>
         {overageCredits !== null && overageCredits > 0 && (
