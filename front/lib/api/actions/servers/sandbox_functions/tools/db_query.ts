@@ -32,9 +32,15 @@ export async function dbQueryHandler(
   { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
   // Write gate: db_query runs DML, not just reads.
-  const podResult = await getWritablePodContext(auth, {
-    toolContext: { runContext },
-  });
+  const podResult = await getWritablePodContext(
+    auth,
+    {
+      toolContext: { runContext },
+    },
+    {
+      hiddenPodFallback: true,
+    }
+  );
   if (podResult.isErr()) {
     return new Err(podResult.error);
   }

@@ -110,7 +110,7 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });
 
-  it("keeps Frames in the conversation outside a Pod", async () => {
+  it("teaches the storage decision but not the Pod app layout outside a Pod", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "sandbox_functions");
 
@@ -119,8 +119,10 @@ describe("framesSkill.fetchInstructions", () => {
       agentLoopData: agentLoopDataInPod(null),
     });
 
+    // A standalone conversation gets a hidden Pod of its own when a Frame needs one, so the
+    // storage decision applies; the app layout does not, since there is no Pod to lay out yet.
     expect(instructions).not.toContain(POD_APP_MARKER);
-    expect(instructions).not.toContain(POD_STORAGE_MARKER);
+    expect(instructions).toContain(POD_STORAGE_MARKER);
   });
 
   it("teaches the Pod app layout and storage decision in a Pod", async () => {

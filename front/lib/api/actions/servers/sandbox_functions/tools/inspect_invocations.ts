@@ -30,7 +30,13 @@ export async function inspectInvocationsHandler(
   { slug, limit }: { slug: string; limit: number },
   { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const podResult = await getPod(auth, { toolContext: { runContext } });
+  const podResult = await getPod(
+    auth,
+    { toolContext: { runContext } },
+    {
+      hiddenPodFallback: true,
+    }
+  );
   if (podResult.isErr()) {
     return new Err(podResult.error);
   }

@@ -17,6 +17,7 @@ import {
   listProjectContextAttachments,
 } from "@app/lib/api/projects/context";
 import { fetchProjectDataSourceView } from "@app/lib/api/projects/data_sources";
+import { fetchOrCreateHiddenPodForConversation } from "@app/lib/api/projects/hidden_pod";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -103,7 +104,11 @@ export async function buildProjectRetrieveDataSources(
  */
 export async function getPod(
   auth: Authenticator,
-  from: { toolContext?: ToolContext } | { dustPod?: DustPodConfigurationType }
+  from: { toolContext?: ToolContext } | { dustPod?: DustPodConfigurationType },
+  // When set, a standalone conversation resolves to its hidden pod (created on first need)
+  // instead of erroring. Only the pod app tools pass it: managing a Pod's context, members or
+  // tasks from outside a Pod is meaningless, while a Frame's app needs a pod wherever it runs.
+  { hiddenPodFallback = false }: { hiddenPodFallback?: boolean } = {}
 ): Promise<Result<PodContext, MCPError>> {
   if ("dustPod" in from && from.dustPod) {
     const { dustPod } = from;
@@ -159,12 +164,31 @@ export async function getPod(
       const conversation = toolContext.runContext.conversation;
 
       if (!isPodConversation(conversation)) {
-        return new Err(
-          new MCPError(
-            "This conversation is not in a Pod. Pod context management is only available in Pod conversations.",
-            { tracked: false }
-          )
+        if (!hiddenPodFallback) {
+          return new Err(
+            new MCPError(
+              "This conversation is not in a Pod. Pod context management is only available in Pod conversations.",
+              { tracked: false }
+            )
+          );
+        }
+
+        // A standalone conversation has no pod of its own, but its Frames still need one to hold
+        // their app: the Frame's source, its published functions and their databases. Create it
+        // lazily and invisibly, so the caller gets the same PodContext a Pod conversation gives it.
+        const hiddenPodResult = await fetchOrCreateHiddenPodForConversation(
+          auth,
+          conversation.sId
         );
+        if (hiddenPodResult.isErr()) {
+          return new Err(
+            new MCPError(
+              `Could not prepare this conversation's app runtime: ${hiddenPodResult.error.message}`
+            )
+          );
+        }
+
+        return new Ok({ pod: hiddenPodResult.value });
       }
 
       const space = await SpaceResource.fetchById(auth, conversation.spaceId);
@@ -208,9 +232,10 @@ function checkWritePermission(
  */
 export async function getWritablePodContext(
   auth: Authenticator,
-  from: { toolContext?: ToolContext } | { dustPod?: DustPodConfigurationType }
+  from: { toolContext?: ToolContext } | { dustPod?: DustPodConfigurationType },
+  options: { hiddenPodFallback?: boolean } = {}
 ): Promise<Result<PodContext, MCPError>> {
-  const contextRes = await getPod(auth, from);
+  const contextRes = await getPod(auth, from, options);
   if (contextRes.isErr()) {
     return contextRes;
   }
