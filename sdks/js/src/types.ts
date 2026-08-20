@@ -954,7 +954,13 @@ const AgentConfigurationScopeSchema = FlexibleEnumSchema<
 >();
 
 export const AgentConfigurationViewSchema = FlexibleEnumSchema<
-  "all" | "list" | "workspace" | "published" | "global" | "favorites"
+  | "all"
+  | "all_unrestricted"
+  | "list"
+  | "workspace"
+  | "published"
+  | "global"
+  | "favorites"
 >();
 
 export type AgentConfigurationViewType = z.infer<

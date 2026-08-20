@@ -13,7 +13,15 @@ import search from "./agent_configurations/search";
 
 const GetAgentConfigurationsQuerySchema = z.object({
   view: z
-    .enum(["all", "list", "workspace", "published", "global", "favorites"])
+    .enum([
+      "all",
+      "all_unrestricted",
+      "list",
+      "workspace",
+      "published",
+      "global",
+      "favorites",
+    ])
     .optional(),
   withAuthors: z.enum(["true", "false"]).optional(),
 });
@@ -46,9 +54,10 @@ const viewRequiresUser = (view?: string): boolean =>
  *           - published: Retrieves all agents with published scope
  *           - global: Retrieves all global agents
  *           - favorites: Retrieves all agents marked as favorites by the user (only available to authenticated users)
+ *           - all_unrestricted: Retrieves every active agent of the workspace, including unpublished agents the caller does not edit and agents requesting spaces the caller cannot access. Requires an admin key.
  *         schema:
  *           type: string
- *           enum: [all, list, workspace, published, global, favorites]
+ *           enum: [all, all_unrestricted, list, workspace, published, global, favorites]
  *       - in: query
  *         name: withAuthors
  *         required: false
@@ -75,6 +84,8 @@ const viewRequiresUser = (view?: string): boolean =>
  *         description: Bad Request. Missing or invalid parameters.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token, or attempting to access restricted views without authentication.
+ *       403:
+ *         description: Forbidden. The all_unrestricted view requires a workspace admin.
  *       404:
  *         description: Workspace not found.
  *       500:
@@ -106,14 +117,31 @@ app.get(
       });
     }
 
+    if (view === "all_unrestricted" && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only admins can list all agents of the workspace.",
+        },
+      });
+    }
+
     const defaultAgentGetView = auth.user() ? "list" : "all";
     const agentsGetView = view ?? defaultAgentGetView;
     const withAuthors = withAuthorsParam === "true";
 
+    // `admin_internal` lifts the scope restrictions (unpublished agents the caller does not
+    // edit), and skipping the permission filtering lifts the space ones.
+    const isUnrestricted = agentsGetView === "all_unrestricted";
+
     let agentConfigurations = await getAgentConfigurationsForView({
       auth,
-      agentsGetView: normalizeAgentView(agentsGetView),
+      agentsGetView: isUnrestricted
+        ? "admin_internal"
+        : normalizeAgentView(agentsGetView),
       variant: "light",
+      dangerouslySkipPermissionFiltering: isUnrestricted,
     });
 
     if (withAuthors) {
