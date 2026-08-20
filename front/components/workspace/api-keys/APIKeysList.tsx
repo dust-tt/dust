@@ -63,7 +63,6 @@ interface APIKeyRowData {
   secret: string;
   status: APIKeyStatus;
   monthlyCap: string;
-  createdAt: number;
   lastUsedAt: number | null;
   menuItems: MenuItem[];
 }
@@ -281,22 +280,6 @@ function buildColumns({
       ),
     },
     {
-      id: "createdAt",
-      accessorKey: "createdAt",
-      header: "Created",
-      enableSorting: true,
-      meta: {
-        className: "hidden h-16 w-28 @lg-table:table-cell",
-        headerAlign: "left",
-      },
-      cell: (info) => (
-        <DataTable.BasicCellContent
-          className="whitespace-nowrap"
-          label={formatRelativeTime(info.row.original.createdAt)}
-        />
-      ),
-    },
-    {
       id: "lastUsedAt",
       accessorKey: "lastUsedAt",
       header: "Last used",
@@ -438,7 +421,6 @@ export function APIKeysList({
             showLegacyUsdMonthlyCap,
             showCreditMonthlyCap,
           }),
-          createdAt: key.createdAt,
           lastUsedAt: key.lastUsedAt,
           menuItems,
         };
@@ -480,9 +462,6 @@ export function APIKeysList({
       switch (activeSort.id) {
         case "name":
           comparison = left.name.localeCompare(right.name);
-          break;
-        case "createdAt":
-          comparison = left.createdAt - right.createdAt;
           break;
         case "lastUsedAt":
           comparison = (left.lastUsedAt ?? 0) - (right.lastUsedAt ?? 0);
