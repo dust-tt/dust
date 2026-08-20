@@ -255,12 +255,9 @@ export const InputBar = React.memo(function InputBar({
     isBlockedByAgentSwitch || submitBlockMessage !== null;
 
   // Same signal as the Stop button: a message sent while generating is queued.
-  const willQueueMessage = useMemo(
-    () =>
-      !!conversation &&
-      getConversationGeneratingMessages(conversation.sId).length > 0,
-    [conversation, getConversationGeneratingMessages]
-  );
+  const willQueueMessage =
+    !!conversation &&
+    getConversationGeneratingMessages(conversation.sId).length > 0;
 
   // Tools selection
 
