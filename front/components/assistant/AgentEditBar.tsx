@@ -85,9 +85,6 @@ export const AgentEditBar = ({
     <div
       className={cn(
         "mt-3 mb-2 flex items-center gap-2 rounded-xl border p-3",
-        // Same colors as the Usage page's selection banner (ContentMessageInline's
-        // "info" variant): the `warning` token is mapped to red/rose in this design
-        // system, not the yellow/orange used here.
         "border-orange-100 bg-orange-50 dark:border-golden-900 dark:bg-golden-950"
       )}
     >

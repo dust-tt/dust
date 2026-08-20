@@ -138,15 +138,8 @@ const getTableColumns = ({
         const agentName = info.row.original.name;
 
         return (
-          // A `label` wrapping the checkbox makes the whole cell (not just the
-          // small checkbox) toggle selection, natively and with no separate
-          // keyboard handling to maintain. `stopPropagation` only keeps the
-          // click from also reaching the row's `onClick`, which opens the
-          // agent details panel; the actual toggle happens through
-          // `Checkbox`'s own `onCheckedChange`. The column drops the cell's
-          // default padding (see `meta.className` below) so this label fills
-          // the entire cell, matching the hover treatment other full-cell
-          // controls (e.g. the attribution table's filter button) use.
+          // `stopPropagation` keeps the click from also reaching the row's `onClick`, which opens the
+          // agent details panel
           <Label
             htmlFor={checkboxId}
             className="flex size-full cursor-pointer items-center justify-center hover:bg-muted-background"
