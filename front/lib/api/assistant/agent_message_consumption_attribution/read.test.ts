@@ -146,6 +146,8 @@ describe("getAgentMessageConsumption", () => {
 
     expect(consumption).toEqual({
       billedCredits: BILLED_CREDITS,
+      subAgentBilledCredits: 0,
+      totalBilledCredits: BILLED_CREDITS,
       details: {
         attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
         agentWorkCredits: 3,
@@ -255,7 +257,12 @@ describe("getAgentMessageConsumption", () => {
         conversation,
         agentMessageId: agentMessage.sId,
       })
-    ).resolves.toEqual({ billedCredits: BILLED_CREDITS, details: null });
+    ).resolves.toEqual({
+      billedCredits: BILLED_CREDITS,
+      subAgentBilledCredits: 0,
+      totalBilledCredits: BILLED_CREDITS,
+      details: null,
+    });
   });
 
   it("falls back to the newest complete previous attribution", async () => {
@@ -310,6 +317,11 @@ describe("getAgentMessageConsumption", () => {
         conversation,
         agentMessageId: agentMessage.sId,
       })
-    ).resolves.toEqual({ billedCredits: BILLED_CREDITS, details: null });
+    ).resolves.toEqual({
+      billedCredits: BILLED_CREDITS,
+      subAgentBilledCredits: 0,
+      totalBilledCredits: BILLED_CREDITS,
+      details: null,
+    });
   });
 });
