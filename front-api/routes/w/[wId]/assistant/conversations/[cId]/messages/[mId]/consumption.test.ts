@@ -1,9 +1,7 @@
-import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -58,7 +56,6 @@ async function setupMessage() {
     conversation,
     agentConfiguration,
     agentMessage,
-    run,
     runUsageModelId,
   };
 }
@@ -98,15 +95,9 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/messages/:mId/consumption
     });
   });
 
-  it("includes credits billed by direct sub-agents", async () => {
-    const {
-      auth,
-      workspace,
-      conversation,
-      agentConfiguration,
-      agentMessage,
-      run,
-    } = await setupMessage();
+  it("includes credits billed by recursively spawned sub-agents", async () => {
+    const { auth, workspace, conversation, agentConfiguration, agentMessage } =
+      await setupMessage();
     await FeatureFlagFactory.basic(auth, "conversation_consumption_details");
 
     const childConversation = await ConversationFactory.create(auth, {
@@ -133,31 +124,6 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/messages/:mId/consumption
     await ConversationResource.updateAgentMessageCostCredits(auth, {
       agentMessageModelId: childAgentMessage.agentMessageId,
       costCredits: SUB_AGENT_BILLED_CREDITS,
-    });
-    const runAgentServerId = internalMCPServerNameToSId({
-      name: "run_agent",
-      workspaceId: workspace.id,
-      prefix: 1,
-    });
-    const { action: runAgentAction } = await AgentMCPActionFactory.create(
-      auth,
-      {
-        workspace,
-        conversationModelId: conversation.id,
-        agentMessageModelId: agentMessage.agentMessageId,
-        status: "succeeded",
-        dustRunId: run.dustRunId,
-        functionCallName: "run_dust-task",
-        toolName: "run_dust-task",
-        toolServerId: runAgentServerId,
-      }
-    );
-    await runAgentAction.updateStepContext({
-      ...runAgentAction.stepContext,
-      resumeState: {
-        conversationId: childConversation.sId,
-        userMessageId: childUserMessage.sId,
-      },
     });
 
     const response = await getConsumption({

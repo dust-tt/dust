@@ -140,7 +140,7 @@ describe("CreditCostPopover", () => {
     expect(screen.getByText("Charged")).toBeInTheDocument();
     expect(screen.getByText("15 credits")).toBeInTheDocument();
     expect(screen.getByText("Context and reasoning")).toBeInTheDocument();
-    expect(screen.queryByText("Sub-agents")).not.toBeInTheDocument();
+    expect(screen.getByText("Sub-agents")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Credit usage" }));
 
@@ -173,7 +173,7 @@ describe("CreditCostPopover", () => {
     expect(screen.getByText("7 credits")).toBeInTheDocument();
   });
 
-  it("attributes sub-agent consumption to its tools", () => {
+  it("uses the authoritative sub-agent total returned by the endpoint", () => {
     mockUseAgentMessageConsumption.mockReturnValue({
       consumption: {
         billedCredits: 20,
@@ -181,8 +181,8 @@ describe("CreditCostPopover", () => {
         totalBilledCredits: 302,
         details: {
           attributionVersion: 3,
-          agentWorkCredits: 5,
-          tools: [makeTool("websearch", "Websearch", 297)],
+          agentWorkCredits: 20,
+          tools: [],
         },
       },
       isConsumptionLoading: false,
@@ -192,9 +192,7 @@ describe("CreditCostPopover", () => {
     render(<CreditCostPopover {...defaultProps} subAgentCredits={0} />);
 
     expect(screen.getByText("302 credits")).toBeInTheDocument();
-    expect(screen.getByText("Websearch")).toBeInTheDocument();
-    expect(screen.getByText("297 credits")).toBeInTheDocument();
-    expect(screen.queryByText("Sub-agents")).not.toBeInTheDocument();
+    expect(screen.getByText("282 credits")).toBeInTheDocument();
   });
 
   it("hides the credit usage button when the credits panel is open", () => {

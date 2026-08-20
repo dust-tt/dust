@@ -642,77 +642,16 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   ): Promise<{
     messages: ConversationConsumptionMessageFacts[];
   }> {
-    const directFacts = await this.fetchDirectConversationsConsumptionFacts(
-      auth,
-      {
-        conversations: [conversation],
-        maxAttributionVersion,
-        parentAgentIdsByConversationId: new Map(),
-      }
-    );
-    const descendantMessages =
-      await this.fetchDescendantConversationsConsumptionFacts(auth, {
-        parentMessages: directFacts.messages,
-        visitedConversationIds: new Set([conversation.sId]),
-        maxAttributionVersion,
-        maxDepth: MAX_CONVERSATION_DEPTH,
-      });
-
-    return { messages: [...directFacts.messages, ...descendantMessages] };
-  }
-
-  private static async fetchDescendantConversationsConsumptionFacts(
-    auth: Authenticator,
-    {
-      parentMessages,
-      visitedConversationIds,
-      maxAttributionVersion,
-      maxDepth,
-    }: {
-      parentMessages: ConversationConsumptionMessageFacts[];
-      visitedConversationIds: ReadonlySet<string>;
-      maxAttributionVersion: number;
-      maxDepth: number;
-    }
-  ): Promise<ConversationConsumptionMessageFacts[]> {
     const messages: ConversationConsumptionMessageFacts[] = [];
-    const visitedIds = new Set(visitedConversationIds);
-    let currentParentMessages = parentMessages;
+    const visitedConversationIds = new Set([conversation.sId]);
+    let conversations = [conversation];
+    let parentAgentIdsByConversationId = new Map<string, string>();
 
     for (
-      let depth = 1;
-      currentParentMessages.length > 0 && depth <= maxDepth;
+      let depth = 0;
+      conversations.length > 0 && depth <= MAX_CONVERSATION_DEPTH;
       depth++
     ) {
-      const childConversationIds: string[] = [];
-      const parentAgentIdsByConversationId = new Map<string, string>();
-      for (const message of currentParentMessages) {
-        for (const action of message.actions) {
-          const childConversationId = action.getRunAgentChildConversationId();
-          if (
-            childConversationId === null ||
-            visitedIds.has(childConversationId)
-          ) {
-            continue;
-          }
-
-          visitedIds.add(childConversationId);
-          childConversationIds.push(childConversationId);
-          parentAgentIdsByConversationId.set(
-            childConversationId,
-            message.agentConfigurationId
-          );
-        }
-      }
-      if (childConversationIds.length === 0) {
-        break;
-      }
-
-      const conversations = await ConversationResource.fetchByIds(
-        auth,
-        childConversationIds,
-        { includeDeleted: true }
-      );
       const directFacts = await this.fetchDirectConversationsConsumptionFacts(
         auth,
         {
@@ -722,10 +661,40 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         }
       );
       messages.push(...directFacts.messages);
-      currentParentMessages = directFacts.messages;
+
+      if (depth === MAX_CONVERSATION_DEPTH) {
+        break;
+      }
+
+      const childConversationIds: string[] = [];
+      const childParentAgentIdsByConversationId = new Map<string, string>();
+      for (const message of directFacts.messages) {
+        for (const action of message.actions) {
+          const childConversationId = action.getRunAgentChildConversationId();
+          if (
+            childConversationId === null ||
+            visitedConversationIds.has(childConversationId)
+          ) {
+            continue;
+          }
+
+          visitedConversationIds.add(childConversationId);
+          childConversationIds.push(childConversationId);
+          childParentAgentIdsByConversationId.set(
+            childConversationId,
+            message.agentConfigurationId
+          );
+        }
+      }
+      conversations = await ConversationResource.fetchByIds(
+        auth,
+        childConversationIds,
+        { includeDeleted: true }
+      );
+      parentAgentIdsByConversationId = childParentAgentIdsByConversationId;
     }
 
-    return messages;
+    return { messages };
   }
 
   private static async fetchDirectConversationsConsumptionFacts(
@@ -854,7 +823,6 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     dustRunIds: string[];
     items: AgentMessageConsumptionItemResource[];
     actions: AgentMCPActionResource[];
-    subAgentMessages: ConversationConsumptionMessageFacts[];
   } | null> {
     const messageRes = await conversation.getMessageById(auth, agentMessageId);
     if (messageRes.isErr() || !messageRes.value.agentMessage) {
@@ -869,30 +837,12 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       }),
       AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessage.id]),
     ]);
-    const subAgentMessages =
-      await this.fetchDescendantConversationsConsumptionFacts(auth, {
-        parentMessages: [
-          {
-            agentConfigurationId: agentMessage.agentConfigurationId,
-            parentAgentConfigurationId: null,
-            billedCredits: agentMessage.costCredits,
-            dustRunIds: [...new Set(agentMessage.runIds ?? [])],
-            status: agentMessage.status,
-            items,
-            actions,
-          },
-        ],
-        visitedConversationIds: new Set([conversation.sId]),
-        maxAttributionVersion,
-        maxDepth: 1,
-      });
 
     return {
       billedCredits: agentMessage.costCredits,
       dustRunIds: [...new Set(agentMessage.runIds ?? [])],
       items,
       actions,
-      subAgentMessages,
     };
   }
 
