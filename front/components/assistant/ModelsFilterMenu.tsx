@@ -1,27 +1,24 @@
-import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type { ModelTierId } from "@app/components/model_picker/modelPickerUtils";
-import {
-  buildModelPickerCatalog,
-  MODEL_TIERS,
-} from "@app/components/model_picker/modelPickerUtils";
+import { MODEL_TIERS } from "@app/components/model_picker/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
-import { getModelMakerDisplayName } from "@app/types/assistant/models/providers";
-import type {
-  ModelConfigurationType,
-  ModelMakerIdType,
-} from "@app/types/assistant/models/types";
+import {
+  getModelMaker,
+  getModelMakerDisplayName,
+} from "@app/types/assistant/models/providers";
+import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
 import {
+  BarFull,
+  BarHalf,
+  BarLow,
   Button,
   Check,
-  ChevronDown,
   ChevronRight,
   CpuChip01,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -33,7 +30,7 @@ import {
   DropdownMenuTrigger,
   Icon,
 } from "@dust-tt/sparkle";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType } from "react";
 import { useState } from "react";
 
 export type AgentModelFilterType = {
@@ -48,27 +45,32 @@ interface ModelsFilterMenuProps {
   isCompact?: boolean;
 }
 
-type TierModelFilter = AgentModelFilterType & {
-  tierId: ModelTierId;
-};
-
 interface AgentModelMakerGroup {
   makerId: ModelMakerIdType;
   models: AgentModelFilterType[];
 }
 
-interface ModelsFilterCatalog {
-  tierModels: TierModelFilter[];
-  makerGroups: AgentModelMakerGroup[];
-  makerByModelId: Map<string, ModelMakerIdType>;
-  unknownModels: AgentModelFilterType[];
-  concreteModels: AgentModelFilterType[];
-}
+const TIER_ICON: Record<ModelTierId, ComponentType> = {
+  fast: BarLow,
+  standard: BarHalf,
+  complex: BarFull,
+};
 
-function buildModelsFilterCatalog(
-  models: AgentModelFilterType[]
-): ModelsFilterCatalog {
+export function ModelsFilterMenu({
+  models,
+  selectedModels,
+  setSelectedModels,
+  isCompact = false,
+}: ModelsFilterMenuProps) {
+  const { isDark } = useTheme();
+  const [isDropdownOpen, setDropdownOpen] = useState(false);
+  const [modelSearch, setModelSearch] = useState("");
+
+  const selectedModelIds = new Set(
+    selectedModels.map((model) => model.modelId)
+  );
   const modelsById = new Map(models.map((model) => [model.modelId, model]));
+
   const tierModels = removeNulls(
     MODEL_TIERS.map((tier) => {
       const model = modelsById.get(tier.metaModelId);
@@ -78,29 +80,32 @@ function buildModelsFilterCatalog(
     })
   );
 
-  // Keep the same model and maker ordering as the Composer picker, while only
-  // showing models that are actually used by agents in this workspace.
+  // Use the same model order and maker metadata as the Composer picker, while
+  // only showing models that are used by agents in this workspace.
   const knownModelIds = new Set<string>();
-  const concreteModelConfigs: ModelConfigurationType[] = [];
-  for (const model of getSupportedModelConfigs()) {
+  const modelsByMaker = new Map<ModelMakerIdType, AgentModelFilterType[]>();
+  for (const modelConfig of getSupportedModelConfigs()) {
+    const model = modelsById.get(modelConfig.modelId);
     if (
-      modelsById.has(model.modelId) &&
+      model &&
       !isModelStreamId(model.modelId) &&
       !knownModelIds.has(model.modelId)
     ) {
       knownModelIds.add(model.modelId);
-      concreteModelConfigs.push(model);
+      const makerId = getModelMaker(modelConfig);
+      const makerModels = modelsByMaker.get(makerId);
+      if (makerModels) {
+        makerModels.push(model);
+      } else {
+        modelsByMaker.set(makerId, [model]);
+      }
     }
   }
 
-  const { makerGroups: modelConfigGroups } =
-    buildModelPickerCatalog(concreteModelConfigs);
-  const makerGroups = modelConfigGroups.map((group) => ({
-    makerId: group.makerId,
-    models: removeNulls(
-      group.models.map((model) => modelsById.get(model.modelId) ?? null)
-    ),
-  }));
+  const makerGroups: AgentModelMakerGroup[] = Array.from(
+    modelsByMaker.entries(),
+    ([makerId, makerModels]) => ({ makerId, models: makerModels })
+  );
   const makerByModelId = new Map<string, ModelMakerIdType>(
     makerGroups.flatMap((group) =>
       group.models.map((model) => [model.modelId, group.makerId] as const)
@@ -114,228 +119,6 @@ function buildModelsFilterCatalog(
     ...makerGroups.flatMap((group) => group.models),
     ...unknownModels,
   ];
-
-  return {
-    tierModels,
-    makerGroups,
-    makerByModelId,
-    unknownModels,
-    concreteModels,
-  };
-}
-
-interface ModelFilterItemProps {
-  model: AgentModelFilterType;
-  icon?: ComponentType;
-  isSelected: boolean;
-  onToggle: (model: AgentModelFilterType) => void;
-}
-
-function ModelFilterItem({
-  model,
-  icon,
-  isSelected,
-  onToggle,
-}: ModelFilterItemProps) {
-  return (
-    <DropdownMenuCheckboxItem
-      label={model.displayName}
-      icon={icon}
-      truncateText
-      checked={isSelected}
-      indicatorPosition="end"
-      onCheckedChange={() => onToggle(model)}
-      // Keep the menu open so several models can be toggled in a row.
-      onSelect={(event) => event.preventDefault()}
-    />
-  );
-}
-
-interface ModelMakerGroupProps {
-  group: AgentModelMakerGroup;
-  selectedModelIds: ReadonlySet<string>;
-  isCompact: boolean;
-  isExpanded: boolean;
-  onToggleExpanded: () => void;
-  onToggleModel: (model: AgentModelFilterType) => void;
-}
-
-function ModelMakerGroup({
-  group,
-  selectedModelIds,
-  isCompact,
-  isExpanded,
-  onToggleExpanded,
-  onToggleModel,
-}: ModelMakerGroupProps) {
-  const { isDark } = useTheme();
-  const hasSelectedModel = group.models.some((model) =>
-    selectedModelIds.has(model.modelId)
-  );
-
-  if (isCompact) {
-    return (
-      <>
-        <DropdownMenuItem
-          label={getModelMakerDisplayName(group.makerId)}
-          icon={getModelMakerLogo(group.makerId, isDark)}
-          endComponent={
-            <div className="flex items-center gap-1">
-              {hasSelectedModel && (
-                <Icon
-                  visual={Check}
-                  size="sm"
-                  className="text-muted-foreground"
-                />
-              )}
-              <Icon
-                visual={isExpanded ? ChevronDown : ChevronRight}
-                size="xs"
-              />
-            </div>
-          }
-          onClick={onToggleExpanded}
-          onSelect={(event) => event.preventDefault()}
-        />
-        {isExpanded &&
-          group.models.map((model) => (
-            <ModelFilterItem
-              key={model.modelId}
-              model={model}
-              isSelected={selectedModelIds.has(model.modelId)}
-              onToggle={onToggleModel}
-            />
-          ))}
-      </>
-    );
-  }
-
-  return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
-        <Icon visual={getModelMakerLogo(group.makerId, isDark)} size="sm" />
-        <span className="grow truncate text-left">
-          {getModelMakerDisplayName(group.makerId)}
-        </span>
-        {hasSelectedModel && (
-          <Icon visual={Check} size="sm" className="text-muted-foreground" />
-        )}
-        <Icon
-          visual={ChevronRight}
-          size="xs"
-          className="text-muted-foreground"
-        />
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent
-        className="max-h-96 w-64 overflow-y-auto"
-        onClick={(event) => event.stopPropagation()}
-      >
-        {group.models.map((model) => (
-          <ModelFilterItem
-            key={model.modelId}
-            model={model}
-            isSelected={selectedModelIds.has(model.modelId)}
-            onToggle={onToggleModel}
-          />
-        ))}
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
-  );
-}
-
-interface MoreModelsSectionProps {
-  children: ReactNode;
-  searchBar: ReactNode;
-  isCompact: boolean;
-  isExpanded: boolean;
-  hasSelectedModel: boolean;
-  onToggleExpanded: () => void;
-}
-
-function MoreModelsSection({
-  children,
-  searchBar,
-  isCompact,
-  isExpanded,
-  hasSelectedModel,
-  onToggleExpanded,
-}: MoreModelsSectionProps) {
-  const selectionCheck = hasSelectedModel ? (
-    <Icon visual={Check} size="sm" className="text-muted-foreground" />
-  ) : null;
-
-  if (isCompact) {
-    return (
-      <>
-        <DropdownMenuItem
-          label="More models"
-          endComponent={
-            <div className="flex items-center gap-1">
-              {selectionCheck}
-              <Icon
-                visual={isExpanded ? ChevronDown : ChevronRight}
-                size="xs"
-              />
-            </div>
-          }
-          onClick={onToggleExpanded}
-          onSelect={(event) => event.preventDefault()}
-        />
-        {isExpanded && (
-          <>
-            {searchBar}
-            {children}
-          </>
-        )}
-      </>
-    );
-  }
-
-  return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger onClick={(event) => event.stopPropagation()}>
-        <span className="grow truncate text-left">More models</span>
-        {selectionCheck}
-        <Icon
-          visual={ChevronRight}
-          size="xs"
-          className="text-muted-foreground"
-        />
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent
-        className="max-h-112 w-64 overflow-y-auto"
-        onClick={(event) => event.stopPropagation()}
-      >
-        {searchBar}
-        {children}
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
-  );
-}
-
-export function ModelsFilterMenu({
-  models,
-  selectedModels,
-  setSelectedModels,
-  isCompact = false,
-}: ModelsFilterMenuProps) {
-  const [isDropdownOpen, setDropdownOpen] = useState(false);
-  const [modelSearch, setModelSearch] = useState("");
-  const [moreModelsExpanded, setMoreModelsExpanded] = useState(false);
-  const [expandedMaker, setExpandedMaker] = useState<ModelMakerIdType | null>(
-    null
-  );
-
-  const selectedModelIds = new Set(
-    selectedModels.map((model) => model.modelId)
-  );
-  const {
-    tierModels,
-    makerGroups,
-    makerByModelId,
-    unknownModels,
-    concreteModels,
-  } = buildModelsFilterCatalog(models);
 
   const query = modelSearch.trim().toLowerCase();
   const isSearching = query !== "";
@@ -360,7 +143,31 @@ export function ModelsFilterMenu({
     );
   };
 
-  const modelSearchBar = (
+  const renderModel = (model: AgentModelFilterType, icon?: ComponentType) => {
+    const isSelected = selectedModelIds.has(model.modelId);
+
+    return (
+      <DropdownMenuItem
+        key={model.modelId}
+        role="menuitemcheckbox"
+        aria-checked={isSelected}
+        label={model.displayName}
+        icon={icon}
+        truncateText
+        endComponent={
+          isSelected ? (
+            <Icon visual={Check} size="sm" className="text-muted-foreground" />
+          ) : undefined
+        }
+        onSelect={(event) => {
+          event.preventDefault();
+          toggleModel(model);
+        }}
+      />
+    );
+  };
+
+  const searchbar = (
     <div className="sticky top-0 z-10 bg-overlay-background">
       <DropdownMenuSearchbar
         autoFocus={!isCompact}
@@ -372,16 +179,9 @@ export function ModelsFilterMenu({
     </div>
   );
 
-  const moreModelsBody = isSearching ? (
+  const body = isSearching ? (
     searchResults.length > 0 ? (
-      searchResults.map((model) => (
-        <ModelFilterItem
-          key={model.modelId}
-          model={model}
-          isSelected={selectedModelIds.has(model.modelId)}
-          onToggle={toggleModel}
-        />
-      ))
+      searchResults.map((model) => renderModel(model))
     ) : (
       <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
         No models found
@@ -389,32 +189,40 @@ export function ModelsFilterMenu({
     )
   ) : (
     <>
-      {makerGroups.map((group) => (
-        <ModelMakerGroup
-          key={group.makerId}
-          group={group}
-          selectedModelIds={selectedModelIds}
-          isCompact={isCompact}
-          isExpanded={expandedMaker === group.makerId}
-          onToggleExpanded={() =>
-            setExpandedMaker((current) =>
-              current === group.makerId ? null : group.makerId
-            )
-          }
-          onToggleModel={toggleModel}
-        />
+      {makerGroups.map((maker) => (
+        <DropdownMenuSub key={maker.makerId}>
+          <DropdownMenuSubTrigger>
+            <Icon visual={getModelMakerLogo(maker.makerId, isDark)} size="sm" />
+            <span className="grow truncate text-left">
+              {getModelMakerDisplayName(maker.makerId)}
+            </span>
+            {maker.models.some((model) =>
+              selectedModelIds.has(model.modelId)
+            ) && (
+              <Icon
+                visual={Check}
+                size="sm"
+                className="text-muted-foreground"
+              />
+            )}
+            <Icon
+              visual={ChevronRight}
+              size="xs"
+              className="text-muted-foreground"
+            />
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent
+            className="max-h-96 w-64 overflow-y-auto"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {maker.models.map((model) => renderModel(model))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
       ))}
       {unknownModels.length > 0 && (
         <>
           <DropdownMenuLabel label="Other models" />
-          {unknownModels.map((model) => (
-            <ModelFilterItem
-              key={model.modelId}
-              model={model}
-              isSelected={selectedModelIds.has(model.modelId)}
-              onToggle={toggleModel}
-            />
-          ))}
+          {unknownModels.map((model) => renderModel(model))}
         </>
       )}
     </>
@@ -424,6 +232,29 @@ export function ModelsFilterMenu({
     selectedModelIds.has(model.modelId)
   );
 
+  const moreModels = (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger onClick={(event) => event.stopPropagation()}>
+        <span className="grow truncate text-left">More models</span>
+        {hasSelectedConcreteModel && (
+          <Icon visual={Check} size="sm" className="text-muted-foreground" />
+        )}
+        <Icon
+          visual={ChevronRight}
+          size="xs"
+          className="text-muted-foreground"
+        />
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent
+        className="max-h-112 w-64 overflow-y-auto"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {searchbar}
+        {body}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
+
   return (
     <DropdownMenu
       open={isDropdownOpen}
@@ -431,8 +262,6 @@ export function ModelsFilterMenu({
         setDropdownOpen(open);
         if (!open) {
           setModelSearch("");
-          setMoreModelsExpanded(false);
-          setExpandedMaker(null);
         }
       }}
     >
@@ -450,31 +279,13 @@ export function ModelsFilterMenu({
         {models.length > 0 ? (
           <>
             <DropdownMenuLabel label="Model" />
-            {tierModels.map((model) => (
-              <ModelFilterItem
-                key={model.modelId}
-                model={model}
-                icon={MODEL_TIER_ICON[model.tierId]}
-                isSelected={selectedModelIds.has(model.modelId)}
-                onToggle={toggleModel}
-              />
-            ))}
+            {tierModels.map((model) =>
+              renderModel(model, TIER_ICON[model.tierId])
+            )}
             {tierModels.length > 0 && concreteModels.length > 0 && (
               <DropdownMenuSeparator />
             )}
-            {concreteModels.length > 0 && (
-              <MoreModelsSection
-                searchBar={modelSearchBar}
-                isCompact={isCompact}
-                isExpanded={moreModelsExpanded}
-                hasSelectedModel={hasSelectedConcreteModel}
-                onToggleExpanded={() =>
-                  setMoreModelsExpanded((expanded) => !expanded)
-                }
-              >
-                {moreModelsBody}
-              </MoreModelsSection>
-            )}
+            {concreteModels.length > 0 && moreModels}
           </>
         ) : (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">

@@ -1,5 +1,4 @@
 import { ModelPickerContent } from "@app/components/model_picker/ModelPickerContent";
-import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type {
   ModelPickerSelectTrigger,
   ModelPickerSurface,
@@ -9,11 +8,11 @@ import {
   trackModelPickerSelect,
 } from "@app/components/model_picker/modelPickerTracking";
 import type {
+  MakerGroup,
   ModelTierId,
   Selection,
 } from "@app/components/model_picker/modelPickerUtils";
 import {
-  buildModelPickerCatalog,
   buildModelSelection,
   buildTierSelection,
   getInitialEffort,
@@ -41,9 +40,22 @@ import type {
 } from "@app/types/assistant/models/types";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, DropdownMenu, DropdownMenuTrigger } from "@dust-tt/sparkle";
-import type { MutableRefObject } from "react";
+import {
+  BarFull,
+  BarHalf,
+  BarLow,
+  Button,
+  DropdownMenu,
+  DropdownMenuTrigger,
+} from "@dust-tt/sparkle";
+import type { ComponentType, MutableRefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+
+const TIER_BUTTON_ICON: Record<ModelTierId, ComponentType> = {
+  fast: BarLow,
+  standard: BarHalf,
+  complex: BarFull,
+};
 
 export interface ModelPickerProps {
   agentModel: AgentModelConfigurationType | null;
@@ -158,10 +170,12 @@ export function ModelPicker({
 
   const canRevert = !isSameSelection(shown.display, agentDefault.display);
 
-  // Concrete, selectable models (meta-models are surfaced as tiers instead),
-  // grouped in the same catalog order as other model-picker surfaces.
-  const { concreteModels: allModels, makerGroups } = useMemo(
-    () => buildModelPickerCatalog(models.filter((model) => model.isSelectable)),
+  // Concrete, selectable models (meta-models are surfaced as tiers instead).
+  const allModels = useMemo<ModelConfigurationType[]>(
+    () =>
+      models.filter(
+        (model) => !isModelStreamId(model.modelId) && model.isSelectable
+      ),
     [models]
   );
 
@@ -171,6 +185,25 @@ export function ModelPicker({
     () => models.filter((model) => isModelStreamId(model.modelId)),
     [models]
   );
+
+  // Group models by maker, preserving first-seen order of both makers and
+  // models within each maker.
+  const makerGroups = useMemo<MakerGroup[]>(() => {
+    const groups = new Map<ModelMakerIdType, ModelConfigurationType[]>();
+    for (const model of allModels) {
+      const makerId = getModelMaker(model);
+      const existing = groups.get(makerId);
+      if (existing) {
+        existing.push(model);
+      } else {
+        groups.set(makerId, [model]);
+      }
+    }
+    return Array.from(groups.entries()).map(([makerId, makerModels]) => ({
+      makerId,
+      models: makerModels,
+    }));
+  }, [allModels]);
 
   const commit = (
     selection: Selection,
@@ -303,7 +336,7 @@ export function ModelPicker({
 
   const buttonIcon =
     shown.display.kind === "tier"
-      ? MODEL_TIER_ICON[shown.display.tierId]
+      ? TIER_BUTTON_ICON[shown.display.tierId]
       : getModelMakerLogo(getModelMaker(shown.display.model), isDark);
 
   const label =

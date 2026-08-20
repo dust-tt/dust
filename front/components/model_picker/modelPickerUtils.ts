@@ -17,7 +17,6 @@ import {
   isModelStreamId,
 } from "@app/types/assistant/models/auto";
 import { isStaticModelId } from "@app/types/assistant/models/models";
-import { getModelMaker } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
   ModelIdType,
@@ -176,43 +175,6 @@ export interface Selection {
 export interface MakerGroup {
   makerId: ModelMakerIdType;
   models: ModelConfigurationType[];
-}
-
-function groupModelsByMaker(
-  models: readonly ModelConfigurationType[]
-): MakerGroup[] {
-  const groups = new Map<ModelMakerIdType, ModelConfigurationType[]>();
-  for (const model of models) {
-    const makerId = getModelMaker(model);
-    const existing = groups.get(makerId);
-    if (existing) {
-      existing.push(model);
-    } else {
-      groups.set(makerId, [model]);
-    }
-  }
-  return Array.from(groups.entries()).map(([makerId, makerModels]) => ({
-    makerId,
-    models: makerModels,
-  }));
-}
-
-export interface ModelPickerCatalog {
-  concreteModels: ModelConfigurationType[];
-  makerGroups: MakerGroup[];
-}
-
-export function buildModelPickerCatalog(
-  models: readonly ModelConfigurationType[]
-): ModelPickerCatalog {
-  const concreteModels = models.filter(
-    (model) => !isModelStreamId(model.modelId)
-  );
-
-  return {
-    concreteModels,
-    makerGroups: groupModelsByMaker(concreteModels),
-  };
 }
 
 export type EffortLockReason = "unsupported" | "premium" | "model_tier";

@@ -643,7 +643,6 @@ export type DropdownMenuCheckboxItemProps = React.ComponentPropsWithoutRef<
   icon?: React.ComponentProps<typeof DropdownMenuItem>["icon"];
   description?: React.ComponentProps<typeof DropdownMenuItem>["description"];
   truncateText?: React.ComponentProps<typeof DropdownMenuItem>["truncateText"];
-  indicatorPosition?: "start" | "end";
 };
 
 const DropdownMenuCheckboxItem = React.forwardRef<
@@ -651,53 +650,32 @@ const DropdownMenuCheckboxItem = React.forwardRef<
   DropdownMenuCheckboxItemProps
 >(
   (
-    {
-      className,
-      children,
-      description,
-      label,
-      icon,
-      truncateText,
-      indicatorPosition = "start",
-      ...props
-    },
+    { className, children, description, label, icon, truncateText, ...props },
     ref
-  ) => {
-    const indicator = (
-      <DropdownMenuPrimitive.ItemIndicator>
-        <Icon size="xs" visual={Check} className="text-muted-foreground" />
-      </DropdownMenuPrimitive.ItemIndicator>
-    );
-
-    return (
-      <DropdownMenuPrimitive.CheckboxItem
-        ref={ref}
-        className={cn(
-          menuStyleClasses.item({ variant: "default" }),
-          indicatorPosition === "start" && menuStyleClasses.inset,
-          className
-        )}
-        {...props}
+  ) => (
+    <DropdownMenuPrimitive.CheckboxItem
+      ref={ref}
+      className={cn(
+        menuStyleClasses.item({ variant: "default" }),
+        menuStyleClasses.inset
+      )}
+      {...props}
+    >
+      <span className={menuStyleClasses.subTrigger.span}>
+        <DropdownMenuPrimitive.ItemIndicator>
+          <Icon size="xs" visual={Check} className="text-muted-foreground" />
+        </DropdownMenuPrimitive.ItemIndicator>
+      </span>
+      <ItemWithLabelIconAndDescription
+        label={label}
+        icon={icon}
+        description={description}
+        truncate={truncateText}
       >
-        {indicatorPosition === "start" && (
-          <span className={menuStyleClasses.subTrigger.span}>{indicator}</span>
-        )}
-        <ItemWithLabelIconAndDescription
-          label={label}
-          icon={icon}
-          description={description}
-          truncate={truncateText}
-        >
-          {children}
-        </ItemWithLabelIconAndDescription>
-        {indicatorPosition === "end" && (
-          <span className="ml-auto flex h-3.5 w-3.5 items-center justify-center">
-            {indicator}
-          </span>
-        )}
-      </DropdownMenuPrimitive.CheckboxItem>
-    );
-  }
+        {children}
+      </ItemWithLabelIconAndDescription>
+    </DropdownMenuPrimitive.CheckboxItem>
+  )
 );
 DropdownMenuCheckboxItem.displayName =
   DropdownMenuPrimitive.CheckboxItem.displayName;
