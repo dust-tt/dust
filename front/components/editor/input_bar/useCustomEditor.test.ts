@@ -269,15 +269,11 @@ describe("useCustomEditor placeholder override", () => {
     // jsdom does not implement matchMedia (used by useIsMobile).
     vi.stubGlobal(
       "matchMedia",
-      vi.fn().mockImplementation((query: string) => ({
+      vi.fn((query: string) => ({
         matches: false,
         media: query,
-        onchange: null,
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        dispatchEvent: vi.fn(),
       }))
     );
   });
@@ -290,7 +286,7 @@ describe("useCustomEditor placeholder override", () => {
     const initialProps: { placeholderOverride: string | null } = {
       placeholderOverride: null,
     };
-    return renderHook(
+    const { result, rerender } = renderHook(
       ({ placeholderOverride }: { placeholderOverride: string | null }) =>
         useCustomEditor({
           onEnterKeyDown: vi.fn(),
@@ -301,20 +297,22 @@ describe("useCustomEditor placeholder override", () => {
         }),
       { initialProps }
     );
+
+    const editor = result.current.editor;
+    if (!editor) {
+      throw new Error("Editor was not initialized");
+    }
+
+    return { editor, result, rerender };
   }
 
-  function getPlaceholderText(editor: Editor | null) {
-    return (
-      editor?.view.dom.querySelector("p")?.getAttribute("data-placeholder") ??
-      null
-    );
+  function getPlaceholderText(editor: Editor) {
+    return editor.view.dom.querySelector("p")?.getAttribute("data-placeholder");
   }
 
   it("updates the placeholder without recreating the editor", () => {
-    const { result, rerender } = renderEditorHook();
+    const { editor, result, rerender } = renderEditorHook();
 
-    const editor = result.current.editor;
-    expect(editor).not.toBeNull();
     expect(getPlaceholderText(editor)).toBe("Get work done");
 
     rerender({ placeholderOverride: "Add a follow-up" });
@@ -329,20 +327,17 @@ describe("useCustomEditor placeholder override", () => {
   });
 
   it("preserves content and selection across placeholder changes", () => {
-    const { result, rerender } = renderEditorHook();
-
-    const editor = result.current.editor;
-    expect(editor).not.toBeNull();
+    const { editor, result, rerender } = renderEditorHook();
 
     act(() => {
-      editor?.commands.setContent("hello");
-      editor?.commands.setTextSelection(3);
+      editor.commands.setContent("hello");
+      editor.commands.setTextSelection(3);
     });
 
     rerender({ placeholderOverride: "Add a follow-up" });
 
     expect(result.current.editor).toBe(editor);
-    expect(editor?.getText()).toBe("hello");
-    expect(editor?.state.selection.from).toBe(3);
+    expect(editor.getText()).toBe("hello");
+    expect(editor.state.selection.from).toBe(3);
   });
 });

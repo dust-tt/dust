@@ -59,8 +59,7 @@ import React, {
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
-// Placeholder shown while the agent is generating, when a submitted message
-// is queued as a follow-up.
+// Placeholder shown when a submitted message would be queued.
 const INPUT_BAR_QUEUE_PLACEHOLDER = "Add a follow-up";
 
 type SelectedSpacesState = {
@@ -255,8 +254,7 @@ export const InputBar = React.memo(function InputBar({
   const isBlockedForSubmission =
     isBlockedByAgentSwitch || submitBlockMessage !== null;
 
-  // A message submitted while the agent is generating (same signal as the Stop
-  // button) is queued as a follow-up.
+  // Same signal as the Stop button: a message sent while generating is queued.
   const willQueueMessage = useMemo(
     () =>
       !!conversation &&
