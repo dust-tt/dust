@@ -40,7 +40,13 @@ const Person = ({ handle }: { handle: string }) => {
       <img
         src={person.image}
         alt={person.name}
-        className="h-12 w-12 rounded-xl sm:mt-1 sm:h-10 sm:w-10"
+        className={classNames(
+          "h-12 w-12 rounded-xl sm:mt-1 sm:h-10 sm:w-10",
+          // Remote GitHub/Slack avatars are always square, so the default
+          // `object-fit: fill` is a no-op for them. Photos uploaded to
+          // /static are arbitrary portraits and must crop, not stretch.
+          person.image.startsWith("/static/") && "object-cover"
+        )}
       />
       <div className="flex flex-col gap-1">
         <div className="copy-base text-foreground">
