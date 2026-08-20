@@ -189,7 +189,6 @@
     "prosemirror-changeset": "^2.3.1",
     "re2-wasm": "^1.0.2",
     "react": "^18.3.1",
-    "react-beforeunload": "^2.5.3",
     "react-cookie": "^7.2.2",
     "react-dom": "^18.3.1",
     "react-dropzone": "^14.2.3",
