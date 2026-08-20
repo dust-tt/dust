@@ -7,6 +7,8 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import config from "./config";
+import consumption from "./consumption";
+import messageConsumption from "./messages/[mId]/consumption";
 import reinforcementTestCase from "./reinforcement_test_case";
 import render from "./render";
 
@@ -39,6 +41,8 @@ app.get(
 );
 
 app.route("/config", config);
+app.route("/consumption", consumption);
+app.route("/messages/:mId/consumption", messageConsumption);
 app.route("/reinforcement_test_case", reinforcementTestCase);
 app.route("/render", render);
 
