@@ -868,8 +868,10 @@ export function AgentMessage({
       />
     );
 
-    if (agentMessage.costCredits !== null && agentMessage.costCredits > 0) {
-      const formattedCredits = formatCredits(agentMessage.costCredits);
+    const totalCostCredits =
+      (agentMessage.costCredits ?? 0) + (agentMessage.subAgentCostCredits ?? 0);
+    if (totalCostCredits > 0) {
+      const formattedCredits = formatCredits(totalCostCredits);
       const creditCostTrigger = (
         <Button
           variant="ghost-secondary"
@@ -877,7 +879,7 @@ export function AgentMessage({
           label={formattedCredits}
           iconRight={CoinsStacked01}
           className="gap-1 px-1 tracking-normal"
-          aria-label={`${formatCreditValue(agentMessage.costCredits)} used for this message. View consumption breakdown`}
+          aria-label={`${formatCreditValue(totalCostCredits)} used for this message. View consumption breakdown`}
         />
       );
 
@@ -896,7 +898,7 @@ export function AgentMessage({
           <span
             key="message-credit-cost"
             role="status"
-            aria-label={`${formatCreditValue(agentMessage.costCredits)} used for this message`}
+            aria-label={`${formatCreditValue(totalCostCredits)} used for this message`}
             className="inline-flex h-6 items-center gap-1 rounded-lg px-1 text-sm font-medium leading-5 text-muted-foreground"
           >
             {formattedCredits}
