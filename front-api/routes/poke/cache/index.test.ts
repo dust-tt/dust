@@ -1,8 +1,8 @@
-import { getRedisCacheClient } from "@app/lib/api/redis";
+import { getRedisCacheClient, runOnRedisCache } from "@app/lib/api/redis";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const WORKSPACE_MODEL_ID = 42;
 const GROUP_MODEL_ID = 7;
@@ -56,5 +56,41 @@ describe("Poke cache: group permissions", () => {
     expect(await lookupResponse.json()).toMatchObject({
       cacheRedis: { value: null },
     });
+  });
+});
+
+const workspaceId = "cache-cutover-test-workspace";
+const newKey = `cacheWithRedis-workspace_by_sid-v3:${workspaceId}`;
+const previousKey = `cacheWithRedis-_fetchByIdUncached-workspace:v2:${workspaceId}`;
+
+describe("DELETE /api/poke/cache", () => {
+  const deleteKey = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(runOnRedisCache).mockImplementation(async (_options, fn) =>
+      fn({ del: deleteKey } as never)
+    );
+  });
+
+  it("deletes the new and previous keys", async () => {
+    await createPrivateApiMockRequest({
+      method: "DELETE",
+      isSuperUser: true,
+    });
+    const query = new URLSearchParams({
+      resourceId: "workspace_by_sid",
+      params: JSON.stringify({ wId: workspaceId }),
+      redisInstance: "cache",
+    });
+
+    const response = await honoApp.request(`/api/poke/cache?${query}`, {
+      method: "DELETE",
+    });
+
+    expect(response.status).toBe(200);
+    expect(deleteKey).toHaveBeenCalledTimes(2);
+    expect(deleteKey).toHaveBeenCalledWith(newKey);
+    expect(deleteKey).toHaveBeenCalledWith(previousKey);
   });
 });

@@ -24,7 +24,11 @@ function legacyCacheOperations(): CacheOperations[] {
       supportsBulkInvalidation: resource.resolverKeyPattern !== undefined,
     },
     buildKey: (params) => buildCacheKey(resource, params),
+    buildKeysToDelete: (params) => [buildCacheKey(resource, params)],
     keyPattern: buildCacheKeyPattern(resource),
+    keyPatternsToDelete: [buildCacheKeyPattern(resource)].filter(
+      (pattern): pattern is string => pattern !== null
+    ),
   }));
 }
 
