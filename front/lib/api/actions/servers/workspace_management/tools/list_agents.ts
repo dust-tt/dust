@@ -15,35 +15,28 @@ import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configurat
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentsGetViewType } from "@app/types/assistant/agent";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
-// `all_unrestricted` maps onto `admin_internal` to lift the scope restriction (unpublished
-// agents the caller does not edit) plus permission filtering to lift the space one, exactly like
-// the public agent_configurations endpoint does.
 function resolveAgentView(view: AgentViewType): {
   agentsGetView: AgentsGetViewType;
   dangerouslySkipPermissionFiltering: boolean;
 } {
-  switch (view) {
-    case "all_unrestricted":
-      return {
-        agentsGetView: "admin_internal",
-        dangerouslySkipPermissionFiltering: true,
-      };
-    case "all":
-    case "list":
-    case "published":
-    case "global":
-    // The archived view already scopes to the agents the caller edits, or all of them for an
-    // admin, so it needs no extra guard.
-    case "archived":
-      return {
-        agentsGetView: view,
-        dangerouslySkipPermissionFiltering: false,
-      };
-    default:
-      assertNever(view);
+  // `all_unrestricted` maps onto `admin_internal` to lift the scope restriction (unpublished
+  // agents the caller does not edit) plus permission filtering to lift the space one, exactly
+  // like the public agent_configurations endpoint does.
+  if (view === "all_unrestricted") {
+    return {
+      agentsGetView: "admin_internal",
+      dangerouslySkipPermissionFiltering: true,
+    };
   }
+
+  // Every other view is an `AgentsGetViewType` already, which `PASS_THROUGH_AGENT_VIEWS` proves,
+  // so it needs no mapping and no extra guard — `archived` included, since that view self-scopes
+  // to the agents the caller edits, or all of them for an admin.
+  return {
+    agentsGetView: view,
+    dangerouslySkipPermissionFiltering: false,
+  };
 }
 
 function guardAgentView(

@@ -1,4 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentsGetViewType } from "@app/types/assistant/agent";
 import {
   SKILL_AVAILABILITIES,
   SKILL_STATUSES,
@@ -15,16 +16,23 @@ export const GET_SKILL_DETAILS_TOOL_NAME = "get_skill_details" as const;
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 50;
 
-// Mirrors the `view` parameter of the public
-// GET /api/v1/w/{wId}/assistant/agent_configurations endpoint so both surfaces share one
-// vocabulary, plus `archived`. `all_unrestricted` is the admin-only view that lifts both the scope restriction
-// (unpublished agents the caller does not edit) and the space one.
-export const AGENT_VIEWS = [
+const PASS_THROUGH_AGENT_VIEWS = [
   "list",
   "all",
   "published",
   "global",
   "archived",
+] as const satisfies readonly AgentsGetViewType[];
+
+export type PassThroughAgentViewType =
+  (typeof PASS_THROUGH_AGENT_VIEWS)[number];
+
+// Mirrors the `view` parameter of the public
+// GET /api/v1/w/{wId}/assistant/agent_configurations endpoint so both surfaces share one
+// vocabulary, plus `archived`. `all_unrestricted` is ours: it is the admin-only view that lifts
+// both the scope restriction (unpublished agents the caller does not edit) and the space one.
+export const AGENT_VIEWS = [
+  ...PASS_THROUGH_AGENT_VIEWS,
   "all_unrestricted",
 ] as const;
 export type AgentViewType = (typeof AGENT_VIEWS)[number];
