@@ -36,6 +36,7 @@ const CONSUMPTION_TOP_ENDPOINTS = {
 export type ConsumptionTopRow = {
   id: string;
   name: string;
+  detailsHref?: string;
   pictureUrl: string | null;
   description: string | null;
   icon: string | null;
