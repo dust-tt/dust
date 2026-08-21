@@ -2,7 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { ResourceWithId } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type {
@@ -99,13 +99,14 @@ export abstract class ResourceWithSpace<
       },
       include: [
         {
-          as: "groupSpaces",
-          model: GroupSpaceModel,
+          as: "spaceGrants",
+          model: GroupPermissionModel,
           // A where on an include implies required: true;
           // pass this required: false to keep the original behavior intact
           required: false,
           where: {
             workspaceId: blobWorkspaceIds,
+            resourceType: "space",
           },
         },
       ],

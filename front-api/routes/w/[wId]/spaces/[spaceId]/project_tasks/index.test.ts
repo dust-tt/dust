@@ -91,11 +91,7 @@ describe("POST /api/w/:wId/spaces/:spaceId/project_tasks/mark_read", () => {
     );
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    const [memberGroup] = await regularSpace.fetchGroupResources(adminAuth, {
-      groupReferences: regularSpace.groups.filter((group) =>
-        group.isRegularAuto()
-      ),
-    });
+    const [memberGroup] = await regularSpace.fetchRegularAutoGroups(adminAuth);
     if (memberGroup) {
       await memberGroup.dangerouslyAddMembers(adminAuth, {
         users: [user.toJSON()],

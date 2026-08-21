@@ -58,10 +58,7 @@ const withEditableSpace = createMiddleware<
     });
   }
 
-  if (
-    space.managementMode === "group" ||
-    space.groups.some((group) => group.isGlobal())
-  ) {
+  if (space.managementMode === "group" || space.isOpen()) {
     return apiError(ctx, {
       status_code: 404,
       api_error: {

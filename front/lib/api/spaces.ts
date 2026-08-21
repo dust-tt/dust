@@ -578,14 +578,9 @@ export async function hardDeleteSpace(
   }
 
   await withTransaction(async (t) => {
-    // Delete all spaces groups.
-    const groupReferences = space.groups.filter(
-      (group) => !space.isRegular() || !group.isGlobal()
-    );
-    const groups = await space.fetchGroupResources(auth, {
-      groupReferences,
-      transaction: t,
-    });
+    // Delete only the space's own auto-created (regular_auto) groups. The workspace global group and
+    // provisioned (IdP-owned) groups are shared and must never be deleted with a space.
+    const groups = await space.fetchRegularAutoGroups(auth, t);
     for (const group of groups) {
       const res = await group.delete(auth, { transaction: t });
       if (res.isErr()) {

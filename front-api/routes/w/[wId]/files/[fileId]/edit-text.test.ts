@@ -230,9 +230,7 @@ describe("POST /api/w/:wId/files/:fileId/edit-text", () => {
     });
 
     const space = await SpaceFactory.regular(workspace);
-    const [memberGroup] = await space.fetchGroupResources(auth, {
-      groupReferences: space.groups.filter((group) => group.isRegularAuto()),
-    });
+    const [memberGroup] = await space.fetchRegularAutoGroups(auth);
     await memberGroup?.dangerouslyAddMembers(auth, { users: [user.toJSON()] });
 
     const file = await FileFactory.create(auth, user, {
@@ -296,9 +294,7 @@ describe("POST /api/w/:wId/files/:fileId/edit-text", () => {
 
     const otherUser = await UserFactory.basic();
     const space = await SpaceFactory.regular(workspace);
-    const [memberGroup] = await space.fetchGroupResources(auth, {
-      groupReferences: space.groups.filter((group) => group.isRegularAuto()),
-    });
+    const [memberGroup] = await space.fetchRegularAutoGroups(auth);
     await memberGroup?.dangerouslyAddMembers(auth, {
       users: [otherUser.toJSON()],
     });

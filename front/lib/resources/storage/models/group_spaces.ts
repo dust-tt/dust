@@ -59,10 +59,6 @@ GroupModel.belongsToMany(SpaceModel, {
   foreignKey: "groupId",
 });
 
-SpaceModel.hasMany(GroupSpaceModel, {
-  as: "groupSpaces",
-  foreignKey: "vaultId",
-});
 GroupSpaceModel.belongsTo(SpaceModel, {
   as: "space",
   foreignKey: "vaultId",

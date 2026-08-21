@@ -32,14 +32,8 @@ async function fetchRegularAutoGroup(
   space: SpaceResource,
   auth: Authenticator
 ) {
-  const groupReference = space.groups.find((group) => group.isRegularAuto());
-  if (!groupReference) {
-    return null;
-  }
-  const [group] = await space.fetchGroupResources(auth, {
-    groupReferences: [groupReference],
-  });
-  return group;
+  const [group] = await space.fetchRegularAutoGroups(auth);
+  return group ?? null;
 }
 
 async function markConversationAgentMessagesAsSucceeded(
