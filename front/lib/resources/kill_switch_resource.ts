@@ -3,8 +3,10 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { KillSwitchModel } from "@app/lib/resources/storage/models/kill_switches";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -72,7 +74,16 @@ export class KillSwitchResource extends BaseResource<KillSwitchModel> {
   }
 
   static async listEnabledKillSwitches(): Promise<KillSwitchType[]> {
-    return KillSwitchResource.listEnabledKillSwitchesCached();
+    try {
+      return await KillSwitchResource.listEnabledKillSwitchesCached();
+    } catch (err) {
+      // Kill switches gate every workspace fetch. A Redis outage must not take reads down.
+      logger.warn(
+        { err: normalizeError(err) },
+        "Kill switch cache read failed; falling back to the database"
+      );
+      return KillSwitchResource._listEnabledKillSwitchesUncached();
+    }
   }
 
   static async isKillSwitchEnabled(type: KillSwitchType): Promise<boolean> {
