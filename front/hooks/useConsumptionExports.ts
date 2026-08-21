@@ -1,9 +1,11 @@
+import { getConsumptionAnalyticsUrl } from "@app/hooks/useConsumptionQuery";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   ConsumptionExportListItem,
   StartConsumptionExportResponse,
 } from "@app/lib/api/analytics/consumption/export_jobs";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
+import type { ConsumptionAccessScope } from "@app/lib/api/analytics/consumption/scope";
 import { getBaseUrl } from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -25,14 +27,20 @@ type GetConsumptionExportStatusResponse = {
 export function useConsumptionExports({
   workspaceId,
   exportBody,
+  accessScope,
   disabled,
 }: {
   workspaceId: string;
   exportBody: ConsumptionExportBody;
+  accessScope?: ConsumptionAccessScope;
   disabled?: boolean;
 }) {
   const { fetcherWithBody } = useFetcher();
-  const url = `/api/w/${workspaceId}/analytics/consumption/export-raw/status`;
+  const url = getConsumptionAnalyticsUrl({
+    workspaceId,
+    accessScope,
+    endpoint: "export-raw/status",
+  });
 
   const { data, error, mutate } = useSWRWithDefaults<
     [string, ConsumptionExportBody, string],
@@ -55,13 +63,19 @@ export function useConsumptionExports({
 
 export function useStartConsumptionExport({
   workspaceId,
+  accessScope,
 }: {
   workspaceId: string;
+  accessScope?: ConsumptionAccessScope;
 }) {
   const [isStarting, setIsStarting] = useState(false);
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
-  const url = `/api/w/${workspaceId}/analytics/consumption/export-raw`;
+  const url = getConsumptionAnalyticsUrl({
+    workspaceId,
+    accessScope,
+    endpoint: "export-raw",
+  });
   const statusUrl = `${url}/status`;
 
   const startConsumptionExport = useCallback(
@@ -86,7 +100,8 @@ export function useStartConsumptionExport({
         if (!data.isGenerating) {
           // Already generated for this exact period+filter: nothing was (re)triggered, so go
           // straight to the download instead of showing a "generating" state for nothing.
-          window.location.href = `${getBaseUrl()}${url}/${data.name}/download`;
+          window.location.href =
+            data.downloadUrl ?? `${getBaseUrl()}${url}/${data.name}/download`;
         }
 
         await mutate([statusUrl, body, "POST"]);

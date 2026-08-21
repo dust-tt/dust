@@ -95,6 +95,44 @@ describe("ConsumptionAttributionTable", () => {
     });
   });
 
+  it("scopes attribution data and raw exports to the personal view", () => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [],
+      totalCredits: 0,
+      totalCount: 0,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        accessScope="user"
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(mockUseConsumptionTop).toHaveBeenCalledWith(
+      expect.objectContaining({ accessScope: "user" })
+    );
+    expect(mockUseConsumptionExports).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accessScope: "user",
+        exportBody: expect.not.objectContaining({ accessScope: "user" }),
+      })
+    );
+    expect(
+      screen.getByRole("button", { name: "Download raw data" })
+    ).toBeInTheDocument();
+  });
+
   it("caps the available pages and fetches the selected fixed-size page", async () => {
     const rows = Array.from({ length: 1_025 }, (_, index) => ({
       id: `agent-${index + 1}`,

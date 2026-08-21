@@ -1,8 +1,29 @@
+import type { ConsumptionAccessScope } from "@app/lib/api/analytics/consumption/scope";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 const CONSUMPTION_FILTER_DEBOUNCE_MS = 300;
+
+export function getConsumptionAnalyticsUrl({
+  workspaceId,
+  accessScope = "workspace",
+  endpoint,
+}: {
+  workspaceId: string;
+  accessScope?: ConsumptionAccessScope;
+  endpoint: string;
+}) {
+  switch (accessScope) {
+    case "workspace":
+      return `/api/w/${workspaceId}/analytics/consumption/${endpoint}`;
+    case "user":
+      return `/api/w/${workspaceId}/me/analytics/consumption/${endpoint}`;
+    default:
+      return assertNever(accessScope);
+  }
+}
 
 function useDebouncedValue<T>(value: T, delayMs: number) {
   const [debouncedValue, setDebouncedValue] = useState(value);

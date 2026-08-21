@@ -1,5 +1,8 @@
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
+import {
+  getConsumptionAnalyticsUrl,
+  useConsumptionQuery,
+} from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import {
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
@@ -7,6 +10,7 @@ import {
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/schema";
 import type {
+  ConsumptionAccessScope,
   ConsumptionScopeFilter,
   ConsumptionTopSortOrder,
 } from "@app/lib/api/analytics/consumption/scope";
@@ -64,6 +68,7 @@ export interface UseConsumptionTopParams {
   offset?: number;
   search?: string;
   filter?: ConsumptionScopeFilter;
+  accessScope?: ConsumptionAccessScope;
   sortOrder?: ConsumptionTopSortOrder;
   disabled?: boolean;
 }
@@ -198,10 +203,15 @@ export function useConsumptionTop({
   offset = 0,
   search,
   filter,
+  accessScope,
   sortOrder = "desc",
   disabled,
 }: UseConsumptionTopParams) {
-  const url = `/api/w/${workspaceId}/analytics/consumption/${CONSUMPTION_TOP_ENDPOINTS[dimension]}`;
+  const url = getConsumptionAnalyticsUrl({
+    workspaceId,
+    accessScope,
+    endpoint: CONSUMPTION_TOP_ENDPOINTS[dimension],
+  });
   const body: ConsumptionTopBody = {
     period: period.kind,
     days:
@@ -225,8 +235,8 @@ export function useConsumptionTop({
 
   return {
     rows,
-    // Everything the workspace consumed over the period, so a row's share of it
-    // is `credits / totalCredits`.
+    // Everything in the selected scope consumed over the period, so a row's
+    // share of it is `credits / totalCredits`.
     totalCredits: data?.totalCredits ?? 0,
     totalCount: data?.totalCount ?? 0,
     hasMore: data?.hasMore ?? false,

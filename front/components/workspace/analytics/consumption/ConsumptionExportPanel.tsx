@@ -4,6 +4,7 @@ import {
 } from "@app/hooks/useConsumptionExports";
 import type { ConsumptionExportListItem } from "@app/lib/api/analytics/consumption/export_jobs";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
+import type { ConsumptionAccessScope } from "@app/lib/api/analytics/consumption/scope";
 import { getBaseUrl } from "@app/lib/api/config";
 import { formatFileSize } from "@app/lib/utils";
 import {
@@ -20,6 +21,7 @@ import { useEffect, useState } from "react";
 interface ConsumptionExportPanelProps {
   workspaceId: string;
   exportBody: ConsumptionExportBody;
+  accessScope?: ConsumptionAccessScope;
 }
 
 function ConsumptionExportRow({
@@ -31,7 +33,10 @@ function ConsumptionExportRow({
 }) {
   return (
     <a
-      href={`${getBaseUrl()}/api/w/${workspaceId}/analytics/consumption/export-raw/${item.name}/download`}
+      href={
+        item.downloadUrl ??
+        `${getBaseUrl()}/api/w/${workspaceId}/analytics/consumption/export-raw/${item.name}/download`
+      }
       className="flex items-center justify-between gap-4 rounded-md px-2 py-1.5 hover:bg-muted-background"
     >
       <span className="text-sm text-foreground">
@@ -48,6 +53,7 @@ function ConsumptionExportRow({
 export function ConsumptionExportPanel({
   workspaceId,
   exportBody,
+  accessScope,
 }: ConsumptionExportPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [hasAttemptedAutoStart, setHasAttemptedAutoStart] = useState(false);
@@ -57,9 +63,15 @@ export function ConsumptionExportPanel({
     isReady,
     isConsumptionExportsLoading,
     isConsumptionExportsError,
-  } = useConsumptionExports({ workspaceId, exportBody, disabled: !isOpen });
+  } = useConsumptionExports({
+    workspaceId,
+    exportBody,
+    accessScope,
+    disabled: !isOpen,
+  });
   const { isStarting, startConsumptionExport } = useStartConsumptionExport({
     workspaceId,
+    accessScope,
   });
 
   // Give the automatic flow one fresh attempt each time the panel is reopened.

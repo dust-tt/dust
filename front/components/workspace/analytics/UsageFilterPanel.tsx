@@ -26,6 +26,7 @@ import type { ConsumptionFacetOptions } from "@app/hooks/useConsumptionFacets";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAccessScope } from "@app/lib/api/analytics/consumption/scope";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import { useGroups } from "@app/lib/swr/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
@@ -46,6 +47,7 @@ export interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
   period: ConsumptionPeriodSelection;
   filter: UsageFilter;
+  accessScope?: ConsumptionAccessScope;
   onFilterChange: (next: UsageFilter) => void;
   showMemberGroupFilter?: boolean;
 }
@@ -54,6 +56,7 @@ export function UsageFilterPanel({
   owner,
   period,
   filter,
+  accessScope,
   onFilterChange,
   showMemberGroupFilter = true,
 }: UsageFilterPanelProps) {
@@ -71,6 +74,7 @@ export function UsageFilterPanel({
     workspaceId: owner.sId,
     period,
     filter: state.draftScopeFilter,
+    accessScope,
     disabled: !state.isOpen,
   });
 
