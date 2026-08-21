@@ -56,7 +56,7 @@ const paginationSchemaShape = {
 const listAgentsSchema = {
   view: z
     .enum(AGENT_VIEWS)
-    .optional()
+    .default("all")
     .describe(
       "Which agents to list. 'all' (default): every non-private agent of the " +
         "workspace. 'list': the agents the caller can see (the non-private ones " +
@@ -102,7 +102,7 @@ const listSkillsSchema = {
     ),
   kind: z
     .enum(["custom", "global", "system", "all"])
-    .optional()
+    .default("custom")
     .describe(
       "'custom' (default): skills built in this workspace. 'global' and " +
         "'system': Dust's built-in skills, the latter always on. 'all': every kind."

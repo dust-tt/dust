@@ -24,27 +24,25 @@ export async function listSkills(
   }: {
     availability?: SkillAvailability[];
     status?: SkillStatus;
-    kind?: "custom" | "global" | "system" | "all";
+    kind: "custom" | "global" | "system" | "all";
     includeUsage?: boolean;
     cursor?: number;
     limit?: number;
   },
   { auth }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const resolvedKind = kind ?? "custom";
-
   const skills = await SkillResource.listByWorkspace(auth, {
     status: status ?? "active",
     availability,
-    onlyCustom: resolvedKind === "custom",
+    onlyCustom: kind === "custom",
     withInstructions: false,
     withTools: false,
     withFileAttachments: false,
   });
 
   const filtered =
-    resolvedKind !== "all" && resolvedKind !== "custom"
-      ? skills.filter((skill) => skill.kind === resolvedKind)
+    kind !== "all" && kind !== "custom"
+      ? skills.filter((skill) => skill.kind === kind)
       : skills;
 
   const sorted = [...filtered].sort(

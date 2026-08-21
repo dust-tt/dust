@@ -9,6 +9,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightWorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 
 function getToolByName(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -26,15 +27,27 @@ function createTestExtra(auth: Authenticator, runContext?: unknown) {
   } as Parameters<(typeof TOOLS)[0]["handler"]>[1];
 }
 
+// Mirrors production: the MCP layer validates the input and applies the schema's defaults
+// before the handler runs, so tests must go through the schema too.
+function runTool(
+  name: string,
+  params: Record<string, unknown>,
+  auth: Authenticator
+) {
+  const tool = getToolByName(name);
+
+  return tool.handler(
+    z.object(tool.schema).parse(params),
+    createTestExtra(auth)
+  );
+}
+
 async function callTool(
   name: string,
   params: Record<string, unknown>,
   auth: Authenticator
 ) {
-  const result = await getToolByName(name).handler(
-    params,
-    createTestExtra(auth)
-  );
+  const result = await runTool(name, params, auth);
   if (result.isErr()) {
     throw new Error(`Tool ${name} failed: ${result.error.message}`);
   }
@@ -92,11 +105,12 @@ describe("workspace_management tools", () => {
     const { authenticator } = await createResourceTest({ role: "user" });
     expect(authenticator.isManager()).toBe(false);
 
-    const result = await getToolByName(toolName).handler(
+    const result = await runTool(
+      toolName,
       // The get_* tools need an id; an unknown one exercises the not-found path, which is
       // enough to show the tool is not refused outright.
       { agentId: "unknown", skillId: "unknown" },
-      createTestExtra(authenticator)
+      authenticator
     );
 
     expect(result.isOk()).toBe(true);
@@ -119,9 +133,10 @@ describe("workspace_management tools", () => {
   it("refuses all_unrestricted for regular members", async () => {
     const { authenticator } = await createResourceTest({ role: "user" });
 
-    const result = await getToolByName("list_agents").handler(
+    const result = await runTool(
+      "list_agents",
       { view: "all_unrestricted" },
-      createTestExtra(authenticator)
+      authenticator
     );
 
     expect(result.isErr()).toBe(true);
@@ -175,9 +190,10 @@ describe("workspace_management tools", () => {
       expect(authenticator.isManager()).toBe(true);
       expect(authenticator.isAdmin()).toBe(false);
 
-      const result = await getToolByName("list_agents").handler(
+      const result = await runTool(
+        "list_agents",
         { view: "all_unrestricted" },
-        createTestExtra(authenticator)
+        authenticator
       );
 
       expect(result.isErr()).toBe(true);

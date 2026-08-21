@@ -68,21 +68,20 @@ export async function listAgents(
     cursor,
     limit,
   }: {
-    view?: AgentViewType;
+    view: AgentViewType;
     namePrefix?: string;
     cursor?: number;
     limit?: number;
   },
   { auth }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const resolvedView = view ?? "all";
-  const viewDenied = guardAgentView(auth, resolvedView);
+  const viewDenied = guardAgentView(auth, view);
   if (viewDenied) {
     return new Err(viewDenied);
   }
 
   const { agentsGetView, dangerouslySkipPermissionFiltering } =
-    resolveAgentView(resolvedView);
+    resolveAgentView(view);
 
   // `limit` stays out of the fetch on purpose: it has no offset counterpart, and the view
   // applies it in SQL before the requested-space filtering, so a page would silently come
@@ -107,7 +106,7 @@ export async function listAgents(
     makeJsonText({
       total,
       nextCursor,
-      view: resolvedView,
+      view,
       agents: page.map((agent) => ({
         sId: agent.sId,
         name: agent.name,
