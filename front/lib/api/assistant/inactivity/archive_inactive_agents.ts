@@ -21,16 +21,9 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 /**
- * Archives a workspace's inactive agents. Both the manual endpoints and the nightly Temporal activity
- * enter here, so the rules cannot drift between them; the population still differs, since every read
- * is permission-filtered.
- *
- * The page's facts are re-read before it is judged, which closes the window in which an agent can be
- * restored, archived by someone else, or given a schedule. A retry is safe for a different reason: it
- * re-runs the fetch, and an agent the first attempt archived is no longer active, so it is not a
- * candidate again.
- *
- * Archiving stays `archiveAgentConfiguration`, which owns the side effects.
+ * Archives a workspace's inactive agents. Both the manual endpoints and the nightly Temporal
+ * activity enter here, so the rules cannot drift between them; the population still differs, since
+ * every read is permission-filtered.
  */
 
 /** The rules' exclusions, plus the two outcomes only the mutation path can produce. */
@@ -49,7 +42,7 @@ export interface AgentArchivalSkip {
 export interface InactiveAgentsArchivalInput {
   thresholdDays: number;
   evaluatedAt: Date;
-  // Which slice to walk, not what to decide. The caller owns the loop.
+  // Which slice to walk, not what to decide: the caller owns the loop.
   page: AgentPageBound;
 }
 
@@ -84,7 +77,7 @@ function countSkipsByReason(skipped: AgentArchivalSkip[]): SkipCountsByReason {
   return counts;
 }
 
-/** Two batched queries for the whole page. A missing agent is one this actor cannot read. */
+/** A missing agent is one this actor cannot read. */
 async function fetchArchivalFacts(
   auth: Authenticator,
   agentIds: string[]
@@ -118,11 +111,7 @@ async function fetchArchivalFacts(
   );
 }
 
-/**
- * Safe to call twice: an agent archived by a first attempt re-reads as `archived` in a second and is
- * skipped, so a Temporal activity retry cannot double-archive or emit a second `agent.archived`
- * audit event.
- */
+/** Safe to call twice: a retry re-runs the fetch, and an archived agent is no longer a candidate. */
 export async function archiveInactiveWorkspaceAgents(
   auth: Authenticator,
   { thresholdDays, evaluatedAt, page }: InactiveAgentsArchivalInput

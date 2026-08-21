@@ -5,10 +5,8 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 
 export class MentionFactory {
   /**
-   * Records that an agent was mentioned at a given time.
-   *
-   * A mention hangs off a message, so this creates the conversation and message it needs. Tests that
-   * only care about *when* an agent was last reached for should not have to say any of that.
+   * Records that an agent was mentioned at a given time. A mention hangs off a message, so this
+   * creates the conversation and message it needs.
    */
   static async agentMentionedAt(
     auth: Authenticator,

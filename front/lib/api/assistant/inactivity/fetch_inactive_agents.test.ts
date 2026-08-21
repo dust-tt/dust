@@ -1,4 +1,5 @@
 import { fetchInactiveAgents } from "@app/lib/api/assistant/inactivity/fetch_inactive_agents";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MentionFactory } from "@app/tests/utils/MentionFactory";
@@ -18,7 +19,7 @@ function daysAfterCutoff(days: number): Date {
 
 /** Every test needs its agent to predate the cutoff; a fresh one never qualifies. */
 async function createAgedAgent(
-  auth: Parameters<typeof AgentConfigurationFactory.setCreatedAtForTest>[0],
+  auth: Authenticator,
   { name, createdAt }: { name: string; createdAt: Date }
 ) {
   const agent = await AgentConfigurationFactory.createTestAgent(auth, { name });
@@ -96,7 +97,6 @@ describe("fetchInactiveAgents", () => {
   });
 
   it("takes the newest mention, not just any", async () => {
-    // One old mention and one recent one: the agent is in use, however long the older trace is.
     const { authenticator } = await createResourceTest({ role: "admin" });
     const agent = await createAgedAgent(authenticator, {
       name: "Used again",
@@ -120,8 +120,7 @@ describe("fetchInactiveAgents", () => {
   });
 
   it("counts a rejected mention as activity", async () => {
-    // `status` is about whether the mentioning user was allowed to proceed, not about the run. Somebody
-    // still reached for the agent.
+    // `status` is about whether the mentioning user was allowed to proceed, not about the run.
     const { authenticator } = await createResourceTest({ role: "admin" });
     const agent = await createAgedAgent(authenticator, {
       name: "Blocked but wanted",
@@ -142,9 +141,7 @@ describe("fetchInactiveAgents", () => {
   });
 
   it("still returns an agent that was edited recently", async () => {
-    // Upgrading an agent archives the previous version and inserts a new row, so the active row's own
-    // `createdAt` is the date of the last edit. Reading that would make editing an agent postpone its
-    // archival, contradicting the rule that editing is not activity. What counts is the first version.
+    // Reading the active row's own `createdAt` would make editing an agent postpone its archival.
     const { authenticator } = await createResourceTest({ role: "admin" });
     const agent = await createAgedAgent(authenticator, {
       name: "Edited yesterday",
@@ -165,8 +162,7 @@ describe("fetchInactiveAgents", () => {
   });
 
   it("excludes an agent created after the cutoff, however unused", async () => {
-    // The threshold measures disuse. An agent that has not existed long enough to be used has not
-    // been disused, and archiving it the night it was built is the bug this guards.
+    // Archiving an agent the night it was built is the bug this guards.
     const { authenticator } = await createResourceTest({ role: "admin" });
     await createAgedAgent(authenticator, {
       name: "Brand new",
@@ -202,14 +198,11 @@ describe("fetchInactiveAgents", () => {
       page: { cursor: firstPage.nextCursor, limit: 2 },
     });
     expect(secondPage.agents).toHaveLength(1);
-    // A short page means the workspace is exhausted.
     expect(secondPage.nextCursor).toBeNull();
 
     const firstPageIds = firstPage.agents.map(({ agentId }) => agentId);
     const secondPageIds = secondPage.agents.map(({ agentId }) => agentId);
 
-    // Resuming excludes everything at or before the cursor, and the two pages together cover the
-    // workspace exactly once.
     expect(secondPageIds).not.toContain(firstPage.nextCursor);
     expect(
       secondPageIds.every((agentId) => !firstPageIds.includes(agentId))
@@ -224,7 +217,7 @@ describe("fetchInactiveAgents", () => {
   });
 
   it("returns an empty page for a limit of zero", async () => {
-    // The lookahead finds a candidate, so a cursor read off the page has no element to read.
+    // The lookahead finds a candidate, so a cursor read off the empty page has no element to read.
     const { authenticator } = await createResourceTest({ role: "admin" });
     await createAgedAgent(authenticator, {
       name: "Out of budget",
