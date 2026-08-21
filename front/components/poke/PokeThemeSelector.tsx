@@ -1,11 +1,7 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   Monitor01,
   Moon01,
   Sun,
@@ -17,11 +13,10 @@ const THEME_OPTIONS = {
   dark: { label: "Dark", icon: Moon01 },
 } as const;
 
-const THEME_ORDER = ["system", "light", "dark"] as const;
+const THEME_ORDER = ["light", "system", "dark"] as const;
 
 export function PokeThemeSelector() {
   const { theme, setTheme } = useTheme();
-  const currentTheme = THEME_OPTIONS[theme];
 
   const handleThemeChange = (newTheme: string) => {
     switch (newTheme) {
@@ -33,33 +28,25 @@ export function PokeThemeSelector() {
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          icon={currentTheme.icon}
-          label={currentTheme.label}
-          aria-label={`Theme: ${currentTheme.label}`}
-          isSelect
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuRadioGroup value={theme} onValueChange={handleThemeChange}>
-          {THEME_ORDER.map((themeOption) => {
-            const option = THEME_OPTIONS[themeOption];
+    <ButtonsSwitchList
+      aria-label="Theme"
+      size="sm"
+      value={theme}
+      onValueChange={handleThemeChange}
+    >
+      {THEME_ORDER.map((themeOption) => {
+        const option = THEME_OPTIONS[themeOption];
 
-            return (
-              <DropdownMenuRadioItem
-                key={themeOption}
-                value={themeOption}
-                icon={option.icon}
-                label={option.label}
-              />
-            );
-          })}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        return (
+          <ButtonsSwitch
+            key={themeOption}
+            value={themeOption}
+            icon={option.icon}
+            aria-label={`${option.label} theme`}
+            tooltip={`${option.label} theme`}
+          />
+        );
+      })}
+    </ButtonsSwitchList>
   );
 }

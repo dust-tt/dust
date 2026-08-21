@@ -43,43 +43,44 @@ describe("PokeThemeSelector", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: "Theme: System" })
-    ).toBeInTheDocument();
+      screen.getAllByRole("tab").map((item) => item.getAttribute("aria-label"))
+    ).toEqual(["Light theme", "System theme", "Dark theme"]);
+    expect(screen.getByRole("tab", { name: "System theme" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
 
-    await user.click(screen.getByRole("button", { name: "Theme: System" }));
-    expect(
-      screen.getAllByRole("menuitemradio").map((item) => item.textContent)
-    ).toEqual(["System", "Light", "Dark"]);
-    await user.click(screen.getByRole("menuitemradio", { name: "Light" }));
+    await user.click(screen.getByRole("tab", { name: "Light theme" }));
 
     await waitFor(() => {
       expect(localStorage.getItem("theme")).toBe("light");
     });
-    expect(
-      screen.getByRole("button", { name: "Theme: Light" })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Light theme" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
     expect(document.documentElement).not.toHaveClass("dark");
 
-    await user.click(screen.getByRole("button", { name: "Theme: Light" }));
-    await user.click(screen.getByRole("menuitemradio", { name: "Dark" }));
+    await user.click(screen.getByRole("tab", { name: "Dark theme" }));
 
     await waitFor(() => {
       expect(localStorage.getItem("theme")).toBe("dark");
     });
-    expect(
-      screen.getByRole("button", { name: "Theme: Dark" })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Dark theme" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
     expect(document.documentElement).toHaveClass("dark");
 
-    await user.click(screen.getByRole("button", { name: "Theme: Dark" }));
-    await user.click(screen.getByRole("menuitemradio", { name: "System" }));
+    await user.click(screen.getByRole("tab", { name: "System theme" }));
 
     await waitFor(() => {
       expect(localStorage.getItem("theme")).toBe("system");
     });
-    expect(
-      screen.getByRole("button", { name: "Theme: System" })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "System theme" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
     expect(document.documentElement).not.toHaveClass("dark");
   });
 });
