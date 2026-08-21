@@ -14,8 +14,8 @@ import { removeNulls } from "@app/types/shared/utils/general";
 /**
  * Builds the end-user explanation for one agent message. Provider and token facts stay behind this
  * interface. It uses the newest complete attribution version stored for the message and assigns
- * each direct sub-agent to its originating run-agent tool. If no version covers the message's
- * current runs and tools, the exact bill remains available while details are withheld.
+ * each direct sub-agent subtree to its originating run-agent tool. If no version covers the
+ * message's current runs and tools, the exact bill remains available while details are withheld.
  */
 export async function getAgentMessageConsumption(
   auth: Authenticator,
@@ -60,30 +60,35 @@ export async function getAgentMessageConsumption(
     { includeDeleted: true }
   );
 
-  const { messages: childMessages } =
-    await ConsumptionItemResource.fetchDirectConversationsConsumptionFacts(
-      auth,
-      {
-        conversations: childConversations,
-        maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-        parentAgentIdsByConversationId: new Map(),
-      }
-    );
+  const subAgentFactsByConversationId = new Map(
+    await Promise.all(
+      childConversations.map(async (childConversation) => {
+        const { messages } =
+          await ConsumptionItemResource.fetchConversationConsumptionFacts(
+            auth,
+            {
+              conversation: childConversation,
+              maxAttributionVersion:
+                AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+            }
+          );
+        const rootMessage = messages.find(
+          (message) => message.conversationId === childConversation.sId
+        );
 
-  const subAgentFactsByConversationId = new Map<
-    string,
-    { agentConfigurationId: string | null; billedCredits: number }
-  >();
-
-  for (const message of childMessages) {
-    const current = subAgentFactsByConversationId.get(message.conversationId);
-    subAgentFactsByConversationId.set(message.conversationId, {
-      agentConfigurationId:
-        current?.agentConfigurationId ?? message.agentConfigurationId,
-      billedCredits:
-        (current?.billedCredits ?? 0) + (message.billedCredits ?? 0),
-    });
-  }
+        return [
+          childConversation.sId,
+          {
+            agentConfigurationId: rootMessage?.agentConfigurationId ?? null,
+            billedCredits: messages.reduce(
+              (total, message) => total + (message.billedCredits ?? 0),
+              0
+            ),
+          },
+        ] as const;
+      })
+    )
+  );
 
   const subAgents = directSubAgentRoots.map(
     ({ action, childConversationId }) => {

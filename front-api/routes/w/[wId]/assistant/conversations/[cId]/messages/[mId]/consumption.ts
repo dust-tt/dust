@@ -22,7 +22,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/consumption:
  *   get:
  *     summary: Get an agent message credit attribution
- *     description: Returns direct and total billed credits. Run-agent tool rows combine invocation cost with the bill of their direct sub-agent.
+ *     description: Returns direct and total billed credits. Run-agent tool rows combine invocation cost with the bill of their sub-agent subtree.
  *     tags:
  *       - Private Messages
  *     parameters:
@@ -60,11 +60,11 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                   description: Authoritative credits billed directly for this agent message, excluding sub-agents.
  *                 totalBilledCredits:
  *                   type: number
- *                   description: Total credits billed by this message and its direct sub-agents.
+ *                   description: Total credits billed by this message and its recursively spawned sub-agents.
  *                 details:
  *                   type: object
  *                   nullable: true
- *                   description: Additive attribution reconciled to totalBilledCredits through model input rows. Each run-agent tool row includes its direct sub-agent's bill. Null when no stored version is complete.
+ *                   description: Additive attribution reconciled to totalBilledCredits through model input rows. Each run-agent tool row includes its sub-agent subtree's bill. Null when no stored version is complete.
  *                   required:
  *                     - attributionVersion
  *                     - agentWorkCredits
@@ -100,7 +100,7 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                             type: integer
  *                           attributedCredits:
  *                             type: number
- *                             description: Share of total billed credits after input-only reconciliation. Run-agent tools include their direct sub-agent's bill.
+ *                             description: Share of total billed credits after input-only reconciliation. Run-agent tools include their sub-agent subtree's bill.
  *                           directCredits:
  *                             type: number
  *                           pending:
