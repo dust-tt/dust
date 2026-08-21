@@ -2,6 +2,10 @@ import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
+import type {
+  ConsumptionAccessScope,
+  ConsumptionScopeFilter,
+} from "@app/lib/api/analytics/consumption/scope";
 import { timeAgoFrom } from "@app/lib/utils";
 import { Page, Tooltip } from "@dust-tt/sparkle";
 
@@ -9,15 +13,27 @@ export interface ConsumptionOverviewProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   showError?: boolean;
+  filter?: ConsumptionScopeFilter;
+  accessScope?: ConsumptionAccessScope;
+  disabled?: boolean;
 }
 
 export function ConsumptionOverview({
   workspaceId,
   period: periodSelection,
   showError = false,
+  filter,
+  accessScope,
+  disabled,
 }: ConsumptionOverviewProps) {
   const { overview, isOverviewLoading, isOverviewError } =
-    useConsumptionOverview({ workspaceId, period: periodSelection });
+    useConsumptionOverview({
+      workspaceId,
+      period: periodSelection,
+      filter,
+      accessScope,
+      disabled,
+    });
 
   return (
     <ConsumptionOverviewView
@@ -25,6 +41,7 @@ export function ConsumptionOverview({
       isOverviewLoading={isOverviewLoading}
       isOverviewError={Boolean(isOverviewError)}
       showError={showError}
+      accessScope={accessScope}
     />
   );
 }
@@ -35,6 +52,7 @@ interface ConsumptionOverviewViewProps {
   isOverviewError: boolean;
   showError?: boolean;
   showIndexingDetails?: boolean;
+  accessScope?: ConsumptionAccessScope;
 }
 
 export function ConsumptionOverviewView({
@@ -43,6 +61,7 @@ export function ConsumptionOverviewView({
   isOverviewError,
   showError = false,
   showIndexingDetails = false,
+  accessScope,
 }: ConsumptionOverviewViewProps) {
   if (isOverviewLoading) {
     return (
@@ -62,7 +81,11 @@ export function ConsumptionOverviewView({
 
   const header = [
     `${formatConsumptionDate(period.startDate)} to ${formatConsumptionDate(period.endDate)}`,
-    `${members.active.toLocaleString()} of ${members.total.toLocaleString()} members active`,
+    ...(accessScope === "user"
+      ? []
+      : [
+          `${members.active.toLocaleString()} of ${members.total.toLocaleString()} members active`,
+        ]),
     ...(lastRecordAt
       ? [
           showIndexingDetails

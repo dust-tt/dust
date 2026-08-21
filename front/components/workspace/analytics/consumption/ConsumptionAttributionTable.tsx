@@ -22,6 +22,7 @@ import {
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
 import type {
+  ConsumptionAccessScope,
   ConsumptionScopeFilter,
   ConsumptionTopSortOrder,
 } from "@app/lib/api/analytics/consumption/scope";
@@ -422,6 +423,8 @@ export interface ConsumptionAttributionRowsProps {
   dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  accessScope?: ConsumptionAccessScope;
+  disabled?: boolean;
   onAddFilter: (row: ConsumptionTopRow) => void;
   onRemoveFilter: (row: ConsumptionTopRow) => void;
   search: string;
@@ -498,6 +501,8 @@ export function ConsumptionAttributionRowsView({
   dimension,
   period,
   filter,
+  accessScope,
+  disabled,
   onAddFilter,
   onRemoveFilter,
   search,
@@ -593,6 +598,8 @@ export function ConsumptionAttributionRowsView({
             dimension={dimension}
             period={period}
             filter={filter}
+            accessScope={accessScope}
+            disabled={disabled}
             onViewAll={onViewAll}
             expandedRowId={expandedRowId}
             isLoading
@@ -628,6 +635,8 @@ export function ConsumptionAttributionRowsView({
               dimension={dimension}
               period={period}
               filter={filter}
+              accessScope={accessScope}
+              disabled={disabled}
               onViewAll={onViewAll}
               expandedRowId={expandedRowId}
               sorting={sorting}
@@ -678,7 +687,9 @@ function WorkspaceConsumptionAttributionRows(
     offset: queryState.pagination.pageIndex * queryState.pagination.pageSize,
     search: props.search,
     filter: props.filter,
+    accessScope: props.accessScope,
     sortOrder: queryState.sortOrder,
+    disabled: props.disabled,
   });
 
   return (
@@ -703,6 +714,8 @@ export interface ConsumptionAttributionTableProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  accessScope?: ConsumptionAccessScope;
+  disabled?: boolean;
   onAddFilter: (row: ConsumptionTopRow) => void;
   onRemoveFilter: (row: ConsumptionTopRow) => void;
   // Owned by the page: the selected tab also drives the chart's breakdown.
@@ -724,6 +737,8 @@ export function ConsumptionAttributionTableView({
   workspaceId,
   period,
   filter,
+  accessScope,
+  disabled,
   onAddFilter,
   onRemoveFilter,
   dimension,
@@ -761,6 +776,7 @@ export function ConsumptionAttributionTableView({
           <ConsumptionExportPanel
             workspaceId={workspaceId}
             exportBody={exportBody}
+            accessScope={accessScope}
           />
         )}
       </div>
@@ -834,6 +850,8 @@ export function ConsumptionAttributionTableView({
                     dimension={dimension}
                     period={period}
                     filter={filter}
+                    accessScope={accessScope}
+                    disabled={disabled}
                     onAddFilter={onAddFilter}
                     onRemoveFilter={onRemoveFilter}
                     search={debouncedValue}

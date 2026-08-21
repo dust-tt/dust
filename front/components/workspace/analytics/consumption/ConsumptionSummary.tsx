@@ -3,6 +3,10 @@ import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import type {
+  ConsumptionAccessScope,
+  ConsumptionScopeFilter,
+} from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
 import { ArrowUpRight, Button, Chip } from "@dust-tt/sparkle";
@@ -32,6 +36,9 @@ export interface ConsumptionSummaryProps {
   period: ConsumptionPeriodSelection;
   usageHref?: string;
   usageLinkLabel?: string;
+  filter?: ConsumptionScopeFilter;
+  accessScope?: ConsumptionAccessScope;
+  disabled?: boolean;
 }
 
 export function ConsumptionSummary({
@@ -39,9 +46,18 @@ export function ConsumptionSummary({
   period: periodSelection,
   usageHref = `/w/${workspaceId}/usage`,
   usageLinkLabel = "Manage in Usage",
+  filter,
+  accessScope,
+  disabled,
 }: ConsumptionSummaryProps) {
   const { overview, isOverviewLoading, isOverviewError } =
-    useConsumptionOverview({ workspaceId, period: periodSelection });
+    useConsumptionOverview({
+      workspaceId,
+      period: periodSelection,
+      filter,
+      accessScope,
+      disabled,
+    });
 
   return (
     <ConsumptionSummaryView
@@ -50,6 +66,7 @@ export function ConsumptionSummary({
       isOverviewError={Boolean(isOverviewError)}
       usageHref={usageHref}
       usageLinkLabel={usageLinkLabel}
+      accessScope={accessScope}
     />
   );
 }
@@ -61,6 +78,7 @@ interface ConsumptionSummaryViewProps {
   usageHref: string;
   usageLinkLabel: string;
   responsiveLayout?: boolean;
+  accessScope?: ConsumptionAccessScope;
 }
 
 export function ConsumptionSummaryView({
@@ -70,6 +88,7 @@ export function ConsumptionSummaryView({
   usageHref,
   usageLinkLabel,
   responsiveLayout = false,
+  accessScope,
 }: ConsumptionSummaryViewProps) {
   if (isOverviewLoading) {
     return (
@@ -102,7 +121,8 @@ export function ConsumptionSummaryView({
     return null;
   }
 
-  const { topAgent, totalCredits, creditUsage } = overview;
+  const { topAgent, totalCredits } = overview;
+  const creditUsage = accessScope === "user" ? null : overview.creditUsage;
 
   return (
     <div className="flex flex-col gap-4">

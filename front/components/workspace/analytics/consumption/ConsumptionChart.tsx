@@ -9,7 +9,10 @@ import {
   findPartialTimestamp,
   formatConsumptionDate,
 } from "@app/lib/analytics/consumption_period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionAccessScope,
+  ConsumptionScopeFilter,
+} from "@app/lib/api/analytics/consumption/scope";
 import type {
   ConsumptionTimeseriesGroup,
   ConsumptionTimeseriesMode,
@@ -351,6 +354,8 @@ export interface ConsumptionChartProps {
   period: ConsumptionPeriodSelection;
   dimension: ConsumptionDimension;
   filter?: ConsumptionScopeFilter;
+  accessScope?: ConsumptionAccessScope;
+  disabled?: boolean;
 }
 
 function WorkspaceConsumptionDailyChart({
@@ -358,6 +363,8 @@ function WorkspaceConsumptionDailyChart({
   period,
   dimension,
   filter,
+  accessScope,
+  disabled,
 }: ConsumptionChartProps) {
   const { timeseries, isTimeseriesLoading, isTimeseriesError } =
     useConsumptionTimeseries({
@@ -367,6 +374,8 @@ function WorkspaceConsumptionDailyChart({
       breakdownBy: dimension,
       breakdownCount: CONSUMPTION_CHART_BREAKDOWN_COUNT,
       filter,
+      accessScope,
+      disabled,
     });
 
   return (
@@ -386,11 +395,15 @@ function WorkspaceConsumptionBurnUpChart({
   workspaceId,
   period,
   filter,
+  accessScope,
+  disabled,
 }: WorkspaceConsumptionBurnUpChartProps) {
   const { overview } = useConsumptionOverview({
     workspaceId,
     period,
     filter,
+    accessScope,
+    disabled,
   });
   const isFiltered = Object.values(filter ?? {}).some(
     (values) => values.length > 0
@@ -410,6 +423,8 @@ function WorkspaceConsumptionBurnUpChart({
       period,
       mode: "cumulative",
       filter,
+      accessScope,
+      disabled,
     });
 
   return (
@@ -428,6 +443,8 @@ export function ConsumptionChart({
   period,
   dimension,
   filter,
+  accessScope,
+  disabled,
 }: ConsumptionChartProps) {
   const [mode, setMode] = useState<ConsumptionTimeseriesMode>("daily");
 
@@ -453,6 +470,8 @@ export function ConsumptionChart({
           workspaceId={workspaceId}
           period={period}
           filter={filter}
+          accessScope={accessScope}
+          disabled={disabled}
         />
       ) : (
         <WorkspaceConsumptionDailyChart
@@ -460,6 +479,8 @@ export function ConsumptionChart({
           period={period}
           dimension={dimension}
           filter={filter}
+          accessScope={accessScope}
+          disabled={disabled}
         />
       )}
     </div>

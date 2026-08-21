@@ -1,18 +1,24 @@
-import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
+import {
+  getConsumptionAnalyticsUrl,
+  useConsumptionQuery,
+} from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import {
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionAccessScope,
+  ConsumptionScopeFilter,
+} from "@app/lib/api/analytics/consumption/scope";
 import type {
   ConsumptionBreakdownDimension,
   ConsumptionTimeseriesMode,
   GetConsumptionTimeseriesResponse,
 } from "@app/lib/api/analytics/consumption/timeseries";
 
-type ConsumptionTimeseriesBody = ConsumptionBody & {
+type ConsumptionTimeseriesRequestBody = ConsumptionBody & {
   mode: ConsumptionTimeseriesMode;
   breakdownBy?: ConsumptionBreakdownDimension;
   breakdownCount?: number;
@@ -26,6 +32,7 @@ export interface UseConsumptionTimeseriesParams {
   breakdownBy?: ConsumptionBreakdownDimension;
   breakdownCount?: number;
   filter?: ConsumptionScopeFilter;
+  accessScope?: ConsumptionAccessScope;
   disabled?: boolean;
 }
 
@@ -36,10 +43,15 @@ export function useConsumptionTimeseries({
   breakdownBy,
   breakdownCount,
   filter,
+  accessScope,
   disabled,
 }: UseConsumptionTimeseriesParams) {
-  const url = `/api/w/${workspaceId}/analytics/consumption/timeseries`;
-  const body: ConsumptionTimeseriesBody = {
+  const url = getConsumptionAnalyticsUrl({
+    workspaceId,
+    accessScope,
+    endpoint: "timeseries",
+  });
+  const body: ConsumptionTimeseriesRequestBody = {
     period: period.kind,
     days:
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
@@ -50,7 +62,7 @@ export function useConsumptionTimeseries({
   };
 
   const { data, error, isValidating } = useConsumptionQuery<
-    ConsumptionTimeseriesBody,
+    ConsumptionTimeseriesRequestBody,
     GetConsumptionTimeseriesResponse
   >({ url, body, disabled });
 

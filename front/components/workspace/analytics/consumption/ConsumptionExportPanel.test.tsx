@@ -89,4 +89,38 @@ describe("ConsumptionExportPanel", () => {
       screen.queryByText("Generating your export…")
     ).not.toBeInTheDocument();
   });
+
+  it("uses a scoped signed URL when the server provides one", () => {
+    mockUseConsumptionExports.mockReturnValue({
+      exports: [
+        {
+          name: "personal.csv",
+          createdAt: "2026-08-21T10:00:00.000Z",
+          sizeBytes: 123,
+          downloadUrl: "https://signed-url.test/personal",
+        },
+      ],
+      isGenerating: false,
+      isReady: true,
+      isConsumptionExportsLoading: false,
+      isConsumptionExportsError: undefined,
+    });
+    mockUseStartConsumptionExport.mockReturnValue({
+      isStarting: false,
+      startConsumptionExport: vi.fn(),
+    });
+
+    render(
+      <ConsumptionExportPanel
+        workspaceId="workspace-id"
+        exportBody={exportBody}
+      />
+    );
+    openPanel();
+
+    expect(screen.getByRole("link")).toHaveAttribute(
+      "href",
+      "https://signed-url.test/personal"
+    );
+  });
 });
