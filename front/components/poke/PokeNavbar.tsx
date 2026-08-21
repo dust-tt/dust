@@ -3,6 +3,7 @@ import {
   PokeFavoritesCommandGroups,
 } from "@app/components/poke/PokeFavorites";
 import { PokeRegionDropdown } from "@app/components/poke/PokeRegionDropdown";
+import { PokeThemeSelector } from "@app/components/poke/PokeThemeSelector";
 import {
   PokeCommandDialog,
   PokeCommandInput,
@@ -96,6 +97,7 @@ function PokeNavbar({ regionUrls, showRegionPicker = false }: PokeNavbarProps) {
         <PokeFavoriteButton />
         {showRegionPicker && <PokeRegionDropdown regionUrls={regionUrls} />}
         <PokeSearchCommand />
+        <PokeThemeSelector />
       </div>
     </nav>
   );
