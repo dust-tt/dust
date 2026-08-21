@@ -22,6 +22,18 @@ export function setupGlobalErrorHandler(logger: LoggerInterface) {
       return;
     }
 
+    // The GCS client (teeny-request) connects a response to its stream only once the
+    // response arrives. If we closed that stream in the meantime, the connect throws
+    // in a place no caller can catch. Harmless timing issue, so warn instead of panic.
+    if (
+      reason instanceof Error &&
+      "code" in reason &&
+      reason.code === "ERR_STREAM_UNABLE_TO_PIPE"
+    ) {
+      logger.warn({ error: reason }, "Stream teardown race (ignored)");
+      return;
+    }
+
     // uuid here serves as a correlation id for the console.error and the logger.error.
     const uuid = uuidv4();
     // console.log here is important because the promise.catch() below could fail.
