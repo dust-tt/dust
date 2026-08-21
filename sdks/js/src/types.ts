@@ -3467,6 +3467,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "StatuspageLogo"
   | "StripeLogo"
   | "SupabaseLogo"
+  | "TerminalSquareIcon"
   | "UkgLogo"
   | "ValTownLogo"
   | "VantaLogo"
