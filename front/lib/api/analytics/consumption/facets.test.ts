@@ -388,6 +388,52 @@ describe("fetchConsumptionFacets", () => {
     }
   });
 
+  it("sweeps and resolves only the requested dimensions", async () => {
+    const { authenticator } = await createResourceTest({ role: "manager" });
+    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
+      agent: [{ value: "agent-1", label: "Agent one", pictureUrl: null }],
+      user: [{ value: "user-1", label: "User one", pictureUrl: null }],
+      api_key: [],
+      group: [],
+      model: [],
+      tool: [],
+      skill: [],
+      source: [],
+    });
+    vi.mocked(resolveDimensionLabels).mockResolvedValue(new Map());
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({ values: { buckets: [] } })
+    );
+
+    const result = await fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+      dimensions: ["agent", "user"],
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(2);
+    expect(listConsumptionFacetCatalog).toHaveBeenCalledWith(authenticator, [
+      "agent",
+      "user",
+    ]);
+
+    const sweptFields = vi
+      .mocked(searchConsumptionAnalytics)
+      .mock.calls.map(
+        ([, options]) =>
+          options?.aggregations?.values?.composite?.sources?.[0]?.value?.terms
+            ?.field
+      );
+    expect(sweptFields.sort()).toEqual(["agent.attributed_id", "user.id"]);
+
+    if (result.isOk()) {
+      expect(result.value.facets.agent).toHaveLength(1);
+      expect(result.value.facets.user).toHaveLength(1);
+      expect(result.value.facets.model).toEqual([]);
+      expect(result.value.facets.tool).toEqual([]);
+    }
+  });
+
   it("returns the Elasticsearch failure before resolving historical labels", async () => {
     const { authenticator } = await createResourceTest({ role: "manager" });
     const error = new ElasticsearchError("query_error", "query failed");

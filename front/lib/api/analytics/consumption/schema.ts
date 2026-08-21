@@ -41,6 +41,7 @@ export type ConsumptionBody = z.infer<typeof ConsumptionBodySchema>;
 
 export const ConsumptionFacetsBodySchema = ConsumptionBodySchema.extend({
   scope: z.enum(CONSUMPTION_FACET_SCOPES).optional().default("all"),
+  dimensions: z.array(z.enum(CONSUMPTION_SCOPE_DIMENSIONS)).min(1).optional(),
 });
 
 export type ConsumptionFacetsBody = z.infer<typeof ConsumptionFacetsBodySchema>;

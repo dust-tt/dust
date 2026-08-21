@@ -50,10 +50,13 @@ type ConsumptionFacetCatalogSource =
 function traceFacetCatalogLoad<T>(
   source: ConsumptionFacetCatalogSource,
   dimension: ConsumptionScopeDimension,
-  requestedDimension: ConsumptionScopeDimension | null,
+  requestedDimensions: ConsumptionScopeDimension[] | null,
   fn: () => Promise<T[]>
 ): Promise<T[]> {
-  if (requestedDimension !== null && requestedDimension !== dimension) {
+  if (
+    requestedDimensions !== null &&
+    !requestedDimensions.includes(dimension)
+  ) {
     return Promise.resolve([]);
   }
 
@@ -119,7 +122,7 @@ function toolFacetCatalogEntries(
 /** Lists current workspace entities that can be selected as consumption filters. */
 async function listConsumptionFacetCatalogWithoutTracing(
   auth: Authenticator,
-  requestedDimension: ConsumptionScopeDimension | null = null
+  requestedDimensions: ConsumptionScopeDimension[] | null = null
 ): Promise<ConsumptionFacetCatalog> {
   // TODO(2026-08-11 OBSERVABILITY): This eagerly loads several complete
   // workspace catalogs and is known to perform poorly on large workspaces.
@@ -128,7 +131,7 @@ async function listConsumptionFacetCatalogWithoutTracing(
   const members = await traceFacetCatalogLoad(
     "members",
     "user",
-    requestedDimension,
+    requestedDimensions,
     async () => {
       const result = await getMembers(auth, { activeOnly: true });
       return result.members;
@@ -137,14 +140,14 @@ async function listConsumptionFacetCatalogWithoutTracing(
   const apiKeys = await traceFacetCatalogLoad(
     "api_keys",
     "api_key",
-    requestedDimension,
+    requestedDimensions,
     () =>
       KeyResource.listNonSystemKeysByWorkspace(auth.getNonNullableWorkspace())
   );
   const groups = await traceFacetCatalogLoad(
     "groups",
     "group",
-    requestedDimension,
+    requestedDimensions,
     () =>
       GroupResource.listAllWorkspaceGroups(auth, {
         groupKinds: [...MANAGEABLE_GROUP_KINDS],
@@ -153,7 +156,7 @@ async function listConsumptionFacetCatalogWithoutTracing(
   const agents = await traceFacetCatalogLoad(
     "agents",
     "agent",
-    requestedDimension,
+    requestedDimensions,
     () =>
       getAgentConfigurationsForView({
         auth,
@@ -165,7 +168,7 @@ async function listConsumptionFacetCatalogWithoutTracing(
   const models = await traceFacetCatalogLoad(
     "models",
     "model",
-    requestedDimension,
+    requestedDimensions,
     async () => {
       const result = await getModelsForAuth(auth);
       return result.models;
@@ -174,13 +177,13 @@ async function listConsumptionFacetCatalogWithoutTracing(
   const mcpServerViews = await traceFacetCatalogLoad(
     "mcp_servers",
     "tool",
-    requestedDimension,
+    requestedDimensions,
     () => MCPServerViewResource.listDisplayMetadataByWorkspace(auth)
   );
   const skills = await traceFacetCatalogLoad(
     "skills",
     "skill",
-    requestedDimension,
+    requestedDimensions,
     () =>
       SkillResource.listByWorkspace(auth, {
         status: "active",
@@ -248,18 +251,18 @@ export async function listConsumptionFacetCatalogDimension(
   auth: Authenticator,
   dimension: ConsumptionScopeDimension
 ): Promise<ConsumptionFacetCatalogEntry[]> {
-  const catalog = await listConsumptionFacetCatalogWithoutTracing(
-    auth,
-    dimension
-  );
+  const catalog = await listConsumptionFacetCatalogWithoutTracing(auth, [
+    dimension,
+  ]);
   return catalog[dimension];
 }
 
 export async function listConsumptionFacetCatalog(
-  auth: Authenticator
+  auth: Authenticator,
+  dimensions: ConsumptionScopeDimension[] | null = null
 ): Promise<ConsumptionFacetCatalog> {
   return tracer.trace("analytics.consumption.facets.catalog", async (span) => {
     span?.setTag("workspace.id", auth.getNonNullableWorkspace().sId);
-    return listConsumptionFacetCatalogWithoutTracing(auth);
+    return listConsumptionFacetCatalogWithoutTracing(auth, dimensions);
   });
 }

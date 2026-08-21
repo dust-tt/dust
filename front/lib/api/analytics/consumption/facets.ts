@@ -87,18 +87,6 @@ type FacetBuckets = {
   contextual: Map<string, number>;
 };
 
-function getFacetBuckets(
-  bucketsByDimension: ReadonlyMap<ConsumptionScopeDimension, FacetBuckets>,
-  dimension: ConsumptionScopeDimension
-): FacetBuckets {
-  const buckets = bucketsByDimension.get(dimension);
-  if (!buckets) {
-    throw new Error(`Missing consumption facet buckets for ${dimension}.`);
-  }
-
-  return buckets;
-}
-
 type CompositeFacetBucket = {
   key: { value: string };
   contextual?: estypes.AggregationsSingleBucketAggregateBase;
@@ -279,6 +267,20 @@ async function resolveFacets(
     );
 }
 
+async function resolveRequestedFacets(
+  auth: Authenticator,
+  dimension: ConsumptionScopeDimension,
+  bucketsByDimension: ReadonlyMap<ConsumptionScopeDimension, FacetBuckets>,
+  catalogEntries: ConsumptionFacetCatalogEntry[]
+) {
+  const buckets = bucketsByDimension.get(dimension);
+  if (!buckets) {
+    return [];
+  }
+
+  return resolveFacets(auth, dimension, buckets, catalogEntries);
+}
+
 /**
  * Lists current and historical consumption facets, marking whether each can
  * return a document in the selected context. Each facet applies all active
@@ -292,15 +294,18 @@ async function fetchConsumptionFacetsWithoutTracing(
     period,
     filter = {},
     scope = "all",
+    dimensions,
   }: {
     period: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
     scope?: ConsumptionFacetScope;
+    dimensions?: ConsumptionScopeDimension[];
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
+  const requestedDimensions = dimensions ?? [...CONSUMPTION_SCOPE_DIMENSIONS];
   const scopeFilters = facetScopeFilters(scope);
   const bucketResults = await concurrentExecutor(
-    CONSUMPTION_SCOPE_DIMENSIONS,
+    requestedDimensions,
     async (dimension) => ({
       dimension,
       result: await fetchDimensionFacetBuckets({
@@ -322,56 +327,56 @@ async function fetchConsumptionFacetsWithoutTracing(
     bucketsByDimension.set(dimension, result.value);
   }
 
-  const catalog = await listConsumptionFacetCatalog(auth);
+  const catalog = await listConsumptionFacetCatalog(auth, requestedDimensions);
   // TODO(2026-08-11 OBSERVABILITY): Historical label resolution still reads
   // from several database-backed resources. Store the relevant labels in the
   // consumption index so these lookups can stay within Elasticsearch.
-  const agentFacets = await resolveFacets(
+  const agentFacets = await resolveRequestedFacets(
     auth,
     "agent",
-    getFacetBuckets(bucketsByDimension, "agent"),
+    bucketsByDimension,
     catalog.agent
   );
-  const userFacets = await resolveFacets(
+  const userFacets = await resolveRequestedFacets(
     auth,
     "user",
-    getFacetBuckets(bucketsByDimension, "user"),
+    bucketsByDimension,
     catalog.user
   );
-  const apiKeyFacets = await resolveFacets(
+  const apiKeyFacets = await resolveRequestedFacets(
     auth,
     "api_key",
-    getFacetBuckets(bucketsByDimension, "api_key"),
+    bucketsByDimension,
     catalog.api_key
   );
-  const groupFacets = await resolveFacets(
+  const groupFacets = await resolveRequestedFacets(
     auth,
     "group",
-    getFacetBuckets(bucketsByDimension, "group"),
+    bucketsByDimension,
     catalog.group
   );
-  const modelFacets = await resolveFacets(
+  const modelFacets = await resolveRequestedFacets(
     auth,
     "model",
-    getFacetBuckets(bucketsByDimension, "model"),
+    bucketsByDimension,
     catalog.model
   );
-  const toolFacets = await resolveFacets(
+  const toolFacets = await resolveRequestedFacets(
     auth,
     "tool",
-    getFacetBuckets(bucketsByDimension, "tool"),
+    bucketsByDimension,
     catalog.tool
   );
-  const skillFacets = await resolveFacets(
+  const skillFacets = await resolveRequestedFacets(
     auth,
     "skill",
-    getFacetBuckets(bucketsByDimension, "skill"),
+    bucketsByDimension,
     catalog.skill
   );
-  const sourceFacets = await resolveFacets(
+  const sourceFacets = await resolveRequestedFacets(
     auth,
     "source",
-    getFacetBuckets(bucketsByDimension, "source"),
+    bucketsByDimension,
     catalog.source
   );
 
@@ -396,6 +401,7 @@ export async function fetchConsumptionFacets(
     period: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
     scope?: ConsumptionFacetScope;
+    dimensions?: ConsumptionScopeDimension[];
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
   return tracer.trace("analytics.consumption.facets", async (span) => {

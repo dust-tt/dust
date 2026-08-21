@@ -47,6 +47,12 @@ const app = workspaceApp();
  *                 enum: [all, automations]
  *                 default: all
  *                 description: Restricts which documents the facets are computed over. `automations` counts only trigger-originated runs.
+ *               dimensions:
+ *                 type: array
+ *                 description: Dimensions to compute facets for. Defaults to every dimension. Omitted dimensions come back as empty arrays.
+ *                 items:
+ *                   type: string
+ *                   enum: [agent, user, api_key, group, model, tool, skill, source]
  *               filter:
  *                 type: object
  *                 description: Map of consumption dimensions to selected values.
@@ -154,7 +160,7 @@ app.post(
   validate("json", ConsumptionFacetsBodySchema),
   async (ctx): HandlerResult<GetConsumptionFacetsResponse> => {
     const auth = ctx.get("auth");
-    const { filter, scope, ...periodInput } = ctx.req.valid("json");
+    const { filter, scope, dimensions, ...periodInput } = ctx.req.valid("json");
     const period = await resolveConsumptionPeriod(
       auth,
       toConsumptionPeriodInput(periodInput)
@@ -164,6 +170,7 @@ app.post(
       period,
       filter,
       scope,
+      dimensions,
     });
     if (result.isErr()) {
       return apiError(

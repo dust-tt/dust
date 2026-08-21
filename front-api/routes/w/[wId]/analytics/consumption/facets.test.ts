@@ -137,6 +137,64 @@ describe("POST /api/w/:wId/analytics/consumption/facets", () => {
     );
   });
 
+  it("forwards the requested dimensions and defaults to every dimension", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "manager",
+    });
+    vi.mocked(fetchConsumptionFacets).mockResolvedValue(new Ok(RESPONSE));
+
+    const subsetResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/analytics/consumption/facets`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dimensions: ["agent", "user"] }),
+      }
+    );
+
+    expect(subsetResponse.status).toBe(200);
+    expect(fetchConsumptionFacets).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ dimensions: ["agent", "user"] })
+    );
+
+    const defaultResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/analytics/consumption/facets`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+
+    expect(defaultResponse.status).toBe(200);
+    expect(fetchConsumptionFacets).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ dimensions: undefined })
+    );
+  });
+
+  it.each([
+    ["an unknown dimension", { dimensions: ["not-a-dimension"] }],
+    ["an empty dimension list", { dimensions: [] }],
+  ])("rejects %s", async (_label, body) => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "manager",
+    });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/analytics/consumption/facets`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }
+    );
+
+    expect(response.status).toBe(400);
+    expect(fetchConsumptionFacets).not.toHaveBeenCalled();
+  });
+
   it("rejects an unknown scope", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       role: "manager",

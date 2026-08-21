@@ -17,6 +17,7 @@ import { FilterSelectionSummary } from "@app/components/workspace/analytics/filt
 import { useAutomationsFilter } from "@app/components/workspace/analytics/useAutomationsFilter";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -28,6 +29,13 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
+
+// The panel only shows agents and members, so it skips the six other
+// dimensions rather than paying for their Elasticsearch sweeps and catalogs.
+const AUTOMATIONS_FACET_DIMENSIONS: ConsumptionScopeDimension[] = [
+  "agent",
+  "user",
+];
 
 const TYPE_OPTIONS: AutomationsFilterOption[] = [
   { id: "schedule", name: "Schedule", disabled: false, category: "type" },
@@ -77,6 +85,7 @@ export function AutomationsFilterPanel({
     period,
     filter: draftScopeFilter,
     scope: "automations",
+    dimensions: AUTOMATIONS_FACET_DIMENSIONS,
     disabled: !isOpen,
   });
 
