@@ -12,15 +12,15 @@ import { z } from "zod";
 export const SKILL_REINFORCEMENT_MODES = ["auto", "on", "off"] as const;
 export type SkillReinforcementMode = (typeof SKILL_REINFORCEMENT_MODES)[number];
 
+export type {
+  SkillAvailability,
+  SkillStatus,
+} from "@app/types/assistant/skill_configuration_constants";
 // Re-exported from the leaf module so importers do not have to care which file they live in.
 export {
   DEFAULT_SKILL_AVAILABILITY,
   SKILL_AVAILABILITIES,
   SKILL_STATUSES,
-} from "@app/types/assistant/skill_configuration_constants";
-export type {
-  SkillAvailability,
-  SkillStatus,
 } from "@app/types/assistant/skill_configuration_constants";
 
 // The DB column is availability; isDefault survives as a boolean alias in the API and

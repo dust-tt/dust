@@ -79,7 +79,7 @@ export async function listSkills(
             status: skill.status,
             canWrite: skill.canWrite(auth),
             agentsUsing: usageBySkillId
-              ? usageBySkillId.get(skill.sId)?.count ?? 0
+              ? (usageBySkillId.get(skill.sId)?.count ?? 0)
               : null,
           }),
           skill.userFacingDescription,

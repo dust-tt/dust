@@ -18,7 +18,9 @@ export function renderFields(
   fields: Record<string, string | number | boolean | null | undefined>
 ): string {
   return Object.entries(fields)
-    .filter(([, value]) => value !== null && value !== undefined && value !== "")
+    .filter(
+      ([, value]) => value !== null && value !== undefined && value !== ""
+    )
     .map(([key, value]) => `${key}: ${value}`)
     .join(", ");
 }
