@@ -1,6 +1,7 @@
 import { ActivationPodContent } from "@app/components/activation/ActivationPodContent";
 import { ActivationSurface } from "@app/components/activation/ActivationSurface";
 import { JustAskComposer } from "@app/components/activation/JustAskComposer";
+import { RecentConversations } from "@app/components/activation/RecentConversations";
 import { AssistantLayout } from "@app/components/assistant/AssistantLayout";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -165,41 +166,38 @@ export function GetStartedPage() {
           user={user}
           podId={activationPodId}
           defaultAgentId={defaultAgentId}
-          disabled={isActivationPodLoading}
           isGenerating={isGeneratingIdea}
           onGenerate={() => void generateIdea()}
-          beforeRecent={
-            <div className="mt-12">
-              <h2 className="text-base font-semibold leading-6 tracking-tight text-foreground">
-                Or just ask
-              </h2>
-              <p className="mt-1 text-sm leading-5 tracking-tight text-muted-foreground">
-                New here? Start with one of these to see what your agents can
-                do.
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {QUICK_PROMPTS.map((prompt) => (
-                  <Button
-                    key={prompt.label}
-                    variant="outline"
-                    size="sm"
-                    isRounded
-                    label={prompt.label}
-                    onClick={() => void startConversation(prompt.message)}
-                  />
-                ))}
-              </div>
-              <div className="mt-4">
-                <JustAskComposer
-                  owner={owner}
-                  user={user}
-                  podId={activationPodId}
-                  defaultAgentId={defaultAgentId}
-                />
-              </div>
-            </div>
-          }
         />
+        <div className="mt-12">
+          <h2 className="text-base font-semibold leading-6 tracking-tight text-foreground">
+            Or just ask
+          </h2>
+          <p className="mt-1 text-sm leading-5 tracking-tight text-muted-foreground">
+            New here? Start with one of these to see what your agents can do.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {QUICK_PROMPTS.map((prompt) => (
+              <Button
+                key={prompt.label}
+                variant="outline"
+                size="sm"
+                isRounded
+                label={prompt.label}
+                onClick={() => void startConversation(prompt.message)}
+              />
+            ))}
+          </div>
+          <div className="mt-4">
+            <JustAskComposer
+              owner={owner}
+              user={user}
+              podId={activationPodId}
+              defaultAgentId={defaultAgentId}
+            />
+          </div>
+        </div>
+        <RecentConversations owner={owner} podId={activationPodId} />
       </ActivationSurface>
     </AssistantLayout>
   );

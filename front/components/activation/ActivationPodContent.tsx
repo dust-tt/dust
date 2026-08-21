@@ -1,24 +1,20 @@
 import { ActivationRunningBanner } from "@app/components/activation/ActivationRunningBanner";
 import { PreviouslyDoneRow } from "@app/components/activation/PreviouslyDoneRow";
-import { RecentConversations } from "@app/components/activation/RecentConversations";
 import { RecommendationItem } from "@app/components/activation/RecommendationItem";
 import { WorkAreaSection } from "@app/components/activation/WorkAreaSection";
 import { usePodConversations } from "@app/hooks/conversations";
 import { useActivationRecommendations } from "@app/lib/swr/activation";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Button, Spinner } from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
 import { useState } from "react";
 
 interface ActivationPodContentProps {
   owner: WorkspaceType;
   user: UserType | null;
-  podId: string | null;
+  podId: string;
   defaultAgentId: string | null;
-  disabled?: boolean;
   isGenerating?: boolean;
   onGenerate?: () => void;
-  beforeRecent?: ReactNode;
 }
 
 export function ActivationPodContent({
@@ -26,21 +22,17 @@ export function ActivationPodContent({
   user,
   podId,
   defaultAgentId,
-  disabled,
   isGenerating,
   onGenerate,
-  beforeRecent,
 }: ActivationPodContentProps) {
   const { recommendations, isRecommendationsLoading, mutateRecommendations } =
     useActivationRecommendations({
       workspaceId: owner.sId,
-      podId: podId ?? undefined,
-      disabled,
+      podId,
     });
   const { conversations } = usePodConversations({
     workspaceId: owner.sId,
     podId,
-    options: { disabled },
   });
   const runningConversation =
     conversations.find((conversation) => conversation.isRunningAgentLoop) ??
@@ -61,7 +53,6 @@ export function ActivationPodContent({
         user={user}
         podId={podId}
         defaultAgentId={defaultAgentId}
-        disabled={disabled}
       />
 
       <div className="mt-12 rounded-2xl border border-border bg-background px-6 pb-4 pt-6 shadow-sm">
@@ -73,7 +64,7 @@ export function ActivationPodContent({
         </p>
 
         <div className="mt-6 border-t border-border">
-          {disabled || isRecommendationsLoading ? (
+          {isRecommendationsLoading ? (
             <div className="flex items-center justify-center py-10">
               <Spinner size="md" />
             </div>
@@ -128,9 +119,6 @@ export function ActivationPodContent({
           )}
         </div>
       </div>
-
-      {beforeRecent}
-      <RecentConversations owner={owner} podId={podId} />
     </>
   );
 }
