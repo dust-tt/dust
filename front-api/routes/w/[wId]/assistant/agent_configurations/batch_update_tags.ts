@@ -42,9 +42,13 @@ app.post(
       });
     }
 
+    // Admins may tag any agent of the workspace, including the ones built on spaces they cannot
+    // read (the manage agents page lists those behind "Show hidden agents"). Tagging touches
+    // nothing the spaces protect.
     const agents = await getAgentConfigurations(auth, {
       agentIds,
       variant: "light",
+      dangerouslySkipPermissionFiltering: auth.isAdmin(),
     });
     const editableAgents = agents.filter(
       (agent) => agent.canEdit || auth.isAdmin()
