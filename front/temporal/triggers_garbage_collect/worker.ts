@@ -1,8 +1,6 @@
-import {
-  getTemporalAgentWorkerConnection,
-  TEMPORAL_MAXED_CACHED_WORKFLOWS,
-} from "@app/lib/temporal";
+import { TEMPORAL_MAXED_CACHED_WORKFLOWS } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
+import { getTemporalAgentWorkerConnection } from "@app/lib/temporal_worker";
 import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import type { Context } from "@temporalio/activity";
