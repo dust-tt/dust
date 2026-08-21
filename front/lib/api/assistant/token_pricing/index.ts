@@ -1,6 +1,7 @@
 import { EU_MODEL_PRICING } from "@app/lib/api/assistant/token_pricing/eu";
 import type { PricingEntry } from "@app/lib/api/assistant/token_pricing/global";
 import { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing/global";
+import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type {
   ImageModelIdType,
   StaticModelIdType,
@@ -37,6 +38,11 @@ const DEFAULT_PRICING = MODEL_PRICING[DEFAULT_PRICING_MODEL_ID];
 // This discount factor applies to OpenAi, Anthropic, Google and Mistral
 const BATCH_DISCOUNT_FACTOR = 0.5;
 
+// OpenAI bills flex processing at Batch-API token prices, on both the short- and
+// long-context rates of every model that publishes a flex tier.
+// Verified 2026-08-21: https://developers.openai.com/api/docs/pricing
+export const FLEX_DISCOUNT_FACTOR = BATCH_DISCOUNT_FACTOR;
+
 /**
  * Calculate the cost in micro USD for token usage.
  * Note: promptTokens currently includes cached read and cache write tokens for some providers.
@@ -50,6 +56,7 @@ export function computeTokensCostForUsageInMicroUsd({
   cacheCreationTokens,
   longCacheCreationTokens,
   isBatch = false,
+  serviceTier,
   inferenceRegion = "global",
 }: {
   modelId: ModelIdType | ImageModelIdType;
@@ -61,6 +68,7 @@ export function computeTokensCostForUsageInMicroUsd({
   // a premium. The remainder is billed at the standard cache-write rate.
   longCacheCreationTokens?: number | null;
   isBatch?: boolean;
+  serviceTier?: ServiceTier;
   inferenceRegion?: InferenceRegionType;
 }): number {
   const regionalPricing =
@@ -100,7 +108,12 @@ export function computeTokensCostForUsageInMicroUsd({
     cacheWriteDeltaMicroUsd +
     outputCostMicroUsd;
 
-  return isBatch
-    ? Math.round(costMicroUsd * BATCH_DISCOUNT_FACTOR)
-    : costMicroUsd;
+  if (isBatch) {
+    return Math.round(costMicroUsd * BATCH_DISCOUNT_FACTOR);
+  }
+  if (serviceTier === "flex") {
+    return Math.round(costMicroUsd * FLEX_DISCOUNT_FACTOR);
+  }
+
+  return costMicroUsd;
 }

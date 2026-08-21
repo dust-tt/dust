@@ -24,4 +24,8 @@ export type BaseEndpointConfiguration<C extends InputConfig = InputConfig> = {
 
   // Pricing
   tokenPricing: TokenPricing;
+
+  // Tries with flex processing tier on first call, which has FLEX_DISCOUNT_FACTOR
+  // Then retry on standard tier
+  supportsFlexProcessing?: boolean;
 };
