@@ -6,8 +6,6 @@ import { ToolValidationDetails } from "@app/components/assistant/conversation/To
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
-import { validateToolInputs } from "@app/lib/actions/mcp_internal_actions/constants";
-import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -176,21 +174,15 @@ export function ToolValidationCard({
   };
 
   const {
-    metadata: { agentName, mcpServerName, toolName },
+    metadata: { agentName, mcpServerName },
   } = validationRequest;
 
   const approvalTitle = `Allow ${agentName} to use ${asDisplayName(mcpServerName)}?`;
   const displayLabel =
-    validationRequest.metadata.displayLabel ?? asDisplayName(toolName);
+    validationRequest.metadata.displayLabel ??
+    asDisplayName(validationRequest.metadata.toolName);
   const showDetailsInline =
-    canCurrentUserRespond &&
-    mcpServerName === SANDBOX_TOOL_NAME &&
-    toolName === "add_egress_domain" &&
-    validateToolInputs(
-      SANDBOX_TOOL_NAME,
-      "add_egress_domain",
-      validationRequest.inputs
-    );
+    canCurrentUserRespond && toolOverride?.detailsInline === true;
 
   const canAlwaysAllow = ["low", "medium"].includes(
     validationRequest.stake ?? ""
