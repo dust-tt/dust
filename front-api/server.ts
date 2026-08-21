@@ -1,11 +1,12 @@
-// Imported first: logs a "sign of life" before instrumentation and the app
-// module graph load, so startup probe failures leave a trace in the logs.
+// Imported first: installs the boot profiler's module hook before anything
+// else loads, then logs a "sign of life" before instrumentation and the app
+// module graph, so startup probe failures leave a trace in the logs.
+import { getBootProfile } from "./lib/boot-profile";
 import "./lib/startup-log";
 import "./lib/tracer-config";
 import "./lib/instrumentation-config";
 
 import { Server } from "node:http";
-import { performance } from "node:perf_hooks";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
 import { setupGlobalErrorHandler } from "@app/types/shared/utils/global_error_handler";
@@ -27,19 +28,21 @@ logger.info({ port, hostname, dev }, "front-api starting HTTP server");
 const server = serve({ fetch: honoApp.fetch, port, hostname }, () => {
   // performance.nodeTiming is measured from process start, so we can split
   // total boot into Node's own bootstrap vs our app code (bundle parse +
-  // module-level init + serve()).
-  const totalMs = performance.now();
-  const nodeBootstrapMs = performance.nodeTiming.bootstrapComplete;
+  // module-level init + serve()). `boot` adds what that time was spent on:
+  // `offCpuMs` is waiting rather than computing, which on a streamed image
+  // layer is the cost of fetching every module file the boot touches.
+  const profile = getBootProfile();
   logger.info(
     {
       port,
       hostname,
       dev,
       bootMs: {
-        nodeBootstrap: Math.round(nodeBootstrapMs),
-        appBoot: Math.round(totalMs - nodeBootstrapMs),
-        total: Math.round(totalMs),
+        nodeBootstrap: profile.nodeBootstrapMs,
+        appBoot: profile.wallMs - profile.nodeBootstrapMs,
+        total: profile.wallMs,
       },
+      boot: profile,
     },
     "front-api server listening"
   );
