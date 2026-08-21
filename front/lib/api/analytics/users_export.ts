@@ -21,10 +21,16 @@ type TopUsersExportAggs = {
   by_user?: estypes.AggregationsMultiBucketAggregateBase<TopUserExportBucket>;
 };
 
+// `revoked` when the membership has ended, `unregistered` when the user never
+// logged in, `active` otherwise.
+type UserExportStatus = "active" | "revoked" | "unregistered";
+
 export interface UserExportRow {
   userId: string;
   userName: string;
   userEmail: string;
+  userStatus: UserExportStatus;
+  lastLoginAt: string;
   messageCount: number;
   lastMessageSent: string;
   activeDaysCount: number;
@@ -36,6 +42,8 @@ export const USER_EXPORT_HEADERS: (keyof UserExportRow)[] = [
   "userId",
   "userName",
   "userEmail",
+  "userStatus",
+  "lastLoginAt",
   "messageCount",
   "lastMessageSent",
   "activeDaysCount",
@@ -127,12 +135,21 @@ export async function fetchUserExportRows({
       {
         model: UserModel,
         required: true,
-        attributes: ["id", "sId", "firstName", "lastName", "email"],
+        attributes: [
+          "id",
+          "sId",
+          "firstName",
+          "lastName",
+          "email",
+          "lastLoginAt",
+        ],
       },
     ],
   });
 
   const groupsMap = await getUserGroupMemberships(owner.id, startDate, endDate);
+
+  const now = new Date();
 
   const rows: UserExportRow[] = memberships.map((membership) => {
     const user = membership.user;
@@ -147,6 +164,10 @@ export async function fetchUserExportRows({
         user.email ||
         "Unknown",
       userEmail: user.email ?? "",
+      userStatus: getUserExportStatus({ membership, user, now }),
+      lastLoginAt: user.lastLoginAt
+        ? moment(user.lastLoginAt).tz(timezone).format("YYYY-MM-DD")
+        : "",
       messageCount: metrics?.messageCount ?? 0,
       lastMessageSent: metrics?.lastMessageSent ?? "",
       activeDaysCount: metrics?.activeDaysCount ?? 0,
@@ -158,4 +179,22 @@ export async function fetchUserExportRows({
   rows.sort((a, b) => b.messageCount - a.messageCount);
 
   return new Ok(rows);
+}
+
+function getUserExportStatus({
+  membership,
+  user,
+  now,
+}: {
+  membership: MembershipModel;
+  user: UserModel;
+  now: Date;
+}): UserExportStatus {
+  if (membership.endAt && membership.endAt < now) {
+    return "revoked";
+  }
+  if (!user.lastLoginAt) {
+    return "unregistered";
+  }
+  return "active";
 }
