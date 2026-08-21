@@ -17,6 +17,7 @@ import { SANDBOX_WORKSPACE_SCOPE_ID } from "@app/types/api/sandbox/egress_policy
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { z } from "zod";
 
 // Pod selection for the central Computer admin page's multi-pod reads.
@@ -157,47 +158,59 @@ export async function bulkUpdateEgressDomain(
   async function applyWorkspace(): Promise<
     Result<{ policy: EgressPolicy; changed: boolean }, Error>
   > {
-    if (operation.operation === "add") {
-      const r = await addWorkspacePolicyDomain(auth, { domain });
-      if (r.isErr()) {
-        return r;
+    switch (operation.operation) {
+      case "add": {
+        const r = await addWorkspacePolicyDomain(auth, { domain });
+        if (r.isErr()) {
+          return r;
+        }
+        return new Ok({
+          policy: r.value.policy,
+          changed: r.value.addedDomain !== null,
+        });
       }
-      return new Ok({
-        policy: r.value.policy,
-        changed: r.value.addedDomain !== null,
-      });
+      case "remove": {
+        const r = await removeWorkspacePolicyDomain(auth, { domain });
+        if (r.isErr()) {
+          return r;
+        }
+        return new Ok({
+          policy: r.value.policy,
+          changed: r.value.removedDomain !== null,
+        });
+      }
+      default:
+        return assertNever(operation);
     }
-    const r = await removeWorkspacePolicyDomain(auth, { domain });
-    if (r.isErr()) {
-      return r;
-    }
-    return new Ok({
-      policy: r.value.policy,
-      changed: r.value.removedDomain !== null,
-    });
   }
 
   async function applyPod(
     ownerId: string
   ): Promise<Result<{ policy: EgressPolicy; changed: boolean }, Error>> {
-    if (operation.operation === "add") {
-      const r = await addOwnerPolicyDomain(auth, { ownerId, domain });
-      if (r.isErr()) {
-        return r;
+    switch (operation.operation) {
+      case "add": {
+        const r = await addOwnerPolicyDomain(auth, { ownerId, domain });
+        if (r.isErr()) {
+          return r;
+        }
+        return new Ok({
+          policy: r.value.policy,
+          changed: r.value.addedDomain !== null,
+        });
       }
-      return new Ok({
-        policy: r.value.policy,
-        changed: r.value.addedDomain !== null,
-      });
+      case "remove": {
+        const r = await removeOwnerPolicyDomain(auth, { ownerId, domain });
+        if (r.isErr()) {
+          return r;
+        }
+        return new Ok({
+          policy: r.value.policy,
+          changed: r.value.removedDomain !== null,
+        });
+      }
+      default:
+        return assertNever(operation);
     }
-    const r = await removeOwnerPolicyDomain(auth, { ownerId, domain });
-    if (r.isErr()) {
-      return r;
-    }
-    return new Ok({
-      policy: r.value.policy,
-      changed: r.value.removedDomain !== null,
-    });
   }
 
   const results: ScopeMutationResult[] = [];
