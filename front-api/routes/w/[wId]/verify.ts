@@ -7,12 +7,11 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
-import type { Country } from "react-phone-number-input";
-import { isSupportedCountry } from "react-phone-number-input";
+import { type CountryCode, isSupportedCountry } from "libphonenumber-js/min";
 
-const DEFAULT_COUNTRY: Country = "US";
+const DEFAULT_COUNTRY: CountryCode = "US";
 
-async function detectCountryFromIP(ctx: Context): Promise<Country> {
+async function detectCountryFromIP(ctx: Context): Promise<CountryCode> {
   try {
     const headers: Record<string, string> = {};
     ctx.req.raw.headers.forEach((value, key) => {
