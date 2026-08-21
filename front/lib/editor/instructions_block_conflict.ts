@@ -1,5 +1,15 @@
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
-import { JSDOM } from "jsdom";
+import type { JSDOM as JSDOMConstructor } from "jsdom";
+
+// jsdom is 622 modules and 4.9 MB, and only the three helpers below need it.
+// These are synchronous (their callers are too), so it is resolved on first use
+// with a require rather than a dynamic import.
+let jsdomConstructor: typeof JSDOMConstructor | undefined;
+
+function getJSDOM(): typeof JSDOMConstructor {
+  jsdomConstructor ??= (require("jsdom") as typeof import("jsdom")).JSDOM;
+  return jsdomConstructor;
+}
 
 function getDescendantBlockIdsFromDoc(
   doc: Document,
@@ -27,7 +37,7 @@ export function getDescendantBlockIds(
   instructionsHtml: string,
   targetBlockId: string
 ): Set<string> {
-  const dom = new JSDOM(instructionsHtml);
+  const dom = new (getJSDOM())(instructionsHtml);
   return getDescendantBlockIdsFromDoc(dom.window.document, targetBlockId);
 }
 
@@ -35,7 +45,7 @@ export function getDescendantBlockIds(
  * Returns every `data-block-id` present anywhere in serialized instructions HTML.
  */
 export function getAllBlockIds(instructionsHtml: string): Set<string> {
-  const doc = new JSDOM(instructionsHtml).window.document;
+  const doc = new (getJSDOM())(instructionsHtml).window.document;
   const blockIds = new Set<string>();
   doc.querySelectorAll("[data-block-id]").forEach((element) => {
     const id = element.getAttribute("data-block-id");
@@ -55,7 +65,7 @@ export function buildDescendantMap(
   instructionsHtml: string,
   blockIds: Iterable<string>
 ): Map<string, Set<string>> {
-  const dom = new JSDOM(instructionsHtml);
+  const dom = new (getJSDOM())(instructionsHtml);
   const doc = dom.window.document;
   const map = new Map<string, Set<string>>();
   for (const blockId of blockIds) {
