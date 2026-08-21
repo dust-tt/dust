@@ -109,7 +109,7 @@ Overflow: cut text or resize the box, never below the template's sizes. Faint: r
 
 Fix, re-run \`--qa N\` on that slide, look again. A \`--qa\` from before your last edit is stale. Grid cells are narrow: re-run a plain \`--qa N\` on anything unreadable at that size. Substituted typeface or a few pixels of reflow: not a defect, compare against the template's own slide. Autofit text and dense tables render least reliably: say they need a PowerPoint check.
 
-The renderer only has metric-compatible stand-ins for Calibri, Cambria, Arial, Times New Roman, Courier New. Any other face (Montserrat, Aptos, Georgia) wraps at widths PowerPoint will not reproduce: fit warnings are approximate, leave the copy slack.
+\`pptx_fonts /tmp/deck.pptx --install\` before your first QA. Without the deck's own faces the renderer substitutes ~10% narrow: text fits one line here, wraps onto two in PowerPoint, and the fit warnings mislead. Still substituted after that (licensed faces, Helvetica Neue): fit stays approximate, leave that copy slack.
 
 ## 5. Audit, then deliver
 
