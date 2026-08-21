@@ -32,7 +32,6 @@ import type {
   ConnectionOptions,
   SnowflakeError,
 } from "snowflake-sdk";
-import snowflake from "snowflake-sdk";
 
 /**
  * Snowflake OAuth provider for MCP server integration.
@@ -375,7 +374,9 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
     warehouse: string,
     connectionId: string
   ): Promise<Result<void, Error>> {
-    // Configure SDK to suppress verbose logging
+    // Loaded here rather than at module scope: the SDK is 884 modules (it pulls
+    // the AWS, Azure and GCS storage clients) and only this check needs it.
+    const snowflake = (await import("snowflake-sdk")).default;
     snowflake.configure({ logLevel: "OFF" });
 
     const logCtx = {
