@@ -4,6 +4,7 @@ import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetail
 import type { AgentModelFilterType } from "@app/components/assistant/ModelsFilterMenu";
 import { ModelsFilterMenu } from "@app/components/assistant/ModelsFilterMenu";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
+import { NoArchivedAgentsCTA } from "@app/components/assistant/manager/NoArchivedAgentsCTA";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { getModelLogoByModelId } from "@app/components/providers/types";
@@ -141,6 +142,7 @@ export function ManageAgentsPage() {
   const {
     agentConfigurations: archivedAgentConfigurations,
     isAgentConfigurationsLoading: isArchivedAgentConfigurationsLoading,
+    mutateRegardlessOfQueryParams: mutateArchivedAgentConfigurations,
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "archived",
@@ -434,6 +436,15 @@ export function ManageAgentsPage() {
                 }
                 mutateAgentConfigurations={mutateAgentConfigurations}
               />
+            ) : activeTab === "archived" ? (
+              <div className="pt-2">
+                <NoArchivedAgentsCTA
+                  owner={owner}
+                  onArchived={() => {
+                    void mutateArchivedAgentConfigurations();
+                  }}
+                />
+              </div>
             ) : (
               canCreateAgent && (
                 <div className="pt-2">
