@@ -1,13 +1,12 @@
 import type {
   UsageFilter,
   UsageFilterCategory,
-  UsageFilterOptionForCategory,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
+  addUsageFilterIds,
   clearUsageFilterCategory,
-  removeUsageFilterOption,
-  selectAllUsageFilterOptions,
-  toggleUsageFilterOption,
+  removeUsageFilterId,
+  toggleUsageFilterId,
 } from "@app/components/workspace/analytics/usageFilter";
 import { useCallback, useState } from "react";
 
@@ -22,42 +21,25 @@ export function useUsageFilter(initialFilter: UsageFilter) {
     setDraftFilter((prev) => clearUsageFilterCategory(prev, category));
   }, []);
 
-  const toggleOption = useCallback(
-    <C extends UsageFilterCategory>(
-      category: C,
-      option: NoInfer<UsageFilterOptionForCategory<C>>
-    ) => {
-      setDraftFilter((prev) => toggleUsageFilterOption(prev, category, option));
-    },
-    []
-  );
+  const toggleId = useCallback((category: UsageFilterCategory, id: string) => {
+    setDraftFilter((prev) => toggleUsageFilterId(prev, category, id));
+  }, []);
 
-  const removeOption = useCallback(
-    (category: UsageFilterCategory, id: string) => {
-      setDraftFilter((prev) => removeUsageFilterOption(prev, category, id));
-    },
-    []
-  );
+  const removeId = useCallback((category: UsageFilterCategory, id: string) => {
+    setDraftFilter((prev) => removeUsageFilterId(prev, category, id));
+  }, []);
 
-  const selectAllFiltered = useCallback(
-    <C extends UsageFilterCategory>(
-      category: C,
-      options: NoInfer<UsageFilterOptionForCategory<C>>[]
-    ) => {
-      setDraftFilter((prev) =>
-        selectAllUsageFilterOptions(prev, category, options)
-      );
-    },
-    []
-  );
+  const addIds = useCallback((category: UsageFilterCategory, ids: string[]) => {
+    setDraftFilter((prev) => addUsageFilterIds(prev, category, ids));
+  }, []);
 
   return {
     draftFilter,
     setDraftFilter,
     clearAllCategories,
     clearCategory,
-    toggleOption,
-    removeOption,
-    selectAllFiltered,
+    toggleId,
+    removeId,
+    addIds,
   };
 }

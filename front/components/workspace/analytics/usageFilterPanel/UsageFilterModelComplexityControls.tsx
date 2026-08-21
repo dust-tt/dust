@@ -40,7 +40,7 @@ const MODEL_TIER_ICON: Record<ModelsTierName, ComponentType> = {
 interface UsageFilterModelComplexityControlsProps {
   moreModelsCatalog: UsageFilterModelOption[];
   selectedModelIds: Set<string>;
-  onToggleModel: (model: UsageFilterModelOption) => void;
+  onToggleModel: (modelId: string) => void;
   activeTier: ModelsTierName;
   onTierChange: (tier: ModelsTierName) => void;
 }
@@ -150,7 +150,7 @@ export function UsageFilterModelComplexityControls({
                     })}
                     onClick={() => {
                       if (!isModelSelectionDisabled(model)) {
-                        onToggleModel(model);
+                        onToggleModel(model.id);
                       }
                     }}
                     onSelect={(e) => e.preventDefault()}
@@ -196,7 +196,7 @@ export function UsageFilterModelComplexityControls({
                         })}
                         onClick={() => {
                           if (!isModelSelectionDisabled(model)) {
-                            onToggleModel(model);
+                            onToggleModel(model.id);
                           }
                         }}
                         onSelect={(e) => e.preventDefault()}

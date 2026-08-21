@@ -150,6 +150,9 @@ export function usePokeConsumptionFacets({
     isFacetsLoading: !error && !data && !disabled,
     isFacetsError: error,
     isFacetsValidating: isValidating,
+    // SWR keeps the previous response while a new one is in flight, so
+    // `options` only covers the requested period once this is true.
+    isFacetsSettled: !disabled && !isValidating && data !== undefined,
   };
 }
 

@@ -1,6 +1,7 @@
 import type { AnalyticsConsumptionComponents } from "@app/components/pages/workspace/AnalyticsConsumptionPage";
 import {
   AnalyticsConsumptionContent,
+  useAnalyticsConsumptionOptionIndex,
   useAnalyticsConsumptionState,
 } from "@app/components/pages/workspace/AnalyticsConsumptionPage";
 import { PokeConsumptionAttributionTable } from "@app/components/poke/analytics/PokeConsumptionAttributionTable";
@@ -9,6 +10,7 @@ import { PokeConsumptionSummary } from "@app/components/poke/analytics/PokeConsu
 import { PokeCustomerVisibilityChip } from "@app/components/poke/analytics/PokeCustomerVisibilityChip";
 import { PokeUsageFilterPanel } from "@app/components/poke/analytics/PokeUsageFilterPanel";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
+import { usePokeConsumptionFacets } from "@app/poke/swr/consumption";
 import type { WorkspaceType } from "@app/types/user";
 import { safeLazy } from "@dust-tt/sparkle";
 
@@ -38,10 +40,23 @@ interface PokeConsumptionPreviewProps {
 
 export function PokeConsumptionPreview({ owner }: PokeConsumptionPreviewProps) {
   const state = useAnalyticsConsumptionState();
+  const { options: categoryOptions, isFacetsSettled } =
+    usePokeConsumptionFacets({
+      workspaceId: owner.sId,
+      period: state.period,
+      filter: state.scopeFilter,
+      disabled: !state.hasSelection,
+    });
+  const optionIndex = useAnalyticsConsumptionOptionIndex({
+    categoryOptions,
+    isFacetsSettled,
+    state,
+  });
 
   return (
     <AnalyticsConsumptionContent
       components={POKE_CONSUMPTION_COMPONENTS}
+      optionIndex={optionIndex}
       owner={owner}
       embedded
       headerBadge={
