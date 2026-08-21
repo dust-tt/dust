@@ -7,14 +7,13 @@ import {
   expandFoldersToTables,
   getTableIdForContentNode,
 } from "@app/components/agent_builder/shared/tables";
-import type { AdditionalConfigurationInBuilderType } from "@app/components/shared/tools_picker/types";
+import { processAdditionalConfiguration } from "@app/lib/actions/additional_configuration";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type {
   GetContentNodesOrChildrenRequestBodyType,
   GetDataSourceViewContentNodes,
 } from "@app/lib/api/data_source_view";
 import { clientFetch } from "@app/lib/egress/client";
-import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import {
   TRACKING_ACTIONS,
@@ -175,33 +174,6 @@ async function processTableSelection(
   }
 
   return allTables.length > 0 ? allTables : null;
-}
-
-export function processAdditionalConfiguration(
-  additionalConfiguration: AdditionalConfigurationInBuilderType
-): AdditionalConfigurationType {
-  // In agent builder v2, the additional configuration can be nested.
-  // However, in the database, we store the additional configuration as a flat object with the nested objects flattened using the dot notation.
-  // We need to flatten the additional configuration back into a nested object.
-
-  const flattenConfig = (
-    config: AdditionalConfigurationInBuilderType,
-    output: AdditionalConfigurationType,
-    prefix?: string
-  ): AdditionalConfigurationType => {
-    for (const [key, value] of Object.entries(config)) {
-      const path = prefix ? `${prefix}.${key}` : key;
-      if (typeof value === "object" && !Array.isArray(value)) {
-        output = flattenConfig(value, output, path);
-      } else {
-        output[path] = value;
-      }
-    }
-
-    return output;
-  };
-
-  return flattenConfig(additionalConfiguration, {});
 }
 
 function serializeTrigger(

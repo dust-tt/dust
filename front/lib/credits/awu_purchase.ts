@@ -1,5 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import { getBillingCycle } from "@app/lib/client/subscription";
 import {
   computeAwuInvoiceUnitPrice,
   resolveAwuPurchaseCurrency,
@@ -27,6 +26,7 @@ import {
   oneYearAfter,
 } from "@app/lib/metronome/constants";
 import { USAGE_TAG } from "@app/lib/metronome/setup_common";
+import { getBillingCycle } from "@app/lib/plans/billing_cycle";
 import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";

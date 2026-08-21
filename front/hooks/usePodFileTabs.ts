@@ -1,5 +1,4 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdatePodMetadata } from "@app/lib/swr/pods";
 import type { PodFileTab } from "@app/types/pod_file_tab";
@@ -14,6 +13,7 @@ import {
   reorderFileTabsInTabsOrder,
   sortPodFileTabs,
 } from "@app/types/pod_file_tab";
+import type { CustomResourceIconType } from "@app/types/resources_icon_names";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useContext, useMemo } from "react";
 

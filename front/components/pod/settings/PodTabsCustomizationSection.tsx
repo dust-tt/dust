@@ -3,7 +3,6 @@ import { listAddablePodTabFiles } from "@app/components/pod/files/addablePodTabF
 import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
 import type { AddablePodTabFile } from "@app/components/pod/settings/AddPodFileMenu";
 import { AddPodFileMenu } from "@app/components/pod/settings/AddPodFileMenu";
-import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { usePodFileTabs } from "@app/hooks/usePodFileTabs";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -15,6 +14,7 @@ import {
   MAX_POD_FILE_TABS,
   podFileTabBasename,
 } from "@app/types/pod_file_tab";
+import { isCustomResourceIconType } from "@app/types/resources_icon_names";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionIcons,

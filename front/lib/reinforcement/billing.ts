@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
-import type { BillingCycle } from "@app/lib/client/subscription";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
+import type { BillingCycle } from "@app/lib/plans/billing_cycle";
 import logger from "@app/logger/logger";
 
 function currentCalendarMonth(): BillingCycle {

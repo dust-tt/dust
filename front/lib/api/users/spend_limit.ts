@@ -18,7 +18,6 @@ import { getUserForWorkspace } from "@app/lib/api/user";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import { getNonCreditPricedDefaultUserSpendLimit } from "@app/lib/api/workspace/default_user_spend_limit";
 import type { Authenticator } from "@app/lib/auth";
-import type { BillingCycle } from "@app/lib/client/subscription";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { USER_AWU_WARNING_PERCENTAGE } from "@app/lib/metronome/alerts/spend_limits";
 import { getCachedCustomerPerUserCreditBalances } from "@app/lib/metronome/client";
@@ -26,6 +25,7 @@ import {
   CONTRACT_CREDIT_TYPE_FREE_SEAT,
   FREE_SEAT_LIFETIME_AWU_CREDITS,
 } from "@app/lib/metronome/constants";
+import type { BillingCycle } from "@app/lib/plans/billing_cycle";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";

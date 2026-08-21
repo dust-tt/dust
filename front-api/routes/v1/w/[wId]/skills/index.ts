@@ -2,9 +2,9 @@ import {
   importSkillsFromFiles,
   isImportConflictStrategy,
 } from "@app/lib/api/skills/detection/files/import_skills";
-import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/github/import_skills";
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { ImportSkillsResponseBody } from "@app/types/api/skills/detection/github/import_skills";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

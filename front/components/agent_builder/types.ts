@@ -184,35 +184,3 @@ export type AgentBuilderMCPConfigurationWithId =
   AgentBuilderMCPConfiguration & {
     id: string;
   };
-
-export function getDefaultMCPServerActionConfiguration(
-  mcpServerView?: MCPServerViewType
-): AgentBuilderMCPConfiguration {
-  const requirements = getMCPServerRequirements(mcpServerView);
-
-  return {
-    configuration: {
-      mcpServerViewId: mcpServerView?.sId ?? "not-a-valid-sId",
-      dataSourceConfigurations: null,
-      tablesConfigurations: null,
-      childAgentId: null,
-      timeFrame: null,
-      additionalConfiguration: {},
-      dustAppConfiguration: null,
-      dustProject: null,
-      jsonSchema: null,
-      _jsonSchemaString: null,
-      secretName: null,
-    },
-    name: mcpServerView?.name ?? mcpServerView?.server.name ?? "",
-    description:
-      requirements.requiresDataSourceConfiguration ||
-      requirements.requiresDataWarehouseConfiguration ||
-      requirements.requiresTableConfiguration
-        ? ""
-        : mcpServerView
-          ? getMcpServerViewDescription(mcpServerView)
-          : "",
-    configurationRequired: !requirements.noRequirement,
-  };
-}

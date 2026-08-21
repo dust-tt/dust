@@ -13,6 +13,7 @@ import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import { honoApp } from "@front-api/app";
@@ -30,6 +31,8 @@ vi.mock("@app/lib/api/skills/icon_suggestion", () => ({
 vi.mock("@app/lib/api/skills/detection/suggest_mcp_servers", () => ({
   suggestMCPServersForDetectedSkill: vi.fn(async () => []),
 }));
+
+setupSkillInstructionsMarkdownPipeline();
 
 function getSkills(
   workspace: { sId: string },

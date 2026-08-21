@@ -1,5 +1,3 @@
-import type { BillingCycle } from "@app/lib/client/subscription";
-import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import {
   ceilToHourISO,
   createMetronomeContract,
@@ -21,6 +19,8 @@ import {
 } from "@app/lib/metronome/seats";
 import type { MetronomeStripeCollectionMethod } from "@app/lib/metronome/types";
 import { resolveCurrencyFromStripe } from "@app/lib/plans/billing_currency";
+import type { BillingCycle } from "@app/lib/plans/billing_cycle";
+import { getBillingCycleFromDay } from "@app/lib/plans/billing_cycle";
 import {
   getStripeCustomer,
   getStripeSubscription,
