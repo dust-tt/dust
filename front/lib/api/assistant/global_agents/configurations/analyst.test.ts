@@ -3,8 +3,12 @@ import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_age
 import { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { AUTO_MODEL_CONFIG } from "@app/types/assistant/models/auto";
+import {
+  AUTO_FAST_MODEL_CONFIG,
+  AUTO_MODEL_CONFIG,
+} from "@app/types/assistant/models/auto";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { describe, expect, it } from "vitest";
 
@@ -24,12 +28,25 @@ async function fetchAnalyst(role: MembershipRoleType, optedOut = false) {
 }
 
 describe("analyst global agent visibility", () => {
-  it("uses the Standard auto stream", () => {
-    const analyst = _getAnalystGlobalAgent();
+  it("uses the Standard auto stream on upgraded workspaces", async () => {
+    const workspace = await WorkspaceFactory.enterprise();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const analyst = _getAnalystGlobalAgent({ auth });
 
     expect(analyst.model.providerId).toBe(AUTO_MODEL_CONFIG.providerId);
     expect(analyst.model.modelId).toBe(AUTO_MODEL_CONFIG.modelId);
     expect(analyst.status).toBe("active");
+  });
+
+  it("uses the Basic auto stream on non-upgraded workspaces", async () => {
+    const workspace = await WorkspaceFactory.freeNoProductAccess();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const analyst = _getAnalystGlobalAgent({ auth });
+
+    expect(analyst.model.providerId).toBe(AUTO_FAST_MODEL_CONFIG.providerId);
+    expect(analyst.model.modelId).toBe(AUTO_FAST_MODEL_CONFIG.modelId);
   });
 
   it("is available to admins by default", async () => {
