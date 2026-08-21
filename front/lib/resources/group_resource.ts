@@ -8,7 +8,6 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
-import type { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -48,7 +47,6 @@ import type {
   Attributes,
   CreationAttributes,
   Includeable,
-  InferAttributes,
   ModelStatic,
   Transaction,
   WhereOptions,
@@ -91,10 +89,7 @@ type CachedGroup = {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface GroupResource extends ReadonlyAttributesType<GroupModel> {
-  // Optional property added by Sequelize when loading through belongsToMany with GroupSpaceModel
-  group_vaults?: InferAttributes<GroupSpaceModel>;
-}
+export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GroupResource extends BaseResource<GroupModel> {
   static model: ModelStatic<GroupModel> = GroupModel;

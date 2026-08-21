@@ -32,7 +32,6 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -1348,7 +1347,7 @@ describe("createAgentMessages", () => {
 
       // If global group is not already there, associate it directly
       if (!hasGlobalGroup) {
-        await GroupSpaceFactory.associate(openSpace, globalGroup);
+        await SpaceFactory.attachGroup(openSpace, globalGroup);
       }
 
       // Refresh to get updated groups

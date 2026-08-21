@@ -2,7 +2,6 @@ import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/cons
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -23,7 +22,7 @@ describe("GET /api/w/:wId/spaces/:spaceId/mcp/available", () => {
     });
 
     const space = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(space, globalGroup);
+    await SpaceFactory.attachGroup(space, globalGroup);
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 

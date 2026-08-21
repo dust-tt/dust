@@ -23,7 +23,6 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { resolveAndCreateUserMentions } from "@app/tests/utils/mentions";
@@ -938,7 +937,7 @@ describe("createAgentMessages", () => {
 
       // If global group is not already there, associate it directly
       if (!hasGlobalGroup) {
-        await GroupSpaceFactory.associate(openSpace, globalGroup);
+        await SpaceFactory.attachGroup(openSpace, globalGroup);
       }
 
       // Refresh to get updated groups

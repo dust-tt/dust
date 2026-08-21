@@ -113,33 +113,6 @@ inserted_conversations_space AS (
   RETURNING id, "workspaceId"
 ),
 
--- Step 5a: Link system group to system space
-link_system AS (
-  INSERT INTO group_vaults ("workspaceId", "groupId", "groupKind", "vaultId", "createdAt", "updatedAt")
-  SELECT sg."workspaceId", sg.id, 'system', ss.id, NOW(), NOW()
-  FROM inserted_system_group sg
-  CROSS JOIN inserted_system_space ss
-  RETURNING "vaultId"
-),
-
--- Step 5b: Link global group to global space
-link_global AS (
-  INSERT INTO group_vaults ("workspaceId", "groupId", "groupKind", "vaultId", "createdAt", "updatedAt")
-  SELECT gg."workspaceId", gg.id, 'global', gs.id, NOW(), NOW()
-  FROM inserted_global_group gg
-  CROSS JOIN inserted_global_space gs
-  RETURNING "vaultId"
-),
-
--- Step 5c: Link global group to conversations space
-link_conversations AS (
-  INSERT INTO group_vaults ("workspaceId", "groupId", "groupKind", "vaultId", "createdAt", "updatedAt")
-  SELECT gg."workspaceId", gg.id, 'global', cs.id, NOW(), NOW()
-  FROM inserted_global_group gg
-  CROSS JOIN inserted_conversations_space cs
-  RETURNING "vaultId"
-),
-
 -- Step 5d: Seed default governance capabilities (type-wide -1 grants on the global group).
 -- Mirrors seedWorkspaceCapabilities (front/lib/api/permissions/governance_seeding.ts), which
 -- workspace provisioning runs but this raw-SQL seed bypasses. A fresh workspace has no feature

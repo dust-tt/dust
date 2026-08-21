@@ -20,7 +20,6 @@ import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -770,8 +769,8 @@ describe("SkillResource", () => {
     it("should remove space from agent when skill no longer requires it", async () => {
       const space1 = await SpaceFactory.regular(testContext.workspace);
       const space2 = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space1, testContext.globalGroup);
-      await GroupSpaceFactory.associate(space2, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space1, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space2, testContext.globalGroup);
 
       const skillResource = await SkillFactory.create(
         testContext.authenticator,
@@ -820,11 +819,8 @@ describe("SkillResource", () => {
     it("should keep space on agent if another skill still requires it", async () => {
       const sharedSpace = await SpaceFactory.regular(testContext.workspace);
       const skill1OnlySpace = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(sharedSpace, testContext.globalGroup);
-      await GroupSpaceFactory.associate(
-        skill1OnlySpace,
-        testContext.globalGroup
-      );
+      await SpaceFactory.attachGroup(sharedSpace, testContext.globalGroup);
+      await SpaceFactory.attachGroup(skill1OnlySpace, testContext.globalGroup);
 
       const skill1 = await SkillFactory.create(testContext.authenticator, {
         name: "Skill 1",
@@ -1513,10 +1509,7 @@ describe("SkillResource", () => {
 
     it("removes the skill's space requirements from agents when archiving and adds them back when restoring", async () => {
       const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(
-        restrictedSpace,
-        testContext.globalGroup
-      );
+      await SpaceFactory.attachGroup(restrictedSpace, testContext.globalGroup);
 
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Space To Archive",
@@ -1561,7 +1554,7 @@ describe("SkillResource", () => {
 
     it("keeps a space on the agent when archiving a skill if another active skill still requires it", async () => {
       const sharedSpace = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(sharedSpace, testContext.globalGroup);
+      await SpaceFactory.attachGroup(sharedSpace, testContext.globalGroup);
 
       const skill1 = await SkillFactory.create(testContext.authenticator, {
         name: "Skill 1 Sharing Space",
@@ -1785,7 +1778,7 @@ describe("SkillResource", () => {
   describe("listByMCPServerViewIds", () => {
     it("should return skills that use any of the given MCP server view IDs", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
       const server = await RemoteMCPServerFactory.create(testContext.workspace);
       const serverView = await MCPServerViewFactory.create(
@@ -1834,7 +1827,7 @@ describe("SkillResource", () => {
   describe("listByDataSourceViewIds", () => {
     it("should return skills that use any of the given data source view IDs", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
       const dsv1 = await DataSourceViewFactory.folder(
         testContext.workspace,
@@ -1890,7 +1883,7 @@ describe("SkillResource", () => {
   describe("listByDataSourceIds", () => {
     it("should return skills that use any of the given data source IDs", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
       const dsv1 = await DataSourceViewFactory.folder(
         testContext.workspace,
@@ -1944,9 +1937,9 @@ describe("SkillResource", () => {
 
     it("should return skills configured through any view of the given data source", async () => {
       const ownerSpace = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(ownerSpace, testContext.globalGroup);
+      await SpaceFactory.attachGroup(ownerSpace, testContext.globalGroup);
       const otherSpace = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(otherSpace, testContext.globalGroup);
+      await SpaceFactory.attachGroup(otherSpace, testContext.globalGroup);
 
       const defaultView = await DataSourceViewFactory.folder(
         testContext.workspace,
@@ -2351,7 +2344,7 @@ describe("SkillResource", () => {
   describe("getAttachedKnowledge", () => {
     it("should return attached knowledge from data source configurations", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
       const dsv = await DataSourceViewFactory.folder(
         testContext.workspace,
@@ -2392,7 +2385,7 @@ describe("SkillResource", () => {
   describe("computeRequestedSpaceIds", () => {
     it("should compute space IDs from attached knowledge", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
       const dsv = await DataSourceViewFactory.folder(
         testContext.workspace,

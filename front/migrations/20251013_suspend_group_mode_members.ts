@@ -1,8 +1,8 @@
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 import type { Logger } from "@app/logger/logger";
 
+import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { makeScript } from "@app/scripts/helpers";
@@ -32,13 +32,14 @@ async function suspendGroupModeMembers(
 
   // Process each space
   for (const space of groupModeSpaces) {
-    // Find the regular groups associated with this space via junction table
-    const groupSpaceJunctions = await GroupSpaceModel.findAll({
-      where: {
-        vaultId: space.id,
-        workspaceId: space.workspaceId,
-      },
-    });
+    // Find the regular groups associated with this space via the junction table.
+    const groupSpaceJunctions = await frontSequelize.query<{ groupId: number }>(
+      'SELECT "groupId" FROM group_vaults WHERE "vaultId" = :vaultId AND "workspaceId" = :workspaceId',
+      {
+        replacements: { vaultId: space.id, workspaceId: space.workspaceId },
+        type: QueryTypes.SELECT,
+      }
+    );
 
     // Get the group IDs from the junction table
     const groupIds = groupSpaceJunctions.map((gs) => gs.groupId);
