@@ -33,6 +33,8 @@ type MemberPage = {
 
 type PageArgs = { cursor?: number; limit?: number };
 
+type MemberArgs = PageArgs & { includeGroups: boolean };
+
 // The three list paths all resolve their matches to user model ids first, so paginating the ids
 // means only the current page's users, groups and job types are ever fetched.
 function paginateMemberIds(
@@ -53,26 +55,29 @@ type WorkspaceMember = {
   email: string;
   role: MembershipResource["role"];
   jobFunction: { value: JobType; label: string } | null;
-  groups: string[];
+  // null when the caller did not ask for groups, as opposed to a member in no group.
+  groups: string[] | null;
 };
 
 async function buildMemberRows(
   auth: Authenticator,
   users: UserResource[],
   membershipByUserId: Map<number, MembershipResource>,
-  jobTypesByUserId: Map<number, string>
+  jobTypesByUserId: Map<number, string>,
+  { includeGroups }: { includeGroups: boolean }
 ): Promise<WorkspaceMember[]> {
   if (users.length === 0) {
     return [];
   }
-  const workspace = auth.getNonNullableWorkspace();
-  const userModelIds = users.map((u) => u.id);
-  const groupNamesByUserId =
-    await GroupResource.listGroupNamesByUserModelIdInWorkspace({
-      workspace,
-      userModelIds,
-      groupKinds: [...MANAGEABLE_GROUP_KINDS],
-    });
+
+  // Skipped entirely unless asked for: it is a query, and group names are verbose.
+  const groupNamesByUserId = includeGroups
+    ? await GroupResource.listGroupNamesByUserModelIdInWorkspace({
+        workspace: auth.getNonNullableWorkspace(),
+        userModelIds: users.map((u) => u.id),
+        groupKinds: [...MANAGEABLE_GROUP_KINDS],
+      })
+    : null;
 
   return users.flatMap((user) => {
     const membership = membershipByUserId.get(user.id);
@@ -90,7 +95,9 @@ async function buildMemberRows(
         jobFunction: jobType
           ? { value: jobType, label: JOB_TYPE_LABELS[jobType] }
           : null,
-        groups: groupNamesByUserId.get(user.id) ?? [],
+        groups: groupNamesByUserId
+          ? (groupNamesByUserId.get(user.id) ?? [])
+          : null,
       },
     ];
   });
@@ -99,7 +106,7 @@ async function buildMemberRows(
 async function listMembersByUserIds(
   auth: Authenticator,
   userIds: string[],
-  pageArgs: PageArgs
+  { includeGroups, ...pageArgs }: MemberArgs
 ): Promise<Result<MemberPage, MCPError>> {
   const uniqueUserIds = [...new Set(userIds)];
   const users = await UserResource.fetchByIds(uniqueUserIds);
@@ -157,7 +164,8 @@ async function listMembersByUserIds(
       auth,
       pagedUsers,
       membershipByUserId,
-      jobTypesByUserId
+      jobTypesByUserId,
+      { includeGroups }
     ),
     total,
     nextCursor,
@@ -168,7 +176,7 @@ async function listMembersByUserIds(
 async function listAllMembers(
   auth: Authenticator,
   jobType: JobType | undefined,
-  pageArgs: PageArgs
+  { includeGroups, ...pageArgs }: MemberArgs
 ): Promise<Result<MemberPage, MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
 
@@ -205,7 +213,8 @@ async function listAllMembers(
       auth,
       users,
       membershipByUserId,
-      jobTypesByUserId
+      jobTypesByUserId,
+      { includeGroups }
     ),
     total,
     nextCursor,
@@ -215,7 +224,7 @@ async function listAllMembers(
 async function listMembersByGroupId(
   auth: Authenticator,
   groupId: string,
-  pageArgs: PageArgs
+  { includeGroups, ...pageArgs }: MemberArgs
 ): Promise<Result<MemberPage, MCPError>> {
   const groupRes = await GroupResource.fetchById(auth, groupId);
   if (groupRes.isErr()) {
@@ -258,7 +267,8 @@ async function listMembersByGroupId(
       auth,
       users,
       membershipByUserId,
-      jobTypesByUserId
+      jobTypesByUserId,
+      { includeGroups }
     ),
     total,
     nextCursor,
@@ -272,12 +282,14 @@ export async function listWorkspaceMembers(
     userIds,
     jobType,
     groupId,
+    includeGroups,
     cursor,
     limit,
   }: {
     userIds?: string[];
     jobType?: JobType;
     groupId?: string;
+    includeGroups: boolean;
     cursor?: number;
     limit?: number;
   },
@@ -297,12 +309,12 @@ export async function listWorkspaceMembers(
     );
   }
 
-  const pageArgs = { cursor, limit };
+  const memberArgs = { cursor, limit, includeGroups };
   const result = userIds
-    ? await listMembersByUserIds(auth, userIds, pageArgs)
+    ? await listMembersByUserIds(auth, userIds, memberArgs)
     : groupId
-      ? await listMembersByGroupId(auth, groupId, pageArgs)
-      : await listAllMembers(auth, jobType, pageArgs);
+      ? await listMembersByGroupId(auth, groupId, memberArgs)
+      : await listAllMembers(auth, jobType, memberArgs);
 
   if (result.isErr()) {
     return result;
@@ -316,7 +328,7 @@ export async function listWorkspaceMembers(
   const lines = members.map((member) => {
     const extras = renderFields({
       jobFunction: member.jobFunction?.label ?? null,
-      groups: member.groups.join("|") || null,
+      groups: member.groups?.join("|") || null,
     });
 
     return (

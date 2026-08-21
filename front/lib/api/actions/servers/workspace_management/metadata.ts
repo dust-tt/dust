@@ -146,6 +146,10 @@ const listWorkspaceMembersSchema = {
     .string()
     .optional()
     .describe("Only return active members of this workspace group."),
+  includeGroups: z
+    .boolean()
+    .default(false)
+    .describe("Also return each member's workspace groups."),
   cursor: z
     .number()
     .int()
@@ -233,7 +237,7 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
   {
     name: LIST_WORKSPACE_MEMBERS_TOOL_NAME,
     description:
-      "List active workspace members with their role, job function and groups. " +
+      "List active workspace members with their role and job function. " +
       "Admin and manager only.",
     schema: listWorkspaceMembersSchema,
     stake: "never_ask",

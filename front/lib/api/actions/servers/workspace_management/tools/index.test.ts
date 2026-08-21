@@ -494,7 +494,7 @@ describe("workspace_management tools", () => {
 
       const lines = await callToolLines(
         "list_workspace_members",
-        { userIds: [salesUser.sId, engineeringUser.sId] },
+        { userIds: [salesUser.sId, engineeringUser.sId], includeGroups: true },
         authenticator
       );
 
@@ -504,6 +504,14 @@ describe("workspace_management tools", () => {
       expect(lines[0]).toContain("groups: Enterprise Sales");
       expect(lines[1]).toContain(engineeringUser.sId);
       expect(lines[1]).toContain(") - user");
+
+      // Groups are opt-in.
+      const withoutGroups = await callTool(
+        "list_workspace_members",
+        { userIds: [salesUser.sId] },
+        authenticator
+      );
+      expect(withoutGroups).not.toContain("groups:");
     });
 
     it("returns only members matching a jobType filter", async () => {
