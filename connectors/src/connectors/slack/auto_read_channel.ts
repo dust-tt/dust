@@ -67,7 +67,8 @@ export async function autoReadChannel(
   );
 
   // Probe the workspace: /exists does no work beyond authentication and
-  // returns an error when the workspace is gone, relocated or in maintenance.
+  // returns an error when the workspace is gone, relocated, in maintenance or
+  // on a plan without API access. Nothing to auto-read in those cases.
   const existsRes = await dustAPI.exists();
   if (existsRes.isErr()) {
     logger.info(
@@ -77,13 +78,9 @@ export async function autoReadChannel(
         workspaceId: dataSourceConfig.workspaceId,
         error: existsRes.error.message,
       },
-      "Skipping auto-read channel: workspace API call failed (likely in maintenance)"
+      "Skipping auto-read channel: workspace is unavailable"
     );
-    return new Err(
-      new Error(
-        `Cannot auto-read channel: workspace is unavailable (${existsRes.error.message})`
-      )
-    );
+    return new Ok(false);
   }
 
   const { connectorId, autoReadChannelPatterns } = slackConfiguration;
