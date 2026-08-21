@@ -8,8 +8,8 @@ import {
 } from "@app/lib/api/elasticsearch";
 import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
-import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { getBillingCycleFromDay } from "@app/lib/plans/billing_cycle";
 import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

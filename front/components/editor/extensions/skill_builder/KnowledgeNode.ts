@@ -6,9 +6,11 @@ import {
   computeHasChildren,
   isFullKnowledgeItem,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+import {
+  KNOWLEDGE_TAG,
+  KNOWLEDGE_TAG_REGEX,
+} from "@app/lib/editor/knowledge_node_constants";
 import { Node } from "@tiptap/core";
-
-import { KNOWLEDGE_TAG, KNOWLEDGE_TAG_REGEX } from "./KnowledgeNodeConstants";
 
 export interface KnowledgeNodeAttributes {
   selectedItems: KnowledgeItem[];

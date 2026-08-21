@@ -13,7 +13,7 @@ import { KnowledgeNode } from "@app/components/editor/extensions/skill_builder/K
 import {
   RawMarkdownBlock,
   rawMarkdownBlockParsers,
-} from "@app/components/editor/extensions/skill_builder/RawMarkdownBlock";
+} from "@app/components/editor/extensions/skill_builder/RawMarkdownBlockNode";
 import { SkillNode } from "@app/components/editor/extensions/skill_builder/SkillNode";
 import { ToolNode } from "@app/components/editor/extensions/skill_builder/ToolNode";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";

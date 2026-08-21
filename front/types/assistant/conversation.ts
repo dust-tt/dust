@@ -870,3 +870,28 @@ export type ConversationMCPServerViewType = BaseConversationMCPServerViewType &
     | { source: "agent_enabled"; agentConfigurationId: string }
     | { source: "conversation"; agentConfigurationId: null }
   );
+
+export function isMessageUnread(
+  message:
+    | UserMessageType
+    | AgentMessageType
+    | ContentFragmentType
+    | LightAgentMessageType
+    | UserMessageTypeWithContentFragments
+    | CompactionMessageType,
+  lastReadMs: number | null
+): boolean {
+  if (lastReadMs === null) {
+    return true;
+  }
+  if (message.created > lastReadMs) {
+    return true;
+  }
+  if (
+    message.type === "agent_message" &&
+    (message.completedTs ?? 0) > lastReadMs
+  ) {
+    return true;
+  }
+  return false;
+}

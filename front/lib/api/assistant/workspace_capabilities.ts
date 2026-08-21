@@ -1,4 +1,3 @@
-import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -17,6 +16,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import { USED_MODEL_CONFIGS } from "@app/types/assistant/models/used_model_configs";
 
 export interface AvailableTool {
   sId: string;

@@ -1,5 +1,5 @@
-import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
+import { DEFAULT_PERIOD_DAYS } from "@app/lib/api/analytics/observability_constants";
 import type { GetAgentCreditsResponse } from "@app/lib/api/assistant/observability/agent_credits";
 import { fetchAgentCreditBreakdown } from "@app/lib/api/assistant/observability/agent_credits";
 import { workspaceApp } from "@front-api/middlewares/ctx";

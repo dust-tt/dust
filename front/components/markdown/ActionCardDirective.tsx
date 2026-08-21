@@ -1,12 +1,12 @@
+import { getIcon } from "@app/components/resources/resources_icons";
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/components/resources/resources_icon_names";
+} from "@app/types/resources_icon_names";
 import {
   isCustomResourceIconType,
   isInternalAllowedIcon,
-} from "@app/components/resources/resources_icon_names";
-import { getIcon } from "@app/components/resources/resources_icons";
+} from "@app/types/resources_icon_names";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ActionCardBlock, Avatar } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";

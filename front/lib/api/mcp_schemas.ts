@@ -1,10 +1,10 @@
-import {
-  CUSTOM_RESOURCE_ALLOWED,
-  INTERNAL_ALLOWED_ICONS,
-} from "@app/components/resources/resources_icon_names";
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { MCP_SERVER_AVAILABILITY } from "@app/lib/actions/mcp_internal_actions/constants";
 import { OAUTH_PROVIDERS } from "@app/types/oauth/lib";
+import {
+  CUSTOM_RESOURCE_ALLOWED,
+  INTERNAL_ALLOWED_ICONS,
+} from "@app/types/resources_icon_names";
 import { DbModelIdSchema } from "@app/types/shared/model_id";
 import { EditedByUserSchema } from "@app/types/user";
 import type { JSONSchema7 as JSONSchema } from "json-schema";

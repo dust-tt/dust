@@ -1,4 +1,4 @@
-import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import { DEFAULT_PERIOD_DAYS } from "@app/lib/api/analytics/observability_constants";
 import type { GetWorkspaceToolsResponse } from "@app/lib/api/assistant/observability/tool_usage";
 import {
   fetchAvailableTools,
