@@ -1,11 +1,10 @@
-import { fetchInactiveAgents } from "@app/lib/api/assistant/inactivity/fetch_inactive_agents";
+import { fetchArchivableAgents } from "@app/lib/api/assistant/inactivity/fetch_inactive_agents";
+import { ONE_DAY_MS } from "@app/lib/api/assistant/inactivity/policy";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MentionFactory } from "@app/tests/utils/MentionFactory";
 import { describe, expect, it } from "vitest";
-
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 const CUTOFF_AT = new Date("2026-07-19T00:00:00.000Z");
 
@@ -23,16 +22,12 @@ async function createAgedAgent(
   { name, createdAt }: { name: string; createdAt: Date }
 ) {
   const agent = await AgentConfigurationFactory.createTestAgent(auth, { name });
-  await AgentConfigurationFactory.setCreatedAtForTest(
-    auth,
-    agent.sId,
-    createdAt
-  );
+  await AgentConfigurationFactory.backdate(auth, agent.sId, createdAt);
 
   return agent;
 }
 
-describe("fetchInactiveAgents", () => {
+describe("fetchArchivableAgents", () => {
   it("returns an agent that has never been mentioned", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const agent = await createAgedAgent(authenticator, {
@@ -40,17 +35,16 @@ describe("fetchInactiveAgents", () => {
       createdAt: daysBeforeCutoff(10),
     });
 
-    const page = await fetchInactiveAgents(authenticator, {
+    const page = await fetchArchivableAgents(authenticator, {
       cutoffAt: CUTOFF_AT,
-      page: { cursor: null, limit: 50 },
     });
 
-    expect(page.agents).toHaveLength(1);
-    expect(page.agents[0]).toMatchObject({
+    expect(page.eligible).toHaveLength(1);
+    expect(page.eligible[0]).toMatchObject({
       agentId: agent.sId,
       lastMentionedAt: null,
     });
-    expect(page.nextCursor).toBeNull();
+    expect(page.skipped).toEqual([]);
   });
 
   it("returns an agent whose last mention predates the cutoff", async () => {
@@ -65,13 +59,12 @@ describe("fetchInactiveAgents", () => {
       mentionedAt,
     });
 
-    const page = await fetchInactiveAgents(authenticator, {
+    const page = await fetchArchivableAgents(authenticator, {
       cutoffAt: CUTOFF_AT,
-      page: { cursor: null, limit: 50 },
     });
 
-    expect(page.agents).toHaveLength(1);
-    expect(page.agents[0]).toMatchObject({
+    expect(page.eligible).toHaveLength(1);
+    expect(page.eligible[0]).toMatchObject({
       agentId: agent.sId,
       lastMentionedAt: mentionedAt,
     });
@@ -88,12 +81,13 @@ describe("fetchInactiveAgents", () => {
       mentionedAt: daysAfterCutoff(1),
     });
 
-    const page = await fetchInactiveAgents(authenticator, {
+    const page = await fetchArchivableAgents(authenticator, {
       cutoffAt: CUTOFF_AT,
-      page: { cursor: null, limit: 50 },
     });
 
-    expect(page.agents).toEqual([]);
+    // Filtered by the mentions query, so it is never a candidate the rules have to refuse.
+    expect(page.eligible).toEqual([]);
+    expect(page.skipped).toEqual([]);
   });
 
   it("takes the newest mention, not just any", async () => {
@@ -111,12 +105,11 @@ describe("fetchInactiveAgents", () => {
       mentionedAt: daysAfterCutoff(2),
     });
 
-    const page = await fetchInactiveAgents(authenticator, {
+    const page = await fetchArchivableAgents(authenticator, {
       cutoffAt: CUTOFF_AT,
-      page: { cursor: null, limit: 50 },
     });
 
-    expect(page.agents).toEqual([]);
+    expect(page.eligible).toEqual([]);
   });
 
   it("counts a rejected mention as activity", async () => {
@@ -132,12 +125,11 @@ describe("fetchInactiveAgents", () => {
       status: "rejected",
     });
 
-    const page = await fetchInactiveAgents(authenticator, {
+    const page = await fetchArchivableAgents(authenticator, {
       cutoffAt: CUTOFF_AT,
-      page: { cursor: null, limit: 50 },
     });
 
-    expect(page.agents).toEqual([]);
+    expect(page.eligible).toEqual([]);
   });
 
   it("still returns an agent that was edited recently", async () => {
@@ -152,85 +144,31 @@ describe("fetchInactiveAgents", () => {
       instructions: "Freshly edited, still unused.",
     });
 
-    const page = await fetchInactiveAgents(authenticator, {
+    const page = await fetchArchivableAgents(authenticator, {
       cutoffAt: CUTOFF_AT,
-      page: { cursor: null, limit: 50 },
     });
 
-    expect(page.agents).toHaveLength(1);
-    expect(page.agents[0]).toMatchObject({ agentId: agent.sId });
+    expect(page.eligible).toHaveLength(1);
+    expect(page.eligible[0]).toMatchObject({ agentId: agent.sId });
   });
 
   it("excludes an agent created after the cutoff, however unused", async () => {
     // Archiving an agent the night it was built is the bug this guards.
     const { authenticator } = await createResourceTest({ role: "admin" });
-    await createAgedAgent(authenticator, {
+    const agent = await createAgedAgent(authenticator, {
       name: "Brand new",
       createdAt: daysAfterCutoff(1),
     });
 
-    const page = await fetchInactiveAgents(authenticator, {
+    const page = await fetchArchivableAgents(authenticator, {
       cutoffAt: CUTOFF_AT,
-      page: { cursor: null, limit: 50 },
     });
 
-    expect(page.agents).toEqual([]);
-  });
-
-  it("paginates with a keyset cursor over the candidates", async () => {
-    const { authenticator } = await createResourceTest({ role: "admin" });
-    for (const name of ["Agent A", "Agent B", "Agent C"]) {
-      await createAgedAgent(authenticator, {
-        name,
-        createdAt: daysBeforeCutoff(10),
-      });
-    }
-
-    const firstPage = await fetchInactiveAgents(authenticator, {
-      cutoffAt: CUTOFF_AT,
-      page: { cursor: null, limit: 2 },
-    });
-    expect(firstPage.agents).toHaveLength(2);
-    expect(firstPage.nextCursor).toBe(firstPage.agents[1].agentId);
-
-    const secondPage = await fetchInactiveAgents(authenticator, {
-      cutoffAt: CUTOFF_AT,
-      page: { cursor: firstPage.nextCursor, limit: 2 },
-    });
-    expect(secondPage.agents).toHaveLength(1);
-    expect(secondPage.nextCursor).toBeNull();
-
-    const firstPageIds = firstPage.agents.map(({ agentId }) => agentId);
-    const secondPageIds = secondPage.agents.map(({ agentId }) => agentId);
-
-    expect(secondPageIds).not.toContain(firstPage.nextCursor);
-    expect(
-      secondPageIds.every((agentId) => !firstPageIds.includes(agentId))
-    ).toBe(true);
-    expect(new Set([...firstPageIds, ...secondPageIds]).size).toBe(3);
-
-    // Ordered by agent id, which is what makes the keyset cursor stable.
-    expect([...firstPageIds].sort()).toEqual(firstPageIds);
-    expect(
-      secondPageIds.every((agentId) => agentId > firstPage.nextCursor!)
-    ).toBe(true);
-  });
-
-  it("returns an empty page for a limit of zero", async () => {
-    // The lookahead finds a candidate, so a cursor read off the empty page has no element to read.
-    const { authenticator } = await createResourceTest({ role: "admin" });
-    await createAgedAgent(authenticator, {
-      name: "Out of budget",
-      createdAt: daysBeforeCutoff(10),
-    });
-
-    const page = await fetchInactiveAgents(authenticator, {
-      cutoffAt: CUTOFF_AT,
-      page: { cursor: null, limit: 0 },
-    });
-
-    expect(page.agents).toEqual([]);
-    expect(page.nextCursor).toBeNull();
+    // Unmentioned, so the query does return it; the rules are what refuse it.
+    expect(page.eligible).toEqual([]);
+    expect(page.skipped).toEqual([
+      { agentId: agent.sId, reason: "recent_creation" },
+    ]);
   });
 
   it("never returns a global agent, whatever its mentions", async () => {
@@ -245,12 +183,11 @@ describe("fetchInactiveAgents", () => {
       mentionedAt: daysBeforeCutoff(90),
     });
 
-    const page = await fetchInactiveAgents(authenticator, {
+    const page = await fetchArchivableAgents(authenticator, {
       cutoffAt: CUTOFF_AT,
-      page: { cursor: null, limit: 50 },
     });
 
-    expect(page.agents.map(({ agentId }) => agentId)).toEqual([agent.sId]);
+    expect(page.eligible.map(({ agentId }) => agentId)).toEqual([agent.sId]);
   });
 
   it("does not return another workspace's agents", async () => {
@@ -261,11 +198,10 @@ describe("fetchInactiveAgents", () => {
       createdAt: daysBeforeCutoff(10),
     });
 
-    const page = await fetchInactiveAgents(authenticator, {
+    const page = await fetchArchivableAgents(authenticator, {
       cutoffAt: CUTOFF_AT,
-      page: { cursor: null, limit: 50 },
     });
 
-    expect(page.agents).toEqual([]);
+    expect(page.eligible).toEqual([]);
   });
 });

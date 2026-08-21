@@ -1,4 +1,8 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  MAX_INACTIVITY_THRESHOLD_DAYS,
+  MIN_INACTIVITY_THRESHOLD_DAYS,
+} from "@app/lib/api/assistant/inactivity/policy";
 import { listActiveAgentsUsingNonRegionalModels } from "@app/lib/api/assistant/workspace_capabilities";
 import {
   buildAuditActor,
@@ -205,7 +209,18 @@ const WorkspaceDefaultAgentUpdateBodySchema = z.object({
   workspaceDefaultAgentId: z.string().nullable(),
 });
 
+const WorkspaceInactiveAgentArchivalUpdateBodySchema = z.object({
+  // Null turns automatic archival off: the policy is opt-in and has no default threshold.
+  inactiveAgentArchivalThresholdDays: z
+    .number()
+    .int()
+    .min(MIN_INACTIVITY_THRESHOLD_DAYS)
+    .max(MAX_INACTIVITY_THRESHOLD_DAYS)
+    .nullable(),
+});
+
 const PostWorkspaceRequestBodySchema = z.union([
+  WorkspaceInactiveAgentArchivalUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
   WorkspaceRegionalModelsOnlyUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
@@ -869,6 +884,44 @@ app.post(
         context: getAuditLogContext(auth),
         metadata: {
           enabled: String(!body.disableWorkspaceAnalytics),
+        },
+      });
+    } else if ("inactiveAgentArchivalThresholdDays" in body) {
+      if (!(await hasFeatureFlag(auth, "archive_inactive_agents"))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "The archive_inactive_agents feature is not enabled.",
+          },
+        });
+      }
+
+      // Null clears it, which is how the workspace turns automatic archival off.
+      const inactiveAgentArchivalThresholdDays =
+        body.inactiveAgentArchivalThresholdDays ?? undefined;
+      const updateRes = await updateWorkspaceMetadata(owner, {
+        inactiveAgentArchivalThresholdDays,
+      });
+      if (updateRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: updateRes.error.message,
+          },
+        });
+      }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.inactive_agent_archival_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          threshold_days: inactiveAgentArchivalThresholdDays
+            ? String(inactiveAgentArchivalThresholdDays)
+            : "disabled",
         },
       });
     } else if ("workspaceDefaultAgentId" in body) {

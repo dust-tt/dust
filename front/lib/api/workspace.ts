@@ -587,6 +587,8 @@ export interface WorkspaceMetadata {
   dustMcpServerAllowedRedirectUris?: string[];
   disableAuditLogs?: boolean;
   disableWorkspaceAnalytics?: boolean;
+  // Absent means automatic archival is off.
+  inactiveAgentArchivalThresholdDays?: number;
   isBusiness?: boolean;
   phoneCountry?: string;
   sandboxAllowAgentEgressRequests?: boolean;

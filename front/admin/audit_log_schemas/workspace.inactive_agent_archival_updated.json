@@ -1,0 +1,7 @@
+{
+  "action": "workspace.inactive_agent_archival_updated",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "threshold_days": "string"
+  }
+}
