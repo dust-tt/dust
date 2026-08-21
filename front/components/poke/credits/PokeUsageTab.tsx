@@ -1,3 +1,4 @@
+import { PokeWorkspaceUsageChart } from "@app/components/poke/analytics/PokeWorkspaceUsageChart";
 import { AlertChip } from "@app/components/poke/credits/AlertChip";
 import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLogsLink";
 import { PokeAwuUsageFromAnalyticsChart } from "@app/components/poke/credits/PokeAwuUsageFromAnalyticsChart";
@@ -357,6 +358,7 @@ export function PokeUsageTab({
 
   return (
     <div className="flex flex-col gap-4">
+      <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />
       <PokeCreditStatesCard
         owner={owner}
         creditUsageConfig={creditUsageConfig}

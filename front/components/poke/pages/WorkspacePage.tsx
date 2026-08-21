@@ -1,4 +1,3 @@
-import { PokeWorkspaceUsageChart } from "@app/components/poke/analytics/PokeWorkspaceUsageChart";
 import { AppDataTable } from "@app/components/poke/apps/table";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { PokeUsageTab } from "@app/components/poke/credits/PokeUsageTab";
@@ -8,7 +7,6 @@ import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
-import { WorkspaceDatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/WorkspaceDatasourceRetrievalTreemapPluginChart";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { ProjectsDataTable } from "@app/components/poke/projects/table";
 import {
@@ -67,7 +65,7 @@ export function WorkspacePage() {
     disabled: false,
   });
 
-  const currentTab = !isString(router.query.tab)
+  const requestedTab = !isString(router.query.tab)
     ? "datasources"
     : router.query.tab;
 
@@ -168,6 +166,11 @@ export function WorkspacePage() {
   const hasMetronomeUsage =
     metronomeCustomerId !== null &&
     activeSubscription.metronomeContractId !== null;
+  const legacyAnalyticsFallbackTab = hasMetronomeUsage
+    ? "usage"
+    : "datasources";
+  const currentTab =
+    requestedTab === "analytics" ? legacyAnalyticsFallbackTab : requestedTab;
 
   return (
     <div className="ml-8 p-6">
@@ -303,7 +306,6 @@ export function WorkspacePage() {
               <TabsTrigger value="webhooksources" label="Webhook Sources" />
               <TabsTrigger value="credits" label="API Usage" />
               {hasMetronomeUsage && <TabsTrigger value="usage" label="Usage" />}
-              <TabsTrigger value="analytics" label="Analytics" />
             </TabsList>
 
             <TabsContent value="metadata">
@@ -392,15 +394,6 @@ export function WorkspacePage() {
                 />
               </TabsContent>
             )}
-            <TabsContent value="analytics">
-              <div className="flex flex-col gap-6">
-                <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />
-                <WorkspaceDatasourceRetrievalTreemapPluginChart
-                  workspaceId={owner.sId}
-                  period={30}
-                />
-              </div>
-            </TabsContent>
           </Tabs>
         </div>
       </div>
