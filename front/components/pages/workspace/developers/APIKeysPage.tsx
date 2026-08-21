@@ -26,7 +26,7 @@ import type { KeyType } from "@app/types/key";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
-import { BookOpen01, Button, Page } from "@dust-tt/sparkle";
+import { BookOpen01, Button, LoadingBlock, Page } from "@dust-tt/sparkle";
 import get from "lodash/get";
 import { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -57,8 +57,8 @@ function APIKeysOverview({
   if (isConsumptionLoading) {
     return (
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="h-24 animate-pulse rounded-xl bg-muted-background" />
-        <div className="h-24 animate-pulse rounded-xl bg-muted-background" />
+        <LoadingBlock className="h-24 rounded-xl" />
+        <LoadingBlock className="h-24 rounded-xl" />
       </div>
     );
   }
