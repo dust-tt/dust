@@ -96,7 +96,7 @@ const UsageMetricsChart = safeLazy(
 );
 
 function ChartFallback() {
-  return <div className="h-64 animate-pulse rounded-lg bg-muted-background" />;
+  return <LoadingBlock className="h-64 rounded-lg" />;
 }
 
 interface AgentObservabilityProps {
