@@ -58,13 +58,11 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     cache_read_input_tokens: 0.02,
   },
   // Verified 2026-08-21: https://developers.openai.com/api/docs/models/gpt-5.5
-  // Prompts above 272K input tokens cost 2x input and 1.5x output for the full request.
   "gpt-5.5": {
     input: 5.0,
     output: 30.0,
     cache_read_input_tokens: 0.5,
     long_context: {
-      // `computeTokensCostForUsageInMicroUsd` switches tiers inclusively.
       prompt_token_threshold: 272_001,
       input: 10.0,
       output: 45.0,
@@ -72,13 +70,11 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     },
   },
   // Verified 2026-08-21: https://developers.openai.com/api/docs/models/gpt-5.4
-  // Prompts above 272K input tokens cost 2x input and 1.5x output for the full request.
   "gpt-5.4": {
     input: 2.5,
     output: 15.0,
     cache_read_input_tokens: 0.25,
     long_context: {
-      // `computeTokensCostForUsageInMicroUsd` switches tiers inclusively.
       prompt_token_threshold: 272_001,
       input: 5.0,
       output: 22.5,
