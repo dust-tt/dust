@@ -12,7 +12,7 @@ import {
   createAgentMessages,
   resolveModelForMentionedAgent,
 } from "@app/lib/api/assistant/conversation/messages";
-import { checkPremiumModelMessageLimit } from "@app/lib/api/assistant/premium_model_limit";
+import { enforcePremiumModelLimit } from "@app/lib/api/assistant/premium_model_limit";
 import { publishMessageEventsOnMessagePostOrEdit } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
 import { MentionModel } from "@app/lib/models/agent/conversation";
@@ -231,19 +231,20 @@ export async function validateAgentMention(
     "User approved a restricted agent mention"
   );
 
-  const modelResolution = await resolveModelForMentionedAgent(auth, {
+  const resolution = await resolveModelForMentionedAgent(auth, {
     configuration,
     selection: message.requestedModel ?? undefined,
   });
 
-  const premiumModelLimitResult = await checkPremiumModelMessageLimit(auth, {
+  const premiumLimitResult = await enforcePremiumModelLimit(auth, {
     user: auth.getNonNullableUser(),
-    resolvedModel: modelResolution.resolvedModel,
+    resolution,
     context: message.context,
   });
-  if (premiumModelLimitResult.isErr()) {
-    return premiumModelLimitResult;
+  if (premiumLimitResult.isErr()) {
+    return premiumLimitResult;
   }
+  const modelResolution = premiumLimitResult.value;
 
   let agentMessages: AgentMessageType[];
   let updatedRichMentions: RichMentionWithStatus[];
