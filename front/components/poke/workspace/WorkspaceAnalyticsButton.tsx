@@ -35,17 +35,11 @@ const ANALYTICS_BAR_SPRING = {
   stiffness: 500,
 };
 const ANALYTICS_GRADIENT_REST_POSITION = 0.72;
-const ANALYTICS_GRADIENT_OFFSET_FACTOR = 0.08;
-const ANALYTICS_GRADIENT_MAX_STRETCH = 1.32;
+const ANALYTICS_GRADIENT_CURSOR_OFFSET = 0.1;
 const ANALYTICS_GRADIENT_POSITION_SPRING = {
   damping: 28,
   mass: 0.65,
   stiffness: 180,
-};
-const ANALYTICS_GRADIENT_STRETCH_SPRING = {
-  damping: 30,
-  mass: 0.4,
-  stiffness: 260,
 };
 
 function getAnalyticsBarOffset(
@@ -131,18 +125,16 @@ function getAnalyticsGradientPosition(cursorPosition: number) {
   }
 
   return (
-    cursorPosition + (0.5 - cursorPosition) * ANALYTICS_GRADIENT_OFFSET_FACTOR
+    cursorPosition + (1 - cursorPosition) * ANALYTICS_GRADIENT_CURSOR_OFFSET
   );
 }
 
 interface AnalyticsCursorGradientProps {
   cursorPosition: MotionValue<number>;
-  shouldReduceMotion: boolean;
 }
 
 function AnalyticsCursorGradient({
   cursorPosition,
-  shouldReduceMotion,
 }: AnalyticsCursorGradientProps) {
   const targetPosition = useTransform(
     cursorPosition,
@@ -152,41 +144,22 @@ function AnalyticsCursorGradient({
     targetPosition,
     ANALYTICS_GRADIENT_POSITION_SPRING
   );
-  const x = useTransform(
-    position,
-    (value) => `${((value - 0.25) / 0.5) * 100}%`
-  );
-  const targetStretch = useTransform<number, number>(
-    [cursorPosition, position],
-    ([cursor, gradient]) => {
-      if (cursor === ANALYTICS_CURSOR_REST_POSITION) {
-        return 1;
-      }
+  const background = useTransform(position, (value) => {
+    const middle = value * 100;
+    const leadingColor = middle * 0.45;
 
-      const edgeStretch = Math.abs(cursor - 0.5) * 0.18;
-      const lagStretch = Math.min(Math.abs(cursor - gradient), 0.25) * 0.9;
-
-      return Math.min(
-        ANALYTICS_GRADIENT_MAX_STRETCH,
-        1 + edgeStretch + lagStretch
-      );
-    }
-  );
-  const scaleX = useSpring(targetStretch, ANALYTICS_GRADIENT_STRETCH_SPRING);
+    return `linear-gradient(90deg, transparent 0%, var(--color-highlight-50) ${leadingColor}%, var(--color-highlight-100) ${middle}%, var(--color-highlight-50) 100%)`;
+  });
 
   return (
     <motion.span
       aria-hidden="true"
       className={cn(
-        "pointer-events-none absolute inset-y-0 left-0 w-1/2",
-        "opacity-0 transition-opacity duration-200 ease-out will-change-transform",
-        "pointer-fine:group-hover:opacity-40 motion-reduce:hidden",
-        "[background:linear-gradient(90deg,transparent_0%,var(--color-highlight-50)_18%,var(--color-highlight-100)_48%,var(--color-highlight-50)_72%,transparent_100%)]"
+        "pointer-events-none absolute inset-0",
+        "opacity-[0.18] transition-opacity duration-200 ease-out motion-reduce:transition-none",
+        "pointer-fine:group-hover:opacity-[0.3]"
       )}
-      style={{
-        x: shouldReduceMotion ? "94%" : x,
-        scaleX: shouldReduceMotion ? 1 : scaleX,
-      }}
+      style={{ background }}
     />
   );
 }
@@ -218,10 +191,7 @@ export function WorkspaceAnalyticsButton({
           "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-muted-background"
         )}
       >
-        <AnalyticsCursorGradient
-          cursorPosition={cursorPosition}
-          shouldReduceMotion={shouldReduceMotion}
-        />
+        <AnalyticsCursorGradient cursorPosition={cursorPosition} />
         <div
           aria-hidden="true"
           className={cn(
