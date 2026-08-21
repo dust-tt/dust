@@ -157,7 +157,7 @@ function SubscriptionsDataTable({
   subscriptions,
 }: SubscriptionsDataTableProps) {
   return (
-    <div className="border-material-200 my-4 flex flex-col rounded-lg border p-4">
+    <div className="my-4 flex flex-col rounded-lg border p-4">
       <h2 className="text-md mb-4 font-bold">History of subscriptions:</h2>
       <PokeDataTable
         columns={makeColumnsForSubscriptions()}
@@ -470,7 +470,7 @@ export function PlanLimitationsTable({
   return (
     <div className="flex flex-col">
       <div className="flex justify-between gap-3">
-        <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4 pb-2">
+        <div className="flex flex-grow flex-col rounded-lg border p-4 pb-2">
           <h2 className="text-md pb-4 font-bold">Plan limitations</h2>
           <PokeTable>
             <PokeTableBody>

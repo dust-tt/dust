@@ -73,7 +73,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
   }, [plugins, searchQuery]);
 
   return (
-    <div className="flex min-h-48 flex-col rounded-lg border border-separator bg-muted-background">
+    <div className="flex min-h-48 flex-col rounded-lg border bg-background">
       <div className="flex items-center justify-between gap-3 rounded-t-lg border-b border-separator bg-background p-4">
         <div className="flex items-center gap-3">
           <h2 className="text-md font-bold">Plugins</h2>
