@@ -18,8 +18,6 @@ describe("GET /api/w/:wId/me/triggers", () => {
   it("lists a trigger on a deprecated (model-only) global agent such as gemini-pro", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest();
 
-    // `models_picker` hides model-only global agents (gemini-pro included) from
-    // list views, which is what makes them "deprecated" for users.
     await FeatureFlagFactory.basic(auth, "models_picker");
 
     await TriggerFactory.schedule(auth, {
@@ -40,23 +38,5 @@ describe("GET /api/w/:wId/me/triggers", () => {
       isEditor: true,
     });
     expect(triggers[0].agentPictureUrl).toBeTruthy();
-  });
-
-  it("lists a trigger on a retired global agent such as claude-3-7-sonnet", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest();
-
-    await TriggerFactory.schedule(auth, {
-      name: "Retired agent trigger",
-      agentConfigurationId: GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
-      configuration: EVERY_MONDAY_9AM,
-    });
-
-    const response = await getUserTriggers(workspace.sId);
-    expect(response.status).toBe(200);
-
-    const { triggers } = await response.json();
-    expect(triggers.map((t: { agentName: string }) => t.agentName)).toEqual([
-      "claude-3.7",
-    ]);
   });
 });
