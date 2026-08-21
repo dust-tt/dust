@@ -73,7 +73,6 @@ interface APIKeyRowData {
   secret: string;
   status: APIKeyStatus;
   credits: number | null;
-  avgCredits: number | null;
   consumptionShare: number | null;
   monthlyCap: string;
   lastUsedAt: number | null;
@@ -362,28 +361,6 @@ function buildColumns({
       ),
     },
     {
-      id: "avgCredits",
-      accessorKey: "avgCredits",
-      header: "Credits / message",
-      enableSorting: false,
-      meta: {
-        className: "hidden h-16 w-32 @lg-table:table-cell",
-        headerAlign: "right",
-      },
-      cell: (info) => (
-        <ConsumptionCell isLoading={isConsumptionLoading}>
-          <DataTable.BasicCellContent
-            className="justify-end text-right tabular-nums"
-            label={
-              info.row.original.avgCredits === null
-                ? "—"
-                : formatCredits(info.row.original.avgCredits)
-            }
-          />
-        </ConsumptionCell>
-      ),
-    },
-    {
       id: "monthlyCap",
       accessorKey: "monthlyCap",
       header: capLabel,
@@ -475,7 +452,9 @@ function buildColumns({
       id: "actions",
       header: "",
       enableSorting: false,
-      meta: { className: "h-16 w-10" },
+      meta: {
+        className: showAnalyticsConsumption ? "h-16 w-12" : "h-16 w-10",
+      },
       cell: (info) =>
         info.row.original.menuItems.length > 0 ? (
           <DataTable.CellContent className="w-full justify-end">
@@ -493,10 +472,7 @@ function buildColumns({
   }
 
   return columns.filter(
-    (column) =>
-      column.id !== "consumptionShare" &&
-      column.id !== "credits" &&
-      column.id !== "avgCredits"
+    (column) => column.id !== "consumptionShare" && column.id !== "credits"
   );
 }
 
@@ -570,7 +546,6 @@ export function APIKeysList({
           secret: key.secret,
           status,
           credits,
-          avgCredits: consumption?.avgCredits ?? null,
           consumptionShare:
             credits === null || totalCredits === 0
               ? null
