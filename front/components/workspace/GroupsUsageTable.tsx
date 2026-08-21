@@ -1,7 +1,12 @@
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
-import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
+import {
+  useGroups,
+  useUpdateGroupSpendLimit,
+  useUpdateGroupWorkflowAlertThreshold,
+} from "@app/lib/swr/groups";
 import type { GroupSpendLimit } from "@app/types/api/groups/spend_limit";
+import type { GroupWorkflowAlertThreshold } from "@app/types/api/groups/workflow_alert_threshold";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import { DataTable, InputWithSave, Spinner, Users01 } from "@dust-tt/sparkle";
@@ -19,6 +24,7 @@ type GroupRowData = {
   name: string;
   memberCount: number;
   poolCapAwuCredits: number | null;
+  workflowAlertThresholdAwuCredits: number | null;
   onClick?: () => void;
 };
 
@@ -74,6 +80,64 @@ function GroupCapCell({ group, readOnly, onSave }: GroupCapCellProps) {
   );
 }
 
+interface WorkflowAlertThresholdCellProps {
+  group: GroupRowData;
+  readOnly: boolean;
+  onSave: (
+    group: GroupRowData,
+    threshold: GroupWorkflowAlertThreshold
+  ) => Promise<void>;
+}
+
+// Per-row editable smooth shutdown threshold cell. Empty input disables the
+// smooth shutdown flow for the group; a non-negative integer enables it at
+// that credit threshold. Reverts to the current value when nothing is
+// persisted.
+function WorkflowAlertThresholdCell({
+  group,
+  readOnly,
+  onSave,
+}: WorkflowAlertThresholdCellProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const current = group.workflowAlertThresholdAwuCredits;
+
+  const handleSave = async (newValue: string) => {
+    const trimmed = newValue.trim();
+    if (trimmed === "") {
+      if (current === null) {
+        return;
+      }
+      await onSave(group, { kind: "disabled" });
+      return;
+    }
+    const parsed = Number(trimmed);
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed === current) {
+      return;
+    }
+    await onSave(group, { kind: "enabled", awuCredits: parsed });
+  };
+
+  return (
+    <div className="w-60">
+      <InputWithSave
+        inputMode="numeric"
+        pattern="[0-9]*"
+        placeholder="Disabled"
+        value={current === null ? "" : current.toLocaleString()}
+        unit={current === null && !isEditing ? undefined : "credits"}
+        normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+        formatValue={(value) =>
+          value ? Number(value).toLocaleString() : value
+        }
+        onSave={handleSave}
+        onFocus={() => setIsEditing(true)}
+        onBlur={() => setIsEditing(false)}
+        disabled={readOnly}
+      />
+    </div>
+  );
+}
+
 export function GroupsUsageTable({
   owner,
   readOnly,
@@ -86,6 +150,10 @@ export function GroupsUsageTable({
   const { doUpdateGroupSpendLimit } = useUpdateGroupSpendLimit({
     workspaceId: owner.sId,
   });
+  const { doUpdateGroupWorkflowAlertThreshold } =
+    useUpdateGroupWorkflowAlertThreshold({
+      workspaceId: owner.sId,
+    });
 
   const rows: GroupRowData[] = useMemo(
     () =>
@@ -94,6 +162,8 @@ export function GroupsUsageTable({
         name: group.name,
         memberCount: group.memberCount,
         poolCapAwuCredits: group.poolCapAwuCredits,
+        workflowAlertThresholdAwuCredits:
+          group.workflowAlertThresholdAwuCredits,
       })),
     [groups]
   );
@@ -142,6 +212,25 @@ export function GroupsUsageTable({
         ),
         enableSorting: false,
       },
+      {
+        id: "workflowAlertThreshold",
+        header: "Smooth shutdown threshold",
+        meta: { className: "w-64" },
+        cell: (info: GroupInfo) => (
+          <WorkflowAlertThresholdCell
+            group={info.row.original}
+            readOnly={readOnly}
+            onSave={async (group, threshold) => {
+              await doUpdateGroupWorkflowAlertThreshold({
+                groupId: group.groupId,
+                groupName: group.name,
+                threshold,
+              });
+            }}
+          />
+        ),
+        enableSorting: false,
+      },
       ...(showModelTiersColumn
         ? [
             {
@@ -165,7 +254,13 @@ export function GroupsUsageTable({
           ]
         : []),
     ],
-    [owner, readOnly, showModelTiersColumn, doUpdateGroupSpendLimit]
+    [
+      owner,
+      readOnly,
+      showModelTiersColumn,
+      doUpdateGroupSpendLimit,
+      doUpdateGroupWorkflowAlertThreshold,
+    ]
   );
 
   if (isGroupsLoading) {

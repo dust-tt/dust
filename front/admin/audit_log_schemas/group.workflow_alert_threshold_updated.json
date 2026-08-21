@@ -1,0 +1,15 @@
+{
+  "action": "group.workflow_alert_threshold_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "group"
+    }
+  ],
+  "metadata": {
+    "kind": "string",
+    "awu_credits": "string"
+  }
+}

@@ -11,6 +11,7 @@ import type {
   PostMemberGroupResponseBody,
 } from "@app/types/api/groups/manage";
 import type { PutGroupSpendLimitResponseBody } from "@app/types/api/groups/spend_limit";
+import type { PutGroupWorkflowAlertThresholdResponseBody } from "@app/types/api/groups/workflow_alert_threshold";
 import type { GroupKind } from "@app/types/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -588,4 +589,97 @@ export function useUpdateGroupSpendLimit({
   );
 
   return { doUpdateGroupSpendLimit };
+}
+
+function groupWorkflowAlertThresholdUrl(
+  workspaceId: string,
+  groupId: string
+): string {
+  return `/api/w/${workspaceId}/groups/${groupId}/workflow_alert_threshold`;
+}
+
+const GroupWorkflowAlertThresholdResponseSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("disabled") }),
+  z.object({ kind: z.literal("enabled"), awuCredits: z.number() }),
+]);
+
+const PutGroupWorkflowAlertThresholdResponseSchema = z.object({
+  threshold: GroupWorkflowAlertThresholdResponseSchema,
+});
+
+export function useUpdateGroupWorkflowAlertThreshold({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const doUpdateGroupWorkflowAlertThreshold = useCallback(
+    async ({
+      groupId,
+      groupName,
+      threshold,
+    }: {
+      groupId: string;
+      groupName: string;
+      threshold: { kind: "disabled" } | { kind: "enabled"; awuCredits: number };
+    }): Promise<PutGroupWorkflowAlertThresholdResponseBody | null> => {
+      const res = await clientFetch(
+        groupWorkflowAlertThresholdUrl(workspaceId, groupId),
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(threshold),
+        }
+      );
+
+      if (!res.ok) {
+        const error = await res.json();
+        sendNotification({
+          type: "error",
+          title: "Failed to update workflow alert threshold",
+          description: error?.error?.message ?? "An unexpected error occurred.",
+        });
+        return null;
+      }
+
+      const parsed = PutGroupWorkflowAlertThresholdResponseSchema.safeParse(
+        await res.json()
+      );
+      if (!parsed.success) {
+        await invalidateWorkspaceGroups(workspaceId);
+        sendNotification({
+          type: "error",
+          title: "Workflow alert threshold status unknown",
+          description:
+            "The update was submitted but the server response could not be read. The table has been refreshed with the current state.",
+        });
+        return null;
+      }
+      const body = parsed.data;
+      let description: string;
+      switch (threshold.kind) {
+        case "disabled":
+          description = `${groupName}'s workflow alert threshold has been removed.`;
+          break;
+        case "enabled":
+          description = `${groupName}'s workflow alert threshold has been set to ${threshold.awuCredits.toLocaleString("en-US")} credits.`;
+          break;
+        default:
+          assertNeverAndIgnore(threshold);
+          description = "";
+      }
+      sendNotification({
+        type: "success",
+        title: "Workflow alert threshold updated",
+        description,
+      });
+
+      await invalidateWorkspaceGroups(workspaceId);
+      return body;
+    },
+    [workspaceId, sendNotification]
+  );
+
+  return { doUpdateGroupWorkflowAlertThreshold };
 }

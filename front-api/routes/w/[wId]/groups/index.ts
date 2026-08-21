@@ -15,6 +15,7 @@ import { z } from "zod";
 
 import groupDetail from "./[groupId]";
 import spendLimit from "./[groupId]/spend_limit";
+import workflowAlertThreshold from "./[groupId]/workflow_alert_threshold";
 
 export type GetGroupsResponseBody = {
   groups: (GroupType & { memberCount: number })[];
@@ -120,6 +121,7 @@ app.post(
 );
 
 app.route("/:groupId/spend_limit", spendLimit);
+app.route("/:groupId/workflow_alert_threshold", workflowAlertThreshold);
 app.route("/:groupId", groupDetail);
 
 export default app;

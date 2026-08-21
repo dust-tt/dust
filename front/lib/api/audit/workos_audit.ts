@@ -56,6 +56,7 @@ export const AUDIT_ACTIONS = [
   "group.member_added",
   "group.member_removed",
   "group.spend_limit_updated",
+  "group.workflow_alert_threshold_updated",
   "membership.upgrade_request_created",
   "membership.upgrade_request_resolved",
   "membership.seat_auto_upgraded",
