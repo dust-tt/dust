@@ -205,6 +205,10 @@ export async function runTriggeredAgentsActivity({
 
   const triggerResource = await TriggerResource.fetchById(auth, triggerId);
   if (!triggerResource) {
+    logger.info(
+      { triggerId, workspaceId },
+      "Skipping trigger run: trigger not found."
+    );
     throw new TriggerNonRetryableError(
       `Trigger with ID ${triggerId} not found.`
     );
