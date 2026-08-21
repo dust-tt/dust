@@ -13,7 +13,10 @@ export function useCancelMessage({
   const sendNotification = useSendNotification();
 
   return useCallback(
-    async (messageIds: string[], action: "cancel" | "interrupt" = "cancel") => {
+    async (
+      messageIds: string[],
+      action: "cancel" | "interrupt" | "smooth_shutdown" = "cancel"
+    ) => {
       if (!conversationId || messageIds.length === 0) {
         return;
       }

@@ -541,7 +541,7 @@ async function readSpendLimitCountWithLazySeed(
  * which differ only in how the threshold and the cycle are resolved. Fails open
  * (returns `false`) on a Redis read error.
  */
-async function isSpendCapCounterReached(
+export async function isSpendCapCounterReached(
   auth: Authenticator,
   {
     user,

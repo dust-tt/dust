@@ -396,3 +396,15 @@ export type AgentContextPrunedEvent = {
   configurationId: string;
   messageId: string;
 };
+
+// Fired at most once per message, the first time the current user's spend crosses their
+// workflow alert threshold (see GroupModel.workflowAlertThresholdAwuCredits). Unlike credit-stop
+// events, this never stops the agent loop by itself: the client offers the user a choice to
+// continue or trigger a smooth shutdown (POST .../cancel with action "smooth_shutdown").
+export type AgentWorkflowAlertThresholdCrossedEvent = {
+  type: "agent_workflow_alert_threshold_crossed";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  thresholdAwuCredits: number;
+};

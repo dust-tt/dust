@@ -1,10 +1,13 @@
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
+import { isSpendCapCounterReached } from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
 import {
   isApiBlocked,
   isProgrammaticApiBlocked,
   isUserBlocked,
 } from "@app/lib/metronome/user_block";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
 
@@ -52,4 +55,51 @@ export async function checkPoolCreditGate(
   }
 
   return DO_NOT_STOP;
+}
+
+export type WorkflowAlertThresholdCheckResult =
+  | { crossed: false }
+  | { crossed: true; thresholdAwuCredits: number };
+
+const DO_NOT_NOTIFY: WorkflowAlertThresholdCheckResult = { crossed: false };
+
+/**
+ * Determines whether the user's current spend has crossed their workflow alert threshold
+ * (the highest `workflowAlertThresholdAwuCredits` across the groups they belong to, see
+ * `GroupResource.listMaxWorkflowAlertThresholdAwuCreditsByUserModelIdInWorkspace`). Unlike
+ * `checkPoolCreditGate`, crossing this threshold never stops the agent loop by itself — it
+ * only notifies the client, which offers the user a choice to continue or trigger a smooth
+ * shutdown. Fails open (does not notify) when there is no threshold, no billing cycle can be
+ * resolved, or the counter read fails.
+ */
+export async function checkWorkflowAlertThresholdGate(
+  auth: Authenticator
+): Promise<WorkflowAlertThresholdCheckResult> {
+  const user = auth.user();
+  if (!user) {
+    return DO_NOT_NOTIFY;
+  }
+  const workspace = auth.getNonNullableWorkspace();
+
+  const thresholdByUserModelId =
+    await GroupResource.listMaxWorkflowAlertThresholdAwuCreditsByUserModelIdInWorkspace(
+      { workspace, userModelIds: [user.id] }
+    );
+  const thresholdAwuCredits = thresholdByUserModelId.get(user.id);
+  if (thresholdAwuCredits === undefined) {
+    return DO_NOT_NOTIFY;
+  }
+
+  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  if (!bounds) {
+    return DO_NOT_NOTIFY;
+  }
+
+  const reached = await isSpendCapCounterReached(auth, {
+    user,
+    thresholdAwuCredits,
+    bounds,
+  });
+
+  return reached ? { crossed: true, thresholdAwuCredits } : DO_NOT_NOTIFY;
 }

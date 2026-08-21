@@ -359,6 +359,9 @@ export type BaseAgentMessageType = {
   // the smooth-shutdown workflow-alert-threshold popup, as opposed to the other graceful-stop
   // reasons (queued-message preemption, orphan cleanup, message deletion).
   stoppedBySmoothShutdown?: boolean;
+  // Set client-side (streaming only) the first time this message's generation crosses the
+  // user's workflow alert threshold. Drives the smooth shutdown prompt.
+  workflowAlertThresholdCrossed?: { thresholdAwuCredits: number };
   costCredits: number | null;
   // Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned
   // (recursively) by this message, separate from `costCredits` (this message's own

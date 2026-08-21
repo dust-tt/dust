@@ -28,6 +28,7 @@ import {
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import { useAutoOpenSidePanel } from "@app/components/assistant/conversation/useAutoOpenSidePanel";
+import { WorkflowAlertThresholdDialog } from "@app/components/assistant/conversation/WorkflowAlertThresholdDialog";
 import { ConfirmContext } from "@app/components/Confirm";
 import { getActionCardPlugin } from "@app/components/markdown/ActionCardDirective";
 import {
@@ -434,6 +435,7 @@ export function AgentMessage({
           case "tool_notification":
           case "tool_params":
           case "agent_context_pruned":
+          case "agent_workflow_alert_threshold_crossed":
             break;
           default:
             assertNeverAndIgnore(eventPayload.data);
@@ -456,6 +458,22 @@ export function AgentMessage({
   const isDeleted = agentMessage.visibility === "deleted";
   const isGracefullyStopped = agentMessage.status === "gracefully_stopped";
   const cancelMessage = useCancelMessage({ owner, conversationId });
+
+  const [dismissedWorkflowAlertThreshold, setDismissedWorkflowAlertThreshold] =
+    useState(false);
+  const showWorkflowAlertThresholdDialog =
+    !!agentMessage.workflowAlertThresholdCrossed &&
+    !dismissedWorkflowAlertThreshold &&
+    agentMessage.status === "created";
+
+  const handleContinuePastWorkflowAlertThreshold = useCallback(() => {
+    setDismissedWorkflowAlertThreshold(true);
+  }, []);
+
+  const handleStopAtWorkflowAlertThreshold = useCallback(() => {
+    setDismissedWorkflowAlertThreshold(true);
+    void cancelMessage([agentMessage.sId], "smooth_shutdown");
+  }, [cancelMessage, agentMessage.sId]);
 
   const references = useMemo(
     () =>
@@ -1104,32 +1122,44 @@ export function AgentMessage({
   };
 
   return (
-    <ConversationMessageContainer messageType="agent" type="agent">
-      {!hideHeader && (
-        <div className="inline-flex items-center gap-2">
-          <ConversationMessageAvatar
-            avatarUrl={agentConfiguration.pictureUrl}
-            name={agentConfiguration.name}
-            isBusy={agentMessage.status === "created"}
-            isDisabled={isArchived}
-            type="agent"
-          />
-          <ConversationMessageTitle
-            name={agentConfiguration.name}
-            timestamp={timestamp}
-            infoChip={
-              agentMessage.prunedContext ? <PrunedContextChip /> : undefined
-            }
-            completionStatus={undefined}
-            renderName={renderName}
-          />
-        </div>
-      )}
+    <>
+      <ConversationMessageContainer messageType="agent" type="agent">
+        {!hideHeader && (
+          <div className="inline-flex items-center gap-2">
+            <ConversationMessageAvatar
+              avatarUrl={agentConfiguration.pictureUrl}
+              name={agentConfiguration.name}
+              isBusy={agentMessage.status === "created"}
+              isDisabled={isArchived}
+              type="agent"
+            />
+            <ConversationMessageTitle
+              name={agentConfiguration.name}
+              timestamp={timestamp}
+              infoChip={
+                agentMessage.prunedContext ? <PrunedContextChip /> : undefined
+              }
+              completionStatus={undefined}
+              renderName={renderName}
+            />
+          </div>
+        )}
 
-      <div className="group flex w-full min-w-0 flex-col gap-2">
-        {renderMessageContent()}
-      </div>
-    </ConversationMessageContainer>
+        <div className="group flex w-full min-w-0 flex-col gap-2">
+          {renderMessageContent()}
+        </div>
+      </ConversationMessageContainer>
+      {agentMessage.workflowAlertThresholdCrossed && (
+        <WorkflowAlertThresholdDialog
+          isOpen={showWorkflowAlertThresholdDialog}
+          thresholdAwuCredits={
+            agentMessage.workflowAlertThresholdCrossed.thresholdAwuCredits
+          }
+          onContinue={handleContinuePastWorkflowAlertThreshold}
+          onStop={handleStopAtWorkflowAlertThreshold}
+        />
+      )}
+    </>
   );
 }
 

@@ -756,6 +756,24 @@ export function useAgentMessageStream({
           );
           break;
 
+        case "agent_workflow_alert_threshold_crossed": {
+          const thresholdData = eventPayload.data;
+          if (thresholdData.type !== "agent_workflow_alert_threshold_crossed") {
+            break;
+          }
+          mapMessagesWithAutoScroll((m) =>
+            isAgentMessageWithStreaming(m) && m.sId === sId
+              ? {
+                  ...m,
+                  workflowAlertThresholdCrossed: {
+                    thresholdAwuCredits: thresholdData.thresholdAwuCredits,
+                  },
+                }
+              : m
+          );
+          break;
+        }
+
         case "agent_generation_cancelled": {
           isStreamTerminated.current = true;
           updateMessageThrottled.cancel();

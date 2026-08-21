@@ -1,9 +1,23 @@
-import { checkCreditsActivity } from "@app/temporal/agent_loop/activities/credit_check";
+import {
+  checkCreditsActivity,
+  checkWorkflowAlertThresholdActivity,
+} from "@app/temporal/agent_loop/activities/credit_check";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockFromJson, mockCheckPoolCreditGate } = vi.hoisted(() => ({
+const {
+  mockFromJson,
+  mockCheckPoolCreditGate,
+  mockCheckWorkflowAlertThresholdGate,
+  mockGetAgentLoopData,
+  mockIsAgentLoopDataSoftDeleteError,
+  mockPublishConversationRelatedEvent,
+} = vi.hoisted(() => ({
   mockFromJson: vi.fn(),
   mockCheckPoolCreditGate: vi.fn(),
+  mockCheckWorkflowAlertThresholdGate: vi.fn(),
+  mockGetAgentLoopData: vi.fn(),
+  mockIsAgentLoopDataSoftDeleteError: vi.fn(),
+  mockPublishConversationRelatedEvent: vi.fn(),
 }));
 
 vi.mock("@app/lib/auth", () => ({
@@ -12,6 +26,16 @@ vi.mock("@app/lib/auth", () => ({
 
 vi.mock("@app/lib/api/assistant/credit_check", () => ({
   checkPoolCreditGate: mockCheckPoolCreditGate,
+  checkWorkflowAlertThresholdGate: mockCheckWorkflowAlertThresholdGate,
+}));
+
+vi.mock("@app/lib/api/assistant/streaming/events", () => ({
+  publishConversationRelatedEvent: mockPublishConversationRelatedEvent,
+}));
+
+vi.mock("@app/types/assistant/agent_run", () => ({
+  getAgentLoopData: mockGetAgentLoopData,
+  isAgentLoopDataSoftDeleteError: mockIsAgentLoopDataSoftDeleteError,
 }));
 
 const FAKE_AUTH = {
@@ -78,5 +102,78 @@ describe("checkCreditsActivity (pure decision)", () => {
     expect(mockCheckPoolCreditGate).toHaveBeenCalledWith(FAKE_AUTH, {
       userMessageOrigin: null,
     });
+  });
+});
+
+describe("checkWorkflowAlertThresholdActivity", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFromJson.mockResolvedValue(FAKE_AUTH);
+  });
+
+  it("does not load the conversation or publish when the gate says not crossed", async () => {
+    mockCheckWorkflowAlertThresholdGate.mockResolvedValue({ crossed: false });
+
+    const result = await checkWorkflowAlertThresholdActivity({} as never, {
+      agentLoopArgs: {} as never,
+    });
+
+    expect(result).toEqual({ crossed: false });
+    expect(mockGetAgentLoopData).not.toHaveBeenCalled();
+    expect(mockPublishConversationRelatedEvent).not.toHaveBeenCalled();
+  });
+
+  it("loads the conversation and publishes a notification event when crossed", async () => {
+    mockCheckWorkflowAlertThresholdGate.mockResolvedValue({
+      crossed: true,
+      thresholdAwuCredits: 1500,
+    });
+    mockGetAgentLoopData.mockResolvedValue({
+      isErr: () => false,
+      value: {
+        agentConfiguration: { sId: "agent_config_id" },
+        agentMessage: { sId: "msg_id", contents: [{ step: 2 }] },
+        conversation: { sId: "conv_id" },
+      },
+    });
+
+    const result = await checkWorkflowAlertThresholdActivity({} as never, {
+      agentLoopArgs: {
+        conversationId: "conv_id",
+        agentMessageId: "msg_id",
+      } as never,
+    });
+
+    expect(result).toEqual({ crossed: true });
+    expect(mockPublishConversationRelatedEvent).toHaveBeenCalledWith({
+      conversationId: "conv_id",
+      step: 2,
+      event: {
+        type: "agent_workflow_alert_threshold_crossed",
+        created: expect.any(Number),
+        configurationId: "agent_config_id",
+        messageId: "msg_id",
+        thresholdAwuCredits: 1500,
+      },
+    });
+  });
+
+  it("still reports crossed but skips publishing when the message was soft-deleted", async () => {
+    mockCheckWorkflowAlertThresholdGate.mockResolvedValue({
+      crossed: true,
+      thresholdAwuCredits: 1500,
+    });
+    mockGetAgentLoopData.mockResolvedValue({
+      isErr: () => true,
+      error: new Error("agent_message_deleted"),
+    });
+    mockIsAgentLoopDataSoftDeleteError.mockReturnValue(true);
+
+    const result = await checkWorkflowAlertThresholdActivity({} as never, {
+      agentLoopArgs: {} as never,
+    });
+
+    expect(result).toEqual({ crossed: true });
+    expect(mockPublishConversationRelatedEvent).not.toHaveBeenCalled();
   });
 });

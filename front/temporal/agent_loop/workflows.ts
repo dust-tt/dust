@@ -150,6 +150,15 @@ const { checkCreditsActivity } = proxyActivities<typeof creditCheckActivities>({
   },
 });
 
+const { checkWorkflowAlertThresholdActivity } = proxyActivities<
+  typeof creditCheckActivities
+>({
+  startToCloseTimeout: "2 minutes",
+  retry: {
+    maximumAttempts: 3,
+  },
+});
+
 const { metrics } = proxySinks<AgentLoopInstrumentationSinks>();
 
 const { ensureConversationTitleActivity } = proxyActivities<
@@ -296,6 +305,10 @@ export async function agentLoopWorkflow({
   // Credit stop: the per-step gate found the workspace pool exhausted.
   let creditStopRequested = false;
 
+  // Workflow alert: the per-step gate found the user's spend past their workflow alert
+  // threshold. Never stops the loop by itself; once notified, stop re-checking for this message.
+  let workflowAlertThresholdNotified = false;
+
   const runIds: string[] = [];
 
   try {
@@ -391,6 +404,21 @@ export async function agentLoopWorkflow({
         if (creditCheckResult.shouldStop) {
           creditStopRequested = true;
           break;
+        }
+
+        if (!workflowAlertThresholdNotified) {
+          const workflowAlertResult = await checkWorkflowAlertThresholdActivity(
+            authType,
+            {
+              agentLoopArgs: {
+                ...agentLoopArgs,
+                initialStartTime,
+              },
+            }
+          );
+          if (workflowAlertResult.crossed) {
+            workflowAlertThresholdNotified = true;
+          }
         }
       }
 
