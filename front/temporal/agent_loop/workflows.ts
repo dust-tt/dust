@@ -83,6 +83,19 @@ const { runModelAndCreateActionsActivity } = proxyActivities<
   },
 });
 
+const {
+  runModelAndCreateActionsActivity:
+    runModelAndCreateActionsActivityWithExplicitCancellation,
+} = proxyActivities<typeof runModelAndCreateWrapperActivities>({
+  startToCloseTimeout: "10 minutes",
+  heartbeatTimeout: MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
+  cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
+  retry: {
+    maximumAttempts: RUN_MODEL_MAX_RETRIES,
+    backoffCoefficient: 1,
+  },
+});
+
 const { runToolActivity } = proxyActivities<typeof runToolActivities>({
   // Activity timeout keeps a short buffer above the tool timeout to detect worker restarts promptly.
   startToCloseTimeout: toolActivityStartToCloseTimeoutMs,
@@ -468,7 +481,13 @@ async function executeStepIteration({
   shouldContinue: boolean;
   retryWithoutTools?: boolean;
 }> {
-  const result = await runModelAndCreateActionsActivity({
+  const runModelActivity = patched(
+    "wait-for-model-activity-before-finalization"
+  )
+    ? runModelAndCreateActionsActivityWithExplicitCancellation
+    : runModelAndCreateActionsActivity;
+
+  const result = await runModelActivity({
     authType,
     checkForResume: currentStep === startStep, // Only run resume the first time.
     runAgentArgs: agentLoopArgs,

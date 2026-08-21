@@ -1,19 +1,28 @@
 import type { AuthenticatorType } from "@app/lib/auth";
-import { runSandboxChildToolWorkflow } from "@app/temporal/agent_loop/workflows";
+import {
+  agentLoopWorkflow,
+  runSandboxChildToolWorkflow,
+} from "@app/temporal/agent_loop/workflows";
 import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   patched,
   finalizeErroredSandboxChildToolActivity,
+  finalizeSuccessfulAgentLoopActivity,
   runToolActivity,
   runRetryableToolActivity,
+  runModelAndCreateActionsActivity,
+  runModelAndCreateActionsActivityWithExplicitCancellation,
   publishDeferredEventsActivity,
 } = vi.hoisted(() => ({
   patched: vi.fn(),
   finalizeErroredSandboxChildToolActivity: vi.fn(),
+  finalizeSuccessfulAgentLoopActivity: vi.fn(),
   runToolActivity: vi.fn(),
   runRetryableToolActivity: vi.fn(),
+  runModelAndCreateActionsActivity: vi.fn(),
+  runModelAndCreateActionsActivityWithExplicitCancellation: vi.fn(),
   publishDeferredEventsActivity: vi.fn(),
 }));
 
@@ -28,6 +37,12 @@ vi.mock("@temporalio/workflow", () => {
       static nonCancellable<T>(fn: () => Promise<T>) {
         return fn();
       }
+
+      run<T>(fn: () => Promise<T>) {
+        return fn();
+      }
+
+      cancel() {}
     },
     defineSignal: (name: string) => name,
     patched,
@@ -45,9 +60,12 @@ vi.mock("@temporalio/workflow", () => {
       finalizeErroredSandboxChildToolActivity,
       finalizeGracefullyStoppedAgentLoopActivity: unusedActivity,
       finalizeInterruptedAgentLoopActivity: unusedActivity,
-      finalizeSuccessfulAgentLoopActivity: unusedActivity,
+      finalizeSuccessfulAgentLoopActivity,
       publishDeferredEventsActivity,
-      runModelAndCreateActionsActivity: unusedActivity,
+      runModelAndCreateActionsActivity:
+        options.cancellationType === undefined
+          ? runModelAndCreateActionsActivity
+          : runModelAndCreateActionsActivityWithExplicitCancellation,
       runToolActivity:
         options.cancellationType === undefined &&
         options.retry?.maximumAttempts === 1
@@ -65,7 +83,10 @@ vi.mock("@temporalio/workflow", () => {
     }),
     setHandler: vi.fn(),
     startChild: vi.fn(),
-    workflowInfo: vi.fn(),
+    workflowInfo: vi.fn(() => ({
+      memo: {},
+      searchAttributes: {},
+    })),
   };
 });
 
@@ -197,5 +218,55 @@ describe("runSandboxChildToolWorkflow", () => {
     ).rejects.toBe(error);
 
     expect(finalizeErroredSandboxChildToolActivity).not.toHaveBeenCalled();
+  });
+});
+
+describe("agentLoopWorkflow model activity cancellation patch", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const modelResult = {
+      actionBlobs: [],
+      runId: "run-1",
+    };
+    runModelAndCreateActionsActivity.mockResolvedValue(modelResult);
+    runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue(
+      modelResult
+    );
+    finalizeSuccessfulAgentLoopActivity.mockResolvedValue(undefined);
+  });
+
+  it("keeps the legacy model activity for old histories", async () => {
+    patched.mockImplementation(
+      (patchId: string) =>
+        patchId !== "wait-for-model-activity-before-finalization"
+    );
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(runModelAndCreateActionsActivity).toHaveBeenCalledOnce();
+    expect(
+      runModelAndCreateActionsActivityWithExplicitCancellation
+    ).not.toHaveBeenCalled();
+  });
+
+  it("waits for explicit model activity cancellation for new histories", async () => {
+    patched.mockReturnValue(true);
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(
+      runModelAndCreateActionsActivityWithExplicitCancellation
+    ).toHaveBeenCalledOnce();
+    expect(runModelAndCreateActionsActivity).not.toHaveBeenCalled();
   });
 });
