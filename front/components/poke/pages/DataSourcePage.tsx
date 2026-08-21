@@ -148,7 +148,7 @@ function FolderDisplay({
         </div>
       </div>
 
-      <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+      <div className="mb-4 flex flex-grow flex-col rounded-lg border p-4">
         {documents.length > 0 ? (
           <ContextItem.List>
             {documents.map((d) => (
@@ -235,7 +235,7 @@ function FolderDisplay({
         </div>
       </div>
 
-      <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+      <div className="mb-4 flex flex-grow flex-col rounded-lg border p-4">
         {tables.length > 0 ? (
           <ContextItem.List>
             {tables.map((t) => (
@@ -1143,7 +1143,7 @@ export function DataSourcePage() {
           {["slack", "slack_bot"].includes(
             dataSource.connectorProvider ?? ""
           ) && (
-            <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+            <div className="mb-4 flex flex-grow flex-col rounded-lg border p-4">
               <SlackChannelPatternInput
                 initialValues={features.autoReadChannelPatterns || ""}
                 owner={owner}

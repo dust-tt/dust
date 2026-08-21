@@ -31,7 +31,7 @@ export function ViewTriggerTable({
   return (
     <div className="flex flex-col space-y-8">
       <div className="flex justify-between gap-3">
-        <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
+        <div className="my-4 flex flex-grow flex-col rounded-lg border p-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-md flex-grow pb-4 font-bold">Overview</h2>
           </div>
@@ -168,7 +168,7 @@ export function ViewTriggerTable({
         </div>
       </div>
       {trigger.kind === "webhook" && (
-        <div className="border-material-200 flex flex-col rounded-lg border p-4">
+        <div className="flex flex-col rounded-lg border p-4">
           <h2 className="text-md pb-4 font-bold">Filter Expression</h2>
           {trigger.configuration.filter ? (
             <TriggerFilterRenderer data={trigger.configuration.filter} />
