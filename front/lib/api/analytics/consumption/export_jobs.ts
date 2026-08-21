@@ -27,11 +27,12 @@ export type ConsumptionExportListItem = {
   name: string;
   createdAt: string;
   sizeBytes: number;
+  downloadUrl?: string;
 };
 
 export type StartConsumptionExportResponse =
   | { isGenerating: true }
-  | { isGenerating: false; name: string };
+  | { isGenerating: false; name: string; downloadUrl?: string };
 
 export async function listConsumptionExports(
   auth: Authenticator
@@ -50,6 +51,35 @@ export async function listConsumptionExports(
   }));
 
   return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+/**
+ * Returns only the export derived from an already authorized period and
+ * filter. Personal analytics use this instead of enumerating every export in
+ * the workspace bucket.
+ */
+export async function getConsumptionExportListItem(
+  auth: Authenticator,
+  exportId: string
+): Promise<ConsumptionExportListItem> {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const name = `${exportId}.csv`;
+  const path = buildConsumptionExportGcsPath(workspaceId, exportId);
+  const bucket = getPrivateUploadBucket();
+  const [[metadata], downloadUrlResult] = await Promise.all([
+    bucket.file(path).getMetadata(),
+    getConsumptionExportDownloadUrl(auth, name),
+  ]);
+  if (downloadUrlResult.isErr()) {
+    throw downloadUrlResult.error;
+  }
+
+  return {
+    name,
+    createdAt: metadata.timeCreated ?? new Date(0).toISOString(),
+    sizeBytes: Number(metadata.size ?? 0),
+    downloadUrl: downloadUrlResult.value,
+  };
 }
 
 // The download link embedded in the export list would otherwise go stale after

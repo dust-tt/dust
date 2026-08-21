@@ -1,5 +1,6 @@
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import { fetchConsumptionOverview } from "@app/lib/api/analytics/consumption/overview";
+import type { ConsumptionAccessScope } from "@app/lib/api/analytics/consumption/scope";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -42,12 +43,20 @@ async function setupTest({
   return createPrivateApiMockRequest({ role });
 }
 
-function postOverviewRequest(wId: string, body: Record<string, unknown> = {}) {
-  return honoApp.request(`/api/w/${wId}/analytics/consumption/overview`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+function postOverviewRequest(
+  wId: string,
+  body: Record<string, unknown> = {},
+  accessScope: ConsumptionAccessScope = "workspace"
+) {
+  const analyticsPath = accessScope === "user" ? "me/analytics" : "analytics";
+  return honoApp.request(
+    `/api/w/${wId}/${analyticsPath}/consumption/overview`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
 }
 
 describe("POST /api/w/:wId/analytics/consumption/overview", () => {
@@ -58,6 +67,26 @@ describe("POST /api/w/:wId/analytics/consumption/overview", () => {
 
     expect(response.status).toBe(403);
     expect(vi.mocked(fetchConsumptionOverview)).not.toHaveBeenCalled();
+  });
+
+  it("lets members read only their own consumption", async () => {
+    vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
+    const { workspace, user } = await setupTest({ role: "user" });
+
+    const response = await postOverviewRequest(
+      workspace.sId,
+      { filter: { users: ["another-user"], sources: ["slack"] } },
+      "user"
+    );
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionOverview)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        filter: { users: [user.sId], sources: ["slack"] },
+        includeWorkspaceContext: false,
+      })
+    );
   });
 
   it("returns the overview for managers, defaulting to the current cycle", async () => {

@@ -76,6 +76,8 @@ export type ConsumptionScopeFilter = Partial<
   Record<ConsumptionScopeFilterKey, string[]>
 >;
 
+export type ConsumptionAccessScope = "workspace" | "user";
+
 export const CONSUMPTION_DIMENSION_FILTER_KEYS: Record<
   ConsumptionScopeDimension,
   ConsumptionScopeFilterKey

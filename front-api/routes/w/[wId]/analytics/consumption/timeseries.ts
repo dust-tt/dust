@@ -6,23 +6,21 @@ import {
 import type { GetConsumptionTimeseriesResponse } from "@app/lib/api/analytics/consumption/timeseries";
 import { fetchConsumptionTimeseries } from "@app/lib/api/analytics/consumption/timeseries";
 import logger from "@app/logger/logger";
-import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { consumptionAnalyticsApp } from "./context";
 
 export type { GetConsumptionTimeseriesResponse };
 
-// Mounted at /api/w/:wId/analytics/consumption/timeseries.
-const app = workspaceApp();
+const app = consumptionAnalyticsApp();
 
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsManager(),
   validate("json", ConsumptionTimeseriesBodySchema),
   async (ctx): HandlerResult<GetConsumptionTimeseriesResponse> => {
     const auth = ctx.get("auth");
+    const requiredFilter = ctx.get("consumptionRequiredFilter");
     const {
       granularity,
       mode,
@@ -45,7 +43,7 @@ app.post(
       metric,
       breakdownBy,
       breakdownCount,
-      filter,
+      filter: requiredFilter ? { ...filter, ...requiredFilter } : filter,
     });
     if (result.isErr()) {
       logger.error(

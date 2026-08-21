@@ -39,9 +39,14 @@ async function setupTest({
   return createPrivateApiMockRequest({ role });
 }
 
-function postExportStatusRequest(wId: string, body: Record<string, unknown>) {
+function postExportStatusRequest(
+  wId: string,
+  body: Record<string, unknown>,
+  personal = false
+) {
+  const analyticsPath = personal ? "me/analytics" : "analytics";
   return honoApp.request(
-    `/api/w/${wId}/analytics/consumption/export-raw/status`,
+    `/api/w/${wId}/${analyticsPath}/consumption/export-raw/status`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -50,12 +55,20 @@ function postExportStatusRequest(wId: string, body: Record<string, unknown>) {
   );
 }
 
-function postExportRawRequest(wId: string, body: Record<string, unknown>) {
-  return honoApp.request(`/api/w/${wId}/analytics/consumption/export-raw`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+function postExportRawRequest(
+  wId: string,
+  body: Record<string, unknown>,
+  personal = false
+) {
+  const analyticsPath = personal ? "me/analytics" : "analytics";
+  return honoApp.request(
+    `/api/w/${wId}/${analyticsPath}/consumption/export-raw`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
 }
 
 function getDownloadRequest(wId: string, name: string) {
@@ -66,6 +79,14 @@ function getDownloadRequest(wId: string, name: string) {
 }
 
 describe("POST /api/w/:wId/analytics/consumption/export-raw/status", () => {
+  it("is refused to non-managers by default", async () => {
+    const { workspace } = await setupTest({ role: "user" });
+
+    const response = await postExportStatusRequest(workspace.sId, {});
+
+    expect(response.status).toBe(403);
+  });
+
   it("returns an empty list and not-generating/not-ready when nothing exists", async () => {
     fileStorageMock.setFilesByPrefix(() => []);
     const { workspace } = await setupTest();
@@ -148,6 +169,32 @@ describe("POST /api/w/:wId/analytics/consumption/export-raw/status", () => {
     const body = await response.json();
     expect(body.isReady).toBe(true);
   });
+
+  it("returns only the signed export for a member's own scope", async () => {
+    fileStorageMock.setFileExists(() => true);
+    fileStorageMock.setFileMetadata(() => ({
+      contentType: "text/csv",
+      size: "123",
+    }));
+    const { workspace } = await setupTest({ role: "user" });
+
+    const response = await postExportStatusRequest(
+      workspace.sId,
+      { filter: { users: ["another-user"] } },
+      true
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.exports).toEqual([
+      {
+        name: `${body.exportId}.csv`,
+        createdAt: new Date(0).toISOString(),
+        sizeBytes: 123,
+        downloadUrl: "https://signed-url.test",
+      },
+    ]);
+  });
 });
 
 describe("GET /api/w/:wId/analytics/consumption/export-raw/:name/download", () => {
@@ -191,6 +238,23 @@ describe("POST /api/w/:wId/analytics/consumption/export-raw", () => {
     expect(startWorkflowMock).toHaveBeenCalledTimes(1);
   });
 
+  it("starts a member export with the authenticated user's filter", async () => {
+    const { workspace, user } = await setupTest({ role: "user" });
+
+    const response = await postExportRawRequest(
+      workspace.sId,
+      { filter: { users: ["another-user"], sources: ["slack"] } },
+      true
+    );
+
+    expect(response.status).toBe(202);
+    const workflowOptions = startWorkflowMock.mock.calls[0]?.[1];
+    expect(workflowOptions?.args[1].filter).toEqual({
+      users: [user.sId],
+      sources: ["slack"],
+    });
+  });
+
   it("returns the cached export's name instead of starting a new workflow when one already exists", async () => {
     fileStorageMock.setFileExists(() => true);
     const { workspace } = await setupTest({ role: "admin" });
@@ -201,6 +265,20 @@ describe("POST /api/w/:wId/analytics/consumption/export-raw", () => {
     const body = await response.json();
     expect(body.isGenerating).toBe(false);
     expect(body.name).toMatch(/^[A-Za-z0-9_-]+\.csv$/);
+    expect(startWorkflowMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a signed URL for a member's cached export", async () => {
+    fileStorageMock.setFileExists(() => true);
+    const { workspace } = await setupTest({ role: "user" });
+
+    const response = await postExportRawRequest(workspace.sId, {}, true);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      isGenerating: false,
+      downloadUrl: "https://signed-url.test",
+    });
     expect(startWorkflowMock).not.toHaveBeenCalled();
   });
 
