@@ -26,6 +26,7 @@ import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { WebhookSourceDataTable } from "@app/components/poke/webhook_sources/table";
 import { WorkspaceMetadataTab } from "@app/components/poke/workspace/MetadataTab";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
+import { WorkspaceAnalyticsButton } from "@app/components/poke/workspace/WorkspaceAnalyticsButton";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
@@ -235,20 +236,23 @@ export function WorkspacePage() {
                 <TabsTrigger value="planlimitations" label="Plan Limitations" />
               </TabsList>
               <TabsContent value="workspace">
-                <WorkspaceInfoTable
-                  owner={owner}
-                  membersCount={membersCount}
-                  inactiveMembersCount={inactiveMembersCount}
-                  metronomeCustomerId={metronomeCustomerId}
-                  stripeCustomerId={stripeCustomerId}
-                  workspaceVerifiedDomains={workspaceVerifiedDomains}
-                  workspaceCreationDay={workspaceCreationDay}
-                  extensionConfig={extensionConfig}
-                  dataRetention={dataRetention}
-                  workosEnvironmentId={workosEnvironmentId}
-                  hasDummyFeature={hasDummyFeature}
-                  temporalFrontNamespace={temporalFrontNamespace}
-                />
+                <div className="flex flex-col gap-3">
+                  <WorkspaceInfoTable
+                    owner={owner}
+                    membersCount={membersCount}
+                    inactiveMembersCount={inactiveMembersCount}
+                    metronomeCustomerId={metronomeCustomerId}
+                    stripeCustomerId={stripeCustomerId}
+                    workspaceVerifiedDomains={workspaceVerifiedDomains}
+                    workspaceCreationDay={workspaceCreationDay}
+                    extensionConfig={extensionConfig}
+                    dataRetention={dataRetention}
+                    workosEnvironmentId={workosEnvironmentId}
+                    hasDummyFeature={hasDummyFeature}
+                    temporalFrontNamespace={temporalFrontNamespace}
+                  />
+                  <WorkspaceAnalyticsButton workspaceId={owner.sId} />
+                </div>
               </TabsContent>
               <TabsContent value="subscriptions">
                 <ActiveSubscriptionTable
