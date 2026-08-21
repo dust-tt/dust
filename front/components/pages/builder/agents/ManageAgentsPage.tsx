@@ -27,8 +27,10 @@ import {
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TagType } from "@app/types/tag";
 import {
+  Checkbox,
   Chip,
   EmptyCTA,
+  InfoCircle,
   Page,
   Plus,
   SearchInput,
@@ -36,6 +38,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -72,7 +75,7 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
 
 export function ManageAgentsPage() {
   const owner = useWorkspace();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [assistantSearch, setAssistantSearch] = useState("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
@@ -82,6 +85,7 @@ export function ManageAgentsPage() {
     []
   );
   const [selection, setSelection] = useState<string[]>([]);
+  const [showHiddenAgents, setShowHiddenAgents] = useState(false);
   const isMobile = useIsMobile();
 
   const { isDark } = useTheme();
@@ -89,6 +93,9 @@ export function ManageAgentsPage() {
   const { hasPermission } = useWorkspacePermissions();
 
   const canCreateAgent = hasPermission("create", "agent");
+  // Only admins may list the agents they neither edit nor share a space with.
+  const canShowHiddenAgents = isAdmin;
+  const isShowHiddenAgentsEnabled = canShowHiddenAgents && showHiddenAgents;
   const isSearchActive = assistantSearch.trim() !== "";
   const isFilterActive =
     isSearchActive || selectedTags.length > 0 || selectedModels.length > 0;
@@ -102,6 +109,7 @@ export function ManageAgentsPage() {
   const selectionScopeKey = [
     activeTab,
     assistantSearch,
+    String(isShowHiddenAgentsEnabled),
     selectedTags
       .map((t) => t.sId)
       .sort()
@@ -126,7 +134,7 @@ export function ManageAgentsPage() {
     isAgentConfigurationsLoading,
   } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: "manage",
+    agentsGetView: isShowHiddenAgentsEnabled ? "manage_unrestricted" : "manage",
     includes: ["authors", "usage", "feedbacks", "editors"],
   });
 
@@ -379,6 +387,25 @@ export function ManageAgentsPage() {
                     counterValue={`${agentsByTab[tab.id].length}`}
                   />
                 ))}
+                {canShowHiddenAgents && (
+                  <span className="ml-auto flex gap-1 self-center text-sm text-muted-foreground">
+                    <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
+                      <Checkbox
+                        checked={showHiddenAgents}
+                        onCheckedChange={(checked) =>
+                          setShowHiddenAgents(checked === true)
+                        }
+                      />
+                      Show hidden agents
+                    </label>
+                    <Tooltip
+                      label="Shows the agents of all members you can access as an admin, even if they are not published or if they use restricted spaces"
+                      trigger={
+                        <InfoCircle className="h-4 w-4 text-muted-foreground" />
+                      }
+                    />
+                  </span>
+                )}
               </TabsList>
             </Tabs>
             {isAgentConfigurationsLoading ||
