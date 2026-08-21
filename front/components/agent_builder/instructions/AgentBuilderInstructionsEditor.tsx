@@ -19,13 +19,13 @@ import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/in
 import { BlockIdExtension } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
+import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import {
   cleanupPastedHTML,
   stripHtmlAttributes,
 } from "@app/components/editor/input_bar/cleanupPastedHTML";
-import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
