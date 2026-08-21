@@ -5,6 +5,7 @@ import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode
 import { BlockIdExtension } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
+import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { KnowledgeNodeWithView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeWithView";
 import {
@@ -12,7 +13,6 @@ import {
   rawMarkdownBlockParsers,
 } from "@app/components/editor/extensions/skill_builder/RawMarkdownBlock";
 import { ToolNodeWithView } from "@app/components/editor/extensions/skill_builder/ToolNodeWithView";
-import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { markdownStyles } from "@dust-tt/sparkle";
 import type { Extensions } from "@tiptap/core";

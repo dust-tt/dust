@@ -9,19 +9,17 @@ import {
 } from "@app/components/agent_builder/observability/constants";
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type { SourceChartDatum } from "@app/components/agent_builder/observability/types";
+import { isUserMessageOrigin } from "@app/lib/api/analytics/source_labels";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
+
+export { isUserMessageOrigin };
+
 import { formatShortDate } from "@app/lib/utils/timestamps";
 import moment from "moment-timezone";
 
 type VersionMarker = { version: string; timestamp: number };
 
 type SourceBucket = { origin: string; count: number };
-
-export function isUserMessageOrigin(
-  origin?: string | null
-): origin is AnalyticsVisibleOrigin {
-  return !!origin && origin in USER_MESSAGE_ORIGIN_LABELS;
-}
 
 export function getSourceColor(source: AnalyticsVisibleOrigin) {
   return USER_MESSAGE_ORIGIN_LABELS[source].color;
