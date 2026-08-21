@@ -1,7 +1,7 @@
 import { listPodsWithEgressPolicy } from "@app/lib/api/sandbox/admin_pods";
 import type { GetEgressPolicyPodsResponseBody } from "@app/types/api/sandbox/egress_policy";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 
 // Mounted at /api/w/:wId/sandbox/egress-policy/pods. Lists the Pods that have
@@ -17,9 +17,18 @@ app.get("/", async (ctx): HandlerResult<GetEgressPolicyPodsResponseBody> => {
   const auth = ctx.get("auth");
 
   const pods = await listPodsWithEgressPolicy(auth);
+  if (pods.isErr()) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `Failed to list Pods with an egress policy: ${pods.error.message}`,
+      },
+    });
+  }
 
   return ctx.json({
-    pods: pods.map((pod) => ({ sId: pod.sId, name: pod.name })),
+    pods: pods.value.map((pod) => ({ sId: pod.sId, name: pod.name })),
   });
 });
 

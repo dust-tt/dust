@@ -14,8 +14,7 @@ import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 // Mounted at /api/w/:wId/sandbox/egress-policy/bulk. Multi-pod read (GET) for
 // the central Computer admin page. The parent sub-app applies the
 // workspace-admin + Computer gates; the multi-Pod feature is gated on the
-// sandbox_functions flag. Only Pods with their own policy are read, so the
-// selection is bounded by configured Pods rather than total Pods.
+// sandbox_functions flag. Only Pods with their own policy are surfaced.
 const app = workspaceApp();
 
 app.use("*", withFeatureFlag("sandbox_functions"));
@@ -39,16 +38,25 @@ app.get(
     }
 
     const configuredPods = await listPodsWithEgressPolicy(auth);
+    if (configuredPods.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: `Failed to list Pods with an egress policy: ${configuredPods.error.message}`,
+        },
+      });
+    }
+
+    const requestedPodIds = new Set(
+      selection.value.kind === "pods" ? selection.value.podIds : []
+    );
     const targetPods =
       selection.value.kind === "all-pods"
-        ? configuredPods
-        : ((requested) =>
-            configuredPods.filter((pod) => requested.has(pod.sId)))(
-            new Set(selection.value.podIds)
-          );
+        ? configuredPods.value
+        : configuredPods.value.filter((pod) => requestedPodIds.has(pod.sId));
 
-    // One GCS policy file per pod; bounded fan-out (only configured pods)
-    // against an external service, not the DB.
+    // One GCS policy file per configured pod.
     const reads = await concurrentExecutor(
       targetPods,
       async (pod) => ({

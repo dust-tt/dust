@@ -15,8 +15,8 @@ import type {
 import { parseEgressPolicy } from "@app/types/sandbox/egress_policy";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-import { fromError } from "zod-validation-error";
 
 import bulk from "./bulk";
 import pods from "./pods";
@@ -114,23 +114,13 @@ app.put(
 /** @ignoreswagger */
 app.post(
   "/requests/dismiss",
+  validate("json", DismissRequestBodySchema),
   async (ctx): HandlerResult<PutWorkspaceEgressPolicyResponseBody> => {
     const auth = ctx.get("auth");
-
-    const body = await ctx.req.json().catch(() => null);
-    const parsedBody = DismissRequestBodySchema.safeParse(body);
-    if (!parsedBody.success) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: fromError(parsedBody.error).toString(),
-        },
-      });
-    }
+    const { domain } = ctx.req.valid("json");
 
     const result = await dismissRequestedWorkspacePolicyDomain(auth, {
-      domain: parsedBody.data.domain,
+      domain,
     });
     if (result.isErr()) {
       return apiError(ctx, {

@@ -91,4 +91,29 @@ describe("GET /api/w/:wId/sandbox/egress-policy/pods", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ pods: [] });
   });
+
+  it("returns 403 when sandbox_functions is disabled", async () => {
+    const { workspace } = await setupTest({ enableSandboxFunctions: false });
+
+    const response = await getPods(workspace.sId);
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { type: "feature_flag_not_found" },
+    });
+  });
+
+  it("returns a 500 when the Pod listing fails", async () => {
+    const { workspace } = await setupTest();
+    fileStorageMock.setFilesByPrefix(() => {
+      throw new Error("gcs unavailable");
+    });
+
+    const response = await getPods(workspace.sId);
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({
+      error: { type: "internal_server_error" },
+    });
+  });
 });

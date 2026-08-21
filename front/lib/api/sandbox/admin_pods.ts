@@ -1,5 +1,5 @@
 import { listNonArchivedProjectSpacesAsAdmin } from "@app/lib/api/projects/list";
-import { listPodSIdsWithEgressPolicy } from "@app/lib/api/sandbox/egress_policy";
+import { listPodIdsWithEgressPolicy } from "@app/lib/api/sandbox/egress_policy";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { Result } from "@app/types/shared/result";
@@ -7,8 +7,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
 
 // Pod selection for the central Computer admin page's multi-pod reads.
-// "all-pods" resolves server-side to every configured Pod so the client never
-// has to expand the full Pod id list into a query string.
+// "all-pods" resolves server-side to every configured Pod.
 export type SandboxAdminPodSelection =
   | { kind: "all-pods" }
   | { kind: "pods"; podIds: string[] };
@@ -48,23 +47,28 @@ export function parseSandboxAdminPodSelection(
   return new Ok({ kind: "pods", podIds });
 }
 
-// The live, non-archived Pods that have their own egress policy — the only
-// Pods the central Computer admin page surfaces. Reads scale with configured
-// Pods (a prefix list of policy files) rather than the total Pod count, so
-// "select all" stays cheap. Admin-only via the parent route gate.
+// The live, non-archived Pods that have their own egress policy, sorted by
+// name — the only Pods the central Computer admin page surfaces. Intersects
+// the configured policy files (GCS) with the project-space listing (DB).
+// Admin-only via the parent route gate.
 export async function listPodsWithEgressPolicy(
   auth: Authenticator
-): Promise<SpaceResource[]> {
-  const [livePods, configuredSIds] = await Promise.all([
+): Promise<Result<SpaceResource[], Error>> {
+  const [livePods, configuredPodIds] = await Promise.all([
     listNonArchivedProjectSpacesAsAdmin(auth),
-    listPodSIdsWithEgressPolicy(auth),
+    listPodIdsWithEgressPolicy(auth),
   ]);
   if (livePods.isErr()) {
-    // Unreachable behind ensureIsAdmin(); throwing surfaces a plumbing bug as
-    // a 500 rather than silently returning no Pods.
-    throw livePods.error;
+    return livePods;
+  }
+  if (configuredPodIds.isErr()) {
+    return configuredPodIds;
   }
 
-  const configured = new Set(configuredSIds);
-  return livePods.value.filter((pod) => configured.has(pod.sId));
+  const configured = new Set(configuredPodIds.value);
+  return new Ok(
+    livePods.value
+      .filter((pod) => configured.has(pod.sId))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  );
 }
