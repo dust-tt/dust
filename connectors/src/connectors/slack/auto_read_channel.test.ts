@@ -1,10 +1,22 @@
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { DustAPI, Err } from "@dust-tt/client";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock(import("@connectors/connectors/slack/temporal/client"), () => ({
   launchJoinChannelWorkflow: vi.fn(),
 }));
+
+vi.mock(import("@connectors/lib/api/config"), async (importOriginal) => {
+  const original = await importOriginal();
+  return {
+    ...original,
+    apiConfig: {
+      ...original.apiConfig,
+      getDustFrontAPIUrl: () => "https://dust.test",
+    },
+  };
+});
 
 import { launchJoinChannelWorkflow } from "@connectors/connectors/slack/temporal/client";
 
@@ -51,6 +63,25 @@ describe("autoReadChannel", () => {
       "C123",
       "slack_bot"
     );
+
+    expect(res.isOk()).toBe(true);
+    if (res.isOk()) {
+      expect(res.value).toBe(false);
+    }
+    expect(launchJoinChannelWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("should skip channels whose workspace is unavailable", async () => {
+    await makeSlackConnector("T_UNAVAILABLE_WS");
+    vi.spyOn(DustAPI.prototype, "exists").mockResolvedValue(
+      new Err({
+        type: "plan_limit_error",
+        message:
+          "Your current plan does not allow API access. Please upgrade your plan.",
+      })
+    );
+
+    const res = await autoReadChannel("T_UNAVAILABLE_WS", logger, "C123");
 
     expect(res.isOk()).toBe(true);
     if (res.isOk()) {
