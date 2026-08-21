@@ -19,6 +19,7 @@ import {
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
+import { useAnalyticsViewState } from "@app/hooks/useAnalyticsViewState";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
@@ -34,7 +35,7 @@ import {
 } from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
 import type { ComponentType } from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 const canReload = () => !isNavigationLocked();
 
@@ -111,7 +112,7 @@ function ChartFallback({ controlsInCard = false }: ChartFallbackProps) {
 
 export function AnalyticsConsumptionPage() {
   const owner = useWorkspace();
-  const state = useAnalyticsConsumptionState();
+  const state = useAnalyticsConsumptionState(useAnalyticsViewState());
 
   return <AnalyticsConsumptionContent owner={owner} state={state} />;
 }
@@ -255,14 +256,19 @@ export function AnalyticsConsumptionContent({
   );
 }
 
-export function useAnalyticsConsumptionState() {
+export function useAnalyticsConsumptionState(
+  urlState?: ReturnType<typeof useAnalyticsViewState>
+) {
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
   );
   const { dimension: dimensionParam } = useQueryParams(["dimension"]);
   const dimension = consumptionDimensionFromQueryParam(dimensionParam.value);
   const [filter, setFilter] = useState<UsageFilter>({});
-  const scopeFilter = useMemo(() => toConsumptionScopeFilter(filter), [filter]);
+  const activePeriod = urlState?.period ?? period;
+  const activeDimension = urlState?.dimension ?? dimension;
+  const activeFilter = urlState?.filter ?? filter;
+  const scopeFilter = toConsumptionScopeFilter(activeFilter);
   const shouldReduceMotion = useReducedMotion();
 
   const handleDimensionChange = (nextDimension: ConsumptionDimension) => {
@@ -270,13 +276,13 @@ export function useAnalyticsConsumptionState() {
   };
 
   return {
-    dimension,
-    filter,
-    handleDimensionChange,
-    period,
+    dimension: activeDimension,
+    filter: activeFilter,
+    handleDimensionChange: urlState?.setDimension ?? handleDimensionChange,
+    period: activePeriod,
     scopeFilter,
-    setFilter,
-    setPeriod,
+    setFilter: urlState?.setFilter ?? setFilter,
+    setPeriod: urlState?.setPeriod ?? setPeriod,
     shouldReduceMotion,
   };
 }

@@ -3,20 +3,22 @@ import {
   consumptionDimensionFromQueryParam,
   DEFAULT_CONSUMPTION_DIMENSION,
 } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import type { UsageFilterCategory } from "@app/components/workspace/analytics/usageFilter";
-import { USAGE_FILTER_CATEGORIES } from "@app/components/workspace/analytics/usageFilter";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import {
   CONSUMPTION_PERIOD_DAY_OPTIONS,
   DEFAULT_CONSUMPTION_PERIOD,
 } from "@app/lib/analytics/consumption_period";
-import { CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
+import {
+  CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION,
+  CONSUMPTION_SCOPE_DIMENSIONS,
+} from "@app/lib/api/analytics/consumption/scope";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type AnalyticsViewState = {
   period: ConsumptionPeriodSelection;
   dimension: ConsumptionDimension;
-  filter: Partial<Record<UsageFilterCategory, string[]>>;
+  filter: Partial<Record<ConsumptionScopeDimension, string[]>>;
 };
 
 export const DEFAULT_ANALYTICS_VIEW_STATE: AnalyticsViewState = {
@@ -33,14 +35,14 @@ const DIMENSION_PARAM = "d";
 
 const CATEGORY_PARAM = {
   agent: "a",
-  member: "u",
+  user: "u",
   group: "g",
   model: "m",
   tool: "t",
   skill: "sk",
   source: "s",
   api_key: "k",
-} as const satisfies Record<UsageFilterCategory, string>;
+} as const satisfies Record<ConsumptionScopeDimension, string>;
 
 export const ANALYTICS_VIEW_PARAMS: readonly string[] = [
   PERIOD_PARAM,
@@ -87,13 +89,13 @@ function readPeriod(
  */
 export function readAnalyticsView(query: AnalyticsQuery): AnalyticsViewState {
   const filter: AnalyticsViewState["filter"] = {};
-  for (const category of USAGE_FILTER_CATEGORIES) {
-    const ids = readValues(query[CATEGORY_PARAM[category]]).slice(
+  for (const dimension of CONSUMPTION_SCOPE_DIMENSIONS) {
+    const ids = readValues(query[CATEGORY_PARAM[dimension]]).slice(
       0,
       CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION
     );
     if (ids.length > 0) {
-      filter[category] = ids;
+      filter[dimension] = ids;
     }
   }
 
@@ -110,9 +112,9 @@ export function readAnalyticsView(query: AnalyticsQuery): AnalyticsViewState {
 
 function filterQuery(filter: AnalyticsViewState["filter"]): AnalyticsQuery {
   const query: AnalyticsQuery = {};
-  for (const category of USAGE_FILTER_CATEGORIES) {
-    query[CATEGORY_PARAM[category]] = filter[category]?.length
-      ? filter[category]
+  for (const dimension of CONSUMPTION_SCOPE_DIMENSIONS) {
+    query[CATEGORY_PARAM[dimension]] = filter[dimension]?.length
+      ? filter[dimension]
       : undefined;
   }
   return query;

@@ -1,5 +1,4 @@
 import { CONSUMPTION_DIMENSIONS } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { USAGE_FILTER_CATEGORIES } from "@app/components/workspace/analytics/usageFilter";
 import { CONSUMPTION_PERIOD_OPTIONS } from "@app/lib/analytics/consumption_period";
 import type { AnalyticsViewState } from "@app/lib/analytics/view_params";
 import {
@@ -11,7 +10,10 @@ import {
   MAX_ANALYTICS_URL_LENGTH,
   readAnalyticsView,
 } from "@app/lib/analytics/view_params";
-import { CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION } from "@app/lib/api/analytics/consumption/scope";
+import {
+  CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION,
+  CONSUMPTION_SCOPE_DIMENSIONS,
+} from "@app/lib/api/analytics/consumption/scope";
 import { describe, expect, it } from "vitest";
 
 const WORKSPACE_ID = "0ec9852c2f";
@@ -107,10 +109,10 @@ describe("every axis of the view survives the round trip", () => {
     expect(roundTripped(view)).toEqual(view);
   });
 
-  it.each(USAGE_FILTER_CATEGORIES)("category %s", (category) => {
+  it.each(CONSUMPTION_SCOPE_DIMENSIONS)("dimension %s", (dimension) => {
     const view = {
       ...DEFAULT_ANALYTICS_VIEW_STATE,
-      filter: { [category]: ["id-1", "id 2", "a&b=c"] },
+      filter: { [dimension]: ["id-1", "id 2", "a&b=c"] },
     };
 
     expect(roundTripped(view)).toEqual(view);
