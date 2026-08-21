@@ -1,5 +1,6 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { archiveInactiveWorkspaceAgents } from "@app/lib/api/assistant/inactivity/archive_inactive_agents";
+import { ONE_DAY_MS } from "@app/lib/api/assistant/inactivity/policy";
 import type { Authenticator } from "@app/lib/auth";
 import * as scheduleClient from "@app/temporal/triggers/schedule_client";
 import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
@@ -9,8 +10,6 @@ import { MentionFactory } from "@app/tests/utils/MentionFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 const THRESHOLD_DAYS = 30;
 
@@ -36,11 +35,7 @@ function mockTemporalClients() {
 
 async function createUnusedAgent(auth: Authenticator, name: string) {
   const agent = await AgentConfigurationFactory.createTestAgent(auth, { name });
-  await AgentConfigurationFactory.setCreatedAtForTest(
-    auth,
-    agent.sId,
-    LONG_AGO
-  );
+  await AgentConfigurationFactory.backdate(auth, agent.sId, LONG_AGO);
 
   return agent;
 }
@@ -66,7 +61,6 @@ describe("archiveInactiveWorkspaceAgents", () => {
     const res = await archiveInactiveWorkspaceAgents(authenticator, {
       thresholdDays: THRESHOLD_DAYS,
       evaluatedAt: new Date(),
-      page: { cursor: null, limit: 50 },
     });
 
     expect(res.isOk()).toBe(true);
@@ -83,7 +77,6 @@ describe("archiveInactiveWorkspaceAgents", () => {
     const input = {
       thresholdDays: THRESHOLD_DAYS,
       evaluatedAt: new Date(),
-      page: { cursor: null, limit: 50 },
     };
 
     const first = await archiveInactiveWorkspaceAgents(authenticator, input);
@@ -106,7 +99,6 @@ describe("archiveInactiveWorkspaceAgents", () => {
     const res = await archiveInactiveWorkspaceAgents(authenticator, {
       thresholdDays: THRESHOLD_DAYS,
       evaluatedAt: new Date(),
-      page: { cursor: null, limit: 50 },
     });
 
     expect(res.isOk() && res.value.archivedAgentIds).toEqual([]);
@@ -127,7 +119,6 @@ describe("archiveInactiveWorkspaceAgents", () => {
     const res = await archiveInactiveWorkspaceAgents(authenticator, {
       thresholdDays: THRESHOLD_DAYS,
       evaluatedAt: new Date(),
-      page: { cursor: null, limit: 50 },
     });
 
     expect(res.isOk() && res.value.archivedAgentIds).toEqual([]);
@@ -141,7 +132,6 @@ describe("archiveInactiveWorkspaceAgents", () => {
     const res = await archiveInactiveWorkspaceAgents(authenticator, {
       thresholdDays: 1,
       evaluatedAt: new Date(),
-      page: { cursor: null, limit: 50 },
     });
 
     expect(res.isErr()).toBe(true);
@@ -149,71 +139,37 @@ describe("archiveInactiveWorkspaceAgents", () => {
     expect(await statusOf(authenticator, agent.sId)).toBe("active");
   });
 
-  it("advances past agents it cannot archive, so a driver terminates", async () => {
-    // Agents the rules always refuse stay candidates forever, so a cursor that did not advance
-    // would hand back the same page for eternity.
+  it("archives every eligible agent of the workspace in one call", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
-    for (const name of ["Scheduled one", "Scheduled two"]) {
-      const agent = await createUnusedAgent(authenticator, name);
-      await TriggerFactory.schedule(authenticator, {
-        agentConfigurationId: agent.sId,
-        status: "enabled",
-        configuration: { cron: "0 9 * * *", timezone: "UTC" },
-      });
+    await createUnusedAgent(authenticator, "Idle one");
+    await createUnusedAgent(authenticator, "Idle two");
+
+    const scheduled = await createUnusedAgent(authenticator, "Scheduled");
+    await TriggerFactory.schedule(authenticator, {
+      agentConfigurationId: scheduled.sId,
+      status: "enabled",
+      configuration: { cron: "0 9 * * *", timezone: "UTC" },
+    });
+
+    const res = await archiveInactiveWorkspaceAgents(authenticator, {
+      thresholdDays: THRESHOLD_DAYS,
+      evaluatedAt: new Date(),
+    });
+    if (res.isErr()) {
+      throw res.error;
     }
 
-    const skippedAgentIds: string[] = [];
-    let cursor: string | null = null;
-    let pages = 0;
+    expect(res.value.archivedAgentIds).toHaveLength(2);
+    expect(res.value.skipped).toEqual([
+      { agentId: scheduled.sId, reason: "active_schedule" },
+    ]);
 
-    do {
-      const res = await archiveInactiveWorkspaceAgents(authenticator, {
-        thresholdDays: THRESHOLD_DAYS,
-        evaluatedAt: new Date(),
-        // One at a time, so the failure cannot hide behind a page big enough to hold everything.
-        page: { cursor, limit: 1 },
-      });
-      if (res.isErr()) {
-        throw res.error;
-      }
-
-      expect(res.value.archivedAgentIds).toEqual([]);
-      skippedAgentIds.push(...res.value.skipped.map(({ agentId }) => agentId));
-      cursor = res.value.nextCursor;
-      pages += 1;
-    } while (cursor !== null && pages < 5);
-
-    expect(cursor).toBeNull();
-    expect(new Set(skippedAgentIds).size).toBe(2);
-    expect(skippedAgentIds).toHaveLength(2);
-  });
-
-  it("reports a cursor so the caller can drive the next page", async () => {
-    const { authenticator } = await createResourceTest({ role: "admin" });
-    await createUnusedAgent(authenticator, "Page one");
-    await createUnusedAgent(authenticator, "Page two");
-
-    const firstPage = await archiveInactiveWorkspaceAgents(authenticator, {
+    // A second call has nothing left: the archived ones are no longer candidates.
+    const again = await archiveInactiveWorkspaceAgents(authenticator, {
       thresholdDays: THRESHOLD_DAYS,
       evaluatedAt: new Date(),
-      page: { cursor: null, limit: 1 },
     });
 
-    expect(firstPage.isOk() && firstPage.value.archivedAgentIds).toHaveLength(
-      1
-    );
-    const nextCursor = firstPage.isOk() ? firstPage.value.nextCursor : null;
-    expect(nextCursor).not.toBeNull();
-
-    const secondPage = await archiveInactiveWorkspaceAgents(authenticator, {
-      thresholdDays: THRESHOLD_DAYS,
-      evaluatedAt: new Date(),
-      page: { cursor: nextCursor, limit: 1 },
-    });
-
-    expect(secondPage.isOk() && secondPage.value.archivedAgentIds).toHaveLength(
-      1
-    );
-    expect(secondPage.isOk() && secondPage.value.nextCursor).toBeNull();
+    expect(again.isOk() && again.value.archivedAgentIds).toEqual([]);
   });
 });
