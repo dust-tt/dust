@@ -328,7 +328,6 @@ export function APIKeys({
           isLoading={isDataLoading}
           isError={isDataError}
           consumptionRows={consumptionRows}
-          totalCredits={totalCredits}
           isConsumptionLoading={isConsumptionLoading}
           isConsumptionError={Boolean(consumptionError)}
           hasMoreConsumptionRows={hasMoreConsumptionRows}
