@@ -38,8 +38,7 @@ const DEFAULT_PRICING = MODEL_PRICING[DEFAULT_PRICING_MODEL_ID];
 // This discount factor applies to OpenAi, Anthropic, Google and Mistral
 const BATCH_DISCOUNT_FACTOR = 0.5;
 
-// OpenAI bills flex processing at Batch-API token prices, on both the short- and
-// long-context rates of every model that publishes a flex tier.
+// OpenAI bills flex processing at Batch-API token prices
 // Verified 2026-08-21: https://developers.openai.com/api/docs/pricing
 export const FLEX_DISCOUNT_FACTOR = BATCH_DISCOUNT_FACTOR;
 
