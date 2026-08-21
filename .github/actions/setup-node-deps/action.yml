@@ -24,6 +24,10 @@ runs:
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
         node-version: ${{ inputs.node-version }}
+        # node_modules are already restored below via actions/cache, so npm ci
+        # is skipped on cache hit and this cache is never read. Downloading it
+        # anyway costs ~15s per job for nothing.
+        package-manager-cache: false
 
     - name: Upgrade npm
       shell: bash
