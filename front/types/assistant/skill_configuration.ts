@@ -1,23 +1,27 @@
 import { MCPServerViewSchema } from "@app/lib/api/mcp_schemas";
+import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
+import {
+  SKILL_AVAILABILITIES,
+  SKILL_STATUSES,
+} from "@app/types/assistant/skill_configuration_constants";
 import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { UserType } from "@app/types/user";
 import { z } from "zod";
 
-export const SKILL_STATUSES = ["active", "archived", "suggested"] as const;
-export type SkillStatus = (typeof SKILL_STATUSES)[number];
-
 export const SKILL_REINFORCEMENT_MODES = ["auto", "on", "off"] as const;
 export type SkillReinforcementMode = (typeof SKILL_REINFORCEMENT_MODES)[number];
 
-export const SKILL_AVAILABILITIES = [
-  "editors",
-  "workspace_users",
-  "users_and_agents",
-] as const;
-export type SkillAvailability = (typeof SKILL_AVAILABILITIES)[number];
-
-export const DEFAULT_SKILL_AVAILABILITY = "editors" satisfies SkillAvailability;
+// Re-exported from the leaf module so importers do not have to care which file they live in.
+export {
+  DEFAULT_SKILL_AVAILABILITY,
+  SKILL_AVAILABILITIES,
+  SKILL_STATUSES,
+} from "@app/types/assistant/skill_configuration_constants";
+export type {
+  SkillAvailability,
+  SkillStatus,
+} from "@app/types/assistant/skill_configuration_constants";
 
 // The DB column is availability; isDefault survives as a boolean alias in the API and
 // frontend. Remove these mappings once clients rely on availability directly.

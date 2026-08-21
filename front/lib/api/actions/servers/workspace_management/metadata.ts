@@ -1,4 +1,8 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import {
+  SKILL_AVAILABILITIES,
+  SKILL_STATUSES,
+} from "@app/types/assistant/skill_configuration_constants";
 import { z } from "zod";
 
 export const WORKSPACE_MANAGEMENT_SERVER_NAME = "workspace_management" as const;
@@ -15,14 +19,6 @@ export const MAX_PAGE_SIZE = 50;
 // GET /api/v1/w/{wId}/assistant/agent_configurations endpoint so both surfaces share one
 // vocabulary, plus `archived`. `all_unrestricted` is the admin-only view that lifts both the scope restriction
 // (unpublished agents the caller does not edit) and the space one.
-const SKILL_AVAILABILITY_VALUES = [
-  "editors",
-  "workspace_users",
-  "users_and_agents",
-] as const;
-
-const SKILL_STATUS_VALUES = ["active", "archived", "suggested"] as const;
-
 export const AGENT_VIEWS = [
   "list",
   "all",
@@ -86,7 +82,7 @@ const getAgentDetailsSchema = {
 
 const listSkillsSchema = {
   availability: z
-    .array(z.enum(SKILL_AVAILABILITY_VALUES))
+    .array(z.enum(SKILL_AVAILABILITIES))
     .optional()
     .describe(
       "Only return skills with one of these availabilities. 'editors': visible " +
@@ -95,7 +91,7 @@ const listSkillsSchema = {
         "own. Omit for all availabilities."
     ),
   status: z
-    .enum(SKILL_STATUS_VALUES)
+    .enum(SKILL_STATUSES)
     .optional()
     .describe(
       "Skill status to list. 'active' (default), 'archived', or 'suggested'."
