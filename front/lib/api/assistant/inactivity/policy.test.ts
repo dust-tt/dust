@@ -40,7 +40,6 @@ function daysBeforeEvaluation(days: number): Date {
   return new Date(EVALUATED_AT.getTime() - days * ONE_DAY_MS);
 }
 
-/** The cutoff for the 30-day threshold, which every eligibility test below evaluates against. */
 function cutoffFor(thresholdDays: number): Date {
   const cutoffRes = computeInactivityCutoffAt({
     thresholdDays,
@@ -80,7 +79,6 @@ describe("computeInactivityCutoffAt", () => {
   });
 
   it("ignores the time of day, so every run on one date shares a cutoff", () => {
-    // A nightly job at 02:00 and an admin previewing at 17:00 must judge every agent identically.
     const nightly = computeInactivityCutoffAt({
       thresholdDays: THRESHOLD_30_DAYS,
       evaluatedAt: new Date("2026-08-18T02:00:00.000Z"),
@@ -121,11 +119,10 @@ describe("computeInactivityCutoffAt", () => {
       2.5,
       NaN,
       Infinity,
-      // A year is fine; a decade is a typo that would silently archive nothing forever.
       MAX_INACTIVITY_THRESHOLD_DAYS + 1,
       3650,
-      // Large enough that the cutoff arithmetic overflows to an Invalid Date, which
-      // `Number.isInteger` alone would have let through and bound straight into SQL.
+      // Overflows the cutoff arithmetic to an Invalid Date, which `Number.isInteger` alone would
+      // have let through and bound straight into SQL.
       Number.MAX_SAFE_INTEGER,
     ];
 
@@ -154,8 +151,7 @@ describe("computeInactivityCutoffAt", () => {
 
 describe("evaluateAgentArchivalEligibility", () => {
   it("keeps an agent created after the cutoff, however unused", () => {
-    // A young agent has not existed long enough to have fallen out of use. Without this rule the
-    // first nightly run after somebody builds an agent archives it.
+    // Without this rule the first nightly run after somebody builds an agent archives it.
     expect(
       evaluateAgentArchivalEligibility({
         agent: agent({
@@ -246,9 +242,7 @@ describe("evaluateAgentArchivalEligibility", () => {
     });
 
     it("exempts an agent whose schedule Dust paused, not the workspace", () => {
-      // Workspace relocation and plan downgrade flip every enabled trigger of a workspace in bulk.
-      // Reading those as "no schedule" would archive every scheduled agent of a workspace that
-      // happens to be mid-relocation.
+      // Relocation and plan downgrade flip every enabled trigger of a workspace in bulk.
       const dustPausedStatuses: TriggerStatus[] = ["relocating", "downgraded"];
 
       for (const status of dustPausedStatuses) {
@@ -313,8 +307,8 @@ describe("evaluateAgentArchivalEligibility", () => {
   });
 
   it("does not exempt an agent that only has pending wake-ups", () => {
-    // Wake-ups are a delayed continuation of one conversation, not a durable automation, so they are
-    // not represented in the snapshot at all: an inactive agent stays eligible.
+    // A wake-up continues one conversation rather than driving the agent, so it is not in the
+    // snapshot at all.
     expect(
       evaluateAgentArchivalEligibility({
         agent: agent({
@@ -327,8 +321,7 @@ describe("evaluateAgentArchivalEligibility", () => {
   });
 
   it("excludes agents that are not active", () => {
-    // `disabled_by_admin`, `disabled_missing_datasource` and `disabled_free_workspace` only ever
-    // belong to global agents: a workspace policy has no business retiring an agent it does not own.
+    // The `disabled_*` statuses only ever belong to global agents, which a workspace does not own.
     const nonActiveStatuses: AgentConfigurationStatus[] = [
       "archived",
       "draft",
@@ -349,8 +342,7 @@ describe("evaluateAgentArchivalEligibility", () => {
   });
 
   it("reports the status exclusion before any activity-based reason", () => {
-    // An already-archived agent must never read as "recently used": a repeated run has to be a
-    // no-op for the same machine-readable reason every time.
+    // A repeated run has to be a no-op for the same machine-readable reason every time.
     expect(
       evaluateAgentArchivalEligibility({
         agent: agent({
@@ -377,8 +369,6 @@ describe("evaluateAgentArchivalEligibility", () => {
       lastMentionedAt: daysBeforeEvaluation(30),
     });
 
-    // Same agent, same cutoff: same decision. Evaluated a day later — i.e. against a cutoff that has
-    // moved past its last mention — the very same snapshot becomes eligible.
     expect(
       evaluateAgentArchivalEligibility({
         agent: snapshot,

@@ -76,9 +76,7 @@ describe("archiveInactiveWorkspaceAgents", () => {
   });
 
   it("archives nothing on a replay of the same input", async () => {
-    // A Temporal retry replays its input verbatim. The archived agent is no longer active, so it does
-    // not come back from the fetch at all: it cannot be archived twice, and no second
-    // `agent.archived` audit event is emitted.
+    // A retried activity re-runs the fetch, and an archived agent is no longer a candidate.
     const { authenticator } = await createResourceTest({ role: "admin" });
     const agent = await createUnusedAgent(authenticator, "Forgotten twice");
 
@@ -152,9 +150,8 @@ describe("archiveInactiveWorkspaceAgents", () => {
   });
 
   it("advances past agents it cannot archive, so a driver terminates", async () => {
-    // The failure this guards: agents the rules always refuse stay candidates forever, so a driver
-    // that did not advance its cursor would be handed the same page for eternity and never reach the
-    // rest of the workspace.
+    // Agents the rules always refuse stay candidates forever, so a cursor that did not advance
+    // would hand back the same page for eternity.
     const { authenticator } = await createResourceTest({ role: "admin" });
     for (const name of ["Scheduled one", "Scheduled two"]) {
       const agent = await createUnusedAgent(authenticator, name);
@@ -173,8 +170,7 @@ describe("archiveInactiveWorkspaceAgents", () => {
       const res = await archiveInactiveWorkspaceAgents(authenticator, {
         thresholdDays: THRESHOLD_DAYS,
         evaluatedAt: new Date(),
-        // One at a time, so a cursor that failed to advance would loop forever rather than hiding
-        // behind a page big enough to hold everything.
+        // One at a time, so the failure cannot hide behind a page big enough to hold everything.
         page: { cursor, limit: 1 },
       });
       if (res.isErr()) {
@@ -188,7 +184,6 @@ describe("archiveInactiveWorkspaceAgents", () => {
     } while (cursor !== null && pages < 5);
 
     expect(cursor).toBeNull();
-    // Each agent was seen once, and both were reached.
     expect(new Set(skippedAgentIds).size).toBe(2);
     expect(skippedAgentIds).toHaveLength(2);
   });
