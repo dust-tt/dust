@@ -1,5 +1,4 @@
 import { isDatabaseFileSystemPodName } from "@app/lib/api/file_system/storage_mode";
-import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
@@ -37,7 +36,6 @@ import {
 } from "@app/types/groups";
 import type {
   AccessControlList,
-  GroupGrant,
   RoleGrant,
 } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -1877,20 +1875,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     ];
   }
 
-  // The pre-migration inline-group ACL: the code role rules plus the space's `group_vaults`
-  // associations listed inline, filtered by the caller's membership at check time. Served only when
-  // the `use_legacy_acls` kill switch is on (see `hasSpacePermission`). Remove with the switch once
-  // the table is trusted.
-  private legacyAcls(): AccessControlList[] {
-    return [
-      {
-        workspaceId: this.workspaceId,
-        roles: this.spaceRoleGrants(),
-        groups: this.legacySpaceGroupGrants(),
-      },
-    ];
-  }
-
   // The verbs each workspace role holds on this space, by space kind.
   private spaceRoleGrants(): RoleGrant[] {
     // System space.
@@ -2004,65 +1988,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return groups.map((group) => ({
       groupId: group.id,
       grantType: "member",
-    }));
-  }
-
-  // The group grants this space confers, derived from its `group_vaults` associations in code, with
-  // the verbs stated literally as `GroupResource.getAccessControlLists` does. This is the legacy
-  // path: what `getAccessControlLists` serves until the flip.
-  private legacySpaceGroupGrants(): GroupGrant[] {
-    // System space: its groups manage the workspace's connections.
-    if (this.isSystem()) {
-      return this.groups.map((group) => ({
-        id: group.groupId,
-        permissions: ["read", "write"],
-      }));
-    }
-
-    // Global Workspace space and Conversations space: write comes from the role grants.
-    if (this.isGlobal() || this.isConversations()) {
-      return this.groups.map((group) => ({
-        id: group.groupId,
-        permissions: ["read"],
-      }));
-    }
-
-    // Provisioned groups do not carry grants on manually-managed spaces.
-    const groups =
-      this.managementMode === "manual"
-        ? this.groups.filter((group) => !group.isProvisioned())
-        : this.groups;
-
-    // Open regular space: every group only reads; write comes from the role grants.
-    if (this.isRegularAndOpen()) {
-      return groups.map((group) => ({
-        id: group.groupId,
-        permissions: ["read"],
-      }));
-    }
-
-    if (this.isProject()) {
-      return groups.map((group) => {
-        switch (group.groupSpaceKind) {
-          case "project_editor":
-            return {
-              id: group.groupId,
-              permissions: ["admin", "read", "write"],
-            };
-          case "member":
-            return { id: group.groupId, permissions: ["read", "write"] };
-          case "project_viewer":
-            return { id: group.groupId, permissions: ["read"] };
-          default:
-            assertNever(group.groupSpaceKind);
-        }
-      });
-    }
-
-    // Restricted regular space.
-    return groups.map((group) => ({
-      id: group.groupId,
-      permissions: ["read", "write"],
     }));
   }
 
@@ -2215,20 +2140,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return this.hasSpacePermission(auth, "read");
   }
 
-  // Serves the decision from `group_permissions` (see `getAccessControlLists`), unless the
-  // `use_legacy_acls` kill switch is on — then it falls back to the pre-migration inline-group ACL,
-  // where the space's groups are listed inline and membership decides. Remove the fallback (and the
-  // switch) once the table is trusted.
+  // Serves the space permission decision from `group_permissions` (see `getAccessControlLists`).
   private hasSpacePermission(auth: Authenticator, verb: GrantVerb): boolean {
-    auth.shadowComparePermission(verb, this, this.legacyAcls(), {
-      resource: "space",
-      spaceId: this.sId,
-    });
-
-    if (isLegacyAclsEnabled()) {
-      return auth.hasPermissionForAcls(verb, this.legacyAcls());
-    }
-
     return auth.hasPermission(verb, this);
   }
 
