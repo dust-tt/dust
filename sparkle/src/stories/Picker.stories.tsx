@@ -1,7 +1,8 @@
 import type { EmojiMartData } from "@emoji-mart/data";
 import data from "@emoji-mart/data";
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
+import { fn } from "storybook/test";
 
 import { Paint } from "@sparkle/icons";
 import { ActionIcons } from "@sparkle/icons";
@@ -18,11 +19,11 @@ import { FaceSmile } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Forms & Inputs/Picker",
-  component: ColorPicker,
+  component: IconPicker,
   parameters: {
     docs: {
       description: {
-        component: `A family of grid-based selection pickers for choosing a visual token. **ColorPicker** presents a palette of **colors** with a **selectedColor** and **onColorSelect**; **IconPicker** lists named **icons** with **selectedIcon** and **onIconSelect**; **EmojiPicker** wraps emoji-mart for emoji selection via **onEmojiSelect**.
+        component: `A family of grid-based selection pickers for choosing a visual token. **IconPicker** lists named **icons** with **selectedIcon** and **onIconSelect**; **ColorPicker** presents a palette of **colors** with a **selectedColor** and **onColorSelect**; **EmojiPicker** wraps emoji-mart for emoji selection via **onEmojiSelect**.
 
 **When to use**
 - To let users pick an accent colour, icon, or emoji when customising an entity (agent avatar, folder, label).
@@ -33,11 +34,12 @@ const meta = {
       },
     },
   },
-} satisfies Meta<typeof ColorPicker>;
+} satisfies Meta<typeof IconPicker>;
 
 export default meta;
+type Story = StoryObj;
 
-const colors = [
+const COLORS = [
   "bg-gray-100",
   "bg-gray-200",
   "bg-gray-300",
@@ -112,108 +114,121 @@ const colors = [
   "bg-emerald-800",
 ];
 
-const ColorPickerExample = () => {
-  const [selectedColor, setSelectedColor] = useState(colors[0]);
-  const [isOpen, setIsOpen] = useState(false);
+const onEmojiSelect = fn();
 
-  return (
-    <div className="mt-14 flex flex-col items-center gap-6">
-      <div className="w-full max-w-2xl">
-        <h3 className="mb-4 text-lg font-medium">Color Picker</h3>
-        <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              label="Select Color"
-              variant="outline"
-              icon={Paint}
-              size="sm"
-              className={selectedColor}
-              isSelect
-            />
-          </PopoverTrigger>
-          <PopoverContent className="w-fit">
-            <ColorPicker
-              colors={colors}
-              selectedColor={selectedColor}
-              onColorSelect={(color: string) => {
-                setSelectedColor(color);
-                setIsOpen(false);
-              }}
-            />
-          </PopoverContent>
-        </PopoverRoot>
-      </div>
-    </div>
-  );
-};
-
-const IconPickerExample = () => {
+const IconPickerDemo = () => {
   const [selectedIcon, setSelectedIcon] = useState(Object.keys(ActionIcons)[0]);
   const [isOpen, setIsOpen] = useState(false);
   const SelectedIcon = ActionIcons[selectedIcon as keyof typeof ActionIcons];
 
   return (
-    <div className="mt-14 flex flex-col items-center gap-6">
-      <div className="w-full max-w-2xl">
-        <h3 className="mb-4 text-lg font-medium">Icon Picker</h3>
-        <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              label="Select Icon"
-              variant="outline"
-              size="sm"
-              icon={SelectedIcon}
-              isSelect
-            />
-          </PopoverTrigger>
-          <PopoverContent className="w-fit p-0">
-            <IconPicker
-              icons={ActionIcons}
-              selectedIcon={selectedIcon}
-              onIconSelect={(iconName: string) => {
-                setSelectedIcon(iconName);
-                setIsOpen(false);
-              }}
-            />
-          </PopoverContent>
-        </PopoverRoot>
-      </div>
-    </div>
+    <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          label="Select Icon"
+          variant="outline"
+          size="sm"
+          icon={SelectedIcon}
+          isSelect
+        />
+      </PopoverTrigger>
+      <PopoverContent className="w-fit p-0">
+        <IconPicker
+          icons={ActionIcons}
+          selectedIcon={selectedIcon}
+          onIconSelect={(iconName: string) => {
+            setSelectedIcon(iconName);
+            setIsOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </PopoverRoot>
   );
 };
 
-const EmojiPickerExample = () => {
+/**
+ * Documents **IconPicker**: a searchable grid of named icons in a popover;
+ * the selected icon name drives the trigger button's icon.
+ * @summary IconPicker in a popover with stateful selection.
+ */
+export const PickIcon: Story = {
+  render: () => <IconPickerDemo />,
+};
+
+const ColorPickerDemo = () => {
+  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="mt-14 flex flex-col items-center gap-6">
-      <div className="w-full max-w-2xl">
-        <h3 className="mb-4 text-lg font-medium">Emoji Picker</h3>
-        <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              label="Pick an Emoji"
-              variant="outline"
-              icon={FaceSmile}
-              size="sm"
-              isSelect
-            />
-          </PopoverTrigger>
-          <PopoverContent fullWidth>
-            <EmojiPicker
-              theme="light"
-              previewPosition="none"
-              data={data as EmojiMartData}
-              onEmojiSelect={(emoji) => {
-                alert(emoji.native);
-                setIsOpen(false);
-              }}
-            />
-          </PopoverContent>
-        </PopoverRoot>
-      </div>
-    </div>
+    <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          label="Select Color"
+          variant="outline"
+          icon={Paint}
+          size="sm"
+          className={selectedColor}
+          isSelect
+        />
+      </PopoverTrigger>
+      <PopoverContent className="w-fit">
+        <ColorPicker
+          colors={COLORS}
+          selectedColor={selectedColor}
+          onColorSelect={(color: string) => {
+            setSelectedColor(color);
+            setIsOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </PopoverRoot>
   );
 };
 
-export { ColorPickerExample, EmojiPickerExample, IconPickerExample };
+/**
+ * Documents **ColorPicker**: a palette grid mounted in a popover, with the
+ * chosen color kept in state and reflected on the trigger button.
+ * @summary ColorPicker in a popover with stateful selection.
+ */
+export const PickColor: Story = {
+  render: () => <ColorPickerDemo />,
+};
+
+const EmojiPickerDemo = () => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          label="Pick an Emoji"
+          variant="outline"
+          icon={FaceSmile}
+          size="sm"
+          isSelect
+        />
+      </PopoverTrigger>
+      <PopoverContent fullWidth>
+        <EmojiPicker
+          theme="light"
+          previewPosition="none"
+          data={data as EmojiMartData}
+          onEmojiSelect={(emoji) => {
+            onEmojiSelect(emoji);
+            setIsOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </PopoverRoot>
+  );
+};
+
+/**
+ * Documents **EmojiPicker**: the emoji-mart grid in a popover; the
+ * selection is reported through \`onEmojiSelect\` (spied with \`fn()\`)
+ * and closes the popover.
+ * @summary EmojiPicker in a popover with a spied select callback.
+ */
+export const PickEmoji: Story = {
+  render: () => <EmojiPickerDemo />,
+};

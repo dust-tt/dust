@@ -40,15 +40,13 @@ app.post(
 
     const user = auth.getNonNullableUser();
 
-    const groupReferencesToLeave = space.groups.filter(
-      (group) => group.isRegularAuto() || group.groupKind === "space_editors"
+    const groupReferencesToLeave = space.groups.filter((group) =>
+      group.isRegularAuto()
     );
     const groupsToLeave = await space.fetchGroupResources(auth, {
       groupReferences: groupReferencesToLeave,
     });
-    const editorGroup = groupsToLeave.find(
-      (group) => group.kind === "space_editors"
-    );
+    const editorGroup = await space.fetchManualEditorGroup(auth);
 
     if (editorGroup) {
       const activeEditors = await editorGroup.getActiveMembers(auth);

@@ -22,11 +22,13 @@ const ICONS = {
 const meta = {
   title: "Actions/LegacyButton",
   component: Button,
-  tags: ["a11y-issues", "autodocs"],
+  tags: ["deprecated", "!manifest", "a11y-issues", "autodocs"],
   parameters: {
     docs: {
       description: {
-        component: `Buttons let users trigger an action or event — submitting a form, opening a dialog, or confirming a choice. Sparkle buttons come in several visual **variants** and **sizes**, and support icons, loading and pulsing states, an inline counter, and a dropdown-chevron affordance (**isSelect**).
+        component: `**Deprecated — use Button instead.** Kept only as a visual reference for legacy product surfaces.
+
+Buttons let users trigger an action or event — submitting a form, opening a dialog, or confirming a choice. Sparkle buttons come in several visual **variants** and **sizes**, and support icons, loading and pulsing states, an inline counter, and a dropdown-chevron affordance (**isSelect**).
 
 **When to use**
 - To perform an action on the current page (save, delete, open a menu).
@@ -132,7 +134,7 @@ export const ExampleButton: Story = {
 };
 
 export const MiniButton: Story = {
-  render: () => <Button size="icon" icon={Plus} />,
+  render: () => <Button size="mini" icon={Plus} />,
 };
 
 const ButtonBySize = ({

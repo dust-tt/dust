@@ -34,8 +34,6 @@ import { isRoleType } from "./user";
 export const GROUP_KINDS = [
   "regular_auto",
   "regular_manual",
-  // space_editors is used to know if a member of a manual group can edit the group
-  "space_editors",
   "global",
   "system",
   "agent_editors",
@@ -108,7 +106,6 @@ export const GroupKindCodec = z.enum([
   "global",
   "regular_auto",
   "regular_manual",
-  "space_editors",
   "agent_editors",
   "skill_editors",
   "system",

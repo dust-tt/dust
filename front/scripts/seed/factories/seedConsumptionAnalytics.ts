@@ -216,6 +216,7 @@ function makeAgent(
   parentAgentId?: string
 ): AgentMessageConsumptionAnalyticsAgent {
   return {
+    attributed_id: agentId,
     id: agentId,
     version: "0",
     tag_ids: [],

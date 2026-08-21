@@ -16,6 +16,7 @@ import {
 } from "@app/types/assistant/models/models";
 import {
   GPT_5_5_MODEL_ID,
+  GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
   GPT_5_NANO_MODEL_ID,
 } from "@app/types/assistant/models/openai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
@@ -117,6 +118,17 @@ describe("token_pricing/tiers", () => {
     expect(ModelsTierResource.getTierForModel(GPT_5_5_MODEL_ID, "light")).toBe(
       "premium"
     );
+  });
+
+  it("classifies the long-context Terra model as premium", () => {
+    for (const effort of ["none", "light", "medium", "high"] as const) {
+      expect(
+        ModelsTierResource.getTierForModel(
+          GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
+          effort
+        )
+      ).toBe("premium");
+    }
   });
 
   it("classifies small models with light reasoning as cost efficient", () => {

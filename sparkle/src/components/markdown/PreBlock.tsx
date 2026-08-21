@@ -18,10 +18,18 @@ export const preBlockVariants = cva(
 
 interface PreBlockProps {
   children: React.ReactNode;
+  /** Visual variant; only "surface" is currently supported. */
   variant?: "surface";
+  /** hast node from react-markdown; its position is used to skip re-renders during streaming. */
   node?: MarkdownNode;
 }
 
+/**
+ * Renders `<pre>` elements inside Markdown output as the rounded container
+ * around fenced code blocks, falling back to the node's meta string when the
+ * code content is empty.
+ * @summary Pre-element container for Markdown code blocks.
+ */
 export const PreBlock = memo(
   ({ children, variant = "surface" }: PreBlockProps) => {
     const validChildrenContent =

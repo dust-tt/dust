@@ -563,7 +563,7 @@ export async function importPodApp(
       warnings.push(`Function ${fn.name}: ${publishResult.error.message}`);
       continue;
     }
-    publishedFunctionSlugs.push(publishResult.value.slug);
+    publishedFunctionSlugs.push(publishResult.value.sandboxFunction.slug);
   }
 
   // 4. Databases, reconciled empty from the copied schema files. Data never travels.

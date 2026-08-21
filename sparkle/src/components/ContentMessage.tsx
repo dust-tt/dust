@@ -168,11 +168,23 @@ export interface ContentMessageProps {
   children?: React.ReactNode;
   className?: string;
   size?: ContentMessageSizeType;
+  /** Color variant — pick by the consequence for the user: `primary` neutral, `blue` informational, `warning`/`rose` blocking error, `info`/`golden` (orange) risk or degraded capability. */
   variant?: ContentMessageVariantType;
+  /** Icon component rendered before the title. */
   icon?: ComponentType;
+  /** Trailing action rendered on the right (e.g. a ContentMessageAction button). */
   action?: React.ReactNode;
 }
 
+/**
+ * An inline, non-blocking message that communicates contextual information,
+ * feedback, or status without interrupting the user, in multiple variants and
+ * sizes with an optional icon and action. Use it for persistent, contextual
+ * information attached to a region of the page; for transient feedback after
+ * an action prefer a Notification (toast), and for a decision that must block
+ * the flow prefer a Dialog.
+ * @summary Inline contextual message or status banner.
+ */
 function ContentMessage({
   title,
   variant = "info",
@@ -229,6 +241,7 @@ function ContentMessage({
   );
 }
 
+/** A small Button preset for use as the action of a ContentMessage or ContentMessageInline. */
 function ContentMessageAction(props: ButtonProps) {
   return (
     <Button size="xs" className={cn("shrink-0", props.className)} {...props} />
@@ -239,10 +252,13 @@ export interface ContentMessageInlineProps {
   title?: string;
   className?: string;
   children?: React.ReactNode;
+  /** Color variant — same semantics as ContentMessage. */
   variant?: ContentMessageVariantType;
+  /** Icon component rendered before the content. */
   icon?: ComponentType;
 }
 
+/** Compact single-line form of ContentMessage; ContentMessageAction children are pulled out and rendered as trailing actions. */
 function ContentMessageInline({
   title,
   variant = "info",

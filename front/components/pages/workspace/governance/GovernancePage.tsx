@@ -6,6 +6,7 @@ import { SkillDiscoverabilityWarning } from "@app/components/pages/workspace/gov
 import { ExtensionMcpToolsSection } from "@app/components/workspace/ExtensionMcpToolsSection";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
 import { AuditLogsGovernanceSection } from "@app/components/workspace/settings/AuditLogsToggle";
+import { ConversationExternalNotificationsToggle } from "@app/components/workspace/settings/ConversationExternalNotificationsToggle";
 import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharing } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
@@ -41,6 +42,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import {
   ActionFrame,
+  Clock,
   CloudArrowLeftRight,
   ContentMessage,
   Cube01,
@@ -83,6 +85,7 @@ function groupGovernancePermissionsBySection(
   skills: GovernancePermission[];
   frames: GovernancePermission[];
   billingAndSecurity: GovernancePermission[];
+  triggers: GovernancePermission[];
 } {
   const resolve = (specs: CapabilitySpec[]): GovernancePermission[] =>
     removeNulls(
@@ -94,6 +97,7 @@ function groupGovernancePermissionsBySection(
     skills: resolve(GOVERNANCE_CAPABILITIES.skill),
     frames: resolve(GOVERNANCE_CAPABILITIES.frame),
     billingAndSecurity: resolve(GOVERNANCE_CAPABILITIES.billingAndSecurity),
+    triggers: resolve(GOVERNANCE_CAPABILITIES.trigger),
   };
 }
 
@@ -117,7 +121,7 @@ export const GovernancePage = () => {
   const isLoading = isGroupsLoading || isGovernancePermissionsLoading;
   const isError = isGroupsError || isGovernancePermissionsError;
 
-  const { agents, skills, frames, billingAndSecurity } =
+  const { agents, skills, frames, billingAndSecurity, triggers } =
     groupGovernancePermissionsBySection(governancePermissions);
 
   const framePermissions = frames.filter((permission) =>
@@ -130,7 +134,7 @@ export const GovernancePage = () => {
   };
 
   const sections: {
-    id: "agents" | "skills" | "frame" | "billing";
+    id: "agents" | "skills" | "frame" | "automations" | "billing";
     label: string;
     icon: ComponentType;
     governancePermissions: GovernancePermission[];
@@ -147,6 +151,16 @@ export const GovernancePage = () => {
       icon: PuzzlePiece01,
       governancePermissions: skills,
     },
+    ...(triggers.length > 0
+      ? [
+          {
+            id: "automations" as const,
+            label: "Automations",
+            icon: Clock,
+            governancePermissions: triggers,
+          },
+        ]
+      : []),
     ...(framePermissions.length > 0 || isAdmin
       ? [
           {
@@ -247,6 +261,7 @@ export const GovernancePage = () => {
               <WorkspaceDefaultAgentPicker owner={owner} />
               <VoiceTranscriptionToggle owner={owner} />
               <EmailAgentsToggle owner={owner} />
+              <ConversationExternalNotificationsToggle owner={owner} />
               <PrivateConversationUrlsToggle owner={owner} />
               <DustMcpServerSettingsItem owner={owner} />
               <ExtensionMcpToolsSection owner={owner} />

@@ -5,6 +5,7 @@ import { previousConsumptionPeriod } from "@app/lib/api/analytics/consumption/pe
 import type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
+  ConsumptionTopSortOrder,
   ConsumptionTopUnit,
 } from "@app/lib/api/analytics/consumption/scope";
 import {
@@ -171,11 +172,13 @@ function buildConsumptionTopAggregations({
   bucketCount,
   excludedKeys,
   searchFilter,
+  sortOrder,
 }: {
   dimension: ConsumptionScopeDimension;
   bucketCount: number;
   excludedKeys: string[];
   searchFilter: estypes.QueryDslQueryContainer | null;
+  sortOrder: ConsumptionTopSortOrder;
 }): Record<string, estypes.AggregationsAggregationContainer> {
   const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
   const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
@@ -185,7 +188,7 @@ function buildConsumptionTopAggregations({
       terms: {
         field: dimensionField,
         size: bucketCount,
-        order: { [CREDIT_AGG]: "desc" },
+        order: { [CREDIT_AGG]: sortOrder },
         ...(excludedKeys.length > 0 ? { exclude: excludedKeys } : {}),
       },
       aggs: subAggs(unit),
@@ -293,6 +296,7 @@ export async function fetchConsumptionTopGroups(
     offset = 0,
     search,
     filter,
+    sortOrder = "desc",
   }: {
     dimension: ConsumptionScopeDimension;
     period: ConsumptionPeriod;
@@ -300,6 +304,7 @@ export async function fetchConsumptionTopGroups(
     offset?: number;
     search?: string;
     filter?: ConsumptionScopeFilter;
+    sortOrder?: ConsumptionTopSortOrder;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
   const searchFilter = await resolveConsumptionTopSearchFilter(auth, {
@@ -322,7 +327,7 @@ export async function fetchConsumptionTopGroups(
   let totalCredits = 0;
 
   // Terms aggregations do not expose an after_key when ordered by a metric.
-  // Continue the credit-ranked result in bounded batches by excluding the keys
+  // Continue the ranked result in bounded batches by excluding the keys
   // already returned, and stop as soon as the requested page is available.
   do {
     batchSize = Math.min(
@@ -334,6 +339,7 @@ export async function fetchConsumptionTopGroups(
       bucketCount: batchSize,
       excludedKeys: rankedGroups.map((group) => group.key),
       searchFilter,
+      sortOrder,
     });
     const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
       aggregations,

@@ -421,6 +421,12 @@ describe("SandboxFunctionResource", () => {
       outputSchema: newOutputSchema,
     });
     expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    // The row was created without a hash (pre-hash publish), so nothing can match: the
+    // re-publish must not be reported as byte-identical.
+    expect(result.value.byteIdentical).toBe(false);
 
     // The row keeps the same bundle file and gets the refreshed contract.
     expect(sandboxFunction.fileId).toBe(firstFile.id);

@@ -302,10 +302,10 @@ describe("createSpaceAndGroup", () => {
       if (result.isOk()) {
         const pod = result.value;
         const creator = userAuth.getNonNullableUser();
-        const { groupsToProcess, allGroupMemberships } =
+        const { groupsToProcess, allGroupMemberships, editorGroupModelId } =
           await pod.fetchManualGroupsMemberships(userAuth);
         const editorGroup = groupsToProcess.find(
-          (group) => group.kind === "space_editors"
+          (group) => group.id === editorGroupModelId
         );
 
         expect(editorGroup).toBeDefined();
@@ -326,6 +326,49 @@ describe("createSpaceAndGroup", () => {
 
         const refreshedPod = await SpaceResource.fetchById(staleAuth, pod.sId);
         expect(refreshedPod?.canAdministrate(staleAuth)).toBe(true);
+      }
+
+      createConnectorSpy.mockRestore();
+    });
+
+    it("refreshes the live creator auth so it can administrate the new project in the same request", async () => {
+      const createConnectorSpy = vi
+        .spyOn(
+          await import("@app/lib/api/projects/connector"),
+          "createDataSourceAndConnectorForProject"
+        )
+        .mockResolvedValue(new Ok(undefined));
+
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user1.sId,
+        workspace.sId
+      );
+
+      const result = await createSpaceAndGroup(userAuth, {
+        name: "Test Project Live Auth Refresh",
+        isRestricted: true,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const pod = result.value;
+        const { groupsToProcess, editorGroupModelId } =
+          await pod.fetchManualGroupsMemberships(userAuth);
+        const editorGroup = groupsToProcess.find(
+          (group) => group.id === editorGroupModelId
+        );
+        expect(editorGroup).toBeDefined();
+
+        // createSpaceAndGroup added the creator to the new editor group, wrote its grants, and
+        // refreshed `userAuth` post-commit. The same live auth must now see the group and
+        // administrate the pod with no manual refresh (contrast the reconstructed stale-auth test
+        // above, which has to call refresh() itself).
+        expect(userAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
+        expect(userAuth.getGrantedVerbs("space", pod.id)).toContain("admin");
+        expect(pod.canAdministrate(userAuth)).toBe(true);
       }
 
       createConnectorSpy.mockRestore();
@@ -1318,6 +1361,46 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       expect(skillAfter).not.toBeNull();
       expect(skillAfter!.requestedSpaceIds).not.toContain(space!.id);
       expect(skillAfter!.requestedSpaceIds).toHaveLength(0);
+    });
+
+    it("should clean an archived skill's requestedSpaceIds too", async () => {
+      // An archived skill keeps its references, and a dangling one makes it unfetchable — so it
+      // could never be restored. The cleanup must not be limited to active skills.
+      const spaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space With Archived Skill",
+          isRestricted: false,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(spaceResult.isOk()).toBe(true);
+      const space = spaceResult.isOk() ? spaceResult.value : null;
+      expect(space).not.toBeNull();
+
+      const skill = await SkillFactory.create(adminAuth, {
+        name: "Archived Skill Referencing A Space",
+        requestedSpaceIds: [space!.id],
+      });
+      await skill.archive(adminAuth);
+
+      const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+        adminAuth,
+        space!,
+        true // force delete
+      );
+      expect(deleteResult.isOk()).toBe(true);
+
+      // `fetchById` and friends default to active skills, so read it back as archived.
+      const archivedSkills = await SkillResource.listByWorkspace(adminAuth, {
+        status: "archived",
+      });
+      const skillAfter = archivedSkills.find((s) => s.id === skill.id);
+      expect(skillAfter).toBeDefined();
+      expect(skillAfter!.requestedSpaceIds).not.toContain(space!.id);
     });
 
     it("should preserve additional skill requestedSpaceIds when deleting a dependency space", async () => {

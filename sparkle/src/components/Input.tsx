@@ -134,20 +134,41 @@ export interface InputProps
     React.InputHTMLAttributes<HTMLInputElement>,
     "value" | "size" | "prefix"
   > {
+  /** Field height: "xs" (24px), "sm" (32px), or "md" (40px); a number falls back to "sm". */
   size?: InputSizeType | number;
+  /** Helper or error text shown under the field, colored by `messageStatus`. */
   message?: string | null;
+  /** How the `message` is rendered: "info" and "error" show an icon, "error" also colors the field. */
   messageStatus?: MessageStatus;
   value?: string | number | readonly string[] | null;
+  /** Forces the error (warning border) state regardless of `messageStatus`. */
   isError?: boolean;
+  /** Classes applied to the field wrapper. */
   className?: string;
+  /** Classes applied to the outer container (label + field + message). */
   containerClassName?: string;
+  /** Caption rendered above the field. */
   label?: string;
+  /** Icon rendered inline at the start of the field. */
   icon?: React.ComponentType;
+  /** Icon rendered inline at the end of the field. */
   iconRight?: React.ComponentType;
+  /** Content of a full-height muted box before the field (e.g. a unit or currency). */
   prefix?: React.ReactNode;
+  /** Content of a full-height muted box after the field (e.g. a unit or currency). */
   suffix?: React.ReactNode;
 }
 
+/**
+ * A single-line text field for short, freeform input such as a name, email, or
+ * search term, with an optional label, helper or error message with status
+ * colouring, and the standard HTML input types. Use it to collect a short piece
+ * of text or a number in forms, search bars, and settings panels; for
+ * multi-line input use TextArea, for search-specific affordances use
+ * SearchInput.
+ *
+ * @summary Single-line text field.
+ */
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
     {

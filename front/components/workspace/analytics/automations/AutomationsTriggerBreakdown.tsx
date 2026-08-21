@@ -1,7 +1,9 @@
 import { useAutomationsTriggerBreakdown } from "@app/hooks/useAutomationsTriggerBreakdown";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { AutomationTriggerCreditDestination } from "@app/lib/api/analytics/automations/breakdown";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import { formatCredits } from "@app/lib/client/credits";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { LoadingBlock, Tooltip } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
@@ -10,6 +12,23 @@ const CAPTION_TOOLTIP_LABEL =
 
 const RATIO_MORE_THRESHOLD = 1.5;
 const RATIO_LESS_THRESHOLD = 1 / RATIO_MORE_THRESHOLD;
+const CREDIT_DESTINATION_FALLBACK_LABEL = "What consumes credits";
+
+function creditDestinationLabel(
+  dimension: AutomationTriggerCreditDestination["dimension"]
+): string {
+  switch (dimension) {
+    case "tool":
+      return "What tool is used";
+    case "model":
+      return "What model is used";
+    case "skill":
+      return "What skill is used";
+    default:
+      assertNeverAndIgnore(dimension);
+      return CREDIT_DESTINATION_FALLBACK_LABEL;
+  }
+}
 
 function ratioCaption(value: number, median: number): string {
   if (value <= 0 || median <= 0) {
@@ -39,7 +58,7 @@ function StatBlock({
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <h4 className="text-xs font-semibold text-muted-foreground">{label}</h4>
-      <div className="flex min-w-0 items-baseline gap-2 text-xs">
+      <div className="min-w-0 text-xs">
         <div className="truncate">{primaryText}</div>
         {captionTooltipLabel ? (
           <Tooltip
@@ -77,9 +96,9 @@ function CreditDestinationBlock({
     return (
       <div className="flex min-w-0 flex-col gap-2">
         <h4 className="text-xs font-semibold text-muted-foreground">
-          Where the credits go
+          {CREDIT_DESTINATION_FALLBACK_LABEL}
         </h4>
-        <div className="flex items-baseline gap-2">
+        <div className="min-w-0 text-xs">
           <LoadingBlock className="h-4 w-24" />
           <LoadingBlock className="h-3 w-20" />
         </div>
@@ -91,7 +110,7 @@ function CreditDestinationBlock({
     return (
       <div className="flex min-w-0 flex-col gap-2">
         <h4 className="text-xs font-semibold text-muted-foreground">
-          Where the credits go
+          {CREDIT_DESTINATION_FALLBACK_LABEL}
         </h4>
         <span className="text-xs text-muted-foreground">
           {isBreakdownError
@@ -106,7 +125,7 @@ function CreditDestinationBlock({
 
   return (
     <StatBlock
-      label="What model is used"
+      label={creditDestinationLabel(creditDestination.dimension)}
       primaryText={
         <span className="font-semibold text-foreground">
           {creditDestination.name}

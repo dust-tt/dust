@@ -17,13 +17,24 @@ function getFirstOpenMenuItem(): HTMLElement | null {
 }
 
 type SearchDropdownMenuProps = {
+  /** Current text of the search input; the caller owns this state. */
   searchInputValue: string;
+  /** Called with the new text on every input change. */
   setSearchInputValue: (value: string) => void;
+  /** The result menu items rendered inside the dropdown content. */
   children: React.ReactNode;
   disabled?: boolean;
+  /** Minimum query length before the results dropdown opens (default 1). */
   minLengthToOpen?: number;
 };
 
+/**
+ * A search input that opens a dropdown of results while typing, keeping focus
+ * in the field: Enter activates the first result, Tab or ArrowDown moves focus
+ * into the list. Use it for search-as-you-type flows whose results are
+ * rendered as dropdown menu items; for a static menu of actions, use Dropdown.
+ * @summary Search input with results dropdown.
+ */
 export function SearchDropdownMenu({
   searchInputValue,
   setSearchInputValue,

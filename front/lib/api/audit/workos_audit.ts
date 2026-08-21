@@ -97,6 +97,7 @@ export const AUDIT_ACTIONS = [
   "workspace.audit_logs_updated",
   "workspace.analytics_updated",
   "workspace.advanced_model_access_updated",
+  "workspace.conversation_external_notifications_updated",
   "workspace.default_agent_updated",
   "workspace.default_user_spend_limit_updated",
   "workspace.domain_auto_join_updated",
@@ -140,6 +141,7 @@ export const AUDIT_ACTIONS = [
   "trigger.enabled",
   "trigger.disabled",
   "trigger.fired",
+  "trigger.pool_updated",
   "trigger.email_received",
   // Wake-ups.
   "wake_up.cancelled",

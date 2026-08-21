@@ -66,13 +66,23 @@ interface ContentBlockWrapperProps {
   children: React.ReactNode;
   className?: string;
   innerClassName?: string;
+  /** What the copy button puts on the clipboard: a plain string or a map of mime types to content. Omit to hide the copy button. */
   content?: ClipboardContent | string;
+  /** Async provider of downloadable content; when set, a download button is shown. */
   getContentToDownload?: GetContentToDownloadFunction;
+  /** Extra action elements rendered before the download/copy buttons. */
   actions?: React.ReactNode[] | React.ReactNode;
+  /** Whether the action buttons are always visible or only on hover. */
   displayActions?: "hover" | "always";
   buttonDisplay?: "inside" | "outside" | null; // null to hide buttons
 }
 
+/**
+ * Shared chrome for Markdown content blocks (code, tables, quotes): wraps its
+ * children with an action bar providing copy-to-clipboard, optional download,
+ * and any custom actions, positioned inside or above the block.
+ * @summary Copy/download action wrapper for Markdown blocks.
+ */
 export function ContentBlockWrapper({
   children,
   className,

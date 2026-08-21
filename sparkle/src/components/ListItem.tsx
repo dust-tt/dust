@@ -36,14 +36,29 @@ const listItemVariants = cva("group flex w-full flex-row gap-3 p-3", {
 type ListItemProps = {
   children: ReactNode;
   className?: string;
+  /** Invoked when the row is clicked; also enables the hover/pressed background. */
   onClick?: () => void;
+  /** Shows a bottom border divider under the row (default true). */
   hasSeparator?: boolean;
+  /** Keeps the divider on the last row of a group instead of hiding it (default false). */
   hasSeparatorIfLast?: boolean;
+  /** Name of the Tailwind group scope (`group/<name>`) so children can react to the row's hover. */
   groupName?: string;
+  /** Vertical alignment of the row's children: "start" or "center". */
   itemsAlignment?: "start" | "center";
+  /** CSS selector for descendants whose presses should not trigger the pressed state (e.g. inline actions). */
   ignorePressSelector?: string;
 };
 
+/**
+ * A low-level, generic list row that wraps arbitrary children with consistent
+ * padding, an optional bottom separator, and a hover background when `onClick`
+ * is provided. Use it as the base building block for custom list rows; for
+ * richer purpose-built rows prefer ContextItem, ConversationListItem, or
+ * UniversalSearchItem, which are built on top of this primitive.
+ *
+ * @summary Generic list row primitive.
+ */
 export function ListItem({
   children,
   className,
@@ -96,6 +111,12 @@ type ListGroupProps = {
   className?: string;
 };
 
+/**
+ * A vertical container for ListItem rows, framed by top and bottom borders.
+ * Use it to wrap a set of ListItems so they read as one list.
+ *
+ * @summary Bordered container for list rows.
+ */
 export function ListGroup({ children, className }: ListGroupProps) {
   return (
     <div
@@ -109,8 +130,11 @@ export function ListGroup({ children, className }: ListGroupProps) {
 type ListItemSectionProps = {
   children: ReactNode;
   className?: string;
+  /** Header style: "xs" is an uppercase muted caption, "sm" is a filled heading row. */
   size?: "xs" | "sm";
+  /** Trailing content (e.g. buttons) whose clicks do not trigger the section's `onClick`. */
   action?: ReactNode;
+  /** Invoked when the section header is clicked; also enables hover feedback. */
   onClick?: () => void;
 };
 
@@ -139,6 +163,13 @@ const listItemSectionVariants = cva("", {
   },
 });
 
+/**
+ * A section header for grouping ListItem rows (e.g. "Today", "Yesterday"),
+ * with an optional trailing `action` area and click handling. Use it inside a
+ * ListGroup to title clusters of related rows.
+ *
+ * @summary Section header for list groups.
+ */
 export function ListItemSection({
   children,
   className,

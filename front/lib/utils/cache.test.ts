@@ -778,4 +778,29 @@ describe("batchInvalidateCacheWithRedis", () => {
       "cacheWithRedis-myFunc-bar-2",
     ]);
   });
+
+  it("deletes canonical and previous keys in one Redis call", async () => {
+    const mockFn = vi.fn();
+
+    const batchInvalidateFn = batchInvalidateCacheWithRedis(
+      mockFn,
+      (arg: string) => `v2:${arg}`,
+      {
+        cacheId: "canonical",
+        readFromKeyFirst: {
+          cacheId: "previous",
+          resolver: (arg) => `v1:${arg}`,
+        },
+      }
+    );
+    await batchInvalidateFn([["key1"], ["key2"]]);
+
+    expect(mockRedisClient.del).toHaveBeenCalledWith([
+      "cacheWithRedis-canonical-v2:key1",
+      "cacheWithRedis-previous-v1:key1",
+      "cacheWithRedis-canonical-v2:key2",
+      "cacheWithRedis-previous-v1:key2",
+    ]);
+    expect(mockRedisClient.del).toHaveBeenCalledTimes(1);
+  });
 });

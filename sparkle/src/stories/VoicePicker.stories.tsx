@@ -56,17 +56,29 @@ type VoicePickerDemoProps = Pick<
   "size" | "disabled" | "showStopLabel" | "pressDelayMs"
 >;
 
-export const Interactive: Story = {
+const noopRecordingHandlers = {
+  onRecordStart: async () => {},
+  onRecordStop: async () => {},
+};
+
+/**
+ * The full controlled lifecycle, simulated: press to record (level and
+ * timer animate), release to transcribe, then back to idle. The
+ * `status`/`level`/`elapsedSeconds` args are placeholders here — the demo
+ * owns them in state, as your integration should.
+ *
+ * @summary Simulated record → transcribe → idle lifecycle.
+ */
+export const SimulatedRecordingLifecycle: Story = {
   args: {
     status: "idle",
     level: 0,
     elapsedSeconds: 0,
-    onRecordStart: async () => {},
-    onRecordStop: async () => {},
     size: "xs",
     disabled: false,
     showStopLabel: true,
     pressDelayMs: 150,
+    ...noopRecordingHandlers,
   },
   render: function Render(args: VoicePickerProps): React.ReactElement {
     return (
@@ -77,6 +89,102 @@ export const Interactive: Story = {
         pressDelayMs={args.pressDelayMs}
       />
     );
+  },
+};
+
+/**
+ * The resting state, ready to record. Static and fully args-driven — see
+ * `SimulatedRecordingLifecycle` for the full state machine in motion.
+ *
+ * @summary Idle push-to-talk button.
+ */
+export const Idle: Story = {
+  args: {
+    status: "idle",
+    level: 0,
+    elapsedSeconds: 0,
+    size: "xs",
+    showStopLabel: true,
+    ...noopRecordingHandlers,
+  },
+};
+
+/**
+ * Mid-recording: the live waveform is driven by `level` (0–1) and the timer
+ * by `elapsedSeconds` — update both from your audio capture loop.
+ *
+ * @summary Recording with live level and elapsed time.
+ */
+export const Recording: Story = {
+  args: {
+    status: "recording",
+    level: 0.6,
+    elapsedSeconds: 7,
+    size: "xs",
+    showStopLabel: true,
+    ...noopRecordingHandlers,
+  },
+};
+
+const TranscribingLoopDemo = () => {
+  const [status, setStatus] = React.useState<VoicePickerStatus>("transcribing");
+
+  React.useEffect(() => {
+    // Story scaffolding: restart the transcribing phase every few seconds so
+    // the fake-progress climb stays visible instead of parking at 99%.
+    const loop = window.setInterval(() => {
+      setStatus("idle");
+      window.setTimeout(() => setStatus("transcribing"), 400);
+    }, 4500);
+    return () => window.clearInterval(loop);
+  }, []);
+
+  return (
+    <VoicePicker
+      status={status}
+      level={0}
+      elapsedSeconds={0}
+      size="xs"
+      showStopLabel
+      {...noopRecordingHandlers}
+    />
+  );
+};
+
+/**
+ * After stop, keep `status` at `transcribing` until your speech-to-text call
+ * resolves. The percentage is a fake-progress estimate: it climbs toward 99%
+ * and holds there until you flip `status` back — it never reaches 100% on its
+ * own. The demo restarts the phase every few seconds so the climb is visible.
+ *
+ * @summary Waiting for transcription (fake progress holds at 99%).
+ */
+export const Transcribing: Story = {
+  args: {
+    status: "transcribing",
+    level: 0,
+    elapsedSeconds: 0,
+    size: "xs",
+    showStopLabel: true,
+    ...noopRecordingHandlers,
+  },
+  render: () => <TranscribingLoopDemo />,
+};
+
+/**
+ * Disabled, e.g. while the surrounding composer cannot accept input.
+ *
+ * @summary Disabled voice button.
+ */
+export const Disabled: Story = {
+  args: {
+    status: "idle",
+    level: 0,
+    elapsedSeconds: 0,
+    size: "xs",
+    disabled: true,
+    showStopLabel: true,
+    ...noopRecordingHandlers,
   },
 };
 
@@ -116,7 +224,8 @@ function VoicePickerDemo({
     }, 1000);
 
     levelIntervalRef.current = window.setInterval(() => {
-      setLevel(Math.random());
+      // Deterministic sawtooth so the waveform animates reproducibly.
+      setLevel((previous) => (previous + 0.23) % 1);
     }, 200);
 
     return () => {

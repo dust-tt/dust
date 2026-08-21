@@ -8,13 +8,20 @@ const RESTRICTED_SPACE_NAME = "Restricted Space";
 
 interface SeedSpaceOptions {
   name?: string;
-  // Members to add on top of the context user, who is always a member.
+  // Members to add on top of the context user.
   members?: UserResource[];
+  // Whether the context user is a member of the space. Set to false to seed a space the context
+  // user cannot access.
+  withContextUser?: boolean;
 }
 
 export async function seedSpace(
   ctx: SeedContext,
-  { name = RESTRICTED_SPACE_NAME, members = [] }: SeedSpaceOptions = {}
+  {
+    name = RESTRICTED_SPACE_NAME,
+    members = [],
+    withContextUser = true,
+  }: SeedSpaceOptions = {}
 ): Promise<SpaceResource | undefined> {
   const { auth, workspace, user, execute, logger } = ctx;
 
@@ -53,7 +60,9 @@ export async function seedSpace(
     }
     // Add the users to the group so they can access the space
     const addMemberResult = await group.dangerouslyAddMembers(auth, {
-      users: [user, ...members].map((u) => u.toJSON()),
+      users: (withContextUser ? [user, ...members] : members).map((u) =>
+        u.toJSON()
+      ),
     });
     if (addMemberResult.isErr()) {
       throw new Error(

@@ -12,10 +12,10 @@ import {
   TooltipTrigger,
 } from "../index_with_tw_base";
 
-const meta = {
+const meta: Meta<typeof Tooltip> = {
   title: "Overlays/Tooltip",
   tags: ["a11y-issues"],
-  component: TooltipProvider,
+  component: Tooltip,
   parameters: {
     docs: {
       description: {
@@ -32,18 +32,31 @@ const meta = {
       },
     },
   },
-} satisfies Meta<typeof TooltipProvider>;
+};
 
 export default meta;
 
-export const TooltipExample = () => (
+/**
+ * The simple `Tooltip` component: pass a `trigger` and a short `label`.
+ * This covers most product use — reach for the composed API only when you
+ * need custom placement or timing.
+ *
+ * @summary Simple trigger + label tooltip.
+ */
+export const Default = () => (
   <Tooltip
     trigger={<div className="text-foreground">Hover</div>}
-    label={<p>Add to library</p>}
+    label="Add to library"
   />
 );
 
-export const TooltipWithShortcut = () => (
+/**
+ * The `shortcut` prop renders the keyboard shortcut inline after the label —
+ * use it to teach shortcuts on icon-only or frequently used actions.
+ *
+ * @summary Label with an inline keyboard shortcut.
+ */
+export const WithShortcut = () => (
   <Tooltip
     trigger={<div className="text-foreground">Hover for shortcut</div>}
     label="Add to library"
@@ -51,35 +64,22 @@ export const TooltipWithShortcut = () => (
   />
 );
 
-export const TooltipWithManual = () => (
+/**
+ * The composed API (`TooltipProvider` / `TooltipRoot` / `TooltipTrigger` /
+ * `TooltipContent`) for full control: custom open delay, placement `side`,
+ * and arbitrary content such as a `KeyboardShortcut` element.
+ *
+ * @summary Composed API for custom placement, timing, and content.
+ */
+export const ComposedWithCustomPlacement = () => (
   <TooltipProvider delayDuration={800} skipDelayDuration={500}>
-    <TooltipRoot
-      onOpenChange={(open: boolean) => {
-        console.log(`Is open: ${open}`);
-      }}
-    >
+    <TooltipRoot>
       <TooltipTrigger>
         <Icon visual={Robot} size="xs" />
       </TooltipTrigger>
-      <TooltipContent side="right" sideOffset={50}>
-        This is a tooltip with a very long label that should wrap onto multiple
-        lines. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non
-        risus. Suspendisse lectus tortor, dignissim sit amet, adipiscing nec,
-        ultricies sed, dolor.
-      </TooltipContent>
-    </TooltipRoot>
-  </TooltipProvider>
-);
-
-export const TooltipWithKeyboardShortcutComponent = () => (
-  <TooltipProvider>
-    <TooltipRoot>
-      <TooltipTrigger>
-        <div className="text-foreground">Hover for inline shortcut</div>
-      </TooltipTrigger>
-      <TooltipContent>
+      <TooltipContent side="right">
         <div className="inline-flex items-center gap-2">
-          <span>Add to library</span>
+          <span>Ask the agent</span>
           <KeyboardShortcut shortcut="Cmd+K" />
         </div>
       </TooltipContent>

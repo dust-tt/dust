@@ -56,6 +56,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Use GPT 5.6 Luna (high reasoning) as the default model for the @dust agent",
     stage: "on_demand",
   },
+  gpt_5_6_terra_long_context: {
+    description: "Access to GPT 5.6 Terra with its full context window",
+    stage: "on_demand",
+  },
   dust_agent_sonnet_5_default: {
     description: "Use Claude Sonnet 5 as the default model for the @dust agent",
     stage: "dust_only",
@@ -126,6 +130,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   openai_usage_mcp: {
     description: "OpenAI tool for tracking API consumption and costs",
     stage: "on_demand",
+  },
+  openai_concise_reasoning_summaries: {
+    description:
+      "Use concise reasoning summaries for supported OpenAI models in the new LLM router",
+    stage: "dust_only",
   },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
@@ -332,6 +341,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow adding frames from the pod file system as custom tabs (title, icon, order) on the pod.",
     stage: "dust_only",
   },
+  pod_applications: {
+    description:
+      "Enable the Pod Apps UI: browse, import, clone, export and delete the apps published on a Pod.",
+    stage: "dust_only",
+  },
   group_permissions_shadow: {
     description:
       "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",
@@ -360,6 +374,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   editable_tool_inputs: {
     description:
       "Allow editing tool inputs before approving a tool call in the tool validation UI.",
+    stage: "dust_only",
+  },
+  trigger_pool_choice: {
+    description:
+      "Let trigger editors pick the credit pool (workspace or member) a trigger runs on, and let admins govern who may pick the workspace pool.",
     stage: "dust_only",
   },
   skip_free_usage_rate_limit: {

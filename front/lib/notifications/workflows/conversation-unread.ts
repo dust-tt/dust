@@ -22,8 +22,10 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { NotificationCondition } from "@app/types/notification_preferences";
@@ -44,6 +46,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { stripMarkdown } from "@app/types/shared/utils/markdown";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { UserType } from "@app/types/user";
+import { areConversationExternalNotificationsEnabled } from "@app/types/user";
 import { workflow } from "@novu/framework";
 import assert from "assert";
 import { Op } from "sequelize";
@@ -51,6 +54,18 @@ import z from "zod";
 
 // The unread workflow operates on the shared conversation-details payload.
 export type ConversationUnreadPayloadType = ConversationDetailsPayload;
+
+export async function shouldSkipConversationExternalNotification(
+  workspaceId: string
+): Promise<boolean> {
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    return true;
+  }
+  return !areConversationExternalNotificationsEnabled(
+    renderLightWorkspaceType({ workspace })
+  );
+}
 
 export const shouldSendNotificationForAgentAnswer = (
   userMessageOrigin?: UserMessageOrigin | null
@@ -413,6 +428,13 @@ export const conversationUnreadWorkflow = workflow(
           if (!details) {
             return true;
           }
+          if (
+            await shouldSkipConversationExternalNotification(
+              payload.workspaceId
+            )
+          ) {
+            return true;
+          }
           const shouldSkip = await shouldSkipConversation({
             subscriberId: subscriber.subscriberId,
             payload,
@@ -446,7 +468,11 @@ export const conversationUnreadWorkflow = workflow(
       },
       {
         outputSchema: UserNotificationDelaySchema,
-        skip: async () => !details,
+        skip: async () =>
+          !details ||
+          (await shouldSkipConversationExternalNotification(
+            payload.workspaceId
+          )),
       }
     );
 
@@ -465,7 +491,11 @@ export const conversationUnreadWorkflow = workflow(
         // when the digest step's skip condition is evaluated (Novu framework bug).
         // All subscriber-based filtering (shouldSkipConversation) is handled in the
         // email step below, where subscriber context is properly available.
-        skip: async () => !details,
+        skip: async () =>
+          !details ||
+          (await shouldSkipConversationExternalNotification(
+            payload.workspaceId
+          )),
       }
     );
 
@@ -571,6 +601,13 @@ export const conversationUnreadWorkflow = workflow(
       {
         // No email from trigger until we give more control over the notification to the users.
         skip: async () => {
+          if (
+            await shouldSkipConversationExternalNotification(
+              payload.workspaceId
+            )
+          ) {
+            return true;
+          }
           const shouldSkip = await concurrentExecutor(
             events,
             async (event) => {

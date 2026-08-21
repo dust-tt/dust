@@ -1,5 +1,5 @@
-import type { Meta } from "@storybook/react";
-import React, { useEffect, useState } from "react";
+import type { Meta, StoryObj } from "@storybook/react";
+import React, { useState } from "react";
 
 import {
   Avatar,
@@ -22,10 +22,7 @@ import {
   FolderOpen,
   Folder,
   CheckDouble,
-  Maximize01,
-  Minimize01,
 } from "../index_with_tw_base";
-import type { NavigationListItemStatus } from "../components/NavigationList";
 
 const meta = {
   title: "Navigation/NavigationList",
@@ -49,190 +46,231 @@ const meta = {
 } satisfies Meta;
 
 export default meta;
+type Story = StoryObj;
 
-const getRandomTitles = (count: number) => {
-  const shuffled = fakeTitles.sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, count);
-};
+const TODAY_TITLES = [
+  "Project Kickoff Meeting",
+  "Budget Review Discussion",
+  "Weekly Sync with Team",
+  "Client Requirements Gathering",
+  "Sprint Retrospective",
+];
 
-export const Demo = () => {
+const YESTERDAY_TITLES = [
+  "Daily Standup",
+  "Marketing Strategy Planning",
+  "Code Review Session",
+  "Product Launch Preparation",
+  "Customer Feedback Analysis",
+  "Feature Prioritization Discussion",
+  "Technical Debt Assessment",
+  "Sales Performance Review",
+];
+
+const INBOX_TITLES = [
+  "Cross-Department Collaboration",
+  "Compliance and Security Update",
+  "Holiday Schedule Planning",
+  "Vendor Negotiation Strategy",
+  "Resource Allocation Meeting",
+  "Crisis Management Scenario",
+];
+
+const CONVERSATION_SECTIONS = [
+  { label: "Today", items: TODAY_TITLES },
+  { label: "Yesterday", items: YESTERDAY_TITLES },
+];
+
+// Shared per-item "more" menu: a DropdownMenu triggered by
+// NavigationListItemAction, with rename and delete entries.
+const renderMoreMenu = () => (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <NavigationListItemAction />
+    </DropdownMenuTrigger>
+    <DropdownMenuContent>
+      <DropdownMenuItem
+        label="Rename"
+        icon={Edit04}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      />
+      <DropdownMenuItem
+        label="Delete"
+        icon={Trash01}
+        variant="warning"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      />
+    </DropdownMenuContent>
+  </DropdownMenu>
+);
+
+const ConversationHistoryDemo = () => {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [conversationTitles, setConversationTitles] = useState<
-    { label: string; items: string[] }[]
-  >([]);
-
-  useEffect(() => {
-    setConversationTitles([
-      { label: "Today", items: getRandomTitles(5) },
-      { label: "Yesterday", items: getRandomTitles(10) },
-    ]);
-  }, []);
-
-  const allItems = conversationTitles.flatMap((section) => section.items);
-
-  const getMoreMenu = (title: string) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <NavigationListItemAction />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <DropdownMenuItem
-          label="Rename"
-          icon={Edit04}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            // Add rename logic here
-          }}
-        />
-        <DropdownMenuItem
-          label="Delete"
-          icon={Trash01}
-          variant="warning"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            // Add delete logic here
-          }}
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+  const allItems = CONVERSATION_SECTIONS.flatMap((section) => section.items);
 
   return (
-    <div className="flex h-[400px] w-full flex-row gap-12">
-      <div className="h-[400px] w-[240px]">
-        <NavigationList className="relative h-full w-full px-3">
-          {conversationTitles.map((section, sectionIndex) => (
-            <React.Fragment key={sectionIndex}>
-              <NavigationListLabel label={section.label} />
-              {section.items.map((title, index) => {
-                const itemIndex = allItems.indexOf(title);
-                // Add status based on index for demonstration
-                const getStatus = (idx: number): NavigationListItemStatus => {
-                  if (idx % 7 === 0) {
-                    return "error";
-                  }
-                  if (idx % 5 === 0) {
-                    return "unread";
-                  }
-                  if (idx % 3 === 0) {
-                    return "blocked";
-                  }
-                  return "idle";
-                };
-                return (
-                  <NavigationListItem
-                    key={index}
-                    href={index % 2 === 0 ? "#" : undefined}
-                    selected={itemIndex === selectedIndex}
-                    onClick={(e) => {
-                      // Prevent default only if it's not coming from the more menu
-                      if (!e.defaultPrevented) {
-                        e.preventDefault();
-                        setSelectedIndex(itemIndex);
-                      }
-                    }}
-                    label={title}
-                    className="w-full"
-                    moreMenu={getMoreMenu(title)}
-                    status={getStatus(index)}
-                  />
-                );
-              })}
-            </React.Fragment>
-          ))}
-        </NavigationList>
-      </div>
-      <div className="h-[400px] w-[240px]">
-        <NavigationList className="relative h-full w-full px-3">
-          {conversationTitles.map((section, sectionIndex) => (
-            <React.Fragment key={sectionIndex}>
-              <NavigationListLabel label={section.label} isSticky />
-              {section.items.map((title, index) => {
-                const itemIndex = allItems.indexOf(title);
-                // Add status based on index for demonstration.
-                const getStatus = (idx: number): NavigationListItemStatus => {
-                  if (idx % 7 === 0) {
-                    return "error";
-                  }
-                  if (idx % 5 === 0) {
-                    return "unread";
-                  }
-                  if (idx % 3 === 0) {
-                    return "blocked";
-                  }
-                  return "idle";
-                };
-                return (
-                  <NavigationListItem
-                    key={index}
-                    href={index % 2 === 0 ? "#" : undefined}
-                    selected={itemIndex === selectedIndex}
-                    onClick={(e) => {
-                      // Prevent default only if it's not coming from the more menu
-                      if (!e.defaultPrevented) {
-                        e.preventDefault();
-                        setSelectedIndex(itemIndex);
-                      }
-                    }}
-                    label={title}
-                    className="w-full"
-                    moreMenu={getMoreMenu(title)}
-                    status={getStatus(index)}
-                  />
-                );
-              })}
-            </React.Fragment>
-          ))}
-        </NavigationList>
-      </div>
+    <div className="h-[400px] w-[240px]">
+      <NavigationList className="relative h-full w-full px-3">
+        {CONVERSATION_SECTIONS.map((section) => (
+          <React.Fragment key={section.label}>
+            <NavigationListLabel label={section.label} isSticky />
+            {section.items.map((title) => {
+              const itemIndex = allItems.indexOf(title);
+              return (
+                <NavigationListItem
+                  key={title}
+                  href="#"
+                  selected={itemIndex === selectedIndex}
+                  onClick={(e) => {
+                    // Prevent default only if it's not coming from the more menu.
+                    if (!e.defaultPrevented) {
+                      e.preventDefault();
+                      setSelectedIndex(itemIndex);
+                    }
+                  }}
+                  label={title}
+                  className="w-full"
+                />
+              );
+            })}
+          </React.Fragment>
+        ))}
+      </NavigationList>
     </div>
   );
 };
 
-export const CollapsibleSection = () => {
+/**
+ * A scrollable conversation sidebar: date sections built with sticky
+ * **NavigationListLabel** headers, with click-driven selection kept in
+ * component state.
+ * @summary Grouped conversation list with sticky section labels.
+ */
+export const ConversationHistory: Story = {
+  render: () => <ConversationHistoryDemo />,
+};
+
+/**
+ * Each item can surface state at a glance: a \`status\` dot (\`unread\`,
+ * \`blocked\`, \`error\`), a \`count\` badge, or a subtle \`hasActivity\`
+ * indicator. \`idle\` is the default and shows nothing.
+ * @summary Status dots, count badges, and activity indicators.
+ */
+export const WithStatusIndicators: Story = {
+  render: () => (
+    <div className="w-[240px]">
+      <NavigationList className="relative w-full px-3">
+        <NavigationListItem
+          label="Weekly Sync with Team"
+          status="idle"
+          href="#"
+          onClick={(e) => e.preventDefault()}
+          className="w-full"
+        />
+        <NavigationListItem
+          label="Budget Review Discussion"
+          status="unread"
+          href="#"
+          onClick={(e) => e.preventDefault()}
+          className="w-full"
+        />
+        <NavigationListItem
+          label="Sprint Retrospective"
+          status="blocked"
+          href="#"
+          onClick={(e) => e.preventDefault()}
+          className="w-full"
+        />
+        <NavigationListItem
+          label="Code Review Session"
+          status="error"
+          href="#"
+          onClick={(e) => e.preventDefault()}
+          className="w-full"
+        />
+        <NavigationListItem
+          label="Customer Feedback Analysis"
+          count={5}
+          href="#"
+          onClick={(e) => e.preventDefault()}
+          className="w-full"
+        />
+        <NavigationListItem
+          label="Daily Standup"
+          hasActivity
+          href="#"
+          onClick={(e) => e.preventDefault()}
+          className="w-full"
+        />
+      </NavigationList>
+    </div>
+  ),
+};
+
+/**
+ * The \`moreMenu\` slot attaches a per-item **DropdownMenu** (rename,
+ * delete) triggered by **NavigationListItemAction**, revealed on hover.
+ * @summary Per-item more-menu with contextual actions.
+ */
+export const WithItemActions: Story = {
+  render: () => (
+    <div className="w-[240px]">
+      <NavigationList className="relative w-full px-3">
+        {TODAY_TITLES.map((title) => (
+          <NavigationListItem
+            key={title}
+            href="#"
+            onClick={(e) => {
+              if (!e.defaultPrevented) {
+                e.preventDefault();
+              }
+            }}
+            label={title}
+            className="w-full"
+            moreMenu={renderMoreMenu()}
+          />
+        ))}
+      </NavigationList>
+    </div>
+  ),
+};
+
+const INBOX_STATUSES = [
+  "idle",
+  "unread",
+  "blocked",
+  "error",
+  "idle",
+  "idle",
+] as const;
+
+const INBOX_COUNTS: Array<number | undefined> = [
+  undefined,
+  undefined,
+  undefined,
+  undefined,
+  5,
+  12,
+];
+
+const AGENTS = [
+  { handle: "alex", name: "Alex", emoji: "🤖", color: "bg-blue-300" },
+  { handle: "sam", name: "Sam", emoji: "🎨", color: "bg-violet-300" },
+  { handle: "taylor", name: "Taylor", emoji: "🚀", color: "bg-pink-300" },
+  { handle: "jordan", name: "Jordan", emoji: "⚡", color: "bg-orange-300" },
+  { handle: "riley", name: "Riley", emoji: "🌟", color: "bg-golden-300" },
+  { handle: "casey", name: "Casey", emoji: "💡", color: "bg-emerald-300" },
+];
+
+const CollapsibleSectionDemo = () => {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [conversationTitles, setConversationTitles] = useState<
-    { label: string; items: string[] }[]
-  >([]);
-
-  useEffect(() => {
-    setConversationTitles([
-      { label: "Today", items: getRandomTitles(5) },
-      { label: "Yesterday", items: getRandomTitles(10) },
-      { label: "Last Week", items: getRandomTitles(8) },
-    ]);
-  }, []);
-
-  const allItems = conversationTitles.flatMap((section) => section.items);
-
-  const getMoreMenu = (title: string) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <NavigationListItemAction />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <DropdownMenuItem
-          label="Rename"
-          icon={Edit04}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        />
-        <DropdownMenuItem
-          label="Delete"
-          icon={Trash01}
-          variant="warning"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+  const allItems = CONVERSATION_SECTIONS.flatMap((section) => section.items);
 
   return (
     <div className="flex h-[800px] w-[260px] flex-col border-r border-border bg-muted-background">
@@ -241,75 +279,49 @@ export const CollapsibleSection = () => {
           label="Inbox"
           className="border-b border-t border-border bg-background/50 px-2 pb-2"
           action={
-            <>
-              {/* <div className="heading-xs h-5 cursor-pointer px-2 text-muted-foreground hover:text-foreground">
-                Mark as read
-              </div> */}
-              <Button
-                size="xmini"
-                icon={CheckDouble}
-                variant="ghost"
-                aria-label="Add new item"
-                tooltip="Mark all as read"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // Add action logic here
-                }}
-              />
-            </>
+            <Button
+              size="xmini"
+              icon={CheckDouble}
+              variant="ghost"
+              aria-label="Mark all as read"
+              tooltip="Mark all as read"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            />
           }
         >
-          {getRandomTitles(6).map((title, index) => {
-            const statuses: NavigationListItemStatus[] = [
-              "idle",
-              "unread",
-              "blocked",
-              "error",
-              "idle",
-              "idle",
-            ];
-            const counts: Array<number | undefined> = [
-              undefined,
-              undefined,
-              undefined,
-              undefined,
-              5,
-              12,
-            ];
-            return (
-              <NavigationListItem
-                key={index}
-                href={index % 2 === 0 ? "#" : undefined}
-                selected={index === selectedIndex}
-                status={statuses[index % 6]}
-                count={counts[index % 6]}
-                onClick={(e) => {
-                  if (!e.defaultPrevented) {
-                    e.preventDefault();
-                    setSelectedIndex(index);
-                  }
-                }}
-                label={title}
-                className="w-full"
-                moreMenu={getMoreMenu(title)}
-              />
-            );
-          })}
+          {INBOX_TITLES.map((title, index) => (
+            <NavigationListItem
+              key={title}
+              href="#"
+              status={INBOX_STATUSES[index % 6]}
+              count={INBOX_COUNTS[index % 6]}
+              onClick={(e) => {
+                if (!e.defaultPrevented) {
+                  e.preventDefault();
+                }
+              }}
+              label={title}
+              className="w-full"
+              moreMenu={renderMoreMenu()}
+            />
+          ))}
         </NavigationListCollapsibleSection>
         <NavigationListCollapsibleSection
           label="Projects"
           type="collapse"
           defaultOpen={true}
           visibleItems={4}
-          className="px-2 maw-w-full"
+          className="max-w-full px-2"
           action={
             <>
               <Button
                 size="xmini"
                 icon={Plus}
                 variant="ghost"
-                aria-label="Add new item"
+                aria-label="New project"
                 tooltip="New project"
                 onClick={(e) => {
                   e.preventDefault();
@@ -380,7 +392,7 @@ export const CollapsibleSection = () => {
           />
           <NavigationListItem
             icon={Folder}
-            label="SeriesB"
+            label="Fundraising"
             href="#"
             onClick={(e) => {
               e.preventDefault();
@@ -406,41 +418,35 @@ export const CollapsibleSection = () => {
                 size="xmini"
                 icon={MessageChatSquare}
                 variant="ghost"
-                aria-label="Add new item"
+                aria-label="New conversation"
                 tooltip="New Conversation"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  // Add action logic here
                 }}
               />
               <Button
                 size="xmini"
                 icon={DotsHorizontal}
                 variant="ghost"
-                aria-label="Add new item"
+                aria-label="More options"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  // Add action logic here
                 }}
               />
             </>
           }
         >
-          {conversationTitles.map((section, sectionIndex) => (
-            <>
-              <NavigationListCompactLabel
-                key={sectionIndex}
-                label={section.label}
-                isSticky
-              />
+          {CONVERSATION_SECTIONS.map((section) => (
+            <React.Fragment key={section.label}>
+              <NavigationListCompactLabel label={section.label} isSticky />
               {section.items.map((title, index) => {
                 const itemIndex = allItems.indexOf(title);
                 return (
                   <NavigationListItem
-                    key={index}
-                    href={index % 2 === 0 ? "#" : undefined}
+                    key={title}
+                    href="#"
                     selected={itemIndex === selectedIndex}
                     hasActivity={index % 3 === 0}
                     onClick={(e) => {
@@ -451,11 +457,11 @@ export const CollapsibleSection = () => {
                     }}
                     label={title}
                     className="w-full"
-                    moreMenu={getMoreMenu(title)}
+                    moreMenu={renderMoreMenu()}
                   />
                 );
               })}
-            </>
+            </React.Fragment>
           ))}
         </NavigationListCollapsibleSection>
         <NavigationListCollapsibleSection
@@ -468,65 +474,26 @@ export const CollapsibleSection = () => {
                 size="xmini"
                 icon={Plus}
                 variant="ghost"
-                aria-label="Add new item"
+                aria-label="New agent"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  // Add action logic here
                 }}
               />
               <Button
                 size="xmini"
                 icon={DotsHorizontal}
                 variant="ghost"
-                aria-label="Add new item"
+                aria-label="More options"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  // Add action logic here
                 }}
               />
             </>
           }
         >
-          {[
-            {
-              handle: "alex",
-              name: "Alex",
-              emoji: "🤖",
-              color: "bg-blue-300",
-            },
-            {
-              handle: "sam",
-              name: "Sam",
-              emoji: "🎨",
-              color: "bg-violet-300",
-            },
-            {
-              handle: "taylor",
-              name: "Taylor",
-              emoji: "🚀",
-              color: "bg-pink-300",
-            },
-            {
-              handle: "jordan",
-              name: "Jordan",
-              emoji: "⚡",
-              color: "bg-orange-300",
-            },
-            {
-              handle: "riley",
-              name: "Riley",
-              emoji: "🌟",
-              color: "bg-golden-300",
-            },
-            {
-              handle: "casey",
-              name: "Casey",
-              emoji: "💡",
-              color: "bg-emerald-300",
-            },
-          ].map((agent, index) => (
+          {AGENTS.map((agent) => (
             <NavigationListItem
               key={agent.handle}
               href="#"
@@ -552,108 +519,13 @@ export const CollapsibleSection = () => {
   );
 };
 
-const fakeTitles = [
-  "Project Kickoff Meeting",
-  "Budget Review Discussion",
-  "Weekly Sync with Team",
-  "AI Bot Training Session",
-  "Quarterly Planning Meeting",
-  "Feedback on Latest Design",
-  "Client Requirements Gathering",
-  "Sprint Retrospective",
-  "Daily Standup",
-  "Marketing Strategy Planning",
-  "Code Review Session",
-  "Product Launch Preparation",
-  "Onboarding New Team Members",
-  "Customer Feedback Analysis",
-  "Feature Prioritization Discussion",
-  "Technical Debt Assessment",
-  "Supply Chain Optimization",
-  "Sales Performance Review",
-  "Cross-Department Collaboration",
-  "Innovation Brainstorming",
-  "Risk Management Workshop",
-  "Holiday Schedule Planning",
-  "Compliance and Security Update",
-  "UI/UX Design Critique",
-  "End-of-Year Wrap Up",
-  "Resource Allocation Meeting",
-  "Vendor Negotiation Strategy",
-  "Crisis Management Scenario",
-  "SEO Best Practices Review",
-  "New Hire Orientation",
-  "Remote Work Policy Update",
-  "Company Values Workshop",
-  "Leadership Development Session",
-  "Diversity and Inclusion Training",
-  "Performance Improvement Plan",
-  "Customer Success Story Sharing",
-  "Community Engagement Strategy",
-  "Internal Product Demo",
-  "Cost Reduction Initiative",
-  "Change Management Planning",
-  "Employee Recognition Program",
-  "IT Infrastructure Upgrade",
-  "Content Marketing Planning",
-  "Team Building Activities",
-  "Data Privacy Compliance",
-  "Board Meeting Preparation",
-  "Investor Relations Update",
-  "KPI Tracking and Reporting",
-  "Industry Trends Analysis",
-  "Partnership Opportunities Exploration",
-  "Employee Wellness Program",
-  "Talent Acquisition Strategy",
-  "Brand Positioning Workshop",
-  "Social Media Campaign Planning",
-  "Competitive Analysis Review",
-  "Legal Compliance Training",
-  "Cybersecurity Awareness Session",
-  "Cultural Exchange Program",
-  "Product Roadmap Presentation",
-  "Customer Journey Mapping",
-  "Financial Forecasting Session",
-  "Brand Storytelling Workshop",
-  "AI Ethics and Governance Discussion",
-  "Operational Efficiency Assessment",
-  "Annual Report Drafting",
-  "Project Milestone Celebration",
-  "Quality Assurance Review",
-  "Public Relations Strategy",
-  "Team Performance Metrics",
-  "Innovation Lab Tour",
-  "Digital Transformation Roadmap",
-  "Sustainability Initiatives Planning",
-  "Internal Communications Strategy",
-  "Customer Advisory Board Meeting",
-  "Agile Methodology Training",
-  "E-commerce Platform Update",
-  "Risk Assessment and Mitigation",
-  "Employee Satisfaction Survey Results",
-  "Sales Funnel Optimization",
-  "Cross-Cultural Communication Training",
-  "Global Expansion Strategy",
-  "Cloud Migration Plan",
-  "Crisis Communication Strategy",
-  "Webinar Content Creation",
-  "Supply Chain Risk Management",
-  "Data Analytics and Insights",
-  "Customer Onboarding Process",
-  "Brand Awareness Campaign",
-  "Product Feature Request Review",
-  "Annual Budget Allocation",
-  "Employee Exit Interview",
-  "User Feedback Session",
-  "Strategic Partnership Negotiation",
-  "Market Entry Strategy",
-  "Employee Handbook Update",
-  "Stakeholder Engagement Plan",
-  "AI Chatbot Development",
-  "Customer Retention Strategy",
-  "Company Anniversary Celebration",
-  "Leadership Team Offsite",
-  "Innovation Challenge Kickoff",
-  "Employee Benefits Review",
-  "Business Continuity Planning",
-];
+/**
+ * A full sidebar built from **NavigationListCollapsibleSection**s showing
+ * the section variants together: a bordered inbox with a header action,
+ * a \`collapse\` section clamped with \`visibleItems\`, a \`static\`
+ * section with compact sticky labels, and an avatar-based agents section.
+ * @summary Collapsible section variants composed into a sidebar.
+ */
+export const CollapsibleSection: Story = {
+  render: () => <CollapsibleSectionDemo />,
+};

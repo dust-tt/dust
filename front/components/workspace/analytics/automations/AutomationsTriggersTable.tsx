@@ -19,9 +19,17 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
 import type { AutomationTriggersBody } from "@app/lib/api/analytics/automations/schema";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
-import { useUpdateTriggerStatus } from "@app/lib/swr/agent_triggers";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import {
+  useUpdateTriggerExecutionMode,
+  useUpdateTriggerStatus,
+} from "@app/lib/swr/agent_triggers";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
-import type { TriggerStatus } from "@app/types/assistant/triggers";
+import type {
+  TriggerExecutionMode,
+  TriggerStatus,
+} from "@app/types/assistant/triggers";
 import { getTriggerStatusOwner } from "@app/types/assistant/triggers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -32,7 +40,10 @@ import {
   ChevronUp,
   Clock,
   DataTable,
-  DataTableLoadingSkeleton,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Icon,
   Pagination,
   SearchInput,
@@ -50,6 +61,44 @@ interface TriggerRowData extends BaseTriggerRowData {
   displayStatus: TriggerStatus;
   isStatusPending: boolean;
   onToggleStatus: () => void;
+  displayExecutionMode: TriggerExecutionMode;
+  isExecutionModePending: boolean;
+  onSetExecutionMode: (executionMode: TriggerExecutionMode) => void;
+}
+
+const POOL_OPTIONS: { value: TriggerExecutionMode; label: string }[] = [
+  { value: "workspace_pool", label: "Workspace" },
+  { value: "user_pool", label: "Member" },
+];
+
+function PoolCell({ row }: { row: TriggerRowData }) {
+  const { hasPermission } = useWorkspacePermissions();
+  const isWorkspacePool = row.displayExecutionMode === "workspace_pool";
+  const canSetPool = hasPermission("use_workspace_pool", "trigger");
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="xs"
+          isSelect
+          disabled={row.isExecutionModePending || !canSetPool}
+          className={isWorkspacePool ? "text-highlight" : undefined}
+          label={isWorkspacePool ? "Workspace" : "Member"}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        {POOL_OPTIONS.map(({ value, label }) => (
+          <DropdownMenuItem
+            key={value}
+            label={label}
+            onClick={() => row.onSetExecutionMode(value)}
+          />
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 function TypeCell({ trigger }: { trigger: AutomationTriggerRow }) {
@@ -64,17 +113,9 @@ function TypeCell({ trigger }: { trigger: AutomationTriggerRow }) {
     case "webhook":
       if (trigger.webhookSourceRestricted) {
         return (
-          <Tooltip
+          <TypeLabel
+            visual={getIcon("ActionLockIcon")}
             label="This webhook lives in a space you don't have access to."
-            tooltipTriggerAsChild
-            trigger={
-              <div>
-                <TypeLabel
-                  visual={getIcon("ActionLockIcon")}
-                  label="Restricted webhook"
-                />
-              </div>
-            }
           />
         );
       }
@@ -126,7 +167,13 @@ function RunningCell({ row }: { row: TriggerRowData }) {
       );
     default:
       assertNeverAndIgnore(row.displayStatus);
-      return null;
+      return (
+        <SliderToggle
+          selected={row.displayStatus === "enabled"}
+          disabled={row.isStatusPending}
+          onClick={row.onToggleStatus}
+        />
+      );
   }
 }
 
@@ -144,7 +191,6 @@ function TypeLabel({
       trigger={
         <div className="flex min-w-0 items-center gap-2">
           <Icon visual={visual} size="xs" className="text-muted-foreground" />
-          <span className="truncate text-sm">{label}</span>
         </div>
       }
     />
@@ -201,13 +247,14 @@ function EditorCell({ editor }: { editor: AutomationTriggerRow["editor"] }) {
       }
       tooltipTriggerAsChild
       trigger={
-        <div className="flex items-center">
+        <div className="flex gap-2 items-center">
           <Avatar
             name={editor.name}
             visual={editor.pictureUrl ?? undefined}
             size="xs"
             isRounded
           />
+          <span className="text-sm truncate">{editor.name}</span>
         </div>
       }
     />
@@ -216,18 +263,33 @@ function EditorCell({ editor }: { editor: AutomationTriggerRow["editor"] }) {
 
 function buildColumns({
   expandedRowId,
+  showPoolColumn,
 }: {
   expandedRowId: string | null;
+  showPoolColumn: boolean;
 }): ColumnDef<TriggerRowData>[] {
   return [
     {
       id: "name",
       accessorKey: "name",
       header: "Name",
-      meta: { className: "w-48", headerAlign: "left" },
+      meta: { className: "truncate", headerAlign: "left" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-start text-left">
-          <span className="truncate text-sm">{info.row.original.name}</span>
+          <span className="truncate text-sm font-semibold">
+            {info.row.original.name}
+          </span>
+        </DataTable.CellContent>
+      ),
+    },
+    {
+      id: "editor",
+      header: "Editor",
+      enableSorting: false,
+      meta: { className: "w-36", headerAlign: "center" },
+      cell: (info) => (
+        <DataTable.CellContent className="w-full justify-start">
+          <EditorCell editor={info.row.original.editor} />
         </DataTable.CellContent>
       ),
     },
@@ -243,23 +305,12 @@ function buildColumns({
       ),
     },
     {
-      id: "editor",
-      header: "Editor",
-      enableSorting: false,
-      meta: { className: "w-16", headerAlign: "center" },
-      cell: (info) => (
-        <DataTable.CellContent className="w-full justify-center">
-          <EditorCell editor={info.row.original.editor} />
-        </DataTable.CellContent>
-      ),
-    },
-    {
       id: "type",
       header: "Type",
       enableSorting: false,
-      meta: { headerAlign: "left" },
+      meta: { className: "w-8" },
       cell: (info) => (
-        <DataTable.CellContent className="w-full justify-start">
+        <DataTable.CellContent className="w-full justify-center">
           <TypeCell trigger={info.row.original} />
         </DataTable.CellContent>
       ),
@@ -275,11 +326,26 @@ function buildColumns({
         </DataTable.CellContent>
       ),
     },
+    ...(showPoolColumn
+      ? [
+          {
+            id: "pool",
+            header: "Pool",
+            enableSorting: false,
+            meta: { className: "w-28" },
+            cell: (info) => (
+              <DataTable.CellContent className="w-full justify-start">
+                <PoolCell row={info.row.original} />
+              </DataTable.CellContent>
+            ),
+          } satisfies ColumnDef<TriggerRowData>,
+        ]
+      : []),
     {
       id: "status",
       header: "Enabled",
       enableSorting: false,
-      meta: { className: "w-24" },
+      meta: { className: "w-16" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-center">
           <RunningCell row={info.row.original} />
@@ -375,6 +441,9 @@ export function AutomationsTriggersTable({
 
   const confirm = useContext(ConfirmContext);
   const updateTriggerStatus = useUpdateTriggerStatus({ workspaceId });
+  const updateTriggerExecutionMode = useUpdateTriggerExecutionMode({
+    workspaceId,
+  });
 
   const exportBody: AutomationTriggersBody = {
     period: period.kind,
@@ -400,6 +469,12 @@ export function AutomationsTriggersTable({
     Record<string, TriggerStatus>
   >({});
   const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
+  const [executionModeOverrides, setExecutionModeOverrides] = useState<
+    Record<string, TriggerExecutionMode>
+  >({});
+  const [pendingExecutionModeIds, setPendingExecutionModeIds] = useState<
+    ReadonlySet<string>
+  >(new Set());
 
   // Refetched rows (pagination, period change) already carry any status we
   // wrote, so overrides only need to live until the next fetch. Reset during
@@ -410,6 +485,7 @@ export function AutomationsTriggersTable({
   if (prevTriggers !== triggers) {
     setPrevTriggers(triggers);
     setStatusOverrides({});
+    setExecutionModeOverrides({});
   }
 
   const handleToggle = useCallback(
@@ -456,6 +532,32 @@ export function AutomationsTriggersTable({
     [confirm, updateTriggerStatus]
   );
 
+  const handleSetExecutionMode = useCallback(
+    async (
+      trigger: AutomationTriggerRow,
+      executionMode: TriggerExecutionMode
+    ) => {
+      setPendingExecutionModeIds((ids) => new Set([...ids, trigger.triggerId]));
+      const success = await updateTriggerExecutionMode({
+        agentConfigurationId: trigger.agent.agentId,
+        triggerId: trigger.triggerId,
+        executionMode,
+      });
+      if (success) {
+        setExecutionModeOverrides((overrides) => ({
+          ...overrides,
+          [trigger.triggerId]: executionMode,
+        }));
+      }
+      setPendingExecutionModeIds((ids) => {
+        const next = new Set(ids);
+        next.delete(trigger.triggerId);
+        return next;
+      });
+    },
+    [updateTriggerExecutionMode]
+  );
+
   const rows: TriggerRowData[] = useMemo(
     () =>
       triggers.map((trigger) => {
@@ -466,13 +568,28 @@ export function AutomationsTriggersTable({
           displayStatus,
           isStatusPending: pendingIds.has(trigger.triggerId),
           onToggleStatus: () => void handleToggle(trigger, displayStatus),
+          displayExecutionMode:
+            executionModeOverrides[trigger.triggerId] ?? trigger.executionMode,
+          isExecutionModePending: pendingExecutionModeIds.has(
+            trigger.triggerId
+          ),
+          onSetExecutionMode: (executionMode: TriggerExecutionMode) =>
+            void handleSetExecutionMode(trigger, executionMode),
           onClick: () =>
             setExpandedRowId((current) =>
               current === trigger.triggerId ? null : trigger.triggerId
             ),
         };
       }),
-    [triggers, statusOverrides, pendingIds, handleToggle]
+    [
+      triggers,
+      statusOverrides,
+      pendingIds,
+      handleToggle,
+      executionModeOverrides,
+      pendingExecutionModeIds,
+      handleSetExecutionMode,
+    ]
   );
 
   return (
@@ -491,7 +608,7 @@ export function AutomationsTriggersTable({
             filter={filter}
             onFilterChange={onFilterChange}
           />
-          <CsvDownloadButton {...csvDownload} />
+          <CsvDownloadButton {...csvDownload} size="sm" />
         </div>
         <AutomationsFilterSummary
           filter={filter}
@@ -545,16 +662,29 @@ function TriggersTableBody({
   period,
   expandedRowId,
 }: TriggersTableBodyProps) {
+  const { hasFeature } = useFeatureFlags();
+  const showPoolColumn = hasFeature("trigger_pool_choice");
   const columns = useMemo(
-    () => buildColumns({ expandedRowId }),
-    [expandedRowId]
+    () => buildColumns({ expandedRowId, showPoolColumn }),
+    [expandedRowId, showPoolColumn]
   );
 
-  if (isLoading) {
-    return (
-      <DataTableLoadingSkeleton showSelectionColumn={false} showTrailingCell />
-    );
-  }
+  const firstRowIndex = pagination.pageIndex * pagination.pageSize;
+  const skeletonRowCount =
+    totalCount > firstRowIndex
+      ? Math.min(pagination.pageSize, totalCount - firstRowIndex)
+      : pagination.pageSize;
+  const paginationControls = totalCount > pagination.pageSize && (
+    <div className="mt-2 p-1">
+      <Pagination
+        size="xs"
+        showDetails={false}
+        pagination={pagination}
+        setPagination={setPagination}
+        rowCount={totalCount}
+      />
+    </div>
+  );
 
   if (isError) {
     return (
@@ -564,7 +694,7 @@ function TriggersTableBody({
     );
   }
 
-  if (rows.length === 0) {
+  if (!isLoading && rows.length === 0) {
     return (
       <div className="text-sm text-muted-foreground">
         {search.trim()
@@ -575,7 +705,7 @@ function TriggersTableBody({
   }
 
   return (
-    <div>
+    <div aria-busy={isLoading || undefined}>
       <div className="overflow-x-auto">
         <AutomationsTriggersRowsTable
           data={rows}
@@ -585,19 +715,11 @@ function TriggersTableBody({
           expandedRowId={expandedRowId}
           medianRunCount={medianRunCount}
           medianCostPerRun={medianCostPerRun}
+          isLoading={isLoading}
+          skeletonRowCount={skeletonRowCount}
         />
       </div>
-      {totalCount > pagination.pageSize && (
-        <div className="mt-2 p-1">
-          <Pagination
-            size="xs"
-            showDetails={false}
-            pagination={pagination}
-            setPagination={setPagination}
-            rowCount={totalCount}
-          />
-        </div>
-      )}
+      {paginationControls}
     </div>
   );
 }

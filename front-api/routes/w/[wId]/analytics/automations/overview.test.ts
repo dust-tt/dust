@@ -45,13 +45,23 @@ function postOverviewRequest(wId: string, body: Record<string, unknown> = {}) {
 }
 
 describe("POST /api/w/:wId/analytics/automations/overview", () => {
-  it("returns 403 for managers", async () => {
-    const { workspace } = await setupTest({ role: "manager" });
+  it("returns 403 for regular users", async () => {
+    const { workspace } = await setupTest({ role: "user" });
 
     const response = await postOverviewRequest(workspace.sId);
 
     expect(response.status).toBe(403);
     expect(vi.mocked(fetchAutomationsOverview)).not.toHaveBeenCalled();
+  });
+
+  it("returns the overview for managers", async () => {
+    vi.mocked(fetchAutomationsOverview).mockResolvedValue(new Ok(OVERVIEW));
+    const { workspace } = await setupTest({ role: "manager" });
+
+    const response = await postOverviewRequest(workspace.sId);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(OVERVIEW);
   });
 
   it("returns the overview for admins, defaulting to the current cycle", async () => {

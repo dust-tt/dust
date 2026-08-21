@@ -1,5 +1,6 @@
 import type { InferenceRegionType } from "@app/lib/api/assistant/token_pricing";
 import { LLM } from "@app/lib/api/llm/llm";
+import { withConciseOpenAIReasoningSummary } from "@app/lib/api/llm/reasoning_summary";
 import type {
   BatchDeletionOutcome,
   BatchResult,
@@ -29,6 +30,7 @@ import {
 } from "@app/lib/api/llm/utils";
 import { getPromptCacheKey } from "@app/lib/api/llm/utils/prompt_cache_key";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch/configuration";
@@ -86,6 +88,7 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -675,6 +678,22 @@ function convertBatchEventsToOld(
  */
 abstract class BaseTransition extends LLM {
   protected override readonly router = "new" as const;
+  private featureFlagsPromise: Promise<WhitelistableFeature[]> | undefined;
+
+  protected async withFeatureFlaggedInputConfig(
+    config: InputConfig,
+    host: Host
+  ): Promise<InputConfig> {
+    if (host !== OPENAI_RESPONSES_HOST) {
+      return config;
+    }
+
+    this.featureFlagsPromise ??= getFeatureFlags(this.authenticator);
+    return withConciseOpenAIReasoningSummary(
+      config,
+      await this.featureFlagsPromise
+    );
+  }
 
   // Builds the provider-agnostic conversation payload (system + messages) shared
   // by both the streaming and batch surfaces.
@@ -841,7 +860,7 @@ export class StreamEndpointTransition extends BaseTransition {
     };
   }
 
-  protected buildStreamRequestPayload(
+  protected async buildStreamRequestPayload(
     streamParameters: LLMStreamParameters,
     metadata?: LLMStreamMetadata
   ) {
@@ -856,14 +875,19 @@ export class StreamEndpointTransition extends BaseTransition {
     // https://docs.x.ai/developers/advanced-api-usage/prompt-caching/maximizing-cache-hits
     // (verified 2026-08-12). Other surfaces guard `cacheKey` to undefined.
     const cacheKey = getPromptCacheKeyForHost(api, metadata);
-    return this.model.buildRequestPayload(
-      this.buildPayload(streamParameters, { explicitTailBreakpoint }),
+    const config = await this.withFeatureFlaggedInputConfig(
       this.buildConfig(
         streamParameters,
         this.model.constructor.configSchema,
         this.endpointConstructor.configParsers,
         cacheKey
-      )
+      ),
+      api
+    );
+
+    return this.model.buildRequestPayload(
+      this.buildPayload(streamParameters, { explicitTailBreakpoint }),
+      config
     );
   }
 
@@ -913,9 +937,9 @@ export class NoopStreamTransition extends StreamEndpointTransition {
     this.noopMetaData = llmParameters.modelInfo.metaData;
   }
 
-  protected override buildStreamRequestPayload(
+  protected override async buildStreamRequestPayload(
     streamParameters: LLMStreamParameters
-  ): NoopRequest {
+  ): Promise<NoopRequest> {
     const request = this.noopModel.buildRequestPayload(
       this.buildPayload(streamParameters)
     );
@@ -1000,10 +1024,18 @@ export class BatchEndpointTransition extends BaseTransition {
 
   // Builds the per-request payload for tracing (the base class captures batch
   // inputs via this hook). Streaming itself is never invoked on a batch LLM.
-  protected buildStreamRequestPayload(streamParameters: LLMStreamParameters) {
+  protected async buildStreamRequestPayload(
+    streamParameters: LLMStreamParameters
+  ) {
+    const { host } = this.model.metadata();
+    const config = await this.withFeatureFlaggedInputConfig(
+      this.buildConfig(streamParameters, this.model.constructor.configSchema),
+      host
+    );
+
     return this.model.buildRequestPayload(
       this.buildPayload(streamParameters),
-      this.buildConfig(streamParameters, this.model.constructor.configSchema)
+      config
     );
   }
 
@@ -1016,13 +1048,17 @@ export class BatchEndpointTransition extends BaseTransition {
   protected override async internalSendBatchProcessing(
     conversations: Map<string, LLMStreamParameters>
   ): Promise<string> {
+    const { host } = this.model.metadata();
     const requests = new Map<string, BatchRequest>();
     for (const [customId, streamParameters] of conversations) {
       requests.set(customId, {
         payload: this.buildPayload(streamParameters),
-        config: this.buildConfig(
-          streamParameters,
-          this.model.constructor.configSchema
+        config: await this.withFeatureFlaggedInputConfig(
+          this.buildConfig(
+            streamParameters,
+            this.model.constructor.configSchema
+          ),
+          host
         ),
       });
     }

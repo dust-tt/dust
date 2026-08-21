@@ -51,6 +51,8 @@ import { OpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream } from "@app/lib/mode
 import { OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_sol_global_openai_responses";
 import { OpenAIGptFiveDotSixTerraEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_terra_eu_openai_responses";
 import { OpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_terra_global_openai_responses";
+import { OpenAIGptFiveDotSixTerraLongContextEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_terra_long_context_eu_openai_responses";
+import { OpenAIGptFiveDotSixTerraLongContextGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_terra_long_context_global_openai_responses";
 import { OpenAIGptFiveDotTwoEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_two_eu_openai_responses";
 import { OpenAIGptFiveDotTwoGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_two_global_openai_responses";
 import { OpenAIGptFiveEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_eu_openai_responses";
@@ -155,6 +157,8 @@ export const STREAM_ENDPOINTS = {
     OpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream,
   [OpenAIGptFiveDotSixTerraEuropeOpenAIResponsesStream.id]:
     OpenAIGptFiveDotSixTerraEuropeOpenAIResponsesStream,
+  [OpenAIGptFiveDotSixTerraLongContextEuropeOpenAIResponsesStream.id]:
+    OpenAIGptFiveDotSixTerraLongContextEuropeOpenAIResponsesStream,
   [OpenAIGptFiveDotTwoEuropeOpenAIResponsesStream.id]:
     OpenAIGptFiveDotTwoEuropeOpenAIResponsesStream,
   [OpenAIGptFiveMiniEuropeOpenAIResponsesStream.id]:
@@ -179,6 +183,8 @@ export const STREAM_ENDPOINTS = {
     OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream,
   [OpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream.id]:
     OpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream,
+  [OpenAIGptFiveDotSixTerraLongContextGlobalOpenAIResponsesStream.id]:
+    OpenAIGptFiveDotSixTerraLongContextGlobalOpenAIResponsesStream,
   [OpenAIGptFiveDotTwoGlobalOpenAIResponsesStream.id]:
     OpenAIGptFiveDotTwoGlobalOpenAIResponsesStream,
   [OpenAIGptFiveMiniGlobalOpenAIResponsesStream.id]:

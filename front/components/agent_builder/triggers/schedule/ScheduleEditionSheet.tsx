@@ -1,6 +1,7 @@
 import type { AgentBuilderScheduleTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ScheduleEditionScheduler } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionScheduler";
 import { TriggerPodSelector } from "@app/components/agent_builder/triggers/TriggerPodSelector";
+import { TriggerPoolSelector } from "@app/components/agent_builder/triggers/TriggerPoolSelector";
 import { TriggerStatusToggle } from "@app/components/agent_builder/triggers/TriggerStatusToggle";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -127,6 +128,10 @@ export function ScheduleEditionSheetContent({
         <ScheduleEditionScheduler isEditor={isEditor} owner={owner} />
         <Separator />
         <ScheduleEditionMessageInput isEditor={isEditor} />
+        <TriggerPoolSelector
+          name="schedule.executionMode"
+          isEditor={isEditor}
+        />
         <Separator />
         <ScheduleEditionPodSelector isEditor={isEditor} owner={owner} />
       </div>

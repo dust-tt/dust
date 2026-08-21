@@ -65,6 +65,7 @@ function triggerTypeToBuilderType(
         naturalLanguageDescription: trigger.naturalLanguageDescription,
         configuration: trigger.configuration,
         editor: trigger.editor,
+        executionMode: trigger.executionMode,
         spaceId: trigger.spaceId,
       };
     case "webhook":

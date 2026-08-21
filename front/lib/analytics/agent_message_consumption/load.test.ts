@@ -8,14 +8,15 @@ import {
 import type { UsageType } from "@app/lib/metronome/types";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { RunResource } from "@app/lib/resources/run_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { WorkspaceType } from "@app/types/user";
+import assert from "assert";
 import { describe, expect, it } from "vitest";
 
 async function createAgenticMessage({
@@ -157,6 +158,7 @@ async function setupSettledMessage({
     inputTokens: 100,
     outputTokens: 20,
     modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+    usageType,
   });
   await AgentMessageModel.update(
     {
@@ -172,13 +174,6 @@ async function setupSettledMessage({
       },
     }
   );
-  if (usageType !== null) {
-    await RunResource.setUsageTypeForRuns(auth, {
-      runs: [run],
-      usageType,
-    });
-  }
-
   return {
     agent,
     agentMessage,
@@ -212,6 +207,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
 
     expect(input).toMatchObject({
       agent: {
+        attributed_id: context.agent.sId,
         id: context.agent.sId,
         version: context.agent.version.toString(),
         parent_ids: [],
@@ -350,6 +346,53 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     });
 
     expect(input?.agent).toMatchObject({
+      parent_ids: [parent.agent.sId],
+      direct_parent_id: parent.agent.sId,
+      root_id: parent.agent.sId,
+      depth: 1,
+    });
+  });
+
+  it("attributes a hidden helper to its direct parent agent", async () => {
+    const testContext = await createResourceTest({ role: "admin" });
+    const parent = await createAgenticMessage({
+      auth: testContext.authenticator,
+      workspace: testContext.workspace,
+      depth: 0,
+      agentName: "Visible parent agent",
+    });
+    const child = await setupSettledMessage({
+      testContext,
+      depth: 1,
+      agenticOriginMessageId: parent.agentMessage.sId,
+      agentName: "Temporary child agent",
+    });
+    assert(
+      child.agentMessage.agentMessageId,
+      "Hidden helper agent message was not created"
+    );
+    await AgentMessageModel.update(
+      {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST_TASK,
+        agentConfigurationVersion: 0,
+      },
+      {
+        where: {
+          id: child.agentMessage.agentMessageId,
+          workspaceId: child.workspace.id,
+        },
+      }
+    );
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(child.auth, {
+      agentMessageId: child.agentMessage.sId,
+    });
+
+    expect(input?.agent).toEqual({
+      attributed_id: parent.agent.sId,
+      id: GLOBAL_AGENTS_SID.DUST_TASK,
+      version: "0",
+      tag_ids: [],
       parent_ids: [parent.agent.sId],
       direct_parent_id: parent.agent.sId,
       root_id: parent.agent.sId,

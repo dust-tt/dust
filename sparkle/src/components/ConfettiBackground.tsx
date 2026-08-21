@@ -39,12 +39,23 @@ function drawSnowflake(ctx: CanvasRenderingContext2D): void {
 }
 
 export interface ConfettiBackgroundProps {
+  /** Canvas width in pixels; ignored when `referentSize` is provided. */
   width?: number;
+  /** Canvas height in pixels; ignored when `referentSize` is provided. */
   height?: number;
+  /** Particle style: `confetti` (festive, multicolor) or `snow` (calm, drifting flakes). */
   variant?: "confetti" | "snow";
+  /** Ref to the sizing container; the canvas tracks its dimensions. */
   referentSize?: React.RefObject<HTMLElement>;
 }
 
+/**
+ * A full-bleed canvas of falling particles used as a celebratory or atmospheric
+ * backdrop, switching between `confetti` and `snow` via `variant`. Use it sparingly
+ * to celebrate a milestone or add seasonal ambiance, rendered inside a positioned,
+ * sized container whose ref is passed to `referentSize`, kept behind content.
+ * @summary Falling-particle backdrop.
+ */
 const ConfettiBackground: React.FC<ConfettiBackgroundProps> = ({
   width,
   height,

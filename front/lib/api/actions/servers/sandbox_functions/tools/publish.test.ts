@@ -1,7 +1,11 @@
 import { SANDBOX_FUNCTIONS_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { publishHandler } from "@app/lib/api/actions/servers/sandbox_functions/tools/publish";
 import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import {
+  computeSandboxFunctionBundleSha256,
+  SandboxFunctionResource,
+  shortSandboxFunctionBundleSha256,
+} from "@app/lib/resources/sandbox_function_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   makeExtra,
@@ -67,7 +71,7 @@ function firstText(content: Array<{ type: string; text?: string }>): string {
 }
 
 describe("publishHandler", () => {
-  it("reports the app-prefixed slug and the reference a Frame needs", async () => {
+  it("reports the app-prefixed slug, the publish receipt, and the reference a Frame needs", async () => {
     const { auth, conversation, projectId } = await setupProjectConversation();
 
     const result = await publishHandler(
@@ -84,12 +88,53 @@ describe("publishHandler", () => {
     if (result.isErr()) {
       throw result.error;
     }
-    expect(result.value).toEqual([
-      {
-        type: "text",
-        text: `Published pod function "tasklist__add-task". Frames call it by reference "${projectId}/tasklist__add-task".`,
-      },
-    ]);
+    const [block] = result.value;
+    expect(block).toMatchObject({ type: "text" });
+    if (block?.type !== "text") {
+      return;
+    }
+    expect(block.text).toContain('Published pod function "tasklist__add-task"');
+    expect(block.text).toContain(
+      `Frames call it by reference "${projectId}/tasklist__add-task".`
+    );
+    // The receipt names the mode, timestamp and bundle hash so the caller can verify the
+    // publish landed through list/get.
+    expect(block.text).toContain("executionMode: fast");
+    expect(block.text).toContain("updatedAt: ");
+    const expectedShortSha = shortSandboxFunctionBundleSha256(
+      computeSandboxFunctionBundleSha256("export default {};")
+    );
+    expect(block.text).toContain(`bundle: ${expectedShortSha}`);
+    // A first publish must not claim byte-identity with anything.
+    expect(block.text).not.toContain("byte-identical");
+  });
+
+  it("flags a re-publish whose built bundle did not change", async () => {
+    const { auth, conversation, projectId } = await setupProjectConversation();
+    const input = {
+      slug: "add-task",
+      description: "Add a task.",
+      path: `pod-${projectId}/TaskList/functions/add-task.ts`,
+      executionMode: "fast" as const,
+      defaultStake: "low" as const,
+    };
+
+    const first = await publishHandler(input, makeExtra(auth, conversation));
+    if (first.isErr()) {
+      throw first.error;
+    }
+
+    // The mocked build returns the same bundle, so the republish changes nothing: the result
+    // must say so instead of letting the caller believe an edit landed.
+    const second = await publishHandler(input, makeExtra(auth, conversation));
+    if (second.isErr()) {
+      throw second.error;
+    }
+    const [block] = second.value;
+    if (block?.type !== "text") {
+      throw new Error("Expected a text block.");
+    }
+    expect(block.text).toContain("byte-identical to the previous publish");
   });
 
   it("records declared domains as Pod requests, even for an admin publisher", async () => {

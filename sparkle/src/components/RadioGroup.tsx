@@ -27,6 +27,14 @@ export const radioIndicatorStyles = cva(
   )
 );
 
+/**
+ * Presents a set of mutually exclusive options where exactly one can be
+ * selected at a time, composed of RadioGroupItem or RadioGroupCustomItem
+ * children. Use it to choose a single value from a small set (roughly 2-6
+ * options) worth showing at once; for many options use a Dropdown, and to
+ * select more than one value use Checkbox.
+ * @summary Single-choice group of radio options.
+ */
 const RadioGroup = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
@@ -50,6 +58,11 @@ interface RadioGroupItemProps
   icon?: React.ComponentType;
 }
 
+/**
+ * A standard labelled option of a RadioGroup, with an optional icon; for
+ * richer custom content per option use RadioGroupCustomItem.
+ * @summary Labelled radio option.
+ */
 const RadioGroupItem = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Item>,
   RadioGroupItemProps
@@ -96,11 +109,19 @@ type IconPosition = "start" | "center" | "end";
 
 interface RadioGroupCustomItemProps
   extends React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item> {
+  /** Vertical alignment of the radio button relative to the custom content. */
   iconPosition?: IconPosition;
+  /** Custom content rendered next to the radio button in place of a plain label. */
   customItem: React.ReactNode;
+  /** Extra content rendered below the radio row (e.g. a description or nested controls). */
   children?: React.ReactNode;
 }
 
+/**
+ * A RadioGroup option that renders arbitrary custom content next to the radio
+ * button, instead of RadioGroupItem's plain label.
+ * @summary Radio option with custom content.
+ */
 const RadioGroupCustomItem = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Item>,
   RadioGroupCustomItemProps

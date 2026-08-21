@@ -26,6 +26,11 @@ interface UlBlockProps {
   node?: MarkdownNode;
 }
 
+/**
+ * Renders unordered lists inside Markdown output; GFM task lists (detected via
+ * the `contains-task-list` class) drop the disc bullets.
+ * @summary Unordered-list renderer for Markdown.
+ */
 export const UlBlock = memo(
   ({ children, className }: UlBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
@@ -59,6 +64,11 @@ interface OlBlockProps {
   node?: MarkdownNode;
 }
 
+/**
+ * Renders ordered lists inside Markdown output, honoring the `start` number
+ * from the source Markdown.
+ * @summary Ordered-list renderer for Markdown.
+ */
 export const OlBlock = memo(
   ({ children, start }: OlBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
@@ -82,6 +92,11 @@ interface LiBlockProps {
   node?: MarkdownNode;
 }
 
+/**
+ * Renders list items inside Markdown output; task-list items (detected via the
+ * `task-list-item` class) suppress their list marker.
+ * @summary List-item renderer for Markdown.
+ */
 export const LiBlock = memo(
   ({ children, className }: LiBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();

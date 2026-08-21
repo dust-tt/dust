@@ -52,7 +52,7 @@ describe("formatSandboxFunctionsList", () => {
     );
   });
 
-  it("renders slug and description without schemas", async () => {
+  it("renders slug, mode, timestamp and description without schemas", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -65,7 +65,11 @@ describe("formatSandboxFunctionsList", () => {
     const out = formatSandboxFunctionsList([fn]);
 
     expect(out).toContain("Pod functions:");
-    expect(out).toContain("- greet: Greet a user by name.");
+    // The mode and timestamp mirror the publish tool's receipt, so a caller can confirm a
+    // publish landed from the listing.
+    expect(out).toContain(
+      `- greet [${fn.executionMode}, updated ${fn.updatedAt.toISOString()}]: Greet a user by name.`
+    );
     expect(out).toContain("Use the get tool");
     // The verbose schemas live behind the get tool, not the list.
     expect(out).not.toContain("input:");

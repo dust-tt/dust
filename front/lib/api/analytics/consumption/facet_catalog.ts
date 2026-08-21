@@ -17,6 +17,7 @@ import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import tracer from "@app/logger/tracer";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
@@ -190,12 +191,14 @@ async function listConsumptionFacetCatalogWithoutTracing(
   );
 
   return {
-    agent: agents.map((agent) => ({
-      value: agent.sId,
-      label: agent.name,
-      pictureUrl: agent.pictureUrl,
-      scope: agent.scope,
-    })),
+    agent: agents
+      .filter((agent) => !isHiddenHelperSubAgentId(agent.sId))
+      .map((agent) => ({
+        value: agent.sId,
+        label: agent.name,
+        pictureUrl: agent.pictureUrl,
+        scope: agent.scope,
+      })),
     user: members.map((member) => ({
       value: member.sId,
       label: member.fullName,

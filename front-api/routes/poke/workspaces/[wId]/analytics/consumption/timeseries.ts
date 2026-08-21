@@ -1,0 +1,63 @@
+import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import {
+  ConsumptionTimeseriesBodySchema,
+  toConsumptionPeriodInput,
+} from "@app/lib/api/analytics/consumption/schema";
+import type { GetConsumptionTimeseriesResponse } from "@app/lib/api/analytics/consumption/timeseries";
+import { fetchConsumptionTimeseries } from "@app/lib/api/analytics/consumption/timeseries";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+
+// Mounted at /api/poke/workspaces/:wId/analytics/consumption/timeseries.
+const app = pokeApp();
+
+/** @ignoreswagger */
+app.post(
+  "/",
+  validate("json", ConsumptionTimeseriesBodySchema),
+  async (ctx): HandlerResult<GetConsumptionTimeseriesResponse> => {
+    const auth = ctx.get("auth");
+    const {
+      granularity,
+      mode,
+      metric,
+      breakdownBy,
+      breakdownCount,
+      filter,
+      ...periodQuery
+    } = ctx.req.valid("json");
+
+    const period = await resolveConsumptionPeriod(
+      auth,
+      toConsumptionPeriodInput(periodQuery)
+    );
+
+    const result = await fetchConsumptionTimeseries(auth, {
+      period,
+      granularity,
+      mode,
+      metric,
+      breakdownBy,
+      breakdownCount,
+      filter,
+    });
+    if (result.isErr()) {
+      return apiError(
+        ctx,
+        {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to retrieve timeseries.",
+          },
+        },
+        result.error
+      );
+    }
+
+    return ctx.json(result.value);
+  }
+);
+
+export default app;

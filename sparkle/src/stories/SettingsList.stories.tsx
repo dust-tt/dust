@@ -30,6 +30,12 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/**
+ * A typical workspace-settings panel: rows composed with **SettingsList.Row**,
+ * each pairing a title and description with a trailing control — here two
+ * **SliderToggle**s and an **Input** in the `action` slot.
+ * @summary Settings rows with toggle and input actions.
+ */
 export const Default: Story = {
   render: () => (
     <div className="w-full max-w-xl">
@@ -61,8 +67,11 @@ export const Default: Story = {
   ),
 };
 
-// Exercises the optional `description` and `action` props: rows can omit
-// either, and the layout should remain coherent when mixed.
+/**
+ * Exercises the optional `description` and `action` props: rows can omit
+ * either, and the layout should remain coherent when mixed.
+ * @summary Rows omitting description and/or action.
+ */
 export const OptionalDescriptionAndAction: Story = {
   render: () => (
     <div className="w-full max-w-xl">

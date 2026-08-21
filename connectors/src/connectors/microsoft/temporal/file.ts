@@ -256,12 +256,11 @@ export async function syncOneFile({
   const allowedLabels = providerConfig.allowedSensitivityLabels ?? [];
 
   if (!url || !fields) {
-    if (!url) {
-      statsDClient.increment("microsoft.file.missing_download_url");
-    }
-    if (!fields) {
-      statsDClient.increment("microsoft.file.missing_fields");
-    }
+    // The delta projection is lean and never carries the download URL or list-item
+    // fields (see DRIVE_ITEM_DELTA_SELECTS), so hydrating them here is the expected
+    // path for incrementally-synced files rather than an anomaly. This counter tracks
+    // the resulting extra Graph calls so we can monitor the API-volume tradeoff.
+    statsDClient.increment("microsoft.file.metadata_hydration");
 
     let item: DriveItem;
     try {

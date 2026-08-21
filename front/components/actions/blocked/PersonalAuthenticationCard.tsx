@@ -128,54 +128,52 @@ export function PersonalAuthenticationCard({
     <Card
       variant="secondary"
       containerClassName="w-full max-w-xl"
-      className="flex-col p-0 shadow"
+      className="flex flex-col shadow gap-4"
     >
-      <div className="flex items-center gap-3 px-5 pt-4">
+      <div className="flex items-center gap-2">
         <Avatar icon={icon} size="sm" />
         <div className="heading-base min-w-0">Connect account</div>
       </div>
 
-      <div className="flex flex-col gap-4 wrap-break-word px-5 py-4">
-        <div className="text-base text-muted-foreground">
-          {`Dust needs access to ${serverDisplayName ?? "this service"} to complete this action.`}
-        </div>
-        <div className="text-base text-muted-foreground">
-          {`Once connected, ${serverDisplayName ?? "this service"} will remain connected for future requests.`}
-        </div>
-        {canCurrentUserRespond ? (
-          <>
-            {overridableInputs && mcpServer && (
-              <PersonalAuthCredentialOverrides
-                inputs={overridableInputs}
-                values={overriddenCredentials}
-                idPrefix={mcpServerId}
-                onChange={(key, value) =>
-                  setCredentialOverrides((prev) => ({
-                    ...prev,
-                    [key]: value,
-                  }))
-                }
-              />
-            )}
-            {connectionError && (
-              <div className="text-sm font-medium text-warning-800">
-                {connectionError}
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="text-sm text-muted-foreground">
-            Waiting for{" "}
-            <span className="font-semibold text-foreground">
-              {triggeringUser?.fullName}
-            </span>{" "}
-            to connect their account.
-          </div>
-        )}
+      <div className="text-base text-muted-foreground">
+        {`Dust needs access to ${serverDisplayName ?? "this service"} to complete this action.`}
       </div>
+      <div className="text-base text-muted-foreground">
+        {`Once connected, ${serverDisplayName ?? "this service"} will remain connected for future requests.`}
+      </div>
+      {canCurrentUserRespond ? (
+        <>
+          {overridableInputs && mcpServer && (
+            <PersonalAuthCredentialOverrides
+              inputs={overridableInputs}
+              values={overriddenCredentials}
+              idPrefix={mcpServerId}
+              onChange={(key, value) =>
+                setCredentialOverrides((prev) => ({
+                  ...prev,
+                  [key]: value,
+                }))
+              }
+            />
+          )}
+          {connectionError && (
+            <div className="text-sm font-medium text-warning-800">
+              {connectionError}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-sm text-muted-foreground">
+          Waiting for{" "}
+          <span className="font-semibold text-foreground">
+            {triggeringUser?.fullName}
+          </span>{" "}
+          to connect their account.
+        </div>
+      )}
 
       {canCurrentUserRespond && mcpServer && (
-        <div className="flex justify-end gap-2 px-4 pb-3 pt-2">
+        <div className="flex justify-end gap-3">
           <Button
             variant="outline"
             label="Decline"

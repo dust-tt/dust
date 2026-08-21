@@ -111,7 +111,7 @@ export class SpaceFactory {
       {
         name: `${PROJECT_EDITOR_GROUP_PREFIX} ${name}`,
         workspaceId: workspace.id,
-        kind: "space_editors",
+        kind: "regular_auto",
       },
       {
         memberIds: [creatorId ?? defaultCreator.id],

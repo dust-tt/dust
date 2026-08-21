@@ -27,9 +27,19 @@ interface MultiPageDialogPage {
   description?: string;
   icon?: React.ComponentType;
   content: React.ReactNode;
+  /** Non-scrolling content pinned above the page's scrollable content, separated by a divider. */
   fixedContent?: React.ReactNode;
 }
 
+/**
+ * A modal dialog that hosts multiple pages in a single overlay, ideal for
+ * wizards and multi-step flows. Compose with MultiPageDialogTrigger and
+ * MultiPageDialogContent; the caller controls paging via `currentPageId` and
+ * `onPageChange`. Use it when the flow demands the user's focus; for a
+ * side-anchored multi-step panel that keeps page context visible, use
+ * MultiPageSheet instead.
+ * @summary Multi-page modal dialog for step-based flows.
+ */
 const MultiPageDialogRoot = Dialog;
 const MultiPageDialogTrigger = DialogTrigger;
 const MultiPageDialogClose = DialogClose;
@@ -80,22 +90,34 @@ const MultiPageDialogFooter = ({
 MultiPageDialogFooter.displayName = "MultiPageDialogFooter";
 
 interface MultiPageDialogProps {
+  /** The ordered pages hosted by the dialog. */
   pages: MultiPageDialogPage[];
+  /** Id of the page currently displayed; the caller owns this state. */
   currentPageId: string;
+  /** Called with the target page id when the header navigation arrows are used. */
   onPageChange: (pageId: string) => void;
   size?: React.ComponentProps<typeof DialogContent>["size"];
   height?: React.ComponentProps<typeof DialogContent>["height"];
   trapFocusScope?: boolean;
+  /** Render as an alert dialog that requires an explicit choice (pair with `hideCloseButton`). */
   isAlertDialog?: boolean;
   preventAutoFocusOnClose?: boolean;
+  /** Show the page counter and enable header navigation (default true). */
   showNavigation?: boolean;
+  /** Show the previous/next arrow buttons in the header (default true). */
   showHeaderNavigation?: boolean;
   className?: string;
+  /** Disable the header "next" arrow, e.g. while the current page is invalid. */
   disableNext?: boolean;
+  /** Button rendered on the left side of the footer. */
   leftButton?: React.ComponentProps<typeof Button>;
+  /** Button rendered in the footer's right-hand group, before `rightButton`. */
   centerButton?: React.ComponentProps<typeof Button>;
+  /** Button rendered at the far right of the footer. */
   rightButton?: React.ComponentProps<typeof Button>;
+  /** Custom content rendered in the footer above the buttons. */
   footerContent?: React.ReactNode;
+  /** Add a separator line between the content and the footer. */
   addFooterSeparator?: boolean;
   hideCloseButton?: boolean;
 }
@@ -104,6 +126,13 @@ interface MultiPageDialogContentProps extends MultiPageDialogProps {
   children?: never;
 }
 
+/**
+ * The content of a MultiPageDialog: renders the current page's header (title,
+ * description, icon, navigation arrows, page counter), its scrollable content
+ * with optional fixed section, and a configurable footer. Mount it inside a
+ * MultiPageDialog root and drive paging via `currentPageId` / `onPageChange`.
+ * @summary Paged content, header, and footer of a MultiPageDialog.
+ */
 const MultiPageDialogContent = React.forwardRef<
   React.ElementRef<typeof DialogContent>,
   MultiPageDialogContentProps

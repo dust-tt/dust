@@ -30,7 +30,7 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
   ConsumptionScopeDimension,
   string
 > = {
-  agent: "agent.id",
+  agent: "agent.attributed_id",
   user: "user.id",
   api_key: "api_key_name",
   // Multi-valued: a member can belong to several groups at once.
@@ -89,6 +89,11 @@ export const CONSUMPTION_DIMENSION_FILTER_KEYS: Record<
   skill: "skills",
   source: "sources",
 };
+
+export const CONSUMPTION_TOP_SORT_ORDER = ["asc", "desc"] as const;
+
+export type ConsumptionTopSortOrder =
+  (typeof CONSUMPTION_TOP_SORT_ORDER)[number];
 
 export const CONSUMPTION_METRICS = ["credit_micro"] as const;
 

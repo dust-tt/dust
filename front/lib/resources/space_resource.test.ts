@@ -17,10 +17,8 @@ import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
-import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -953,7 +951,7 @@ describe("SpaceResource", () => {
           projectEditorGroup = await GroupResource.makeNew({
             name: "Project Editors Group",
             workspaceId: workspace.id,
-            kind: "space_editors",
+            kind: "regular_auto",
           });
 
           projectSpace = await SpaceResource.makeNew(
@@ -971,6 +969,12 @@ describe("SpaceResource", () => {
           await GroupSpaceEditorResource.makeNew(adminAuth, {
             group: projectEditorGroup,
             space: projectSpace,
+          });
+
+          // The association was created directly (not through createSpace/updatePermissions), so
+          // seed the space's group_permissions from it — access is served from the table.
+          await projectSpace.writeGroupPermissions(adminAuth, {
+            ...(await projectSpace.fetchAssociatedGroups()),
           });
         });
 
@@ -1183,7 +1187,7 @@ describe("SpaceResource", () => {
           projectEditorGroup = await GroupResource.makeNew({
             name: "Project Editors Group",
             workspaceId: workspace.id,
-            kind: "space_editors",
+            kind: "regular_auto",
           });
 
           projectSpace = await SpaceResource.makeNew(
@@ -1435,6 +1439,12 @@ describe("SpaceResource", () => {
           await GroupSpaceEditorResource.makeNew(adminAuth, {
             group: provisionedEditorGroup,
             space: projectSpace,
+          });
+
+          // The association was created directly (not through createSpace/updatePermissions), so
+          // seed the space's group_permissions from it — access is served from the table.
+          await projectSpace.writeGroupPermissions(adminAuth, {
+            ...(await projectSpace.fetchAssociatedGroups()),
           });
         });
 
@@ -2472,7 +2482,7 @@ describe("SpaceResource cleanup on delete", () => {
   });
 });
 
-describe("SpaceResource group_permissions shadow-compare", () => {
+describe("SpaceResource group_permissions enforcement", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
   let adminAuth: Authenticator;
   let memberUser: UserResource;
@@ -2516,118 +2526,57 @@ describe("SpaceResource group_permissions shadow-compare", () => {
     return space;
   }
 
-  // The two sides shadowCompareSpacePermission compares must agree on every verb: the served ACLs
-  // (roles + `group_vaults` groups) and the governance ACLs (same roles, groups from the table).
-  function expectAclParity(auth: Authenticator, space: SpaceResource): void {
-    const legacyAcls = space.getAccessControlLists(auth);
-    const candidateAcls = space.governanceAcls(auth);
+  it("enforces the table: member can read from the space's group grants", async () => {
+    // `SpaceFactory.regular` writes the space's group_permissions on creation.
+    const space = await setupRestrictedSpaceWithMember();
 
-    for (const permission of ["read", "write", "admin"] as const) {
-      expect({
-        spaceKind: space.kind,
-        permission,
-        granted: auth.hasPermissionForAcls(permission, candidateAcls),
-      }).toEqual({
-        spaceKind: space.kind,
-        permission,
-        granted: auth.hasPermissionForAcls(permission, legacyAcls),
-      });
-    }
-  }
+    // Built after the grants exist so its snapshot includes them.
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      memberUser.sId,
+      workspace.sId
+    );
 
-  // Space creation dual-writes the space's grants (#9478), so divergence has to be introduced on
-  // purpose: dropping the rows models a space whose grants were never backfilled.
-  async function clearTableGrants(space: SpaceResource): Promise<void> {
+    // Member group confers read+write; served from the group_permissions table.
+    expect(space.canRead(memberAuth)).toBe(true);
+    expect(space.canWrite(memberAuth)).toBe(true);
+  });
+
+  it("enforces the table: member is denied when the space has no grants", async () => {
+    // Member is in the space's inline group, but with the table cleared access is served from the
+    // (empty) table — denied.
+    const space = await setupRestrictedSpaceWithMember();
     await GroupPermissionResource.deleteAllForResource(adminAuth, {
       resourceType: "space",
       resourceId: space.id,
     });
-  }
-
-  it("logs a mismatch when the table diverges from the group rules", async () => {
-    // The table grants nothing, but the member group still grants read via the code rules.
-    const space = await setupRestrictedSpaceWithMember();
-    await clearTableGrants(space);
-    await FeatureFlagFactory.basic(adminAuth, "group_permissions_shadow");
 
     const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
       memberUser.sId,
       workspace.sId
     );
-    const warn = vi.spyOn(logger, "warn");
 
-    // Served result is unchanged (legacy: role OR group grants read).
-    expect(space.canRead(memberAuth)).toBe(true);
-
-    await vi.waitFor(() =>
-      expect(warn).toHaveBeenCalledWith(
-        expect.objectContaining({
-          resource: "space",
-          spaceId: space.sId,
-          permission: "read",
-        }),
-        "group_permissions_shadow_mismatch"
-      )
-    );
+    expect(space.canRead(memberAuth)).toBe(false);
   });
 
-  it("reaches parity once the grants are backfilled", async () => {
-    const space = await setupRestrictedSpaceWithMember();
-    await clearTableGrants(space);
-    await space.writeGroupPermissions(adminAuth, {
-      ...(await space.fetchAssociatedGroups()),
+  it("refreshes the caller's grant snapshot after opening a space", async () => {
+    // Restricted regular space: the global group is not attached, and the admin's "admin" role
+    // grants nothing on the table path, so the admin holds no read grant on it yet.
+    const space = await SpaceFactory.regular(workspace);
+    expect(adminAuth.getGrantedVerbs("space", space.id)).not.toContain("read");
+
+    const res = await space.updatePermissions(adminAuth, {
+      name: space.name,
+      isRestricted: false,
+      managementMode: "manual",
+      memberIds: [],
+      editorIds: [],
     });
+    expect(res.isOk()).toBe(true);
 
-    // Build the auth AFTER the write so its GroupPermissions snapshot includes the grants.
-    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      memberUser.sId,
-      workspace.sId
-    );
-
-    // Legacy: the served ACLs (roles + inline groups). Candidate: the governance ACLs, as
-    // shadowCompareSpacePermission builds them.
-    expectAclParity(memberAuth, space);
-  });
-
-  it("reaches parity on the system, global and conversations spaces", async () => {
-    const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
-      includeConversationsSpace: true,
-    });
-    const defaultSpaces = spaces.filter(
-      (space) => space.isSystem() || space.isGlobal() || space.isConversations()
-    );
-    expect(defaultSpaces.length).toBeGreaterThan(0);
-
-    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      memberUser.sId,
-      workspace.sId
-    );
-
-    for (const space of defaultSpaces) {
-      expectAclParity(memberAuth, space);
-      expectAclParity(adminAuth, space);
-    }
-  });
-
-  it("never logs a mismatch while the flag is off", async () => {
-    // Divergent data (the table grants nothing) but the flag is off, so the compare never runs.
-    const space = await setupRestrictedSpaceWithMember();
-    await clearTableGrants(space);
-
-    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      memberUser.sId,
-      workspace.sId
-    );
-    const warn = vi.spyOn(logger, "warn");
-
-    expect(space.canRead(memberAuth)).toBe(true);
-
-    // Flush the fire-and-forget; with the flag off it short-circuits before comparing.
-    await new Promise((resolve) => setImmediate(resolve));
-    await new Promise((resolve) => setImmediate(resolve));
-    expect(warn).not.toHaveBeenCalledWith(
-      expect.anything(),
-      "group_permissions_shadow_mismatch"
-    );
+    // Opening attached the global group with a reader grant. updatePermissions refreshed adminAuth
+    // post-commit, so its snapshot now resolves that grant. Without the refresh this stays [] (the
+    // stale construction-time snapshot), which — now that the table is the served path — would deny
+    // read on a space the caller just opened, in the same request.
+    expect(adminAuth.getGrantedVerbs("space", space.id)).toContain("read");
   });
 });

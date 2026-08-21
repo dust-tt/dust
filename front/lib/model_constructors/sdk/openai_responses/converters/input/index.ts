@@ -1,6 +1,9 @@
 import type { Client } from "@app/lib/model_constructors/client";
 import { includesOpenAIToolSearchTool } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search";
-import type { MessageItemConverters } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
+import type {
+  MessageItemConverters,
+  OpenAIReasoningSummary,
+} from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import {
   assistantProviderPassthroughMessageToInputItems,
   assistantReasoningMessageToInputItems,
@@ -22,6 +25,7 @@ import type {
   Payload,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
+import type { Model } from "@app/lib/model_constructors/types/models";
 import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/model_constructors/types/tool_search";
 import type {
   ResponseCreateParams,
@@ -49,6 +53,14 @@ export function WithOpenAIResponsesInputConverter<
     assistantToolCallRequestToInputItem = assistantToolCallRequestToInputItem;
     assistantProviderPassthroughMessageToInputItems =
       assistantProviderPassthroughMessageToInputItems;
+    modelToHostModel = (modelId: Model): string => modelId;
+
+    protected reasoningSummaryForModel(
+      _model: Model,
+      _conciseReasoningSummary: boolean
+    ): OpenAIReasoningSummary {
+      return "auto";
+    }
 
     conversationToInput(
       conversation: Payload["conversation"]
@@ -77,16 +89,23 @@ export function WithOpenAIResponsesInputConverter<
         cacheKey,
         forceTool,
         toolSearchEnabled,
+        conciseReasoningSummary = false,
       } = config;
 
-      const reasoningConfig = reasoningToOpenAIResponsesReasoning(reasoning);
+      const reasoningConfig = reasoningToOpenAIResponsesReasoning(
+        reasoning,
+        this.reasoningSummaryForModel(
+          this.constructor.model,
+          conciseReasoningSummary
+        )
+      );
       const openAITools = toolSpecsToOpenAITools(tools, {
         forceTool,
         toolSearchEnabled: toolSearchEnabled ?? false,
       });
 
       return {
-        model: this.constructor.model,
+        model: this.modelToHostModel(this.constructor.model),
         max_output_tokens: this.constructor.maxOutputTokens,
         ...(cacheKey ? { prompt_cache_key: cacheKey } : {}),
         input: [

@@ -26,7 +26,11 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
-import type { TriggerKind, TriggerStatus } from "@app/types/assistant/triggers";
+import type {
+  TriggerExecutionMode,
+  TriggerKind,
+  TriggerStatus,
+} from "@app/types/assistant/triggers";
 import { isScheduleTrigger } from "@app/types/assistant/triggers";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -58,6 +62,7 @@ export type AutomationTriggerRow = {
   webhookIcon: InternalAllowedIconType | CustomResourceIconType | null;
   runCount: number;
   credits: number;
+  executionMode: TriggerExecutionMode;
 };
 
 export type AutomationTriggers = {
@@ -403,6 +408,7 @@ export async function fetchAutomationTriggers(
       webhookIcon: webhookSource?.icon ?? null,
       runCount,
       credits,
+      executionMode: trigger.executionMode,
     };
   });
 

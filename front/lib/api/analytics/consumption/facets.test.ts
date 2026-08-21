@@ -103,7 +103,7 @@ describe("fetchConsumptionFacets", () => {
         const composite = options?.aggregations?.values?.composite;
         const field = composite?.sources?.[0]?.value?.terms?.field;
 
-        if (field === "agent.id" && composite?.after) {
+        if (field === "agent.attributed_id" && composite?.after) {
           return esResponse({
             values: {
               buckets: [
@@ -117,7 +117,7 @@ describe("fetchConsumptionFacets", () => {
           });
         }
 
-        if (field === "agent.id") {
+        if (field === "agent.attributed_id") {
           return esResponse({
             values: {
               buckets: [
@@ -221,7 +221,7 @@ describe("fetchConsumptionFacets", () => {
     expect(options?.size).toBe(0);
     expect(options?.aggregations?.values?.composite).toMatchObject({
       size: 1_000,
-      sources: [{ value: { terms: { field: "agent.id" } } }],
+      sources: [{ value: { terms: { field: "agent.attributed_id" } } }],
     });
 
     const agentContext = options?.aggregations?.values?.aggs?.contextual;
@@ -232,7 +232,7 @@ describe("fetchConsumptionFacets", () => {
       term: { normalized_origin: "slack" },
     });
     expect(agentContext?.filter?.bool?.filter).not.toContainEqual({
-      term: { "agent.id": "agent_enabled" },
+      term: { "agent.attributed_id": "agent_enabled" },
     });
 
     const secondAgentCall = vi
@@ -256,7 +256,7 @@ describe("fetchConsumptionFacets", () => {
     const userOptions = userCall?.[1];
     const userContext = userOptions?.aggregations?.values?.aggs?.contextual;
     expect(userContext?.filter?.bool?.filter).toContainEqual({
-      term: { "agent.id": "agent_enabled" },
+      term: { "agent.attributed_id": "agent_enabled" },
     });
     expect(userContext?.filter?.bool?.filter).not.toContainEqual({
       term: { "user.id": "user_1" },
@@ -272,7 +272,7 @@ describe("fetchConsumptionFacets", () => {
     expect(queriedFields).toHaveLength(9);
     expect(new Set(queriedFields)).toEqual(
       new Set([
-        "agent.id",
+        "agent.attributed_id",
         "user.id",
         "api_key_name",
         "user.group_ids",
@@ -282,9 +282,9 @@ describe("fetchConsumptionFacets", () => {
         "normalized_origin",
       ])
     );
-    expect(queriedFields.filter((field) => field === "agent.id")).toHaveLength(
-      2
-    );
+    expect(
+      queriedFields.filter((field) => field === "agent.attributed_id")
+    ).toHaveLength(2);
   });
 
   it("limits concurrent dimension queries", async () => {

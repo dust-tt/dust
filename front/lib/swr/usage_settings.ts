@@ -16,7 +16,7 @@ import type {
   PutDefaultUserSpendLimitResponseBody,
 } from "@app/types/api/workspace/default_user_spend_limit";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
 import { z } from "zod";
@@ -31,6 +31,7 @@ const PutDefaultUserSpendLimitResponseSchema = z.object({
 
 interface UsageSettings {
   allowUpgradeRequest: boolean;
+  requireUpgradeRequestReason: boolean;
   autoSeatUpgradeEnabled: boolean;
   autoSeatUpgradeAvailable: boolean;
   topUpEnabled: boolean;
@@ -44,6 +45,7 @@ interface UsageNotifications {
 
 const DEFAULT_USAGE_SETTINGS: UsageSettings = {
   allowUpgradeRequest: true,
+  requireUpgradeRequestReason: false,
   autoSeatUpgradeEnabled: false,
   autoSeatUpgradeAvailable: false,
   topUpEnabled: false,
@@ -99,6 +101,8 @@ export function useUsageSettings({ workspaceId }: { workspaceId: string }) {
     ...(data
       ? {
           allowUpgradeRequest: data.configuration.allowMemberUpgradeRequests,
+          requireUpgradeRequestReason:
+            data.configuration.requireUpgradeRequestReason,
           autoSeatUpgradeEnabled: data.configuration.autoSeatUpgradeEnabled,
           autoSeatUpgradeAvailable: data.configuration.autoSeatUpgradeAvailable,
           topUpEnabled: data.configuration.topUpEnabled,
@@ -123,12 +127,16 @@ export function useUpdateUsageSettings({
     getCreditUsageConfigurationEndpoint(workspaceId),
     null
   );
+  const [isUpdatingUsageSettings, setIsUpdatingUsageSettings] = useState(false);
 
   const doUpdateUsageSettings = useCallback(
     async (patch: Partial<UsageSettings>): Promise<boolean> => {
       const body: Record<string, unknown> = {};
       if (patch.allowUpgradeRequest !== undefined) {
         body.allowMemberUpgradeRequests = patch.allowUpgradeRequest;
+      }
+      if (patch.requireUpgradeRequestReason !== undefined) {
+        body.requireUpgradeRequestReason = patch.requireUpgradeRequestReason;
       }
       if (patch.autoSeatUpgradeEnabled !== undefined) {
         body.autoSeatUpgradeEnabled = patch.autoSeatUpgradeEnabled;
@@ -138,27 +146,32 @@ export function useUpdateUsageSettings({
         return true;
       }
 
-      const result = await patchCreditUsageConfiguration(workspaceId, body);
-      if (!result.ok) {
-        sendNotification({
-          type: "error",
-          title: "Failed to update usage settings",
-          description: result.message,
-        });
-        return false;
-      }
+      setIsUpdatingUsageSettings(true);
+      try {
+        const result = await patchCreditUsageConfiguration(workspaceId, body);
+        if (!result.ok) {
+          sendNotification({
+            type: "error",
+            title: "Failed to update usage settings",
+            description: result.message,
+          });
+          return false;
+        }
 
-      await mutate();
-      sendNotification({
-        type: "success",
-        title: "Usage settings updated",
-      });
-      return true;
+        await mutate();
+        sendNotification({
+          type: "success",
+          title: "Usage settings updated",
+        });
+        return true;
+      } finally {
+        setIsUpdatingUsageSettings(false);
+      }
     },
     [workspaceId, sendNotification, mutate]
   );
 
-  return { doUpdateUsageSettings };
+  return { doUpdateUsageSettings, isUpdatingUsageSettings };
 }
 
 export function useUsageNotifications({

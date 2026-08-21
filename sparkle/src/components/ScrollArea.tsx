@@ -5,15 +5,28 @@ import { useMemo } from "react";
 
 interface ScrollAreaProps
   extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {
+  /** Hide the built-in scrollbar entirely (it also auto-hides when a custom ScrollBar child is present). */
   hideScrollBar?: boolean;
+  /** Axis of the default scrollbar rendered when no ScrollBar child is given. */
   orientation?: "vertical" | "horizontal";
   /** Horizontal: clip x-axis only so a parent/window can scroll vertically. */
   scrollContainment?: "default" | "horizontal";
+  /** Class applied to the default scrollbar. */
   scrollBarClassName?: string;
+  /** Class applied to the scroll viewport element. */
   viewportClassName?: string;
+  /** Ref to the scroll viewport element, e.g. for scroll position control. */
   viewportRef?: React.Ref<HTMLDivElement>;
 }
 
+/**
+ * A styled, cross-browser scroll container that replaces the native scrollbar
+ * with a custom ScrollBar (one per scrolling axis). Use it to give bounded,
+ * scrollable regions (lists, panels, popovers) a consistent scrollbar across
+ * browsers; constrain it with an explicit height or width so it actually
+ * scrolls.
+ * @summary Scroll container with custom scrollbar.
+ */
 const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   ScrollAreaProps
@@ -124,9 +137,15 @@ interface ScrollBarProps
   extends React.ComponentPropsWithoutRef<
     typeof ScrollAreaPrimitive.ScrollAreaScrollbar
   > {
+  /** Visual style of the bar: `compact` (default), `classic`, or `minimal`. */
   size?: ScrollBarSize;
 }
 
+/**
+ * The custom scrollbar of a ScrollArea, one per scrolling axis via
+ * `orientation` (`vertical` / `horizontal`).
+ * @summary Custom scrollbar for a ScrollArea.
+ */
 const ScrollBar = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>,
   ScrollBarProps

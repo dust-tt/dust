@@ -20,6 +20,25 @@ export async function seedUsers(
         { sId: existingUser.sId, email: userAsset.email },
         "User already exists, skipping creation"
       );
+      // The user may exist without being a member of the workspace, for instance when a previous
+      // seed run created them and failed before the rest of the seed. Everything downstream needs
+      // the membership, so add it back.
+      const membership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: existingUser,
+          workspace,
+        });
+      if (!membership && execute) {
+        await MembershipResource.createMembership({
+          user: existingUser,
+          workspace,
+          role: "user",
+        });
+        logger.info(
+          { sId: existingUser.sId, email: userAsset.email },
+          "Membership created for existing user"
+        );
+      }
       createdUsers.set(userAsset.sId, existingUser);
       continue;
     }

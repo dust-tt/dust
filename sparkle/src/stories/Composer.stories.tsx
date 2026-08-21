@@ -69,7 +69,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta: Meta<typeof Composer> = {
-  title: "Composer/Composer",
+  title: "Product/Conversation/Composer",
   component: Composer,
   parameters: {
     docs: {
@@ -175,7 +175,8 @@ function useMockVoiceService(onTranscript: (text: string) => void) {
       setStatus("recording");
       setElapsedSeconds(0);
       timersRef.current.push(
-        window.setInterval(() => setLevel(Math.random()), 120),
+        // Deterministic sawtooth stand-in for real microphone levels.
+        window.setInterval(() => setLevel((prev) => (prev + 0.17) % 1), 120),
         window.setInterval(() => setElapsedSeconds((s) => s + 1), 1000)
       );
     }, 400);
@@ -1032,6 +1033,54 @@ function ComposerDemo({
   );
 }
 
+/**
+ * The bare Composer shell without the interactive demo: attachments, chips,
+ * children (input area), and left/right action slots are all plain ReactNode
+ * props — here filled with static placeholders to show the anatomy.
+ * @summary Minimal static composition of the Composer slots.
+ */
+export const StaticShell: Story = {
+  args: {
+    variant: "floating",
+    isFocused: false,
+  },
+  render: (args) => (
+    <div className="flex min-h-[240px] w-full max-w-[680px] items-center p-10">
+      <Composer
+        {...args}
+        leftActions={
+          <Button
+            variant="ghost-secondary"
+            size="xs"
+            icon={Robot}
+            label="Agent"
+            isRounded
+          />
+        }
+        rightActions={
+          <Button
+            variant="highlight"
+            size="xs"
+            aria-label="Send message"
+            icon={ArrowUp}
+            className="rounded-full"
+          />
+        }
+      >
+        <p className="pb-2 text-sm text-muted-foreground">Get work done</p>
+      </Composer>
+    </div>
+  ),
+};
+
+/**
+ * The default `floating` variant — an elevated card with a squircle border and
+ * layered shadows, for the composer hovering over the conversation. Fully
+ * interactive demo simulating the product input bar: agent/capabilities/
+ * attachment pickers, `/` and `@` suggestions, mock voice recording, a
+ * formatting toolbar, and optimistic message submission.
+ * @summary Interactive demo of the elevated floating variant.
+ */
 export const Floating: Story = {
   name: "Floating (default)",
   render: () => (
@@ -1041,6 +1090,12 @@ export const Floating: Story = {
   ),
 };
 
+/**
+ * The `flat` variant — a simple bordered card with no elevation, for embedding
+ * the composer inside an existing surface (panels, drawers). Runs the same
+ * interactive demo as Floating; only the shell treatment differs.
+ * @summary Interactive demo of the embedded flat variant.
+ */
 export const Flat: Story = {
   name: "Flat (embedded)",
   render: () => (

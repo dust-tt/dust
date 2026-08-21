@@ -1,5 +1,6 @@
 import { ModelPickerMoreModels } from "@app/components/model_picker/ModelPickerMoreModels";
 import { ModelPickerSelectionIndicator } from "@app/components/model_picker/ModelPickerSelectionIndicator";
+import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type {
   MakerGroup,
   ModelTierId,
@@ -22,9 +23,6 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import {
-  BarFull,
-  BarHalf,
-  BarLow,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -32,14 +30,6 @@ import {
   Icon,
   Lock01,
 } from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
-
-// Tier trigger icons: rising bars from Basic to Premium.
-const TIER_ICON: Record<ModelTierId, ComponentType> = {
-  fast: BarLow,
-  standard: BarHalf,
-  complex: BarFull,
-};
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
@@ -106,7 +96,7 @@ export function ModelPickerContent({
           return (
             <DropdownMenuItem
               key={tier.id}
-              icon={TIER_ICON[tier.id]}
+              icon={MODEL_TIER_ICON[tier.id]}
               label={tier.name}
               disabled
               tooltip={getModelLockTooltip(lockReason)}
@@ -124,7 +114,7 @@ export function ModelPickerContent({
         return (
           <DropdownMenuItem
             key={tier.id}
-            icon={TIER_ICON[tier.id]}
+            icon={MODEL_TIER_ICON[tier.id]}
             label={tier.name}
             endComponent={
               <div className="flex items-center gap-1.5">

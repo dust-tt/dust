@@ -132,6 +132,7 @@ export function WorkspacePage() {
     activeSubscription,
     hasDummyFeature,
     hasMetronomeFeature,
+    inactiveMembersCount,
     membersCount,
     metronomeCustomerId,
     pendingSubscription,
@@ -143,6 +144,9 @@ export function WorkspacePage() {
     defaultAlerts,
     programmaticCreditState,
     programmaticWarningReached,
+    programmaticSpendLimitRateCapCount,
+    programmaticEsConsumedAwuCredits,
+    programmaticMetronomeConsumedAwuCredits,
     seatPlan,
     stripeSubscription,
     stripeCustomerId,
@@ -234,6 +238,7 @@ export function WorkspacePage() {
                 <WorkspaceInfoTable
                   owner={owner}
                   membersCount={membersCount}
+                  inactiveMembersCount={inactiveMembersCount}
                   metronomeCustomerId={metronomeCustomerId}
                   stripeCustomerId={stripeCustomerId}
                   workspaceVerifiedDomains={workspaceVerifiedDomains}
@@ -370,6 +375,15 @@ export function WorkspacePage() {
                   poolCreditState={poolCreditState}
                   programmaticCreditState={programmaticCreditState}
                   programmaticWarningReached={programmaticWarningReached}
+                  programmaticSpendLimitRateCapCount={
+                    programmaticSpendLimitRateCapCount
+                  }
+                  programmaticEsConsumedAwuCredits={
+                    programmaticEsConsumedAwuCredits
+                  }
+                  programmaticMetronomeConsumedAwuCredits={
+                    programmaticMetronomeConsumedAwuCredits
+                  }
                   creditUsageConfig={creditUsageConfig}
                   poolAlert={poolAlert}
                   programmaticAlerts={programmaticAlerts}

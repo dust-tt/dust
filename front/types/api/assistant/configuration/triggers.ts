@@ -1,6 +1,7 @@
 import type { TriggerType } from "@app/types/assistant/triggers";
 import {
   FullTriggerSchema,
+  TRIGGER_EXECUTION_MODES,
   TriggerSchema,
 } from "@app/types/assistant/triggers";
 import { z } from "zod";
@@ -42,6 +43,13 @@ export const PatchTriggerStatusRequestBodySchema = z.object({
 });
 export type PatchTriggerStatusRequestBody = z.infer<
   typeof PatchTriggerStatusRequestBodySchema
+>;
+
+export const PatchTriggerExecutionModeRequestBodySchema = z.object({
+  executionMode: z.enum(TRIGGER_EXECUTION_MODES),
+});
+export type PatchTriggerExecutionModeRequestBody = z.infer<
+  typeof PatchTriggerExecutionModeRequestBodySchema
 >;
 
 export const PostTriggersRequestBodySchema = z.object({

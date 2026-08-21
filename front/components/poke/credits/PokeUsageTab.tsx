@@ -20,7 +20,13 @@ import type {
 import type { SubscriptionType } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
-import { AlertCircle, Chip, ContentMessage, Spinner } from "@dust-tt/sparkle";
+import {
+  AlertCircle,
+  Chip,
+  ContentMessage,
+  ProgressBar,
+  Spinner,
+} from "@dust-tt/sparkle";
 
 interface PokeUsageTabProps {
   owner: WorkspaceType;
@@ -29,11 +35,41 @@ interface PokeUsageTabProps {
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
+  programmaticSpendLimitRateCapCount: number | null;
+  programmaticEsConsumedAwuCredits: number | null;
+  programmaticMetronomeConsumedAwuCredits: number | null;
   creditUsageConfig: PokeCreditUsageConfig | null;
   poolAlert: MetronomeAlertRef | null;
   programmaticAlerts: PokeProgrammaticAlerts;
   usageCapAlert: MetronomeAlertRef | null;
   defaultAlerts: DefaultMetronomeAlerts;
+}
+
+interface SpendCountersInlineProps {
+  esConsumedAwuCredits: number | null;
+  rateLimiterAwuCredits: number | null;
+  metronomeConsumedAwuCredits: number | null;
+}
+
+const formatCreditsOrDash = (value: number | null): string =>
+  value !== null ? formatCredits(value) : "—";
+
+// The three spend figures for a cap dimension shown together to spot
+// divergence: ES = Elasticsearch-derived, RL = Redis rate-limiter counter (the
+// value enforcement reads), MT = Metronome-derived. Mirrors the
+// "Consumed (ES / RL / MT)" column in the members table.
+function SpendCountersInline({
+  esConsumedAwuCredits,
+  rateLimiterAwuCredits,
+  metronomeConsumedAwuCredits,
+}: SpendCountersInlineProps) {
+  return (
+    <span className="text-xs text-muted-foreground">
+      ES {formatCreditsOrDash(esConsumedAwuCredits)} / RL{" "}
+      {formatCreditsOrDash(rateLimiterAwuCredits)} / MT{" "}
+      {formatCreditsOrDash(metronomeConsumedAwuCredits)}
+    </span>
+  );
 }
 
 type CreditStateChipColor = "success" | "warning" | "warning" | "info";
@@ -63,18 +99,26 @@ function creditStateChipColor(
 
 interface PokeCreditStatesCardProps {
   owner: WorkspaceType;
+  creditUsageConfig: PokeCreditUsageConfig | null;
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
+  programmaticSpendLimitRateCapCount: number | null;
+  programmaticEsConsumedAwuCredits: number | null;
+  programmaticMetronomeConsumedAwuCredits: number | null;
   poolAlert: MetronomeAlertRef | null;
   programmaticAlerts: PokeProgrammaticAlerts;
 }
 
 function PokeCreditStatesCard({
   owner,
+  creditUsageConfig,
   poolCreditState,
   programmaticCreditState,
   programmaticWarningReached,
+  programmaticSpendLimitRateCapCount,
+  programmaticEsConsumedAwuCredits,
+  programmaticMetronomeConsumedAwuCredits,
   poolAlert,
   programmaticAlerts,
 }: PokeCreditStatesCardProps) {
@@ -105,6 +149,19 @@ function PokeCreditStatesCard({
           {programmaticWarningReached && (
             <Chip size="xs" color="warning" label="near limit" />
           )}
+          <span className="text-xs text-muted-foreground">
+            cap:{" "}
+            {creditUsageConfig
+              ? `${formatCredits(creditUsageConfig.programmaticMonthlyCapAwuCredits)} credits`
+              : "—"}
+          </span>
+          <SpendCountersInline
+            esConsumedAwuCredits={programmaticEsConsumedAwuCredits}
+            rateLimiterAwuCredits={programmaticSpendLimitRateCapCount}
+            metronomeConsumedAwuCredits={
+              programmaticMetronomeConsumedAwuCredits
+            }
+          />
           <AlertChip alert={programmaticAlerts.cap} label="cap alert" />
           <AlertChip alert={programmaticAlerts.warning} label="warning (80%)" />
           <AlertChip alert={programmaticAlerts.low} label="low (-100)" />
@@ -259,12 +316,13 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
           credits
         </span>
       </div>
-      <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10">
-        <div
-          className="h-full shrink-0 bg-highlight transition-all"
-          style={{ width: `${consumedPct}%` }}
-        />
-      </div>
+      <ProgressBar
+        className="h-2 w-full bg-muted-foreground/10"
+        values={[
+          { value: consumedPct, className: "bg-highlight" },
+          { value: 100 - consumedPct, className: "bg-transparent" },
+        ]}
+      />
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
         <span>{formatCredits(totalRemainingCredits)} credits remaining</span>
         {overageCredits !== null && overageCredits > 0 && (
@@ -282,6 +340,9 @@ export function PokeUsageTab({
   poolCreditState,
   programmaticCreditState,
   programmaticWarningReached,
+  programmaticSpendLimitRateCapCount,
+  programmaticEsConsumedAwuCredits,
+  programmaticMetronomeConsumedAwuCredits,
   creditUsageConfig,
   poolAlert,
   programmaticAlerts,
@@ -298,9 +359,15 @@ export function PokeUsageTab({
     <div className="flex flex-col gap-4">
       <PokeCreditStatesCard
         owner={owner}
+        creditUsageConfig={creditUsageConfig}
         poolCreditState={poolCreditState}
         programmaticCreditState={programmaticCreditState}
         programmaticWarningReached={programmaticWarningReached}
+        programmaticSpendLimitRateCapCount={programmaticSpendLimitRateCapCount}
+        programmaticEsConsumedAwuCredits={programmaticEsConsumedAwuCredits}
+        programmaticMetronomeConsumedAwuCredits={
+          programmaticMetronomeConsumedAwuCredits
+        }
         poolAlert={poolAlert}
         programmaticAlerts={programmaticAlerts}
       />

@@ -145,13 +145,24 @@ const codeStyle = {
 
 interface CodeBlockProps {
   children?: React.ReactNode;
+  /** CSS class; the language is derived from a `language-<lang>` token (e.g. "language-typescript"). */
   className?: string;
+  /** When true, renders a short in-sentence snippet instead of a multi-line block. */
   inline?: boolean;
+  /** Visual variant; only "surface" is currently supported. */
   variant?: "surface";
+  /** Wraps long lines instead of scrolling horizontally — useful in narrow containers. */
   wrapLongLines?: boolean;
+  /** Shows a line-number gutter on the left side of block code. */
   showLineNumber?: boolean;
 }
 
+/**
+ * Renders syntax-highlighted code from an agent message, either as an `inline`
+ * snippet or a full block, with the language derived from a `language-*`
+ * className. Backs the fenced-code rendering inside Markdown output.
+ * @summary Syntax-highlighted code renderer for Markdown.
+ */
 export function CodeBlock({
   children,
   className,

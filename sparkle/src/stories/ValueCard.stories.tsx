@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import * as React from "react";
 
-import { Avatar } from "@sparkle/components";
-
-import { ComposableCard, ValueCard } from "../components/ValueCard";
 import { ThumbsUp } from "@sparkle/icons/v2-stroke";
+
+// ComposableCard is not exported from the package index, so the deep import
+// is required to demo it.
+import { ComposableCard } from "../components/ValueCard";
+import { Avatar, ValueCard } from "../index_with_tw_base";
 
 const meta: Meta<typeof ValueCard> = {
   title: "Data Display/ValueCard",
@@ -35,6 +37,11 @@ const meta: Meta<typeof ValueCard> = {
 export default meta;
 type Story = StoryObj<typeof ValueCard>;
 
+/**
+ * Standard metric card: a title, a subtitle for context, and the figure in
+ * the content slot.
+ * @summary Title, subtitle, and a single metric.
+ */
 export const Basic: Story = {
   args: {
     title: "Messages",
@@ -48,6 +55,11 @@ export const Basic: Story = {
   },
 };
 
+/**
+ * While the metric is being fetched, **isLoading** replaces the content with
+ * a spinner so the card keeps its footprint.
+ * @summary Loading state with spinner.
+ */
 export const Loading: Story = {
   args: {
     ...Basic.args,
@@ -55,12 +67,17 @@ export const Loading: Story = {
   },
 };
 
+/**
+ * Pair the figure with a small icon in the content slot to give the metric
+ * context at a glance.
+ * @summary Icon paired with the metric.
+ */
 export const WithIcons: Story = {
   args: {
     title: "Reactions",
     content: (
       <div className="flex items-center gap-2">
-        <ThumbsUp className="text-text-muted-foreground h-4 w-4" />
+        <ThumbsUp className="h-4 w-4 text-muted-foreground" />
         <div className="text-lg font-semibold text-foreground">12</div>
       </div>
     ),
@@ -68,6 +85,12 @@ export const WithIcons: Story = {
   },
 };
 
+/**
+ * The separate **ComposableCard** API (Root, Header, Title, Subtitle,
+ * Content, Footer) builds bespoke layouts the packaged ValueCard does not
+ * support — here a footer row of contributor Avatars.
+ * @summary Bespoke layout via the ComposableCard API.
+ */
 export const Composable: Story = {
   render: () => (
     <ComposableCard.Root>
@@ -77,7 +100,7 @@ export const Composable: Story = {
       </ComposableCard.Header>
       <ComposableCard.Content>
         <div className="flex items-center gap-2">
-          <ThumbsUp className="text-text-muted-foreground h-4 w-4" />
+          <ThumbsUp className="h-4 w-4 text-muted-foreground" />
           <div className="text-lg font-semibold">847</div>
         </div>
       </ComposableCard.Content>

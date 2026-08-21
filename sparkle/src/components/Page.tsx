@@ -6,9 +6,18 @@ import { Button, type ButtonProps } from "./Button";
 
 interface PageProps {
   children: React.ReactNode;
+  /** `normal` for a full page (wide padding), `modal` for compact spacing inside a modal. */
   variant?: "modal" | "normal";
 }
 
+/**
+ * A page-scaffolding namespace that stacks standardized content blocks with
+ * consistent spacing: Page.Header, Page.SectionHeader, typography helpers
+ * Page.P / Page.H, and arrangement helpers Page.Layout / Page.Horizontal /
+ * Page.Vertical / Page.Fluid. Use it to build the vertical structure of a
+ * settings, detail, or overview page with uniform rhythm.
+ * @summary Standardized page scaffolding blocks.
+ */
 export function Page({ children, variant = "normal" }: PageProps) {
   const mainVariantClasses =
     variant === "normal" ? "h-full py-16" : "h-full py-4 px-2";
@@ -35,6 +44,7 @@ interface PageHeaderProps {
   noTopPadding?: boolean;
 }
 
+/** The page's top header: title with optional description, used once at the top of a Page. */
 Page.Header = function ({ title, description, noTopPadding }: PageHeaderProps) {
   return (
     <Page.Vertical
@@ -54,9 +64,11 @@ Page.Header = function ({ title, description, noTopPadding }: PageHeaderProps) {
 interface PageSectionHeaderProps {
   title: string;
   description?: string;
+  /** Primary section CTA, rendered as a Button on the right of the header. */
   action?: ButtonProps;
 }
 
+/** A section delimiter: title, description, and an optional CTA via `action`. */
 Page.SectionHeader = function ({
   title,
   description,
@@ -77,6 +89,7 @@ Page.SectionHeader = function ({
   );
 };
 
+/** A horizontal divider between page blocks. */
 Page.Separator = function () {
   return <Separator />;
 };
@@ -94,6 +107,7 @@ const PsizeClasses = {
   lg: "copy-lg",
 };
 
+/** A paragraph with standardized sizing (`size`) and a `primary`/`secondary` color variant. */
 Page.P = function ({ children, variant, size = "sm" }: PagePProps) {
   return (
     <p
@@ -112,6 +126,7 @@ interface PageHProps {
   children: React.ReactNode;
 }
 
+/** A heading rendered as the given `variant` tag (h1-h6) with the matching type scale. */
 Page.H = function ({ children, variant = "h3" }: PageHProps) {
   const Component = variant;
 
@@ -133,6 +148,7 @@ Page.H = function ({ children, variant = "h3" }: PageHProps) {
 
 interface PageLayoutProps {
   children: React.ReactNode;
+  /** How children flow: `horizontal` a row (column on small screens), `vertical` a column, `fluid` a wrapping row. */
   direction?: "horizontal" | "vertical" | "fluid";
   sizing?: "shrink" | "grow";
   align?: "stretch" | "left" | "center" | "right";
@@ -148,6 +164,7 @@ const gapSizes = {
   none: "",
 };
 
+/** Arranges child blocks by `direction`, delegating to Page.Horizontal / Page.Vertical / Page.Fluid. */
 Page.Layout = function ({
   children,
   direction = "vertical",
@@ -195,6 +212,7 @@ interface PageDivProps {
   gap?: "xs" | "sm" | "md" | "lg" | "xl" | "none";
   className?: string;
 }
+/** A horizontal row of blocks (stacks vertically on small screens). */
 Page.Horizontal = function ({
   children,
   sizing,
@@ -219,6 +237,7 @@ Page.Horizontal = function ({
   );
 };
 
+/** A vertical column of blocks. */
 Page.Vertical = function ({
   children,
   sizing,
@@ -244,6 +263,7 @@ Page.Vertical = function ({
   );
 };
 
+/** A wrapping row of blocks for fluid, grid-like arrangements. */
 Page.Fluid = function ({
   children,
   sizing,

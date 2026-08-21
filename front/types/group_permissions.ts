@@ -27,6 +27,7 @@ export const GRANT_VERBS = [
   "invite",
   "use",
   "make_discoverable",
+  "use_workspace_pool",
 ] as const;
 export type GrantVerb = (typeof GRANT_VERBS)[number];
 
@@ -42,9 +43,15 @@ export const GRANT_TYPES = [
   "invite",
   "use",
   "make_discoverable",
+  "use_workspace_pool",
   "*",
 ] as const;
 export type GrantType = (typeof GRANT_TYPES)[number];
+
+// A space's editors are the group holding the space-level `admin` role (see the `space` entry in
+// the role registry). Single source of truth for that mapping, shared by the code that writes the
+// grant (SpaceResource.spaceGroupRoles) and the code that reads it back (fetchManualEditorGroup).
+export const SPACE_EDITOR_GRANT_TYPE = "admin" satisfies GrantType;
 
 // Resource domains. "*" means "all resource types".
 export const GROUP_PERMISSION_RESOURCE_TYPES = [
@@ -56,6 +63,7 @@ export const GROUP_PERMISSION_RESOURCE_TYPES = [
   "security",
   "models_tier",
   "dust_app",
+  "trigger",
   "*",
 ] as const;
 export type GroupPermissionResourceType =
@@ -139,6 +147,7 @@ export function emptyWorkspacePermissions(): WorkspacePermissions {
     security: [],
     models_tier: [],
     dust_app: [],
+    trigger: [],
   };
 }
 
@@ -191,4 +200,5 @@ export const GOVERNANCE_CAPABILITIES = {
     { grantType: "admin", resourceType: "billing" },
     { grantType: "admin", resourceType: "security" },
   ],
+  trigger: [{ grantType: "use_workspace_pool", resourceType: "trigger" }],
 } satisfies Record<string, CapabilitySpec[]>;

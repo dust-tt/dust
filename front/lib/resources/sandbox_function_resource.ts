@@ -66,6 +66,14 @@ export function computeSandboxFunctionBundleSha256(bundleCode: string): string {
   return createHash("sha256").update(bundleCode, "utf8").digest("hex");
 }
 
+/**
+ * Short prefix of a bundle sha for tool output: enough to tell two publishes apart at a glance,
+ * mirroring short commit hashes. "unknown" covers functions last published before hashes existed.
+ */
+export function shortSandboxFunctionBundleSha256(sha: string | null): string {
+  return sha === null ? "unknown" : sha.slice(0, 12);
+}
+
 export function getSandboxFunctionPublishLockName(
   sandboxFunctionSId: string
 ): string {
@@ -213,6 +221,10 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
    * rewrites the same file (canonical original plus its mount path <prefix>/<slug>.ts) and bumps the
    * version, so the function's storage path stays stable across re-publishes rather than drifting to
    * a disambiguated name. The caller checks write permission.
+   *
+   * Reports whether the new bundle is byte-identical to the one it replaces: a publisher who
+   * edited the source expects the built output to change, and echoing that it did not lets the
+   * caller surface "your edit didn't land" instead of leaving a stale-publish hunt.
    */
   async updateContent(
     auth: Authenticator,
@@ -233,7 +245,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     }
-  ): Promise<Result<undefined, Error>> {
+  ): Promise<Result<{ byteIdentical: boolean }, Error>> {
     try {
       return await executeWithLock(
         getSandboxFunctionPublishLockName(this.sId),
@@ -247,6 +259,12 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
           if (!currentFunction) {
             return new Err(new Error("The Pod Function no longer exists."));
           }
+
+          // Hash of the exact code the upload below writes. Compared against the row re-read
+          // under the lock, not the in-memory copy, so a concurrent publish cannot skew the
+          // byte-identical report. Null on the row (pre-hash publishes) never matches.
+          const bundleSha256 = computeSandboxFunctionBundleSha256(bundleCode);
+          const byteIdentical = currentFunction.bundleSha256 === bundleSha256;
 
           const currentUserIdentity =
             currentFunction.userIdentity ?? "optional";
@@ -280,16 +298,16 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
             userIdentity,
             executionMode,
             defaultStake,
-            // Derived from the exact code the upload above wrote. Landing with the row update
-            // (not before the upload) means a warm server can never be told to expect a bundle
-            // that is not on disk yet; invocations racing this publish carry the old hash and
-            // settle against whichever bundle they were issued for.
-            bundleSha256: computeSandboxFunctionBundleSha256(bundleCode),
+            // The hash lands with the row update (not before the upload), so a warm server can
+            // never be told to expect a bundle that is not on disk yet; invocations racing this
+            // publish carry the old hash and settle against whichever bundle they were issued
+            // for.
+            bundleSha256,
             inputSchema,
             outputSchema,
           });
 
-          return new Ok(undefined);
+          return new Ok({ byteIdentical });
         },
         30_000,
         { lockTtlMs: SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS }

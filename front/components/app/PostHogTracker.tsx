@@ -442,14 +442,6 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
 
       lastPageviewPathnameRef.current = pathname;
 
-      // Don't track pageviews on conversation pages (/conversation/[cId]), but track /conversation/new.
-      const isConversationPage = /\/conversation\/(?!new$)[^/]+$/.test(
-        pathname
-      );
-      if (isConversationPage) {
-        return;
-      }
-
       posthog.capture("$pageview");
     };
 

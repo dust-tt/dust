@@ -21,7 +21,10 @@ import {
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionScopeFilter,
+  ConsumptionTopSortOrder,
+} from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
 import { getSkillAvatarIcon } from "@app/lib/skill";
@@ -47,7 +50,12 @@ import {
   Tooltip,
   XCircle,
 } from "@dust-tt/sparkle";
-import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  OnChangeFn,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 import type { Transition, Variants } from "framer-motion";
 import {
   AnimatePresence,
@@ -56,9 +64,12 @@ import {
   m,
   useReducedMotion,
 } from "framer-motion";
-import type { ReactNode } from "react";
+import type { ComponentType, Dispatch, ReactNode, SetStateAction } from "react";
 import { useMemo, useRef, useState } from "react";
-import type { AttributionRowData } from "./ConsumptionAttributionRowsTable";
+import type {
+  AttributionRowData,
+  ConsumptionAttributionRowsTableProps,
+} from "./ConsumptionAttributionRowsTable";
 import { ConsumptionAttributionRowsTable } from "./ConsumptionAttributionRowsTable";
 import type { ConsumptionDimension } from "./consumptionDimensions";
 import {
@@ -70,6 +81,14 @@ import {
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const ATTRIBUTION_PAGE_SIZE = 25;
 const ATTRIBUTION_MAX_ROW_COUNT = 1_000;
+const DEFAULT_ATTRIBUTION_SORTING: SortingState = [
+  { id: "credits", desc: true },
+];
+
+const ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS = new Set([
+  "credits",
+  "costShare",
+]);
 
 type AttributionTransitionDirection = -1 | 0 | 1;
 
@@ -171,7 +190,7 @@ function VsPrevCell({
         <Tooltip
           label="Not enough data to compute"
           tooltipTriggerAsChild
-          trigger={<span className="text-sm text-muted-foreground">N.A</span>}
+          trigger={<span className="text-sm text-muted-foreground">--</span>}
         />
       </DataTable.CellContent>
     );
@@ -217,6 +236,7 @@ function buildColumns({
       id: "name",
       accessorKey: "name",
       header: "Name",
+      enableSorting: false,
       meta: { sizeRatio: 32, headerAlign: "left" },
       cell: (info) => {
         const row = info.row.original;
@@ -282,7 +302,11 @@ function buildColumns({
     },
     {
       id: "costShare",
-      header: "Cost share",
+      // Same denominator (totalCredits) for every row, so ranking by cost
+      // share is the same order as ranking by credits
+      accessorFn: (row) => (totalCredits > 0 ? row.credits / totalCredits : 0),
+      header: "Consumption share",
+      enableSorting: true,
       meta: { sizeRatio: 20, headerAlign: "left" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-start">
@@ -310,6 +334,7 @@ function buildColumns({
       id: "avgCredits",
       accessorKey: "avgCredits",
       header: avgLabel,
+      enableSorting: false,
       meta: { sizeRatio: 22, headerAlign: "right" },
       cell: (info) => (
         <DataTable.BasicCellContent
@@ -321,6 +346,7 @@ function buildColumns({
     {
       id: "vsPrev",
       header: "vs prev",
+      enableSorting: false,
       meta: { sizeRatio: 18, headerAlign: "right" },
       cell: (info) => (
         <VsPrevCell
@@ -391,7 +417,7 @@ function buildColumns({
   ];
 }
 
-interface AttributionRowsProps {
+export interface ConsumptionAttributionRowsProps {
   workspaceId: string;
   dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
@@ -405,7 +431,69 @@ interface AttributionRowsProps {
   ) => void;
 }
 
-function AttributionRows({
+export interface ConsumptionAttributionRowsData {
+  rows: ConsumptionTopRow[];
+  totalCredits: number;
+  totalCount: number;
+  isTopLoading: boolean;
+  isTopError: boolean;
+  isTopValidating: boolean;
+}
+
+export interface ConsumptionAttributionRowsQueryState {
+  pagination: PaginationState;
+  setPagination: Dispatch<SetStateAction<PaginationState>>;
+  sorting: SortingState;
+  onSortingChange: OnChangeFn<SortingState>;
+  sortOrder: ConsumptionTopSortOrder;
+}
+
+export function useConsumptionAttributionRowsQueryState(): ConsumptionAttributionRowsQueryState {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: ATTRIBUTION_PAGE_SIZE,
+  });
+  const [sorting, setSorting] = useState<SortingState>(
+    DEFAULT_ATTRIBUTION_SORTING
+  );
+
+  // A new sort order invalidates the current page's offset into it, so jump
+  // back to the first page whenever it changes.
+  const onSortingChange: OnChangeFn<SortingState> = (updater) => {
+    setSorting(updater);
+    setPagination((current) => ({ ...current, pageIndex: 0 }));
+  };
+
+  const activeSort = sorting[0];
+  // Ranking is always by credits: only forward asc/desc when the sorted
+  // column actually rides that ranking, so sorting by anything else keeps
+  // fetching pages in the default credits-desc order and reorders them
+  // locally instead.
+  const sortOrder =
+    activeSort?.id &&
+    ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS.has(activeSort.id) &&
+    !activeSort.desc
+      ? "asc"
+      : "desc";
+
+  return {
+    pagination,
+    setPagination,
+    sorting,
+    onSortingChange,
+    sortOrder,
+  };
+}
+
+interface ConsumptionAttributionRowsViewProps
+  extends ConsumptionAttributionRowsProps {
+  data: ConsumptionAttributionRowsData;
+  emptyMessage: string;
+  queryState: ConsumptionAttributionRowsQueryState;
+  RowsTableComponent: ComponentType<ConsumptionAttributionRowsTableProps>;
+}
+
+export function ConsumptionAttributionRowsView({
   workspaceId,
   dimension,
   period,
@@ -414,34 +502,23 @@ function AttributionRows({
   onRemoveFilter,
   search,
   onViewAll,
-}: AttributionRowsProps) {
-  const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
-  const { isDark } = useTheme();
-  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: ATTRIBUTION_PAGE_SIZE,
-  });
-  const shouldReduceMotion = useReducedMotion();
-
-  const {
+  emptyMessage,
+  data: {
     rows,
     totalCredits,
     totalCount,
     isTopLoading,
     isTopError,
     isTopValidating,
-  } = useConsumptionTop({
-    workspaceId,
-    dimension,
-    period,
-    limit: pagination.pageSize,
-    offset: pagination.pageIndex * pagination.pageSize,
-    search,
-    filter,
-  });
+  },
+  queryState: { pagination, setPagination, sorting, onSortingChange },
+  RowsTableComponent,
+}: ConsumptionAttributionRowsViewProps) {
+  const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
+  const { isDark } = useTheme();
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const shouldReduceMotion = useReducedMotion();
   const cappedRowCount = Math.min(totalCount, ATTRIBUTION_MAX_ROW_COUNT);
-
   const selectedIdSet = useMemo(
     () => new Set(filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]] ?? []),
     [dimension, filter]
@@ -509,7 +586,7 @@ function AttributionRows({
     content = (
       <div>
         <div className="overflow-x-auto">
-          <ConsumptionAttributionRowsTable
+          <RowsTableComponent
             data={data}
             columns={columns}
             workspaceId={workspaceId}
@@ -522,6 +599,8 @@ function AttributionRows({
             skeletonRowCount={skeletonRowCount}
             hasAvatar={hasAvatar}
             isAvatarRounded={dimension === "user"}
+            sorting={sorting}
+            onSortingChange={onSortingChange}
           />
         </div>
         {paginationControls}
@@ -538,13 +617,11 @@ function AttributionRows({
       <div>
         {rows.length === 0 ? (
           <div className="text-sm text-muted-foreground">
-            {search.trim()
-              ? `No match for "${search.trim()}".`
-              : "No consumption over this period."}
+            {search.trim() ? `No match for "${search.trim()}".` : emptyMessage}
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <ConsumptionAttributionRowsTable
+            <RowsTableComponent
               data={data}
               columns={columns}
               workspaceId={workspaceId}
@@ -553,6 +630,8 @@ function AttributionRows({
               filter={filter}
               onViewAll={onViewAll}
               expandedRowId={expandedRowId}
+              sorting={sorting}
+              onSortingChange={onSortingChange}
             />
           </div>
         )}
@@ -580,7 +659,47 @@ function AttributionRows({
   );
 }
 
-interface ConsumptionAttributionTableProps {
+function WorkspaceConsumptionAttributionRows(
+  props: ConsumptionAttributionRowsProps
+) {
+  const queryState = useConsumptionAttributionRowsQueryState();
+  const {
+    rows,
+    totalCredits,
+    totalCount,
+    isTopLoading,
+    isTopError,
+    isTopValidating,
+  } = useConsumptionTop({
+    workspaceId: props.workspaceId,
+    dimension: props.dimension,
+    period: props.period,
+    limit: queryState.pagination.pageSize,
+    offset: queryState.pagination.pageIndex * queryState.pagination.pageSize,
+    search: props.search,
+    filter: props.filter,
+    sortOrder: queryState.sortOrder,
+  });
+
+  return (
+    <ConsumptionAttributionRowsView
+      {...props}
+      data={{
+        rows,
+        totalCredits,
+        totalCount,
+        isTopLoading,
+        isTopError: Boolean(isTopError),
+        isTopValidating,
+      }}
+      emptyMessage="No consumption over this period."
+      queryState={queryState}
+      RowsTableComponent={ConsumptionAttributionRowsTable}
+    />
+  );
+}
+
+export interface ConsumptionAttributionTableProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
@@ -593,9 +712,15 @@ interface ConsumptionAttributionTableProps {
     dimension: ConsumptionDimension,
     selectedRow: ConsumptionTopRow
   ) => void;
+  showExport?: boolean;
 }
 
-export function ConsumptionAttributionTable({
+interface ConsumptionAttributionTableViewProps
+  extends ConsumptionAttributionTableProps {
+  AttributionRowsComponent: ComponentType<ConsumptionAttributionRowsProps>;
+}
+
+export function ConsumptionAttributionTableView({
   workspaceId,
   period,
   filter,
@@ -604,7 +729,9 @@ export function ConsumptionAttributionTable({
   dimension,
   onDimensionChange,
   onViewAll,
-}: ConsumptionAttributionTableProps) {
+  showExport = true,
+  AttributionRowsComponent,
+}: ConsumptionAttributionTableViewProps) {
   const { inputValue, debouncedValue, setValue } = useDebounce("", {
     delay: SEARCH_DEBOUNCE_DELAY_MS,
   });
@@ -630,10 +757,12 @@ export function ConsumptionAttributionTable({
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-base font-semibold text-foreground">Attribution</h3>
-        <ConsumptionExportPanel
-          workspaceId={workspaceId}
-          exportBody={exportBody}
-        />
+        {showExport && (
+          <ConsumptionExportPanel
+            workspaceId={workspaceId}
+            exportBody={exportBody}
+          />
+        )}
       </div>
       <div className="rounded-lg border border-border bg-panel-background p-4">
         <div className="flex flex-col gap-3">
@@ -695,7 +824,7 @@ export function ConsumptionAttributionTable({
                   exit="exit"
                 >
                   {/* Reset table state whenever its dataset or local search changes. */}
-                  <AttributionRows
+                  <AttributionRowsComponent
                     key={JSON.stringify({
                       period,
                       filter,
@@ -717,5 +846,16 @@ export function ConsumptionAttributionTable({
         </div>
       </div>
     </div>
+  );
+}
+
+export function ConsumptionAttributionTable(
+  props: ConsumptionAttributionTableProps
+) {
+  return (
+    <ConsumptionAttributionTableView
+      {...props}
+      AttributionRowsComponent={WorkspaceConsumptionAttributionRows}
+    />
   );
 }

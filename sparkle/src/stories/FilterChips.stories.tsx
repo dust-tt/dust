@@ -1,5 +1,5 @@
-import type { Meta } from "@storybook/react";
-import React from "react";
+import type { Meta, StoryObj } from "@storybook/react";
+import { fn } from "storybook/test";
 
 import { FilterChips } from "../index_with_tw_base";
 
@@ -21,16 +21,35 @@ const meta = {
       },
     },
   },
+  args: {
+    onFilterClick: fn(),
+  },
 } satisfies Meta<typeof FilterChips>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const FilterChipsExample = () => (
-  <FilterChips
-    filters={["Featured", "Writing", "Productivity", "Research", "Knowledge"]}
-    onFilterClick={(filterName) => {
-      alert(`Filter ${filterName} clicked!`);
-    }}
-    defaultFilter="Featured"
-  />
-);
+/**
+ * A category filter row with an initial selection: **defaultFilter** highlights
+ * one chip on mount, and clicking another chip moves the selection and fires
+ * **onFilterClick** with the chip's name. Selection state is managed internally
+ * (uncontrolled) — the component exposes no prop to drive it from outside.
+ * @summary Single-select filter row with a preselected chip.
+ */
+export const Default: Story = {
+  args: {
+    filters: ["Featured", "Writing", "Productivity", "Research", "Knowledge"],
+    defaultFilter: "Featured",
+  },
+};
+
+/**
+ * Without **defaultFilter**, no chip is highlighted until the user picks one —
+ * appropriate when the list starts unfiltered and every chip narrows it.
+ * @summary Filter row with no initial selection.
+ */
+export const NoDefaultSelection: Story = {
+  args: {
+    filters: ["Featured", "Writing", "Productivity", "Research", "Knowledge"],
+  },
+};

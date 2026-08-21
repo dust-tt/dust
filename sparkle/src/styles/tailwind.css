@@ -198,6 +198,10 @@
     min-height: 100%;
   }
 
+  /* Squircle corner token for large floating surfaces (Composer). Overlays
+     layered on a squircle surface should use `rounded-[inherit]
+     [corner-shape:inherit]` rather than repeating this utility. Documented in
+     Foundations/Borders (Corner Shape story). */
   .rounded-squircle-40 {
     border-radius: 40px;
     corner-shape: squircle;

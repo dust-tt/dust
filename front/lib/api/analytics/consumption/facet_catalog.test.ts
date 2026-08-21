@@ -11,9 +11,31 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { describe, expect, it } from "vitest";
 
 describe("listConsumptionFacetCatalog", () => {
+  it("omits hidden helper agents", async () => {
+    const { authenticator } = await createResourceTest({ role: "manager" });
+
+    const agents = await listConsumptionFacetCatalogDimension(
+      authenticator,
+      "agent"
+    );
+
+    expect(agents).not.toContainEqual(
+      expect.objectContaining({ value: GLOBAL_AGENTS_SID.DUST_TASK })
+    );
+    expect(agents).not.toContainEqual(
+      expect.objectContaining({ value: GLOBAL_AGENTS_SID.DUST_PLANNING })
+    );
+    expect(agents).not.toContainEqual(
+      expect.objectContaining({
+        value: GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
+      })
+    );
+  });
+
   it("includes active workspace members before they generate consumption", async () => {
     const { authenticator, user } = await createResourceTest({
       role: "manager",

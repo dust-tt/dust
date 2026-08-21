@@ -1538,21 +1538,24 @@ export class Authenticator {
   /**
    * Shadow-compare (#9479) for the group_permissions rollout: while the `group_permissions_shadow`
    * flag is on for the workspace, compare two composed decisions for the same check — the served
-   * `legacyAcls` and the `candidateAcls` (the same roles routed through the group_permissions
-   * table) — and log mismatches so a Datadog monitor can confirm parity before the flip (#9480).
-   * The caller builds both shapes. Fire-and-forget: never changes the served result and swallows its
-   * own failures. (Inlined rather than reusing `lib/api/permissions/shadow` to avoid an auth <->
-   * shadow import cycle.)
+   * `getAccessControlLists` and the `candidateAcls` (the same roles routed through the
+   * group_permissions table) — and log mismatches so a Datadog monitor can confirm parity before a
+   * flip. The caller builds both shapes. Fire-and-forget: never changes the served result and
+   * swallows its own failures. (Inlined rather than reusing `lib/api/permissions/shadow` to avoid an
+   * auth <-> shadow import cycle.)
+   *
+   * Retained (currently unused) for the remaining resource migrations onto group_permissions —
+   * spaces no longer shadow-compare, but other resource types still need to.
    */
   shadowComparePermission(
     verb: GrantVerb,
-    legacyAcls: AccessControlList[],
+    resource: WithAccessControl,
     candidateAcls: AccessControlList[],
-    context: Record<string, string | number | boolean | null>
+    context?: Record<string, string | number | boolean | null>
   ): void {
     void this.runShadowComparePermission(
       verb,
-      legacyAcls,
+      resource,
       candidateAcls,
       context
     );
@@ -1560,9 +1563,9 @@ export class Authenticator {
 
   private async runShadowComparePermission(
     verb: GrantVerb,
-    legacyAcls: AccessControlList[],
+    resource: WithAccessControl,
     candidateAcls: AccessControlList[],
-    context: Record<string, string | number | boolean | null>
+    context?: Record<string, string | number | boolean | null>
   ): Promise<void> {
     try {
       const flags = await getFeatureFlags(this);
@@ -1570,18 +1573,40 @@ export class Authenticator {
         return;
       }
 
-      const legacyResult = this.hasPermissionForAcls(verb, legacyAcls);
+      const currentAcl = resource.getAccessControlLists(this);
+      const currentResult = this.hasPermissionForAcls(verb, currentAcl);
       const candidateResult = this.hasPermissionForAcls(verb, candidateAcls);
 
       // The literal message is the Datadog monitor key — keep it stable.
-      if (legacyResult !== candidateResult) {
+      if (currentResult !== candidateResult) {
+        const reloadedPermissions = await Authenticator.resolvePermissions({
+          workspace: this._workspace,
+          groupModelIds: this._groupModelIds,
+        });
+        const reloadedPermissionsAcl = resource.getAccessControlLists({
+          ...this,
+          _permissions: reloadedPermissions,
+        });
+        const reloadedPermissionsResult = this.hasPermissionForAcls(
+          verb,
+          reloadedPermissionsAcl
+        );
+
         logger.warn(
           {
             ...context,
-            legacyResult,
+            permission: verb,
+            userId: this.user()?.sId ?? null,
+            workspaceId: this.workspace()?.sId,
+            currentResult,
             candidateResult,
-            legacyAcls,
+            currentAcl,
             candidateAcls,
+            groups: this._groupModelIds,
+            permissions: this._permissions.toJSON(),
+            reloadedPermissionsAcl,
+            reloadedPermissionsResult,
+            reloadedPermission: reloadedPermissions.toJSON(),
           },
           "group_permissions_shadow_mismatch"
         );

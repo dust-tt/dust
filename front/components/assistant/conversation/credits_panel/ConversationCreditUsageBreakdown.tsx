@@ -14,8 +14,17 @@ import type {
   ConversationConsumptionToolDetails,
 } from "@app/types/assistant/conversation_consumption";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import { Avatar, Chip, DustLogoSquare, Icon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Chip,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  DustLogoSquare,
+  Icon,
+} from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
+import { useState } from "react";
 
 const MAX_VISIBLE_TOOLS = 3;
 
@@ -88,8 +97,8 @@ function ToolBreakdownCards({
     <div className="grid grid-cols-2 gap-4">
       <div className="col-span-2">
         <CreditBreakdownCard
-          label="Agent work and context"
-          description="Longer conversations require more context to process"
+          label="Context and reasoning"
+          description="Agents use credits to process the conversation history and context. Longer conversations consume more credits."
           value={agentWorkCredits}
           icon={InternalActionIcons.ActionBrainIcon}
         />
@@ -152,8 +161,8 @@ function ModelsBreakdown({ isDark, models }: ModelsBreakdownProps) {
   }
 
   return (
-    <section className="space-y-4">
-      <h3 className="text-xs font-semibold text-muted-foreground">Models</h3>
+    <section className="mt-6 space-y-4 border-t border-border pt-6">
+      <h3 className="text-base font-semibold text-foreground">By model</h3>
       <div className="space-y-2">
         {models.map((model) => (
           <ModelRow
@@ -172,27 +181,62 @@ interface AgentBreakdownProps {
 }
 
 function AgentBreakdown({ agent }: AgentBreakdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <section className="space-y-4">
-      <div className="flex min-w-0 items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <Avatar
-            name={agent.name}
-            visual={agent.pictureUrl ?? undefined}
-            size="xs"
-          />
-          <h3 className="truncate text-base font-medium text-foreground">
-            {agent.name}
-          </h3>
+    <Collapsible
+      open={isOpen}
+      onOpenChange={setIsOpen}
+      className="rounded-xl border border-border bg-background"
+    >
+      <CollapsibleTrigger
+        aria-label={`${isOpen ? "Collapse" : "Expand"} credit details for ${agent.name}`}
+        className="min-h-11 flex-row-reverse justify-between rounded-xl p-2 text-left focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Avatar
+              name={agent.name}
+              visual={agent.pictureUrl ?? undefined}
+              size="xs"
+            />
+            <span className="truncate text-base font-medium text-foreground">
+              {agent.name}
+            </span>
+          </div>
+          <span className="shrink-0 text-base font-semibold text-muted-foreground">
+            {formatCreditValue(agent.billedCredits)}
+          </span>
         </div>
-        <span className="shrink-0 text-base text-muted-foreground">
-          {formatCreditValue(agent.billedCredits)}
-        </span>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="p-2">
+        <ToolBreakdownCards
+          agentWorkCredits={agent.agentWorkCredits}
+          tools={agent.tools}
+        />
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+interface AgentsBreakdownProps {
+  agents: ConversationConsumptionAgentDetails[];
+}
+
+function AgentsBreakdown({ agents }: AgentsBreakdownProps) {
+  // We hide the section entirely if there is only one agent.
+  if (agents.length <= 1) {
+    return null;
+  }
+
+  return (
+    <section className="mt-6 space-y-4 border-t border-border pt-6">
+      <h3 className="text-base font-semibold text-foreground">Per Agents</h3>
+      <div className="space-y-2">
+        {agents.map((agent) => (
+          <AgentBreakdown key={agent.agentId} agent={agent} />
+        ))}
       </div>
-      <ToolBreakdownCards
-        agentWorkCredits={agent.agentWorkCredits}
-        tools={agent.tools}
-      />
     </section>
   );
 }
@@ -209,11 +253,13 @@ export function ConversationCreditUsageBreakdown({
   const { isDark } = useTheme();
 
   return (
-    <div className="space-y-6 px-4 py-6">
+    <div className="px-4 py-6">
       <section className="space-y-4">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Total</h2>
-          <div className="mt-1 flex items-end gap-1">
+          <h2 className="text-base font-semibold text-foreground">
+            Total credits consumed
+          </h2>
+          <div className="flex items-end gap-1">
             <span className="text-2xl font-semibold leading-8 text-foreground">
               {formatCredits(billedCredits)}
             </span>
@@ -230,10 +276,7 @@ export function ConversationCreditUsageBreakdown({
 
       <ModelsBreakdown isDark={isDark} models={details.models} />
 
-      {details.agents.length > 1 &&
-        details.agents.map((agent) => (
-          <AgentBreakdown key={agent.agentId} agent={agent} />
-        ))}
+      <AgentsBreakdown agents={details.agents} />
     </div>
   );
 }

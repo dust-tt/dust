@@ -289,6 +289,135 @@ describe("GroupPermissionResource", () => {
     });
   });
 
+  describe("listForResource", () => {
+    it("returns the resource's own grants plus the type-wide (-1) grants, and nothing else", async () => {
+      // Instance grant on agent 7.
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        grantType: "editor",
+        resourceType: "agent",
+        resourceId: 7,
+      });
+      // Type-wide grant on the whole agent type.
+      await GroupPermissionResource.grantTypeWide(auth, {
+        group: groupA,
+        grantType: "create",
+        resourceType: "agent",
+      });
+      // Another instance of the same type, and a different resource type: both excluded.
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        grantType: "editor",
+        resourceType: "agent",
+        resourceId: 8,
+      });
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        grantType: "reader",
+        resourceType: "space",
+        resourceId: 7,
+      });
+
+      const grants = await GroupPermissionResource.listForResource(auth, {
+        resourceType: "agent",
+        resourceId: 7,
+      });
+
+      expect(grants).toHaveLength(2);
+      expect(grants.every((g) => g.resourceType === "agent")).toBe(true);
+      expect(new Set(grants.map((g) => g.resourceId))).toEqual(
+        new Set([7, -1])
+      );
+    });
+
+    it("does not duplicate the type-wide rows when resourceId is itself -1 (Op.in dedupe)", async () => {
+      // A single type-wide (-1) grant. Querying with resourceId = -1 builds an Op.in of [-1, -1],
+      // so the row must come back exactly once rather than twice.
+      await GroupPermissionResource.grantTypeWide(auth, {
+        group: groupA,
+        grantType: "create",
+        resourceType: "agent",
+      });
+
+      const grants = await GroupPermissionResource.listForResource(auth, {
+        resourceType: "agent",
+        resourceId: -1,
+      });
+
+      expect(grants).toHaveLength(1);
+      expect(grants[0].resourceId).toBe(-1);
+      expect(grants[0].grantType).toBe("create");
+    });
+
+    it("is scoped to the authenticated workspace", async () => {
+      const otherWorkspace = await WorkspaceFactory.basic();
+      await GroupFactory.defaults(otherWorkspace);
+      const otherGroup = await GroupFactory.regularManual(
+        otherWorkspace,
+        "other"
+      );
+      const otherAuth = await Authenticator.internalAdminForWorkspace(
+        otherWorkspace.sId
+      );
+      await GroupPermissionResource.grant(otherAuth, {
+        group: otherGroup,
+        grantType: "editor",
+        resourceType: "agent",
+        resourceId: 7,
+      });
+
+      expect(
+        await GroupPermissionResource.listForResource(auth, {
+          resourceType: "agent",
+          resourceId: 7,
+        })
+      ).toHaveLength(0);
+    });
+  });
+
+  describe("listForGroup", () => {
+    it("returns every grant held by the group across resource types and instances", async () => {
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        grantType: "reader",
+        resourceType: "space",
+        resourceId: 1,
+      });
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        grantType: "editor",
+        resourceType: "agent",
+        resourceId: 2,
+      });
+      await GroupPermissionResource.grantTypeWide(auth, {
+        group: groupB,
+        grantType: "create",
+        resourceType: "skill",
+      });
+      // A grant on another group must be excluded.
+      await GroupPermissionResource.grant(auth, {
+        group: groupA,
+        grantType: "reader",
+        resourceType: "space",
+        resourceId: 3,
+      });
+
+      const grants = await GroupPermissionResource.listForGroup(auth, groupB);
+
+      expect(grants).toHaveLength(3);
+      expect(grants.every((g) => g.groupId === groupB.id)).toBe(true);
+      expect(new Set(grants.map((g) => g.resourceType))).toEqual(
+        new Set(["space", "agent", "skill"])
+      );
+    });
+
+    it("returns [] for a group with no grants", async () => {
+      expect(await GroupPermissionResource.listForGroup(auth, groupB)).toEqual(
+        []
+      );
+    });
+  });
+
   describe("revoke", () => {
     it("removes a specific grant only", async () => {
       await GroupPermissionResource.grant(auth, {

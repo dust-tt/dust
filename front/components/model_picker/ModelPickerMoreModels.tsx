@@ -133,7 +133,7 @@ export function ModelPickerMoreModels({
   };
 
   const searchbar = (
-    <div className="sticky top-0 z-10 bg-overlay-background pt-2">
+    <div className="sticky top-0 z-10 bg-overlay-background">
       <DropdownMenuSearchbar
         autoFocus={!isWidthConstrained}
         name="search-models"

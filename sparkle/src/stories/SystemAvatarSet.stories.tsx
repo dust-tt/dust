@@ -4,7 +4,7 @@ import { Avatar } from "../index_with_tw_base";
 
 export default {
   title: "Assets/Avatars/SystemAvatarSet",
-  tags: ["a11y-issues"],
+  tags: ["!manifest", "a11y-issues"],
   parameters: {
     docs: {
       description: {

@@ -1,4 +1,6 @@
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
+import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatchEdit";
+import { SkillsBatchEditBar } from "@app/components/skills/SkillsBatchEdit";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useAppRouter } from "@app/lib/platform";
@@ -12,21 +14,35 @@ import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
+  Checkbox,
   Chip,
-  createSelectionColumn,
   DataTable,
   Edit04,
   Eye,
+  Label,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
 import type {
   CellContext,
   ColumnDef,
+  HeaderContext,
   Row,
   RowSelectionState,
 } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
+
+// A Dust-provided skill can never be edited, and a "members and agents"
+// skill can only be batch-edited by someone who can make skills auto-discoverable.
+export function isSkillSelectable(
+  skill: { editedBy: number | null; availability: SkillAvailability },
+  canMakeSkillAutoDiscoverable: boolean
+): boolean {
+  return (
+    !isDustProvidedSkill(skill) &&
+    (canMakeSkillAutoDiscoverable || skill.availability !== "users_and_agents")
+  );
+}
 
 type RowData = {
   sId: string;
@@ -212,18 +228,85 @@ const menuColumn = {
   },
 };
 
+const selectionColumn = {
+  header: (info: HeaderContext<RowData, boolean>) => {
+    const areAllPageRowsSelected = info.table.getIsAllPageRowsSelected();
+    const hasSelection = Object.values(info.table.getState().rowSelection).some(
+      (isSelected) => isSelected
+    );
+
+    return (
+      <DataTable.CellContent className="size-full items-center justify-center">
+        <Checkbox
+          checked={
+            areAllPageRowsSelected ? true : hasSelection ? "partial" : false
+          }
+          disabled={
+            !info.table.getRowModel().rows.some((row) => row.getCanSelect())
+          }
+          tooltip={
+            areAllPageRowsSelected ? "Clear selection" : "Select all on page"
+          }
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+          onCheckedChange={(checked) => {
+            if (checked) {
+              info.table.toggleAllPageRowsSelected(true);
+            } else {
+              // Unticking clears the whole selection across pages.
+              info.table.resetRowSelection();
+            }
+          }}
+        />
+      </DataTable.CellContent>
+    );
+  },
+  accessorKey: "select",
+  cell: (info: CellContext<RowData, boolean>) => {
+    const checkboxId = `select-skill-${info.row.id}`;
+    const skillName = info.row.original.name;
+
+    return (
+      // `stopPropagation` only keeps the click from also reaching the row's `onClick`
+      <Label
+        htmlFor={checkboxId}
+        className="flex size-full cursor-pointer items-center justify-center hover:bg-muted-background"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <Checkbox
+          id={checkboxId}
+          aria-label={
+            info.row.getIsSelected()
+              ? `Deselect ${skillName}`
+              : `Select ${skillName}`
+          }
+          checked={info.row.getIsSelected()}
+          disabled={!info.row.getCanSelect()}
+          onCheckedChange={(checked) => info.row.toggleSelected(!!checked)}
+        />
+      </Label>
+    );
+  },
+  meta: {
+    className: "w-10 p-0",
+  },
+  enableSorting: false,
+};
+
 const getTableColumns = ({
   onAgentClick,
   onUsedBySkillClick,
-  enableRowSelection,
+  enableSelection,
 }: {
   onAgentClick: (agentId: string) => void;
   onUsedBySkillClick: (skillId: string) => void;
-  enableRowSelection: boolean;
+  enableSelection: boolean;
 }) => {
   /**
    * Columns order:
-   * - Selection (batch edition only)
+   * - Selection (when batch edition is available)
    * - Name (always)
    * - Access (hidden on mobile)
    * - Used by (hidden on mobile)
@@ -234,7 +317,7 @@ const getTableColumns = ({
    */
 
   return [
-    ...(enableRowSelection ? [createSelectionColumn<RowData>()] : []),
+    ...(enableSelection ? [selectionColumn] : []),
     nameColumn,
     availabilityColumn,
     usedByColumn(onAgentClick, onUsedBySkillClick),
@@ -254,8 +337,11 @@ type SkillsTableProps = {
   onAgentClick: (agentId: string) => void;
   onUsedBySkillClick: (skillId: string) => void;
   canMakeSkillAutoDiscoverable?: boolean;
-  rowSelection?: RowSelectionState;
-  setRowSelection?: (selection: RowSelectionState) => void;
+  enableSelection: boolean;
+  rowSelection: RowSelectionState;
+  setRowSelection: (selection: RowSelectionState) => void;
+  isBatchUpdating: boolean;
+  onSelectAvailabilityAction: (action: BatchAvailabilityAction) => void;
 };
 
 export function SkillsTable({
@@ -265,16 +351,17 @@ export function SkillsTable({
   onAgentClick,
   onUsedBySkillClick,
   canMakeSkillAutoDiscoverable = false,
+  enableSelection,
   rowSelection,
   setRowSelection,
+  isBatchUpdating,
+  onSelectAvailabilityAction,
 }: SkillsTableProps) {
   const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
   const [skillToArchive, setSkillToArchive] = useState<
     GetSkillsWithRelationsResponseBody["skills"][number] | null
   >(null);
-
-  const isSelectionEnabled = rowSelection !== undefined;
 
   // Stable columns identity: rebuilding them on every selection change makes the
   // table re-render all rows.
@@ -283,9 +370,9 @@ export function SkillsTable({
       getTableColumns({
         onAgentClick,
         onUsedBySkillClick,
-        enableRowSelection: isSelectionEnabled,
+        enableSelection,
       }),
-    [onAgentClick, onUsedBySkillClick, isSelectionEnabled]
+    [onAgentClick, onUsedBySkillClick, enableSelection]
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -304,11 +391,6 @@ export function SkillsTable({
         updatedAt: skill.updatedAt,
         createdAt: skill.createdAt,
         onClick: () => {
-          // During batch edition the DataTable itself toggles the row selection on
-          // click; don't open the details panel on top of it.
-          if (isSelectionEnabled) {
-            return;
-          }
           onSkillClick(skill);
         },
         menuItems:
@@ -350,7 +432,51 @@ export function SkillsTable({
             : [],
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not stable, mutating the skills list which prevent pagination to work
-    [skills, onSkillClick, owner.sId, isSelectionEnabled]
+    [skills, onSkillClick, owner.sId]
+  );
+
+  const selectionSet = useMemo(
+    () => new Set(Object.keys(rowSelection)),
+    [rowSelection]
+  );
+
+  const selectableRowIds = useMemo(
+    () =>
+      rows
+        .filter((row) => isSkillSelectable(row, canMakeSkillAutoDiscoverable))
+        .map((row) => row.sId),
+    [rows, canMakeSkillAutoDiscoverable]
+  );
+  const totalSelectableCount = selectableRowIds.length;
+
+  const skillsBySId = useMemo(
+    () => new Map(skills.map((skill) => [skill.sId, skill])),
+    [skills]
+  );
+
+  const selectedSkills = useMemo(
+    () =>
+      selectableRowIds
+        .filter((sId) => selectionSet.has(sId))
+        .map((sId) => skillsBySId.get(sId))
+        .filter(
+          (s): s is GetSkillsWithRelationsResponseBody["skills"][number] => !!s
+        ),
+    [selectableRowIds, selectionSet, skillsBySId]
+  );
+
+  const pageRows = useMemo(() => {
+    const start = pagination.pageIndex * pagination.pageSize;
+    return rows.slice(start, start + pagination.pageSize);
+  }, [rows, pagination]);
+  const pageSelectedCount = useMemo(
+    () =>
+      pageRows.filter(
+        (row) =>
+          isSkillSelectable(row, canMakeSkillAutoDiscoverable) &&
+          selectionSet.has(row.sId)
+      ).length,
+    [pageRows, canMakeSkillAutoDiscoverable, selectionSet]
   );
 
   if (rows.length === 0) {
@@ -369,20 +495,36 @@ export function SkillsTable({
           }}
         />
       )}
+      {enableSelection && (
+        <SkillsBatchEditBar
+          owner={owner}
+          selectedSkills={selectedSkills}
+          pageSelectedCount={pageSelectedCount}
+          totalCount={totalSelectableCount}
+          isUpdating={isBatchUpdating}
+          canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
+          onClear={() => setRowSelection({})}
+          onSelectAll={() =>
+            setRowSelection(
+              Object.fromEntries(selectableRowIds.map((sId) => [sId, true]))
+            )
+          }
+          onSelectAction={onSelectAvailabilityAction}
+        />
+      )}
       <DataTable
         className="relative"
         data={rows}
         columns={columns}
         pagination={pagination}
         setPagination={setPagination}
-        {...(rowSelection !== undefined && setRowSelection
+        disableRowClickSelection
+        {...(enableSelection
           ? {
               rowSelection,
               setRowSelection,
               enableRowSelection: (row: Row<RowData>) =>
-                !isDustProvidedSkill(row.original) &&
-                (canMakeSkillAutoDiscoverable ||
-                  row.original.availability !== "users_and_agents"),
+                isSkillSelectable(row.original, canMakeSkillAutoDiscoverable),
               getRowId: (row: RowData) => row.sId,
             }
           : {})}

@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -20,6 +21,9 @@ async function setupPod() {
     role: "admin",
   });
   const pod = await SpaceFactory.project(workspace, user.id);
+
+  await FeatureFlagFactory.basic(auth, "sandbox_functions");
+  await FeatureFlagFactory.basic(auth, "pod_applications");
 
   return { workspace, user, auth, pod };
 }
@@ -72,6 +76,22 @@ describe("GET /api/w/:wId/pods/:podId/apps", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     fileStorageMock.reset();
+  });
+
+  it("returns 403 when the pod_applications flag is off", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id);
+
+    // Pod Functions alone are not enough to reach the Apps routes.
+    await FeatureFlagFactory.basic(auth, "sandbox_functions");
+
+    const res = await honoApp.request(
+      `/api/w/${workspace.sId}/pods/${pod.sId}/apps`
+    );
+
+    expect(res.status).toBe(403);
   });
 
   it("returns an empty list for a Pod with no app", async () => {

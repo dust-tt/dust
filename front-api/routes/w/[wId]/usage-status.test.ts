@@ -162,4 +162,31 @@ describe("/api/w/[wId]/usage-status", () => {
     );
     expect(postResponse.status).toBe(403);
   });
+
+  it("surfaces requireReason when the setting is enabled", async () => {
+    const workspace = await creditPricedWorkspace();
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await CreditUsageConfigurationResource.makeNew(adminAuth, {
+      defaultDiscountPercent: 0,
+      usageCapCredits: null,
+      requireUpgradeRequestReason: true,
+    });
+
+    const { membership } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+      workspace,
+    });
+    await membership.updateCreditState("capped");
+
+    const response = await honoApp.request(usageStatusUrl(workspace.sId));
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.canRequestUpgrade).toBe(true);
+    expect(body.requireReason).toBe(true);
+  });
 });

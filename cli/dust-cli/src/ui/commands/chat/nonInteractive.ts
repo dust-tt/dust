@@ -47,7 +47,10 @@ export async function resolveSpaceId(
     return undefined;
   }
 
-  const spacesRes = await dustClient.getSpaces();
+  // Projects are not listed by default by the public API, they have to be asked for explicitly.
+  const spacesRes = await dustClient.getSpaces({
+    kinds: ["system", "global", "regular", "project"],
+  });
   if (spacesRes.isErr()) {
     throw new Error(`Failed to fetch spaces: ${spacesRes.error.message}`);
   }

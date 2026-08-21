@@ -3,6 +3,7 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusBillable } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
+import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
 import type { ToolCostCategory } from "@app/lib/api/mcp";
@@ -258,11 +259,10 @@ export async function computeAndStoreAgentMessageCredits(
     dustRunIds: [...new Set(runIds ?? [])],
   });
 
-  // Persist the billing usage type on the run usages so free/user/programmatic
-  // consumption can be queried directly (e.g. free-usage monitoring). Reuses the
-  // same origin-based classification as the Metronome events.
+  // Repair legacy run usages that predate creation-time classification. New
+  // rows are already classified and this fallback never overwrites them.
   const messageOrigin = triggeringUserMessageOrigin ?? "web";
-  await RunResource.setUsageTypeForRuns(auth, {
+  await RunResource.setUsageTypeForRunsIfMissing(auth, {
     runs,
     usageType: getUsageType(
       isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin }),
@@ -326,29 +326,35 @@ export async function computeAndStoreAgentMessageCredits(
     });
   }
 
-  // Record against the per-user spend-cap backup (Redis fixed-window counter
-  // over the contract billing cycle).
-  if (user && recordedCostDelta > 0) {
+  // Record against the spend-cap backups (Redis fixed-window counters over the
+  // contract billing cycle).
+  if (recordedCostDelta > 0) {
     const featureFlags = await getFeatureFlags(auth);
     if (featureFlags.includes("enforce_user_spend_limit_rate_cap")) {
-      await recordUserSpendLimitUsage(auth, {
-        user,
-        incrementBy: recordedCostDelta,
-        cycle: spendLimitCycleOverrideForAuth(auth),
-      });
-    }
-  }
+      // Per-user cap.
+      if (user) {
+        await recordUserSpendLimitUsage(auth, {
+          user,
+          incrementBy: recordedCostDelta,
+          cycle: spendLimitCycleOverrideForAuth(auth),
+        });
+      }
 
-  // Record against the per-API-key spend-cap backup (Redis fixed-window counter
-  // over the contract billing cycle).
-  const apiKey = auth.key();
-  if (apiKey && recordedCostDelta > 0) {
-    const featureFlags = await getFeatureFlags(auth);
-    if (featureFlags.includes("enforce_user_spend_limit_rate_cap")) {
-      await recordApiKeySpendLimitUsage(auth, {
-        keyModelId: apiKey.id,
-        incrementBy: recordedCostDelta,
-      });
+      // Per-API-key cap, for calls authenticated with an API key.
+      const apiKey = auth.key();
+      if (apiKey) {
+        await recordApiKeySpendLimitUsage(auth, {
+          keyModelId: apiKey.id,
+          incrementBy: recordedCostDelta,
+        });
+      }
+
+      // Workspace programmatic cap, for programmatic calls.
+      if (isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin })) {
+        await recordProgrammaticSpendLimitUsage(auth, {
+          incrementBy: recordedCostDelta,
+        });
+      }
     }
   }
 

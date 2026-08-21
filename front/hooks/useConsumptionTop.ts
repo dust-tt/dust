@@ -6,7 +6,10 @@ import {
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/schema";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionScopeFilter,
+  ConsumptionTopSortOrder,
+} from "@app/lib/api/analytics/consumption/scope";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
 import type { GetConsumptionTopApiKeysResponse } from "@app/lib/api/analytics/consumption/top_api_keys";
 import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
@@ -43,7 +46,7 @@ export type ConsumptionTopRow = {
   previousCredits: number | null;
 };
 
-type ConsumptionTopResponse =
+export type ConsumptionTopResponse =
   | GetConsumptionTopAgentsResponse
   | GetConsumptionTopUsersResponse
   | GetConsumptionTopGroupsResponse
@@ -53,10 +56,24 @@ type ConsumptionTopResponse =
   | GetConsumptionTopSourcesResponse
   | GetConsumptionTopApiKeysResponse;
 
+export interface UseConsumptionTopParams {
+  workspaceId: string;
+  dimension: ConsumptionDimension;
+  period: ConsumptionPeriodSelection;
+  limit: number;
+  offset?: number;
+  search?: string;
+  filter?: ConsumptionScopeFilter;
+  sortOrder?: ConsumptionTopSortOrder;
+  disabled?: boolean;
+}
+
 // Narrowed on the collection each response carries rather than on the requested
 // dimension, so a row shape that drifts from its endpoint is a type error here
 // instead of a silently empty table.
-function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
+export function toConsumptionTopRows(
+  data: ConsumptionTopResponse
+): ConsumptionTopRow[] {
   if ("agents" in data) {
     return data.agents.map((row) => ({
       id: row.agentId,
@@ -181,17 +198,9 @@ export function useConsumptionTop({
   offset = 0,
   search,
   filter,
+  sortOrder = "desc",
   disabled,
-}: {
-  workspaceId: string;
-  dimension: ConsumptionDimension;
-  period: ConsumptionPeriodSelection;
-  limit: number;
-  offset?: number;
-  search?: string;
-  filter?: ConsumptionScopeFilter;
-  disabled?: boolean;
-}) {
+}: UseConsumptionTopParams) {
   const url = `/api/w/${workspaceId}/analytics/consumption/${CONSUMPTION_TOP_ENDPOINTS[dimension]}`;
   const body: ConsumptionTopBody = {
     period: period.kind,
@@ -201,6 +210,7 @@ export function useConsumptionTop({
     limit,
     offset,
     search: search?.trim(),
+    sortOrder,
   };
 
   const { data, error, isLoading, isValidating } = useConsumptionQuery<
@@ -209,7 +219,7 @@ export function useConsumptionTop({
   >({ url, body, disabled });
 
   const rows = useMemo(
-    () => (data ? toRows(data) : emptyArray<ConsumptionTopRow>()),
+    () => (data ? toConsumptionTopRows(data) : emptyArray<ConsumptionTopRow>()),
     [data]
   );
 

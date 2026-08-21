@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 import { useArgs } from "storybook/preview-api";
+import { fn } from "storybook/test";
 
-import { SliderSteps, SliderToggle } from "../index_with_tw_base";
+import { SliderSteps } from "../index_with_tw_base";
 
 const meta = {
   title: "Forms & Inputs/SliderSteps",
@@ -27,66 +28,68 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const SliderStepsBasic: Story = {
+// SliderSteps is fully controlled; this shared render wires changes back into
+// the `value` arg (on top of the `onChange` spy) so every story is interactive
+// and stays in sync with the Controls panel.
+function ControlledSliderSteps(args: React.ComponentProps<typeof SliderSteps>) {
+  const [{ value }, updateArgs] = useArgs<{ value: number }>();
+  return (
+    <div className="w-64">
+      <SliderSteps
+        {...args}
+        value={value}
+        onChange={(next) => {
+          args.onChange(next);
+          updateArgs({ value: next });
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * A 4-step slider with the knob on step 1 — drag or click to snap between
+ * levels. For a binary on/off setting, prefer **SliderToggle** instead.
+ * @summary Interactive 4-step slider.
+ */
+export const Default: Story = {
   args: {
     stepCount: 4,
     value: 1,
     ariaLabel: "Level",
-    // Placeholder to satisfy the required prop; the render below wires
-    // changes into the `value` arg instead.
-    onChange: () => {},
+    onChange: fn(),
   },
-  // The component is fully controlled; wire changes back into the `value`
-  // arg so the story is interactive and stays in sync with the controls panel.
-  render: function Render(args) {
-    const [{ value }, updateArgs] = useArgs<{ value: number }>();
-    return (
-      <div className="w-64">
-        <SliderSteps
-          {...args}
-          value={value}
-          onChange={(next) => updateArgs({ value: next })}
-        />
-      </div>
-    );
-  },
+  render: ControlledSliderSteps,
 };
 
-const InteractiveSliderSteps = ({
-  stepCount = 4,
-  value: initialValue = 0,
-  lockedSteps,
-  disabled,
-}: {
-  stepCount?: number;
-  value?: number;
-  lockedSteps?: number[];
-  disabled?: boolean;
-}) => {
-  const [value, setValue] = React.useState(initialValue);
-  return (
-    <SliderSteps
-      stepCount={stepCount}
-      value={value}
-      lockedSteps={lockedSteps}
-      disabled={disabled}
-      onChange={setValue}
-      ariaLabel="Level"
-    />
-  );
+/**
+ * Steps listed in `lockedSteps` render a padlock and are skipped when the
+ * knob snaps — e.g. levels gated behind a higher plan.
+ * @summary Slider with locked (gated) steps.
+ */
+export const WithLockedSteps: Story = {
+  args: {
+    stepCount: 4,
+    value: 1,
+    lockedSteps: [2, 3],
+    ariaLabel: "Level",
+    onChange: fn(),
+  },
+  render: ControlledSliderSteps,
 };
 
-export const SliderStepsExample = () => (
-  <div className="flex w-64 flex-col gap-4">
-    <InteractiveSliderSteps value={1} />
-    <InteractiveSliderSteps stepCount={3} value={2} />
-    <InteractiveSliderSteps value={1} lockedSteps={[2, 3]} />
-    <InteractiveSliderSteps value={1} disabled />
-    <div className="flex items-center gap-2">
-      <SliderToggle selected />
-      <span className="text-xs text-muted-foreground">
-        {"<- Slider Toggle (binary) for comparison"}
-      </span>
-    </div>
-  </div>
-);
+/**
+ * The disabled state: the track dims and the slider ignores pointer and
+ * keyboard input entirely.
+ * @summary Disabled slider.
+ */
+export const Disabled: Story = {
+  args: {
+    stepCount: 4,
+    value: 1,
+    disabled: true,
+    ariaLabel: "Level",
+    onChange: fn(),
+  },
+  render: ControlledSliderSteps,
+};

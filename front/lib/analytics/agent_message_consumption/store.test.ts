@@ -23,6 +23,7 @@ const bulkMock = vi.spyOn(client, "bulk");
 function makeDocument(): AgentMessageConsumptionAnalyticsData {
   return {
     agent: {
+      attributed_id: "agent_1",
       id: "agent_1",
       version: "1",
       tag_ids: [],

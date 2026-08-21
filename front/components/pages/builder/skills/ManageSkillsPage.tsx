@@ -18,11 +18,11 @@ import {
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatchEdit";
+import { BatchAvailabilityDialog } from "@app/components/skills/SkillsBatchEdit";
 import {
-  BatchAvailabilityDialog,
-  SkillsBatchEditBar,
-} from "@app/components/skills/SkillsBatchEdit";
-import { SkillsTable } from "@app/components/skills/SkillsTable";
+  isSkillSelectable,
+  SkillsTable,
+} from "@app/components/skills/SkillsTable";
 import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
 import {
   useSetContentWidth,
@@ -58,7 +58,6 @@ import {
   EmptyCTAButton,
   FolderOpen,
   InfoCircle,
-  ListSelect,
   Page,
   Plus,
   SearchInput,
@@ -92,7 +91,6 @@ export function ManageSkillsPage() {
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
   const [skillSearch, setSkillSearch] = useState("");
   const [skillIdParam, setSkillIdParam] = useHashParam("skillId");
-  const [isBatchEditing, setIsBatchEditing] = useState(false);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pendingBatchAction, setPendingBatchAction] =
     useState<BatchAvailabilityAction | null>(null);
@@ -134,6 +132,18 @@ export function ManageSkillsPage() {
     }
     return "active";
   }, [selectedTab, skillManagerTabs]);
+
+  // The selection is scoped to the current tab/search/filter combination: a skill that drops
+  // out of view (tab switch, search, or filter change) should drop out of the selection too.
+  const selectionScopeKey = [activeTab, skillSearch, availabilityFilter].join(
+    "|"
+  );
+  const [prevSelectionScopeKey, setPrevSelectionScopeKey] =
+    useState(selectionScopeKey);
+  if (selectionScopeKey !== prevSelectionScopeKey) {
+    setPrevSelectionScopeKey(selectionScopeKey);
+    setRowSelection({});
+  }
 
   const canCreateSkill = hasPermission("create", "skill");
 
@@ -237,22 +247,30 @@ export function ManageSkillsPage() {
 
   const [isBatchUpdating, setIsBatchUpdating] = useState(false);
 
-  const selectedSkillIds = useMemo(
-    () =>
-      Object.entries(rowSelection)
-        .filter(([, selected]) => selected)
-        .map(([sId]) => sId),
-    [rowSelection]
-  );
-  const selectedSkills = useMemo(
-    () => activeSkills.filter((skill) => rowSelection[skill.sId]),
-    [activeSkills, rowSelection]
+  const isBatchEditionAvailable =
+    hasPermission("publish", "skill") && activeTab !== "archived";
+
+  const canMakeSkillAutoDiscoverable = hasPermission(
+    "make_discoverable",
+    "skill"
   );
 
-  const closeBatchEdition = () => {
-    setIsBatchEditing(false);
-    setRowSelection({});
-  };
+  // Only skills that are still selectable in the current tab can end up in bulk actions,
+  // even if `rowSelection` (not reset on every scope change) still references a skill that
+  // is no longer selectable in the current view.
+  const selectedSkills = useMemo(
+    () =>
+      skillsByTab[activeTab].filter(
+        (skill) =>
+          rowSelection[skill.sId] &&
+          isSkillSelectable(skill, canMakeSkillAutoDiscoverable)
+      ),
+    [skillsByTab, activeTab, rowSelection, canMakeSkillAutoDiscoverable]
+  );
+  const selectedSkillIds = useMemo(
+    () => selectedSkills.map((skill) => skill.sId),
+    [selectedSkills]
+  );
 
   const handleBatchAvailability = async (availability: SkillAvailability) => {
     if (selectedSkillIds.length === 0 || isBatchUpdating) {
@@ -271,14 +289,6 @@ export function ManageSkillsPage() {
       setIsBatchUpdating(false);
     }
   };
-
-  const isBatchEditionAvailable =
-    hasPermission("publish", "skill") && activeTab !== "archived";
-
-  const canMakeSkillAutoDiscoverable = hasPermission(
-    "make_discoverable",
-    "skill"
-  );
 
   const handleFavoriteChange = useCallback(
     async (
@@ -449,14 +459,6 @@ export function ManageSkillsPage() {
                 setSkillSearch(s);
               }}
             />
-            {isBatchEditionAvailable && !isBatchEditing && (
-              <Button
-                variant="outline"
-                label="Batch edit"
-                icon={ListSelect}
-                onClick={() => setIsBatchEditing(true)}
-              />
-            )}
             {canCreateSkill && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -477,16 +479,6 @@ export function ManageSkillsPage() {
               </DropdownMenu>
             )}
           </div>
-          {isBatchEditionAvailable && isBatchEditing && (
-            <SkillsBatchEditBar
-              selectedSkills={selectedSkills}
-              isUpdating={isBatchUpdating}
-              canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
-              owner={owner}
-              onClose={closeBatchEdition}
-              onSelectAction={setPendingBatchAction}
-            />
-          )}
           <div className="flex flex-col pt-3">
             <Tabs value={activeTab}>
               <TabsList>
@@ -570,9 +562,11 @@ export function ManageSkillsPage() {
                     onAgentClick={setAgentId}
                     onUsedBySkillClick={handleUsedBySkillSelect}
                     canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
-                    {...(isBatchEditionAvailable && isBatchEditing
-                      ? { rowSelection, setRowSelection }
-                      : {})}
+                    enableSelection={isBatchEditionAvailable}
+                    rowSelection={rowSelection}
+                    setRowSelection={setRowSelection}
+                    isBatchUpdating={isBatchUpdating}
+                    onSelectAvailabilityAction={setPendingBatchAction}
                   />
                 )}
               </>

@@ -31,10 +31,18 @@ export const blockquoteVariants = cva(
 
 interface BlockquoteBlockProps {
   children: React.ReactNode;
+  /** Visual variant; only "surface" is currently supported. */
   variant?: "surface";
+  /** hast node from react-markdown; its position is used to skip re-renders during streaming. */
   node?: MarkdownNode;
 }
 
+/**
+ * Renders blockquotes inside Markdown output, with a vertical accent bar and,
+ * when `canCopyQuotes` is enabled via MarkdownStyleContext, a copy button that
+ * extracts the raw quote text from the source content.
+ * @summary Blockquote renderer for Markdown.
+ */
 export const BlockquoteBlock = memo(
   ({ children, variant = "surface", node }: BlockquoteBlockProps) => {
     const { canCopyQuotes } = useMarkdownStyle();

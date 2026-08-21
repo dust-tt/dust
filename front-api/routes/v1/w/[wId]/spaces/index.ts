@@ -11,16 +11,19 @@ export type GetPublicSpacesResponseBody = {
   spaces: SpaceType[];
 };
 
-// The kinds this endpoint exposes. `kinds` narrows that list, it never widens
-// it.
-const LISTED_SPACE_KINDS = ["system", "global", "regular"] as const;
+// The kinds this endpoint returns when `kinds` is omitted.
+const DEFAULT_SPACE_KINDS = ["system", "global", "regular"] as const;
+
+// The kinds `kinds` can select. Projects are opt-in: they are noisy enough that
+// listing them by default would change what every existing caller sees.
+const SELECTABLE_SPACE_KINDS = [...DEFAULT_SPACE_KINDS, "project"] as const;
 
 const GetSpacesQuerySchema = z.object({
   kinds: z
     .string()
     .optional()
     .transform((value) => value?.split(","))
-    .pipe(z.array(z.enum(LISTED_SPACE_KINDS)).optional()),
+    .pipe(z.array(z.enum(SELECTABLE_SPACE_KINDS)).optional()),
 });
 
 // Mounted at /api/v1/w/:wId/spaces. publicApiAuth is applied by the parent
@@ -49,7 +52,7 @@ app.route("/:spaceId", spaceId);
  *       - in: query
  *         name: kinds
  *         required: false
- *         description: Comma-separated list of space kinds to filter on (e.g. `regular,global`).
+ *         description: Comma-separated list of space kinds to filter on, among `system`, `global`, `regular` and `project`. Defaults to `system,global,regular` — projects must be requested explicitly.
  *         schema:
  *           type: string
  *     responses:
@@ -82,7 +85,7 @@ app.get(
     const { kinds } = ctx.req.valid("query");
 
     const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth, {
-      kinds: kinds ?? [...LISTED_SPACE_KINDS],
+      kinds: kinds ?? [...DEFAULT_SPACE_KINDS],
     });
 
     return ctx.json({

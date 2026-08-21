@@ -1,4 +1,4 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
 
 import { Button } from "../index_with_tw_base";
@@ -24,26 +24,44 @@ const meta = {
 } satisfies Meta<typeof ImageGenerationPlaceholder>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
 const IMAGE_SRC = "https://picsum.photos/seed/city42/520/520";
 
-export function GeneratingState() {
-  return (
-    <div className="flex items-center justify-center p-12">
-      <ImageGenerationPlaceholder />
-    </div>
-  );
-}
+/**
+ * The animated "generating" state shown while no src is set — an image is
+ * still being produced. To stretch the placeholder to its parent instead of a
+ * fixed size, set the boolean fill prop (absolutely positioned, inset 0).
+ * @summary Animated loading state without src.
+ */
+export const GeneratingState: Story = {};
 
-export function RevealedState() {
-  return (
-    <div className="flex items-center justify-center p-12">
-      <ImageGenerationPlaceholder src={IMAGE_SRC} alt="A futuristic city" />
-    </div>
-  );
-}
+/**
+ * The settled state once src is provided and the image has loaded: the shimmer
+ * fades out and the image is revealed in place, at the same dimensions.
+ * @summary Revealed image after loading.
+ */
+export const RevealedState: Story = {
+  args: {
+    src: IMAGE_SRC,
+    alt: "A futuristic city",
+  },
+};
 
-export function LiveTransition() {
+/**
+ * The label prop replaces the default loading text, to describe what is being
+ * generated.
+ * @summary Custom loading label.
+ */
+export const CustomLabel: Story = {
+  args: {
+    label: "Generating scene",
+  },
+};
+
+// Stateful scaffolding for the LiveTransition playground: holds the src in
+// state and bumps a React key on reset so the placeholder remounts fresh.
+function LiveTransitionDemo() {
   const [src, setSrc] = useState<string | undefined>(undefined);
   const [key, setKey] = useState(0);
 
@@ -69,8 +87,26 @@ export function LiveTransition() {
   );
 }
 
-export function Sizes() {
-  return (
+/**
+ * Interactive playground for the generating-to-revealed transition: press
+ * "Reveal image" to set src and watch the reveal animation, "Reset" to remount
+ * the placeholder and start over. The buttons are story scaffolding, not part
+ * of the component.
+ * @summary Interactive reveal/reset playground.
+ */
+export const LiveTransition: Story = {
+  tags: ["!manifest"],
+  render: () => <LiveTransitionDemo />,
+};
+
+/**
+ * Design-review reference: the placeholder at 120, 200, and 260px (the
+ * default) side by side, for comparing the animation density across sizes.
+ * @summary Size scale reference gallery.
+ */
+export const Sizes: Story = {
+  tags: ["!manifest"],
+  render: () => (
     <div className="flex flex-wrap items-end gap-6 p-12">
       <div className="flex flex-col items-center gap-2">
         <ImageGenerationPlaceholder size={120} />
@@ -85,13 +121,5 @@ export function Sizes() {
         <span className="text-xs text-muted-foreground">260px (default)</span>
       </div>
     </div>
-  );
-}
-
-export function CustomLabel() {
-  return (
-    <div className="flex items-center justify-center p-12">
-      <ImageGenerationPlaceholder label="Generating scene" />
-    </div>
-  );
-}
+  ),
+};

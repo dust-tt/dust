@@ -78,7 +78,7 @@ async function createConversationForAgentConfiguration({
     email: auth.getNonNullableUser().email,
     profilePictureUrl: null,
     origin:
-      trigger.kind === "webhook" && trigger.executionMode === "programmatic"
+      trigger.executionMode === "workspace_pool"
         ? "triggered_programmatic"
         : "triggered",
     lastTriggerRunAt: lastRunAt?.getTime() ?? null,

@@ -3,6 +3,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -51,6 +52,9 @@ async function setupPod() {
     role: "admin",
   });
   const pod = await SpaceFactory.project(workspace, user.id);
+
+  await FeatureFlagFactory.basic(auth, "sandbox_functions");
+  await FeatureFlagFactory.basic(auth, "pod_applications");
   const sandbox = await SandboxResource.makeNew(auth, {
     providerId: "test-provider-id",
     status: "running",

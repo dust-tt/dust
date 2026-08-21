@@ -135,6 +135,10 @@ const WorkspaceEmailAgentsUpdateBodySchema = z.object({
   allowEmailAgents: z.boolean(),
 });
 
+const WorkspaceConversationExternalNotificationsUpdateBodySchema = z.object({
+  allowConversationExternalNotifications: z.boolean(),
+});
+
 const WorkspaceAgentReinforcementUpdateBodySchema = z.object({
   allowReinforcement: z.boolean(),
 });
@@ -215,6 +219,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceVoiceTranscriptionUpdateBodySchema,
   WorkspacePrivateConversationUrlsUpdateBodySchema,
   WorkspaceEmailAgentsUpdateBodySchema,
+  WorkspaceConversationExternalNotificationsUpdateBodySchema,
   WorkspaceAgentReinforcementUpdateBodySchema,
   WorkspaceReinforcementBatchModeUpdateBodySchema,
   WorkspaceExtensionMcpToolsUpdateBodySchema,
@@ -944,6 +949,25 @@ app.post(
         context: getAuditLogContext(auth),
         metadata: {
           enabled: String(body.slackPersonalAllowFooterRemoval),
+        },
+      });
+    } else if ("allowConversationExternalNotifications" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        allowConversationExternalNotifications:
+          body.allowConversationExternalNotifications,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.conversation_external_notifications_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.allowConversationExternalNotifications),
         },
       });
     }

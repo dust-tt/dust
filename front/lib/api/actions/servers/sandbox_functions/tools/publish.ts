@@ -8,6 +8,7 @@ import { requestOwnerPolicyDomain } from "@app/lib/api/sandbox/egress_policy";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
 import type { Authenticator } from "@app/lib/auth";
+import { shortSandboxFunctionBundleSha256 } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   SandboxFunctionExecutionMode,
@@ -56,7 +57,11 @@ export async function publishHandler(
   // The slug carries the app prefix publish derived from `path`, so state it rather than letting the
   // model assume the name it passed. The other tools resolve the pod from the run context and take
   // the slug alone; only a Frame needs the qualified reference, so name that consumer.
-  const { slug: publishedSlug } = result.value;
+  //
+  // The mode, timestamp and bundle hash are the publisher's receipt: they let the caller confirm
+  // this publish landed (list/get echo the same fields) without a second tool call.
+  const { sandboxFunction, byteIdentical } = result.value;
+  const { slug: publishedSlug } = sandboxFunction;
 
   // Failures become a note, not a publish failure — the function is already
   // published and its domains can be retried.
@@ -65,15 +70,25 @@ export async function publishHandler(
     domains: domains ?? [],
   });
 
-  return new Ok([
-    {
-      type: "text",
-      text:
-        `Published pod function "${publishedSlug}". Frames call it by reference ` +
-        `"${podResult.value.pod.sId}/${publishedSlug}".` +
-        (domainNote ? `\n${domainNote}` : ""),
-    },
-  ]);
+  const lines = [
+    `Published pod function "${publishedSlug}" ` +
+      `(executionMode: ${sandboxFunction.executionMode}, ` +
+      `updatedAt: ${sandboxFunction.updatedAt.toISOString()}, ` +
+      `bundle: ${shortSandboxFunctionBundleSha256(sandboxFunction.bundleSha256)}). ` +
+      `Frames call it by reference "${podResult.value.pod.sId}/${publishedSlug}".`,
+  ];
+  if (byteIdentical) {
+    lines.push(
+      "The built bundle is byte-identical to the previous publish: if this publish was meant to " +
+        "change the function's behavior, your edit did not land in the built source. Re-read the " +
+        "source file before editing again."
+    );
+  }
+  if (domainNote) {
+    lines.push(domainNote);
+  }
+
+  return new Ok([{ type: "text", text: lines.join("\n") }]);
 }
 
 // Files each declared domain as a Pod request. Bounded to one function's

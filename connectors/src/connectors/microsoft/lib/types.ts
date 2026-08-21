@@ -29,6 +29,19 @@ export const DRIVE_ITEM_EXPANDS_AND_SELECTS =
 export const DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS =
   "$select=id,name,parentReference,webUrl,file,folder,root,deleted,createdBy,lastModifiedBy,createdDateTime,lastModifiedDateTime,size,sharepointIds&$expand=listItem($expand=fields($select=_IpLabelId))&select=@microsoft.graph.downloadUrl";
 
+// Lean projection used for delta pagination. Unlike the projections above it omits
+// the `$expand=listItem($expand=fields)` expansion and the `@microsoft.graph.downloadUrl`
+// select. Those two are the memory-heavy parts of a `DriveItem`: expanded SharePoint
+// custom-column payloads and a per-item download URL. `getFullDeltaResults` keeps every
+// latest `DriveItem` in an in-memory map until pagination completes, so carrying that
+// metadata for every folder, root marker and deleted entry (none of which need it)
+// inflates the worker's footprint and can OOM the pod on large drives.
+// `syncOneFile` already re-hydrates the download URL and list-item fields per file on
+// demand (see connectors/src/connectors/microsoft/temporal/file.ts), so files that are
+// actually synced still get the full metadata.
+export const DRIVE_ITEM_DELTA_SELECTS =
+  "$select=id,name,parentReference,webUrl,file,folder,root,deleted,createdBy,lastModifiedBy,createdDateTime,lastModifiedDateTime,size,sharepointIds";
+
 // Value stored in `microsoft_nodes.skipReason` when a file is excluded by sensitivity label allowlist.
 export const MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED =
   "sensitivity_label_not_allowed" as const;

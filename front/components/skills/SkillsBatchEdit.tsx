@@ -1,4 +1,5 @@
 import { ArchiveSkillsDialog } from "@app/components/skills/ArchiveSkillsDialog";
+import { classNames } from "@app/lib/utils";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -15,8 +16,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  XClose,
+  Hoverable,
 } from "@dust-tt/sparkle";
+
+const BAR_CLASSNAME =
+  "flex items-center gap-2 rounded-xl border bg-orange-50 border-orange-100 p-3 dark:bg-golden-950 dark:border-golden-900";
+const BAR_TEXT_CLASSNAME = "text-xs text-orange-800 dark:text-golden-100";
 
 export type BatchAvailabilityAction = {
   label: string;
@@ -62,75 +67,111 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
 
 interface SkillsBatchEditBarProps {
   selectedSkills: GetSkillsWithRelationsResponseBody["skills"];
+  pageSelectedCount: number;
+  totalCount: number;
   isUpdating: boolean;
   canMakeSkillAutoDiscoverable: boolean;
   owner: LightWorkspaceType;
-  onClose: () => void;
+  onClear: () => void;
+  onSelectAll: () => void;
   onSelectAction: (action: BatchAvailabilityAction) => void;
+}
+
+function skillLabel(count: number): string {
+  return `skill${pluralize(count)}`;
 }
 
 export function SkillsBatchEditBar({
   selectedSkills,
+  pageSelectedCount,
+  totalCount,
   isUpdating,
   canMakeSkillAutoDiscoverable,
   owner,
-  onClose,
+  onClear,
+  onSelectAll,
   onSelectAction,
 }: SkillsBatchEditBarProps) {
   const selectedCount = selectedSkills.length;
+
+  if (selectedCount === 0) {
+    return null;
+  }
+
+  const isAllSelected = totalCount > 0 && selectedCount === totalCount;
   const canArchiveSelection = selectedSkills.every(
     (skill) => skill.canAdministrate
   );
 
   return (
-    <div className="flex flex-row items-center justify-between gap-2 rounded-xl bg-muted-background px-2 py-2 dark:bg-muted-background-night">
-      <Button
-        variant="outline"
-        size="xs"
-        icon={XClose}
-        label="Close edition"
-        onClick={onClose}
-      />
-      <div className="flex flex-row items-center gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="xs"
-              label="Set availability"
-              isSelect
-              isLoading={isUpdating}
-              disabled={selectedCount === 0 || isUpdating}
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {BATCH_AVAILABILITY_ACTIONS.map((action) => {
-              const isActionDisabled =
-                action.availability === "users_and_agents" &&
-                !canMakeSkillAutoDiscoverable;
-              return (
-                <DropdownMenuItem
-                  key={action.availability}
-                  label={action.label}
-                  description={
-                    isActionDisabled
-                      ? "You don’t have permission to make skills auto-discoverable"
-                      : action.description
-                  }
-                  disabled={isActionDisabled}
-                  onClick={() => onSelectAction(action)}
-                />
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <ArchiveSkillsDialog
-          skills={selectedSkills}
-          disabled={selectedCount === 0 || isUpdating || !canArchiveSelection}
-          owner={owner}
-          onSave={onClose}
-        />
+    <div className={classNames("mt-3 mb-2", BAR_CLASSNAME)}>
+      <div
+        className={classNames(
+          "flex flex-1 flex-row flex-wrap items-center gap-x-2 gap-y-1",
+          BAR_TEXT_CLASSNAME
+        )}
+      >
+        {isAllSelected ? (
+          <span>
+            {selectedCount} {skillLabel(selectedCount)} are selected.
+          </span>
+        ) : (
+          <>
+            <span>
+              {pageSelectedCount} {skillLabel(pageSelectedCount)} selected on
+              this page
+            </span>
+            <Hoverable variant="highlight" onClick={onSelectAll}>
+              Select all {totalCount} {skillLabel(totalCount)}
+            </Hoverable>
+          </>
+        )}
       </div>
+      <Button
+        size="xs"
+        variant="ghost"
+        label="Clear"
+        onClick={onClear}
+        disabled={isUpdating}
+      />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="primary"
+            size="xs"
+            label="Set availability"
+            isSelect
+            isLoading={isUpdating}
+            disabled={isUpdating}
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {BATCH_AVAILABILITY_ACTIONS.map((action) => {
+            const isActionDisabled =
+              action.availability === "users_and_agents" &&
+              !canMakeSkillAutoDiscoverable;
+            return (
+              <DropdownMenuItem
+                key={action.availability}
+                label={action.label}
+                description={
+                  isActionDisabled
+                    ? "You don’t have permission to make skills auto-discoverable"
+                    : action.description
+                }
+                disabled={isActionDisabled}
+                onClick={() => onSelectAction(action)}
+              />
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ArchiveSkillsDialog
+        skills={selectedSkills}
+        disabled={isUpdating || !canArchiveSelection}
+        owner={owner}
+        onSave={onClear}
+      />
     </div>
   );
 }

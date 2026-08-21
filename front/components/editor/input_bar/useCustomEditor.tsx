@@ -42,7 +42,9 @@ import { useEffect, useMemo, useRef } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 const SUBMIT_COOLDOWN_MS = 750;
-const INPUT_BAR_DEFAULT_PLACEHOLDER = "Get work done";
+export const INPUT_BAR_DEFAULT_PLACEHOLDER = "Get work done";
+// Matches the sidebar conversation title TypingAnimation cadence.
+const PLACEHOLDER_TYPING_INTERVAL_MS = 32;
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {
   const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
@@ -351,6 +353,8 @@ export interface CustomEditorProps {
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
   placeholderOverride?: string | null;
+  // When true, placeholder changes are typed character by character.
+  animatePlaceholder?: boolean;
   onSuggestionActiveChangeRef?: React.RefObject<
     ((active: boolean) => void) | undefined
   >;
@@ -368,7 +372,7 @@ export const buildEditorExtensions = ({
   onAgentSelect,
   onFirstAgentMentionPasteRef,
   slashSuggestion,
-  placeholderOverride,
+  placeholderRef,
   onSuggestionActiveChangeRef,
 }: {
   owner: WorkspaceType;
@@ -384,7 +388,7 @@ export const buildEditorExtensions = ({
     ((agentId: string) => void) | undefined
   >;
   slashSuggestion?: CustomEditorProps["slashSuggestion"];
-  placeholderOverride?: string | null;
+  placeholderRef?: React.RefObject<string>;
   onSuggestionActiveChangeRef?: CustomEditorProps["onSuggestionActiveChangeRef"];
 }) => {
   const notifySuggestionActiveChange = (active: boolean) => {
@@ -479,7 +483,7 @@ export const buildEditorExtensions = ({
         if (node.type.name !== "paragraph") {
           return "";
         }
-        return placeholderOverride ?? INPUT_BAR_DEFAULT_PLACEHOLDER;
+        return placeholderRef?.current ?? INPUT_BAR_DEFAULT_PLACEHOLDER;
       },
       emptyNodeClass:
         "first:before:text-faint dark:first:before:text-stone-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
@@ -539,8 +543,14 @@ const useCustomEditor = ({
   onFirstAgentMentionPasteRef,
   slashSuggestion,
   placeholderOverride,
+  animatePlaceholder,
   onSuggestionActiveChangeRef,
 }: CustomEditorProps) => {
+  // Read through a ref so placeholder changes don't rebuild the editor.
+  const placeholderRef = useRef(
+    placeholderOverride ?? INPUT_BAR_DEFAULT_PLACEHOLDER
+  );
+
   const editor = useEditor(
     {
       autofocus: disableAutoFocus ? false : "end",
@@ -556,7 +566,7 @@ const useCustomEditor = ({
         onAgentSelect,
         onFirstAgentMentionPasteRef,
         slashSuggestion,
-        placeholderOverride,
+        placeholderRef,
         onSuggestionActiveChangeRef,
       }),
       shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
@@ -585,9 +595,43 @@ const useCustomEditor = ({
       immediatelyRender: false,
     },
     // Important to watch for conversationId changes to reset the editor state when switching conversations.
-    // placeholderOverride is included so the placeholder text updates when the blocked-state reason changes.
-    [conversationId, placeholderOverride]
+    [conversationId]
   );
+
+  // Apply placeholder changes. With animatePlaceholder, type the new
+  // placeholder character by character, like the sidebar conversation titles.
+  // The Placeholder extension only re-reads placeholderRef on a state update,
+  // so dispatch an empty transaction for each change. Skipped on mount since
+  // the ref starts in sync with the override.
+  useEffect(() => {
+    const target = placeholderOverride ?? INPUT_BAR_DEFAULT_PLACEHOLDER;
+    if (!editor || editor.isDestroyed || placeholderRef.current === target) {
+      return;
+    }
+
+    if (!animatePlaceholder) {
+      placeholderRef.current = target;
+      editor.view.dispatch(editor.state.tr);
+      return;
+    }
+
+    // Start at one character, like TypingAnimation.
+    let length = 1;
+    placeholderRef.current = target.substring(0, length);
+    editor.view.dispatch(editor.state.tr);
+
+    const typingEffect = setInterval(() => {
+      if (editor.isDestroyed || length >= target.length) {
+        clearInterval(typingEffect);
+        return;
+      }
+      length += 1;
+      placeholderRef.current = target.substring(0, length);
+      editor.view.dispatch(editor.state.tr);
+    }, PLACEHOLDER_TYPING_INTERVAL_MS);
+
+    return () => clearInterval(typingEffect);
+  }, [editor, placeholderOverride, animatePlaceholder]);
 
   const isMobileViewport = useIsMobile();
   const editorService = useEditorService(editor, isMobileViewport);

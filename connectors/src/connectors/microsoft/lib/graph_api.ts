@@ -7,6 +7,7 @@ import type {
   MicrosoftNode,
 } from "@connectors/connectors/microsoft/lib/types";
 import {
+  DRIVE_ITEM_DELTA_SELECTS,
   DRIVE_ITEM_EXPANDS_AND_SELECTS,
   DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS,
 } from "@connectors/connectors/microsoft/lib/types";
@@ -209,12 +210,10 @@ export async function getDeltaResults({
   parentInternalId,
   nextLink,
   token,
-  withLabels = false,
 }: {
   logger: LoggerInterface;
   client: Client;
   parentInternalId: string;
-  withLabels?: boolean;
 } & (
   | { nextLink?: string; token?: never }
   | { nextLink?: never; token: string }
@@ -234,13 +233,13 @@ export async function getDeltaResults({
     { parentInternalId, itemAPIPath, nextLink, token },
     "Getting delta"
   );
-  const expandsAndSelects = withLabels
-    ? DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS
-    : DRIVE_ITEM_EXPANDS_AND_SELECTS;
+  // Delta pagination uses the lean projection: every returned item is retained in the
+  // in-memory dedup map until pagination completes, and the heavy list-item fields and
+  // download URL are re-hydrated per file by `syncOneFile` when actually needed.
   const deltaPath =
     (nodeType === "folder"
-      ? `${itemAPIPath}/delta?${expandsAndSelects}`
-      : `${itemAPIPath}/root/delta?${expandsAndSelects}`) +
+      ? `${itemAPIPath}/delta?${DRIVE_ITEM_DELTA_SELECTS}`
+      : `${itemAPIPath}/root/delta?${DRIVE_ITEM_DELTA_SELECTS}`) +
     (token ? `&token=${token}` : "");
 
   const res = nextLink

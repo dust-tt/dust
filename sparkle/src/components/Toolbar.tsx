@@ -64,17 +64,31 @@ const toolbarScrollAreaVariants = cva("h-full w-full", {
 });
 
 export interface ToolbarProps {
+  /** "inline" sits within the editor flow; "overlay" renders a floating bubble menu (defaults to "inline"). */
   variant?: ToolbarVariant;
   children: React.ReactNode;
   className?: string;
   contentClassName?: string;
   scrollAreaClassName?: string;
+  /** Makes the actions horizontally scrollable; defaults to true for the "overlay" variant. */
   scroll?: boolean;
+  /** When provided, renders a leading close button and is called when it is clicked. */
   onClose?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  /** Extra Button props for the close button (e.g. size, variant). */
   closeButtonProps?: Omit<ButtonProps, "icon" | "onClick" | "label">;
+  /** Leading content rendered before the actions, replacing the close button. */
   startSlot?: React.ReactNode;
 }
 
+/**
+ * A formatting toolbar for rich-text editing, typically driving a text editor's commands.
+ * Use `variant` "inline" to sit within the editor flow or "overlay" for a floating bubble
+ * menu, laying out actions with `ToolbarContent` groups, `ToolbarIcon` buttons, and
+ * `ToolbarLink`. Use it to present text-formatting controls (bold, italic, lists, code,
+ * links); for general page-level actions, use a `Bar` or `HoveringBar` instead.
+ *
+ * @summary Rich-text formatting toolbar.
+ */
 function Toolbar({
   variant = "inline",
   children,
@@ -162,10 +176,17 @@ export interface ToolbarContentGroup {
 }
 
 export interface ToolbarContentProps {
+  /** Groups of related actions; a vertical separator is drawn between consecutive groups. */
   groups: readonly ToolbarContentGroup[];
   separatorClassName?: string;
 }
 
+/**
+ * Lays out toolbar actions as `groups` separated by vertical dividers, so separators
+ * fall in sensible places between related actions.
+ *
+ * @summary Grouped toolbar actions with separators.
+ */
 function ToolbarContent({ groups, separatorClassName }: ToolbarContentProps) {
   return (
     <>
@@ -186,12 +207,20 @@ function ToolbarContent({ groups, separatorClassName }: ToolbarContentProps) {
 
 export interface ToolbarIconProps {
   icon: React.ComponentType<{ className?: string }>;
+  /** Called when the button is clicked (the event is prevented and stopped for you). */
   onClick: () => void;
   size: ToolbarButtonSize;
+  /** Whether the formatting is applied at the current selection; styles the button as active. */
   active?: boolean;
   tooltip?: string;
 }
 
+/**
+ * An icon button for a toolbar action; set `active` to reflect the formatting applied at
+ * the current selection, and provide a `tooltip` to keep the icon identifiable.
+ *
+ * @summary Toolbar icon button.
+ */
 function ToolbarIcon({
   icon,
   onClick,
@@ -229,19 +258,33 @@ function ToolbarIcon({
 }
 
 export interface ToolbarLinkProps {
+  /** Controls whether the link-insertion dialog is open. */
   isOpen: boolean;
+  /** Called when the dialog requests to open or close. */
   onOpenChange: (open: boolean) => void;
+  /** Called when the link toolbar button is clicked, to open the dialog. */
   onOpenDialog: () => void;
+  /** Called when the dialog's Save button is clicked. */
   onSubmit: () => void;
   linkText: string;
   linkUrl: string;
+  /** Called with the new value when the link text input changes. */
   onLinkTextChange: (value: string) => void;
+  /** Called with the new value when the link URL input changes. */
   onLinkUrlChange: (value: string) => void;
   size: ToolbarButtonSize;
+  /** Whether a link is applied at the current selection. */
   active?: boolean;
   tooltip?: string;
 }
 
+/**
+ * A link-insertion control for the toolbar: a link icon button paired with a controlled
+ * dialog collecting the link text and URL. Own the dialog state via `isOpen` /
+ * `onOpenChange` and apply the link in `onSubmit`.
+ *
+ * @summary Toolbar link-insertion control.
+ */
 function ToolbarLink({
   isOpen,
   onOpenChange,

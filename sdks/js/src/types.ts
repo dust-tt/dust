@@ -42,6 +42,7 @@ export type KnownModelLLMId =
   | "gpt-5.5"
   | "gpt-5.6-sol"
   | "gpt-5.6-terra"
+  | "gpt-5.6-terra-long-context"
   | "gpt-5.6-luna"
   | "gpt-5.4-mini"
   | "gpt-5.4-nano"
@@ -761,6 +762,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_internal_global_agents"
   | "fireworks_new_model_feature"
   | "google_sheets_tool"
+  | "gpt_5_6_terra_long_context"
   | "group_permissions_shadow"
   | "http_client_tool"
   | "index_private_slack_channel"
@@ -772,6 +774,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "noop_model_feature"
   | "notion_private_integration"
   | "allow_old_notion_mcp"
+  | "openai_concise_reasoning_summaries"
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
@@ -781,6 +784,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "legacy_billing"
   | "plan_mode"
   | "pod_frame_tabs"
+  | "pod_applications"
   | "skill_favorites"
   | "poke_mcp"
   | "restricted_spaces_in_input_bar"
@@ -817,6 +821,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "enforce_premium_model_message_limit"
   | "editable_tool_inputs"
   | "skip_free_usage_rate_limit"
+  | "trigger_pool_choice"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -951,7 +956,13 @@ const AgentConfigurationScopeSchema = FlexibleEnumSchema<
 >();
 
 export const AgentConfigurationViewSchema = FlexibleEnumSchema<
-  "all" | "list" | "workspace" | "published" | "global" | "favorites"
+  | "all"
+  | "all_unrestricted"
+  | "list"
+  | "workspace"
+  | "published"
+  | "global"
+  | "favorites"
 >();
 
 export type AgentConfigurationViewType = z.infer<

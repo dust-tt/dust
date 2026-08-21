@@ -40,7 +40,8 @@
     { "name": "agent_templates", "id": 1041 },
     { "name": "user_memory", "id": 1043 },
     { "name": "conversation_side_panel", "id": 1044 },
-    { "name": "agent_delegation", "id": 1045 }
+    { "name": "agent_delegation", "id": 1045 },
+    { "name": "workspace_people", "id": 1047 }
   ],
   "manual": [
     { "name": "github", "id": 1 },

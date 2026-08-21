@@ -39,10 +39,7 @@ import { GroupPermissionResource } from "@app/lib/resources/group_permission_res
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import {
-  createAccessControlListFromSpacesWithMap,
-  createSpaceIdToGroupsMap,
-} from "@app/lib/resources/permission_utils";
+import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type {
@@ -95,6 +92,7 @@ import type {
 import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { GrantVerb } from "@app/types/group_permissions";
+import { grantKey } from "@app/types/group_permissions";
 import { SKILL_GROUP_PREFIX } from "@app/types/groups";
 import type {
   AccessControlList,
@@ -716,22 +714,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             transaction,
           })
         : [];
-    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
-    const foundSpaceIds = new Set(spaces.map((s) => s.id));
+    const spaceById = new Map(spaces.map((s) => [s.id, s]));
 
-    const validCustomSkills = customSkills.filter((skill) =>
-      skill.requestedSpaceIds.every((id) => foundSpaceIds.has(id))
-    );
-
-    const allowedCustomSkills = validCustomSkills.filter((skill) =>
-      auth.hasPermissionForAcls(
-        "read",
-        createAccessControlListFromSpacesWithMap(
-          spaceIdToGroupsMap,
-          skill.requestedSpaceIds,
-          auth.getNonNullableWorkspace().id
-        )
-      )
+    // A missing/deleted requested space is treated as not readable (see `canReadRequestedSpaces`),
+    // so skills referencing one are dropped here too.
+    const allowedCustomSkills = customSkills.filter((skill) =>
+      canReadRequestedSpaces(auth, spaceById, skill.requestedSpaceIds)
     );
     const allowedCustomSkillIds = allowedCustomSkills.map((skill) => skill.id);
 
@@ -1614,12 +1602,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List skills that use any of the given MCP server view IDs.
-   * Used during space deletion to find skills that need to be updated.
+   * List skills that use any of the given MCP server view IDs. Used during space deletion to find
+   * skills that need to be updated. Defaults to active skills; pass `status` to widen.
    */
   static async listByMCPServerViewIds(
     auth: Authenticator,
-    mcpServerViewIds: ModelId[]
+    mcpServerViewIds: ModelId[],
+    { status = "active" }: { status?: SkillStatus | SkillStatus[] } = {}
   ): Promise<SkillResource[]> {
     if (mcpServerViewIds.length === 0) {
       return [];
@@ -1649,7 +1638,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         id: {
           [Op.in]: skillIds,
         },
-        status: "active",
+        status,
       },
       onlyCustom: true,
     });
@@ -1663,13 +1652,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     dataSourceViewIds: ModelId[],
     {
+      status = "active",
       withInstructions = true,
       withTools = true,
       withFileAttachments = true,
     }: Pick<
       SkillConfigurationFindOptions,
       "withInstructions" | "withTools" | "withFileAttachments"
-    > = {}
+    > & { status?: SkillStatus | SkillStatus[] } = {}
   ): Promise<SkillResource[]> {
     if (dataSourceViewIds.length === 0) {
       return [];
@@ -1699,7 +1689,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         id: {
           [Op.in]: skillIds,
         },
-        status: "active",
+        status,
       },
       onlyCustom: true,
       withInstructions,
@@ -1761,20 +1751,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List active skills whose requestedSpaceIds contains the given space. Used
-   * during space deletion to find skills that reference the space even when
-   * they have no MCP server view or data source view located in it.
+   * List skills whose requestedSpaceIds contains the given space. Used during space deletion to
+   * find skills that reference the space even when they have no MCP server view or data source
+   * view located in it. Defaults to active skills; pass `status` to widen (space deletion must
+   * clean archived skills too, or their dangling reference makes them unfetchable for good).
    */
   static async listByRequestedSpaceId(
     auth: Authenticator,
-    spaceModelId: ModelId
+    spaceModelId: ModelId,
+    { status = "active" }: { status?: SkillStatus | SkillStatus[] } = {}
   ): Promise<SkillResource[]> {
     return this.baseFetch(auth, {
       where: {
         requestedSpaceIds: {
           [Op.contains]: [spaceModelId],
         },
-        status: "active",
+        status,
       },
       onlyCustom: true,
     });
@@ -2611,7 +2603,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Returns null when the skill has no editor group (global/system skills).
    */
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
-    return this.editorGroup?.getActiveMembers(auth) ?? null;
+    // Code-defined global/system skills have no editors at all.
+    if (this.globalSId) {
+      return null;
+    }
+
+    if (isLegacyAclsEnabled()) {
+      return (await this.editorGroup?.getActiveMembers(auth)) ?? null;
+    }
+
+    const grantGroup =
+      await GroupPermissionResource.findRegularAutoGroupForGrant(auth, {
+        grantType: SKILL_EDITOR_GRANT_TYPE,
+        resourceType: "skill",
+        resourceId: this.id,
+      });
+
+    return grantGroup ? grantGroup.getActiveMembers(auth) : [];
   }
 
   async upsertEditors(
@@ -3097,18 +3105,51 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       skills.map((s) => [s.sId, null])
     );
 
-    const skillsWithEditorGroups = skills.filter((s) => s.editorGroup !== null);
+    // Code-defined global/system skills have no editors — see `listEditors`.
+    const customSkills = skills.filter((s) => !s.globalSId);
 
-    if (skillsWithEditorGroups.length === 0) {
+    if (customSkills.length === 0) {
       return result;
     }
 
-    const editorGroups = removeNulls(
-      skillsWithEditorGroups.map((s) => s.editorGroup)
-    );
+    // Editors come from the per-user grants (one regular_auto group per skill). Only the kill
+    // switch reads the skill_editors group — see `listEditors`.
+    let groupBySkillModelId: Map<ModelId, GroupResource>;
+    if (isLegacyAclsEnabled()) {
+      groupBySkillModelId = new Map(
+        removeNulls(
+          customSkills.map((skill) =>
+            skill.editorGroup ? ([skill.id, skill.editorGroup] as const) : null
+          )
+        )
+      );
+    } else {
+      const editorGrantSpec = (skill: SkillResource) => ({
+        grantType: SKILL_EDITOR_GRANT_TYPE,
+        resourceType: "skill" as const,
+        resourceId: skill.id,
+      });
+
+      const groupByGrant =
+        await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+          grants: customSkills.map(editorGrantSpec),
+        });
+
+      groupBySkillModelId = new Map(
+        removeNulls(
+          customSkills.map((skill) => {
+            const group = groupByGrant.get(grantKey(editorGrantSpec(skill)));
+
+            return group ? ([skill.id, group] as const) : null;
+          })
+        )
+      );
+    }
 
     const membershipsByGroupId =
-      await GroupResource.getActiveMembershipsForGroups(auth, editorGroups);
+      await GroupResource.getActiveMembershipsForGroups(auth, [
+        ...groupBySkillModelId.values(),
+      ]);
 
     const allUserIds = [...new Set(Object.values(membershipsByGroupId).flat())];
 
@@ -3136,9 +3177,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         .map((u) => [u.id, u])
     );
 
-    for (const skill of skillsWithEditorGroups) {
-      const groupId = skill.editorGroup!.id;
-      const userIds = membershipsByGroupId[groupId] ?? [];
+    for (const skill of customSkills) {
+      const group = groupBySkillModelId.get(skill.id);
+      const userIds = group ? (membershipsByGroupId[group.id] ?? []) : [];
       const users = removeNulls(userIds.map((id) => userById.get(id) ?? null));
       result.set(skill.sId, users);
     }

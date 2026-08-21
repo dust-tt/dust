@@ -4,6 +4,7 @@ import { shouldSkipActivationNewConversation } from "@app/lib/notifications/work
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -62,6 +63,22 @@ describe("shouldSkipActivationNewConversation", () => {
     expect(
       await shouldSkipActivationNewConversation({
         subscriberId: null,
+        payload: {
+          workspaceId: workspace.sId,
+          conversationId: conversation.sId,
+        },
+      })
+    ).toBe(true);
+  });
+
+  it("skips when the workspace disables email and Slack notifications", async () => {
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      allowConversationExternalNotifications: false,
+    });
+
+    expect(
+      await shouldSkipActivationNewConversation({
+        subscriberId: user.sId,
         payload: {
           workspaceId: workspace.sId,
           conversationId: conversation.sId,

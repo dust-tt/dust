@@ -2,7 +2,7 @@ import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assi
 import { buildLatestAvailableMessageConsumptionDetails } from "@app/lib/api/assistant/agent_message_consumption_attribution/message_details";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemResource as ConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { AgentMessageConsumptionResponse } from "@app/types/assistant/agent_message_consumption";
 
@@ -34,8 +34,16 @@ export async function getAgentMessageConsumption(
     return null;
   }
 
+  const subAgentBilledCredits =
+    await ConversationResource.sumSubAgentCostCreditsByMessageId(auth, {
+      agentMessageId,
+    });
+  const totalBilledCredits = (facts.billedCredits ?? 0) + subAgentBilledCredits;
+
   const unavailableResponse: AgentMessageConsumptionResponse = {
     billedCredits: facts.billedCredits,
+    subAgentBilledCredits,
+    totalBilledCredits,
     details: null,
   };
   if (facts.items.length === 0 || facts.dustRunIds.length === 0) {
@@ -66,6 +74,8 @@ export async function getAgentMessageConsumption(
 
   return {
     billedCredits: facts.billedCredits,
+    subAgentBilledCredits,
+    totalBilledCredits,
     details: messageDetails,
   };
 }

@@ -28,7 +28,7 @@ export function ConversationCreditUsagePanel({
     <div className="flex h-panel flex-col">
       <ConversationSidePanelHeader onClose={closePanel}>
         <span className="text-sm font-medium text-foreground">
-          Conversation credits
+          Credit usage
         </span>
       </ConversationSidePanelHeader>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -39,7 +39,7 @@ export function ConversationCreditUsagePanel({
         ) : isConsumptionError ? (
           <div className="flex h-full items-center justify-center px-5 py-4">
             <p className="text-sm text-muted-foreground">
-              Conversation credit usage couldn’t be loaded.
+              Credit usage couldn’t be loaded.
             </p>
           </div>
         ) : hasNoCreditUsage ? (

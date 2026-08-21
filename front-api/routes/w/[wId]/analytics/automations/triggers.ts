@@ -29,6 +29,7 @@ const CSV_HEADERS = [
   "editorEmail",
   "runs",
   "credits",
+  "pool",
 ] as const;
 
 function kindToLabel(kind: AutomationTriggerRow["kind"]): string {
@@ -52,6 +53,7 @@ function toCsvRow(trigger: AutomationTriggerRow) {
     editorEmail: trigger.editor.email ?? "",
     runs: trigger.runCount,
     credits: trigger.credits,
+    pool: trigger.executionMode,
   };
 }
 

@@ -25,7 +25,7 @@ import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNot
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
-import { useMembersSelection } from "@app/hooks/useMembersSelection";
+import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
 import {
   cycleElapsedPercent,
   DEFAULT_CONSUMPTION_PERIOD,
@@ -118,6 +118,7 @@ import {
   LinkExternal01,
   LoadingBlock,
   Page,
+  ProgressBar,
   SearchInput,
   Spinner,
   Tabs,
@@ -183,37 +184,28 @@ function CreditPoolProgressBar({
   const unusedPercentage = 100 - clampedProjectedPercentage;
 
   return (
-    <div
-      className="flex h-2 w-full gap-0.5 bg-background"
-      role="progressbar"
+    <ProgressBar
       aria-label="Workspace credit usage"
-      aria-valuemin={0}
-      aria-valuemax={100}
       aria-valuenow={clampedUsedPercentage}
-    >
-      {clampedUsedPercentage > 0 && (
-        <div
-          className={`h-full rounded-xs ${
-            target === "off_target" ? "bg-warning-500" : "bg-highlight-500"
-          }`}
-          style={{ flexBasis: 0, flexGrow: clampedUsedPercentage }}
-        />
-      )}
-      {projectedRemainderPercentage > 0 && (
-        <div
-          className={`h-full rounded-xs ${
-            target === "off_target" ? "bg-warning-100" : "bg-highlight-100"
-          }`}
-          style={{ flexBasis: 0, flexGrow: projectedRemainderPercentage }}
-        />
-      )}
-      {unusedPercentage > 0 && (
-        <div
-          className="h-full rounded-xs bg-gray-50"
-          style={{ flexBasis: 0, flexGrow: unusedPercentage }}
-        />
-      )}
-    </div>
+      className="h-2 w-full bg-background"
+      values={[
+        {
+          value: clampedUsedPercentage,
+          className:
+            target === "off_target" ? "bg-warning-500" : "bg-highlight-500",
+        },
+        {
+          value: projectedRemainderPercentage,
+          className:
+            target === "off_target" ? "bg-warning-100" : "bg-highlight-100",
+        },
+        {
+          value: unusedPercentage,
+          className: "bg-muted-background",
+        },
+      ]}
+      radius="xs"
+    />
   );
 }
 
@@ -630,7 +622,7 @@ export function UsagePage() {
     () => membersUsage.map((m) => m.sId),
     [membersUsage]
   );
-  const selection = useMembersSelection({
+  const selection = useTableRowsSelection({
     pageItemIds,
     totalCount: totalMembersUsage,
     resetKey: `${searchTerm}|${seatTypeFilter ?? ""}|${groupFilter ?? ""}`,
@@ -671,7 +663,7 @@ export function UsagePage() {
   const buildBulkSelectionBody = useCallback((): BulkMemberSelectionBody => {
     const descriptor = selection.descriptor();
     return descriptor.mode === "ids"
-      ? descriptor
+      ? { mode: "ids" as const, userIds: descriptor.ids }
       : {
           mode: "all" as const,
           filter: {
@@ -679,7 +671,7 @@ export function UsagePage() {
             groupId: groupFilter ?? undefined,
             search: searchTerm.trim() || undefined,
           },
-          excludeUserIds: descriptor.excludeUserIds,
+          excludeUserIds: descriptor.excludedIds,
         };
   }, [selection, seatTypeFilter, groupFilter, searchTerm]);
 
@@ -734,8 +726,8 @@ export function UsagePage() {
   const getBulkPendingMemberIds = useCallback((): string[] => {
     const descriptor = selection.descriptor();
     return descriptor.mode === "ids"
-      ? descriptor.userIds
-      : pageItemIds.filter((id) => !descriptor.excludeUserIds.includes(id));
+      ? descriptor.ids
+      : pageItemIds.filter((id) => !descriptor.excludedIds.includes(id));
   }, [selection, pageItemIds]);
 
   const handleBulkSpendLimitValidate = useCallback(

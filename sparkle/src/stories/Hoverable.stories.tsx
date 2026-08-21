@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { fn } from "storybook/test";
 
 import { Hoverable, HOVERABLE_VARIANTS } from "@sparkle/components/Hoverable";
 
 const meta = {
-  title: "Effects & Motion/Hoverable",
+  title: "Actions/Hoverable",
   component: Hoverable,
   parameters: {
     layout: "padded",
@@ -55,10 +56,45 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Basic example with controls
+/**
+ * The `invisible` variant: plain prose until hovered, then the highlight color
+ * and underline reveal the affordance. Use it to keep running text clean while
+ * still offering an inline interaction. Tweak **variant** and **children** from
+ * the Controls panel.
+ * @summary Invisible variant — prose that reveals affordance on hover.
+ */
 export const Basic: Story = {
   args: {
     children: "I am hoverable text",
     variant: "invisible",
+  },
+};
+
+/**
+ * Passing **href** renders the Hoverable as a real anchor for navigation — here
+ * with the `highlight` variant so the link is visible at rest, and
+ * **target="_blank"** to open in a new tab.
+ * @summary Link behavior via href.
+ */
+export const AsLink: Story = {
+  args: {
+    children: "Read the Dust documentation",
+    variant: "highlight",
+    href: "https://docs.dust.tt",
+    target: "_blank",
+  },
+};
+
+/**
+ * Passing **onClick** (and no **href**) makes the Hoverable behave as an inline
+ * button — for low-emphasis actions inside text where a full Button would be
+ * too heavy. Clicks are logged in the Actions panel.
+ * @summary Button behavior via onClick.
+ */
+export const AsButton: Story = {
+  args: {
+    children: "Show more",
+    variant: "primary",
+    onClick: fn(),
   },
 };

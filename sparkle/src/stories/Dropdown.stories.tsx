@@ -1,7 +1,7 @@
 import { DropdownMenuCheckboxItemProps } from "@radix-ui/react-dropdown-menu";
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
-import { expect, waitFor, within } from "storybook/test";
+import { expect, fn, waitFor, within } from "storybook/test";
 
 import { Spinner } from "@sparkle/components";
 import {
@@ -38,13 +38,7 @@ import {
 } from "@sparkle/logo/platforms";
 
 import {
-  ActionArmchairIcon,
-  ActionCloudArrowDownIcon,
   ActionCommand1Icon,
-  ActionDocumentIcon,
-  ActionFolderIcon,
-  ActionMagicIcon,
-  ActionUserGroupIcon,
   ArrowCircleBrokenDown,
   Upload01,
   Attachment01,
@@ -66,7 +60,6 @@ import {
   Plus,
   Robot,
   SearchDropdownMenu,
-  Briefcase01,
   Users01,
   User01,
 } from "../index_with_tw_base";
@@ -97,11 +90,16 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const SimpleDropdown: Story = {
+/**
+ * A basic account menu: a label, avatar items with descriptions (one
+ * truncated via `truncateText`), and plain action items.
+ * @summary Basic menu with label, avatar items, and actions.
+ */
+export const Default: Story = {
   render: () => {
     return (
       <DropdownMenu>
-        <DropdownMenuTrigger>Open Simple Dropdown</DropdownMenuTrigger>
+        <DropdownMenuTrigger>Open menu</DropdownMenuTrigger>
         <DropdownMenuContent className="max-w-[300px]">
           <DropdownMenuLabel label="My Account" />
           <DropdownMenuItem
@@ -112,10 +110,8 @@ export const SimpleDropdown: Story = {
               />
             )}
             label="@hello"
-            onClick={() => {
-              console.log("hello");
-            }}
-            description="Anthropic's latest Claude 3.5 Sonnet model (200k context). Anthropic's latest Claude 3.5 Sonnet model (200k context). Anthropic's latest Claude 3.5 Sonnet model (200k context)."
+            onClick={fn()}
+            description="A long description that is allowed to wrap onto several lines because this item does not set truncateText, so the full text stays visible."
           />
           <DropdownMenuItem
             truncateText
@@ -126,10 +122,8 @@ export const SimpleDropdown: Story = {
               />
             )}
             label="@helloWorld"
-            onClick={() => {
-              console.log("hello");
-            }}
-            description="Anthropic's latest Claude 3.5 Sonnet model (200k context)."
+            onClick={fn()}
+            description="A long description that gets truncated with an ellipsis because this item sets truncateText."
           />
           <DropdownMenuItem label="Profile" />
           <DropdownMenuItem label="Billing" />
@@ -141,11 +135,17 @@ export const SimpleDropdown: Story = {
   },
 };
 
-export const ComplexDropdown: Story = {
+/**
+ * A full account menu combining groups with labels, separators, an item with
+ * an `endComponent` button, a portal-rendered submenu, a disabled item, and a
+ * `warning` variant item for the destructive action.
+ * @summary Grouped menu with submenus and a destructive item.
+ */
+export const GroupedWithSubmenus: Story = {
   render: () => {
     return (
       <DropdownMenu>
-        <DropdownMenuTrigger>Open Complex</DropdownMenuTrigger>
+        <DropdownMenuTrigger>Open menu</DropdownMenuTrigger>
         <DropdownMenuContent className="w-56">
           <DropdownMenuLabel label="My Account" />
           <DropdownMenuGroup>
@@ -171,15 +171,7 @@ export const ComplexDropdown: Story = {
                   <DropdownMenuItem icon={MagicWand02} label="Email" />
                   <DropdownMenuItem icon={MessagePlusCircle} label="Message" />
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem icon={User01} label="More..." />
-                  <DropdownMenuItem icon={User01} label="More.." />
-                  <DropdownMenuItem icon={User01} label="More..." />
-                  <DropdownMenuItem icon={User01} label="More.." />
-                  <DropdownMenuItem icon={User01} label="More" />
-                  <DropdownMenuItem icon={User01} label="More....." />
-                  <DropdownMenuItem icon={User01} label="More.." />
-                  <DropdownMenuItem icon={User01} label="More" />
-                  <DropdownMenuItem icon={User01} label="More...." />
+                  <DropdownMenuItem icon={User01} label="More options" />
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>
@@ -202,7 +194,14 @@ export const ComplexDropdown: Story = {
   },
 };
 
+/**
+ * Interaction test: opens a submenu that hosts an auto-focused searchbar and
+ * asserts arrow-key focus travels from the searchbar into the items and back.
+ * Its value is in the `play` function, not the visual.
+ * @summary Keyboard navigation test for searchable submenus.
+ */
 export const SearchableSubmenuKeyboardNavigation: Story = {
+  tags: ["!manifest"],
   render: () => {
     const [search, setSearch] = useState("");
 
@@ -264,6 +263,11 @@ export const SearchableSubmenuKeyboardNavigation: Story = {
   },
 };
 
+/**
+ * Items displaying their keyboard shortcut on the trailing edge via
+ * **DropdownMenuShortcut** passed as `endComponent`.
+ * @summary Menu items with keyboard shortcut hints.
+ */
 export const WithShortcuts: Story = {
   render: () => {
     return (
@@ -303,6 +307,11 @@ export const WithShortcuts: Story = {
 
 type Checked = DropdownMenuCheckboxItemProps["checked"];
 
+/**
+ * Multi-select settings via **DropdownMenuCheckboxItem**: each item holds its
+ * own checked state, supports a description, and can be disabled.
+ * @summary Checkbox items for multi-select options.
+ */
 export const WithCheckboxes: Story = {
   render: () => {
     const [showStatusBar, setShowStatusBar] = React.useState<Checked>(true);
@@ -312,7 +321,7 @@ export const WithCheckboxes: Story = {
 
     return (
       <DropdownMenu>
-        <DropdownMenuTrigger>Open Checkbox</DropdownMenuTrigger>
+        <DropdownMenuTrigger>Open menu</DropdownMenuTrigger>
         <DropdownMenuContent className="w-72">
           <DropdownMenuLabel label="Interface Settings" />
           <DropdownMenuSeparator />
@@ -344,13 +353,19 @@ export const WithCheckboxes: Story = {
   },
 };
 
+/**
+ * Single-choice selection via **DropdownMenuRadioGroup** /
+ * **DropdownMenuRadioItem** — the group's `value` reflects the current
+ * choice and `onValueChange` replaces it.
+ * @summary Radio group for single-choice selection.
+ */
 export const WithRadioGroup: Story = {
   render: () => {
     const [position, setPosition] = React.useState("bottom");
 
     return (
       <DropdownMenu>
-        <DropdownMenuTrigger>Open Radio Group</DropdownMenuTrigger>
+        <DropdownMenuTrigger>Open menu</DropdownMenuTrigger>
         <DropdownMenuContent className="w-56">
           <DropdownMenuLabel label="Panel Position" />
           <DropdownMenuSeparator />
@@ -365,88 +380,45 @@ export const WithRadioGroup: Story = {
   },
 };
 
-export const ModelSelector: Story = {
-  render: () => {
-    const [selectedModel, setSelectedModel] = React.useState<string>("GPT4-o");
-    const bestPerformingModels = [
-      {
-        name: "GPT4-o",
-        description: "OpenAI's most advanced model.",
-        icon: OpenaiLogo,
-      },
-      {
-        name: "Claude 3.5 Sonnet",
-        description:
-          "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
-        icon: AnthropicLogo,
-      },
-      {
-        name: "Mistral Large",
-        description: "Mistral's `large 2` model (128k context).",
-        icon: MistralLogo,
-      },
-    ];
-
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            label={selectedModel}
-            variant="outline"
-            size="sm"
-            tooltip="Test"
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuLabel label="Best performing models" />
-          {bestPerformingModels.map((modelConfig) => (
-            <DropdownMenuItem
-              key={modelConfig.name}
-              label={modelConfig.name}
-              onClick={() => setSelectedModel(modelConfig.name)}
-              description={modelConfig.description}
-              icon={modelConfig.icon}
-            />
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  },
-};
-
 interface ModelConfig {
   name: string;
   description: string;
   icon: React.ComponentType;
 }
 
-export const ModelSelectorWithRadio: Story = {
+const bestPerformingModels: ModelConfig[] = [
+  {
+    name: "GPT4-o",
+    description: "OpenAI's most advanced model.",
+    icon: OpenaiLogo,
+  },
+  {
+    name: "Claude 3.5 Sonnet",
+    description: "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
+    icon: AnthropicLogo,
+  },
+  {
+    name: "Mistral Large",
+    description: "Mistral's `large 2` model (128k context).",
+    icon: MistralLogo,
+  },
+];
+
+/**
+ * A value-picker pattern: the trigger button shows the current value, and
+ * radio items with icons and descriptions both select it and reflect the
+ * active choice — prefer this over plain items, which give no selected-state
+ * affordance.
+ * @summary Trigger-label value picker with radio items.
+ */
+export const ModelSelector: Story = {
   render: () => {
     const [selectedModel, setSelectedModel] = React.useState<string>("GPT4-o");
-
-    const bestPerformingModels: ModelConfig[] = [
-      {
-        name: "GPT4-o",
-        description: "OpenAI's most advanced model.",
-        icon: OpenaiLogo,
-      },
-      {
-        name: "Claude 3.5 Sonnet",
-        description:
-          "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
-        icon: AnthropicLogo,
-      },
-      {
-        name: "Mistral Large",
-        description: "Mistral's `large 2` model (128k context).",
-        icon: MistralLogo,
-      },
-    ];
 
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button label={selectedModel} variant="ghost" size="sm" />
+          <Button label={selectedModel} variant="outline" size="sm" isSelect />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuRadioGroup
@@ -470,323 +442,207 @@ export const ModelSelectorWithRadio: Story = {
   },
 };
 
-export const WithSearchAndPicker: Story = {
+const searchableItems = [
+  { name: "Business Intelligence Dashboard", secondaryIcon: DriveLogo },
+  { name: "Cloud Infrastructure Setup", secondaryIcon: NotionLogo },
+  { name: "Data Migration Service", secondaryIcon: SlackLogo },
+  { name: "Enterprise Resource Planning", secondaryIcon: DriveLogo },
+  { name: "Financial Analytics Platform", secondaryIcon: NotionLogo },
+  { name: "Knowledge Base Integration", secondaryIcon: SlackLogo },
+  { name: "Machine Learning Pipeline", secondaryIcon: DriveLogo },
+  { name: "Workflow Automation System", secondaryIcon: NotionLogo },
+] as const;
+
+/**
+ * A search-first menu: **DropdownMenuSearchbar** is pinned in
+ * `dropdownHeaders` with an action button, an empty state prompts for a
+ * query, and results render with a **DoubleIcon** pairing the content glyph
+ * with its source logo.
+ * @summary Pinned searchbar with empty state and results.
+ */
+export const WithSearchbarHeader: Story = {
   render: () => {
     const [searchText, setSearchText] = React.useState("");
     const [selectedItem, setSelectedItem] = React.useState<string | null>(null);
     const [open, setOpen] = React.useState(false);
-    const [openAgents, setOpenAgents] = React.useState(false);
-    const [openToolsets, setOpenToolsets] = React.useState(false);
-    const searchInputRef = React.useRef<HTMLInputElement>(null);
-    const agentsSearchInputRef = React.useRef<HTMLInputElement>(null);
-    const toolsetsSearchInputRef = React.useRef<HTMLInputElement>(null);
 
-    React.useEffect(() => {
-      if (open) {
-        setTimeout(() => {
-          searchInputRef.current?.focus();
-        }, 0);
-      }
-    }, [open]);
-
-    React.useEffect(() => {
-      if (openAgents) {
-        setTimeout(() => {
-          agentsSearchInputRef.current?.focus();
-        }, 0);
-      }
-    }, [openAgents]);
-
-    React.useEffect(() => {
-      if (openToolsets) {
-        setTimeout(() => {
-          toolsetsSearchInputRef.current?.focus();
-        }, 0);
-      }
-    }, [openToolsets]);
-
-    const items = [
-      "Automated Data Processing Automated Data Processing Automated Data Processing Automated Data Processing",
-      "Business Intelligence Dashboard",
-      "Cloud Infrastructure Setup",
-      "Data Migration Service",
-      "Enterprise Resource Planning",
-      "Financial Analytics Platform",
-      "Geographic Information System",
-      "Human Resources Management",
-      "Inventory Control System",
-      "Knowledge Base Integration",
-      "Machine Learning Pipeline",
-      "Network Security Monitor",
-      "Operations Management Tool",
-      "Project Portfolio Tracker",
-      "Quality Assurance Framework",
-      "Real-time Analytics Engine",
-      "Supply Chain Optimizer",
-      "Team Collaboration Hub",
-      "User Authentication Service",
-      "Workflow Automation System",
-    ];
-
-    const filteredItems = items.filter((item) =>
-      item.toLowerCase().includes(searchText.toLowerCase())
+    const filteredItems = searchableItems.filter((item) =>
+      item.name.toLowerCase().includes(searchText.toLowerCase())
     );
 
-    const mainIcons = [Folder, File02];
-    const extraIcons = [DriveLogo, NotionLogo, SlackLogo];
-
-    const filteredAgents = [
-      {
-        name: "Research Assistant",
-        description: "Academic research and paper analysis",
-        emoji: "🔬",
-        backgroundColor: "bg-blue-200",
-      },
-      {
-        name: "Code Companion",
-        description: "Pair programming and code review",
-        emoji: "💻",
-        backgroundColor: "bg-purple-200",
-      },
-      {
-        name: "Data Analyst",
-        description: "Data visualization and insights",
-        emoji: "��",
-        backgroundColor: "bg-green-200",
-      },
-      {
-        name: "Content Writer",
-        description: "Blog posts and marketing copy",
-        emoji: "✍️",
-        backgroundColor: "bg-yellow-200",
-      },
-      {
-        name: "Customer Support",
-        description: "24/7 customer service automation",
-        emoji: "🤝",
-        backgroundColor: "bg-pink-200",
-      },
-      {
-        name: "Legal Assistant",
-        description: "Contract review and legal research",
-        emoji: "⚖️",
-        backgroundColor: "bg-red-200",
-      },
-      {
-        name: "Design Assistant",
-        description: "UI/UX design and prototyping",
-        emoji: "🎨",
-        backgroundColor: "bg-indigo-200",
-      },
-      {
-        name: "Financial Advisor",
-        description: "Investment analysis and planning",
-        emoji: "💰",
-        backgroundColor: "bg-emerald-200",
-      },
-    ] as const;
-
-    const filteredToolsetList = [
-      {
-        name: "Product Design Suite",
-        description: "Figma, Adobe XD, and design assets",
-        icon: ActionMagicIcon,
-      },
-      {
-        name: "Business Intelligence",
-        description: "Tableau, PowerBI, and analytics tools",
-        icon: ActionDocumentIcon,
-      },
-      {
-        name: "Project Management",
-        description: "Notion, Jira, and task tracking",
-        icon: ActionFolderIcon,
-      },
-      {
-        name: "Communication Hub",
-        description: "Slack, Email, and messaging platforms",
-        icon: ActionArmchairIcon,
-      },
-      {
-        name: "Development Stack",
-        description: "GitHub, VSCode, and dev tools",
-        icon: ActionCommand1Icon,
-      },
-      {
-        name: "Customer Success",
-        description: "Zendesk, Intercom, and support tools",
-        icon: ActionUserGroupIcon,
-      },
-      {
-        name: "Marketing Suite",
-        description: "HubSpot, Mailchimp, and campaign tools",
-        icon: ActionCloudArrowDownIcon,
-      },
-      {
-        name: "Data Warehouse",
-        description: "Snowflake, BigQuery, and data storage",
-        icon: ActionArmchairIcon,
-      },
-      {
-        name: "HR Platform",
-        description: "BambooHR, Workday, and people tools",
-        icon: ActionMagicIcon,
-      },
-      {
-        name: "Finance Stack",
-        description: "QuickBooks, Stripe, and payment tools",
-        icon: ActionFolderIcon,
-      },
-    ] as const;
-
     return (
-      <div className="flex gap-2">
-        <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              label={selectedItem || "Attach"}
-              icon={Attachment01}
-              variant="outline"
-              size="sm"
+      <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            label={selectedItem || "Attach"}
+            icon={Attachment01}
+            variant="outline"
+            size="sm"
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className="w-[380px]"
+          dropdownHeaders={
+            <DropdownMenuSearchbar
+              autoFocus
+              value={searchText}
+              onChange={setSearchText}
+              name="search"
+              placeholder="Search in Dust"
+              button={<Button icon={Upload01} label="Upload File" />}
             />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-[380px]"
-            dropdownHeaders={
-              <DropdownMenuSearchbar
-                value={searchText}
-                onChange={setSearchText}
-                name="search"
-                placeholder="Search in Dust"
-                button={<Button icon={Upload01} label="Upload File" />}
-              />
-            }
-          >
-            <DropdownMenuSeparator />
-            {searchText ? (
-              filteredItems.map((item) => {
-                const randomMainIcon =
-                  mainIcons[Math.floor(Math.random() * mainIcons.length)];
-                const randomExtraIcon =
-                  extraIcons[Math.floor(Math.random() * extraIcons.length)];
-                return (
-                  <DropdownMenuItem
-                    key={item}
-                    label={item}
-                    description="Company Space/Notion"
-                    icon={
-                      <DoubleIcon
-                        size="lg"
-                        mainIcon={randomMainIcon}
-                        secondaryIcon={randomExtraIcon}
-                      />
-                    }
-                    onClick={() => {
-                      setSelectedItem(item);
-                      setSearchText("");
-                    }}
-                    truncateText
+          }
+        >
+          <DropdownMenuSeparator />
+          {searchText ? (
+            filteredItems.map((item) => (
+              <DropdownMenuItem
+                key={item.name}
+                label={item.name}
+                description="Company Space/Notion"
+                icon={
+                  <DoubleIcon
+                    size="lg"
+                    mainIcon={File02}
+                    secondaryIcon={item.secondaryIcon}
                   />
-                );
-              })
-            ) : (
-              <div className="flex h-full w-full items-center justify-center py-8">
-                <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
-                  <Icon visual={SearchMd} size="sm" />
-                  Search in Dust
-                </div>
+                }
+                onClick={() => {
+                  setSelectedItem(item.name);
+                  setSearchText("");
+                }}
+                truncateText
+              />
+            ))
+          ) : (
+            <div className="flex h-full w-full items-center justify-center py-8">
+              <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
+                <Icon visual={SearchMd} size="sm" />
+                Search in Dust
               </div>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <DropdownMenu open={openAgents} onOpenChange={setOpenAgents}>
-          <DropdownMenuTrigger asChild>
-            <Button icon={Robot} variant="outline" size="sm" isSelect />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="h-96 w-[380px]"
-            dropdownHeaders={
-              <DropdownMenuSearchbar
-                ref={agentsSearchInputRef}
-                name="search"
-                value={searchText}
-                onChange={setSearchText}
-                onKeyDown={() => {}}
-                placeholder="Search Agents"
-                button={<Button icon={Plus} label="Create" />}
-              />
-            }
-          >
-            <DropdownMenuSeparator />
-            {filteredAgents.map((agent) => {
-              return (
-                <DropdownMenuItem
-                  key={agent.name}
-                  label={agent.name}
-                  description={agent.description}
-                  icon={() => (
-                    <Avatar
-                      size="sm"
-                      emoji={agent.emoji}
-                      backgroundColor={agent.backgroundColor}
-                    />
-                  )}
-                  onClick={() => {
-                    setSelectedItem(agent.name);
-                    setSearchText("");
-                  }}
-                  truncateText
-                />
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <DropdownMenu open={openToolsets} onOpenChange={setOpenToolsets}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              label={selectedItem || "Add Toolset"}
-              icon={Briefcase01}
-              variant="outline"
-              size="sm"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="h-96 w-[380px]"
-            dropdownHeaders={
-              <DropdownMenuSearchbar
-                ref={toolsetsSearchInputRef}
-                name="search"
-                value={searchText}
-                onChange={setSearchText}
-                onKeyDown={() => {}}
-                placeholder="Search Tools"
-                button={<Button icon={Plus} label="Add MCP Server" />}
-              />
-            }
-          >
-            <DropdownMenuSeparator />
-            {filteredToolsetList.map((toolset) => {
-              return (
-                <DropdownMenuItem
-                  key={toolset.name}
-                  label={toolset.name}
-                  description={toolset.description}
-                  icon={() => <Avatar size="sm" icon={toolset.icon} />}
-                  onClick={() => {
-                    setSelectedItem(toolset.name);
-                    setSearchText("");
-                  }}
-                  truncateText
-                />
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+            </div>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   },
 };
 
+const agents = [
+  {
+    name: "Research Assistant",
+    description: "Academic research and paper analysis",
+    emoji: "🔬",
+    backgroundColor: "bg-blue-200",
+  },
+  {
+    name: "Code Companion",
+    description: "Pair programming and code review",
+    emoji: "💻",
+    backgroundColor: "bg-purple-200",
+  },
+  {
+    name: "Data Analyst",
+    description: "Data visualization and insights",
+    emoji: "📊",
+    backgroundColor: "bg-green-200",
+  },
+  {
+    name: "Content Writer",
+    description: "Blog posts and marketing copy",
+    emoji: "✍️",
+    backgroundColor: "bg-yellow-200",
+  },
+  {
+    name: "Customer Support",
+    description: "24/7 customer service automation",
+    emoji: "🤝",
+    backgroundColor: "bg-pink-200",
+  },
+  {
+    name: "Legal Assistant",
+    description: "Contract review and legal research",
+    emoji: "⚖️",
+    backgroundColor: "bg-red-200",
+  },
+  {
+    name: "Design Assistant",
+    description: "UI/UX design and prototyping",
+    emoji: "🎨",
+    backgroundColor: "bg-indigo-200",
+  },
+  {
+    name: "Financial Advisor",
+    description: "Investment analysis and planning",
+    emoji: "💰",
+    backgroundColor: "bg-emerald-200",
+  },
+] as const;
+
+/**
+ * A fixed-height, scrollable picker of rich entities: avatar items with
+ * descriptions under a pinned searchbar whose `button` offers a create
+ * action. Constrain the content (h-96 here) so long lists scroll.
+ * @summary Fixed-height scrollable entity picker.
+ */
+export const ScrollableItemPicker: Story = {
+  render: () => {
+    const [searchText, setSearchText] = React.useState("");
+    const [open, setOpen] = React.useState(false);
+
+    const filteredAgents = agents.filter((agent) =>
+      agent.name.toLowerCase().includes(searchText.toLowerCase())
+    );
+
+    return (
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button icon={Robot} variant="outline" size="sm" isSelect />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className="h-96 w-[380px]"
+          dropdownHeaders={
+            <DropdownMenuSearchbar
+              autoFocus
+              name="search"
+              value={searchText}
+              onChange={setSearchText}
+              placeholder="Search Agents"
+              button={<Button icon={Plus} label="Create" />}
+            />
+          }
+        >
+          <DropdownMenuSeparator />
+          {filteredAgents.map((agent) => (
+            <DropdownMenuItem
+              key={agent.name}
+              label={agent.name}
+              description={agent.description}
+              icon={() => (
+                <Avatar
+                  size="sm"
+                  emoji={agent.emoji}
+                  backgroundColor={agent.backgroundColor}
+                />
+              )}
+              onClick={() => {
+                setSearchText("");
+              }}
+              truncateText
+            />
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  },
+};
+
+/**
+ * Read-only rows via **DropdownMenuStaticItem** — label/value pairs or custom
+ * children that display information without being actionable, mixed with
+ * regular action items.
+ * @summary Non-interactive label/value rows.
+ */
 export const WithStaticItems: Story = {
   render: () => {
     return (
@@ -819,12 +675,12 @@ export const WithStaticItems: Story = {
           <DropdownMenuItem
             icon={Settings01}
             label="System Settings"
-            onClick={() => console.log("Settings clicked")}
+            onClick={fn()}
           />
           <DropdownMenuItem
             icon={DownloadCloud01}
             label="Download Report"
-            onClick={() => console.log("Download clicked")}
+            onClick={fn()}
           />
         </DropdownMenuContent>
       </DropdownMenu>
@@ -832,6 +688,12 @@ export const WithStaticItems: Story = {
   },
 };
 
+/**
+ * The **SearchDropdownMenu** convenience wrapper: it owns the trigger and
+ * searchbar chrome, while the consumer filters and renders the items from
+ * the controlled `searchInputValue`.
+ * @summary SearchDropdownMenu wrapper with filtered items.
+ */
 export const WithSearchFilter: Story = {
   render: () => {
     const [searchInputValue, setSearchInputValue] = React.useState("");
@@ -848,19 +710,20 @@ export const WithSearchFilter: Story = {
         setSearchInputValue={setSearchInputValue}
       >
         {filteredItems.map((item) => (
-          <DropdownMenuItem
-            key={item}
-            label={item}
-            onClick={() => {
-              console.log(item);
-            }}
-          />
+          <DropdownMenuItem key={item} label={item} onClick={fn()} />
         ))}
       </SearchDropdownMenu>
     );
   },
 };
 
+/**
+ * Removable tag pills inside a menu via **DropdownMenuTagList** /
+ * **DropdownMenuTagItem**, with an async add action showing a loading
+ * button. The **Chip** row below mirrors the same state to show removal
+ * stays in sync.
+ * @summary Tag list with removable items and async add.
+ */
 export const WithTags: Story = {
   render: () => {
     const [tags, setTags] = useState([
@@ -869,6 +732,7 @@ export const WithTags: Story = {
       "ui",
       "design-system",
     ]);
+    const [nextTagId, setNextTagId] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
 
     const handleRemoveTag = (tagToRemove: string) => {
@@ -880,15 +744,15 @@ export const WithTags: Story = {
 
       // Simulate API call delay
       setTimeout(() => {
-        const newTag = `tag-${Math.floor(Math.random() * 1000)}`;
-        setTags([...tags, newTag]);
+        setTags((prevTags) => [...prevTags, `tag-${nextTagId}`]);
+        setNextTagId((prevId) => prevId + 1);
         setIsLoading(false);
       }, 1500);
     };
 
     return (
       <div className="flex flex-col gap-4 p-4">
-        <div className="flex items-center gap-2">
+        <div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -909,7 +773,7 @@ export const WithTags: Story = {
                     label={tag}
                     color="highlight"
                     onRemove={() => handleRemoveTag(tag)}
-                    onClick={() => console.log(tag)}
+                    onClick={fn()}
                   />
                 ))}
               </DropdownMenuTagList>
@@ -917,7 +781,7 @@ export const WithTags: Story = {
               <DropdownMenuSeparator />
               <div className="p-2">
                 <Button
-                  label={isLoading ? "Adding..." : "Add Random Tag"}
+                  label={isLoading ? "Adding..." : "Add Tag"}
                   onClick={handleAddTag}
                   className="w-full"
                   size="sm"
@@ -927,16 +791,9 @@ export const WithTags: Story = {
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <div className="text-sm text-muted-foreground">
-            Click to view available tags
-          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 rounded-lg border border-border p-4">
-          <span className="mr-2 text-sm text-muted-foreground">
-            Current tags:
-          </span>
           {tags.map((tag) => (
             <div key={tag} className="inline-flex">
               <Chip
@@ -953,6 +810,12 @@ export const WithTags: Story = {
   },
 };
 
+/**
+ * Category filter pills pinned in `dropdownHeaders` via
+ * **DropdownMenuFilters**, combined with a searchbar — selecting a pill
+ * narrows the items before the text search applies.
+ * @summary Header filter pills combined with search.
+ */
 export const WithFilters: Story = {
   render: () => {
     const [selectedFilter, setSelectedFilter] = useState<string | null>("all");
@@ -1020,7 +883,7 @@ export const WithFilters: Story = {
                 key={item.name}
                 label={item.name}
                 icon={item.icon}
-                onClick={() => console.log("Selected:", item.name)}
+                onClick={fn()}
               />
             ))
           ) : (
@@ -1034,116 +897,51 @@ export const WithFilters: Story = {
   },
 };
 
+/**
+ * Rich hover tooltips on menu items via **DropdownTooltipTrigger**: wrap an
+ * item to attach a `description` and optional `media` panel, positioned with
+ * `side` / `sideOffset` (it adapts automatically when space runs out). Also
+ * works on disabled items to explain why they are unavailable.
+ * @summary Rich tooltips attached to menu items.
+ */
 export const WithTooltips: Story = {
   render: () => {
     return (
-      <div className="flex flex-col gap-8 p-8">
-        <h3 className="text-lg font-semibold">Dropdown with Rich Tooltips</h3>
-
-        <div className="flex gap-4">
-          {/* Knowledge Attachment Example */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button label="Skill Builder Actions" variant="outline" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-64">
-              <DropdownMenuItem label="Configure Settings" />
-              <DropdownTooltipTrigger
-                description="Use company knowledge for context."
-                media={
-                  <img
-                    src="/static/landing/product/Knowledge_Tooltips.jpg"
-                    alt="Knowledge Search Interface"
-                    className="aspect-[4/3] w-full rounded object-cover"
-                  />
-                }
-                side="right"
-                sideOffset={8}
-              >
-                <DropdownMenuItem icon={Attachment01} label="Add Knowledge" />
-              </DropdownTooltipTrigger>
-              <DropdownTooltipTrigger
-                description="This feature is disabled because you need to configure settings first."
-                side="right"
-                sideOffset={8}
-              >
-                <DropdownMenuItem
-                  label="Save Draft"
-                  icon={DownloadCloud01}
-                  disabled
-                />
-              </DropdownTooltipTrigger>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Data Export Example */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button label="Data Actions" variant="outline" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-64">
-              <DropdownMenuItem label="View Report" />
-              <DropdownTooltipTrigger
-                description="Export your data in various formats. Choose from CSV, JSON, or PDF depending on your needs."
-                media={
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-                      <DownloadCloud01 className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-green-800">
-                        Export Status
-                      </h4>
-                      <p className="text-xs text-green-600">Ready to export</p>
-                    </div>
-                  </div>
-                }
-                side="right"
-                sideOffset={8}
-              >
-                <DropdownMenuItem icon={DownloadCloud01} label="Export Data" />
-              </DropdownTooltipTrigger>
-              <DropdownMenuItem label="Share Report" />
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Left-side tooltip example */}
-          <div className="ml-auto">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button label="Right Side Menu" variant="outline" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56">
-                <DropdownMenuItem label="Regular Item" />
-                <DropdownTooltipTrigger
-                  description="This tooltip appears on the left side when the dropdown is positioned on the right side of the screen."
-                  media={
-                    <div className="text-center">
-                      <div className="mb-2 text-2xl">⬅️</div>
-                      <p className="text-sm font-medium text-orange-800">
-                        Positioned Left
-                      </p>
-                      <p className="mt-1 text-xs text-orange-600">
-                        Perfect for right-side menus
-                      </p>
-                    </div>
-                  }
-                  side="left"
-                  sideOffset={8}
-                >
-                  <DropdownMenuItem icon={MagicWand02} label="Help Item" />
-                </DropdownTooltipTrigger>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        <p className="max-w-lg text-sm text-gray-600">
-          Hover over menu items with icons to see rich tooltips that provide
-          contextual information and step-by-step instructions. The tooltip
-          positioning automatically adapts based on available space.
-        </p>
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button label="Data Actions" variant="outline" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-64">
+          <DropdownMenuItem label="View Report" />
+          <DropdownTooltipTrigger
+            description="Export your data in various formats. Choose from CSV, JSON, or PDF depending on your needs."
+            media={
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+                  <DownloadCloud01 className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-green-800">
+                    Export Status
+                  </h4>
+                  <p className="text-xs text-green-600">Ready to export</p>
+                </div>
+              </div>
+            }
+            side="right"
+            sideOffset={8}
+          >
+            <DropdownMenuItem icon={DownloadCloud01} label="Export Data" />
+          </DropdownTooltipTrigger>
+          <DropdownTooltipTrigger
+            description="This feature is disabled because you need to configure settings first."
+            side="right"
+            sideOffset={8}
+          >
+            <DropdownMenuItem label="Save Draft" icon={Attachment01} disabled />
+          </DropdownTooltipTrigger>
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   },
 };

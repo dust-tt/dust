@@ -1,4 +1,5 @@
 import { OPENAI_SUPPORTED_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/openai/reasoning_efforts";
+import { openAIReasoningSummaryForModel } from "@app/lib/model_constructors/providers/openai/reasoning_summary";
 import { WithOpenAIResponsesInputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/input";
 import { WithOpenAIResponsesOutputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/output";
 import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
@@ -7,6 +8,7 @@ import type { Credentials } from "@app/lib/model_constructors/types/credentials"
 import { OPENAI_RESPONSES_HOST } from "@app/lib/model_constructors/types/hosts";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
 import { OPENAI_LAB } from "@app/lib/model_constructors/types/labs";
+import type { Model } from "@app/lib/model_constructors/types/models";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 // Do not remove: front-api routes call into this client for the similar skill
 // and similar agent discovery features. Without an explicit version front-api can silently
@@ -47,6 +49,13 @@ export abstract class OpenAIResponsesStream extends WithOpenAIResponsesInputConv
   constructor({ OPENAI_API_KEY }: Credentials) {
     super();
     this.apiKey = OPENAI_API_KEY;
+  }
+
+  protected override reasoningSummaryForModel(
+    model: Model,
+    conciseReasoningSummary: boolean
+  ) {
+    return openAIReasoningSummaryForModel(model, conciseReasoningSummary);
   }
 
   // Lazy: `baseUrl` is an abstract field, only set after subclass initializers run.

@@ -12,14 +12,20 @@ import {
   Icon,
   LoadingBlock,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  OnChangeFn,
+  SortingState,
+} from "@tanstack/react-table";
 import {
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import type { ComponentType } from "react";
 import { Fragment } from "react";
+import type { ConsumptionAttributionBreakdownProps } from "./ConsumptionAttributionBreakdown";
 import { ConsumptionAttributionBreakdown } from "./ConsumptionAttributionBreakdown";
 import type { ConsumptionDimension } from "./consumptionDimensions";
 
@@ -96,7 +102,7 @@ function AttributionSkeletonCell({
   }
 }
 
-interface ConsumptionAttributionRowsTableProps {
+export interface ConsumptionAttributionRowsTableProps {
   data: AttributionRowData[];
   columns: ColumnDef<AttributionRowData>[];
   workspaceId: string;
@@ -112,9 +118,16 @@ interface ConsumptionAttributionRowsTableProps {
   skeletonRowCount?: number;
   hasAvatar?: boolean;
   isAvatarRounded?: boolean;
+  sorting: SortingState;
+  onSortingChange: OnChangeFn<SortingState>;
 }
 
-export function ConsumptionAttributionRowsTable({
+interface ConsumptionAttributionRowsTableViewProps
+  extends ConsumptionAttributionRowsTableProps {
+  BreakdownComponent: ComponentType<ConsumptionAttributionBreakdownProps>;
+}
+
+export function ConsumptionAttributionRowsTableView({
   data,
   columns,
   workspaceId,
@@ -127,10 +140,15 @@ export function ConsumptionAttributionRowsTable({
   skeletonRowCount = ATTRIBUTION_SKELETON_ROW_COUNT,
   hasAvatar = false,
   isAvatarRounded = false,
-}: ConsumptionAttributionRowsTableProps) {
+  sorting,
+  onSortingChange,
+  BreakdownComponent,
+}: ConsumptionAttributionRowsTableViewProps) {
   const table = useReactTable({
     data,
     columns,
+    state: { sorting },
+    onSortingChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
@@ -233,7 +251,7 @@ export function ConsumptionAttributionRowsTable({
                           "data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-exit"
                         )}
                       >
-                        <ConsumptionAttributionBreakdown
+                        <BreakdownComponent
                           workspaceId={workspaceId}
                           selectedDimension={dimension}
                           selectedRow={row.original}
@@ -249,5 +267,16 @@ export function ConsumptionAttributionRowsTable({
             ))}
       </DataTable.Body>
     </DataTable.Root>
+  );
+}
+
+export function ConsumptionAttributionRowsTable(
+  props: ConsumptionAttributionRowsTableProps
+) {
+  return (
+    <ConsumptionAttributionRowsTableView
+      {...props}
+      BreakdownComponent={ConsumptionAttributionBreakdown}
+    />
   );
 }
