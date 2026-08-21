@@ -232,7 +232,7 @@ function buildColumns({
       enableSorting: false,
       meta: {
         className: showAnalyticsConsumption
-          ? "hidden h-16 w-24 @xl-table:table-cell"
+          ? "hidden h-16 w-28 @md-table:table-cell"
           : "hidden h-16 w-28 @lg-table:table-cell",
         headerAlign: "left",
       },
@@ -344,18 +344,18 @@ function buildColumns({
     {
       id: "credits",
       accessorKey: "credits",
-      header: "Total credits",
+      header: "Credits",
       enableSorting: false,
-      meta: { className: "h-16 w-24", headerAlign: "right" },
+      meta: { className: "h-16 w-32", headerAlign: "right" },
       cell: (info) => (
         <ConsumptionCell isLoading={isConsumptionLoading}>
           <DataTable.BasicCellContent
             className="justify-end text-right tabular-nums"
-            label={
+            label={`${
               info.row.original.credits === null
                 ? "—"
                 : formatCredits(info.row.original.credits)
-            }
+            }/${info.row.original.monthlyCap}`}
           />
         </ConsumptionCell>
       ),
@@ -468,7 +468,7 @@ function buildColumns({
   ];
 
   if (showAnalyticsConsumption) {
-    return columns;
+    return columns.filter((column) => column.id !== "monthlyCap");
   }
 
   return columns.filter(
