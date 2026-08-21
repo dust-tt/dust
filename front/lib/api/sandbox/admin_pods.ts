@@ -13,6 +13,7 @@ import {
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import type { ScopeMutationResult } from "@app/types/api/sandbox/egress_policy";
 import { SANDBOX_WORKSPACE_SCOPE_ID } from "@app/types/api/sandbox/egress_policy";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import type { Result } from "@app/types/shared/result";
@@ -94,12 +95,6 @@ export type BulkEgressOperation =
   | { operation: "add"; domain: string }
   | { operation: "remove"; domain: string };
 
-export type ScopeMutationResult = {
-  scopeId: string;
-  success: boolean;
-  errorMessage?: string;
-};
-
 // Emits the same sandbox_egress_policy.updated event as the single-pod PUT
 // route. space_id carries the pod sId for pods and is omitted for the
 // workspace scope (same convention as sandbox_env_var.* events).
@@ -132,10 +127,9 @@ function emitEgressPolicyAudit(
   });
 }
 
-// Applies one egress-domain add/remove to each selected scope independently,
-// reusing the same per-scope helpers (and audit event) the single-scope routes
-// use. Sequential on purpose — the route schema bounds podIds at 100 and
-// parallel writes would only pressure the connection pool and GCS.
+// Applies one egress-domain add/remove to each selected scope, reusing the
+// per-scope helpers and audit event the single-scope routes use. Sequential;
+// the route schema caps podIds at 100.
 export async function bulkUpdateEgressDomain(
   auth: Authenticator,
   {
@@ -153,7 +147,7 @@ export async function bulkUpdateEgressDomain(
   const { domain } = operation;
 
   // Normalize both scopes' distinct add/remove return shapes into a single
-  // { policy, changed } outcome so callers audit uniformly.
+  // { policy, changed } outcome.
   async function applyWorkspace(): Promise<
     Result<{ policy: EgressPolicy; changed: boolean }, Error>
   > {
