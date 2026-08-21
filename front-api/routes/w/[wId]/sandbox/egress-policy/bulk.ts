@@ -1,24 +1,39 @@
+import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import {
+  bulkUpdateEgressDomain,
   listPodsWithEgressPolicy,
   parseSandboxAdminPodSelection,
   SandboxAdminPodSelectionQuerySchema,
 } from "@app/lib/api/sandbox/admin_pods";
 import { readOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { GetPodEgressPoliciesBulkResponseBody } from "@app/types/api/sandbox/egress_policy";
+import type {
+  GetPodEgressPoliciesBulkResponseBody,
+  PostBulkEgressPolicyResponseBody,
+} from "@app/types/api/sandbox/egress_policy";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
+import { z } from "zod";
 
-// Mounted at /api/w/:wId/sandbox/egress-policy/bulk. Multi-pod read (GET) for
-// the central Computer admin page. The parent sub-app applies the
-// workspace-admin + Computer gates; the multi-Pod feature is gated on the
-// sandbox_functions flag. Only Pods with their own policy are read, so the
-// selection is bounded by configured Pods rather than total Pods.
+// Mounted at /api/w/:wId/sandbox/egress-policy/bulk. Multi-pod read (GET) and
+// add/remove write (POST) for the central Computer admin page. The parent
+// sub-app applies the workspace-admin + Computer gates; the multi-Pod feature
+// is gated on the sandbox_functions flag. Only Pods with their own policy are
+// read, so the selection is bounded by configured Pods rather than total Pods.
 const app = workspaceApp();
 
 app.use("*", withFeatureFlag("sandbox_functions"));
+
+const PostBulkEgressPolicyBodySchema = z.object({
+  includeWorkspace: z.boolean(),
+  podIds: z.array(z.string()).max(100),
+  operation: z.discriminatedUnion("operation", [
+    z.object({ operation: z.literal("add"), domain: z.string().min(1) }),
+    z.object({ operation: z.literal("remove"), domain: z.string().min(1) }),
+  ]),
+});
 
 /** @ignoreswagger */
 app.get(
@@ -83,6 +98,25 @@ app.get(
     }
 
     return ctx.json({ policies });
+  }
+);
+
+/** @ignoreswagger */
+app.post(
+  "/",
+  validate("json", PostBulkEgressPolicyBodySchema),
+  async (ctx): HandlerResult<PostBulkEgressPolicyResponseBody> => {
+    const auth = ctx.get("auth");
+    const body = ctx.req.valid("json");
+
+    const results = await bulkUpdateEgressDomain(auth, {
+      includeWorkspace: body.includeWorkspace,
+      podIds: [...new Set(body.podIds)],
+      operation: body.operation,
+      context: getAuditLogContext(auth),
+    });
+
+    return ctx.json({ results });
   }
 );
 
