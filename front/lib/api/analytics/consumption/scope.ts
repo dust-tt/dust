@@ -10,6 +10,13 @@ export const CONVERSATION_ID_FIELD = "conversation_id";
 
 export const TRIGGER_ID_FIELD = "trigger_id";
 
+export const CONSUMPTION_FACET_SCOPES = ["all", "automations"] as const;
+
+// Restricts which consumption documents facets are computed over. The
+// automations page filters the same index down to trigger-originated runs, so
+// its facets must count only those documents.
+export type ConsumptionFacetScope = (typeof CONSUMPTION_FACET_SCOPES)[number];
+
 export const CARDINALITY_PRECISION_THRESHOLD = 40_000;
 
 export const CONSUMPTION_SCOPE_DIMENSIONS = [

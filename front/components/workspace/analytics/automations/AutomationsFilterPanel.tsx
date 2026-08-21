@@ -8,14 +8,16 @@ import {
   AUTOMATIONS_FILTER_CATEGORIES,
   AUTOMATIONS_FILTER_CATEGORY_LABEL,
   automationsFilterSelectionCount,
+  toAutomationsScopeFilter,
 } from "@app/components/workspace/analytics/automationsFilter";
 import { FilterCategoryNav } from "@app/components/workspace/analytics/filterPanel/FilterCategoryNav";
 import { FilterFooter } from "@app/components/workspace/analytics/filterPanel/FilterFooter";
 import { FilterOptionCheckboxList } from "@app/components/workspace/analytics/filterPanel/FilterOptionCheckboxList";
 import { FilterSelectionSummary } from "@app/components/workspace/analytics/filterPanel/FilterSelectionSummary";
 import { useAutomationsFilter } from "@app/components/workspace/analytics/useAutomationsFilter";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -28,7 +30,12 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-const MEMBERS_PAGE_SIZE = 25;
+// The panel only shows agents and members, so it skips the six other
+// dimensions rather than paying for their Elasticsearch sweeps and catalogs.
+const AUTOMATIONS_FACET_DIMENSIONS: ConsumptionScopeDimension[] = [
+  "agent",
+  "user",
+];
 
 const TYPE_OPTIONS: AutomationsFilterOption[] = [
   { id: "schedule", name: "Schedule", disabled: false, category: "type" },
@@ -37,12 +44,14 @@ const TYPE_OPTIONS: AutomationsFilterOption[] = [
 
 interface AutomationsFilterPanelProps {
   owner: LightWorkspaceType;
+  period: ConsumptionPeriodSelection;
   filter: AutomationsFilter;
   onFilterChange: (next: AutomationsFilter) => void;
 }
 
 export function AutomationsFilterPanel({
   owner,
+  period,
   filter,
   onFilterChange,
 }: AutomationsFilterPanelProps) {
@@ -54,6 +63,7 @@ export function AutomationsFilterPanel({
     clearCategory,
     toggleOption,
     removeOption,
+    selectAllFiltered,
   } = useAutomationsFilter(filter);
   const [activeCategory, setActiveCategory] =
     useState<AutomationsFilterCategory>("agent");
@@ -61,69 +71,67 @@ export function AutomationsFilterPanel({
   const [contentScrollContainer, setContentScrollContainer] =
     useState<HTMLDivElement | null>(null);
 
-  const isAgentCategoryActive = isOpen && activeCategory === "agent";
-  const { agentConfigurations, isAgentConfigurationsLoading } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: isAgentCategoryActive ? "analytics" : null,
-      sort: "alphabetical",
-    });
-
-  const isMemberCategoryActive = isOpen && activeCategory === "member";
-  const { members, isLoading: isMembersLoading } = useSearchMembers({
+  const draftScopeFilter = useMemo(
+    () => toAutomationsScopeFilter(draftFilter),
+    [draftFilter]
+  );
+  const {
+    options: facetOptions,
+    isFacetsLoading,
+    isFacetsError,
+    isFacetsValidating,
+  } = useConsumptionFacets({
     workspaceId: owner.sId,
-    searchTerm: isMemberCategoryActive ? searchText : "",
-    pageIndex: 0,
-    pageSize: MEMBERS_PAGE_SIZE,
-    disabled: !isMemberCategoryActive,
+    period,
+    filter: draftScopeFilter,
+    scope: "automations",
+    dimensions: AUTOMATIONS_FACET_DIMENSIONS,
+    disabled: !isOpen,
   });
 
   const categoryOptions = useMemo<
     Record<AutomationsFilterCategory, AutomationsFilterOption[]>
   >(
     () => ({
-      agent: agentConfigurations.map((agent) => ({
-        id: agent.sId,
-        name: agent.name,
-        disabled: false,
-        image: agent.pictureUrl,
+      agent: facetOptions.agent.map((option) => ({
+        id: option.id,
+        name: option.name,
+        disabled: option.disabled,
+        image: option.image,
         category: "agent",
       })),
-      member: members.map((member) => ({
-        id: member.sId,
-        name: member.fullName,
-        disabled: false,
-        image: member.image,
+      member: facetOptions.member.map((option) => ({
+        id: option.id,
+        name: option.name,
+        disabled: option.disabled,
+        image: option.image,
         category: "member",
       })),
       type: TYPE_OPTIONS,
     }),
-    [agentConfigurations, members]
+    [facetOptions]
   );
 
-  const isOptionsLoading =
-    (activeCategory === "agent" && isAgentConfigurationsLoading) ||
-    (activeCategory === "member" && isMembersLoading);
+  const isFacetBackedCategory = activeCategory !== "type";
+  const isOptionsLoading = isFacetBackedCategory && isFacetsLoading;
 
   const activeOptions = categoryOptions[activeCategory];
-  // Member search is applied server-side; agent and type options are
-  // filtered client-side against the small, already-fetched list.
   const filteredOptions = useMemo(() => {
-    if (activeCategory === "member") {
-      return activeOptions;
-    }
     const search = searchText.trim().toLowerCase();
     return search
       ? activeOptions.filter((option) =>
           option.name.toLowerCase().includes(search)
         )
       : activeOptions;
-  }, [activeOptions, activeCategory, searchText]);
+  }, [activeOptions, searchText]);
 
   const selectedIdsForActiveCategory = useMemo(
     () =>
       new Set((draftFilter[activeCategory] ?? []).map((option) => option.id)),
     [draftFilter, activeCategory]
+  );
+  const unselectedEnabledOptions = filteredOptions.filter(
+    (option) => !option.disabled && !selectedIdsForActiveCategory.has(option.id)
   );
   const appliedSelectionCount = automationsFilterSelectionCount(filter);
   const categoriesWithSelection = useMemo(
@@ -216,23 +224,40 @@ export function AutomationsFilterPanel({
               ref={setContentScrollContainer}
               className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
             >
-              <FilterOptionCheckboxList
-                key={`${isOpen}|${activeCategory}|${searchText}`}
-                idPrefix={`automations-filter-option-${activeCategory}`}
-                categoryLabel={
-                  AUTOMATIONS_FILTER_CATEGORY_LABEL[activeCategory]
-                }
-                options={filteredOptions}
-                selectedIds={selectedIdsForActiveCategory}
-                onToggleOption={(option) =>
-                  toggleOption(activeCategory, option)
-                }
-                renderIcon={(option) => (
-                  <AutomationsFilterOptionIcon option={option} />
-                )}
-                status={isOptionsLoading ? "loading" : "idle"}
-                scrollContainer={contentScrollContainer}
-              />
+              {isFacetBackedCategory && isFacetsError ? (
+                <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                  Failed to load filters.
+                </div>
+              ) : (
+                <FilterOptionCheckboxList
+                  key={`${isOpen}|${activeCategory}|${searchText}`}
+                  idPrefix={`automations-filter-option-${activeCategory}`}
+                  categoryLabel={
+                    AUTOMATIONS_FILTER_CATEGORY_LABEL[activeCategory]
+                  }
+                  options={filteredOptions}
+                  selectedIds={selectedIdsForActiveCategory}
+                  onToggleOption={(option) =>
+                    toggleOption(activeCategory, option)
+                  }
+                  onSelectAll={() =>
+                    selectAllFiltered(activeCategory, unselectedEnabledOptions)
+                  }
+                  selectAllLabel="Select all"
+                  hasSelectableOptions={unselectedEnabledOptions.length > 0}
+                  renderIcon={(option) => (
+                    <AutomationsFilterOptionIcon option={option} />
+                  )}
+                  status={
+                    isOptionsLoading
+                      ? "loading"
+                      : isFacetBackedCategory && isFacetsValidating
+                        ? "updating"
+                        : "idle"
+                  }
+                  scrollContainer={contentScrollContainer}
+                />
+              )}
             </div>
           </div>
           <FilterSelectionSummary<

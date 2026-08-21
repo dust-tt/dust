@@ -2,7 +2,7 @@ import type { GetConsumptionFacetsResponse } from "@app/lib/api/analytics/consum
 import { fetchConsumptionFacets } from "@app/lib/api/analytics/consumption/facets";
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import {
-  ConsumptionBodySchema,
+  ConsumptionFacetsBodySchema,
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -42,6 +42,17 @@ const app = workspaceApp();
  *                 type: integer
  *                 minimum: 1
  *                 default: 30
+ *               scope:
+ *                 type: string
+ *                 enum: [all, automations]
+ *                 default: all
+ *                 description: Restricts which documents the facets are computed over. `automations` counts only trigger-originated runs.
+ *               dimensions:
+ *                 type: array
+ *                 description: Dimensions to compute facets for. Defaults to every dimension. Omitted dimensions come back as empty arrays.
+ *                 items:
+ *                   type: string
+ *                   enum: [agent, user, api_key, group, model, tool, skill, source]
  *               filter:
  *                 type: object
  *                 description: Map of consumption dimensions to selected values.
@@ -146,16 +157,21 @@ const app = workspaceApp();
 app.post(
   "/",
   ensureIsManager(),
-  validate("json", ConsumptionBodySchema),
+  validate("json", ConsumptionFacetsBodySchema),
   async (ctx): HandlerResult<GetConsumptionFacetsResponse> => {
     const auth = ctx.get("auth");
-    const { filter, ...periodInput } = ctx.req.valid("json");
+    const { filter, scope, dimensions, ...periodInput } = ctx.req.valid("json");
     const period = await resolveConsumptionPeriod(
       auth,
       toConsumptionPeriodInput(periodInput)
     );
 
-    const result = await fetchConsumptionFacets(auth, { period, filter });
+    const result = await fetchConsumptionFacets(auth, {
+      period,
+      filter,
+      scope,
+      dimensions,
+    });
     if (result.isErr()) {
       return apiError(
         ctx,
