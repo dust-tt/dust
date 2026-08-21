@@ -1,3 +1,4 @@
+import type { ActivationNudgeContext } from "@app/lib/api/activation/nudge";
 import {
   isEligibleForNudge,
   postActivationNudge,
@@ -14,6 +15,8 @@ import { ensureActivationWorkspaceSchedules } from "@app/temporal/activation_sch
 import {
   ACTIVATION_WORKDAY_WINDOW_MINUTES,
   ACTIVATION_WORKDAY_WINDOW_START_MINUTES,
+  applyActivationNudgePerRunCap,
+  DEFAULT_ACTIVATION_NUDGE_MAX_USERS_PER_RUN,
 } from "@app/temporal/activation_scheduler/config";
 import { getNudgeSlotAtMs } from "@app/temporal/activation_scheduler/slots";
 
@@ -28,15 +31,19 @@ export type EligiblePodNudge = {
 /**
  * Enumerates every (pod, target user) still eligible for activation in the
  * workspace, gates each on `isEligibleForNudge`, and assigns the eligible
- * ones a deterministic slot within the regional workday window. This is the
- * planning step: it does not send anything, since state can go stale between
- * this pass (run once at the start of the workday) and a pod's actual slot
- * later in the day.
+ * ones a deterministic slot within the regional workday window. Targeted
+ * one-offs (`userIds` set, i.e. poke) skip the window and fire immediately.
+ * This is the planning step: it does not send anything, since state can go
+ * stale between this pass and a pod's actual slot later in the day.
  */
 export async function enumerateEligiblePodsForNudgeActivity({
   workspaceId,
+  userIds = null,
+  overrideChecks = false,
 }: {
   workspaceId: string;
+  userIds?: string[] | null;
+  overrideChecks?: boolean;
 }): Promise<EligiblePodNudge[]> {
   // Activation conversations live in Pods, which are restricted spaces: request
   // all groups so admin auth can read/write them.
@@ -45,7 +52,8 @@ export async function enumerateEligiblePodsForNudgeActivity({
   });
 
   const planResult = await determineEligibleActivationUsers(auth, {
-    userId: null,
+    userIds: userIds ?? null,
+    overrideChecks,
   });
   if (planResult.isErr()) {
     throw planResult.error;
@@ -102,7 +110,14 @@ export async function enumerateEligiblePodsForNudgeActivity({
       }
 
       const user = userBySId.get(candidate.targetUserId) ?? null;
-      if (!(await isEligibleForNudge(auth, { pod, activationPod, user }))) {
+      if (
+        !(await isEligibleForNudge(auth, {
+          pod,
+          activationPod,
+          user,
+          overrideChecks,
+        }))
+      ) {
         logger.info(
           { workspaceId, spaceId: pod.sId, userId: candidate.targetUserId },
           "[ActivationScheduler] Pod is not eligible for a nudge, skipping."
@@ -113,19 +128,36 @@ export async function enumerateEligiblePodsForNudgeActivity({
       eligiblePods.push({
         podId: pod.sId,
         targetUserId: candidate.targetUserId,
-        slotAtMs: getNudgeSlotAtMs({
-          podModelId: pod.id,
-          timezone,
-          windowStartMinutes: ACTIVATION_WORKDAY_WINDOW_START_MINUTES,
-          windowMinutes: ACTIVATION_WORKDAY_WINDOW_MINUTES,
-          now,
-        }),
+        slotAtMs:
+          userIds != null
+            ? now.getTime()
+            : getNudgeSlotAtMs({
+                podModelId: pod.id,
+                timezone,
+                windowStartMinutes: ACTIVATION_WORKDAY_WINDOW_START_MINUTES,
+                windowMinutes: ACTIVATION_WORKDAY_WINDOW_MINUTES,
+                now,
+              }),
       });
     },
     { concurrency: ACTIVATION_PODS_CONCURRENCY }
   );
 
-  return eligiblePods.sort((a, b) => a.slotAtMs - b.slotAtMs);
+  const sorted = eligiblePods.sort((a, b) => a.slotAtMs - b.slotAtMs);
+  if (
+    !overrideChecks &&
+    sorted.length > DEFAULT_ACTIVATION_NUDGE_MAX_USERS_PER_RUN
+  ) {
+    logger.info(
+      {
+        workspaceId,
+        eligibleCount: sorted.length,
+        cap: DEFAULT_ACTIVATION_NUDGE_MAX_USERS_PER_RUN,
+      },
+      "[ActivationScheduler] Capping this run to the per-workflow user limit."
+    );
+  }
+  return applyActivationNudgePerRunCap(sorted, { overrideChecks });
 }
 
 /**
@@ -140,10 +172,14 @@ export async function reGateAndNudgePodActivity({
   workspaceId,
   podId,
   targetUserId,
+  overrideChecks = false,
+  context = null,
 }: {
   workspaceId: string;
   podId: string;
   targetUserId: string;
+  overrideChecks?: boolean;
+  context?: ActivationNudgeContext | null;
 }): Promise<void> {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
     dangerouslyRequestAllGroups: true,
@@ -176,6 +212,7 @@ export async function reGateAndNudgePodActivity({
       pod,
       activationPod,
       user: user ?? null,
+      overrideChecks,
     }))
   ) {
     logger.info(
@@ -185,7 +222,11 @@ export async function reGateAndNudgePodActivity({
     return;
   }
 
-  const result = await postActivationNudge(auth, { pod, activationPod });
+  const result = await postActivationNudge(auth, {
+    pod,
+    activationPod,
+    ...(context ? { context } : {}),
+  });
   if (result.isErr()) {
     logger.error(
       {

@@ -15,3 +15,17 @@ export const DEFAULT_ACTIVATION_NUDGE_FREQUENCY_CAP_DAYS = 2;
 // nudge fired) after which the scheduler stops nudging a pod. Workspaces can
 // override this via the `activationNudgeMaxUnansweredCount` metadata key.
 export const DEFAULT_ACTIVATION_NUDGE_MAX_UNANSWERED_COUNT = 3;
+
+// Max users a single activation workspace workflow may nudge. Applied when
+// enumerating the run; poke can skip it via overrideChecks.
+export const DEFAULT_ACTIVATION_NUDGE_MAX_USERS_PER_RUN = 100;
+
+export function applyActivationNudgePerRunCap<T>(
+  items: T[],
+  { overrideChecks }: { overrideChecks: boolean }
+): T[] {
+  if (overrideChecks) {
+    return items;
+  }
+  return items.slice(0, DEFAULT_ACTIVATION_NUDGE_MAX_USERS_PER_RUN);
+}
