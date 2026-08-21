@@ -5,7 +5,6 @@ import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/ag
 import { getEffectiveSpaceIdsForAgentRun } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { updateConversationRequirementsForSkills } from "@app/lib/api/assistant/conversation/skill_permissions";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
-import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import {
   filterUsersWithSharedMembership,
   hasSharedMembership,
@@ -68,7 +67,6 @@ import {
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import logger from "@app/logger/logger";
 import type {
   AgentConfigurationWithoutModelType,
   LightAgentConfigurationType,
@@ -91,9 +89,7 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
-import type { GrantVerb } from "@app/types/group_permissions";
 import { grantKey } from "@app/types/group_permissions";
-import { SKILL_GROUP_PREFIX } from "@app/types/groups";
 import type {
   AccessControlList,
   RoleGrant,
@@ -259,7 +255,7 @@ export interface SkillResource
  * @see SystemSkillsRegistry for always-enabled system skill definitions
  */
 
-// The role a skill's editor group holds on the skill. Its verbs live in ROLE_REGISTRY.skill.
+// The grant a skill's editors hold on the skill. Its verbs live in ROLE_REGISTRY.skill.
 const SKILL_EDITOR_GRANT_TYPE = "editor" as const;
 
 const SKILL_ROLE_GRANTS: RoleGrant[] = [
@@ -487,10 +483,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       );
 
-      const editorGroup = await this.makeNewSkillEditorsGroup(auth, skill, {
-        addCurrentUserAsEditor,
-        transaction,
-      });
+      if (addCurrentUserAsEditor) {
+        await this.grantCreatorAsEditor(auth, skill, { transaction });
+      }
 
       // MCP server configurations for the skill.
       await SkillMCPServerConfigurationModel.bulkCreate(
@@ -527,7 +522,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       const skillResource = new this(this.model, skill.get(), {
         dataSourceConfigurations,
-        editorGroup,
         fileAttachments,
         mcpServerConfigurations: mcpServerViews.map((view) => ({
           view,
@@ -536,10 +530,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       await skillResource.normalizeSkillReferenceTags(auth, { transaction });
       await skillResource.syncSkillReferences(auth, { transaction });
-
-      // Mirror the editor-group association into group_permissions, in the same transaction as the
-      // association itself.
-      await skillResource.writeGroupPermissions(auth, { transaction });
 
       return skillResource;
     });
@@ -593,20 +583,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Creates a new skill editors group for the given skill and adds the creating
-   * user to it.
+   * Grants the creating user the skill's `editor` grant, which `grantToUser` holds in one
+   * regular_auto group per skill. Skills no longer carry a `skill_editors` group of their own:
+   * editorship lives entirely in `group_permissions`.
    */
-  private static async makeNewSkillEditorsGroup(
+  private static async grantCreatorAsEditor(
     auth: Authenticator,
     skill: SkillConfigurationModel,
-    {
-      addCurrentUserAsEditor = true,
-      transaction,
-    }: {
-      addCurrentUserAsEditor?: boolean;
-      transaction?: Transaction;
-    } = {}
-  ): Promise<GroupResource> {
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
 
     assert(
@@ -614,52 +599,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       "Unexpected: skill and workspace mismatch"
     );
 
-    const defaultGroup = await GroupResource.makeNew(
-      {
-        workspaceId: workspace.id,
-        name: `${SKILL_GROUP_PREFIX} ${skill.name} (skill:${skill.id})`,
-        kind: "skill_editors",
-      },
-      {
-        memberIds: addCurrentUserAsEditor ? [auth.getNonNullableUser().id] : [],
-        transaction,
-      }
-    );
-
-    await GroupSkillModel.create(
-      {
-        groupId: defaultGroup.id,
-        skillConfigurationId: skill.id,
-        workspaceId: workspace.id,
-      },
-      { transaction }
-    );
-
-    // Dual write (see `writeEditorUserGrants`): the creator is also an editor through a per-user
-    // grant, not only through the skill_editors group. Best-effort — unlike the group above, the
-    // grant path requires a workspace membership row, and skill creation must not start failing for
-    // callers that lack one. Logged so the divergence is visible.
-    if (addCurrentUserAsEditor) {
-      const grantResult = await GroupPermissionResource.grantToUser(auth, {
-        user: auth.getNonNullableUser().toJSON(),
-        grantType: SKILL_EDITOR_GRANT_TYPE,
-        resourceType: "skill",
-        resourceId: skill.id,
-        transaction,
-      });
-      if (grantResult.isErr()) {
-        logger.error(
-          {
-            error: grantResult.error.message,
-            skillId: skill.id,
-            workspaceId: workspace.sId,
-          },
-          "Failed to grant the skill creator their editor user grant"
-        );
-      }
+    const grantResult = await GroupPermissionResource.grantToUser(auth, {
+      user: auth.getNonNullableUser().toJSON(),
+      grantType: SKILL_EDITOR_GRANT_TYPE,
+      resourceType: "skill",
+      resourceId: skill.id,
+      transaction,
+    });
+    // This grant is the only thing making the creator an editor of their own skill: without it the
+    // skill is created with no editor and nobody but a workspace admin can fix it. Throwing rolls
+    // the creation transaction back.
+    if (grantResult.isErr()) {
+      throw new Error(
+        `Failed to grant the skill creator their editor grant: ${grantResult.error.message}`
+      );
     }
-
-    return defaultGroup;
   }
 
   private static async baseFetch(
@@ -2216,16 +2170,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   canWrite(auth: Authenticator): boolean {
-    // TODO(governance): cleanup we we'll be able to assign API key to editor groups.
+    // TODO(governance): cleanup once we'll be able to grant API keys editorship on a skill.
     // TODO(@jd): Revisit this shortcircuit with our current ACLs stack.
-    // API keys cannot be added to a skill's editor group (no such assignment mechanism exists),
+    // API keys cannot hold a skill's `editor` grant (no such assignment mechanism exists),
     // so any key is allowed to write to any skill. Skill *creation* is separately gated by
     // `auth.hasWorkspacePermission("create", "skill")`; this only governs already-existing skills.
     if (auth.isKey()) {
       return true;
     }
 
-    return this.hasSkillPermission(auth, "write");
+    return auth.hasPermission("write", this);
   }
 
   canAdministrate(auth: Authenticator): boolean {
@@ -2235,33 +2189,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return true;
     }
 
-    return this.hasSkillPermission(auth, "admin");
-  }
-
-  // Serves the decision from `group_permissions` (see `getAccessControlLists`), unless the
-  // `use_legacy_acls` kill switch is on — then it falls back to the pre-migration path, where the
-  // editor group is listed inline in its own ACL and membership decides. Remove the fallback (and
-  // the switch) once the table is trusted.
-  private hasSkillPermission(auth: Authenticator, verb: GrantVerb): boolean {
-    if (isLegacyAclsEnabled()) {
-      if (!this.editorGroup) {
-        return false;
-      }
-
-      return auth.hasPermissionForAcls(
-        verb,
-        this.editorGroup.getAccessControlLists(auth)
-      );
-    }
-
-    return auth.hasPermission(verb, this);
+    return auth.hasPermission("admin", this);
   }
 
   /**
    * The skill's access-control list: the code role rules plus the caller's own verbs resolved from
-   * its `group_permissions` grants (written by `writeGroupPermissions` on every mutation of the
-   * editor-group association). The editor group is not read here — membership in it only matters
-   * through the grant it holds.
+   * its `group_permissions` grants — for skills, the per-user `editor` grants held by the
+   * regular_auto group (see `grantToUser`).
    */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
     // Global skills carry no row, so there is no grant to look up (and their synthetic `id` of -1
@@ -2282,40 +2216,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         workspaceId: this.workspaceId,
       },
     ];
-  }
-
-  // Writes this skill's `group_permissions` row from its `group_skills` association: the editor
-  // group holds the `editor` role on the skill. The skill mutation paths call this to keep the
-  // table in sync as it becomes the source of truth.
-  //
-  // Inserts find-or-create, so it is idempotent without clearing the skill's grants first — which
-  // matters now that per-user grants (the regular_auto group from `grantToUser`) live on the same
-  // resource: wiping them all would revoke those and orphan their group.
-  async writeGroupPermissions(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
-    if (!this.editorGroup) {
-      return;
-    }
-
-    await GroupPermissionResource.grant(auth, {
-      group: this.editorGroup,
-      grantType: SKILL_EDITOR_GRANT_TYPE,
-      resourceType: "skill",
-      resourceId: this.id,
-      transaction,
-    });
-  }
-
-  // Backfill entry: (re-)derive this skill's `group_permissions` from its `group_skills`
-  // association. Delegates to `writeGroupPermissions` — the same logic the mutation paths use — so
-  // the one-off backfill and the ongoing writes can never disagree. Idempotent; safe to re-run.
-  async reconcileGroupPermissions(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
-    return this.writeGroupPermissions(auth, { transaction });
   }
 
   private async listActiveAgents(
@@ -2596,20 +2496,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * The skill's editors. Together with `batchListEditors`, the only place editors are read from:
-   * callers must not reach into `editorGroup` themselves, so that changing where editors are
-   * stored is a change to these two methods alone.
+   * The skill's editors: the members of the regular_auto group holding the skill's `editor` grant
+   * (see `GroupPermissionResource.grantToUser`). Together with `batchListEditors`, the only place
+   * editors are read from.
    *
-   * Returns null when the skill has no editor group (global/system skills).
+   * Returns null for code-defined global/system skills, which have no editors.
    */
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
     // Code-defined global/system skills have no editors at all.
     if (this.globalSId) {
       return null;
-    }
-
-    if (isLegacyAclsEnabled()) {
-      return (await this.editorGroup?.getActiveMembers(auth)) ?? null;
     }
 
     const grantGroup =
@@ -2636,10 +2532,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    if (!this.editorGroup) {
-      return new Err(new Error("The skill does not have an editors group."));
-    }
-
     const existingEditors = await this.listEditors(auth);
     const existingEditorIds = new Set(existingEditors?.map((u) => u.id) ?? []);
     const usersToAdd = users.filter((u) => !existingEditorIds.has(u.id));
@@ -2657,26 +2549,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Adds editors, surfacing the group's typed errors so callers can map them (the editors endpoint
-   * turns them into status codes). Authorizes the caller, then mirrors the underlying group
-   * operation one-to-one — `upsertEditors` is the wrapper that additionally skips users who are
-   * already editors.
+   * Adds editors: each user gets the skill's `editor` grant. Typed errors so callers can map them
+   * (the editors endpoint turns them into status codes). Authorizes the caller; `upsertEditors` is
+   * the wrapper that additionally skips users who are already editors.
    */
   async addEditors(
     auth: Authenticator,
     users: UserResource[]
-  ): Promise<
-    Result<
-      undefined,
-      DustError<
-        | "unauthorized"
-        | "user_not_found"
-        | "user_already_member"
-        | "group_requirements_not_met"
-        | "system_or_global_group"
-      >
-    >
-  > {
+  ): Promise<Result<undefined, DustError<"unauthorized" | "user_not_found">>> {
     if (users.length === 0) {
       return new Ok(undefined);
     }
@@ -2690,48 +2570,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    if (!this.editorGroup) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "The skill does not have an editors group."
-        )
-      );
-    }
-
-    const addResult = await this.editorGroup.dangerouslyAddMembers(auth, {
-      users: users.map((u) => u.toJSON()),
-    });
-    if (addResult.isErr()) {
-      return addResult;
-    }
-
-    const grantResult = await this.writeEditorUserGrants(auth, users, "grant");
-    if (grantResult.isErr()) {
-      return new Err(new DustError("unauthorized", grantResult.error.message));
-    }
-
-    return new Ok(undefined);
+    return this.writeEditorUserGrants(auth, users, "grant");
   }
 
   /**
-   * Removes editors. Like `addEditors`: authorizes the caller, then surfaces the group's typed
-   * errors for the caller to map.
+   * Removes editors: each user loses the skill's `editor` grant. Like `addEditors`: authorizes the
+   * caller, then surfaces typed errors for the caller to map.
    */
   async removeEditors(
     auth: Authenticator,
     users: UserResource[]
-  ): Promise<
-    Result<
-      undefined,
-      DustError<
-        | "unauthorized"
-        | "user_not_found"
-        | "user_not_member"
-        | "system_or_global_group"
-      >
-    >
-  > {
+  ): Promise<Result<undefined, DustError<"unauthorized" | "user_not_found">>> {
     if (users.length === 0) {
       return new Ok(undefined);
     }
@@ -2745,43 +2594,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    if (!this.editorGroup) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "The skill does not have an editors group."
-        )
-      );
-    }
-
-    const removeResult = await this.editorGroup.dangerouslyRemoveMembers(auth, {
-      users: users.map((u) => u.toJSON()),
-    });
-    if (removeResult.isErr()) {
-      return removeResult;
-    }
-
-    const revokeResult = await this.writeEditorUserGrants(
-      auth,
-      users,
-      "revoke"
-    );
-    if (revokeResult.isErr()) {
-      return new Err(new DustError("unauthorized", revokeResult.error.message));
-    }
-
-    return new Ok(undefined);
+    return this.writeEditorUserGrants(auth, users, "revoke");
   }
 
-  // Dual write for the editor-group migration: editors are becoming per-user grants
-  // (`grantToUser`, backed by one regular_auto group per skill) instead of members of the skill's
-  // `skill_editors` group. Both are written until the read side moves over; the legacy membership
-  // is still what `listEditors` — and therefore the served ACL — is derived from.
+  // Editors are per-user grants: `grantToUser` holds them in one regular_auto group per skill, and
+  // `revokeFromUser` deletes that group once its last member leaves.
   private async writeEditorUserGrants(
     auth: Authenticator,
     users: UserResource[],
     operation: "grant" | "revoke"
-  ): Promise<Result<void, Error>> {
+  ): Promise<Result<undefined, DustError<"unauthorized" | "user_not_found">>> {
     for (const user of users) {
       const spec = {
         user: user.toJSON(),
@@ -2796,7 +2618,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           : await GroupPermissionResource.revokeFromUser(auth, spec);
 
       if (result.isErr()) {
-        return new Err(result.error);
+        return new Err(new DustError("user_not_found", result.error.message));
       }
     }
 
@@ -3112,39 +2934,27 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return result;
     }
 
-    // Editors come from the per-user grants (one regular_auto group per skill). Only the kill
-    // switch reads the skill_editors group — see `listEditors`.
-    let groupBySkillModelId: Map<ModelId, GroupResource>;
-    if (isLegacyAclsEnabled()) {
-      groupBySkillModelId = new Map(
-        removeNulls(
-          customSkills.map((skill) =>
-            skill.editorGroup ? ([skill.id, skill.editorGroup] as const) : null
-          )
-        )
-      );
-    } else {
-      const editorGrantSpec = (skill: SkillResource) => ({
-        grantType: SKILL_EDITOR_GRANT_TYPE,
-        resourceType: "skill" as const,
-        resourceId: skill.id,
+    // Editors come from the per-user grants: one regular_auto group per skill — see `listEditors`.
+    const editorGrantSpec = (skill: SkillResource) => ({
+      grantType: SKILL_EDITOR_GRANT_TYPE,
+      resourceType: "skill" as const,
+      resourceId: skill.id,
+    });
+
+    const groupByGrant =
+      await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+        grants: customSkills.map(editorGrantSpec),
       });
 
-      const groupByGrant =
-        await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
-          grants: customSkills.map(editorGrantSpec),
-        });
+    const groupBySkillModelId = new Map<ModelId, GroupResource>(
+      removeNulls(
+        customSkills.map((skill) => {
+          const group = groupByGrant.get(grantKey(editorGrantSpec(skill)));
 
-      groupBySkillModelId = new Map(
-        removeNulls(
-          customSkills.map((skill) => {
-            const group = groupByGrant.get(grantKey(editorGrantSpec(skill)));
-
-            return group ? ([skill.id, group] as const) : null;
-          })
-        )
-      );
-    }
+          return group ? ([skill.id, group] as const) : null;
+        })
+      )
+    );
 
     const membershipsByGroupId =
       await GroupResource.getActiveMembershipsForGroups(auth, [
@@ -3335,10 +3145,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           { transaction }
         );
 
-        // Restore all editor group memberships (set suspended → active).
-        if (this.editorGroup) {
-          await this.editorGroup.restoreMembers(auth, { transaction });
-        }
+        // Restore the editors (suspended → active).
         await this.suspendOrRestoreEditorGrantGroup(auth, "restore", {
           transaction,
         });
@@ -3541,7 +3348,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await SkillConfigurationModel.update(
         {
           availability,
-          // Publishing counts as an edit even when the caller is not in the editor group.
+          // Publishing counts as an edit even when the caller is not an editor.
           ...(user ? { editedBy: user.id } : {}),
         },
         {
@@ -4417,7 +4224,34 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: { workspaceId },
     });
 
-    // Delete editor groups associated with skills.
+    // Delete the editor grants and the regular_auto groups holding them: those groups exist only
+    // to carry a skill's grant, so they go with the skills.
+    const skills = await SkillConfigurationModel.findAll({
+      attributes: ["id"],
+      where: { workspaceId },
+    });
+    const grantGroups =
+      await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+        grants: skills.map((skill) => ({
+          grantType: SKILL_EDITOR_GRANT_TYPE,
+          resourceType: "skill" as const,
+          resourceId: skill.id,
+        })),
+      });
+
+    for (const skill of skills) {
+      await GroupPermissionResource.deleteAllForResource(auth, {
+        resourceType: "skill",
+        resourceId: skill.id,
+      });
+    }
+
+    for (const grantGroup of grantGroups.values()) {
+      await grantGroup.delete(auth);
+    }
+
+    // Skills created before editorship moved to group_permissions still carry a legacy editor
+    // group; clean those up too.
     const groupSkills = await GroupSkillModel.findAll({
       where: { workspaceId },
     });

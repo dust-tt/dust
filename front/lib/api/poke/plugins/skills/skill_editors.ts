@@ -57,11 +57,6 @@ export const updateSkillEditorsPlugin = createPlugin({
       return new Err(new Error("Skill not found"));
     }
 
-    const editorGroup = resource.editorGroup;
-    if (!editorGroup) {
-      return new Err(new Error("Skill does not have an editor group"));
-    }
-
     const { members } = args;
     const selectedMemberIds = members || [];
 
@@ -160,9 +155,6 @@ export const updateSkillEditorsPlugin = createPlugin({
     });
   },
   isApplicableTo: (_auth, resource) => {
-    if (!resource) {
-      return false;
-    }
-    return resource.editorGroup !== null;
+    return resource !== null;
   },
 });
