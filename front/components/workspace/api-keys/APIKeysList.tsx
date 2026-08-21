@@ -1,4 +1,3 @@
-import { CostShareCell } from "@app/components/workspace/analytics/creditsTableCells";
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { formatCredits } from "@app/lib/client/credits";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -51,7 +50,6 @@ interface APIKeysListProps {
   isLoading: boolean;
   isError: boolean;
   consumptionRows: ConsumptionTopRow[];
-  totalCredits: number;
   isConsumptionLoading: boolean;
   isConsumptionError: boolean;
   hasMoreConsumptionRows: boolean;
@@ -73,7 +71,6 @@ interface APIKeyRowData {
   secret: string;
   status: APIKeyStatus;
   credits: number | null;
-  consumptionShare: number | null;
   monthlyCap: string;
   lastUsedAt: number | null;
   menuItems: MenuItem[];
@@ -159,10 +156,6 @@ function matchesAPIKeySearch(row: APIKeyRowData, search: string): boolean {
     row.status,
     ...row.spaces,
   ].some((value) => value.toLowerCase().includes(normalizedSearch));
-}
-
-function EmptyCell() {
-  return <span className="text-xs text-muted-foreground">—</span>;
 }
 
 interface ConsumptionCellProps {
@@ -320,28 +313,6 @@ function buildColumns({
       },
     },
     {
-      id: "consumptionShare",
-      accessorKey: "consumptionShare",
-      header: "Consumption share",
-      enableSorting: false,
-      meta: {
-        className: "hidden h-16 w-32 @lg-table:table-cell",
-        headerAlign: "left",
-        tooltip: "Share of credits consumed by API keys in this period",
-      },
-      cell: (info) => (
-        <ConsumptionCell isLoading={isConsumptionLoading} align="left">
-          <DataTable.CellContent className="w-full justify-start">
-            {info.row.original.consumptionShare === null ? (
-              <EmptyCell />
-            ) : (
-              <CostShareCell share={info.row.original.consumptionShare} />
-            )}
-          </DataTable.CellContent>
-        </ConsumptionCell>
-      ),
-    },
-    {
       id: "credits",
       accessorKey: "credits",
       header: "Credits",
@@ -355,11 +326,7 @@ function buildColumns({
               info.row.original.credits === null
                 ? "—"
                 : formatCredits(info.row.original.credits)
-            }/${
-              info.row.original.monthlyCap === "Unlimited"
-                ? "∞"
-                : info.row.original.monthlyCap
-            }`}
+            }/${info.row.original.monthlyCap}`}
           />
         </ConsumptionCell>
       ),
@@ -475,9 +442,7 @@ function buildColumns({
     return columns.filter((column) => column.id !== "monthlyCap");
   }
 
-  return columns.filter(
-    (column) => column.id !== "consumptionShare" && column.id !== "credits"
-  );
+  return columns.filter((column) => column.id !== "credits");
 }
 
 export function APIKeysList({
@@ -486,7 +451,6 @@ export function APIKeysList({
   isLoading,
   isError,
   consumptionRows,
-  totalCredits,
   isConsumptionLoading,
   isConsumptionError,
   hasMoreConsumptionRows,
@@ -550,10 +514,6 @@ export function APIKeysList({
           secret: key.secret,
           status,
           credits,
-          consumptionShare:
-            credits === null || totalCredits === 0
-              ? null
-              : credits / totalCredits,
           monthlyCap: formatMonthlyCap({
             key,
             showLegacyUsdMonthlyCap,
@@ -573,7 +533,6 @@ export function APIKeysList({
       showAnalyticsConsumption,
       showCreditMonthlyCap,
       showLegacyUsdMonthlyCap,
-      totalCredits,
     ]
   );
 
