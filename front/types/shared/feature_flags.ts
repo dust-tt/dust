@@ -368,7 +368,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   enforce_premium_model_message_limit: {
     description:
-      "Enforce the premium-model cap: block a message once the user has spent 25 premium-tier messages in the rolling week, on workspaces with a non-credit-priced (legacy) plan. Usage is counted regardless, so the flag only controls blocking.",
+      "Enforce the premium-model cap: once the user has spent 25 premium-tier messages in the rolling week, run the message on the Standard stream instead, on workspaces with a non-credit-priced (legacy) plan. Usage is counted regardless, so the flag only controls enforcement.",
     stage: "dust_only",
   },
   editable_tool_inputs: {

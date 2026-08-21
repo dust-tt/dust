@@ -343,7 +343,7 @@ export const createAgentMessages = async (
           agentMessage: AgentMessageType;
           agentMessageRow: AgentMessageModel;
           parentId: number;
-          modelResolution: AgentMessageModelResolution | null;
+          modelResolution: AgentMessageModelResolution;
         }
       | {
           type: "delete";
@@ -397,21 +397,14 @@ export const createAgentMessages = async (
             agentConfigurationVersion: agentConfiguration.version,
             conversationId: conversation.id,
             workspaceId: owner.id,
-            // Copy over the values from the original agent message row, unless the retry
-            // resolved to a different model (premium fair use switching to Standard).
             skipToolsValidation: metadata.agentMessageRow.skipToolsValidation,
             resolvedProviderId:
-              metadata.modelResolution?.resolvedModel.providerId ??
-              metadata.agentMessageRow.resolvedProviderId,
-            resolvedModelId:
-              metadata.modelResolution?.resolvedModel.modelId ??
-              metadata.agentMessageRow.resolvedModelId,
+              metadata.modelResolution.resolvedModel.providerId,
+            resolvedModelId: metadata.modelResolution.resolvedModel.modelId,
             resolvedReasoningEffort:
-              metadata.modelResolution?.resolvedModel.reasoningEffort ??
-              metadata.agentMessageRow.resolvedReasoningEffort,
+              metadata.modelResolution.resolvedModel.reasoningEffort,
             modelResolutionMethod:
-              metadata.modelResolution?.modelResolutionMethod ??
-              metadata.agentMessageRow.modelResolutionMethod,
+              metadata.modelResolution.modelResolutionMethod,
           },
           { transaction }
         );

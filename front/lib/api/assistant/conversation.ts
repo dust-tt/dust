@@ -35,11 +35,7 @@ import {
   batchRenderUserMessagesWithoutMentions,
 } from "@app/lib/api/assistant/messages";
 import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
-import type { PremiumModelFairUseDecision } from "@app/lib/api/assistant/premium_model_limit";
-import {
-  applyPremiumModelFairUse,
-  premiumModelLimitMessage,
-} from "@app/lib/api/assistant/premium_model_limit";
+import { enforcePremiumModelLimit } from "@app/lib/api/assistant/premium_model_limit";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
@@ -525,38 +521,6 @@ export function isUserMessageContextValid(
   }
 }
 
-// This method is in charge of creating a new user message in database, running the necessary agents
-// in response and updating accordingly the conversation. AgentMentions must point to valid agent
-// configurations from the same workspace or whose scope is global.
-// Maps the fair-use gate's decision onto the message-posting flow: Ok(null) runs what was
-// resolved, Ok(resolution) runs the downgraded model instead.
-export function applyFairUseDecision(
-  decision: PremiumModelFairUseDecision
-): Result<
-  AgentMessageModelResolution | null,
-  APIErrorWithContentfulStatusCode
-> {
-  switch (decision.action) {
-    case "run_as_requested":
-      return new Ok(null);
-
-    case "downgrade":
-      return new Ok(decision.resolution);
-
-    case "refuse":
-      return new Err({
-        status_code: 429,
-        api_error: {
-          type: "rate_limit_error",
-          message: premiumModelLimitMessage(),
-        },
-      });
-
-    default:
-      assertNever(decision);
-  }
-}
-
 export async function postUserMessage(
   auth: Authenticator,
   {
@@ -867,16 +831,15 @@ export async function postUserMessage(
     : null;
 
   if (user && modelResolution) {
-    const decision = await applyPremiumModelFairUse(auth, {
+    const premiumLimitResult = await enforcePremiumModelLimit(auth, {
       user,
       resolution: modelResolution,
       context,
     });
-    const premiumModelLimitResult = applyFairUseDecision(decision);
-    if (premiumModelLimitResult.isErr()) {
-      return premiumModelLimitResult;
+    if (premiumLimitResult.isErr()) {
+      return premiumLimitResult;
     }
-    modelResolution = premiumModelLimitResult.value ?? modelResolution;
+    modelResolution = premiumLimitResult.value;
   }
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
@@ -1289,16 +1252,15 @@ export async function editUserMessage(
     : null;
 
   if (user && modelResolution) {
-    const decision = await applyPremiumModelFairUse(auth, {
+    const premiumLimitResult = await enforcePremiumModelLimit(auth, {
       user,
       resolution: modelResolution,
       context: message.context,
     });
-    const premiumModelLimitResult = applyFairUseDecision(decision);
-    if (premiumModelLimitResult.isErr()) {
-      return premiumModelLimitResult;
+    if (premiumLimitResult.isErr()) {
+      return premiumLimitResult;
     }
-    modelResolution = premiumModelLimitResult.value ?? modelResolution;
+    modelResolution = premiumLimitResult.value;
   }
 
   try {
@@ -1856,28 +1818,26 @@ export async function retryAgentMessage(
     return limitResult;
   }
 
-  let retryModelResolution: AgentMessageModelResolution | null = null;
+  let retryModelResolution: AgentMessageModelResolution = message.resolvedModel
+    ? {
+        resolvedModel: message.resolvedModel,
+        modelResolutionMethod: message.modelResolutionMethod ?? "agent",
+      }
+    : await resolveModelForMentionedAgent(auth, {
+        configuration: message.configuration,
+      });
+
   const user = auth.user();
   if (user) {
-    const resolution = message.resolvedModel
-      ? {
-          resolvedModel: message.resolvedModel,
-          modelResolutionMethod: message.modelResolutionMethod ?? "agent",
-        }
-      : await resolveModelForMentionedAgent(auth, {
-          configuration: message.configuration,
-        });
-
-    const decision = await applyPremiumModelFairUse(auth, {
+    const premiumLimitResult = await enforcePremiumModelLimit(auth, {
       user,
-      resolution,
+      resolution: retryModelResolution,
       context: parentUserMessage.context,
     });
-    const premiumModelLimitResult = applyFairUseDecision(decision);
-    if (premiumModelLimitResult.isErr()) {
-      return premiumModelLimitResult;
+    if (premiumLimitResult.isErr()) {
+      return premiumLimitResult;
     }
-    retryModelResolution = premiumModelLimitResult.value;
+    retryModelResolution = premiumLimitResult.value;
   }
 
   const retryAgentConfiguration = await getAgentConfiguration(auth, {
@@ -3472,15 +3432,15 @@ export async function updateAgentMessageWithFinalStatus(
             selection: promotedUserMessage.requestedModel ?? undefined,
           });
 
-    const fairUseUser = promotedAuth.user();
-    if (fairUseUser) {
-      const decision = await applyPremiumModelFairUse(promotedAuth, {
-        user: fairUseUser,
+    const user = promotedAuth.user();
+    if (user) {
+      const premiumLimitResult = await enforcePremiumModelLimit(promotedAuth, {
+        user,
         resolution: modelResolution,
         context: promotedUserMessage.context,
       });
-      if (decision.action === "downgrade") {
-        modelResolution = decision.resolution;
+      if (premiumLimitResult.isOk()) {
+        modelResolution = premiumLimitResult.value;
       }
     }
 

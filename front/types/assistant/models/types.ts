@@ -37,14 +37,17 @@ export type ResolvedRequestedModel = {
 
 // How an agent message's model was resolved: "agent" (ran the agent's own
 // configured model, no override), "user" (ran a per-message model picked from
-// the input-bar picker), "auto" (resolved through the auto model), or
-// "auto_fast" / "auto_complex" (resolved through a curated stream tier).
+// the input-bar picker), "auto" (resolved through the auto model),
+// "auto_fast" / "auto_complex" (resolved through a curated stream tier), or
+// "fair_use_downgrade" (premium was asked for but the user's weekly premium
+// allowance was spent, so the message ran the Standard stream instead).
 export const MODEL_RESOLUTION_METHODS = [
   "agent",
   "user",
   "auto",
   "auto_fast",
   "auto_complex",
+  "fair_use_downgrade",
 ] as const;
 export type ModelResolutionMethodType =
   (typeof MODEL_RESOLUTION_METHODS)[number];

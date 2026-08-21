@@ -1,9 +1,6 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
-import {
-  applyFairUseDecision,
-  checkMessagesLimit,
-} from "@app/lib/api/assistant/conversation";
+import { checkMessagesLimit } from "@app/lib/api/assistant/conversation";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -15,7 +12,7 @@ import {
   createAgentMessages,
   resolveModelForMentionedAgent,
 } from "@app/lib/api/assistant/conversation/messages";
-import { applyPremiumModelFairUse } from "@app/lib/api/assistant/premium_model_limit";
+import { enforcePremiumModelLimit } from "@app/lib/api/assistant/premium_model_limit";
 import { publishMessageEventsOnMessagePostOrEdit } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
 import { MentionModel } from "@app/lib/models/agent/conversation";
@@ -234,21 +231,20 @@ export async function validateAgentMention(
     "User approved a restricted agent mention"
   );
 
-  let modelResolution = await resolveModelForMentionedAgent(auth, {
+  const resolution = await resolveModelForMentionedAgent(auth, {
     configuration,
     selection: message.requestedModel ?? undefined,
   });
 
-  const decision = await applyPremiumModelFairUse(auth, {
+  const premiumLimitResult = await enforcePremiumModelLimit(auth, {
     user: auth.getNonNullableUser(),
-    resolution: modelResolution,
+    resolution,
     context: message.context,
   });
-  const premiumModelLimitResult = applyFairUseDecision(decision);
-  if (premiumModelLimitResult.isErr()) {
-    return premiumModelLimitResult;
+  if (premiumLimitResult.isErr()) {
+    return premiumLimitResult;
   }
-  modelResolution = premiumModelLimitResult.value ?? modelResolution;
+  const modelResolution = premiumLimitResult.value;
 
   let agentMessages: AgentMessageType[];
   let updatedRichMentions: RichMentionWithStatus[];
