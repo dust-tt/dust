@@ -3,6 +3,7 @@ import { MentionModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type {
@@ -60,6 +61,7 @@ export class MentionResource extends BaseResource<MentionModel> {
 
   /**
    * The workspace's active agents not mentioned since `notMentionedSince`, with when each last was.
+   *
    * Global agents cannot appear: they have no row in `agent_configurations`. Every mention counts,
    * whatever its status.
    */
@@ -98,7 +100,18 @@ export class MentionResource extends BaseResource<MentionModel> {
       }
     );
 
-    return rows.filter(isAgentIdleRow);
+    const agents = rows.filter(isAgentIdleRow);
+    if (agents.length !== rows.length) {
+      logger.warn(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          droppedCount: rows.length - agents.length,
+        },
+        "Dropped unrecognized rows while listing agents not mentioned since"
+      );
+    }
+
+    return agents;
   }
 
   async delete(

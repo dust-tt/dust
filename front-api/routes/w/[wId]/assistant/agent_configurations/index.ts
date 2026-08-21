@@ -22,6 +22,7 @@ import keyBy from "lodash/keyBy";
 import omit from "lodash/omit";
 
 import agent from "./[aId]";
+import archiveInactive from "./archive_inactive";
 import batchUpdateModel from "./batch_update_model";
 import batchUpdateScope from "./batch_update_scope";
 import batchUpdateTags from "./batch_update_tags";
@@ -341,6 +342,7 @@ app.post(
 
 // Register static paths BEFORE `/:aId` so the param route does not swallow
 // these names as agent ids.
+app.route("/archive_inactive", archiveInactive);
 app.route("/batch_update_model", batchUpdateModel);
 app.route("/batch_update_scope", batchUpdateScope);
 app.route("/batch_update_tags", batchUpdateTags);

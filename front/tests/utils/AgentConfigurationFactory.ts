@@ -129,7 +129,7 @@ export class AgentConfigurationFactory {
   }
 
   /** Backdates every version of an agent, for features that treat a young agent differently. */
-  static async setCreatedAtForTest(
+  static async backdate(
     auth: Authenticator,
     agentId: string,
     createdAt: Date
