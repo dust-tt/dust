@@ -84,12 +84,11 @@ describe("SkillResource", () => {
         : ([] as UserResource[]);
     }
 
-    it("grants the creator on creation, and no editor group is created", async () => {
+    it("grants the creator on creation", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Grants",
       });
 
-      expect(skill.editorGroup).toBeNull();
       const editors = await fetchSkillGrants(skill.id);
       expect(editors.map((editor) => editor.sId)).toContain(
         testContext.user.sId
@@ -1689,8 +1688,6 @@ describe("SkillResource", () => {
         { name: "Skill To Delete" }
       );
 
-      // Skills no longer own an editor group; editors are the grant group's members.
-      expect(skillResource.editorGroup).toBeNull();
       const grantGroup =
         await GroupPermissionResource.findRegularAutoGroupForGrant(
           testContext.authenticator,
@@ -2777,7 +2774,7 @@ describe("SkillResource", () => {
   });
 
   describe("batchListEditors", () => {
-    it("returns editors for skills with editor groups", async () => {
+    it("returns editors for skills with an editor grant", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Editor",
       });

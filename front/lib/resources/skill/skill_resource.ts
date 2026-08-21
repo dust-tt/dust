@@ -26,7 +26,6 @@ import {
   AgentMessageSkillModel,
   ConversationSkillModel,
 } from "@app/lib/models/skill/conversation_skill";
-import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
@@ -148,9 +147,7 @@ type SkillFetchContext =
 
 type SkillResourceConstructorOptions =
   | {
-      // For global skills, there is no editor group.
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
-      editorGroup?: undefined;
       // When true, the global skill's instructions are exposed to the front-end.
       exposeInstructions?: boolean;
       fileAttachments: FileResource[];
@@ -162,7 +159,6 @@ type SkillResourceConstructorOptions =
     }
   | {
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
-      editorGroup?: GroupResource;
       // Custom skills always expose their own instructions; this flag is unused.
       exposeInstructions?: undefined;
       fileAttachments: FileResource[];
@@ -281,7 +277,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   readonly dataSourceConfigurations: SkillDataSourceConfigurationModel[];
   private fileAttachments: FileResource[];
   private readonly codeDefinedFiles: readonly CodeDefinedSkillFile[];
-  readonly editorGroup: GroupResource | null = null;
   readonly version: number | null = null;
 
   private readonly globalSId: string | null;
@@ -301,14 +296,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       files,
       globalSId,
       mcpServerConfigurations,
-      editorGroup,
       version,
     }: SkillResourceConstructorOptions
   ) {
     super(SkillConfigurationModel, blob);
 
     this.dataSourceConfigurations = dataSourceConfigurations;
-    this.editorGroup = editorGroup ?? null;
     this.exposeInstructions = exposeInstructions ?? false;
     this.fileAttachments = fileAttachments ?? [];
     this.codeDefinedFiles = files ?? [];
@@ -761,47 +754,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         "skillConfigurationId"
       );
 
-      // Fetch editor groups for all skills.
-      const skillEditorGroupsMap = new Map<number, GroupResource>();
-
-      // Batch fetch all editor groups for all skills.
-      const editorGroupSkills = await GroupSkillModel.findAll({
-        where: {
-          skillConfigurationId: {
-            [Op.in]: allowedCustomSkillIds,
-          },
-          workspaceId: workspace.id,
-        },
-        attributes: ["groupId", "skillConfigurationId"],
-        transaction,
-      });
-
-      // TODO(SKILLS 2025-12-11): Ensure all skills have ONE group.
-
-      if (editorGroupSkills.length > 0) {
-        const uniqueGroupIds = Array.from(
-          new Set(editorGroupSkills.map((eg) => eg.groupId))
-        );
-        const editorGroups = await GroupResource.fetchByModelIds(
-          auth,
-          uniqueGroupIds,
-          { transaction }
-        );
-
-        // Build a map from a skill's ID to its editor group.
-        for (const editorGroupSkill of editorGroupSkills) {
-          const group = editorGroups.find(
-            (g) => g.id === editorGroupSkill.groupId
-          );
-          if (group) {
-            skillEditorGroupsMap.set(
-              editorGroupSkill.skillConfigurationId,
-              group
-            );
-          }
-        }
-      }
-
       allowedCustomSkillsRes = allowedCustomSkills.map((customSkill) => {
         const customSkillAttributes = {
           ...customSkill.get(),
@@ -826,7 +778,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           mcpServerConfigurations: skillMCPServerViews.map((view) => ({
             view,
           })),
-          editorGroup: skillEditorGroupsMap.get(customSkill.id),
           dataSourceConfigurations: skillDataSourceConfigs,
           fileAttachments: removeNulls(
             (fileAttachmentsBySkillId[customSkill.id] ?? []).map(
@@ -2482,7 +2433,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           // We ignore data source configurations for historical versions.
           // As when the user saves we re-compute those from the nodes.
           dataSourceConfigurations: [],
-          editorGroup: this.editorGroup ?? undefined,
           fileAttachments,
           mcpServerConfigurations: mcpServerViews.map((view) => ({
             view,
@@ -3095,13 +3045,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           { transaction }
         );
 
-        // Suspend all editor group memberships for this skill.
-        // Editors lose permissions on the skill and only admin keep their "admin" permission to unarchive it.
-        if (this.editorGroup) {
-          await this.editorGroup.suspendMembers(auth, { transaction });
-        }
-        // Dual write: same for the per-user grant group, or its members would keep access to an
-        // archived skill.
+        // Suspend the memberships of the per-user grant group: editors lose their permissions on
+        // the skill, and only admins keep the "admin" permission to unarchive it.
         await this.suspendOrRestoreEditorGrantGroup(auth, "suspend", {
           transaction,
         });
@@ -3909,11 +3854,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction
         );
 
-        await GroupSkillModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
-          transaction,
-        });
-
         // The per-user grant group (see `writeEditorUserGrants`) exists only to hold this skill's
         // grant, so it goes with the skill. Fetched before the grants are dropped, since that is
         // what identifies it.
@@ -3935,10 +3875,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
         if (editorGrantGroup) {
           await editorGrantGroup.delete(auth, { transaction });
-        }
-
-        if (this.editorGroup) {
-          await this.editorGroup.delete(auth, { transaction });
         }
 
         await SkillFileAttachmentModel.destroy({
@@ -4248,24 +4184,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     for (const grantGroup of grantGroups.values()) {
       await grantGroup.delete(auth);
-    }
-
-    // Skills created before editorship moved to group_permissions still carry a legacy editor
-    // group; clean those up too.
-    const groupSkills = await GroupSkillModel.findAll({
-      where: { workspaceId },
-    });
-    const editorGroups = await GroupResource.fetchByModelIds(
-      auth,
-      groupSkills.map((gs) => gs.groupId)
-    );
-
-    await GroupSkillModel.destroy({
-      where: { workspaceId },
-    });
-
-    for (const editorGroup of editorGroups) {
-      await editorGroup.delete(auth);
     }
 
     // Delete file attachments and their underlying files.
