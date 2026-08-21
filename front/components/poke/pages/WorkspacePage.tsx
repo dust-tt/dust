@@ -138,6 +138,9 @@ export function WorkspacePage() {
     pendingSubscription,
     planLimitOverride,
     poolCreditState,
+    poolSpendLimitRateCapCount,
+    poolEsConsumedAwuCredits,
+    poolMetronomeConsumedAwuCredits,
     poolAlert,
     programmaticAlerts,
     usageCapAlert,
@@ -373,6 +376,11 @@ export function WorkspacePage() {
                   subscription={activeSubscription}
                   stripeSubscription={stripeSubscription}
                   poolCreditState={poolCreditState}
+                  poolSpendLimitRateCapCount={poolSpendLimitRateCapCount}
+                  poolEsConsumedAwuCredits={poolEsConsumedAwuCredits}
+                  poolMetronomeConsumedAwuCredits={
+                    poolMetronomeConsumedAwuCredits
+                  }
                   programmaticCreditState={programmaticCreditState}
                   programmaticWarningReached={programmaticWarningReached}
                   programmaticSpendLimitRateCapCount={

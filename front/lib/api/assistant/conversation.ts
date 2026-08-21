@@ -66,6 +66,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
 import { isProgrammaticSpendLimitRateCapReached } from "@app/lib/api/credits/programmatic_usage_limit";
+import { isWorkspaceSpendLimitRateCapReached } from "@app/lib/api/credits/usage_configuration";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { isApiKeySpendLimitRateCapReached } from "@app/lib/api/keys/spend_limit";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
@@ -2587,7 +2588,24 @@ export async function checkMessagesLimit(
     // `no_seat` gate above is intentionally left outside this exemption since
     // it reflects membership, not credit state.
     if (!isFreeOrigin(context.origin)) {
-      if (blockedReason === "user_cap_reached") {
+      // The Redis fixed-window spend-cap backups are flag-gated while we
+      // validate the counters; usage is recorded regardless (in credit_cost),
+      // so the flag only controls blocking.
+      const featureFlags = await getFeatureFlags(auth);
+      const spendCapEnabled = featureFlags.includes(
+        "enforce_user_spend_limit_rate_cap"
+      );
+
+      // Per-user cap: the Metronome-driven reason OR the Redis fixed-window
+      // backup over the current contract billing cycle. The backup applies to
+      // real users only (API keys are gated by the pool / programmatic caps
+      // instead).
+      if (
+        blockedReason === "user_cap_reached" ||
+        (user &&
+          spendCapEnabled &&
+          (await isUserSpendLimitRateCapReached(auth, { user })))
+      ) {
         return new Err({
           status_code: 403,
           api_error: {
@@ -2596,28 +2614,13 @@ export async function checkMessagesLimit(
           },
         });
       }
-      // Redis fixed-window per-user spend cap: a synchronous backup of the
-      // Metronome per-user cap over the current contract billing cycle. Only
-      // applies to real users (API keys are gated by pool / programmatic caps
-      // instead). Enforcement is gated behind a feature flag while we validate
-      // the counter; usage is recorded regardless (in credit_cost), so the flag
-      // only controls blocking.
-      if (user) {
-        const featureFlags = await getFeatureFlags(auth);
-        if (
-          featureFlags.includes("enforce_user_spend_limit_rate_cap") &&
-          (await isUserSpendLimitRateCapReached(auth, { user }))
-        ) {
-          return new Err({
-            status_code: 403,
-            api_error: {
-              type: "user_cap_reached",
-              message: "You have reached your personal usage cap.",
-            },
-          });
-        }
-      }
-      if (blockedReason === "credits_exhausted") {
+
+      // Workspace usage cap (PAYG pool): the Metronome-driven pool state
+      // (`credits_exhausted`) OR the Redis fixed-window backup.
+      if (
+        blockedReason === "credits_exhausted" ||
+        (spendCapEnabled && (await isWorkspaceSpendLimitRateCapReached(auth)))
+      ) {
         return new Err({
           status_code: 403,
           api_error: {

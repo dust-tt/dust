@@ -33,6 +33,9 @@ interface PokeUsageTabProps {
   subscription: SubscriptionType;
   stripeSubscription: PokeStripeSubscriptionWire | null;
   poolCreditState: WorkspacePoolCreditState;
+  poolSpendLimitRateCapCount: number | null;
+  poolEsConsumedAwuCredits: number | null;
+  poolMetronomeConsumedAwuCredits: number | null;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
   programmaticSpendLimitRateCapCount: number | null;
@@ -101,12 +104,16 @@ interface PokeCreditStatesCardProps {
   owner: WorkspaceType;
   creditUsageConfig: PokeCreditUsageConfig | null;
   poolCreditState: WorkspacePoolCreditState;
+  poolSpendLimitRateCapCount: number | null;
+  poolEsConsumedAwuCredits: number | null;
+  poolMetronomeConsumedAwuCredits: number | null;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
   programmaticSpendLimitRateCapCount: number | null;
   programmaticEsConsumedAwuCredits: number | null;
   programmaticMetronomeConsumedAwuCredits: number | null;
   poolAlert: MetronomeAlertRef | null;
+  usageCapAlert: MetronomeAlertRef | null;
   programmaticAlerts: PokeProgrammaticAlerts;
 }
 
@@ -114,12 +121,16 @@ function PokeCreditStatesCard({
   owner,
   creditUsageConfig,
   poolCreditState,
+  poolSpendLimitRateCapCount,
+  poolEsConsumedAwuCredits,
+  poolMetronomeConsumedAwuCredits,
   programmaticCreditState,
   programmaticWarningReached,
   programmaticSpendLimitRateCapCount,
   programmaticEsConsumedAwuCredits,
   programmaticMetronomeConsumedAwuCredits,
   poolAlert,
+  usageCapAlert,
   programmaticAlerts,
 }: PokeCreditStatesCardProps) {
   return (
@@ -134,6 +145,18 @@ function PokeCreditStatesCard({
             size="xs"
             color={creditStateChipColor(poolCreditState)}
             label={poolCreditState}
+          />
+          <span className="text-xs text-muted-foreground">
+            usage cap:{" "}
+            {creditUsageConfig?.usageCapCredits != null
+              ? `${formatCredits(creditUsageConfig.usageCapCredits)} credits`
+              : "none"}
+          </span>
+          <AlertChip alert={usageCapAlert} label="cap alert" />
+          <SpendCountersInline
+            esConsumedAwuCredits={poolEsConsumedAwuCredits}
+            rateLimiterAwuCredits={poolSpendLimitRateCapCount}
+            metronomeConsumedAwuCredits={poolMetronomeConsumedAwuCredits}
           />
           <AlertChip alert={poolAlert} label="balance alert" />
           <CreditStateLogsLink machine="pool" workspaceId={owner.sId} />
@@ -179,17 +202,13 @@ function PokeCreditStatesCard({
 
 interface PokeCreditConfigCardProps {
   creditUsageConfig: PokeCreditUsageConfig | null;
-  usageCapAlert: MetronomeAlertRef | null;
 }
 
 function PokeCreditConfigCard({
   creditUsageConfig,
-  usageCapAlert,
 }: PokeCreditConfigCardProps) {
   const paygEnabled = creditUsageConfig?.paygEnabled ?? false;
-  const usageCapCredits = creditUsageConfig?.usageCapCredits ?? null;
   const defaultDiscountPercent = creditUsageConfig?.defaultDiscountPercent ?? 0;
-  const hasUsageCap = usageCapCredits !== null && usageCapCredits > 0;
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
@@ -204,19 +223,6 @@ function PokeCreditConfigCard({
             color={paygEnabled ? "success" : "warning"}
             label={paygEnabled ? "enabled" : "disabled"}
           />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Usage cap</span>
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-foreground">
-            {hasUsageCap ? (
-              <>
-                {formatCredits(usageCapCredits)} credits
-                <AlertChip alert={usageCapAlert} label="alert" />
-              </>
-            ) : (
-              "disabled"
-            )}
-          </span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">
@@ -338,6 +344,9 @@ export function PokeUsageTab({
   subscription,
   stripeSubscription,
   poolCreditState,
+  poolSpendLimitRateCapCount,
+  poolEsConsumedAwuCredits,
+  poolMetronomeConsumedAwuCredits,
   programmaticCreditState,
   programmaticWarningReached,
   programmaticSpendLimitRateCapCount,
@@ -361,6 +370,9 @@ export function PokeUsageTab({
         owner={owner}
         creditUsageConfig={creditUsageConfig}
         poolCreditState={poolCreditState}
+        poolSpendLimitRateCapCount={poolSpendLimitRateCapCount}
+        poolEsConsumedAwuCredits={poolEsConsumedAwuCredits}
+        poolMetronomeConsumedAwuCredits={poolMetronomeConsumedAwuCredits}
         programmaticCreditState={programmaticCreditState}
         programmaticWarningReached={programmaticWarningReached}
         programmaticSpendLimitRateCapCount={programmaticSpendLimitRateCapCount}
@@ -369,12 +381,10 @@ export function PokeUsageTab({
           programmaticMetronomeConsumedAwuCredits
         }
         poolAlert={poolAlert}
+        usageCapAlert={usageCapAlert}
         programmaticAlerts={programmaticAlerts}
       />
-      <PokeCreditConfigCard
-        creditUsageConfig={creditUsageConfig}
-        usageCapAlert={usageCapAlert}
-      />
+      <PokeCreditConfigCard creditUsageConfig={creditUsageConfig} />
       <PokeDefaultAlertsCard defaultAlerts={defaultAlerts} />
       <PokeCreditPoolCard owner={owner} />
       <PokeTopUpsHistoryTable owner={owner} />

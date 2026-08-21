@@ -4,6 +4,7 @@ import { isToolExecutionStatusBillable } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
+import { recordWorkspaceSpendLimitUsage } from "@app/lib/api/credits/usage_configuration";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
 import type { ToolCostCategory } from "@app/lib/api/mcp";
@@ -19,6 +20,7 @@ import {
 import { getUsageType } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { spendLimitCycleOverrideForAuth } from "@app/lib/spend_limits/cycle";
@@ -331,6 +333,10 @@ export async function computeAndStoreAgentMessageCredits(
   if (recordedCostDelta > 0) {
     const featureFlags = await getFeatureFlags(auth);
     if (featureFlags.includes("enforce_user_spend_limit_rate_cap")) {
+      const isProgrammatic = isProgrammaticUsage(auth, {
+        userMessageOrigin: messageOrigin,
+      });
+
       // Per-user cap.
       if (user) {
         await recordUserSpendLimitUsage(auth, {
@@ -350,10 +356,31 @@ export async function computeAndStoreAgentMessageCredits(
       }
 
       // Workspace programmatic cap, for programmatic calls.
-      if (isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin })) {
+      if (isProgrammatic) {
         await recordProgrammaticSpendLimitUsage(auth, {
           incrementBy: recordedCostDelta,
         });
+      }
+
+      // Workspace usage cap (PAYG pool): pool usage only. Programmatic usage is
+      // always pool; user usage counts only for paid seats — free-seat usage
+      // draws from a separate Metronome credit type the pool cap does not
+      // measure.
+      if (isProgrammatic) {
+        await recordWorkspaceSpendLimitUsage(auth, {
+          incrementBy: recordedCostDelta,
+        });
+      } else if (user) {
+        const membership =
+          await MembershipResource.getActiveMembershipOfUserInWorkspace({
+            user,
+            workspace: auth.getNonNullableWorkspace(),
+          });
+        if (membership && membership.seatType !== "free") {
+          await recordWorkspaceSpendLimitUsage(auth, {
+            incrementBy: recordedCostDelta,
+          });
+        }
       }
     }
   }

@@ -1,5 +1,7 @@
+import { makeUsageCapSpendLimitAwuCreditsRateLimitKeyForWorkspace } from "@app/lib/api/assistant/rate_limits";
 import { passesBillingGate } from "@app/lib/api/credits/auto_seat_upgrade";
 import { syncMetronomeBalanceThresholdAlert } from "@app/lib/api/credits/balance_threshold_alert";
+import { getEsConsumedWorkspaceAwuCredits } from "@app/lib/api/credits/members_usage";
 import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import type { Authenticator } from "@app/lib/auth";
 import { isEnterprisePlanPrefix, isFreePlan } from "@app/lib/plans/plan_codes";
@@ -11,6 +13,13 @@ import {
   DEFAULT_TOP_UP_ENABLED,
   DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
 } from "@app/lib/resources/storage/models/credit_usage_configurations";
+import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
+import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
+import {
+  addFixedWindowCount,
+  getFixedWindowCount,
+  setFixedWindowCount,
+} from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
   CreditUsageConfigurationBody,
@@ -166,4 +175,110 @@ export async function updateUsageConfiguration(
   }
 
   return new Ok(await getUsageConfiguration(auth));
+}
+
+/**
+ * Reads the workspace usage-cap counter, lazily seeding it from Elasticsearch
+ * (pool AWU for the current cycle) on a 0 read. Mirrors the other spend-cap
+ * lazy seeds. Returns the effective count, or `null` on a Redis read error
+ * (caller fails open).
+ */
+async function readWorkspaceSpendLimitCountWithLazySeed(
+  auth: Authenticator,
+  { redisKey, bounds }: { redisKey: string; bounds: FixedWindowBounds }
+): Promise<number | null> {
+  const countResult = await getFixedWindowCount({ key: redisKey, bounds });
+  if (countResult.isErr()) {
+    return null;
+  }
+  if (countResult.value > 0) {
+    return countResult.value;
+  }
+
+  const consumed = await getEsConsumedWorkspaceAwuCredits(auth, {});
+  // `null` means the ES read failed (or no cycle) — treat as unknown and skip
+  // the seed rather than writing 0 (fail-open read).
+  if (consumed === null || consumed <= 0) {
+    return 0;
+  }
+  await setFixedWindowCount({
+    key: redisKey,
+    bounds,
+    value: consumed,
+    logger,
+  });
+  return consumed;
+}
+
+/**
+ * Synchronous, Metronome-independent enforcement of the workspace usage cap
+ * (`usageCapCredits`, the PAYG pool cap), read at message-send time from the
+ * Redis fixed-window counter over the current contract billing cycle. Runs
+ * alongside the Metronome-driven pool state (`credits_exhausted`) as a faster,
+ * independent backup. Returns `false` (does not block) when no cap is
+ * configured, no billing period can be resolved, or on a Redis read error
+ * (fail-open).
+ */
+export async function isWorkspaceSpendLimitRateCapReached(
+  auth: Authenticator
+): Promise<boolean> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  const threshold = config?.usageCapCredits ?? null;
+  if (threshold === null) {
+    return false;
+  }
+
+  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  if (!bounds) {
+    return false;
+  }
+
+  const count = await readWorkspaceSpendLimitCountWithLazySeed(auth, {
+    redisKey:
+      makeUsageCapSpendLimitAwuCreditsRateLimitKeyForWorkspace(workspace),
+    bounds,
+  });
+  if (count === null) {
+    logger.error(
+      { workspaceId: workspace.sId },
+      "[WorkspaceSpendLimitRateCap] Failed to read fixed-window count; allowing message"
+    );
+    return false;
+  }
+
+  return count >= threshold;
+}
+
+/**
+ * Adds `incrementBy` AWU credits to the workspace usage-cap counter for the
+ * current contract billing cycle. The caller records only *pool* usage
+ * (non-free-seat), matching what `usageCapCredits` measures. No-op when the
+ * billing period can't be resolved.
+ */
+export async function recordWorkspaceSpendLimitUsage(
+  auth: Authenticator,
+  { incrementBy }: { incrementBy: number }
+): Promise<void> {
+  // Only whole positive credits are recordable (the counter is an integer
+  // INCRBY); skip anything else rather than letting it reach the counter.
+  if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
+    return;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+
+  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  if (!bounds) {
+    return;
+  }
+
+  await addFixedWindowCount({
+    key: makeUsageCapSpendLimitAwuCreditsRateLimitKeyForWorkspace(workspace),
+    bounds,
+    incrementBy,
+    logger,
+  });
 }
