@@ -3,6 +3,7 @@ import { useAutomationsOverview } from "@app/hooks/useAutomationsOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
 import type { LightWorkspaceType } from "@app/types/user";
+import { LoadingBlock } from "@dust-tt/sparkle";
 
 interface AutomationsOverviewProps {
   owner: LightWorkspaceType;
@@ -17,9 +18,7 @@ export function AutomationsOverview({
     useAutomationsOverview({ workspaceId: owner.sId, period });
 
   if (isOverviewLoading) {
-    return (
-      <div className="h-24 w-full animate-pulse rounded-xl bg-muted-background" />
-    );
+    return <LoadingBlock className="h-24 w-full rounded-xl" />;
   }
 
   if (isOverviewError || !overview) {

@@ -5,7 +5,7 @@ import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/cons
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { formatCredits } from "@app/lib/client/credits";
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
-import { ArrowUpRight, Button, Chip } from "@dust-tt/sparkle";
+import { ArrowUpRight, Button, Chip, LoadingBlock } from "@dust-tt/sparkle";
 
 const TARGET_CHIP: Record<
   CreditUsageTarget,
@@ -80,18 +80,14 @@ export function ConsumptionSummaryView({
             : "flex items-stretch gap-6"
         }
       >
-        <div
+        <LoadingBlock
           className={
-            responsiveLayout
-              ? "h-24 animate-pulse rounded-xl bg-muted-background"
-              : "h-24 flex-1 animate-pulse rounded-xl bg-muted-background"
+            responsiveLayout ? "h-24 rounded-xl" : "h-24 flex-1 rounded-xl"
           }
         />
-        <div
+        <LoadingBlock
           className={
-            responsiveLayout
-              ? "h-24 animate-pulse rounded-xl bg-muted-background"
-              : "h-24 flex-1 animate-pulse rounded-xl bg-muted-background"
+            responsiveLayout ? "h-24 rounded-xl" : "h-24 flex-1 rounded-xl"
           }
         />
       </div>
