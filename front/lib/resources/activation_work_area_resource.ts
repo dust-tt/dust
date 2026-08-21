@@ -13,13 +13,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 // Maps a stored status (which may hold legacy values) to the public status
@@ -88,22 +82,16 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
 
   static async makeNew(
     auth: Authenticator,
-    blob: Pick<
-      CreationAttributes<ActivationWorkAreaModel>,
-      "title" | "description"
-    > &
-      Partial<Pick<CreationAttributes<ActivationWorkAreaModel>, "podId">>
+    blob: { title: string; description: string; podId: ModelId }
   ): Promise<ActivationWorkAreaResource> {
     const workspace = auth.getNonNullableWorkspace();
-    const user = auth.getNonNullableUser();
 
     const row = await this.model.create({
       workspaceId: workspace.id,
-      userId: user.id,
       status: "suggested",
       title: blob.title,
       description: blob.description,
-      podId: blob.podId ?? null,
+      podId: blob.podId,
     });
 
     return new this(this.model, row.get());
@@ -132,33 +120,32 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
     return new this(this.model, row.get());
   }
 
-  static async listByUserAndStatus(
+  static async listByActivationPods(
     auth: Authenticator,
     {
+      activationPods,
       status,
-      activationPodModelId,
     }: {
+      activationPods: ActivationPodResource[];
       status?: PublicActivationWorkAreaStatus;
-      activationPodModelId?: ModelId;
     }
   ): Promise<ActivationWorkAreaResource[]> {
-    const user = auth.getNonNullableUser();
-
-    const where: WhereOptions<ActivationWorkAreaModel> = {
-      userId: user.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    };
-
-    if (status !== undefined) {
-      where.status = { [Op.in]: matchingActivationWorkAreaStatuses(status) };
-    }
-    if (activationPodModelId !== undefined) {
-      where.podId = activationPodModelId;
+    if (activationPods.length === 0) {
+      return [];
     }
 
     const rows = await this.model.findAll({
-      where,
-      order: [["createdAt", "ASC"]],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        podId: activationPods.map((p) => p.id),
+        ...(status !== undefined
+          ? { status: { [Op.in]: matchingActivationWorkAreaStatuses(status) } }
+          : {}),
+      },
+      order: [
+        ["podId", "ASC"],
+        ["createdAt", "ASC"],
+      ],
     });
 
     return rows.map((row) => new this(this.model, row.get()));
@@ -185,7 +172,7 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
   }
 
   async updateFields(fields: {
-    status?: ActivationWorkAreaStatus;
+    status?: PublicActivationWorkAreaStatus;
     title?: string;
     description?: string;
   }): Promise<Result<undefined, Error>> {
