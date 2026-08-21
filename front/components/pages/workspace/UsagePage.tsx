@@ -25,7 +25,7 @@ import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNot
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
-import { useMembersSelection } from "@app/hooks/useMembersSelection";
+import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
 import {
   cycleElapsedPercent,
   DEFAULT_CONSUMPTION_PERIOD,
@@ -622,7 +622,7 @@ export function UsagePage() {
     () => membersUsage.map((m) => m.sId),
     [membersUsage]
   );
-  const selection = useMembersSelection({
+  const selection = useTableRowsSelection({
     pageItemIds,
     totalCount: totalMembersUsage,
     resetKey: `${searchTerm}|${seatTypeFilter ?? ""}|${groupFilter ?? ""}`,
@@ -663,7 +663,7 @@ export function UsagePage() {
   const buildBulkSelectionBody = useCallback((): BulkMemberSelectionBody => {
     const descriptor = selection.descriptor();
     return descriptor.mode === "ids"
-      ? descriptor
+      ? { mode: "ids" as const, userIds: descriptor.ids }
       : {
           mode: "all" as const,
           filter: {
@@ -671,7 +671,7 @@ export function UsagePage() {
             groupId: groupFilter ?? undefined,
             search: searchTerm.trim() || undefined,
           },
-          excludeUserIds: descriptor.excludeUserIds,
+          excludeUserIds: descriptor.excludedIds,
         };
   }, [selection, seatTypeFilter, groupFilter, searchTerm]);
 
@@ -726,8 +726,8 @@ export function UsagePage() {
   const getBulkPendingMemberIds = useCallback((): string[] => {
     const descriptor = selection.descriptor();
     return descriptor.mode === "ids"
-      ? descriptor.userIds
-      : pageItemIds.filter((id) => !descriptor.excludeUserIds.includes(id));
+      ? descriptor.ids
+      : pageItemIds.filter((id) => !descriptor.excludedIds.includes(id));
   }, [selection, pageItemIds]);
 
   const handleBulkSpendLimitValidate = useCallback(

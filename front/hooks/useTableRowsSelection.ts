@@ -1,17 +1,17 @@
 import type { RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
-type MembersSelection =
+type TableRowsSelection =
   | { mode: "ids"; ids: Set<string> }
   | { mode: "all"; excludedIds: Set<string> };
 
-type MembersSelectionDescriptor =
-  | { mode: "ids"; userIds: string[] }
-  | { mode: "all"; excludeUserIds: string[] };
+export type TableRowsSelectionDescriptor =
+  | { mode: "ids"; ids: string[] }
+  | { mode: "all"; excludedIds: string[] };
 
-const EMPTY_SELECTION: MembersSelection = { mode: "ids", ids: new Set() };
+const EMPTY_SELECTION: TableRowsSelection = { mode: "ids", ids: new Set() };
 
-export function useMembersSelection({
+export function useTableRowsSelection({
   pageItemIds,
   totalCount,
   resetKey,
@@ -20,7 +20,8 @@ export function useMembersSelection({
   totalCount: number;
   resetKey: string;
 }) {
-  const [selection, setSelection] = useState<MembersSelection>(EMPTY_SELECTION);
+  const [selection, setSelection] =
+    useState<TableRowsSelection>(EMPTY_SELECTION);
 
   // Reset during render when the filter identity changes (the React-recommended
   // alternative to an effect for adjusting state on input change).
@@ -92,11 +93,11 @@ export function useMembersSelection({
     setSelection(EMPTY_SELECTION);
   }, []);
 
-  const descriptor = useCallback((): MembersSelectionDescriptor => {
+  const descriptor = useCallback((): TableRowsSelectionDescriptor => {
     if (selection.mode === "all") {
-      return { mode: "all", excludeUserIds: [...selection.excludedIds] };
+      return { mode: "all", excludedIds: [...selection.excludedIds] };
     }
-    return { mode: "ids", userIds: [...selection.ids] };
+    return { mode: "ids", ids: [...selection.ids] };
   }, [selection]);
 
   return {
