@@ -13,14 +13,16 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.enum.text import MSO_AUTO_SIZE
 from pptx.shapes.base import BaseShape
 
+import pptx_fontmetrics
+
 EMU_PER_INCH = 914_400
 EDGE_EPSILON_EMU = 45_720  # 0.05" tolerance before flagging edge overflow.
 
 # Text-fit estimation. What decides whether text fits is the box geometry at
 # the chosen font size, not the word count - so we estimate how many characters
 # a box holds and surface it, to stop the agent sizing text blindly. It is a
-# rough ESTIMATE (real wrapping depends on glyph metrics / line spacing we don't
-# reproduce), so the overset warning only fires on GROSS overflow of a genuine
+# rough ESTIMATE (mean advance width over the string, no real line breaking),
+# so the overset warning only fires on GROSS overflow of a genuine
 # multi-line container, never on a box short enough to be a nominal-height label
 # (text overflows those by design) or one set to grow to fit its text.
 CHAR_WIDTH_EM = 0.5  # avg proportional Latin glyph advance, in em
@@ -82,6 +84,7 @@ def format_box(shape: BaseShape) -> str:
 class FitEstimate(NamedTuple):
     chars_per_line: int
     capacity: Optional[int]  # total chars; None when height isn't a real constraint
+    measured: bool = False  # widths read off the real face, not the constant
 
 
 def _frame_text_len(shape: BaseShape) -> int:
@@ -90,12 +93,16 @@ def _frame_text_len(shape: BaseShape) -> int:
     return sum(len(p.text or "") for p in shape.text_frame.paragraphs)
 
 
-def _fit_estimate(shape: BaseShape, size_pt: float) -> Optional[FitEstimate]:
+def _fit_estimate(
+    shape: BaseShape, size_pt: float, typeface: Optional[str] = None
+) -> Optional[FitEstimate]:
     if shape.width is None or shape.height is None or size_pt <= 0:
         return None
     w_in = shape.width / EMU_PER_INCH
     h_in = shape.height / EMU_PER_INCH
-    char_w = size_pt * CHAR_WIDTH_EM / 72.0
+    text = shape.text_frame.text if getattr(shape, "has_text_frame", False) else ""
+    char_em, measured = pptx_fontmetrics.mean_char_em(text, typeface)
+    char_w = size_pt * char_em / 72.0
     line_h = size_pt * LINE_HEIGHT_FACTOR / 72.0
     if char_w <= 0 or line_h <= 0:
         return None
@@ -106,7 +113,7 @@ def _fit_estimate(shape: BaseShape, size_pt: float) -> Optional[FitEstimate]:
     # Height constrains only genuine multi-line containers; a box shorter than
     # ~2 lines is a nominal-height label whose text overflows by design.
     capacity = cpl * lines if lines >= 2 else None
-    return FitEstimate(cpl, capacity)
+    return FitEstimate(cpl, capacity, measured)
 
 
 def _grows_to_fit(shape: BaseShape) -> bool:
