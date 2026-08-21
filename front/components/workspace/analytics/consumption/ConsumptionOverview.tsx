@@ -1,21 +1,49 @@
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
+import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import { timeAgoFrom } from "@app/lib/utils";
-import { Page } from "@dust-tt/sparkle";
+import { Page, Tooltip } from "@dust-tt/sparkle";
 
-interface ConsumptionOverviewProps {
+export interface ConsumptionOverviewProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
+  showError?: boolean;
 }
 
 export function ConsumptionOverview({
   workspaceId,
   period: periodSelection,
+  showError = false,
 }: ConsumptionOverviewProps) {
   const { overview, isOverviewLoading, isOverviewError } =
     useConsumptionOverview({ workspaceId, period: periodSelection });
 
+  return (
+    <ConsumptionOverviewView
+      overview={overview}
+      isOverviewLoading={isOverviewLoading}
+      isOverviewError={Boolean(isOverviewError)}
+      showError={showError}
+    />
+  );
+}
+
+interface ConsumptionOverviewViewProps {
+  overview: GetConsumptionOverviewResponse | null;
+  isOverviewLoading: boolean;
+  isOverviewError: boolean;
+  showError?: boolean;
+  showIndexingDetails?: boolean;
+}
+
+export function ConsumptionOverviewView({
+  overview,
+  isOverviewLoading,
+  isOverviewError,
+  showError = false,
+  showIndexingDetails = false,
+}: ConsumptionOverviewViewProps) {
   if (isOverviewLoading) {
     return (
       <div className="h-5 w-80 animate-pulse rounded bg-muted-background" />
@@ -23,7 +51,11 @@ export function ConsumptionOverview({
   }
 
   if (isOverviewError || !overview) {
-    return null;
+    return showError ? (
+      <Page.P variant="secondary">
+        Overview unavailable. Charts and attribution may still load.
+      </Page.P>
+    ) : null;
   }
 
   const { period, members, lastRecordAt } = overview;
@@ -32,7 +64,11 @@ export function ConsumptionOverview({
     `${formatConsumptionDate(period.startDate)} to ${formatConsumptionDate(period.endDate)}`,
     `${members.active.toLocaleString()} of ${members.total.toLocaleString()} members active`,
     ...(lastRecordAt
-      ? [`Updated ${timeAgoFrom(new Date(lastRecordAt).getTime())} ago`]
+      ? [
+          showIndexingDetails
+            ? `Latest indexed record ${timeAgoFrom(new Date(lastRecordAt).getTime())} ago`
+            : `Updated ${timeAgoFrom(new Date(lastRecordAt).getTime())} ago`,
+        ]
       : []),
   ];
 
@@ -45,7 +81,17 @@ export function ConsumptionOverview({
               |
             </span>
           )}
-          {item}
+          {showIndexingDetails &&
+          lastRecordAt &&
+          index === header.length - 1 ? (
+            <Tooltip
+              label={new Date(lastRecordAt).toLocaleString()}
+              tooltipTriggerAsChild
+              trigger={<span>{item}</span>}
+            />
+          ) : (
+            item
+          )}
         </span>
       ))}
     </Page.P>
