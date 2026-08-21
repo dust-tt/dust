@@ -1,14 +1,15 @@
+import { QueryTypes } from "sequelize";
+import type { Transaction } from "sequelize";
+
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { Transaction } from "sequelize";
 
 const WORKSPACE_CONCURRENCY = 2;
 const SPACE_CONCURRENCY = 4;
@@ -22,13 +23,21 @@ async function fetchAssociatedGroups(
   space: SpaceResource,
   transaction: Transaction
 ): Promise<{ members: GroupResource[]; editors: GroupResource[] }> {
-  const groupSpaces = await GroupSpaceModel.findAll({
-    where: {
-      vaultId: space.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-    transaction,
-  });
+  // `group_vaults` has been dropped; this historical backfill reads it via raw SQL.
+  const groupSpaces = await frontSequelize.query<{
+    groupId: number;
+    kind: string;
+  }>(
+    'SELECT "groupId", kind FROM group_vaults WHERE "vaultId" = :vaultId AND "workspaceId" = :workspaceId',
+    {
+      replacements: {
+        vaultId: space.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+      type: QueryTypes.SELECT,
+    }
+  );
 
   const memberGroupIds = groupSpaces
     .filter((gs) => gs.kind === "member" || gs.kind === "project_viewer")

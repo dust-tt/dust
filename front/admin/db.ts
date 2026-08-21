@@ -102,7 +102,6 @@ import {
 } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { KillSwitchModel } from "@app/lib/resources/storage/models/kill_switches";
@@ -194,7 +193,6 @@ export function loadAllModels() {
     SharingGrantModel,
     ExternalViewerSessionModel,
     DustAppSecretModel,
-    GroupSpaceModel,
     GroupPermissionModel,
     WebhookSourceModel,
     WebhookSourcesViewModel,
