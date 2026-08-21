@@ -1,10 +1,5 @@
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
-import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
-import {
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-} from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
@@ -12,14 +7,15 @@ import type {
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import {
+  AUTO_FAST_MODEL_CONFIG,
+  AUTO_MODEL_CONFIG,
+} from "@app/types/assistant/models/auto";
 
 export function _getAnalystGlobalAgent({
   auth,
-  featureFlags,
 }: {
   auth: Authenticator;
-  featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType {
   const prompt = `<primary_goal>
 You are @analyst, an analytics assistant for workspace admins and managers. You help them understand how their Dust workspace is being used by answering questions with data retrieved through your tools.
@@ -33,19 +29,19 @@ You are @analyst, an analytics assistant for workspace admins and managers. You 
 5. Be concise and lead with the answer; add brief context only when it helps interpretation.
 </guidelines>`;
 
+  // Standard auto stream for upgraded workspaces, Basic one otherwise. Both
+  // sentinels are resolved to a concrete model + effort at message-send time by
+  // resolveModel().
   const modelConfiguration = auth.isUpgraded()
-    ? getLargeWhitelistedModel(auth, undefined, { featureFlags })
-    : getSmallWhitelistedModel(auth, undefined, { featureFlags });
+    ? AUTO_MODEL_CONFIG
+    : AUTO_FAST_MODEL_CONFIG;
 
-  const model: AgentModelConfigurationType = modelConfiguration
-    ? {
-        providerId: modelConfiguration.providerId,
-        modelId: modelConfiguration.modelId,
-        temperature: 0.2,
-        reasoningEffort: modelConfiguration.defaultReasoningEffort,
-      }
-    : dummyModelConfiguration;
-  const status = modelConfiguration ? "active" : "disabled_by_admin";
+  const model: AgentModelConfigurationType = {
+    providerId: modelConfiguration.providerId,
+    modelId: modelConfiguration.modelId,
+    temperature: 0.2,
+    reasoningEffort: modelConfiguration.defaultReasoningEffort,
+  };
 
   const sId = GLOBAL_AGENTS_SID.ANALYST;
   const metadata = getGlobalAgentMetadata(sId);
@@ -61,7 +57,7 @@ You are @analyst, an analytics assistant for workspace admins and managers. You 
     instructions: prompt + globalAgentGuidelines,
     instructionsHtml: null,
     pictureUrl: metadata.pictureUrl,
-    status,
+    status: "active",
     userFavorite: false,
     scope: "global",
     model,
