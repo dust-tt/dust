@@ -5,6 +5,7 @@ import {
   type BuildTarget,
   getBaseBuildOptions,
 } from "./esbuild.shared";
+import { checkBundleContents } from "./lib/build-checks";
 
 function getProductionBuildOptions(target: BuildTarget): esbuild.BuildOptions {
   return {
@@ -25,6 +26,17 @@ async function buildTarget(target: BuildTarget) {
     ? `${(output.bytes / 1024 / 1024).toFixed(2)} MB`
     : "unknown";
   console.log(`✅ ${target.name} built (${sizeMb})`);
+
+  if (target.name === "server" && result.metafile) {
+    const problems = checkBundleContents(result.metafile);
+    if (problems.length > 0) {
+      console.error("❌ Bundle check failed:");
+      for (const problem of problems) {
+        console.error(`   - ${problem}`);
+      }
+      process.exit(1);
+    }
+  }
 
   if (result.warnings.length > 0) {
     console.log(
