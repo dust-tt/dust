@@ -46,6 +46,7 @@ export interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
   period: ConsumptionPeriodSelection;
   filter: UsageFilter;
+  personal?: boolean;
   onFilterChange: (next: UsageFilter) => void;
   showMemberGroupFilter?: boolean;
 }
@@ -54,6 +55,7 @@ export function UsageFilterPanel({
   owner,
   period,
   filter,
+  personal,
   onFilterChange,
   showMemberGroupFilter = true,
 }: UsageFilterPanelProps) {
@@ -71,6 +73,7 @@ export function UsageFilterPanel({
     workspaceId: owner.sId,
     period,
     filter: state.draftScopeFilter,
+    personal,
     disabled: !state.isOpen,
   });
 

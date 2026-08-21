@@ -439,6 +439,8 @@ export interface ConsumptionAttributionRowsProps {
   dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  personal?: boolean;
+  disabled?: boolean;
   onAddFilter: (row: ConsumptionTopRow) => void;
   onRemoveFilter: (row: ConsumptionTopRow) => void;
   search: string;
@@ -515,6 +517,8 @@ export function ConsumptionAttributionRowsView({
   dimension,
   period,
   filter,
+  personal,
+  disabled,
   onAddFilter,
   onRemoveFilter,
   search,
@@ -610,6 +614,8 @@ export function ConsumptionAttributionRowsView({
             dimension={dimension}
             period={period}
             filter={filter}
+            personal={personal}
+            disabled={disabled}
             onViewAll={onViewAll}
             expandedRowId={expandedRowId}
             isLoading
@@ -645,6 +651,8 @@ export function ConsumptionAttributionRowsView({
               dimension={dimension}
               period={period}
               filter={filter}
+              personal={personal}
+              disabled={disabled}
               onViewAll={onViewAll}
               expandedRowId={expandedRowId}
               sorting={sorting}
@@ -695,7 +703,9 @@ function WorkspaceConsumptionAttributionRows(
     offset: queryState.pagination.pageIndex * queryState.pagination.pageSize,
     search: props.search,
     filter: props.filter,
+    personal: props.personal,
     sortOrder: queryState.sortOrder,
+    disabled: props.disabled,
   });
 
   return (
@@ -720,6 +730,8 @@ export interface ConsumptionAttributionTableProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  personal?: boolean;
+  disabled?: boolean;
   onAddFilter: (row: ConsumptionTopRow) => void;
   onRemoveFilter: (row: ConsumptionTopRow) => void;
   // Owned by the page: the selected tab also drives the chart's breakdown.
@@ -741,6 +753,8 @@ export function ConsumptionAttributionTableView({
   workspaceId,
   period,
   filter,
+  personal,
+  disabled,
   onAddFilter,
   onRemoveFilter,
   dimension,
@@ -762,6 +776,11 @@ export function ConsumptionAttributionTableView({
     shouldReduceMotion || transition.target !== dimension
       ? 0
       : transition.direction;
+  const visibleDimensions = personal
+    ? CONSUMPTION_DIMENSIONS.filter(
+        (tabDimension) => tabDimension !== "user" && tabDimension !== "group"
+      )
+    : CONSUMPTION_DIMENSIONS;
 
   const exportBody: ConsumptionExportBody = {
     period: period.kind,
@@ -774,7 +793,7 @@ export function ConsumptionAttributionTableView({
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-base font-semibold text-foreground">Attribution</h3>
-        {showExport && (
+        {showExport && !personal && (
           <ConsumptionExportPanel
             workspaceId={workspaceId}
             exportBody={exportBody}
@@ -800,7 +819,7 @@ export function ConsumptionAttributionTableView({
             }}
           >
             <TabsList border>
-              {CONSUMPTION_DIMENSIONS.map((tabDimension) => (
+              {visibleDimensions.map((tabDimension) => (
                 <TabsTrigger
                   key={tabDimension}
                   value={tabDimension}
@@ -851,6 +870,8 @@ export function ConsumptionAttributionTableView({
                     dimension={dimension}
                     period={period}
                     filter={filter}
+                    personal={personal}
+                    disabled={disabled}
                     onAddFilter={onAddFilter}
                     onRemoveFilter={onRemoveFilter}
                     search={debouncedValue}

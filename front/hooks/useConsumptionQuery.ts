@@ -4,6 +4,19 @@ import { useSWRConfig } from "swr";
 
 const CONSUMPTION_FILTER_DEBOUNCE_MS = 300;
 
+export function getConsumptionAnalyticsUrl({
+  workspaceId,
+  personal = false,
+  endpoint,
+}: {
+  workspaceId: string;
+  personal?: boolean;
+  endpoint: string;
+}) {
+  const analyticsPath = personal ? "me/analytics" : "analytics";
+  return `/api/w/${workspaceId}/${analyticsPath}/consumption/${endpoint}`;
+}
+
 function useDebouncedValue<T>(value: T, delayMs: number) {
   const [debouncedValue, setDebouncedValue] = useState(value);
 

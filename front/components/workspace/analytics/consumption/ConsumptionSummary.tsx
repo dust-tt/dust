@@ -32,6 +32,8 @@ export interface ConsumptionSummaryProps {
   period: ConsumptionPeriodSelection;
   usageHref?: string;
   usageLinkLabel?: string;
+  personal?: boolean;
+  disabled?: boolean;
 }
 
 export function ConsumptionSummary({
@@ -39,9 +41,16 @@ export function ConsumptionSummary({
   period: periodSelection,
   usageHref = `/w/${workspaceId}/usage`,
   usageLinkLabel = "Manage in Usage",
+  personal,
+  disabled,
 }: ConsumptionSummaryProps) {
   const { overview, isOverviewLoading, isOverviewError } =
-    useConsumptionOverview({ workspaceId, period: periodSelection });
+    useConsumptionOverview({
+      workspaceId,
+      period: periodSelection,
+      personal,
+      disabled,
+    });
 
   return (
     <ConsumptionSummaryView
@@ -50,6 +59,7 @@ export function ConsumptionSummary({
       isOverviewError={Boolean(isOverviewError)}
       usageHref={usageHref}
       usageLinkLabel={usageLinkLabel}
+      personal={personal}
     />
   );
 }
@@ -61,6 +71,7 @@ interface ConsumptionSummaryViewProps {
   usageHref: string;
   usageLinkLabel: string;
   responsiveLayout?: boolean;
+  personal?: boolean;
 }
 
 export function ConsumptionSummaryView({
@@ -70,6 +81,7 @@ export function ConsumptionSummaryView({
   usageHref,
   usageLinkLabel,
   responsiveLayout = false,
+  personal,
 }: ConsumptionSummaryViewProps) {
   if (isOverviewLoading) {
     return (
@@ -98,7 +110,8 @@ export function ConsumptionSummaryView({
     return null;
   }
 
-  const { topAgent, totalCredits, creditUsage } = overview;
+  const { topAgent, totalCredits } = overview;
+  const creditUsage = personal ? null : overview.creditUsage;
 
   return (
     <div className="flex flex-col gap-4">

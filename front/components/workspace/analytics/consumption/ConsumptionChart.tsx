@@ -351,6 +351,8 @@ export interface ConsumptionChartProps {
   period: ConsumptionPeriodSelection;
   dimension: ConsumptionDimension;
   filter?: ConsumptionScopeFilter;
+  personal?: boolean;
+  disabled?: boolean;
 }
 
 function WorkspaceConsumptionDailyChart({
@@ -358,6 +360,8 @@ function WorkspaceConsumptionDailyChart({
   period,
   dimension,
   filter,
+  personal,
+  disabled,
 }: ConsumptionChartProps) {
   const { timeseries, isTimeseriesLoading, isTimeseriesError } =
     useConsumptionTimeseries({
@@ -367,6 +371,8 @@ function WorkspaceConsumptionDailyChart({
       breakdownBy: dimension,
       breakdownCount: CONSUMPTION_CHART_BREAKDOWN_COUNT,
       filter,
+      personal,
+      disabled,
     });
 
   return (
@@ -386,11 +392,15 @@ function WorkspaceConsumptionBurnUpChart({
   workspaceId,
   period,
   filter,
+  personal,
+  disabled,
 }: WorkspaceConsumptionBurnUpChartProps) {
   const { overview } = useConsumptionOverview({
     workspaceId,
     period,
     filter,
+    personal,
+    disabled,
   });
   const isFiltered = Object.values(filter ?? {}).some(
     (values) => values.length > 0
@@ -410,6 +420,8 @@ function WorkspaceConsumptionBurnUpChart({
       period,
       mode: "cumulative",
       filter,
+      personal,
+      disabled,
     });
 
   return (
@@ -428,6 +440,8 @@ export function ConsumptionChart({
   period,
   dimension,
   filter,
+  personal,
+  disabled,
 }: ConsumptionChartProps) {
   const [mode, setMode] = useState<ConsumptionTimeseriesMode>("daily");
 
@@ -453,6 +467,8 @@ export function ConsumptionChart({
           workspaceId={workspaceId}
           period={period}
           filter={filter}
+          personal={personal}
+          disabled={disabled}
         />
       ) : (
         <WorkspaceConsumptionDailyChart
@@ -460,6 +476,8 @@ export function ConsumptionChart({
           period={period}
           dimension={dimension}
           filter={filter}
+          personal={personal}
+          disabled={disabled}
         />
       )}
     </div>
