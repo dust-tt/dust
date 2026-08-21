@@ -13,6 +13,7 @@ import {
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import type { ScopeMutationResult } from "@app/types/api/sandbox/egress_policy";
 import { SANDBOX_WORKSPACE_SCOPE_ID } from "@app/types/api/sandbox/egress_policy";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import type { Result } from "@app/types/shared/result";
@@ -94,12 +95,6 @@ export async function listPodsWithEgressPolicy(
 export type BulkEgressOperation =
   | { operation: "add"; domain: string }
   | { operation: "remove"; domain: string };
-
-export type ScopeMutationResult = {
-  scopeId: string;
-  success: boolean;
-  errorMessage?: string;
-};
 
 // Emits the same sandbox_egress_policy.updated event as the single-pod PUT
 // route. space_id carries the pod sId for pods and is omitted for the
