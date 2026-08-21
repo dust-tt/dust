@@ -544,6 +544,12 @@ function useVisualizationDataHandler({
           sendResponseToIframe(data, userIdentity, event.source);
           break;
 
+        case "ping":
+          // Liveness probe: the iframe uses the answer to tell a live host from a hostless
+          // (top-level) context where postMessage RPC would hang forever.
+          sendResponseToIframe(data, { ok: true }, event.source);
+          break;
+
         case "getFile":
           const fileBlob = await getFileBlob(data.params.fileId);
 
