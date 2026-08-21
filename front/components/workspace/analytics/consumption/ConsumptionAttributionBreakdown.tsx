@@ -4,10 +4,11 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import { Button, cn, LoadingBlock, ProgressBar } from "@dust-tt/sparkle";
+import type { ComponentType } from "react";
 import type { ConsumptionDimension } from "./consumptionDimensions";
 import { CONSUMPTION_DIMENSION_CONFIG } from "./consumptionDimensions";
 
-const BREAKDOWN_LIMIT = 3;
+export const CONSUMPTION_ATTRIBUTION_BREAKDOWN_LIMIT = 3;
 
 const BREAKDOWN_DIMENSIONS = ["model", "tool", "user"] as const;
 type BreakdownDimension = (typeof BREAKDOWN_DIMENSIONS)[number];
@@ -46,7 +47,7 @@ function BreakdownColumnSkeleton() {
   );
 }
 
-interface BreakdownColumnProps {
+export interface ConsumptionAttributionBreakdownColumnProps {
   workspaceId: string;
   dimension: BreakdownDimension;
   period: ConsumptionPeriodSelection;
@@ -55,22 +56,25 @@ interface BreakdownColumnProps {
   onViewAll: () => void;
 }
 
-function BreakdownColumn({
-  workspaceId,
+interface ConsumptionAttributionBreakdownColumnViewProps {
+  dimension: BreakdownDimension;
+  selectedRowName: string;
+  onViewAll: () => void;
+  rows: ConsumptionTopRow[];
+  totalCredits: number;
+  isTopLoading: boolean;
+  isTopError: boolean;
+}
+
+export function ConsumptionAttributionBreakdownColumnView({
   dimension,
-  period,
-  filter,
   selectedRowName,
   onViewAll,
-}: BreakdownColumnProps) {
-  const { rows, totalCredits, isTopLoading, isTopError } = useConsumptionTop({
-    workspaceId,
-    dimension,
-    period,
-    limit: BREAKDOWN_LIMIT,
-    filter,
-  });
-
+  rows,
+  totalCredits,
+  isTopLoading,
+  isTopError,
+}: ConsumptionAttributionBreakdownColumnViewProps) {
   return (
     <div className="min-w-0">
       <div className="mb-2 flex h-6 items-center justify-between gap-2">
@@ -121,7 +125,36 @@ function BreakdownColumn({
   );
 }
 
-interface ConsumptionAttributionBreakdownProps {
+function WorkspaceConsumptionAttributionBreakdownColumn({
+  workspaceId,
+  dimension,
+  period,
+  filter,
+  selectedRowName,
+  onViewAll,
+}: ConsumptionAttributionBreakdownColumnProps) {
+  const { rows, totalCredits, isTopLoading, isTopError } = useConsumptionTop({
+    workspaceId,
+    dimension,
+    period,
+    limit: CONSUMPTION_ATTRIBUTION_BREAKDOWN_LIMIT,
+    filter,
+  });
+
+  return (
+    <ConsumptionAttributionBreakdownColumnView
+      dimension={dimension}
+      selectedRowName={selectedRowName}
+      onViewAll={onViewAll}
+      rows={rows}
+      totalCredits={totalCredits}
+      isTopLoading={isTopLoading}
+      isTopError={Boolean(isTopError)}
+    />
+  );
+}
+
+export interface ConsumptionAttributionBreakdownProps {
   workspaceId: string;
   selectedDimension: ConsumptionDimension;
   selectedRow: ConsumptionTopRow;
@@ -133,14 +166,20 @@ interface ConsumptionAttributionBreakdownProps {
   ) => void;
 }
 
-export function ConsumptionAttributionBreakdown({
+interface ConsumptionAttributionBreakdownViewProps
+  extends ConsumptionAttributionBreakdownProps {
+  BreakdownColumnComponent: ComponentType<ConsumptionAttributionBreakdownColumnProps>;
+}
+
+export function ConsumptionAttributionBreakdownView({
   workspaceId,
   selectedDimension,
   selectedRow,
   period,
   filter,
   onViewAll,
-}: ConsumptionAttributionBreakdownProps) {
+  BreakdownColumnComponent,
+}: ConsumptionAttributionBreakdownViewProps) {
   const selectedFilter: ConsumptionScopeFilter = {
     ...filter,
     [CONSUMPTION_DIMENSION_FILTER_KEYS[selectedDimension]]: [selectedRow.id],
@@ -158,7 +197,7 @@ export function ConsumptionAttributionBreakdown({
       )}
     >
       {visibleDimensions.map((dimension) => (
-        <BreakdownColumn
+        <BreakdownColumnComponent
           key={dimension}
           workspaceId={workspaceId}
           dimension={dimension}
@@ -169,5 +208,16 @@ export function ConsumptionAttributionBreakdown({
         />
       ))}
     </div>
+  );
+}
+
+export function ConsumptionAttributionBreakdown(
+  props: ConsumptionAttributionBreakdownProps
+) {
+  return (
+    <ConsumptionAttributionBreakdownView
+      {...props}
+      BreakdownColumnComponent={WorkspaceConsumptionAttributionBreakdownColumn}
+    />
   );
 }

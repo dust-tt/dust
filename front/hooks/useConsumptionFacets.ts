@@ -37,6 +37,13 @@ const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
   api_key: [],
 };
 
+export interface UseConsumptionFacetsParams {
+  workspaceId: string;
+  period: ConsumptionPeriodSelection;
+  filter?: ConsumptionScopeFilter;
+  disabled?: boolean;
+}
+
 function baseOption(facet: {
   value: string;
   label: string;
@@ -49,7 +56,7 @@ function baseOption(facet: {
   };
 }
 
-function toFacetOptions(
+export function toConsumptionFacetOptions(
   data: GetConsumptionFacetsResponse
 ): ConsumptionFacetOptions {
   return {
@@ -103,12 +110,7 @@ export function useConsumptionFacets({
   period,
   filter,
   disabled,
-}: {
-  workspaceId: string;
-  period: ConsumptionPeriodSelection;
-  filter?: ConsumptionScopeFilter;
-  disabled?: boolean;
-}) {
+}: UseConsumptionFacetsParams) {
   const url = `/api/w/${workspaceId}/analytics/consumption/facets`;
   const body: ConsumptionBody = {
     period: period.kind,
@@ -123,7 +125,7 @@ export function useConsumptionFacets({
   >({ url, body, disabled });
 
   const options = useMemo(
-    () => (data ? toFacetOptions(data) : EMPTY_FACET_OPTIONS),
+    () => (data ? toConsumptionFacetOptions(data) : EMPTY_FACET_OPTIONS),
     [data]
   );
 

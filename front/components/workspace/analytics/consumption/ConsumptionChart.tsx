@@ -2,6 +2,7 @@ import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
+import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useConsumptionTimeseries } from "@app/hooks/useConsumptionTimeseries";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import {
@@ -13,9 +14,11 @@ import type {
   ConsumptionTimeseriesGroup,
   ConsumptionTimeseriesMode,
   ConsumptionTimeseriesPoint,
+  GetConsumptionTimeseriesResponse,
 } from "@app/lib/api/analytics/consumption/timeseries";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { ButtonsSwitch, ButtonsSwitchList, cn } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
@@ -102,7 +105,8 @@ const CONSUMPTION_CHART_COLORS = [
 
 // Request the top five categories, leaving the sixth shade available when the
 // endpoint adds an aggregate "Others" category.
-const CONSUMPTION_CHART_BREAKDOWN_COUNT = CONSUMPTION_CHART_COLORS.length - 1;
+export const CONSUMPTION_CHART_BREAKDOWN_COUNT =
+  CONSUMPTION_CHART_COLORS.length - 1;
 
 function getConsumptionChartColor(index: number): string {
   return CONSUMPTION_CHART_COLORS[
@@ -183,28 +187,20 @@ function ConsumptionDailyTooltip({
 }
 
 interface ConsumptionDailyChartProps {
-  workspaceId: string;
-  period: ConsumptionPeriodSelection;
-  dimension: ConsumptionDimension;
-  filter?: ConsumptionScopeFilter;
+  timeseries: GetConsumptionTimeseriesResponse | null;
+  isTimeseriesLoading: boolean;
+  isTimeseriesError: boolean;
+  emptyMessage: string;
+  additionalControls?: ReactNode;
 }
 
-function ConsumptionDailyChart({
-  workspaceId,
-  period,
-  dimension,
-  filter,
+export function ConsumptionDailyChart({
+  timeseries,
+  isTimeseriesLoading,
+  isTimeseriesError,
+  emptyMessage,
+  additionalControls,
 }: ConsumptionDailyChartProps) {
-  const { timeseries, isTimeseriesLoading, isTimeseriesError } =
-    useConsumptionTimeseries({
-      workspaceId,
-      period,
-      mode: "daily",
-      breakdownBy: dimension,
-      breakdownCount: CONSUMPTION_CHART_BREAKDOWN_COUNT,
-      filter,
-    });
-
   const groups = useMemo(() => timeseries?.groups ?? [], [timeseries]);
   const chartData = useMemo(() => timeseries?.points ?? [], [timeseries]);
 
@@ -263,18 +259,16 @@ function ConsumptionDailyChart({
   const hasConsumption = chartData.some((datum) =>
     Object.values(datum.values).some((credits) => credits > 0)
   );
-
   return (
     <ChartContainer
       title="Daily consumption"
+      additionalControls={additionalControls}
       isLoading={isTimeseriesLoading}
       errorMessage={
         isTimeseriesError ? "Failed to load consumption." : undefined
       }
       emptyMessage={
-        !isTimeseriesLoading && !hasConsumption
-          ? "No consumption over this period."
-          : undefined
+        !isTimeseriesLoading && !hasConsumption ? emptyMessage : undefined
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
@@ -352,11 +346,81 @@ function ConsumptionDailyChart({
   );
 }
 
-interface ConsumptionChartProps {
+export interface ConsumptionChartProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   dimension: ConsumptionDimension;
   filter?: ConsumptionScopeFilter;
+}
+
+function WorkspaceConsumptionDailyChart({
+  workspaceId,
+  period,
+  dimension,
+  filter,
+}: ConsumptionChartProps) {
+  const { timeseries, isTimeseriesLoading, isTimeseriesError } =
+    useConsumptionTimeseries({
+      workspaceId,
+      period,
+      mode: "daily",
+      breakdownBy: dimension,
+      breakdownCount: CONSUMPTION_CHART_BREAKDOWN_COUNT,
+      filter,
+    });
+
+  return (
+    <ConsumptionDailyChart
+      timeseries={timeseries}
+      isTimeseriesLoading={isTimeseriesLoading}
+      isTimeseriesError={Boolean(isTimeseriesError)}
+      emptyMessage="No consumption over this period."
+    />
+  );
+}
+
+interface WorkspaceConsumptionBurnUpChartProps
+  extends Omit<ConsumptionChartProps, "dimension"> {}
+
+function WorkspaceConsumptionBurnUpChart({
+  workspaceId,
+  period,
+  filter,
+}: WorkspaceConsumptionBurnUpChartProps) {
+  const { overview } = useConsumptionOverview({
+    workspaceId,
+    period,
+    filter,
+  });
+  const isFiltered = Object.values(filter ?? {}).some(
+    (values) => values.length > 0
+  );
+  // A cap only exists on a billing cycle, when there's no filter. Gating on the
+  // selection rather than on the response alone keeps a previous cycle's cap —
+  // kept around by `keepPreviousData` while the new request lands — from drawing
+  // a target over a period that has none.
+  const capCredits =
+    period.kind === "cycle" && !isFiltered
+      ? (overview?.creditUsage?.capCredits ?? null)
+      : null;
+
+  const { timeseries, isTimeseriesLoading, isTimeseriesError } =
+    useConsumptionTimeseries({
+      workspaceId,
+      period,
+      mode: "cumulative",
+      filter,
+    });
+
+  return (
+    <ConsumptionBurnUpChart
+      timeseries={timeseries}
+      capCredits={capCredits}
+      isTimeseriesLoading={isTimeseriesLoading}
+      isTimeseriesError={Boolean(isTimeseriesError)}
+      emptyMessage="No consumption over this period."
+    />
+  );
 }
 
 export function ConsumptionChart({
@@ -385,13 +449,13 @@ export function ConsumptionChart({
         </ButtonsSwitchList>
       </div>
       {mode === "cumulative" ? (
-        <ConsumptionBurnUpChart
+        <WorkspaceConsumptionBurnUpChart
           workspaceId={workspaceId}
           period={period}
           filter={filter}
         />
       ) : (
-        <ConsumptionDailyChart
+        <WorkspaceConsumptionDailyChart
           workspaceId={workspaceId}
           period={period}
           dimension={dimension}
