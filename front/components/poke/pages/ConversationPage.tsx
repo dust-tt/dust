@@ -1,3 +1,7 @@
+import {
+  PokeConversationConsumptionInspector,
+  PokeMessageConsumptionInspector,
+} from "@app/components/poke/conversation/consumption_inspectors";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import type { AgentMessageCreditsToolBreakdown } from "@app/lib/api/assistant/credit_cost";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -469,27 +473,30 @@ interface CostBreakdownViewProps {
 
 function CostBreakdownView({ message }: CostBreakdownViewProps) {
   const breakdown = message.costBreakdown;
-  if (!breakdown) {
+  const stored = message.costCredits;
+  if (!breakdown && stored == null) {
     return null;
   }
 
-  const stored = message.costCredits;
-  const mismatch = stored != null && stored !== breakdown.totalAwu;
+  const mismatch =
+    stored != null && breakdown != null && stored !== breakdown.totalAwu;
 
   return (
     <div className="mt-2 rounded-md border border-separator bg-muted-background px-2 py-1.5">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <span className="shrink-0 text-sm font-medium text-foreground">
-          Cost
+          Billing audit
         </span>
         <MetadataItem label="stored" mono>
           {stored != null ? `${formatCredits(stored)} AWU` : "—"}
         </MetadataItem>
         <MetadataItem label="analytics" mono>
-          {`${formatCredits(breakdown.totalAwu)} AWU`}
+          {breakdown ? `${formatCredits(breakdown.totalAwu)} AWU` : "—"}
         </MetadataItem>
         <MetadataItem label="llm / tools" mono>
-          {`${formatCredits(breakdown.llmAwu)} / ${formatCredits(breakdown.toolAwu)}`}
+          {breakdown
+            ? `${formatCredits(breakdown.llmAwu)} / ${formatCredits(breakdown.toolAwu)}`
+            : "—"}
         </MetadataItem>
         {message.subAgentCostCredits != null &&
           message.subAgentCostCredits > 0 && (
@@ -631,6 +638,7 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
 };
 
 interface AgentMessageViewProps {
+  conversationId: string;
   message: PokeAgentMessageType;
   useMarkdown: boolean;
   owner: LightWorkspaceType;
@@ -638,6 +646,7 @@ interface AgentMessageViewProps {
 }
 
 const AgentMessageView = ({
+  conversationId,
   message,
   useMarkdown,
   owner,
@@ -755,6 +764,11 @@ const AgentMessageView = ({
           </div>
         </div>
         <CostBreakdownView message={message} />
+        <PokeMessageConsumptionInspector
+          conversationId={conversationId}
+          message={message}
+          workspaceId={owner.sId}
+        />
         {providerPassthroughEntries.map((entry) => (
           <ProviderPassthroughView
             key={entry.key}
@@ -1282,55 +1296,64 @@ export function ConversationPage() {
               )}
             </div>
           )}
-          <div className="flex w-full flex-1 flex-col justify-start gap-8 py-4">
-            {conversation.content.map((messages, i) => {
-              return (
-                <div key={`messages-${i}`} className="flex flex-col gap-4">
-                  {messages.map((m, j) => {
-                    switch (m.type) {
-                      case "agent_message": {
-                        return (
-                          <AgentMessageView
-                            key={`message-${i}-${j}`}
-                            message={m}
-                            useMarkdown={useMarkdown}
-                            owner={owner}
-                            langfuseUiBaseUrl={langfuseUiBaseUrl}
-                          />
-                        );
+          <div className="grid w-full grid-cols-1 gap-6 py-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <aside className="xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start">
+              <PokeConversationConsumptionInspector
+                conversationId={conversationId}
+                workspaceId={owner.sId}
+              />
+            </aside>
+            <div className="flex min-w-0 flex-col justify-start gap-8 xl:col-start-1 xl:row-start-1">
+              {conversation.content.map((messages, i) => {
+                return (
+                  <div key={`messages-${i}`} className="flex flex-col gap-4">
+                    {messages.map((m, j) => {
+                      switch (m.type) {
+                        case "agent_message": {
+                          return (
+                            <AgentMessageView
+                              key={`message-${i}-${j}`}
+                              conversationId={conversationId}
+                              message={m}
+                              useMarkdown={useMarkdown}
+                              owner={owner}
+                              langfuseUiBaseUrl={langfuseUiBaseUrl}
+                            />
+                          );
+                        }
+                        case "user_message": {
+                          return (
+                            <UserMessageView
+                              message={m}
+                              key={`message-${i}-${j}`}
+                              useMarkdown={useMarkdown}
+                            />
+                          );
+                        }
+                        case "content_fragment": {
+                          return (
+                            <ContentFragmentView
+                              message={m}
+                              key={`message-${i}-${j}`}
+                            />
+                          );
+                        }
+                        case "compaction_message": {
+                          return (
+                            <CompactionMessageView
+                              message={m}
+                              key={`message-${i}-${j}`}
+                            />
+                          );
+                        }
+                        default:
+                          assertNeverAndIgnore(m);
                       }
-                      case "user_message": {
-                        return (
-                          <UserMessageView
-                            message={m}
-                            key={`message-${i}-${j}`}
-                            useMarkdown={useMarkdown}
-                          />
-                        );
-                      }
-                      case "content_fragment": {
-                        return (
-                          <ContentFragmentView
-                            message={m}
-                            key={`message-${i}-${j}`}
-                          />
-                        );
-                      }
-                      case "compaction_message": {
-                        return (
-                          <CompactionMessageView
-                            message={m}
-                            key={`message-${i}-${j}`}
-                          />
-                        );
-                      }
-                      default:
-                        assertNeverAndIgnore(m);
-                    }
-                  })}
-                </div>
-              );
-            })}
+                    })}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </Page.Vertical>
       </div>
