@@ -101,11 +101,11 @@ const listSkillsSchema = {
       "Skill status to list. 'active' (default), 'archived', or 'suggested'."
     ),
   kind: z
-    .enum(["custom", "global", "all"])
+    .enum(["custom", "global", "system", "all"])
     .optional()
     .describe(
-      "'custom' (default): skills built in this workspace. 'global': Dust's " +
-        "built-in skills. 'all': both."
+      "'custom' (default): skills built in this workspace. 'global' and " +
+        "'system': Dust's built-in skills, the latter always on. 'all': every kind."
     ),
   includeUsage: z
     .boolean()

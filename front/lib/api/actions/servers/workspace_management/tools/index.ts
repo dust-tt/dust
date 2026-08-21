@@ -16,7 +16,6 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/age
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { AgentsGetViewType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -100,10 +99,6 @@ function guardAgentView(
     );
   }
   return null;
-}
-
-function skillKindOf(skill: SkillResource): "custom" | "global" {
-  return isResourceSId("skill", skill.sId) ? "custom" : "global";
 }
 
 const handlers: ToolHandlers<typeof WORKSPACE_MANAGEMENT_TOOLS_METADATA> = {
@@ -227,8 +222,8 @@ const handlers: ToolHandlers<typeof WORKSPACE_MANAGEMENT_TOOLS_METADATA> = {
     });
 
     const filtered =
-      resolvedKind === "global"
-        ? skills.filter((skill) => skillKindOf(skill) === "global")
+      resolvedKind !== "all" && resolvedKind !== "custom"
+        ? skills.filter((skill) => skill.kind === resolvedKind)
         : skills;
 
     const sorted = [...filtered].sort(
@@ -257,7 +252,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_MANAGEMENT_TOOLS_METADATA> = {
           agentFacingDescription: skill.agentFacingDescription,
           availability: skill.availability,
           status: skill.status,
-          kind: skillKindOf(skill),
+          kind: skill.kind,
           canWrite: skill.canWrite(auth),
           ...(usageBySkillId
             ? { agentsUsingCount: usageBySkillId.get(skill.sId)?.count ?? 0 }
@@ -292,7 +287,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_MANAGEMENT_TOOLS_METADATA> = {
           agentFacingDescription: json.agentFacingDescription,
           availability: json.availability,
           status: json.status,
-          kind: skillKindOf(skill),
+          kind: skill.kind,
           icon: json.icon,
           canWrite: json.canWrite,
           tools: json.tools.map((tool) => tool.server.name),
