@@ -8,6 +8,7 @@ import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNoti
 import { AuditLogsGovernanceSection } from "@app/components/workspace/settings/AuditLogsToggle";
 import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
+import { InactiveAgentArchival } from "@app/components/workspace/settings/InactiveAgentArchival";
 import { InteractiveContentSharing } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
 import { MessagingAppToggles } from "@app/components/workspace/settings/MessagingAppToggles";
 import { OpenPodPolicy } from "@app/components/workspace/settings/OpenPodsPolicy";
@@ -252,6 +253,7 @@ export const GovernancePage = () => {
               <ExtensionMcpToolsSection owner={owner} />
               <SlackPersonalFooterRemovalToggle owner={owner} />
               <WorkspaceAnalyticsToggle owner={owner} />
+              <InactiveAgentArchival owner={owner} />
             </GovernanceSettingSection>
             <GovernanceSettingSection
               label="Messaging apps"

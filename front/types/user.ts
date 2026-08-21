@@ -112,6 +112,15 @@ export function isWorkspaceAnalyticsEnabled(
   return owner.metadata?.disableWorkspaceAnalytics !== true;
 }
 
+// Automatic archival of agents nobody mentions is opt-in per workspace: with no threshold set,
+// nothing is ever archived. There is no default number of days.
+export function getInactiveAgentArchivalThresholdDays(
+  owner: LightWorkspaceType
+): number | null {
+  const value = owner.metadata?.inactiveAgentArchivalThresholdDays;
+  return typeof value === "number" ? value : null;
+}
+
 // When enabled, members can run published agents even if the agent's model
 // requires a tier above their own access. Disabled by default: such runs are
 // blocked. Admins can opt in via the workspace settings.
