@@ -2,6 +2,8 @@ import { getBatchLLM, getStreamLLM } from "@app/lib/api/llm";
 import { LLMRunLifecycle } from "@app/lib/api/llm/run_lifecycle";
 import { createLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
+import type { BatchResult } from "@app/lib/api/llm/types/batch";
+import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesBatch } from "@app/lib/llms/batch/endpoints/openai_gpt_five_dot_five_eu_openai_responses";
 import { DustNoopNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noop_noop_global_noop";
@@ -31,7 +33,9 @@ afterEach(() => {
 
 class ThrowingNoopStream extends DustNoopNoopGlobalNoopStream {
   override async *streamRaw(): AsyncGenerator<string> {
-    throw new Error("Provider failed before reporting usage");
+    throw Object.assign(new Error("Provider failed before reporting usage"), {
+      status: 503,
+    });
   }
 }
 
@@ -48,6 +52,7 @@ class IncompleteNoopStream extends DustNoopNoopGlobalNoopStream {
 class ImmediateProviderErrorStream extends DustNoopNoopGlobalNoopStream {
   override async *rawStreamOutputToEvents(): AsyncGenerator<ModelResponseEvent> {
     yield buildErrorEvent({
+      errorSource: "provider",
       metadata: this.metadata(),
       type: "overloaded_error",
       message: "Provider overloaded before any output",
@@ -60,6 +65,7 @@ class PartialThenProviderErrorStream extends DustNoopNoopGlobalNoopStream {
     const metadata = this.metadata();
     yield { type: "text_delta", content: { value: "partial" }, metadata };
     yield buildErrorEvent({
+      errorSource: "provider",
       metadata,
       type: "server_error",
       message: "Provider failed after partial output",
@@ -201,6 +207,15 @@ function makeNoopLLM(
     throw new Error("Expected the noop LLM to be available");
   }
   return llm;
+}
+
+function stubBatchResults(
+  llm: ReturnType<typeof makeNoopLLM>,
+  results: BatchResult
+) {
+  Object.assign(llm, {
+    internalGetBatchResult: async () => results,
+  });
 }
 
 function makeLifecycleParameters(): Parameters<
@@ -657,6 +672,32 @@ describe("LLM stream telemetry", () => {
     expectAllLlmMetricsCarryBaseTags(increment, distribution);
   });
 
+  it("preserves a provider source when the request throws before any stream event", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const { increment, distribution } = spyTelemetry();
+    const llm = makeNoopLLM(auth, ThrowingNoopStream, makeTraceContext(auth));
+
+    await consumeStream(llm);
+
+    expect(callsNamed(increment, "llm_interaction.count")).toHaveLength(1);
+    expect(callsNamed(increment, "llm_success.count")).toHaveLength(0);
+    const errorCalls = callsNamed(increment, "llm_error.count");
+    expect(errorCalls).toHaveLength(1);
+    expect(tagsOf(errorCalls[0])).toEqual(
+      expect.arrayContaining([
+        "error_type:overloaded_error",
+        "error_source:provider",
+      ])
+    );
+    expect(callsNamed(distribution, "llm_duration_ms")).toHaveLength(1);
+    expect(callsNamed(distribution, "llm_time_to_first_event_ms")).toHaveLength(
+      1
+    );
+    expect(callsNamed(distribution, "llm_time_to_first_token_ms")).toHaveLength(
+      0
+    );
+  });
+
   it("emits a provider error with duration and TTFT after partial output", async () => {
     const { authenticator: auth } = await createResourceTest({});
     const { increment, distribution, error } = spyTelemetry();
@@ -805,6 +846,107 @@ describe("LLM stream telemetry", () => {
     expect(callsNamed(increment, "llm_interaction.count")).toHaveLength(0);
     expect(callsNamed(increment, "llm_success.count")).toHaveLength(0);
     expect(callsNamed(increment, "llm_error.count")).toHaveLength(0);
+    expect(callsNamed(distribution, "llm_duration_ms")).toHaveLength(0);
+  });
+});
+
+describe("LLM batch telemetry", () => {
+  const batchBaseTags = [
+    "model_id:noop",
+    "provider_id:noop",
+    "client_id:noop",
+    "inference_provider:noop",
+    "region:global",
+    "operation_type:agent_conversation",
+    "surface:batch",
+  ];
+
+  it("emits one interaction and one success without duration", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const { increment, distribution } = spyTelemetry();
+    const llm = makeNoopLLM(
+      auth,
+      DustNoopNoopGlobalNoopStream,
+      makeTraceContext(auth)
+    );
+    stubBatchResults(
+      llm,
+      new Map([
+        [
+          "c1",
+          [
+            {
+              type: "success",
+              aggregated: [],
+              metadata: llm.getMetadata(),
+            },
+          ],
+        ],
+      ])
+    );
+
+    await llm.getBatchResult("batch-1");
+
+    expect(callsNamed(increment, "llm_interaction.count")).toHaveLength(1);
+    expect(tagsOf(callsNamed(increment, "llm_interaction.count")[0])).toEqual(
+      expect.arrayContaining(batchBaseTags)
+    );
+    expect(callsNamed(increment, "llm_success.count")).toHaveLength(1);
+    expect(callsNamed(increment, "llm_error.count")).toHaveLength(0);
+    expect(callsNamed(distribution, "llm_duration_ms")).toHaveLength(0);
+    expect(callsNamed(distribution, "llm_time_to_first_event_ms")).toHaveLength(
+      0
+    );
+  });
+
+  it("emits a provider error with identity tags and no duration", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const { increment, distribution, error } = spyTelemetry();
+    const llm = makeNoopLLM(
+      auth,
+      DustNoopNoopGlobalNoopStream,
+      makeTraceContext(auth)
+    );
+    stubBatchResults(
+      llm,
+      new Map([
+        [
+          "c1",
+          [
+            new EventError(
+              {
+                type: "overloaded_error",
+                message: "batch overloaded",
+                isRetryable: true,
+                errorSource: "provider",
+              },
+              llm.getMetadata()
+            ),
+          ],
+        ],
+      ])
+    );
+
+    await llm.getBatchResult("batch-1");
+
+    expect(callsNamed(increment, "llm_interaction.count")).toHaveLength(1);
+    expect(tagsOf(callsNamed(increment, "llm_error.count")[0])).toEqual(
+      expect.arrayContaining([
+        ...batchBaseTags,
+        "error_type:overloaded_error",
+        "error_source:provider",
+      ])
+    );
+    expect(error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        llmEventType: "error",
+        errorType: "overloaded_error",
+        errorSource: "provider",
+        surface: "batch",
+        providerId: "noop",
+      }),
+      "LLM Error"
+    );
     expect(callsNamed(distribution, "llm_duration_ms")).toHaveLength(0);
   });
 });

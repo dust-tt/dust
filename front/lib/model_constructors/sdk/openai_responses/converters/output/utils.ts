@@ -297,6 +297,7 @@ function apiErrorToErrorEvent(
     case 400:
     case 422:
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "invalid_request_error",
         message: `Invalid request to OpenAI: ${error.message}`,
@@ -304,6 +305,7 @@ function apiErrorToErrorEvent(
       });
     case 401:
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "authentication_error",
         message: `Authentication failed for OpenAI: ${error.message}`,
@@ -311,6 +313,7 @@ function apiErrorToErrorEvent(
       });
     case 403:
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "permission_error",
         message: `Permission denied for OpenAI: ${error.message}`,
@@ -318,6 +321,7 @@ function apiErrorToErrorEvent(
       });
     case 404:
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "not_found_error",
         message: `Resource not found for OpenAI: ${error.message}`,
@@ -325,6 +329,7 @@ function apiErrorToErrorEvent(
       });
     case 429:
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "rate_limit_error",
         message: `Rate limit exceeded for OpenAI/${metadata.model}: ${error.message}`,
@@ -333,6 +338,7 @@ function apiErrorToErrorEvent(
     default:
       if (status !== undefined && status >= 500 && status < 600) {
         return buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "server_error",
           message: `Server error from OpenAI (${status}): ${error.message}`,
@@ -340,6 +346,7 @@ function apiErrorToErrorEvent(
         });
       }
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "unknown_error",
         message: `Error from OpenAI (${status}): ${error.message}`,
@@ -358,6 +365,7 @@ export function streamErrorToErrorEvent(
   switch (classified.kind) {
     case "connection":
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "network_error",
         message: `Network error connecting to OpenAI: ${classified.error.message}`,
@@ -367,6 +375,7 @@ export function streamErrorToErrorEvent(
       return apiErrorToErrorEvent(metadata, classified.error);
     case "unknown":
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "unknown_error",
         message: `Unknown error from OpenAI`,
@@ -402,6 +411,7 @@ export function outputItemToEvents(
           case "refusal":
             return [
               buildErrorEvent({
+                errorSource: "provider",
                 metadata,
                 type: "refusal_error",
                 message: part.refusal,
@@ -554,6 +564,7 @@ export async function* rawOutputToEvents(
         return;
       case "response.incomplete":
         yield buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "stop_error",
           message:
@@ -563,6 +574,7 @@ export async function* rawOutputToEvents(
         return;
       case "error":
         yield buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "stream_error",
           message: event.message,
@@ -672,6 +684,7 @@ export function responseToEvents(
   if (response.status === "incomplete") {
     return [
       buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "stop_error",
         message:

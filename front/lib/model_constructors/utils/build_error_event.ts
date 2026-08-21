@@ -10,13 +10,13 @@ export function buildErrorEvent({
   type,
   message,
   originalError,
-  errorSource = "provider",
+  errorSource,
 }: {
   metadata: EndpointMetadata;
   type: ErrorType;
   message: string;
   originalError?: unknown;
-  errorSource?: ErrorSource;
+  errorSource: ErrorSource;
 }): ErrorEvent {
   return {
     type: "error",

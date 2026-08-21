@@ -387,12 +387,14 @@ export function stopReasonToErrorEvent(
   switch (stopReason) {
     case "max_tokens":
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "stop_error",
         message: "The maximum response length was reached.",
       });
     case "refusal":
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "refusal_error",
         message:
@@ -440,6 +442,7 @@ function apiErrorToErrorEvent(
 ): ErrorEvent {
   if (isAnthropicFileDownloadError(error)) {
     return buildErrorEvent({
+      errorSource: "provider",
       metadata,
       type: "server_error",
       message: `Server error from Anthropic: ${error.message}`,
@@ -454,6 +457,7 @@ function apiErrorToErrorEvent(
     case 400:
     case 422:
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "invalid_request_error",
         message: `Invalid request to Anthropic: ${error.message}`,
@@ -461,6 +465,7 @@ function apiErrorToErrorEvent(
       });
     case 401:
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "authentication_error",
         message: `Authentication failed for Anthropic: ${error.message}`,
@@ -468,6 +473,7 @@ function apiErrorToErrorEvent(
       });
     case 403:
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "permission_error",
         message: `Permission denied for Anthropic: ${error.message}`,
@@ -475,6 +481,7 @@ function apiErrorToErrorEvent(
       });
     case 404:
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "not_found_error",
         message: `Resource not found for Anthropic: ${error.message}`,
@@ -482,6 +489,7 @@ function apiErrorToErrorEvent(
       });
     case 429:
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "rate_limit_error",
         message: `Rate limit exceeded for Anthropic/${metadata.model}: ${error.message}`,
@@ -489,6 +497,7 @@ function apiErrorToErrorEvent(
       });
     case 503:
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "overloaded_error",
         message: `Anthropic is overloaded: ${error.message}`,
@@ -497,6 +506,7 @@ function apiErrorToErrorEvent(
     default:
       if (status !== undefined && status >= 500 && status < 600) {
         return buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "server_error",
           message: `Server error from Anthropic (${status}): ${error.message}`,
@@ -505,6 +515,7 @@ function apiErrorToErrorEvent(
       }
 
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "unknown_error",
         message: `Error from Anthropic (${status}): ${error.message}`,
@@ -526,6 +537,7 @@ export function streamErrorToErrorEvent(
     // re-samples instead of treating it as a terminal invalid_request_error.
     case "invalid_tool_json":
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "model_output_error",
         message: `Model generated invalid tool call JSON for ${metadata.model}.`,
@@ -533,6 +545,7 @@ export function streamErrorToErrorEvent(
       });
     case "connection":
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "network_error",
         message: `Network error connecting to Anthropic: ${classified.error.message}`,
@@ -564,7 +577,13 @@ function bareStreamErrorToErrorEvent(
   const lower = message.toLowerCase();
 
   const build = (type: ErrorType, text: string): ErrorEvent =>
-    buildErrorEvent({ metadata, type, message: text, originalError: error });
+    buildErrorEvent({
+      errorSource: "provider",
+      metadata,
+      type,
+      message: text,
+      originalError: error,
+    });
 
   if (lower.includes("terminated") || lower.includes("other side closed")) {
     return build(
@@ -1234,6 +1253,7 @@ export function batchResultToEvents(
     case "errored":
       return [
         buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "server_error",
           message: result.error.error.message,
@@ -1243,6 +1263,7 @@ export function batchResultToEvents(
     case "canceled":
       return [
         buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "stream_error",
           message: "Batch request was canceled.",
@@ -1251,6 +1272,7 @@ export function batchResultToEvents(
     case "expired":
       return [
         buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "stream_error",
           message: "Batch request expired before processing completed.",

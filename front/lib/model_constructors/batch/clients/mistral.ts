@@ -146,6 +146,7 @@ export abstract class MistralBatch extends WithMistralAIInputConverter(
       if (error || !response) {
         batchResult.set(custom_id, [
           buildErrorEvent({
+            errorSource: "provider",
             metadata: this.metadata(),
             type: "server_error",
             message:
