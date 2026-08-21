@@ -250,6 +250,40 @@ test("buffer includes truncation metadata when truncated", () => {
   expect(trace.metadata.truncationReason).toContain("64KB limit");
 });
 
+test("buffer records duration and first-token timing on success", () => {
+  const buffer = createTestBuffer();
+  buffer.addEvent(LLMEventFactory.textDelta("Hello world"));
+
+  const trace = buffer.toTraceJSON({
+    startTimestamp: "2024-01-01T00:00:00.000Z",
+    endTimestamp: "2024-01-01T00:00:01.000Z",
+    durationMs: 1200,
+    timeToFirstEventMs: 40,
+    timeToFirstTokenMs: 80,
+  });
+
+  expect(trace.metadata.durationMs).toBe(1200);
+  expect(trace.metadata.timeToFirstEventMs).toBe(40);
+  expect(trace.metadata.timeToFirstTokenMs).toBe(80);
+  expect(trace.error).toBeUndefined();
+  expect(trace.output?.content).toBe("Hello world");
+});
+
+test("buffer marks a pre-output error as not a partial completion", () => {
+  const buffer = createTestBuffer();
+  buffer.addEvent(LLMEventFactory.error());
+
+  const trace = buffer.toTraceJSON({
+    startTimestamp: "2024-01-01T00:00:00.000Z",
+    endTimestamp: "2024-01-01T00:00:01.000Z",
+    durationMs: 250,
+    timeToFirstEventMs: 250,
+  });
+
+  expect(trace.error?.partialCompletion).toBe(false);
+  expect(trace.output).toBeUndefined();
+});
+
 test("buffer handles error traces correctly", () => {
   const buffer = createTestBuffer();
 

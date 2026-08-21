@@ -136,10 +136,16 @@ export const ERROR_TYPES = [
   "unknown_error",
 ] as const;
 export type ErrorType = (typeof ERROR_TYPES)[number];
+
+// Fault domain of the failure, not the code layer that happened to catch it.
+export const ERROR_SOURCES = ["provider", "dust", "unknown"] as const;
+export type ErrorSource = (typeof ERROR_SOURCES)[number];
+
 export type ErrorContent = {
   type: ErrorType;
   message: string;
   originalError?: unknown;
+  errorSource?: ErrorSource;
 };
 export interface ErrorEvent {
   type: "error";
