@@ -53,6 +53,41 @@ const CONSUMPTION_TOP_ENDPOINTS = {
   api_key: "top-api-keys",
 } as const satisfies Record<ConsumptionDimension, string>;
 
+function toPokeConsumptionTopRows(
+  data: ConsumptionTopResponse,
+  workspaceId: string
+): ConsumptionTopRow[] {
+  const rows = toConsumptionTopRows(data);
+  if ("agents" in data) {
+    return rows.map((row) => ({
+      ...row,
+      detailsHref: row.modelId
+        ? `/poke/${workspaceId}/assistants/${row.id}`
+        : undefined,
+    }));
+  }
+  if ("groups" in data) {
+    return rows.map((row) => ({
+      ...row,
+      detailsHref:
+        row.name !== row.id
+          ? `/poke/${workspaceId}/groups/${row.id}`
+          : undefined,
+    }));
+  }
+  if ("skills" in data) {
+    return rows.map((row) => ({
+      ...row,
+      detailsHref:
+        row.name !== row.id
+          ? `/poke/${workspaceId}/skills/${row.id}`
+          : undefined,
+    }));
+  }
+
+  return rows;
+}
+
 type ConsumptionTimeseriesBody = ConsumptionBody & {
   mode: ConsumptionTimeseriesMode;
   breakdownBy?: ConsumptionBreakdownDimension;
@@ -180,8 +215,11 @@ export function usePokeConsumptionTop({
   >({ url, body, disabled });
 
   const rows = useMemo(
-    () => (data ? toConsumptionTopRows(data) : emptyArray<ConsumptionTopRow>()),
-    [data]
+    () =>
+      data
+        ? toPokeConsumptionTopRows(data, workspaceId)
+        : emptyArray<ConsumptionTopRow>(),
+    [data, workspaceId]
   );
 
   return {

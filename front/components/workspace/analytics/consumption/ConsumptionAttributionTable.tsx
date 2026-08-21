@@ -27,6 +27,7 @@ import type {
 } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
+import { LinkWrapper } from "@app/lib/platform";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
   ArrowNarrowDownRight,
@@ -281,6 +282,22 @@ function buildColumns({
           ) : (
             <span className="truncate text-sm">{name}</span>
           );
+        const interactiveContent = row.detailsHref ? (
+          <LinkWrapper
+            href={row.detailsHref}
+            className={cn(
+              "inline-flex min-h-11 min-w-11 max-w-full items-center rounded-sm",
+              "text-highlight-500 outline-hidden ring-offset-background",
+              "pointer-fine:hover:text-highlight-600 pointer-fine:hover:underline",
+              "focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
+            )}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {content}
+          </LinkWrapper>
+        ) : (
+          content
+        );
 
         return (
           <DataTable.CellContent className="w-full justify-start text-left">
@@ -291,10 +308,10 @@ function buildColumns({
                 }
                 className="p-3"
                 tooltipTriggerAsChild
-                trigger={content}
+                trigger={interactiveContent}
               />
             ) : (
-              content
+              interactiveContent
             )}
           </DataTable.CellContent>
         );
