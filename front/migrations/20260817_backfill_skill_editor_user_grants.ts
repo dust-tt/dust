@@ -9,7 +9,7 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { SKILL_STATUSES } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
 
-// Backfill: give every current member of a skill's `skill_editors` group the equivalent per-user
+// Backfill: give every current member of a skill's legacy editor group the equivalent per-user
 // grant (`editor` on `skill:<id>`), which `grantToUser` holds in one regular_auto group per skill.
 // The skill mutation paths dual-write both sides from now on; this catches the existing editors.
 // Idempotent: grantToUser is find-or-create on both the group and the membership.
