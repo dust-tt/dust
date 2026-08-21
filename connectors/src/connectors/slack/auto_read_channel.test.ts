@@ -1,5 +1,6 @@
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { SlackAutoReadPattern } from "@connectors/types";
 import { DustAPI, Err } from "@dust-tt/client";
 import { describe, expect, it, vi } from "vitest";
 
@@ -24,7 +25,10 @@ import { autoReadChannel } from "./auto_read_channel";
 
 const logger = mainLogger.child({});
 
-async function makeSlackConnector(slackTeamId: string) {
+async function makeSlackConnector(
+  slackTeamId: string,
+  autoReadChannelPatterns: SlackAutoReadPattern[] = []
+) {
   return ConnectorResource.makeNew(
     "slack",
     {
@@ -34,7 +38,7 @@ async function makeSlackConnector(slackTeamId: string) {
       workspaceId: "workspace-id",
     },
     {
-      autoReadChannelPatterns: [],
+      autoReadChannelPatterns,
       botEnabled: true,
       feedbackVisibleToAuthorOnly: true,
       restrictedSpaceAgentsEnabled: true,
@@ -72,8 +76,12 @@ describe("autoReadChannel", () => {
   });
 
   it("should skip channels whose workspace is unavailable", async () => {
-    await makeSlackConnector("T_UNAVAILABLE_WS");
-    vi.spyOn(DustAPI.prototype, "exists").mockResolvedValue(
+    // Configure a matching pattern so a healthy workspace would launch the
+    // join workflow: not launching it proves the skip.
+    await makeSlackConnector("T_UNAVAILABLE_WS", [
+      { pattern: "C.*", spaceId: "space-id" },
+    ]);
+    const existsSpy = vi.spyOn(DustAPI.prototype, "exists").mockResolvedValue(
       new Err({
         type: "plan_limit_error",
         message:
@@ -82,6 +90,7 @@ describe("autoReadChannel", () => {
     );
 
     const res = await autoReadChannel("T_UNAVAILABLE_WS", logger, "C123");
+    existsSpy.mockRestore();
 
     expect(res.isOk()).toBe(true);
     if (res.isOk()) {

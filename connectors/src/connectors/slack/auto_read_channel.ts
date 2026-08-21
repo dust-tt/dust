@@ -78,7 +78,7 @@ export async function autoReadChannel(
         workspaceId: dataSourceConfig.workspaceId,
         error: existsRes.error.message,
       },
-      "Skipping auto-read channel: workspace API call failed (likely in maintenance)"
+      "Skipping auto-read channel: workspace is unavailable"
     );
     return new Ok(false);
   }
