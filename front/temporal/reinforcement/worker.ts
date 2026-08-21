@@ -3,11 +3,9 @@ import {
   resource,
 } from "@app/lib/api/instrumentation/init";
 import { NoopSpanExporter } from "@app/lib/api/instrumentation/noop_span_exporter";
-import {
-  getTemporalWorkerConnection,
-  TEMPORAL_MAXED_CACHED_WORKFLOWS,
-} from "@app/lib/temporal";
+import { TEMPORAL_MAXED_CACHED_WORKFLOWS } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
+import { getTemporalWorkerConnection } from "@app/lib/temporal_worker";
 import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/reinforcement/activities";
