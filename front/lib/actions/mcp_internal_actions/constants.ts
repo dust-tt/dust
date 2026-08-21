@@ -1214,8 +1214,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
   },
   workspace_management: {
     id: 1048,
-    // Hidden from the builder tool-picker; skills wire it by name. Data access is enforced
-    // per-tool via auth.isManager(), and the unrestricted agent view via auth.isAdmin().
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isRestricted: undefined,
