@@ -1,8 +1,5 @@
-import {
-  ContentMessageAction,
-  ContentMessageInline,
-  Hoverable,
-} from "@dust-tt/sparkle";
+import { TableSelectionBanner } from "@app/components/shared/TableSelectionBanner";
+import { ContentMessageAction } from "@dust-tt/sparkle";
 
 interface MembersSelectionBannerProps {
   selectedCount: number;
@@ -18,10 +15,6 @@ interface MembersSelectionBannerProps {
   disabled?: boolean;
 }
 
-function membersLabel(count: number): string {
-  return count === 1 ? "member" : "members";
-}
-
 export function MembersSelectionBanner({
   selectedCount,
   pageCount,
@@ -34,39 +27,18 @@ export function MembersSelectionBanner({
   onBatchChangeSeat,
   disabled = false,
 }: MembersSelectionBannerProps) {
-  if (selectedCount === 0) {
-    return null;
-  }
-
   return (
-    <ContentMessageInline variant="info">
-      <div className="flex flex-row flex-wrap items-center gap-x-2 gap-y-1">
-        {isAllAcrossPagesSelected ? (
-          <span>
-            {selectedCount} {membersLabel(selectedCount)} are selected.
-          </span>
-        ) : hasMorePagesToSelect ? (
-          <>
-            <span>
-              All {pageCount} {membersLabel(pageCount)} on this page are
-              selected.
-            </span>
-            <Hoverable variant="highlight" onClick={onSelectAllAcrossPages}>
-              Select all {totalCount} {membersLabel(totalCount)}
-            </Hoverable>
-          </>
-        ) : (
-          <span>
-            {selectedCount} {membersLabel(selectedCount)} selected
-          </span>
-        )}
-      </div>
-      <ContentMessageAction
-        variant="ghost"
-        label="Clear"
-        onClick={onClear}
-        disabled={disabled}
-      />
+    <TableSelectionBanner
+      selectedCount={selectedCount}
+      pageCount={pageCount}
+      totalCount={totalCount}
+      itemLabel="member"
+      isAllAcrossPagesSelected={isAllAcrossPagesSelected}
+      hasMorePagesToSelect={hasMorePagesToSelect}
+      onSelectAllAcrossPages={onSelectAllAcrossPages}
+      onClear={onClear}
+      disabled={disabled}
+    >
       {onBatchChangeSeat && (
         <ContentMessageAction
           variant="primary"
@@ -81,6 +53,6 @@ export function MembersSelectionBanner({
         onClick={onBatchEditSpendLimit}
         disabled={disabled}
       />
-    </ContentMessageInline>
+    </TableSelectionBanner>
   );
 }
