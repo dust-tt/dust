@@ -420,3 +420,32 @@ export async function fetchAutomationTriggers(
     medianCostPerRun,
   });
 }
+
+// Ranked the same way the paginated view ranks them, so a "select all across
+// pages" resolves to the ids the table would show on any page.
+export async function fetchAutomationTriggerIds(
+  auth: Authenticator,
+  {
+    period,
+    search,
+    filter,
+    limit,
+  }: {
+    period: ConsumptionPeriod;
+    search?: string;
+    filter?: AutomationTriggersFilter;
+    limit: number;
+  }
+): Promise<Result<string[], ElasticsearchError>> {
+  const rankingResult = await fetchTriggersRanking(auth, {
+    period,
+    limit: Math.min(limit, CARDINALITY_PRECISION_THRESHOLD),
+    offset: 0,
+    search,
+    filter,
+  });
+  if (rankingResult.isErr()) {
+    return rankingResult;
+  }
+  return new Ok(rankingResult.value.ranking.map((ranked) => ranked.triggerId));
+}

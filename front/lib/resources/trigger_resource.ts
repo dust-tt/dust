@@ -1,3 +1,4 @@
+import type { AuditAction } from "@app/lib/api/audit/workos_audit";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -22,6 +23,7 @@ import {
   deleteTriggerSchedule,
 } from "@app/temporal/triggers/schedule_client";
 import type {
+  BulkTriggerUpdateOutcome,
   ScheduleConfig,
   TriggerExecutionMode,
   TriggerKind,
@@ -66,6 +68,39 @@ export async function resolveTriggerSpaceId(
 }
 
 export class TriggerExecutionModeForbiddenError extends Error {}
+
+const BULK_TRIGGER_AUDIT_CONCURRENCY = 10;
+
+function emitBulkTriggerAuditLogEvents(
+  auth: Authenticator,
+  triggers: TriggerResource[],
+  toEvent: (trigger: TriggerResource) => {
+    action: AuditAction;
+    metadata: Record<string, string>;
+  }
+): Promise<void[]> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  return concurrentExecutor(
+    triggers,
+    async (trigger) => {
+      const { action, metadata } = toEvent(trigger);
+      return emitAuditLogEvent({
+        auth,
+        action,
+        targets: [
+          buildAuditLogTarget("workspace", workspace),
+          buildAuditLogTarget("trigger", {
+            sId: trigger.sId,
+            name: trigger.name,
+          }),
+        ],
+        metadata,
+      });
+    },
+    { concurrency: BULK_TRIGGER_AUDIT_CONCURRENCY }
+  );
+}
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -863,6 +898,54 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Err(new Error(`Failed to enable ${failuresCount} triggers`));
     }
     return new Ok(undefined);
+  }
+
+  // A selection made in the automations table routinely mixes triggers the
+  // caller can and cannot touch, so the ones they may not move are reported
+  // as skipped rather than failed.
+  static async bulkChangeExecutionMode(
+    auth: Authenticator,
+    triggers: TriggerResource[],
+    executionMode: TriggerExecutionMode
+  ): Promise<BulkTriggerUpdateOutcome> {
+    const workspace = auth.getNonNullableWorkspace();
+    const canUseTargetMode = await canUseExecutionMode(auth, executionMode);
+    const updatable = canUseTargetMode
+      ? triggers.filter(
+          (trigger) =>
+            auth.isManager() || trigger.editor === auth.getNonNullableUser().id
+        )
+      : [];
+
+    const changed = updatable.filter(
+      (trigger) => trigger.executionMode !== executionMode
+    );
+    if (changed.length > 0) {
+      await this.model.update(
+        { executionMode },
+        {
+          where: {
+            id: { [Op.in]: changed.map((trigger) => trigger.id) },
+            workspaceId: workspace.id,
+          },
+        }
+      );
+
+      void emitBulkTriggerAuditLogEvents(auth, changed, (trigger) => ({
+        action: "trigger.pool_updated",
+        metadata: {
+          trigger_type: trigger.kind,
+          agent_id: trigger.agentConfigurationId,
+          previous_execution_mode: trigger.executionMode,
+          execution_mode: executionMode,
+        },
+      }));
+    }
+
+    return {
+      updatedCount: updatable.length,
+      skippedCount: triggers.length - updatable.length,
+    };
   }
 
   async upsertTemporalWorkflow(auth: Authenticator) {
