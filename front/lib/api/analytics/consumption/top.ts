@@ -3,7 +3,7 @@ import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/label
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { previousConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
-  ConsumptionScopeDimension,
+  ConsumptionAttributionDimension,
   ConsumptionScopeFilter,
   ConsumptionTopSortOrder,
   ConsumptionTopUnit,
@@ -14,7 +14,9 @@ import {
   CARDINALITY_PRECISION_THRESHOLD,
   CONSUMPTION_DIMENSION_FIELDS,
   CONSUMPTION_DIMENSION_UNIT,
+  CONVERSATION_ID_FIELD,
   CREDIT_MICRO_FIELD,
+  isConsumptionScopeDimension,
 } from "@app/lib/api/analytics/consumption/scope";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
@@ -23,6 +25,8 @@ import {
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { microCreditsToCredits } from "@app/lib/credits/units";
+import { isResourceSId } from "@app/lib/resources/string_ids";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -33,7 +37,8 @@ import chunk from "lodash/chunk";
 type ConsumptionTopGroup = {
   key: string;
   credits: number;
-  // Distinct messages, or tool invocations, per the ranking's unit.
+  // Distinct messages, tool invocations, or automation runs, per the ranking's
+  // unit.
   count: number;
   // This key's credits over the equivalent window immediately preceding the
   // period, for period-over-period growth. Null when the key had no
@@ -56,6 +61,7 @@ export type ConsumptionTopGroups = {
 // bucket reads below cannot drift apart.
 const CREDIT_AGG = "credit_micro";
 const MESSAGES_AGG = "messages";
+const RUNS_AGG = "runs";
 const TOTAL_COUNT_AGG = "total_count";
 const RANKING_TERMS_PAGE_SIZE = 1_000;
 const MAX_ES_QUERY_CLAUSES = 1_024;
@@ -66,15 +72,36 @@ type GroupBucket = {
   doc_count: number;
   [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
   [MESSAGES_AGG]?: estypes.AggregationsCardinalityAggregate;
+  [RUNS_AGG]?: estypes.AggregationsCardinalityAggregate;
 };
 
 function subAggs(unit: ConsumptionTopUnit) {
-  return {
+  const creditAggregation = {
     [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
-    ...(unit === "message"
-      ? { [MESSAGES_AGG]: { cardinality: { field: AGENT_MESSAGE_ID_FIELD } } }
-      : {}),
   };
+
+  switch (unit) {
+    case "message":
+      return {
+        ...creditAggregation,
+        [MESSAGES_AGG]: {
+          cardinality: { field: AGENT_MESSAGE_ID_FIELD },
+        },
+      };
+    case "invocation":
+      return creditAggregation;
+    case "run":
+      return {
+        ...creditAggregation,
+        [RUNS_AGG]: {
+          cardinality: {
+            field: CONVERSATION_ID_FIELD,
+          },
+        },
+      };
+    default:
+      return assertNever(unit);
+  }
 }
 
 type RankingAggs = {
@@ -100,8 +127,13 @@ function countFromBucket(
       // the same document in several buckets, which is the intent: each skill is
       // credited with the invocation it is responsible for.
       return bucket.doc_count;
+    case "run":
+      // One automation run is one conversation. Consumption can span several
+      // messages and documents within that conversation, so doc_count would
+      // overstate how often the automation ran.
+      return Math.round(bucket[RUNS_AGG]?.value ?? 0);
     default:
-      assertNever(unit);
+      return assertNever(unit);
   }
 }
 
@@ -145,21 +177,33 @@ async function resolveConsumptionTopSearchFilter(
     dimension,
     search,
   }: {
-    dimension: ConsumptionScopeDimension;
+    dimension: ConsumptionAttributionDimension;
     search?: string;
   }
 ): Promise<estypes.QueryDslQueryContainer | null> {
-  const normalizedSearch = search?.trim().toLowerCase();
-  if (!normalizedSearch) {
+  const trimmedSearch = search?.trim();
+  if (!trimmedSearch) {
     return null;
   }
+  const normalizedSearch = trimmedSearch.toLowerCase();
 
   // TODO(2026-08-14 aubin): Store searchable dimension names in consumption
   // analytics documents so Elasticsearch can perform this search directly.
-  const catalog = await listConsumptionFacetCatalogDimension(auth, dimension);
-  const matchingValues = catalog
-    .filter((entry) => entry.label.toLowerCase().includes(normalizedSearch))
-    .map((entry) => entry.value);
+  const matchingValues = isConsumptionScopeDimension(dimension)
+    ? (await listConsumptionFacetCatalogDimension(auth, dimension))
+        .filter((entry) => entry.label.toLowerCase().includes(normalizedSearch))
+        .map((entry) => entry.value)
+    : [
+        ...new Set([
+          ...(isResourceSId("trigger", trimmedSearch) ? [trimmedSearch] : []),
+          ...(
+            await TriggerResource.listByWorkspaceAndNameSearch(
+              auth,
+              normalizedSearch
+            )
+          ).map((trigger) => trigger.sId),
+        ]),
+      ];
 
   return buildConsumptionTopSearchTermsQuery(
     CONSUMPTION_DIMENSION_FIELDS[dimension],
@@ -174,7 +218,7 @@ function buildConsumptionTopAggregations({
   searchFilter,
   sortOrder,
 }: {
-  dimension: ConsumptionScopeDimension;
+  dimension: ConsumptionAttributionDimension;
   bucketCount: number;
   excludedKeys: string[];
   searchFilter: estypes.QueryDslQueryContainer | null;
@@ -231,7 +275,7 @@ async function fetchConsumptionPreviousCredits(
     filter,
     keys,
   }: {
-    dimension: ConsumptionScopeDimension;
+    dimension: ConsumptionAttributionDimension;
     previousPeriod: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
     keys: string[];
@@ -298,7 +342,7 @@ export async function fetchConsumptionTopGroups(
     filter,
     sortOrder = "desc",
   }: {
-    dimension: ConsumptionScopeDimension;
+    dimension: ConsumptionAttributionDimension;
     period: ConsumptionPeriod;
     limit: number;
     offset?: number;
@@ -432,7 +476,7 @@ export type ResolvedConsumptionGroup = {
 
 export async function resolveConsumptionGroupLabels(
   auth: Authenticator,
-  dimension: ConsumptionScopeDimension,
+  dimension: ConsumptionAttributionDimension,
   groups: ConsumptionTopGroup[]
 ): Promise<ResolvedConsumptionGroup[]> {
   const labels = await resolveDimensionLabels(

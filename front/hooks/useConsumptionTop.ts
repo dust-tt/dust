@@ -1,4 +1,3 @@
-import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import {
@@ -7,6 +6,7 @@ import {
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/schema";
 import type {
+  ConsumptionScopeDimension,
   ConsumptionScopeFilter,
   ConsumptionTopSortOrder,
 } from "@app/lib/api/analytics/consumption/scope";
@@ -31,7 +31,7 @@ const CONSUMPTION_TOP_ENDPOINTS = {
   skill: "top-skills",
   source: "top-sources",
   api_key: "top-api-keys",
-} as const satisfies Record<ConsumptionDimension, string>;
+} as const satisfies Record<ConsumptionScopeDimension, string>;
 
 export type ConsumptionTopRow = {
   id: string;
@@ -42,6 +42,7 @@ export type ConsumptionTopRow = {
   modelId: string | null;
   modelDisplayName: string | null;
   credits: number;
+  runCount?: number;
   avgCredits: number;
   previousCredits: number | null;
 };
@@ -58,7 +59,7 @@ export type ConsumptionTopResponse =
 
 export interface UseConsumptionTopParams {
   workspaceId: string;
-  dimension: ConsumptionDimension;
+  dimension: ConsumptionScopeDimension;
   period: ConsumptionPeriodSelection;
   limit: number;
   offset?: number;

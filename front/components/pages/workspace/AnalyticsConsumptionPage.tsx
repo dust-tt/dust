@@ -8,7 +8,11 @@ import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/c
 import type { ConsumptionSummaryProps } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
 import { ConsumptionSummary } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { consumptionDimensionFromQueryParam } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
+import {
+  CONSUMPTION_DIMENSIONS,
+  consumptionDimensionFromQueryParam,
+  isFilterableConsumptionDimension,
+} from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import type { UsageFilterPanelProps } from "@app/components/workspace/analytics/UsageFilterPanel";
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
 import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
@@ -138,6 +142,7 @@ export function AnalyticsConsumptionPage() {
 
 interface AnalyticsConsumptionContentProps {
   components?: AnalyticsConsumptionComponents;
+  dimensions?: readonly ConsumptionDimension[];
   embedded?: boolean;
   headerBadge?: ReactNode;
   owner: LightWorkspaceType;
@@ -152,6 +157,7 @@ interface AnalyticsConsumptionContentProps {
 
 export function AnalyticsConsumptionContent({
   components = WORKSPACE_CONSUMPTION_COMPONENTS,
+  dimensions = CONSUMPTION_DIMENSIONS,
   embedded = false,
   headerBadge,
   owner,
@@ -255,18 +261,28 @@ export function AnalyticsConsumptionContent({
         period={period}
         filter={scopeFilter}
         onAddFilter={(selectedRow) => {
+          if (!isFilterableConsumptionDimension(dimension)) {
+            return;
+          }
           setFilter((current) =>
             addUsageFilterFromAttributionRow(current, dimension, selectedRow)
           );
         }}
         onRemoveFilter={(selectedRow) => {
+          if (!isFilterableConsumptionDimension(dimension)) {
+            return;
+          }
           setFilter((current) =>
             removeUsageFilterFromAttributionRow(current, dimension, selectedRow)
           );
         }}
         dimension={dimension}
+        dimensions={dimensions}
         onDimensionChange={handleDimensionChange}
         onViewAll={(nextDimension, selectedRow) => {
+          if (!isFilterableConsumptionDimension(dimension)) {
+            return;
+          }
           setFilter((current) =>
             setUsageFilterFromAttributionRow(current, dimension, selectedRow)
           );
@@ -278,12 +294,21 @@ export function AnalyticsConsumptionContent({
   );
 }
 
-export function useAnalyticsConsumptionState() {
+interface UseAnalyticsConsumptionStateOptions {
+  dimensions?: readonly ConsumptionDimension[];
+}
+
+export function useAnalyticsConsumptionState({
+  dimensions = CONSUMPTION_DIMENSIONS,
+}: UseAnalyticsConsumptionStateOptions = {}) {
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
   );
   const { dimension: dimensionParam } = useQueryParams(["dimension"]);
-  const dimension = consumptionDimensionFromQueryParam(dimensionParam.value);
+  const dimension = consumptionDimensionFromQueryParam(
+    dimensionParam.value,
+    dimensions
+  );
   const [filter, setFilter] = useState<UsageFilter>({});
   const scopeFilter = useMemo(() => toConsumptionScopeFilter(filter), [filter]);
   const shouldReduceMotion = useReducedMotion();

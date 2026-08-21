@@ -1,4 +1,4 @@
-import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionAttributionDimension } from "@app/lib/api/analytics/consumption/scope";
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import { getUserDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
@@ -7,6 +7,7 @@ import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -25,13 +26,15 @@ import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
  * - "tool": MCP server names
  * - "skill": skill sIds
  * - "source": origin slugs
+ * - "automation": trigger sIds
  */
 
 export type DimensionLabel = {
   name: string;
   // Only agents and users have one; null for every other dimension.
   pictureUrl: string | null;
-  // Only agents and skills have one; null for every other dimension.
+  // Agents and skills use this for their description. Automations use it for
+  // the name of the agent they run.
   description: string | null;
   // Only agents have model metadata.
   modelId?: string;
@@ -53,7 +56,7 @@ function labelsFromNames(
 
 export async function resolveDimensionLabels(
   auth: Authenticator,
-  dimension: ConsumptionScopeDimension,
+  dimension: ConsumptionAttributionDimension,
   keys: string[]
 ): Promise<Map<string, DimensionLabel>> {
   if (keys.length === 0) {
@@ -168,6 +171,34 @@ export async function resolveDimensionLabels(
         new Map(keys.map((key) => [key, sourceLabelForOrigin(key) ?? key]))
       );
 
+    case "automation": {
+      const triggers = await TriggerResource.fetchByIds(auth, keys);
+      const triggersById = new Map(
+        triggers.map((trigger) => [trigger.sId, trigger])
+      );
+      const agentIds = [
+        ...new Set(triggers.map((trigger) => trigger.agentConfigurationId)),
+      ];
+      const agentLabels = await resolveAnalyticsAgentLabels(auth, agentIds);
+
+      return new Map(
+        keys.map((key) => {
+          const trigger = triggersById.get(key);
+          return [
+            key,
+            {
+              name: trigger?.name ?? `Deleted automation (${key})`,
+              pictureUrl: null,
+              description: trigger
+                ? (agentLabels.get(trigger.agentConfigurationId)?.name ??
+                  trigger.agentConfigurationId)
+                : null,
+            },
+          ];
+        })
+      );
+    }
+
     default:
       assertNever(dimension);
   }
@@ -175,7 +206,7 @@ export async function resolveDimensionLabels(
 
 export async function resolveDimensionDisplayNames(
   auth: Authenticator,
-  dimension: ConsumptionScopeDimension,
+  dimension: ConsumptionAttributionDimension,
   groupKeys: string[]
 ): Promise<Map<string, string>> {
   const labels = await resolveDimensionLabels(auth, dimension, groupKeys);

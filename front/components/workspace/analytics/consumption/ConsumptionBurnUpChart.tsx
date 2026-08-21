@@ -6,7 +6,7 @@ import {
   findPartialTimestamp,
   formatConsumptionDate,
 } from "@app/lib/analytics/consumption_period";
-import type { GetConsumptionTimeseriesResponse } from "@app/lib/api/analytics/consumption/timeseries";
+import type { ConsumptionTimeseries } from "@app/lib/api/analytics/consumption/timeseries";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
@@ -92,7 +92,7 @@ function ConsumptionBurnUpTooltip({
 }
 
 interface ConsumptionBurnUpChartProps {
-  timeseries: GetConsumptionTimeseriesResponse | null;
+  timeseries: ConsumptionTimeseries | null;
   capCredits: number | null;
   isTimeseriesLoading: boolean;
   isTimeseriesError: boolean;

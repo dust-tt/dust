@@ -9,12 +9,15 @@ import {
   findPartialTimestamp,
   formatConsumptionDate,
 } from "@app/lib/analytics/consumption_period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type {
+  ConsumptionScopeDimension,
+  ConsumptionScopeFilter,
+} from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionTimeseries,
   ConsumptionTimeseriesGroup,
   ConsumptionTimeseriesMode,
   ConsumptionTimeseriesPoint,
-  GetConsumptionTimeseriesResponse,
 } from "@app/lib/api/analytics/consumption/timeseries";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { ButtonsSwitch, ButtonsSwitchList, cn } from "@dust-tt/sparkle";
@@ -34,6 +37,7 @@ import type { Props as RechartsLabelProps } from "recharts/types/component/Label
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import { ConsumptionBurnUpChart } from "./ConsumptionBurnUpChart";
 import type { ConsumptionDimension } from "./consumptionDimensions";
+import { isFilterableConsumptionDimension } from "./consumptionDimensions";
 
 const TODAY_PARTIAL_LABEL = "Today (partial)";
 
@@ -187,7 +191,7 @@ function ConsumptionDailyTooltip({
 }
 
 interface ConsumptionDailyChartProps {
-  timeseries: GetConsumptionTimeseriesResponse | null;
+  timeseries: ConsumptionTimeseries | null;
   isTimeseriesLoading: boolean;
   isTimeseriesError: boolean;
   emptyMessage: string;
@@ -353,12 +357,17 @@ export interface ConsumptionChartProps {
   filter?: ConsumptionScopeFilter;
 }
 
-function WorkspaceConsumptionDailyChart({
+interface WorkspaceConsumptionDailyChartContentProps
+  extends Omit<ConsumptionChartProps, "dimension"> {
+  dimension: ConsumptionScopeDimension;
+}
+
+function WorkspaceConsumptionDailyChartContent({
   workspaceId,
   period,
   dimension,
   filter,
-}: ConsumptionChartProps) {
+}: WorkspaceConsumptionDailyChartContentProps) {
   const { timeseries, isTimeseriesLoading, isTimeseriesError } =
     useConsumptionTimeseries({
       workspaceId,
@@ -376,6 +385,17 @@ function WorkspaceConsumptionDailyChart({
       isTimeseriesError={Boolean(isTimeseriesError)}
       emptyMessage="No consumption over this period."
     />
+  );
+}
+
+function WorkspaceConsumptionDailyChart(props: ConsumptionChartProps) {
+  const { dimension, ...rest } = props;
+  if (!isFilterableConsumptionDimension(dimension)) {
+    return null;
+  }
+
+  return (
+    <WorkspaceConsumptionDailyChartContent {...rest} dimension={dimension} />
   );
 }
 

@@ -1,46 +1,37 @@
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import {
-  PokeConsumptionTimeseriesBodySchema,
+  ConsumptionTopBodySchema,
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
-import type { GetPokeConsumptionTimeseriesResponse } from "@app/lib/api/analytics/consumption/timeseries";
-import { fetchConsumptionTimeseries } from "@app/lib/api/analytics/consumption/timeseries";
+import type { GetConsumptionTopAutomationsResponse } from "@app/lib/api/analytics/consumption/top_automations";
+import { fetchConsumptionTopAutomations } from "@app/lib/api/analytics/consumption/top_automations";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
-// Mounted at /api/poke/workspaces/:wId/analytics/consumption/timeseries.
 const app = pokeApp();
 
 /** @ignoreswagger */
 app.post(
   "/",
-  validate("json", PokeConsumptionTimeseriesBodySchema),
-  async (ctx): HandlerResult<GetPokeConsumptionTimeseriesResponse> => {
+  validate("json", ConsumptionTopBodySchema),
+  async (ctx): HandlerResult<GetConsumptionTopAutomationsResponse> => {
     const auth = ctx.get("auth");
-    const {
-      granularity,
-      mode,
-      metric,
-      breakdownBy,
-      breakdownCount,
-      filter,
-      ...periodQuery
-    } = ctx.req.valid("json");
+    const { limit, offset, search, filter, sortOrder, ...periodQuery } =
+      ctx.req.valid("json");
 
     const period = await resolveConsumptionPeriod(
       auth,
       toConsumptionPeriodInput(periodQuery)
     );
 
-    const result = await fetchConsumptionTimeseries(auth, {
+    const result = await fetchConsumptionTopAutomations(auth, {
       period,
-      granularity,
-      mode,
-      metric,
-      breakdownBy,
-      breakdownCount,
+      limit,
+      offset,
+      search,
       filter,
+      sortOrder,
     });
     if (result.isErr()) {
       return apiError(
@@ -49,7 +40,7 @@ app.post(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to retrieve timeseries.",
+            message: "Failed to retrieve top automations.",
           },
         },
         result.error

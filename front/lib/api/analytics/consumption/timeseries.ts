@@ -1,6 +1,7 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { DEFAULT_CONSUMPTION_BREAKDOWN_COUNT } from "@app/lib/api/analytics/consumption/schema";
 import type {
+  ConsumptionAttributionDimension,
   ConsumptionGroupBucket,
   ConsumptionMetric,
   ConsumptionScopeDimension,
@@ -13,6 +14,7 @@ import {
   DEFAULT_CONSUMPTION_METRIC,
   metricSubAgg,
   metricValue,
+  TRIGGER_ID_FIELD,
 } from "@app/lib/api/analytics/consumption/scope";
 import { fetchTopDimensions } from "@app/lib/api/analytics/consumption/top_dimensions";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
@@ -35,7 +37,7 @@ export const TOTAL_GROUP_KEY = "total";
 
 export const OTHERS_GROUP_KEY = "others";
 
-export type ConsumptionBreakdownDimension = ConsumptionScopeDimension;
+export type ConsumptionBreakdownDimension = ConsumptionAttributionDimension;
 
 export type ConsumptionTimeseriesGroup = {
   groupKey: string;
@@ -47,20 +49,27 @@ export type ConsumptionTimeseriesPoint = {
   values: Record<string, number>;
 };
 
-export type ConsumptionTimeseries = {
+export type ConsumptionTimeseries<
+  TDimension extends
+    ConsumptionAttributionDimension = ConsumptionAttributionDimension,
+> = {
   // Echoed so the chart can label its axis against the window it covers without
   // a second request.
   period: ConsumptionPeriod;
   granularity: ConsumptionGranularity;
   mode: ConsumptionTimeseriesMode;
   metric: ConsumptionMetric;
-  breakdownBy: ConsumptionBreakdownDimension | null;
+  breakdownBy: TDimension | null;
   // In rank order, highest consumption first, with "others" last when present.
   groups: ConsumptionTimeseriesGroup[];
   points: ConsumptionTimeseriesPoint[];
 };
 
-export type GetConsumptionTimeseriesResponse = ConsumptionTimeseries;
+export type GetConsumptionTimeseriesResponse =
+  ConsumptionTimeseries<ConsumptionScopeDimension>;
+
+export type GetPokeConsumptionTimeseriesResponse =
+  ConsumptionTimeseries<ConsumptionAttributionDimension>;
 
 type ConsumptionTimeseriesScope = {
   period: ConsumptionPeriod;
@@ -92,7 +101,9 @@ type ConsumptionBreakdown = {
   groupKeys: string[];
 };
 
-export async function fetchConsumptionTimeseries(
+export async function fetchConsumptionTimeseries<
+  TDimension extends ConsumptionAttributionDimension,
+>(
   auth: Authenticator,
   {
     period,
@@ -107,34 +118,43 @@ export async function fetchConsumptionTimeseries(
     granularity: ConsumptionGranularity;
     mode: ConsumptionTimeseriesMode;
     metric?: ConsumptionMetric;
-    breakdownBy?: ConsumptionBreakdownDimension | null;
+    breakdownBy?: TDimension | null;
     breakdownCount?: number;
     filter?: ConsumptionScopeFilter;
   }
-): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
+): Promise<Result<ConsumptionTimeseries<TDimension>, ElasticsearchError>> {
   const query = buildConsumptionScopeQuery({
     auth: auth,
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
+    // Unlike the other dimensions, an automation is only present on triggered
+    // consumption. Keep manual consumption out of its total and "Others"
+    // series instead of presenting it as unattributed automation usage.
+    extraFilters:
+      breakdownBy === "automation"
+        ? [{ exists: { field: TRIGGER_ID_FIELD } }]
+        : [],
   });
   const scope = { period, granularity, mode, metric };
 
   if (!breakdownBy) {
-    return fetchTimeseries(query, scope);
+    return fetchTimeseries<TDimension>(query, scope);
   }
 
-  return fetchTimeseriesBreakdown(auth, query, scope, {
+  return fetchTimeseriesBreakdown<TDimension>(auth, query, scope, {
     breakdownBy,
     breakdownCount,
   });
 }
 
-async function fetchTimeseries(
+async function fetchTimeseries<
+  TDimension extends ConsumptionAttributionDimension,
+>(
   query: estypes.QueryDslQueryContainer,
   scope: ConsumptionTimeseriesScope,
-  breakdownBy: ConsumptionBreakdownDimension | null = null
-): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
+  breakdownBy: TDimension | null = null
+): Promise<Result<ConsumptionTimeseries<TDimension>, ElasticsearchError>> {
   const bucketsResult = await fetchMetricTimeseries(query, {
     period: scope.period,
     granularity: scope.granularity,
@@ -158,7 +178,9 @@ async function fetchTimeseries(
   });
 }
 
-async function fetchTimeseriesBreakdown(
+async function fetchTimeseriesBreakdown<
+  TDimension extends ConsumptionAttributionDimension,
+>(
   auth: Authenticator,
   query: estypes.QueryDslQueryContainer,
   scope: ConsumptionTimeseriesScope,
@@ -166,10 +188,10 @@ async function fetchTimeseriesBreakdown(
     breakdownBy,
     breakdownCount,
   }: {
-    breakdownBy: ConsumptionBreakdownDimension;
+    breakdownBy: TDimension;
     breakdownCount: number;
   }
-): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
+): Promise<Result<ConsumptionTimeseries<TDimension>, ElasticsearchError>> {
   const field = CONSUMPTION_DIMENSION_FIELDS[breakdownBy];
 
   const rankingResult = await fetchTopDimensions(query, {
@@ -183,7 +205,7 @@ async function fetchTimeseriesBreakdown(
   const topDimensionKeys = rankingResult.value;
 
   if (topDimensionKeys.length === 0) {
-    return fetchTimeseries(query, scope);
+    return fetchTimeseries<TDimension>(query, scope);
   }
 
   const bucketsResult = await fetchMetricTimeseries(query, {

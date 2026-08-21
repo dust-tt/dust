@@ -26,8 +26,24 @@ export const CONSUMPTION_SCOPE_DIMENSIONS = [
 export type ConsumptionScopeDimension =
   (typeof CONSUMPTION_SCOPE_DIMENSIONS)[number];
 
+export const CONSUMPTION_ATTRIBUTION_DIMENSIONS = [
+  ...CONSUMPTION_SCOPE_DIMENSIONS,
+  "automation",
+] as const;
+
+export type ConsumptionAttributionDimension =
+  (typeof CONSUMPTION_ATTRIBUTION_DIMENSIONS)[number];
+
+export function isConsumptionScopeDimension(
+  dimension: ConsumptionAttributionDimension
+): dimension is ConsumptionScopeDimension {
+  return CONSUMPTION_SCOPE_DIMENSIONS.some(
+    (scopeDimension) => scopeDimension === dimension
+  );
+}
+
 export const CONSUMPTION_DIMENSION_FIELDS: Record<
-  ConsumptionScopeDimension,
+  ConsumptionAttributionDimension,
   string
 > = {
   agent: "agent.attributed_id",
@@ -40,12 +56,13 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
   // Multi-valued: one tool call can be attributed to several skills at once.
   skill: "tool.attributed_skill_ids",
   source: "normalized_origin",
+  automation: TRIGGER_ID_FIELD,
 };
 
-export type ConsumptionTopUnit = "message" | "invocation";
+export type ConsumptionTopUnit = "message" | "invocation" | "run";
 
 export const CONSUMPTION_DIMENSION_UNIT: Record<
-  ConsumptionScopeDimension,
+  ConsumptionAttributionDimension,
   ConsumptionTopUnit
 > = {
   agent: "message",
@@ -56,6 +73,7 @@ export const CONSUMPTION_DIMENSION_UNIT: Record<
   tool: "invocation",
   skill: "invocation",
   source: "message",
+  automation: "run",
 };
 
 export const CONSUMPTION_SCOPE_FILTER_KEYS = [

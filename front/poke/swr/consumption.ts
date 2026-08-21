@@ -26,8 +26,9 @@ import type {
 import type {
   ConsumptionBreakdownDimension,
   ConsumptionTimeseriesMode,
-  GetConsumptionTimeseriesResponse,
+  GetPokeConsumptionTimeseriesResponse,
 } from "@app/lib/api/analytics/consumption/timeseries";
+import type { GetConsumptionTopAutomationsResponse } from "@app/lib/api/analytics/consumption/top_automations";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useMemo } from "react";
 
@@ -51,6 +52,7 @@ const CONSUMPTION_TOP_ENDPOINTS = {
   skill: "top-skills",
   source: "top-sources",
   api_key: "top-api-keys",
+  automation: "top-automations",
 } as const satisfies Record<ConsumptionDimension, string>;
 
 type ConsumptionTimeseriesBody = ConsumptionBody & {
@@ -58,6 +60,42 @@ type ConsumptionTimeseriesBody = ConsumptionBody & {
   breakdownBy?: ConsumptionBreakdownDimension;
   breakdownCount?: number;
 };
+
+interface UsePokeConsumptionTimeseriesParams
+  extends Omit<UseConsumptionTimeseriesParams, "breakdownBy"> {
+  breakdownBy?: ConsumptionBreakdownDimension;
+}
+
+export interface UsePokeConsumptionTopParams
+  extends Omit<UseConsumptionTopParams, "dimension"> {
+  dimension: ConsumptionDimension;
+}
+
+type PokeConsumptionTopResponse =
+  | ConsumptionTopResponse
+  | GetConsumptionTopAutomationsResponse;
+
+function toPokeConsumptionTopRows(
+  data: PokeConsumptionTopResponse
+): ConsumptionTopRow[] {
+  if ("automations" in data) {
+    return data.automations.map((row) => ({
+      id: row.triggerId,
+      name: row.name,
+      pictureUrl: null,
+      description: row.agentName ? `Agent: ${row.agentName}` : null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
+      credits: row.credits,
+      runCount: row.runCount,
+      avgCredits: row.avgCreditsPerRun,
+      previousCredits: row.previousCredits,
+    }));
+  }
+
+  return toConsumptionTopRows(data);
+}
 
 export function usePokeConsumptionOverview({
   workspaceId,
@@ -126,7 +164,7 @@ export function usePokeConsumptionTimeseries({
   breakdownCount,
   filter,
   disabled,
-}: UseConsumptionTimeseriesParams) {
+}: UsePokeConsumptionTimeseriesParams) {
   const url = `/api/poke/workspaces/${workspaceId}/analytics/consumption/timeseries`;
   const body: ConsumptionTimeseriesBody = {
     period: period.kind,
@@ -140,7 +178,7 @@ export function usePokeConsumptionTimeseries({
 
   const { data, error, isValidating } = useConsumptionQuery<
     ConsumptionTimeseriesBody,
-    GetConsumptionTimeseriesResponse
+    GetPokeConsumptionTimeseriesResponse
   >({ url, body, disabled });
 
   return {
@@ -161,7 +199,7 @@ export function usePokeConsumptionTop({
   filter,
   sortOrder = "desc",
   disabled,
-}: UseConsumptionTopParams) {
+}: UsePokeConsumptionTopParams) {
   const url = `/api/poke/workspaces/${workspaceId}/analytics/consumption/${CONSUMPTION_TOP_ENDPOINTS[dimension]}`;
   const body: ConsumptionTopBody = {
     period: period.kind,
@@ -176,11 +214,12 @@ export function usePokeConsumptionTop({
 
   const { data, error, isLoading, isValidating } = useConsumptionQuery<
     ConsumptionTopBody,
-    ConsumptionTopResponse
+    PokeConsumptionTopResponse
   >({ url, body, disabled });
 
   const rows = useMemo(
-    () => (data ? toConsumptionTopRows(data) : emptyArray<ConsumptionTopRow>()),
+    () =>
+      data ? toPokeConsumptionTopRows(data) : emptyArray<ConsumptionTopRow>(),
     [data]
   );
 

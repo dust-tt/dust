@@ -78,6 +78,7 @@ function AttributionSkeletonCell({
         </div>
       );
     case "credits":
+    case "runCount":
     case "avgCredits":
     case "vsPrev":
       return (
@@ -114,6 +115,7 @@ export interface ConsumptionAttributionRowsTableProps {
     selectedRow: ConsumptionTopRow
   ) => void;
   expandedRowId: string | null;
+  canExpand?: boolean;
   isLoading?: boolean;
   skeletonRowCount?: number;
   hasAvatar?: boolean;
@@ -136,6 +138,7 @@ export function ConsumptionAttributionRowsTableView({
   filter,
   onViewAll,
   expandedRowId,
+  canExpand = true,
   isLoading = false,
   skeletonRowCount = ATTRIBUTION_SKELETON_ROW_COUNT,
   hasAvatar = false,
@@ -223,7 +226,7 @@ export function ConsumptionAttributionRowsTableView({
               <Fragment key={row.id}>
                 <DataTable.Row
                   widthClassName="w-full"
-                  onClick={row.original.onClick}
+                  onClick={canExpand ? row.original.onClick : undefined}
                   rowData={row.original}
                 >
                   {row.getVisibleCells().map((cell) => (
@@ -235,34 +238,36 @@ export function ConsumptionAttributionRowsTableView({
                     </DataTable.Cell>
                   ))}
                 </DataTable.Row>
-                <tr>
-                  <td
-                    className="max-w-0"
-                    colSpan={row.getVisibleCells().length}
-                  >
-                    <Collapsible open={expandedRowId === row.original.id}>
-                      <CollapsibleContent
-                        animated={false}
-                        className={cn(
-                          "transition-none ease-enter motion-reduce:animate-none",
-                          "data-[state=open]:animate-in data-[state=open]:fade-in-0",
-                          "data-[state=open]:slide-in-from-top-1 data-[state=open]:duration-enter",
-                          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
-                          "data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-exit"
-                        )}
-                      >
-                        <BreakdownComponent
-                          workspaceId={workspaceId}
-                          selectedDimension={dimension}
-                          selectedRow={row.original}
-                          period={period}
-                          filter={filter}
-                          onViewAll={onViewAll}
-                        />
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </td>
-                </tr>
+                {canExpand && (
+                  <tr>
+                    <td
+                      className="max-w-0"
+                      colSpan={row.getVisibleCells().length}
+                    >
+                      <Collapsible open={expandedRowId === row.original.id}>
+                        <CollapsibleContent
+                          animated={false}
+                          className={cn(
+                            "transition-none ease-enter motion-reduce:animate-none",
+                            "data-[state=open]:animate-in data-[state=open]:fade-in-0",
+                            "data-[state=open]:slide-in-from-top-1 data-[state=open]:duration-enter",
+                            "data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
+                            "data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-exit"
+                          )}
+                        >
+                          <BreakdownComponent
+                            workspaceId={workspaceId}
+                            selectedDimension={dimension}
+                            selectedRow={row.original}
+                            period={period}
+                            filter={filter}
+                            onViewAll={onViewAll}
+                          />
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </td>
+                  </tr>
+                )}
               </Fragment>
             ))}
       </DataTable.Body>

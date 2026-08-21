@@ -22,6 +22,7 @@ import {
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
 import type {
+  ConsumptionScopeDimension,
   ConsumptionScopeFilter,
   ConsumptionTopSortOrder,
 } from "@app/lib/api/analytics/consumption/scope";
@@ -76,6 +77,7 @@ import {
   CONSUMPTION_DIMENSION_CONFIG,
   CONSUMPTION_DIMENSIONS,
   isConsumptionDimension,
+  isFilterableConsumptionDimension,
 } from "./consumptionDimensions";
 
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
@@ -122,10 +124,11 @@ const ATTRIBUTION_BODY_VARIANTS: Variants = {
 
 function getAttributionTransitionDirection(
   currentDimension: ConsumptionDimension,
-  nextDimension: ConsumptionDimension
+  nextDimension: ConsumptionDimension,
+  dimensions: readonly ConsumptionDimension[]
 ): AttributionTransitionDirection {
-  const currentIndex = CONSUMPTION_DIMENSIONS.indexOf(currentDimension);
-  const nextIndex = CONSUMPTION_DIMENSIONS.indexOf(nextDimension);
+  const currentIndex = dimensions.indexOf(currentDimension);
+  const nextIndex = dimensions.indexOf(nextDimension);
 
   if (currentIndex === nextIndex) {
     return 0;
@@ -217,6 +220,7 @@ function buildColumns({
   hasAvatar,
   isAvatarRounded,
   avgLabel,
+  supportsRowActions,
   totalCredits,
   isDark,
   expandedRowId,
@@ -226,12 +230,13 @@ function buildColumns({
   hasAvatar: boolean;
   isAvatarRounded: boolean;
   avgLabel: string;
+  supportsRowActions: boolean;
   totalCredits: number;
   isDark: boolean;
   expandedRowId: string | null;
   selectedIdSet: Set<string>;
 }): ColumnDef<AttributionRowData>[] {
-  return [
+  const columns: ColumnDef<AttributionRowData>[] = [
     {
       id: "name",
       accessorKey: "name",
@@ -248,7 +253,16 @@ function buildColumns({
             ? icon
             : DEFAULT_MCP_SERVER_ICON;
         const content =
-          dimension === "skill" ? (
+          dimension === "automation" ? (
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate text-sm">{name}</span>
+              {description && (
+                <span className="truncate text-xs text-muted-foreground">
+                  {description}
+                </span>
+              )}
+            </div>
+          ) : dimension === "skill" ? (
             <div className="flex min-w-0 items-center gap-2">
               <SkillAvatar name={name} size="xs" />
               <span className="truncate text-sm">{name}</span>
@@ -305,7 +319,8 @@ function buildColumns({
       // Same denominator (totalCredits) for every row, so ranking by cost
       // share is the same order as ranking by credits
       accessorFn: (row) => (totalCredits > 0 ? row.credits / totalCredits : 0),
-      header: "Consumption share",
+      header:
+        dimension === "automation" ? "Share of total" : "Consumption share",
       enableSorting: true,
       meta: { sizeRatio: 20, headerAlign: "left" },
       cell: (info) => (
@@ -327,6 +342,19 @@ function buildColumns({
         <DataTable.BasicCellContent
           className="justify-end text-right tabular-nums"
           label={formatCredits(info.row.original.credits)}
+        />
+      ),
+    },
+    {
+      id: "runCount",
+      accessorKey: "runCount",
+      header: "Est. runs",
+      enableSorting: false,
+      meta: { sizeRatio: 14, headerAlign: "right" },
+      cell: (info) => (
+        <DataTable.BasicCellContent
+          className="justify-end text-right tabular-nums"
+          label={(info.row.original.runCount ?? 0).toLocaleString()}
         />
       ),
     },
@@ -415,6 +443,19 @@ function buildColumns({
       },
     },
   ];
+
+  return columns.filter((column) => {
+    if (column.id === "runCount") {
+      return dimension === "automation";
+    }
+    if (column.id === "details") {
+      return supportsRowActions;
+    }
+    if (column.id === "filter") {
+      return supportsRowActions;
+    }
+    return true;
+  });
 }
 
 export interface ConsumptionAttributionRowsProps {
@@ -493,6 +534,17 @@ interface ConsumptionAttributionRowsViewProps
   RowsTableComponent: ComponentType<ConsumptionAttributionRowsTableProps>;
 }
 
+function selectedIdsForDimension(
+  dimension: ConsumptionDimension,
+  filter: ConsumptionScopeFilter | undefined
+): string[] {
+  if (!isFilterableConsumptionDimension(dimension)) {
+    return [];
+  }
+
+  return filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]] ?? [];
+}
+
 export function ConsumptionAttributionRowsView({
   workspaceId,
   dimension,
@@ -515,12 +567,13 @@ export function ConsumptionAttributionRowsView({
   RowsTableComponent,
 }: ConsumptionAttributionRowsViewProps) {
   const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
+  const supportsRowActions = isFilterableConsumptionDimension(dimension);
   const { isDark } = useTheme();
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const shouldReduceMotion = useReducedMotion();
   const cappedRowCount = Math.min(totalCount, ATTRIBUTION_MAX_ROW_COUNT);
   const selectedIdSet = useMemo(
-    () => new Set(filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]] ?? []),
+    () => new Set(selectedIdsForDimension(dimension, filter)),
     [dimension, filter]
   );
 
@@ -531,6 +584,7 @@ export function ConsumptionAttributionRowsView({
         hasAvatar,
         isAvatarRounded: dimension === "user",
         avgLabel,
+        supportsRowActions,
         totalCredits,
         isDark,
         expandedRowId,
@@ -540,6 +594,7 @@ export function ConsumptionAttributionRowsView({
       hasAvatar,
       dimension,
       avgLabel,
+      supportsRowActions,
       totalCredits,
       isDark,
       expandedRowId,
@@ -595,6 +650,7 @@ export function ConsumptionAttributionRowsView({
             filter={filter}
             onViewAll={onViewAll}
             expandedRowId={expandedRowId}
+            canExpand={supportsRowActions}
             isLoading
             skeletonRowCount={skeletonRowCount}
             hasAvatar={hasAvatar}
@@ -630,6 +686,7 @@ export function ConsumptionAttributionRowsView({
               filter={filter}
               onViewAll={onViewAll}
               expandedRowId={expandedRowId}
+              canExpand={supportsRowActions}
               sorting={sorting}
               onSortingChange={onSortingChange}
             />
@@ -659,8 +716,13 @@ export function ConsumptionAttributionRowsView({
   );
 }
 
-function WorkspaceConsumptionAttributionRows(
-  props: ConsumptionAttributionRowsProps
+interface WorkspaceConsumptionAttributionRowsProps
+  extends Omit<ConsumptionAttributionRowsProps, "dimension"> {
+  dimension: ConsumptionScopeDimension;
+}
+
+function WorkspaceConsumptionAttributionRowsContent(
+  props: WorkspaceConsumptionAttributionRowsProps
 ) {
   const queryState = useConsumptionAttributionRowsQueryState();
   const {
@@ -699,6 +761,22 @@ function WorkspaceConsumptionAttributionRows(
   );
 }
 
+function WorkspaceConsumptionAttributionRows(
+  props: ConsumptionAttributionRowsProps
+) {
+  const { dimension, ...rest } = props;
+  if (!isFilterableConsumptionDimension(dimension)) {
+    return null;
+  }
+
+  return (
+    <WorkspaceConsumptionAttributionRowsContent
+      {...rest}
+      dimension={dimension}
+    />
+  );
+}
+
 export interface ConsumptionAttributionTableProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
@@ -707,6 +785,7 @@ export interface ConsumptionAttributionTableProps {
   onRemoveFilter: (row: ConsumptionTopRow) => void;
   // Owned by the page: the selected tab also drives the chart's breakdown.
   dimension: ConsumptionDimension;
+  dimensions?: readonly ConsumptionDimension[];
   onDimensionChange: (dimension: ConsumptionDimension) => void;
   onViewAll: (
     dimension: ConsumptionDimension,
@@ -727,6 +806,7 @@ export function ConsumptionAttributionTableView({
   onAddFilter,
   onRemoveFilter,
   dimension,
+  dimensions = CONSUMPTION_DIMENSIONS,
   onDimensionChange,
   onViewAll,
   showExport = true,
@@ -769,12 +849,16 @@ export function ConsumptionAttributionTableView({
           <Tabs
             value={dimension}
             onValueChange={(value) => {
-              if (isConsumptionDimension(value)) {
+              if (isConsumptionDimension(value, dimensions)) {
                 setTransition({
                   target: value,
                   direction:
                     pendingPointerDimension.current === value
-                      ? getAttributionTransitionDirection(dimension, value)
+                      ? getAttributionTransitionDirection(
+                          dimension,
+                          value,
+                          dimensions
+                        )
                       : 0,
                 });
                 pendingPointerDimension.current = null;
@@ -783,7 +867,7 @@ export function ConsumptionAttributionTableView({
             }}
           >
             <TabsList border>
-              {CONSUMPTION_DIMENSIONS.map((tabDimension) => (
+              {dimensions.map((tabDimension) => (
                 <TabsTrigger
                   key={tabDimension}
                   value={tabDimension}

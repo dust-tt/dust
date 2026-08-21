@@ -8,6 +8,8 @@ import { PokeConsumptionOverview } from "@app/components/poke/analytics/PokeCons
 import { PokeConsumptionSummary } from "@app/components/poke/analytics/PokeConsumptionSummary";
 import { PokeCustomerVisibilityChip } from "@app/components/poke/analytics/PokeCustomerVisibilityChip";
 import { PokeUsageFilterPanel } from "@app/components/poke/analytics/PokeUsageFilterPanel";
+import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
+import { CONSUMPTION_DIMENSIONS } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import type { WorkspaceType } from "@app/types/user";
 import { safeLazy } from "@dust-tt/sparkle";
@@ -32,16 +34,24 @@ const POKE_CONSUMPTION_COMPONENTS: AnalyticsConsumptionComponents = {
   UsageFilterPanel: PokeUsageFilterPanel,
 };
 
+const POKE_CONSUMPTION_DIMENSIONS = [
+  ...CONSUMPTION_DIMENSIONS,
+  "automation",
+] as const satisfies readonly ConsumptionDimension[];
+
 interface PokeConsumptionPreviewProps {
   owner: WorkspaceType;
 }
 
 export function PokeConsumptionPreview({ owner }: PokeConsumptionPreviewProps) {
-  const state = useAnalyticsConsumptionState();
+  const state = useAnalyticsConsumptionState({
+    dimensions: POKE_CONSUMPTION_DIMENSIONS,
+  });
 
   return (
     <AnalyticsConsumptionContent
       components={POKE_CONSUMPTION_COMPONENTS}
+      dimensions={POKE_CONSUMPTION_DIMENSIONS}
       owner={owner}
       embedded
       headerBadge={

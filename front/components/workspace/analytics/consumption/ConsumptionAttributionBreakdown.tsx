@@ -6,7 +6,10 @@ import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consum
 import { Button, cn, LoadingBlock, ProgressBar } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import type { ConsumptionDimension } from "./consumptionDimensions";
-import { CONSUMPTION_DIMENSION_CONFIG } from "./consumptionDimensions";
+import {
+  CONSUMPTION_DIMENSION_CONFIG,
+  isFilterableConsumptionDimension,
+} from "./consumptionDimensions";
 
 export const CONSUMPTION_ATTRIBUTION_BREAKDOWN_LIMIT = 3;
 
@@ -180,6 +183,10 @@ export function ConsumptionAttributionBreakdownView({
   onViewAll,
   BreakdownColumnComponent,
 }: ConsumptionAttributionBreakdownViewProps) {
+  if (!isFilterableConsumptionDimension(selectedDimension)) {
+    return null;
+  }
+
   const selectedFilter: ConsumptionScopeFilter = {
     ...filter,
     [CONSUMPTION_DIMENSION_FILTER_KEYS[selectedDimension]]: [selectedRow.id],

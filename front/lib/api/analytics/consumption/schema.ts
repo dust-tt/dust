@@ -1,6 +1,7 @@
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/period";
 import {
+  CONSUMPTION_ATTRIBUTION_DIMENSIONS,
   CONSUMPTION_METRICS,
   CONSUMPTION_SCOPE_DIMENSIONS,
   CONSUMPTION_SCOPE_FILTER_KEYS,
@@ -60,6 +61,13 @@ export const ConsumptionTimeseriesBodySchema = ConsumptionBodySchema.extend({
 export type ConsumptionTimeseriesBody = z.infer<
   typeof ConsumptionTimeseriesBodySchema
 >;
+
+// Poke can inspect attribution dimensions that are intentionally not exposed
+// by the customer-facing consumption endpoint.
+export const PokeConsumptionTimeseriesBodySchema =
+  ConsumptionTimeseriesBodySchema.extend({
+    breakdownBy: z.enum(CONSUMPTION_ATTRIBUTION_DIMENSIONS).optional(),
+  });
 
 // Every `top-*` endpoint takes the same body as any other consumption
 // endpoint, plus how many rows to rank.

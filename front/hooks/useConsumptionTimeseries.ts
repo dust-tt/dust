@@ -5,16 +5,18 @@ import {
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type {
-  ConsumptionBreakdownDimension,
+  ConsumptionScopeDimension,
+  ConsumptionScopeFilter,
+} from "@app/lib/api/analytics/consumption/scope";
+import type {
   ConsumptionTimeseriesMode,
   GetConsumptionTimeseriesResponse,
 } from "@app/lib/api/analytics/consumption/timeseries";
 
 type ConsumptionTimeseriesBody = ConsumptionBody & {
   mode: ConsumptionTimeseriesMode;
-  breakdownBy?: ConsumptionBreakdownDimension;
+  breakdownBy?: ConsumptionScopeDimension;
   breakdownCount?: number;
 };
 
@@ -23,7 +25,7 @@ export interface UseConsumptionTimeseriesParams {
   period: ConsumptionPeriodSelection;
   mode: ConsumptionTimeseriesMode;
   // Omit for a single total series.
-  breakdownBy?: ConsumptionBreakdownDimension;
+  breakdownBy?: ConsumptionScopeDimension;
   breakdownCount?: number;
   filter?: ConsumptionScopeFilter;
   disabled?: boolean;

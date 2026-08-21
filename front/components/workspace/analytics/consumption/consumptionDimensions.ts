@@ -1,3 +1,5 @@
+import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
+import { isConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import type { ConsumptionBreakdownDimension } from "@app/lib/api/analytics/consumption/timeseries";
 
 export type ConsumptionDimension = ConsumptionBreakdownDimension;
@@ -78,18 +80,32 @@ export const CONSUMPTION_DIMENSION_CONFIG: Record<
     hasAvatar: false,
     avgLabel: MESSAGE_AVG_LABEL,
   },
+  automation: {
+    label: "Automations",
+    breakdownLabel: "automation",
+    hasAvatar: false,
+    avgLabel: "Est. credits / run",
+  },
 };
 
 export function isConsumptionDimension(
-  value: string
+  value: string,
+  dimensions: readonly ConsumptionDimension[] = CONSUMPTION_DIMENSIONS
 ): value is ConsumptionDimension {
-  return CONSUMPTION_DIMENSIONS.some((dimension) => dimension === value);
+  return dimensions.some((dimension) => dimension === value);
+}
+
+export function isFilterableConsumptionDimension(
+  dimension: ConsumptionDimension
+): dimension is ConsumptionScopeDimension {
+  return isConsumptionScopeDimension(dimension);
 }
 
 export function consumptionDimensionFromQueryParam(
-  value: string | undefined
+  value: string | undefined,
+  dimensions: readonly ConsumptionDimension[] = CONSUMPTION_DIMENSIONS
 ): ConsumptionDimension {
-  return value !== undefined && isConsumptionDimension(value)
+  return value !== undefined && isConsumptionDimension(value, dimensions)
     ? value
     : DEFAULT_CONSUMPTION_DIMENSION;
 }
