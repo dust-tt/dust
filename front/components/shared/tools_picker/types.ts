@@ -1,3 +1,4 @@
+import { additionalConfigurationSchema } from "@app/lib/actions/additional_configuration";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
@@ -8,6 +9,9 @@ import type {
 } from "@app/types/data_source_view";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
+
+export type { AdditionalConfigurationInBuilderType } from "@app/lib/actions/additional_configuration";
+export { additionalConfigurationSchema } from "@app/lib/actions/additional_configuration";
 
 export type CapabilityFilterType = "all" | "skills" | "tools";
 
@@ -30,25 +34,6 @@ export const generationSettingsSchema = z.object({
 export const mcpServerViewIdSchema = z.string();
 
 export const childAgentIdSchema = z.string().nullable();
-
-export const additionalConfigurationSchema = z.record(
-  z.string(),
-  z.union([
-    z.boolean(),
-    z.number(),
-    z.string(),
-    z.array(z.string()),
-    // Allow only one level of nesting
-    z.record(
-      z.string(),
-      z.union([z.boolean(), z.number(), z.string(), z.array(z.string())])
-    ),
-  ])
-);
-
-export type AdditionalConfigurationInBuilderType = z.infer<
-  typeof additionalConfigurationSchema
->;
 
 export const dustAppConfigurationSchema = z
   .object({

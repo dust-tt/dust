@@ -2,7 +2,6 @@ import {
   buildDustAidCookieString,
   getRootCookieDomain,
 } from "@app/lib/utils/anonymous_id";
-import { posthog } from "posthog-js";
 
 // Marketing and UTM parameter keys to track across the application.
 export const MARKETING_PARAMS = [
@@ -253,33 +252,3 @@ export function getStoredLandingContext(): LandingContext | null {
 export function getStoredReferrer(): string | null {
   return getStoredLandingContext()?.referrer ?? null;
 }
-
-// Append UTM parameters to URLs.
-export const appendUTMParams = (url: string, utmParams?: UTMParams): string => {
-  if (typeof window === "undefined") {
-    return url;
-  }
-
-  const params = utmParams ?? getStoredUTMParams();
-
-  const posthogId = posthog.get_distinct_id();
-  if (posthogId) {
-    params.posthog_id = posthogId;
-  }
-
-  if (Object.keys(params).length === 0) {
-    return url;
-  }
-
-  const [baseUrl, existingQuery] = url.split("?");
-  const searchParams = new URLSearchParams(existingQuery ?? "");
-
-  for (const [key, value] of Object.entries(params)) {
-    if (!searchParams.has(key)) {
-      searchParams.set(key, value);
-    }
-  }
-
-  const queryString = searchParams.toString();
-  return queryString ? `${baseUrl}?${queryString}` : baseUrl;
-};

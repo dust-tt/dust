@@ -1,5 +1,5 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { processAdditionalConfiguration } from "@app/components/agent_builder/submitAgentBuilderForm";
+import { processAdditionalConfiguration } from "@app/lib/actions/additional_configuration";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   isAutoInternalMCPServerName,

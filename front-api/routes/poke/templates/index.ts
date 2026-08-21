@@ -1,8 +1,8 @@
-import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import { buildSharedTemplateAttributes } from "@app/lib/api/poke/templates";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { AssistantTemplateListType } from "@app/lib/resources/template_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { USED_MODEL_CONFIGS } from "@app/types/assistant/models/used_model_configs";
 import {
   CreateTemplateFormSchema,
   isTemplateTagCodeArray,

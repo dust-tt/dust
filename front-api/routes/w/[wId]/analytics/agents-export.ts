@@ -1,4 +1,3 @@
-import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import {
   AGENT_EXPORT_HEADERS,
   fetchAgentExportRows,
@@ -6,6 +5,7 @@ import {
 } from "@app/lib/api/analytics/agents_export";
 import { buildDaysConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/period";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
+import { DEFAULT_PERIOD_DAYS } from "@app/lib/api/analytics/observability_constants";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";

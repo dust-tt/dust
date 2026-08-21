@@ -8,7 +8,6 @@ import { computeCreditUsageStatus } from "@app/lib/api/credits/usage_status";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import { getProgrammaticUsageFilterClause } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
-import type { BillingCycle } from "@app/lib/client/subscription";
 import {
   microCreditsToCredits,
   roundCreditsToMicroCredits,
@@ -43,6 +42,7 @@ import {
   getFairUseAwuCreditsStatus,
   isUserAwuWarned,
 } from "@app/lib/metronome/user_block";
+import type { BillingCycle } from "@app/lib/plans/billing_cycle";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";

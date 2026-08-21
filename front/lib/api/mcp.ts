@@ -1,7 +1,3 @@
-import type {
-  CustomResourceIconType,
-  InternalAllowedIconType,
-} from "@app/components/resources/resources_icon_names";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type {
   LightMCPToolConfigurationType,
@@ -24,6 +20,10 @@ import type {
   UpdateMCPToolSettingsBodySchema,
 } from "@app/lib/api/mcp_schemas";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/types/resources_icon_names";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { EditedByUser } from "@app/types/user";
 import type { JSONSchema7 as JSONSchema } from "json-schema";

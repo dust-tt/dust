@@ -1,3 +1,4 @@
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { z } from "zod";
 
 export const ImportSkillsRequestBodySchema = z.object({
@@ -8,3 +9,9 @@ export const ImportSkillsRequestBodySchema = z.object({
 export type ImportSkillsRequestBody = z.infer<
   typeof ImportSkillsRequestBodySchema
 >;
+
+export type ImportSkillsResponseBody = {
+  imported: SkillType[];
+  updated: SkillType[];
+  skipped: { name: string; message: string }[];
+};

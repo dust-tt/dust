@@ -31,3 +31,5 @@ export interface PendingInvitationOption {
 }
 
 // Types for the invite form in Poke.
+
+export const MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY = 300;

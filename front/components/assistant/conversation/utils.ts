@@ -1,21 +1,16 @@
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import type {
-  AgentMessageType,
   CompactionMessageType,
   ConversationForkedFromType,
   ConversationListItemType,
   ConversationWithoutContentType,
-  LightAgentMessageType,
-  UserMessageType,
-  UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 import {
   getConversationDisplayTitle,
   isPodConversation,
   isReinforcedSkillNotificationMetadata,
 } from "@app/types/assistant/conversation";
-import type { ContentFragmentType } from "@app/types/content_fragment";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { PodListItemType } from "@app/types/space";
 import moment from "moment";
@@ -266,31 +261,6 @@ export function findFirstUnreadMessageIndex(
     }
     return false;
   });
-}
-
-export function isMessageUnread(
-  message:
-    | UserMessageType
-    | AgentMessageType
-    | ContentFragmentType
-    | LightAgentMessageType
-    | UserMessageTypeWithContentFragments
-    | CompactionMessageType,
-  lastReadMs: number | null
-): boolean {
-  if (lastReadMs === null) {
-    return true;
-  }
-  if (message.created > lastReadMs) {
-    return true;
-  }
-  if (
-    message.type === "agent_message" &&
-    (message.completedTs ?? 0) > lastReadMs
-  ) {
-    return true;
-  }
-  return false;
 }
 
 type CompactionConversationInput = Pick<
