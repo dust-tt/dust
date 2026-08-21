@@ -313,17 +313,17 @@ export async function listWorkspaceMembers(
     return new Ok([{ type: "text" as const, text: "No members found." }]);
   }
 
-  const lines = members.map((member) =>
-    [
-      `${member.name} [${member.userId}]`,
-      renderFields({
-        email: member.email,
-        role: member.role,
-        jobFunction: member.jobFunction?.label ?? null,
-        groups: member.groups.join("|") || null,
-      }),
-    ].join(" — ")
-  );
+  const lines = members.map((member) => {
+    const extras = renderFields({
+      jobFunction: member.jobFunction?.label ?? null,
+      groups: member.groups.join("|") || null,
+    });
+
+    return (
+      `${member.name} [${member.userId}] (${member.email}) - ${member.role}` +
+      (extras ? `, ${extras}` : "")
+    );
+  });
 
   if (total > members.length) {
     lines.push(renderPageFooter({ shown: members.length, total, nextCursor }));

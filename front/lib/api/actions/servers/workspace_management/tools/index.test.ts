@@ -434,7 +434,7 @@ describe("workspace_management tools", () => {
       );
 
       expect(lines).toEqual([expect.stringContaining(targetUser.sId)]);
-      expect(lines[0]).toContain("role: user");
+      expect(lines[0]).toContain(") - user");
     });
 
     it("rejects calls with more than one filter", async () => {
@@ -500,10 +500,10 @@ describe("workspace_management tools", () => {
 
       expect(lines).toHaveLength(2);
       expect(lines[0]).toContain(salesUser.sId);
-      expect(lines[0]).toContain("role: builder");
+      expect(lines[0]).toContain(") - builder");
       expect(lines[0]).toContain("groups: Enterprise Sales");
       expect(lines[1]).toContain(engineeringUser.sId);
-      expect(lines[1]).toContain("role: user");
+      expect(lines[1]).toContain(") - user");
     });
 
     it("returns only members matching a jobType filter", async () => {
