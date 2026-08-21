@@ -1,8 +1,11 @@
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/period";
 import {
+  CONSUMPTION_METRICS,
+  CONSUMPTION_SCOPE_DIMENSIONS,
   CONSUMPTION_SCOPE_FILTER_KEYS,
   CONSUMPTION_TOP_SORT_ORDER,
+  DEFAULT_CONSUMPTION_METRIC,
 } from "@app/lib/api/analytics/consumption/scope";
 import { z } from "zod";
 
@@ -34,6 +37,29 @@ export const ConsumptionBodySchema = ConsumptionPeriodSchema.extend({
 });
 
 export type ConsumptionBody = z.infer<typeof ConsumptionBodySchema>;
+
+export const DEFAULT_CONSUMPTION_BREAKDOWN_COUNT = 10;
+
+export const ConsumptionTimeseriesBodySchema = ConsumptionBodySchema.extend({
+  granularity: z.enum(["day", "week", "month"]).optional().default("day"),
+  mode: z.enum(["daily", "cumulative"]).optional().default("daily"),
+  metric: z
+    .enum(CONSUMPTION_METRICS)
+    .optional()
+    .default(DEFAULT_CONSUMPTION_METRIC),
+  breakdownBy: z.enum(CONSUMPTION_SCOPE_DIMENSIONS).optional(),
+  breakdownCount: z
+    .number()
+    .int()
+    .positive()
+    .max(50)
+    .optional()
+    .default(DEFAULT_CONSUMPTION_BREAKDOWN_COUNT),
+});
+
+export type ConsumptionTimeseriesBody = z.infer<
+  typeof ConsumptionTimeseriesBodySchema
+>;
 
 // Every `top-*` endpoint takes the same body as any other consumption
 // endpoint, plus how many rows to rank.
