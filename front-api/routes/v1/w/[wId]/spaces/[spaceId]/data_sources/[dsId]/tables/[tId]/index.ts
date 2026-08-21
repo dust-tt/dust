@@ -7,7 +7,7 @@ import { CoreAPI } from "@app/types/core/core_api";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { GetTableResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -209,7 +209,7 @@ app.get(
 
 app.delete(
   "/",
-  ensureIsBuilder(),
+  ensureIsManager(),
   validate("param", ParamsSchema),
   async (ctx) => {
     const auth = ctx.get("auth");

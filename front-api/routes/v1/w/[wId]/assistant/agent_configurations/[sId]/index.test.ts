@@ -15,7 +15,7 @@ async function setupTest() {
   );
 
   const user = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, user, { role: "builder" });
+  await MembershipFactory.associate(workspace, user, { role: "admin" });
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,
     workspace.sId
