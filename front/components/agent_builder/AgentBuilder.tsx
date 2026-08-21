@@ -23,12 +23,6 @@ import {
 } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { useSidekickMCPServer } from "@app/components/agent_builder/sidekick/useMCPServer";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
-import {
-  getDefaultAgentFormData,
-  transformAgentConfigurationToFormData,
-  transformDuplicateAgentToFormData,
-  transformTemplateToFormData,
-} from "@app/components/agent_builder/transformAgentConfiguration";
 import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -45,6 +39,12 @@ import type {
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  getDefaultAgentFormData,
+  transformAgentConfigurationToFormData,
+  transformDuplicateAgentToFormData,
+  transformTemplateToFormData,
+} from "@app/lib/agent_builder/transform_agent_configuration";
 import { clientFetch } from "@app/lib/egress/client";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { useAppRouter } from "@app/lib/platform";

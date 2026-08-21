@@ -1,7 +1,7 @@
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/components/resources/resources_icon_names";
+} from "@app/types/resources_icon_names";
 
 export const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes.
 

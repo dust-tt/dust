@@ -1,7 +1,3 @@
-import type {
-  CustomResourceIconType,
-  InternalAllowedIconType,
-} from "@app/components/resources/resources_icon_names";
 import { FATHOM_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/fathom/preset";
 import { GITHUB_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/github/preset";
 import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/types";
@@ -11,6 +7,10 @@ import { LINEAR_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/linea
 import type { LinearAdditionalData } from "@app/lib/triggers/built-in-webhooks/linear/types";
 import { ZENDESK_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/zendesk/preset";
 import type { AgentsUsageType } from "@app/types/data_source";
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/types/resources_icon_names";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { BaseWebhookPreset } from "@app/types/triggers/webhooks_source_preset";
 import type { EditedByUser } from "@app/types/user";

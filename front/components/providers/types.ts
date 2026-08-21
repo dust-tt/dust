@@ -1,4 +1,4 @@
-export { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
+export { USED_MODEL_CONFIGS } from "@app/types/assistant/models/used_model_configs";
 
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";

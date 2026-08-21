@@ -1,8 +1,11 @@
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
+import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import * as cheerio from "cheerio";
 import { describe, expect, it } from "vitest";
+
+setupSkillInstructionsMarkdownPipeline();
 
 const HEX_BLOCK_ID = /^[a-f0-9]{8}$/;
 

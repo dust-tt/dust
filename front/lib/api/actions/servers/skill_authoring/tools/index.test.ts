@@ -13,6 +13,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -35,6 +36,8 @@ import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
 import { TOOLS } from "./index";
 
 const mockGetSimilarSkills = vi.mocked(getSimilarSkills);
+
+setupSkillInstructionsMarkdownPipeline();
 
 function getTool(name: string) {
   const tool = TOOLS.find((t) => t.name === name);

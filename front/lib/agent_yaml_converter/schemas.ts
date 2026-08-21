@@ -1,4 +1,4 @@
-import { additionalConfigurationSchema } from "@app/components/shared/tools_picker/types";
+import { additionalConfigurationSchema } from "@app/lib/actions/additional_configuration";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";

@@ -1,7 +1,3 @@
-import type {
-  CustomResourceIconType,
-  InternalAllowedIconType,
-} from "@app/components/resources/resources_icon_names";
 import type { AutomationTriggersFilter } from "@app/lib/api/analytics/automations/schema";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
@@ -32,6 +28,10 @@ import type {
   TriggerStatus,
 } from "@app/types/assistant/triggers";
 import { isScheduleTrigger } from "@app/types/assistant/triggers";
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/types/resources_icon_names";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
