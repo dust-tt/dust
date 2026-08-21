@@ -39,13 +39,23 @@ app.get(
     }
 
     const configuredPods = await listPodsWithEgressPolicy(auth);
+    if (configuredPods.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: `Failed to list Pods with an egress policy: ${configuredPods.error.message}`,
+        },
+      });
+    }
+
+    const requestedPodIds = new Set(
+      selection.value.kind === "pods" ? selection.value.podIds : []
+    );
     const targetPods =
       selection.value.kind === "all-pods"
-        ? configuredPods
-        : ((requested) =>
-            configuredPods.filter((pod) => requested.has(pod.sId)))(
-            new Set(selection.value.podIds)
-          );
+        ? configuredPods.value
+        : configuredPods.value.filter((pod) => requestedPodIds.has(pod.sId));
 
     // One GCS policy file per pod; bounded fan-out (only configured pods)
     // against an external service, not the DB.

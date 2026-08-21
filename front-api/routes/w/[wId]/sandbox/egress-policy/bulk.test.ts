@@ -6,10 +6,19 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { GetPodEgressPoliciesBulkResponseBody } from "@app/types/api/sandbox/egress_policy";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
+
+const BulkPoliciesResponseSchema = z.object({
+  policies: z.array(
+    z.object({
+      podId: z.string(),
+      policy: z.object({ allowedDomains: z.array(z.string()) }),
+    })
+  ),
+});
 
 async function setupTest({
   role = "admin",
@@ -110,9 +119,10 @@ describe("GET /api/w/:wId/sandbox/egress-policy/bulk", () => {
     );
 
     expect(response.status).toBe(200);
-    const data =
-      (await response.json()) as GetPodEgressPoliciesBulkResponseBody;
-    expect(data.policies).toEqual([
+    const { policies } = BulkPoliciesResponseSchema.parse(
+      await response.json()
+    );
+    expect(policies).toEqual([
       { podId: podA.sId, policy: { allowedDomains: ["api.github.com"] } },
     ]);
   });
@@ -126,9 +136,10 @@ describe("GET /api/w/:wId/sandbox/egress-policy/bulk", () => {
     const response = await getBulk(workspace.sId, "scope=all-pods");
 
     expect(response.status).toBe(200);
-    const data =
-      (await response.json()) as GetPodEgressPoliciesBulkResponseBody;
-    expect(data.policies.map((p) => p.podId).sort()).toEqual(
+    const { policies } = BulkPoliciesResponseSchema.parse(
+      await response.json()
+    );
+    expect(policies.map((p) => p.podId).sort()).toEqual(
       [podA.sId, podB.sId].sort()
     );
   });
@@ -144,5 +155,19 @@ describe("GET /api/w/:wId/sandbox/egress-policy/bulk", () => {
 
     const neitherResponse = await getBulk(workspace.sId, "");
     expect(neitherResponse.status).toBe(400);
+  });
+
+  it("returns a 500 when the Pod policy listing fails", async () => {
+    const { workspace, podA } = await setupTest();
+    fileStorageMock.setFilesByPrefix(() => {
+      throw new Error("gcs unavailable");
+    });
+
+    const response = await getBulk(workspace.sId, `podIds=${podA.sId}`);
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({
+      error: { type: "internal_server_error" },
+    });
   });
 });
