@@ -806,6 +806,7 @@ export const InputBar = React.memo(function InputBar({
             placeholder={
               willQueueMessage ? INPUT_BAR_QUEUE_PLACEHOLDER : placeholder
             }
+            animatePlaceholder={willQueueMessage}
             onShake={handleShake}
             isCompact={effectiveIsCompact}
             onExpandInputBar={onExpandInputBar}
