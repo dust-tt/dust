@@ -12,7 +12,7 @@ import {
 } from "@app/lib/api/sandbox/egress_policy";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { SANDBOX_WORKSPACE_SCOPE_ID } from "@app/types/api/sandbox/egress_policy";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import type { Result } from "@app/types/shared/result";
@@ -234,12 +234,17 @@ export async function bulkUpdateEgressDomain(
     }
   }
 
-  const spaces = await SpaceResource.fetchByIds(auth, podIds);
-  const spacesById = new Map(spaces.map((space) => [space.sId, space]));
+  // Validate against the same live, non-archived project Pods the read path
+  // surfaces, so an archived Pod's id can't be used to mutate its policy.
+  const livePods = await listNonArchivedProjectSpacesAsAdmin(auth);
+  if (livePods.isErr()) {
+    // Admin-gated by the route; a failure here is a should-never-happen.
+    throw livePods.error;
+  }
+  const livePodIds = new Set(livePods.value.map((pod) => pod.sId));
 
   for (const podId of podIds) {
-    const pod = spacesById.get(podId);
-    if (!pod || !pod.isProject()) {
+    if (!livePodIds.has(podId)) {
       results.push({
         scopeId: podId,
         success: false,
