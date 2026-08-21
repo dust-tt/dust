@@ -1,13 +1,13 @@
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
+import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import {
   RawMarkdownBlock,
   rawMarkdownBlockParsers,
 } from "@app/components/editor/extensions/skill_builder/RawMarkdownBlock";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
-import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { markdownStyles } from "@dust-tt/sparkle";
 import type { Extensions } from "@tiptap/core";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";

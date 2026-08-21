@@ -8,17 +8,14 @@ import {
   USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
+
+export { isUserMessageOrigin } from "@app/lib/api/analytics/source_labels";
+
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
 import moment from "moment-timezone";
 
 type VersionMarker = { version: string; timestamp: number };
-
-export function isUserMessageOrigin(
-  origin?: string | null
-): origin is AnalyticsVisibleOrigin {
-  return !!origin && origin in USER_MESSAGE_ORIGIN_LABELS;
-}
 
 export function getSourceColor(source: AnalyticsVisibleOrigin) {
   return USER_MESSAGE_ORIGIN_LABELS[source].color;

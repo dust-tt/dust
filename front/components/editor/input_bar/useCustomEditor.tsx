@@ -12,6 +12,7 @@ import { PastedAttachmentExtension } from "@app/components/editor/extensions/inp
 import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
+import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { ToolNodeWithView } from "@app/components/editor/extensions/skill_builder/ToolNodeWithView";
@@ -19,7 +20,6 @@ import { VoicePartialNode } from "@app/components/editor/extensions/VoicePartial
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { emojiPluginKey } from "@app/components/editor/input_bar/emojiSuggestion";
-import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import {
   createMentionSuggestion,
   mentionPluginKey,

@@ -1,0 +1,43 @@
+engine biome(1.0)
+language js
+
+// Prevents server-side code from importing client-only modules. A value import
+// pulls the whole module graph behind it into the front-api bundle at boot: one
+// `@app/components/...` import cost us React, tiptap, posthog-js and the
+// Datadog browser SDK, all loaded before the server bound its socket.
+// Type-only imports are erased at build time, so they are allowed.
+pattern client_module_source() {
+    or {
+        `"@app/components/$_"`,
+        `"@app/hooks/$_"`,
+        `"@app/pages/$_"`,
+        `"@app/lib/client/$_"`,
+        `"@app/lib/swr/$_"`,
+        `"@app/lib/tracking"`,
+        `"@app/lib/utils/utm_client"`,
+        `"@app/logger/datadogLogger"`
+    }
+}
+
+pattern no_client_import_in_server() {
+    or {
+        `import $_ from $source`,
+        `import { $_ } from $source`,
+        `import * as $_ from $source`,
+    } where {
+        $source <: client_module_source(),
+        // The tiptap node definitions are framework-free by construction and are
+        // shared with the server-side markdown pipeline; their React views live
+        // in sibling `*WithView` modules.
+        $source <: not r".*@app/components/editor/extensions/.*"
+    }
+}
+
+no_client_import_in_server() as $import where {
+    $import <: not r"import type .*",
+    register_diagnostic(
+        span = $import,
+        message = "Server-side code must not import client-only modules (components, hooks, pages, lib/client, lib/swr, browser tracking). Move the shared value into a server-safe module, or use `import type` if only the type is needed.",
+        severity = "error"
+    )
+}

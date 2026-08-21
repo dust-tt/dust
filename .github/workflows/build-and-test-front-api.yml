@@ -97,3 +97,9 @@ jobs:
       - name: Check bundled runtime deps are declared
         working-directory: front-api
         run: npm run check:bundled-deps
+      - name: Check no browser-only package loads at boot
+        working-directory: front-api
+        env:
+          NODE_ENV: production
+          PORT: "3999"
+        run: npm run check:boot
