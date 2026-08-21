@@ -126,7 +126,7 @@ describe("GroupSpaceEditorResource", () => {
     editorGroup = await GroupResource.makeNew({
       name: "Test Editor Group",
       workspaceId: workspace.id,
-      kind: "space_editors",
+      kind: "regular_auto",
     });
   });
 
@@ -155,7 +155,7 @@ describe("GroupSpaceEditorResource", () => {
           space: projectSpace,
         })
       ).rejects.toThrow(
-        "Only regular_auto, space_editors or provisioned groups can be an editor group"
+        "Only regular_auto or provisioned groups can be an editor group"
       );
     });
 
@@ -249,7 +249,7 @@ describe("GroupSpaceEditorResource", () => {
           space: projectSpace,
         })
       ).rejects.toThrow(
-        "Only regular_auto, space_editors or provisioned groups can be editor groups"
+        "Only regular_auto or provisioned groups can be editor groups"
       );
     });
   });

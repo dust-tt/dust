@@ -31,7 +31,6 @@ import { SPACE_EDITOR_GRANT_TYPE } from "@app/types/group_permissions";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
-  MIGRATING_SPACE_EDITOR_GROUP_KINDS,
   PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
   SPACE_GROUP_PREFIX,
@@ -1728,7 +1727,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           grantType: SPACE_EDITOR_GRANT_TYPE,
           resourceType: "space",
           resourceId: this.id,
-          groupKinds: MIGRATING_SPACE_EDITOR_GROUP_KINDS,
           transaction,
         });
     }
@@ -1738,7 +1736,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   // The space's manual member group: the regular_auto group holding this space's membership. A
   // project space has two regular_auto groups (member + editor), so the editor group (identified
   // by its `admin` grant in `group_permissions`) is excluded; a regular space has exactly one.
-  private async fetchManualMemberGroup(
+  async fetchManualMemberGroup(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<GroupResource> {
@@ -2338,8 +2336,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     allGroupMemberships: GroupMembershipModel[];
     editorGroupModelId: ModelId | null;
   }> {
-    const groupReferences = this.groups.filter(
-      (group) => group.isRegularAuto() || group.groupKind === "space_editors"
+    const groupReferences = this.groups.filter((group) =>
+      group.isRegularAuto()
     );
     const groupsToProcess = await this.fetchGroupResources(auth, {
       groupReferences,
@@ -2427,9 +2425,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const allGroupReferences = new Map<ModelId, SpaceGroupReference>();
     for (const space of spaces) {
       const groupReferences = space.groups.filter(
-        (group) =>
-          group.groupKind === "regular_auto" ||
-          group.groupKind === "space_editors"
+        (group) => group.groupKind === "regular_auto"
       );
       manualGroupReferencesBySpaceModelId.set(space.id, groupReferences);
       groupReferences.forEach((group) =>

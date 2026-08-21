@@ -20,23 +20,18 @@ async function addUserToProject(
   user: UserResource,
   options: { asEditor?: boolean } = {}
 ) {
-  const groups = await project.fetchGroupResources(adminAuth, {
-    groupReferences: project.groups.filter(
-      (group) => group.isRegularAuto() || group.groupKind === "space_editors"
-    ),
+  const memberGroup = await project.fetchManualMemberGroup(adminAuth);
+  await memberGroup.dangerouslyAddMembers(adminAuth, {
+    users: [user.toJSON()],
   });
-  const memberGroup = groups.find((group) => group.kind === "regular_auto");
-  const editorGroup = groups.find((group) => group.kind === "space_editors");
 
-  if (memberGroup) {
-    await memberGroup.dangerouslyAddMembers(adminAuth, {
-      users: [user.toJSON()],
-    });
-  }
-  if (options.asEditor && editorGroup) {
-    await editorGroup.dangerouslyAddMembers(adminAuth, {
-      users: [user.toJSON()],
-    });
+  if (options.asEditor) {
+    const editorGroup = await project.fetchManualEditorGroup(adminAuth);
+    if (editorGroup) {
+      await editorGroup.dangerouslyAddMembers(adminAuth, {
+        users: [user.toJSON()],
+      });
+    }
   }
 }
 

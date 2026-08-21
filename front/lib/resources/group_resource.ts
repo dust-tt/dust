@@ -1098,9 +1098,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     options: { groupKinds?: GroupKind[] } = {}
   ): Promise<GroupResource[]> {
-    const {
-      groupKinds = ["global", "regular_auto", "space_editors", "provisioned"],
-    } = options;
+    const { groupKinds = ["global", "regular_auto", "provisioned"] } = options;
     const groups = await this.baseFetch(auth, {
       where: {
         kind: {
@@ -1653,7 +1651,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     assert(
       this.isRegularAuto() ||
         this.isRegularManual() ||
-        this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
         (allowProvisionedGroups && this.kind === "provisioned"),
@@ -1799,7 +1796,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     assert(
       this.isRegularAuto() ||
         this.isRegularManual() ||
-        this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
         (allowProvisionedGroups && this.kind === "provisioned"),
@@ -1919,7 +1915,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Unlike removeMembers(), this method does not require admin/editor permissions.
    * Users can always remove themselves from groups they are members of.
    *
-   * Only works for "regular_auto" and "space_editors" groups.
+   * Only works for "regular_auto" groups.
    * TODO(remy): Replace this with dangerouslyRemoveMembers once available
    */
   async leaveGroup(
@@ -1931,11 +1927,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
 
-    if (!this.isRegularAuto() && this.kind !== "space_editors") {
+    if (!this.isRegularAuto()) {
       return new Err(
         new DustError(
           "system_or_global_group",
-          "Users can only leave regular or space_editors groups."
+          "Users can only leave regular groups."
         )
       );
     }
@@ -2608,21 +2604,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       ];
     }
 
-    if (this.kind === "space_editors") {
-      return [
-        {
-          groups: [
-            {
-              id: this.id,
-              permissions: ["admin", "read", "write"],
-            },
-          ],
-          roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
-          workspaceId: this.workspaceId,
-        },
-      ];
-    }
-
     if (this.isRegularManual()) {
       return [
         {
@@ -2701,10 +2682,6 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   isRegularManual(): boolean {
     return isRegularManualGroupKind(this.kind);
-  }
-
-  isSpaceEditor(): boolean {
-    return this.kind === "space_editors";
   }
 
   isProvisioned(): boolean {

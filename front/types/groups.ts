@@ -34,8 +34,6 @@ import { isRoleType } from "./user";
 export const GROUP_KINDS = [
   "regular_auto",
   "regular_manual",
-  // space_editors is used to know if a member of a manual group can edit the group
-  "space_editors",
   "global",
   "system",
   "agent_editors",
@@ -90,15 +88,6 @@ export function isSkillEditorGroupKind(value: GroupKind): boolean {
   return value === "skill_editors";
 }
 
-// Transitional: space editor groups are being migrated from the "space_editors" kind to
-// "regular_auto". Until the backfill has run and the kind is removed, editor-group lookups must
-// accept both kinds. Remove this constant (and the "space_editors" entry) once the migration
-// completes.
-export const MIGRATING_SPACE_EDITOR_GROUP_KINDS: GroupKind[] = [
-  "regular_auto",
-  "space_editors",
-];
-
 export type GroupType = {
   id: ModelId;
   name: string;
@@ -117,7 +106,6 @@ export const GroupKindCodec = z.enum([
   "global",
   "regular_auto",
   "regular_manual",
-  "space_editors",
   "agent_editors",
   "skill_editors",
   "system",
