@@ -94,6 +94,7 @@ function makeLLMTimeoutResponse(kind: LLMStreamTimeoutKind): GetOutputResponse {
           ? "The agent step hit its time budget before the model response completed"
           : `LLM stream timeout after ${LLM_EVENT_TIMEOUT_MINUTES} minutes waiting for event`,
       isRetryable: true,
+      errorSource: "dust",
     },
   });
 }
@@ -362,7 +363,7 @@ export async function getOutputFromLLMStream(
       activityTimeoutDeadlineMs,
       logContext
     )) {
-      timeToFirstEvent = Date.now() - start;
+      timeToFirstEvent ??= Date.now() - start;
       if (event.type === "error") {
         await flushParserTokens();
         return new Err({
@@ -629,6 +630,9 @@ export async function getOutputFromLLMStream(
   } catch (err) {
     if (err instanceof LLMStreamTimeoutError) {
       await flushParserTokens();
+      // Watchdog timeouts abort after llm_interaction.count is already emitted
+      // and never become a terminal LLM error, so they do not increment
+      // llm_error.count.
       return makeLLMTimeoutResponse(err.kind);
     }
     throw err;

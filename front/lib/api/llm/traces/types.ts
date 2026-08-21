@@ -117,6 +117,7 @@ interface LLMTraceMetadata {
   modelId: ModelIdType | "unknown";
   startTimestamp: string;
   timeToFirstEventMs?: number;
+  timeToFirstTokenMs?: number;
   /** Reason for truncation if applicable */
   truncationReason?: string;
 }

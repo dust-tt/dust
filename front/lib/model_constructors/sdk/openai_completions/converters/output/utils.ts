@@ -76,6 +76,7 @@ export function streamErrorToErrorEvent(
     switch (status) {
       case 400:
         return buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "invalid_request_error",
           message: `Invalid request to Fireworks: ${error.message}`,
@@ -83,6 +84,7 @@ export function streamErrorToErrorEvent(
         });
       case 401:
         return buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "authentication_error",
           message: `Authentication failed for Fireworks: ${error.message}`,
@@ -90,6 +92,7 @@ export function streamErrorToErrorEvent(
         });
       case 403:
         return buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "permission_error",
           message: `Permission denied for Fireworks: ${error.message}`,
@@ -97,6 +100,7 @@ export function streamErrorToErrorEvent(
         });
       case 404:
         return buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "not_found_error",
           message: `Resource not found for Fireworks: ${error.message}`,
@@ -104,6 +108,7 @@ export function streamErrorToErrorEvent(
         });
       case 429:
         return buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "rate_limit_error",
           message: `Rate limit exceeded for Fireworks/${metadata.model}: ${error.message}`,
@@ -112,6 +117,7 @@ export function streamErrorToErrorEvent(
       default:
         if (isNumber(status) && status >= 500 && status < 600) {
           return buildErrorEvent({
+            errorSource: "provider",
             metadata,
             type: "server_error",
             message: `Server error from Fireworks (${status}): ${error.message}`,
@@ -119,6 +125,7 @@ export function streamErrorToErrorEvent(
           });
         }
         return buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "unknown_error",
           message: `Error from Fireworks (${status}): ${error.message}`,
@@ -127,6 +134,7 @@ export function streamErrorToErrorEvent(
     }
   }
   return buildErrorEvent({
+    errorSource: "provider",
     metadata,
     type: "unknown_error",
     message: `Unknown error from Fireworks: ${normalizeError(error).message}`,
@@ -298,6 +306,7 @@ export async function* rawOutputToEvents(
       }
       case "length":
         yield buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "stop_error",
           message: "The maximum response length was reached.",
@@ -305,6 +314,7 @@ export async function* rawOutputToEvents(
         return;
       case "content_filter":
         yield buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "refusal_error",
           message: "The response was filtered by the content policy.",
