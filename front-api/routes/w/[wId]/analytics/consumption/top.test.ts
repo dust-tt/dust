@@ -317,6 +317,10 @@ const RANKINGS = [
   },
 ];
 
+const PERSONAL_RANKINGS = RANKINGS.filter(
+  ({ path }) => path !== "top-users" && path !== "top-groups"
+);
+
 async function setupTest({
   role = "admin",
 }: {
@@ -328,9 +332,11 @@ async function setupTest({
 function postRankingRequest(
   wId: string,
   path: string,
-  body: Record<string, unknown> = {}
+  body: Record<string, unknown> = {},
+  personal = false
 ) {
-  return honoApp.request(`/api/w/${wId}/analytics/consumption/${path}`, {
+  const analyticsPath = personal ? "me/analytics" : "analytics";
+  return honoApp.request(`/api/w/${wId}/${analyticsPath}/consumption/${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -370,6 +376,42 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     const response = await postRankingRequest(workspace.sId, path);
 
     expect(response.status).toBe(403);
+  });
+
+  it.each(
+    PERSONAL_RANKINGS
+  )("$path lets members read only their own consumption", async ({
+    path,
+    arrangeOk,
+    lastCall,
+  }) => {
+    arrangeOk();
+    const { workspace, user } = await setupTest({ role: "user" });
+
+    const response = await postRankingRequest(
+      workspace.sId,
+      path,
+      { filter: { users: ["another-user"], sources: ["slack"] } },
+      true
+    );
+
+    expect(response.status).toBe(200);
+    expect(lastCall()?.[1]).toEqual(
+      expect.objectContaining({
+        filter: { users: [user.sId], sources: ["slack"] },
+      })
+    );
+  });
+
+  it.each([
+    "top-users",
+    "top-groups",
+  ])("%s is not mounted for personal analytics", async (path) => {
+    const { workspace } = await setupTest({ role: "user" });
+
+    const response = await postRankingRequest(workspace.sId, path, {}, true);
+
+    expect(response.status).toBe(404);
   });
 
   it("forwards the page, the period, the search and the filter", async () => {

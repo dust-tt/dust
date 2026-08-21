@@ -67,6 +67,14 @@ function getDownloadRequest(wId: string, name: string) {
 }
 
 describe("POST /api/w/:wId/analytics/consumption/export-raw/status", () => {
+  it("is refused to non-managers by default", async () => {
+    const { workspace } = await setupTest({ role: "user" });
+
+    const response = await postExportStatusRequest(workspace.sId, {});
+
+    expect(response.status).toBe(403);
+  });
+
   it("returns an empty list and not-generating/not-ready when nothing exists", async () => {
     fileStorageMock.setFilesByPrefix(() => []);
     const { workspace } = await setupTest();
@@ -148,6 +156,23 @@ describe("POST /api/w/:wId/analytics/consumption/export-raw/status", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.isReady).toBe(true);
+  });
+});
+
+describe("personal consumption exports", () => {
+  it("does not mount export routes", async () => {
+    const { workspace } = await setupTest({ role: "user" });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/me/analytics/consumption/export-raw/status`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+
+    expect(response.status).toBe(404);
   });
 });
 

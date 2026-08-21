@@ -42,12 +42,20 @@ async function setupTest({
   return createPrivateApiMockRequest({ role });
 }
 
-function postOverviewRequest(wId: string, body: Record<string, unknown> = {}) {
-  return honoApp.request(`/api/w/${wId}/analytics/consumption/overview`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+function postOverviewRequest(
+  wId: string,
+  body: Record<string, unknown> = {},
+  personal = false
+) {
+  const analyticsPath = personal ? "me/analytics" : "analytics";
+  return honoApp.request(
+    `/api/w/${wId}/${analyticsPath}/consumption/overview`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
 }
 
 describe("POST /api/w/:wId/analytics/consumption/overview", () => {
@@ -58,6 +66,26 @@ describe("POST /api/w/:wId/analytics/consumption/overview", () => {
 
     expect(response.status).toBe(403);
     expect(vi.mocked(fetchConsumptionOverview)).not.toHaveBeenCalled();
+  });
+
+  it("lets members read only their own consumption", async () => {
+    vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
+    const { workspace, user } = await setupTest({ role: "user" });
+
+    const response = await postOverviewRequest(
+      workspace.sId,
+      { filter: { users: ["another-user"], sources: ["slack"] } },
+      true
+    );
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionOverview)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        filter: { users: [user.sId], sources: ["slack"] },
+        includeWorkspaceContext: false,
+      })
+    );
   });
 
   it("returns the overview for managers, defaulting to the current cycle", async () => {

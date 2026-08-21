@@ -5,26 +5,27 @@ import {
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
 import logger from "@app/logger/logger";
-import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { consumptionAnalyticsApp } from "./context";
 
 // Mounted at /api/w/:wId/analytics/consumption/overview.
-const app = workspaceApp();
+// Also mounted at /api/w/:wId/me/analytics/consumption/overview.
+const app = consumptionAnalyticsApp();
 
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsManager(),
   validate("json", ConsumptionBodySchema),
   async (ctx): HandlerResult<GetConsumptionOverviewResponse> => {
     const auth = ctx.get("auth");
+    const userId = ctx.get("consumptionUserId");
     const body = ctx.req.valid("json");
 
     const result = await fetchConsumptionOverview(auth, {
       periodInput: toConsumptionPeriodInput(body),
-      filter: body.filter,
+      filter: userId ? { ...body.filter, users: [userId] } : body.filter,
+      includeWorkspaceContext: userId === undefined,
     });
     if (result.isErr()) {
       logger.error(
