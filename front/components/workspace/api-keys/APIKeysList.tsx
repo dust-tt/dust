@@ -453,7 +453,9 @@ function buildColumns({
       header: "",
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-20 @xs-table:table-cell",
+        className: showAnalyticsConsumption
+          ? "hidden h-16 w-24 @xs-table:table-cell"
+          : "hidden h-16 w-20 @xs-table:table-cell",
         headerAlign: "right",
       },
       cell: (info) =>
