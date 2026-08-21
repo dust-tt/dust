@@ -62,49 +62,49 @@ const WORKSPACE_CONSUMPTION_COMPONENTS: AnalyticsConsumptionComponents = {
   UsageFilterPanel,
 };
 
-function ChartFallback() {
-  return (
-    <div aria-hidden="true" className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <LoadingBlock className="h-5 w-28" />
-        <div className="rounded-2xl border border-border-dark bg-background p-1">
-          <LoadingBlock className="h-8 w-36 rounded-xl" />
-        </div>
-      </div>
-      <div className="rounded-lg border border-border bg-background p-4">
-        <div className="border-b border-border pb-3">
-          <LoadingBlock className="h-6 w-36" />
-        </div>
-        <LoadingBlock
-          className="mt-3 w-full"
-          style={{ height: CHART_HEIGHT }}
-        />
-        <div className="mt-3 flex h-5 items-center gap-6">
-          <LoadingBlock className="h-4 w-32" />
-          <LoadingBlock className="h-4 w-36" />
-        </div>
-      </div>
-    </div>
-  );
+interface ChartFallbackProps {
+  controlsInCard?: boolean;
 }
 
-function PokeChartFallback() {
-  return (
+function ChartFallback({ controlsInCard = false }: ChartFallbackProps) {
+  const controls = (
+    <div className="rounded-2xl border border-border-dark bg-background p-1">
+      <LoadingBlock className="h-8 w-36 rounded-xl" />
+    </div>
+  );
+  const chart = (
     <div
       aria-hidden="true"
       className="rounded-lg border border-border bg-background p-4"
     >
-      <div className="flex items-center justify-between gap-4 border-b border-border pb-3">
+      <div
+        className={cn(
+          "border-b border-border pb-3",
+          controlsInCard && "flex items-center justify-between gap-4"
+        )}
+      >
         <LoadingBlock className="h-6 w-36" />
-        <div className="rounded-2xl border border-border-dark bg-background p-1">
-          <LoadingBlock className="h-8 w-36 rounded-xl" />
-        </div>
+        {controlsInCard && controls}
       </div>
       <LoadingBlock className="mt-3 w-full" style={{ height: CHART_HEIGHT }} />
       <div className="mt-3 flex h-5 items-center gap-6">
         <LoadingBlock className="h-4 w-32" />
         <LoadingBlock className="h-4 w-36" />
       </div>
+    </div>
+  );
+
+  if (controlsInCard) {
+    return chart;
+  }
+
+  return (
+    <div aria-hidden="true" className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <LoadingBlock className="h-5 w-28" />
+        {controls}
+      </div>
+      {chart}
     </div>
   );
 }
@@ -237,7 +237,7 @@ export function AnalyticsConsumptionContent({
             className="flex flex-col"
           >
             <SafeSuspense
-              fallback={embedded ? <PokeChartFallback /> : <ChartFallback />}
+              fallback={<ChartFallback controlsInCard={embedded} />}
             >
               <ChartComponent
                 workspaceId={owner.sId}
