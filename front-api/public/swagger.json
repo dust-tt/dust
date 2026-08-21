@@ -6057,7 +6057,7 @@
             "in": "query",
             "name": "kinds",
             "required": false,
-            "description": "Comma-separated list of space kinds to filter on (e.g. `regular,global`).",
+            "description": "Comma-separated list of space kinds to filter on, among `system`, `global`, `regular` and `project`. Defaults to `system,global,regular` — projects must be requested explicitly.",
             "schema": {
               "type": "string"
             }
