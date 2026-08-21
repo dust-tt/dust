@@ -42,7 +42,7 @@ describe("CreditUsage", () => {
     const progressbar = rendered.getByRole("progressbar", {
       name: "Credits used",
     });
-    expect(progressbar.firstElementChild).toHaveStyle({ width: "100%" });
+    expect(progressbar.firstElementChild).toHaveStyle({ flexGrow: "100" });
     expect(progressbar.firstElementChild).toHaveClass("bg-red-500");
   });
 
