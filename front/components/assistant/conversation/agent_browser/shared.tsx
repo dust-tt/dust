@@ -443,8 +443,7 @@ export function AllTabContent({
                       agentsByTab.most_popular.some(
                         (ap) => ap.sId === a.sId
                       )) ||
-                    (tag.sId === ALL_TAG.sId &&
-                      agentsByTab.all.some((ap) => ap.sId === a.sId))
+                    tag.sId === ALL_TAG.sId
                   );
                 })}
                 handleAssistantClick={handleAgentClick}

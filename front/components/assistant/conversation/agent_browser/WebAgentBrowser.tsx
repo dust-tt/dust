@@ -161,7 +161,7 @@ export function WebAgentBrowser({
           handleAgentClick={handleAgentClick}
           setDisplayedAssistantId={setDisplayedAssistantId}
           owner={owner}
-          showTagHeadings={true}
+          showTagHeadings={!noTagsDefined}
           trackAgentBrowserEvents
         />
       ) : (

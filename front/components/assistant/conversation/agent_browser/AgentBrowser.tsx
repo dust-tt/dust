@@ -99,22 +99,23 @@ export function AgentBrowser({
     useMemo(() => {
       const tags = agentConfigurations.flatMap((a) => a.tags);
       // Remove duplicate tags by unique sId
-      const uniqueTags = Array.from(
+      const workspaceTags = Array.from(
         new Map(tags.map((tag) => [tag.sId, tag])).values()
       ).sort(tagsSorter);
 
-      uniqueTags.unshift(ALL_TAG);
-      uniqueTags.unshift(MOST_POPULAR_TAG);
+      const noTagsDefined = workspaceTags.length === 0;
 
-      // Always append others at the end
-      uniqueTags.push(OTHERS_TAG);
+      // Without tags, "Most popular" and "Others" would only duplicate "All".
+      const uniqueTags = noTagsDefined
+        ? [ALL_TAG]
+        : [MOST_POPULAR_TAG, ALL_TAG, ...workspaceTags, OTHERS_TAG];
 
       if (assistantSearch.trim() === "") {
         return {
           filteredAgents: [],
           filteredTags: [],
           uniqueTags,
-          noTagsDefined: uniqueTags.length === 3, // Only all, most popular and others
+          noTagsDefined,
         };
       }
       const search = assistantSearch.toLowerCase().trim().replace(/^@/, "");
@@ -147,7 +148,7 @@ export function AgentBrowser({
         filteredAgents,
         filteredTags,
         uniqueTags,
-        noTagsDefined: uniqueTags.length === 2, // Only most popular and others
+        noTagsDefined,
       };
     }, [agentConfigurations, assistantSearch, selectedTag]);
 
