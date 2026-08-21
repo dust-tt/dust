@@ -1,4 +1,7 @@
-import type { ConsumptionFacetCatalogEntry } from "@app/lib/api/analytics/consumption/facet_catalog";
+import type {
+  ConsumptionFacetCatalog,
+  ConsumptionFacetCatalogEntry,
+} from "@app/lib/api/analytics/consumption/facet_catalog";
 import { listConsumptionFacetCatalog } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
@@ -32,6 +35,17 @@ import type { estypes } from "@elastic/elasticsearch";
 // users, agents, or skills are deleted.
 const FACET_COMPOSITE_PAGE_SIZE = 1_000;
 const FACET_ES_QUERY_CONCURRENCY = 6;
+
+const EMPTY_FACET_CATALOG: ConsumptionFacetCatalog = {
+  agent: [],
+  user: [],
+  api_key: [],
+  group: [],
+  model: [],
+  tool: [],
+  skill: [],
+  source: [],
+};
 
 export type ConsumptionFacet = {
   value: string;
@@ -107,6 +121,7 @@ type FetchDimensionFacetBucketsArgs = {
   auth: Authenticator;
   period: ConsumptionPeriod;
   filter: ConsumptionScopeFilter;
+  requiredFilter?: ConsumptionScopeFilter;
   dimension: ConsumptionScopeDimension;
 };
 
@@ -134,6 +149,7 @@ async function fetchDimensionFacetBucketsWithoutTracing({
   auth,
   period,
   filter,
+  requiredFilter,
   dimension,
 }: FetchDimensionFacetBucketsArgs): Promise<
   Result<FacetBuckets, ElasticsearchError>
@@ -150,6 +166,7 @@ async function fetchDimensionFacetBucketsWithoutTracing({
         auth,
         startDate: period.startDate,
         endDate: period.endDate,
+        filter: requiredFilter,
       }),
       {
         aggregations: {
@@ -173,7 +190,10 @@ async function fetchDimensionFacetBucketsWithoutTracing({
                   auth,
                   startDate: period.startDate,
                   endDate: period.endDate,
-                  filter: filterWithoutDimension(filter, dimension),
+                  filter: {
+                    ...filterWithoutDimension(filter, dimension),
+                    ...requiredFilter,
+                  },
                 }),
               },
             },
@@ -271,9 +291,13 @@ async function fetchConsumptionFacetsWithoutTracing(
   {
     period,
     filter = {},
+    requiredFilter,
+    includeCatalog = true,
   }: {
     period: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
+    requiredFilter?: ConsumptionScopeFilter;
+    includeCatalog?: boolean;
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
   const bucketResults = await concurrentExecutor(
@@ -284,6 +308,7 @@ async function fetchConsumptionFacetsWithoutTracing(
         auth,
         period,
         filter,
+        requiredFilter,
         dimension,
       }),
     }),
@@ -298,7 +323,9 @@ async function fetchConsumptionFacetsWithoutTracing(
     bucketsByDimension.set(dimension, result.value);
   }
 
-  const catalog = await listConsumptionFacetCatalog(auth);
+  const catalog = includeCatalog
+    ? await listConsumptionFacetCatalog(auth)
+    : EMPTY_FACET_CATALOG;
   // TODO(2026-08-11 OBSERVABILITY): Historical label resolution still reads
   // from several database-backed resources. Store the relevant labels in the
   // consumption index so these lookups can stay within Elasticsearch.
@@ -371,6 +398,8 @@ export async function fetchConsumptionFacets(
   input: {
     period: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
+    requiredFilter?: ConsumptionScopeFilter;
+    includeCatalog?: boolean;
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
   return tracer.trace("analytics.consumption.facets", async (span) => {

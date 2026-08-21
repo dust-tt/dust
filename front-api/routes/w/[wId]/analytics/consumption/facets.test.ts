@@ -70,6 +70,34 @@ describe("POST /api/w/:wId/analytics/consumption/facets", () => {
     );
   });
 
+  it("lets members list only facets from their own consumption", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    vi.mocked(fetchConsumptionFacets).mockResolvedValue(new Ok(RESPONSE));
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/me/analytics/consumption/facets`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filter: { users: ["another-user"], sources: ["slack"] },
+        }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchConsumptionFacets).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        filter: { users: [user.sId], sources: ["slack"] },
+        requiredFilter: { users: [user.sId] },
+        includeCatalog: false,
+      })
+    );
+  });
+
   it("requires a manager and reports Elasticsearch failures", async () => {
     const memberRequest = await createPrivateApiMockRequest({ role: "user" });
     const forbiddenResponse = await honoApp.request(

@@ -5,20 +5,18 @@ import {
   ConsumptionBodySchema,
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
-import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { consumptionAnalyticsApp } from "./context";
 
-// Mounted at /api/w/:wId/analytics/consumption/facets.
-const app = workspaceApp();
+const app = consumptionAnalyticsApp();
 
 /**
  * @swagger
  * /api/w/{wId}/analytics/consumption/facets:
  *   post:
  *     summary: List consumption analytics facets
- *     description: Lists current workspace entities and historical indexed values present in the selected period for each consumption dimension. A facet is disabled when it has no indexed document in that period after applying every active filter except the facet's own dimension.
+ *     description: Lists current entities and historical indexed values present in the selected period for each consumption dimension. The workspace route requires a manager; the /me route is restricted server-side to the authenticated member. A facet is disabled when it has no indexed document in that period after applying every active filter except the facet's own dimension.
  *     tags:
  *       - Private Analytics
  *     parameters:
@@ -137,25 +135,35 @@ const app = workspaceApp();
  *                       items:
  *                         $ref: '#/components/schemas/PrivateConsumptionFacet'
  *       403:
- *         description: Manager role required
+ *         description: Not authorized for this analytics view
  *       400:
  *         description: Invalid request body
  *       500:
  *         description: Failed to retrieve consumption facets
+ * /api/w/{wId}/me/analytics/consumption/facets:
+ *   $ref: '#/paths/~1api~1w~1{wId}~1analytics~1consumption~1facets'
  */
 app.post(
   "/",
-  ensureIsManager(),
   validate("json", ConsumptionBodySchema),
   async (ctx): HandlerResult<GetConsumptionFacetsResponse> => {
     const auth = ctx.get("auth");
-    const { filter, ...periodInput } = ctx.req.valid("json");
+    const requiredFilter = ctx.get("consumptionRequiredFilter");
+    const body = ctx.req.valid("json");
+
     const period = await resolveConsumptionPeriod(
       auth,
-      toConsumptionPeriodInput(periodInput)
+      toConsumptionPeriodInput(body)
     );
 
-    const result = await fetchConsumptionFacets(auth, { period, filter });
+    const result = await fetchConsumptionFacets(auth, {
+      period,
+      filter: requiredFilter
+        ? { ...body.filter, ...requiredFilter }
+        : body.filter,
+      requiredFilter,
+      includeCatalog: requiredFilter === undefined,
+    });
     if (result.isErr()) {
       return apiError(
         ctx,

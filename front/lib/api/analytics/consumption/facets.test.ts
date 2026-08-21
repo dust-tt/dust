@@ -325,6 +325,43 @@ describe("fetchConsumptionFacets", () => {
     expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(8);
   });
 
+  it("keeps required filters on every personal facet query and skips the workspace catalog", async () => {
+    const { authenticator, user } = await createResourceTest({ role: "user" });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({ values: { buckets: [] } })
+    );
+
+    const requiredFilter = { users: [user.sId] };
+    const result = await fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+      filter: { ...requiredFilter, agents: ["agent_1"] },
+      requiredFilter,
+      includeCatalog: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(listConsumptionFacetCatalog).not.toHaveBeenCalled();
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(8);
+
+    for (const [query] of vi.mocked(searchConsumptionAnalytics).mock.calls) {
+      expect(query.bool?.filter).toContainEqual({
+        term: { "user.id": user.sId },
+      });
+    }
+
+    const userCall = vi
+      .mocked(searchConsumptionAnalytics)
+      .mock.calls.find(
+        ([, options]) =>
+          options?.aggregations?.values?.composite?.sources?.[0]?.value?.terms
+            ?.field === "user.id"
+      );
+    expect(
+      userCall?.[1]?.aggregations?.values?.aggs?.contextual?.filter?.bool
+        ?.filter
+    ).toContainEqual({ term: { "user.id": user.sId } });
+  });
+
   it("returns the Elasticsearch failure before resolving historical labels", async () => {
     const { authenticator } = await createResourceTest({ role: "manager" });
     const error = new ElasticsearchError("query_error", "query failed");
