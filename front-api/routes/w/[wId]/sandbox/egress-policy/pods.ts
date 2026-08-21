@@ -28,7 +28,11 @@ app.get("/", async (ctx): HandlerResult<GetEgressPolicyPodsResponseBody> => {
   }
 
   return ctx.json({
-    pods: pods.value.map((pod) => ({ sId: pod.sId, name: pod.name })),
+    pods: pods.value.map((pod) => ({
+      sId: pod.sId,
+      name: pod.name,
+      isRestricted: pod.isProjectAndRestricted(),
+    })),
   });
 });
 

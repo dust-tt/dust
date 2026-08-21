@@ -42,9 +42,17 @@ export type PostPodEgressPolicyRequestResponseBody = {
   outcome: SandboxEgressRequestOutcome;
 };
 
+// A Pod offered by the central Computer admin scope selector: identity, display
+// name, and whether it is restricted (drives the open/restricted Pod icon).
+export type SandboxAdminPod = {
+  sId: string;
+  name: string;
+  isRestricted: boolean;
+};
+
 // The Pods that have their own egress policy, for the admin scope selector.
 export type GetEgressPolicyPodsResponseBody = {
-  pods: { sId: string; name: string }[];
+  pods: SandboxAdminPod[];
 };
 
 export type GetPodEgressPoliciesBulkResponseBody = {
