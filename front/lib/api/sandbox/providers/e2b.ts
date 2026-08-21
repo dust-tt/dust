@@ -291,6 +291,7 @@ async function sendStdinAndWait(
   handle: CommandHandle,
   stdin: string | Uint8Array
 ) {
+  let stdinDelivered = false;
   try {
     // Per-RPC timeout, not the command's total runtime — clamping to the
     // overall timeoutMs would block sendStdin/closeStdin for the entire
@@ -301,6 +302,7 @@ async function sendStdinAndWait(
     await sandbox.commands.closeStdin(handle.pid, {
       requestTimeoutMs: REQUEST_TIMEOUT_MS,
     });
+    stdinDelivered = true;
     return await handle.wait();
   } catch (err) {
     if (err instanceof NotFoundError) {
@@ -315,6 +317,14 @@ async function sendStdinAndWait(
       await handle.kill();
     } catch {
       // Best-effort: caller already has a real error to surface.
+    }
+    if (!stdinDelivered && err instanceof TimeoutError) {
+      // A per-RPC stdin timeout is an input-delivery failure, not the command
+      // running past its ceiling: rewrap so the caller does not map it to
+      // SandboxExecTimeoutError.
+      throw new Error(
+        `Failed to deliver stdin to the sandbox command: ${err.message}`
+      );
     }
     throw err;
   }

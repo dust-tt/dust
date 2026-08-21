@@ -553,6 +553,44 @@ describe("E2BSandboxProvider", () => {
     });
   });
 
+  it("does not classify a streamed-stdin delivery timeout as an exec timeout", async () => {
+    const mockHandleKill = vi.fn().mockResolvedValue(true);
+    mockRun.mockResolvedValueOnce({
+      pid: 123,
+      wait: mockCommandHandleWait,
+      kill: mockHandleKill,
+    });
+    mockSendStdin.mockRejectedValueOnce(
+      new TimeoutError("timeout of 30000ms exceeded")
+    );
+
+    const provider = new E2BSandboxProvider({
+      apiKey: "api-key",
+      domain: undefined,
+    });
+
+    const result = await provider.exec(
+      "provider-id",
+      "/opt/bin/dsbx function run big",
+      {
+        stdin: "x".repeat(64 * 1_024),
+        allowStdinInEnvironment: true,
+        timeoutMs: 120_000,
+        user: "agent-proxied",
+      },
+      { workspaceId: "workspace-id" }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).not.toBeInstanceOf(SandboxExecTimeoutError);
+      expect(result.error.message).toContain(
+        "Failed to deliver stdin to the sandbox command"
+      );
+    }
+    expect(mockHandleKill).toHaveBeenCalledTimes(1);
+  });
+
   it("kills the background handle when sendStdin fails to avoid orphaned commands", async () => {
     const mockHandleKill = vi.fn().mockResolvedValue(true);
     mockRun.mockResolvedValueOnce({
