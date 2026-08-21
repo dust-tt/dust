@@ -61,6 +61,7 @@ import type {
 } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LangfuseGeneration } from "@langfuse/tracing";
 import { startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
@@ -196,21 +197,27 @@ export abstract class LLM<
     const baseTags = this.getTelemetryTags({ surface: "stream" });
     const latencyTags = this.getLatencyTelemetryTags({ surface: "stream" });
 
-    if (outcomeTelemetry.outcome === "error") {
-      getStatsDClient().increment("llm_error.count", 1, [
-        ...baseTags,
-        `error_type:${outcomeTelemetry.errorType}`,
-        `error_source:${outcomeTelemetry.errorSource}`,
-      ]);
-    } else {
-      getStatsDClient().increment("llm_success.count", 1, baseTags);
-      if (outcomeTelemetry.outcome === "success_without_usage") {
+    switch (outcomeTelemetry.outcome) {
+      case "error":
+        getStatsDClient().increment("llm_error.count", 1, [
+          ...baseTags,
+          `error_type:${outcomeTelemetry.errorType}`,
+          `error_source:${outcomeTelemetry.errorSource}`,
+        ]);
+        break;
+      case "success":
+        getStatsDClient().increment("llm_success.count", 1, baseTags);
+        break;
+      case "success_without_usage":
+        getStatsDClient().increment("llm_success.count", 1, baseTags);
         getStatsDClient().increment(
           "llm_success_without_usage.count",
           1,
           baseTags
         );
-      }
+        break;
+      default:
+        assertNever(outcomeTelemetry);
     }
 
     emitLLMDurationMs({

@@ -9,6 +9,7 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type LLMTelemetrySurface = "stream" | "batch";
 export type LLMAttemptOutcome = "success" | "error" | "success_without_usage";
@@ -63,15 +64,23 @@ export function emitLLMDurationMs({
   durationMs: number;
   tags: string[];
 } & LLMAttemptOutcomeTelemetry): void {
-  const durationTags =
-    outcomeTelemetry.outcome === "error"
-      ? [
-          ...tags,
-          `outcome:${outcomeTelemetry.outcome}`,
-          `error_type:${outcomeTelemetry.errorType}`,
-          `error_source:${outcomeTelemetry.errorSource}`,
-        ]
-      : [...tags, `outcome:${outcomeTelemetry.outcome}`];
+  let durationTags: string[];
+  switch (outcomeTelemetry.outcome) {
+    case "error":
+      durationTags = [
+        ...tags,
+        `outcome:${outcomeTelemetry.outcome}`,
+        `error_type:${outcomeTelemetry.errorType}`,
+        `error_source:${outcomeTelemetry.errorSource}`,
+      ];
+      break;
+    case "success":
+    case "success_without_usage":
+      durationTags = [...tags, `outcome:${outcomeTelemetry.outcome}`];
+      break;
+    default:
+      assertNever(outcomeTelemetry);
+  }
 
   getStatsDClient().distribution("llm_duration_ms", durationMs, durationTags);
 }
