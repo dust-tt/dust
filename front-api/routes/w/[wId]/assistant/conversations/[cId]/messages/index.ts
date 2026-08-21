@@ -19,6 +19,10 @@ import type {
   LightMessageType,
 } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import {
+  isLegacyChromeExtensionRequest,
+  makeLegacyChromeExtensionLightMessageCompatible,
+} from "@front-api/lib/api/assistant/legacy_chrome_extension_compatibility";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -197,6 +201,10 @@ app.get(
   > => {
     const auth = ctx.get("auth");
     const { cId: conversationId } = ctx.req.valid("param");
+    const useLegacyChromeCompatibility = isLegacyChromeExtensionRequest({
+      origin: ctx.req.header("origin"),
+      extensionVersion: ctx.req.header("x-dust-extension-version"),
+    });
 
     const messageStartTime = performance.now();
 
@@ -253,7 +261,16 @@ app.get(
       rawSize
     );
 
-    return ctx.json(messagesRes.value);
+    return ctx.json({
+      ...messagesRes.value,
+      messages: useLegacyChromeCompatibility
+        ? messagesRes.value.messages.map((message) =>
+            message.type === "agent_message"
+              ? makeLegacyChromeExtensionLightMessageCompatible(message)
+              : message
+          )
+        : messagesRes.value.messages,
+    });
   }
 );
 

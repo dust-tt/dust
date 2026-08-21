@@ -6,6 +6,7 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
+import { addClientVersionHeaders } from "@extension/shared/lib/fetcher";
 import type { StoredTokens } from "@extension/shared/services/auth";
 import {
   AuthError,
@@ -38,14 +39,15 @@ export const useAuthHook = () => {
         const accessToken = await platform.auth.getAccessToken();
         return {
           credentials: "omit",
-          headers: accessToken
-            ? { Authorization: `Bearer ${accessToken}` }
-            : {},
+          headers: addClientVersionHeaders(
+            accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
+          ),
         };
       });
     } else {
       setDefaultInitResolver(async () => ({
         credentials: "omit",
+        headers: addClientVersionHeaders(),
       }));
     }
 

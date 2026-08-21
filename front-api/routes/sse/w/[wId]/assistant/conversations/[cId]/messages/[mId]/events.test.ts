@@ -2,6 +2,7 @@ import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import type { MessageStreamEvent } from "@app/lib/api/assistant/pubsub";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { mockAction } from "@app/tests/utils/conversation_test_factories";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { honoApp } from "@front-api/app";
@@ -13,8 +14,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Smoke coverage only: the handler logic (conversation/message resolution,
 // agent-message validation, error codepaths) lives in and is tested against the
-// v1 sibling. These tests confirm the private route wires workspace auth +
-// the private (identity) transform.
+// v1 sibling. These tests confirm the private route wires workspace auth and
+// its private compatibility transform.
 
 async function getMessageSIdByRank(
   auth: Authenticator,
@@ -51,10 +52,12 @@ import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
 function getMessageEvents(
   workspaceId: string,
   conversationId: string,
-  messageId: string
+  messageId: string,
+  headers?: Record<string, string>
 ) {
   return honoApp.request(
-    `/api/sse/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/events`
+    `/api/sse/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/events`,
+    { headers }
   );
 }
 
@@ -110,5 +113,50 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
     expect(response.status).toBe(200);
     const payloads = parseSseDataPayloads(await response.text());
     expect(payloads.map((p) => JSON.parse(p).data.text)).toEqual(["hello"]);
+  });
+
+  it("hides user-memory server identity from legacy Chrome streams", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest();
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+    const agentMessageSId = await getMessageSIdByRank(
+      auth,
+      conversation.sId,
+      1
+    );
+
+    const event: MessageStreamEvent = {
+      eventId: "evt",
+      data: {
+        type: "agent_action_success",
+        created: 0,
+        configurationId: "dust",
+        messageId: agentMessageSId,
+        action: mockAction({
+          functionCallName: "user_memory__read",
+          internalMCPServerName: "user_memory",
+          status: "succeeded",
+          toolName: "read",
+        }),
+        step: 0,
+      },
+    };
+    vi.mocked(getMessagesEvents).mockImplementation(asyncIteratorFrom([event]));
+
+    const response = await getMessageEvents(
+      workspace.sId,
+      conversation.sId,
+      agentMessageSId,
+      { origin: "chrome-extension://fnkfcndbgingjcbdhaofkcnhcjpljhdn" }
+    );
+
+    expect(response.status).toBe(200);
+    const [payload] = parseSseDataPayloads(await response.text());
+    expect(JSON.parse(payload).data.action).toMatchObject({
+      internalMCPServerName: null,
+      toolName: "read",
+    });
   });
 });

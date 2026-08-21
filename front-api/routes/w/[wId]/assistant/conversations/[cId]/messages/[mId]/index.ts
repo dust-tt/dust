@@ -10,9 +10,14 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   isAgentMessageType,
+  isLightAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  isLegacyChromeExtensionRequest,
+  makeLegacyChromeExtensionLightMessageCompatible,
+} from "@front-api/lib/api/assistant/legacy_chrome_extension_compatibility";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -133,6 +138,10 @@ const app = workspaceApp();
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId, mId } = ctx.req.valid("param");
+  const useLegacyChromeCompatibility = isLegacyChromeExtensionRequest({
+    origin: ctx.req.header("origin"),
+    extensionVersion: ctx.req.header("x-dust-extension-version"),
+  });
 
   const conversation = await ConversationResource.fetchById(auth, cId);
   if (!conversation) {
@@ -177,10 +186,15 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   }
 
   switch (viewType) {
-    case "light":
+    case "light": {
+      const message = renderedMessages.value[0] as LightMessageType;
       return ctx.json({
-        message: renderedMessages.value[0] as LightMessageType,
+        message:
+          useLegacyChromeCompatibility && isLightAgentMessageType(message)
+            ? makeLegacyChromeExtensionLightMessageCompatible(message)
+            : message,
       });
+    }
     case "full":
       return ctx.json({ message: renderedMessages.value[0] as MessageType });
     default:
