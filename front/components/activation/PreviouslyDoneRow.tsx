@@ -1,8 +1,8 @@
 import {
   recencyLabel,
   SOURCE_META_SEPARATOR,
-} from "@app/components/pages/workspace/GetStartedPage/recency";
-import { SourceIcon } from "@app/components/pages/workspace/GetStartedPage/SourceIcon";
+} from "@app/components/activation/recency";
+import { SourceIcon } from "@app/components/activation/SourceIcon";
 import { useAppRouter } from "@app/lib/platform";
 import { useActivationRecommendations } from "@app/lib/swr/activation";
 import { getConversationRoute } from "@app/lib/utils/router";
