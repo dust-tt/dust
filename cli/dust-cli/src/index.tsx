@@ -11,6 +11,7 @@ import meow from "meow";
 import React from "react";
 
 import App from "./ui/App.js";
+import { configureSandbox } from "./utils/sandbox.js";
 
 const cli = meow({
   importMeta: import.meta,
@@ -97,6 +98,17 @@ const cli = meow({
       type: "string",
       description: "Create conversation in a project by space ID",
     },
+    allowPath: {
+      type: "string",
+      isMultiple: true,
+      description:
+        "Grant file system tools access to a path outside the current directory (can be repeated)",
+    },
+    dangerouslyDisableSandbox: {
+      type: "boolean",
+      description:
+        "Let file system tools reach anywhere on the machine, not just the current directory",
+    },
     withTools: {
       type: "boolean",
       shortFlag: "t",
@@ -104,6 +116,11 @@ const cli = meow({
         "Enable file system tools in non-interactive mode (requires OAuth). WARNING: automatically approves ALL tool executions without prompting.",
     },
   },
+});
+
+configureSandbox({
+  allowPaths: cli.flags.allowPath,
+  disabled: cli.flags.dangerouslyDisableSandbox,
 });
 
 const instance = render(<App cli={cli} />);
