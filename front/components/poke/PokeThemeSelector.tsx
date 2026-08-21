@@ -17,7 +17,7 @@ const THEME_OPTIONS = {
   dark: { label: "Dark", icon: Moon01 },
 } as const;
 
-const THEME_ORDER = ["light", "system", "dark"] as const;
+const THEME_ORDER = ["system", "light", "dark"] as const;
 
 export function PokeThemeSelector() {
   const { theme, setTheme } = useTheme();

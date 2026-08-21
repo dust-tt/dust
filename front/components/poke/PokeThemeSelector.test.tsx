@@ -47,6 +47,9 @@ describe("PokeThemeSelector", () => {
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Theme: System" }));
+    expect(
+      screen.getAllByRole("menuitemradio").map((item) => item.textContent)
+    ).toEqual(["System", "Light", "Dark"]);
     await user.click(screen.getByRole("menuitemradio", { name: "Light" }));
 
     await waitFor(() => {
