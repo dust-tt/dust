@@ -1,4 +1,5 @@
 import { AutomationsTriggerBreakdown } from "@app/components/workspace/analytics/automations/AutomationsTriggerBreakdown";
+import type { AutomationsScope } from "@app/hooks/useAutomationsTriggerBreakdown";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import {
@@ -23,6 +24,8 @@ import { Fragment } from "react";
 
 // The id sparkle's createSelectionColumn gives its checkbox column.
 const SELECTION_COLUMN_ID = "select";
+
+const NO_ROW_SELECTION: RowSelectionState = {};
 
 export type TriggerRowData = AutomationTriggerRow & {
   onClick: () => void;
@@ -121,13 +124,14 @@ interface AutomationsTriggersRowsTableProps<T extends TriggerRowData> {
   columns: ColumnDef<T>[];
   workspaceId: string;
   period: ConsumptionPeriodSelection;
+  scope: AutomationsScope;
   expandedRowId: string | null;
   medianRunCount: number;
   medianCostPerRun: number;
   isLoading?: boolean;
   skeletonRowCount: number;
-  rowSelection: RowSelectionState;
-  onRowSelectionChange: (selection: RowSelectionState) => void;
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: (selection: RowSelectionState) => void;
 }
 
 export function AutomationsTriggersRowsTable<T extends TriggerRowData>({
@@ -135,12 +139,13 @@ export function AutomationsTriggersRowsTable<T extends TriggerRowData>({
   columns,
   workspaceId,
   period,
+  scope,
   expandedRowId,
   medianRunCount,
   medianCostPerRun,
   isLoading = false,
   skeletonRowCount,
-  rowSelection,
+  rowSelection = NO_ROW_SELECTION,
   onRowSelectionChange,
 }: AutomationsTriggersRowsTableProps<T>) {
   const table = useReactTable({
@@ -149,7 +154,7 @@ export function AutomationsTriggersRowsTable<T extends TriggerRowData>({
     state: { rowSelection },
     enableRowSelection: true,
     onRowSelectionChange: (updater) =>
-      onRowSelectionChange(
+      onRowSelectionChange?.(
         typeof updater === "function" ? updater(rowSelection) : updater
       ),
     getRowId: (row) => row.triggerId,
@@ -257,6 +262,7 @@ export function AutomationsTriggersRowsTable<T extends TriggerRowData>({
                       >
                         <AutomationsTriggerBreakdown
                           workspaceId={workspaceId}
+                          scope={scope}
                           trigger={row.original}
                           period={period}
                           medianRunCount={medianRunCount}
