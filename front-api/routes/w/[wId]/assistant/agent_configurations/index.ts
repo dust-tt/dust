@@ -59,7 +59,7 @@ const app = workspaceApp();
  *         description: Filter agents by view
  *         schema:
  *           type: string
- *           enum: [all, analytics, list, favorites, published, admin_internal, global, workspace]
+ *           enum: [all, analytics, list, favorites, published, admin_internal, manage_unrestricted, global, workspace]
  *       - in: query
  *         name: limit
  *         required: false
@@ -199,6 +199,15 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
       api_error: {
         type: "app_auth_error",
         message: "Only Dust Super Users can see admin_internal agents.",
+      },
+    });
+  }
+  if (viewParam === "manage_unrestricted" && !auth.isAdmin()) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Only admins can list all agents of the workspace.",
       },
     });
   }
