@@ -41,11 +41,17 @@ export async function createOrUpgradeAgentConfiguration({
   assistant,
   agentConfigurationId,
   authorId,
+  dangerouslySkipPermissionFiltering,
 }: {
   auth: Authenticator;
   assistant: PostOrPatchAgentConfigurationRequestBody["assistant"];
   agentConfigurationId?: string;
   authorId?: ModelId;
+  // Keeps the requested spaces and the skills of an agent being re-saved even when the caller
+  // cannot read them. Only for callers that re-save an existing agent as-is (admin batch model
+  // updates): without it those spaces are rejected and those skills silently dropped, which would
+  // unrestrict the agent and strip its skills. It grants no access to what the spaces protect.
+  dangerouslySkipPermissionFiltering?: boolean;
 }): Promise<Result<AgentConfigurationType, Error>> {
   const skillsOnlyViews = await MCPServerViewResource.fetchByIds(
     auth,
@@ -101,7 +107,8 @@ export async function createOrUpgradeAgentConfiguration({
   if (assistant.skills && assistant.skills.length > 0) {
     skills = await SkillResource.fetchByIds(
       auth,
-      assistant.skills.map((s) => s.sId)
+      assistant.skills.map((s) => s.sId),
+      { dangerouslySkipPermissionFiltering }
     );
   }
 
@@ -126,18 +133,20 @@ export async function createOrUpgradeAgentConfiguration({
     );
 
     // Validate that all requested spaces were found and user can read them
-    const readableSpaceIds = new Set(
-      additionalSpaces.filter((s) => s.canRead(auth)).map((s) => s.sId)
-    );
-    const inaccessibleSpaces = assistant.additionalRequestedSpaceIds.filter(
-      (sId) => !readableSpaceIds.has(sId)
-    );
-    if (inaccessibleSpaces.length > 0) {
-      return new Err(
-        new Error(
-          `User does not have access to the following spaces: ${inaccessibleSpaces.join(", ")}`
-        )
+    if (!dangerouslySkipPermissionFiltering) {
+      const readableSpaceIds = new Set(
+        additionalSpaces.filter((s) => s.canRead(auth)).map((s) => s.sId)
       );
+      const inaccessibleSpaces = assistant.additionalRequestedSpaceIds.filter(
+        (sId) => !readableSpaceIds.has(sId)
+      );
+      if (inaccessibleSpaces.length > 0) {
+        return new Err(
+          new Error(
+            `User does not have access to the following spaces: ${inaccessibleSpaces.join(", ")}`
+          )
+        );
+      }
     }
 
     const additionalSpaceModelIds = removeNulls(
