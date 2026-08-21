@@ -1,4 +1,5 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import { DEFAULT_CONSUMPTION_BREAKDOWN_COUNT } from "@app/lib/api/analytics/consumption/schema";
 import type {
   ConsumptionGroupBucket,
   ConsumptionMetric,
@@ -25,6 +26,8 @@ import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 import { resolveDimensionDisplayNames } from "./labels";
 
+export { DEFAULT_CONSUMPTION_BREAKDOWN_COUNT } from "@app/lib/api/analytics/consumption/schema";
+
 export type ConsumptionGranularity = "day" | "week" | "month";
 export type ConsumptionTimeseriesMode = "daily" | "cumulative";
 
@@ -33,8 +36,6 @@ export const TOTAL_GROUP_KEY = "total";
 export const OTHERS_GROUP_KEY = "others";
 
 export type ConsumptionBreakdownDimension = ConsumptionScopeDimension;
-
-export const DEFAULT_CONSUMPTION_BREAKDOWN_COUNT = 10;
 
 export type ConsumptionTimeseriesGroup = {
   groupKey: string;

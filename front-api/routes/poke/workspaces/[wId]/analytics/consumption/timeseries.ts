@@ -5,21 +5,16 @@ import {
 } from "@app/lib/api/analytics/consumption/schema";
 import type { GetConsumptionTimeseriesResponse } from "@app/lib/api/analytics/consumption/timeseries";
 import { fetchConsumptionTimeseries } from "@app/lib/api/analytics/consumption/timeseries";
-import logger from "@app/logger/logger";
-import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
+import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
-export type { GetConsumptionTimeseriesResponse };
-
-// Mounted at /api/w/:wId/analytics/consumption/timeseries.
-const app = workspaceApp();
+// Mounted at /api/poke/workspaces/:wId/analytics/consumption/timeseries.
+const app = pokeApp();
 
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsManager(),
   validate("json", ConsumptionTimeseriesBodySchema),
   async (ctx): HandlerResult<GetConsumptionTimeseriesResponse> => {
     const auth = ctx.get("auth");
@@ -48,20 +43,17 @@ app.post(
       filter,
     });
     if (result.isErr()) {
-      logger.error(
+      return apiError(
+        ctx,
         {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          err: result.error,
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to retrieve timeseries.",
+          },
         },
-        "[ConsumptionAnalytics] Failed to retrieve timeseries."
+        result.error
       );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to retrieve timeseries.",
-        },
-      });
     }
 
     return ctx.json(result.value);
