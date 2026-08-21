@@ -1,3 +1,4 @@
+import { PokeWorkspaceUsageChart } from "@app/components/poke/analytics/PokeWorkspaceUsageChart";
 import { AlertChip } from "@app/components/poke/credits/AlertChip";
 import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLogsLink";
 import { PokeAwuUsageFromAnalyticsChart } from "@app/components/poke/credits/PokeAwuUsageFromAnalyticsChart";
@@ -30,6 +31,7 @@ import {
 
 interface PokeUsageTabProps {
   owner: WorkspaceType;
+  hasMetronomeBillingUsage: boolean;
   subscription: SubscriptionType;
   stripeSubscription: PokeStripeSubscriptionWire | null;
   poolCreditState: WorkspacePoolCreditState;
@@ -335,6 +337,7 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
 
 export function PokeUsageTab({
   owner,
+  hasMetronomeBillingUsage,
   subscription,
   stripeSubscription,
   poolCreditState,
@@ -349,6 +352,10 @@ export function PokeUsageTab({
   usageCapAlert,
   defaultAlerts,
 }: PokeUsageTabProps) {
+  if (!hasMetronomeBillingUsage) {
+    return <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />;
+  }
+
   const billingCycleStartDay = stripeSubscription?.current_period_start
     ? new Date(stripeSubscription.current_period_start * 1000).getDate()
     : subscription.startDate
@@ -357,6 +364,7 @@ export function PokeUsageTab({
 
   return (
     <div className="flex flex-col gap-4">
+      <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />
       <PokeCreditStatesCard
         owner={owner}
         creditUsageConfig={creditUsageConfig}
