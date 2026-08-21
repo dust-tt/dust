@@ -1,7 +1,5 @@
 import { updatePodMembersPlugin } from "@app/lib/api/poke/plugins/spaces/update_pod_members";
 import { Authenticator } from "@app/lib/auth";
-import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
-import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -19,17 +17,12 @@ describe("updatePodMembersPlugin", () => {
     await MembershipFactory.associate(workspace, user, { role: "admin" });
 
     const pod = await SpaceFactory.project(workspace);
-    const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-      space: pod,
-      filterOnManagementMode: true,
-    });
-    const editorGroupSpaces = await GroupSpaceEditorResource.fetchBySpace({
-      space: pod,
-      filterOnManagementMode: true,
-    });
-
-    const memberGroup = memberGroupSpaces[0].group;
-    const editorGroup = editorGroupSpaces[0].group;
+    const memberGroup = await pod.fetchManualMemberGroup(adminAuth);
+    const editorGroup = await pod.fetchManualEditorGroup(adminAuth);
+    expect(editorGroup).not.toBeNull();
+    if (!editorGroup) {
+      throw new Error("Pod must have a manual editor group.");
+    }
 
     const activeMemberGroupMembers =
       await memberGroup.getActiveMembers(adminAuth);
@@ -89,22 +82,19 @@ describe("updatePodMembersPlugin", () => {
     await MembershipFactory.associate(workspace, user, { role: "admin" });
 
     const pod = await SpaceFactory.project(workspace, user.id);
-    const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-      space: pod,
-      filterOnManagementMode: true,
-    });
-    const editorGroupSpaces = await GroupSpaceEditorResource.fetchBySpace({
-      space: pod,
-      filterOnManagementMode: true,
-    });
+    const memberGroup = await pod.fetchManualMemberGroup(adminAuth);
+    const editorGroup = await pod.fetchManualEditorGroup(adminAuth);
+    expect(editorGroup).not.toBeNull();
+    if (!editorGroup) {
+      throw new Error("Pod must have a manual editor group.");
+    }
 
-    await memberGroupSpaces[0].group.dangerouslyAddMembers(adminAuth, {
+    await memberGroup.dangerouslyAddMembers(adminAuth, {
       users: [user.toJSON()],
     });
 
     const reloadedPod = await SpaceResource.fetchById(adminAuth, pod.sId);
-    const currentEditors =
-      await editorGroupSpaces[0].group.getActiveMembers(adminAuth);
+    const currentEditors = await editorGroup.getActiveMembers(adminAuth);
 
     const result = await updatePodMembersPlugin.execute(
       adminAuth,

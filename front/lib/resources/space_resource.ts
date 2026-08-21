@@ -7,13 +7,9 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConcreteGrantType } from "@app/lib/resources/group_permission_registry";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
-import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
-import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
@@ -166,41 +162,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       const space = await SpaceModel.create(blob, { transaction: t });
       const { members, editors = [] } = groups;
 
-      // Dual-write the `group_vaults` association rows (kept in sync until the table is dropped).
-      for (const memberGroup of members) {
-        await GroupSpaceModel.create(
-          {
-            groupId: memberGroup.id,
-            groupKind: memberGroup.kind,
-            vaultId: space.id,
-            workspaceId: space.workspaceId,
-            kind: "member",
-          },
-          { transaction: t }
-        );
-      }
       if (editors.length > 0) {
         assert(
           blob.kind === "project",
           "Only projects can have editor groups."
         );
-        for (const editorGroup of editors) {
-          await GroupSpaceModel.create(
-            {
-              groupId: editorGroup.id,
-              groupKind: editorGroup.kind,
-              vaultId: space.id,
-              workspaceId: space.workspaceId,
-              kind: "project_editor",
-            },
-            { transaction: t }
-          );
-        }
       }
 
       const spaceResource = new this(SpaceModel, space.get(), []);
 
-      // Write group_permissions directly from the created associations, so a space is never
+      // Write group_permissions directly from the in-hand groups, so a space is never
       // persisted without its grants. `auth` only needs to be in the space's workspace: the write
       // itself authorizes nothing (see `writeGroupPermissions`); who may create a space is gated by
       // the callers (`makeDefaultsForWorkspace`, `createSpaceAndGroup`).
@@ -779,14 +750,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       transaction
     );
 
-    await GroupSpaceModel.destroy({
-      where: {
-        vaultId: this.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      transaction,
-    });
-
     await GroupPermissionResource.deleteAllForResource(auth, {
       resourceType: "space",
       resourceId: this.id,
@@ -799,14 +762,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await concurrentExecutor(
       groupsToMaybeDelete,
       async (group) => {
-        // As the model allows it, ensure the group is not associated with any other space.
-        const count = await GroupSpaceModel.count({
-          where: {
-            groupId: group.id,
-          },
-          transaction,
-        });
-        if (count === 0) {
+        // Ensure the group is not associated with any other space. The grants for this space were
+        // just cleared above, so any remaining space grant means the group is used elsewhere.
+        const grants = await GroupPermissionResource.listForGroup(auth, group);
+        const hasSpaceGrant = grants.some(
+          (grant) => grant.resourceType === "space"
+        );
+        if (!hasSpaceGrant) {
           await group.delete(auth, { transaction });
         }
       },
@@ -1001,8 +963,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const { isRestricted } = params;
 
-    const wasRestricted = !this.isOpen();
-
     const groupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
     if (groupRes.isErr()) {
       return groupRes;
@@ -1014,44 +974,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       // Update managementMode if provided
       const { managementMode } = params;
 
-      // The group set and editor classification are reconstructed from the `GroupSpace*Resource`
-      // classes (see `fetchAssociatedGroups`), not read from `this.groups`: callers mutate the group
-      // associations in-transaction, so re-read them before each write to reflect those mutations.
-      const syncGroupPermissions = async () =>
-        this.writeGroupPermissions(auth, {
-          ...(await this.fetchAssociatedGroups(t)),
-          transaction: t,
-        });
-
-      // If the space should be restricted and was not restricted before, remove the global group.
-      if (!wasRestricted && isRestricted) {
-        const globalGroupReference = this.groups.find(
-          (group) => group.groupId === globalGroup.id
-        );
-        assert(
-          globalGroupReference,
-          "An unrestricted space must have a global group."
-        );
-        await this.removeGroup(auth, globalGroupReference, t);
-      }
-
-      // If the space should not be restricted and was restricted before, add the global group.
-      if (wasRestricted && !isRestricted) {
-        if (this.isProject()) {
-          // Global group gets viewer permissions in projects
-          await GroupSpaceViewerResource.makeNew(auth, {
-            group: globalGroup,
-            space: this,
-            transaction: t,
-          });
-        } else {
-          await GroupSpaceMemberResource.makeNew(auth, {
-            group: globalGroup,
-            space: this,
-            transaction: t,
-          });
-        }
-      }
+      // The space is open (unrestricted) exactly when the workspace global group is one of its
+      // groups. There is no separate group_vaults add/remove: the global group is simply included in
+      // `members` iff the space is (becoming) open.
+      const willBeOpen = !isRestricted;
 
       const previousManagementMode = this.managementMode;
       await this.update({ managementMode }, t);
@@ -1069,6 +995,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           await this.restoreManualGroupMembers(auth, t);
         }
       }
+
+      // The desired member/editor group sets for this space, written once into group_permissions at
+      // the end of the transaction (or on an early membership-mutation error, so the grants still
+      // reflect the group associations).
+      const members: GroupResource[] = [];
+      const editors: GroupResource[] = [];
+      const syncGroupPermissions = async () =>
+        this.writeGroupPermissions(auth, { members, editors, transaction: t });
 
       if (managementMode === "manual") {
         const memberIds = params.memberIds;
@@ -1097,19 +1031,30 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         // Handle member-based management
         const users = await UserResource.fetchByIds(memberIds);
 
-        // Get the GroupSpaceMemberResource for the member group
-        const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-          space: this,
-          transaction: t,
-          filterOnManagementMode: true,
-        });
+        const memberGroup = await this.fetchManualMemberGroup(auth, t);
+        members.push(memberGroup);
+        if (willBeOpen) {
+          members.push(globalGroup);
+        }
 
-        assert(
-          memberGroupSpaces.length === 1,
-          "In manual management mode, there should be exactly one member group space."
-        );
+        // Handle editor group - create if needed and update members
+        if (this.isProject()) {
+          let editorGroup = await this.fetchManualEditorGroup(auth, t);
+          if (!editorGroup) {
+            // Create a new editor group (no group_vaults row; the grant is written below).
+            editorGroup = await GroupResource.makeNew(
+              {
+                name: `${PROJECT_EDITOR_GROUP_PREFIX} ${this.name}`,
+                kind: "regular_auto",
+                workspaceId: this.workspaceId,
+              },
+              { transaction: t }
+            );
+          }
+          editors.push(editorGroup);
+        }
 
-        const setMembersRes = await memberGroupSpaces[0].setMembers(auth, {
+        const setMembersRes = await memberGroup.dangerouslySetMembers(auth, {
           users: users.map((u) => u.toJSON()),
           transaction: t,
         });
@@ -1118,48 +1063,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           return setMembersRes;
         }
 
-        // Handle editor group - create if needed and update members
         if (this.isProject()) {
-          let editorGroupSpaces = await GroupSpaceEditorResource.fetchBySpace({
-            space: this,
-            transaction: t,
-            filterOnManagementMode: true,
-          });
-
-          if (!editorGroupSpaces.length) {
-            // Create a new editor group
-            const editorGroup = await GroupResource.makeNew(
-              {
-                name: `${PROJECT_EDITOR_GROUP_PREFIX} ${this.name}`,
-                kind: "regular_auto",
-                workspaceId: this.workspaceId,
-              },
-              { transaction: t }
-            );
-
-            // Link the editor group to the space
-            const editorGroupSpace = await GroupSpaceEditorResource.makeNew(
-              auth,
-              {
-                group: editorGroup,
-                space: this,
-                transaction: t,
-              }
-            );
-            editorGroupSpaces = [editorGroupSpace];
-          }
-          assert(
-            editorGroupSpaces.length === 1,
-            "In manual management mode, there should be exactly one editor group space."
-          );
-
-          // Set members of the editor group using the GroupSpaceEditorResource
+          const [editorGroup] = editors;
           const editorUsers = await UserResource.fetchByIds(editorIds);
           assert(
             editorUsers.length > 0 || isAdminControlled,
             "Pods must have at least one editor."
           );
-          const setEditorsRes = await editorGroupSpaces[0].setMembers(auth, {
+          const setEditorsRes = await editorGroup.dangerouslySetMembers(auth, {
             users: editorUsers.map((u) => u.toJSON()),
             transaction: t,
           });
@@ -1173,18 +1084,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         const groupIds = params.groupIds;
         const editorGroupIds = params.editorGroupIds;
 
-        // Remove existing provisioned associations, read straight from group_vaults rather than
-        // `this.groups` (now sourced from group_permissions). Switching to manual mode drops the
-        // provisioned grants but leaves the group_vaults rows, so `this.groups` would not list them
-        // and the re-insert below would hit the (vaultId, groupId) unique constraint.
-        await GroupSpaceModel.destroy({
-          where: {
-            vaultId: this.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-            groupKind: "provisioned",
-          },
-          transaction: t,
-        });
+        // The space's regular_auto member group (and, for projects, its regular_auto editor group)
+        // are kept alongside the selected provisioned groups — group mode adds provisioned grants on
+        // top of the manual groups rather than replacing them.
+        const memberGroup = await this.fetchManualMemberGroup(auth, t);
+        members.push(memberGroup);
+        if (willBeOpen) {
+          members.push(globalGroup);
+        }
 
         // Add the new groups
         const selectedGroupsResult = await GroupResource.fetchByIds(
@@ -1192,20 +1099,18 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           groupIds
         );
         if (selectedGroupsResult.isErr()) {
-          // The provisioned groups just removed above stay removed, so their grants must be removed too.
           await syncGroupPermissions();
           return selectedGroupsResult;
         }
         const selectedGroups = selectedGroupsResult.value;
-        for (const selectedGroup of selectedGroups) {
-          await GroupSpaceMemberResource.makeNew(auth, {
-            group: selectedGroup,
-            space: this,
-            transaction: t,
-          });
-        }
+        members.push(...selectedGroups);
 
         if (this.isProject()) {
+          const manualEditorGroup = await this.fetchManualEditorGroup(auth, t);
+          if (manualEditorGroup) {
+            editors.push(manualEditorGroup);
+          }
+
           assert(
             editorGroupIds.length > 0,
             "Pods must have at least one editor group."
@@ -1224,13 +1129,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             selectedEditorGroups.length > 0,
             "Pods must have at least one editor group."
           );
-          for (const selectedEditorGroup of selectedEditorGroups) {
-            await GroupSpaceEditorResource.makeNew(auth, {
-              group: selectedEditorGroup,
-              space: this,
-              transaction: t,
-            });
-          }
+          editors.push(...selectedEditorGroups);
         }
       }
 
@@ -1249,21 +1148,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await auth.refresh();
 
     return result;
-  }
-
-  private async removeGroup(
-    auth: Authenticator,
-    groupReference: SpaceGroupReference,
-    transaction?: Transaction
-  ) {
-    await GroupSpaceModel.destroy({
-      where: {
-        groupId: groupReference.groupId,
-        vaultId: this.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      transaction,
-    });
   }
 
   /**
@@ -1931,10 +1815,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   //
   // `associatedGroups` is the full set of groups attached to this space, and `editorGroupIds`
   // classifies which of a project's groups are editors. Both are passed in rather than read from
-  // `this.groups`: that association is derived from `group_vaults` (being removed), and a provisioned
-  // group can be an editor or a member so the group kind alone cannot tell them apart. Callers source
-  // them from the `GroupSpace*Resource` classes (see `fetchAssociatedGroups`) or from the groups they
-  // just created.
+  // `this.groups`: callers mutate the group set in-transaction (so `this.groups` would be stale),
+  // and a provisioned group can be an editor or a member so the group kind alone cannot tell them
+  // apart. Callers pass the `{ members, editors }` set they just computed.
   private spaceGroupRoles(
     associatedGroups: GroupResource[],
     editorGroupIds: ModelId[]
@@ -2000,43 +1883,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }));
   }
 
-  // The groups attached to this space, split into `members` and `editors` (the same shape
-  // `writeGroupPermissions` expects), reconstructed from the `GroupSpace*Resource` classes rather
-  // than `this.groups` (which is derived from `group_vaults`, being removed). This is the single
-  // place to re-point once `group_permissions` becomes the source of truth. The project viewer group
-  // (the workspace global group) is returned in `members`, since only editors need to be told apart.
-  async fetchAssociatedGroups(transaction?: Transaction): Promise<{
-    members: GroupResource[];
-    editors: GroupResource[];
-  }> {
-    const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-      space: this,
-      transaction,
-    });
-    const members = memberGroupSpaces.map((groupSpace) => groupSpace.group);
-
-    if (!this.isProject()) {
-      return { members, editors: [] };
-    }
-
-    const editorGroupSpaces = await GroupSpaceEditorResource.fetchBySpace({
-      space: this,
-      transaction,
-    });
-    const viewerGroupSpace = await GroupSpaceViewerResource.fetchBySpace({
-      space: this,
-      transaction,
-    });
-
-    return {
-      members: [
-        ...members,
-        ...(viewerGroupSpace ? [viewerGroupSpace.group] : []),
-      ],
-      editors: editorGroupSpaces.map((groupSpace) => groupSpace.group),
-    };
-  }
-
   // Writes this space's `group_permissions` rows from the roles its groups confer (see
   // `spaceGroupRoles`). The space mutation paths call this to keep the table in sync as the source of
   // truth. Idempotent — it clears the space's instance grants then re-inserts the desired set in one
@@ -2044,9 +1890,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   //
   // The caller passes the space's groups split into `members` and `editors` (the workspace global
   // group, attached to unrestricted spaces, goes in `members`) rather than this method reading
-  // `this.groups`: that association is derived from `group_vaults` (being removed), and callers mutate
-  // it in-transaction so `this.groups` would be stale anyway. Callers that already hold the groups
-  // pass them directly; others use `fetchAssociatedGroups`. `editors` only applies to projects.
+  // `this.groups`: callers mutate the group set in-transaction so `this.groups` would be stale
+  // anyway. `editors` only applies to projects.
   async writeGroupPermissions(
     auth: Authenticator,
     {
@@ -2124,17 +1969,21 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return false;
     }
 
-    const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-      space: this,
-      filterOnManagementMode: true,
-    });
+    // Assert the space still has exactly one manual member group (invariant preserved from the
+    // former GroupSpaceMemberResource path).
+    await this.fetchManualMemberGroup(auth);
 
-    assert(
-      memberGroupSpaces.length === 1,
-      "In manual management mode, there should be exactly one member group space."
-    );
+    // Users can add themselves to open projects; otherwise managing a space's members requires
+    // administration rights (held by workspace admins and a project's editors) — a project's plain
+    // members hold `write` but must not be able to add others, so this gates on `canAdministrate`.
+    if (this.isProject() && this.isOpen()) {
+      const currentUser = auth.getNonNullableUser();
+      if (userId === currentUser.sId) {
+        return true;
+      }
+    }
 
-    return memberGroupSpaces[0].canAddMember(auth, userId);
+    return this.canAdministrate(auth);
   }
 
   canAdministrate(auth: Authenticator) {
