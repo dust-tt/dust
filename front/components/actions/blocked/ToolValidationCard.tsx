@@ -117,7 +117,7 @@ function ToolValidationDetailsDialog({
         className="gap-4 p-5"
         preventAutoFocusOnClose={false}
       >
-        <DialogHeader className="gap-1 p-0">
+        <DialogHeader className="static gap-1 p-0">
           <DialogTitle visual={<Avatar icon={icon} size="sm" />}>
             {approvalTitle}
           </DialogTitle>
