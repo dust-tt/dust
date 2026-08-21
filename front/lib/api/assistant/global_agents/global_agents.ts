@@ -928,7 +928,7 @@ function getGlobalAgent({
       agentConfiguration = _getReinforcementGlobalAgent();
       break;
     case GLOBAL_AGENTS_SID.ANALYST:
-      agentConfiguration = _getAnalystGlobalAgent({ auth, featureFlags });
+      agentConfiguration = _getAnalystGlobalAgent();
       break;
     case GLOBAL_AGENTS_SID.NOOP:
       agentConfiguration = _getNoopAgent();
