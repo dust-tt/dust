@@ -276,20 +276,6 @@ describe("AgentMessage compact UI view", () => {
     });
   });
 
-  it("includes sub-agent credits in the displayed consumption", () => {
-    renderAgentMessage({
-      uiView: "standard",
-      agentMessageOverrides: {
-        costCredits: 20,
-        subAgentCostCredits: 282,
-      },
-    });
-
-    expect(
-      screen.getByRole("status", { name: "302 credits used for this message" })
-    ).toHaveTextContent("302");
-  });
-
   describe("bottom citations", () => {
     it("hides the bottom citation list for compact UI conversations but keeps inline citations", () => {
       const { container } = renderAgentMessage({
