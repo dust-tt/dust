@@ -5,7 +5,6 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { PatchSpaceMembersRequestBodySchema } from "@app/lib/api/spaces/members";
 import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
-import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import { auditLog } from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -70,15 +69,9 @@ app.patch(
     // Track current members before update to identify newly added ones.
     let currentMemberIds: Set<string> | undefined;
     if (space.isProject() && body.managementMode === "manual") {
-      const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-        space,
-        filterOnManagementMode: true,
-      });
-      if (memberGroupSpaces.length === 1) {
-        const currentMembers =
-          await memberGroupSpaces[0].group.getActiveMembers(auth);
-        currentMemberIds = new Set(currentMembers.map((m) => m.sId));
-      }
+      const memberGroup = await space.fetchManualMemberGroup(auth);
+      const currentMembers = await memberGroup.getActiveMembers(auth);
+      currentMemberIds = new Set(currentMembers.map((m) => m.sId));
     }
 
     const updateRes = await space.updatePermissions(auth, body);
