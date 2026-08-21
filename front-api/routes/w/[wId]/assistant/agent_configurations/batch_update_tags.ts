@@ -65,7 +65,7 @@ app.post(
             message: addTagsResult.error.message,
           },
         },
-        addTagsResult.error
+        { error: addTagsResult.error }
       );
     }
 
@@ -84,7 +84,7 @@ app.post(
             message: removeTagsResult.error.message,
           },
         },
-        removeTagsResult.error
+        { error: removeTagsResult.error }
       );
     }
 

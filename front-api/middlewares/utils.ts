@@ -33,20 +33,16 @@ type ApiErrorOptions = {
  * handler — do not call `ctx.json({ error: ... }, status)` directly, so the
  * observability behavior stays consistent across Next and Hono.
  *
- * Pass an `Error` when forwarding an underlying exception so its message and
- * stack are captured in the log instead of the synthetic one. Pass options
- * with `isExpected` for a specific expected outcome that should be logged at
+ * Pass `options.error` when forwarding an underlying exception so its message
+ * and stack are captured in the log instead of the synthetic one. Set
+ * `options.isExpected` for a specific expected outcome that should be logged at
  * `info` without lowering the severity of every error sharing its type.
  */
 export function apiError(
   ctx: Context,
   err: APIErrorWithContentfulStatusCode,
-  errorOrOptions: Error | ApiErrorOptions = {}
+  options: ApiErrorOptions = {}
 ) {
-  const options =
-    errorOrOptions instanceof Error
-      ? { error: errorOrOptions }
-      : errorOrOptions;
   const { error } = options;
   const callstack = new Error().stack;
   const errorAttrs = {

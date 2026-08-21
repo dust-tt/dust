@@ -18,5 +18,5 @@ export function apiErrorForConversation(ctx: Context, error: Error) {
   if (error instanceof ConversationError) {
     return apiError(ctx, apiErr);
   }
-  return apiError(ctx, apiErr, error);
+  return apiError(ctx, apiErr, { error });
 }

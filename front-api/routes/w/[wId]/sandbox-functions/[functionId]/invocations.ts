@@ -146,7 +146,7 @@ app.post(
             message: "Sandbox function invocation failed.",
           },
         },
-        invocationResult.error
+        { error: invocationResult.error }
       );
     }
 

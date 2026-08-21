@@ -55,7 +55,7 @@ app.get(
             message: "Failed to read the plan content.",
           },
         },
-        contentRes.error
+        { error: contentRes.error }
       );
     }
 
@@ -94,7 +94,7 @@ app.delete(
             message: "Failed to close the plan.",
           },
         },
-        closeRes.error
+        { error: closeRes.error }
       );
     }
 
