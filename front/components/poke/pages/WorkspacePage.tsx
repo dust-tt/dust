@@ -65,7 +65,7 @@ export function WorkspacePage() {
     disabled: false,
   });
 
-  const requestedTab = !isString(router.query.tab)
+  const currentTab = !isString(router.query.tab)
     ? "datasources"
     : router.query.tab;
 
@@ -166,12 +166,6 @@ export function WorkspacePage() {
   const hasMetronomeUsage =
     metronomeCustomerId !== null &&
     activeSubscription.metronomeContractId !== null;
-  const legacyAnalyticsFallbackTab = hasMetronomeUsage
-    ? "usage"
-    : "datasources";
-  const currentTab =
-    requestedTab === "analytics" ? legacyAnalyticsFallbackTab : requestedTab;
-
   return (
     <div className="ml-8 p-6">
       {isInMaintenance && (
