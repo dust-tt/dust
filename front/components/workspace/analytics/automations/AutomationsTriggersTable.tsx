@@ -5,6 +5,7 @@ import { AutomationsFilterSummary } from "@app/components/workspace/analytics/au
 import type { TriggerRowData as BaseTriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
 import { AutomationsTriggersRowsTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
 import {
+  agentColumn,
   creditsColumn,
   detailsColumn,
   nameColumn,
@@ -15,10 +16,6 @@ import { POOL_OPTIONS } from "@app/components/workspace/analytics/automations/tr
 import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { toAutomationsTriggersFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
-import {
-  AvatarNameCell,
-  EntityTooltipCard,
-} from "@app/components/workspace/analytics/creditsTableCells";
 import { useAutomationsTriggers } from "@app/hooks/useAutomationsTriggers";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
@@ -153,45 +150,6 @@ function RunningCell({ row }: { row: TriggerRowData }) {
   }
 }
 
-function AgentCell({ agent }: { agent: AutomationTriggerRow["agent"] }) {
-  const content = (
-    <div className="min-w-0">
-      <AvatarNameCell
-        name={agent.name}
-        imageUrl={agent.pictureUrl}
-        size="xxs"
-      />
-    </div>
-  );
-
-  if (!agent.description) {
-    return content;
-  }
-
-  return (
-    <Tooltip
-      label={
-        <EntityTooltipCard
-          avatar={
-            <Avatar
-              name={agent.name}
-              visual={agent.pictureUrl ?? undefined}
-              size="xs"
-            />
-          }
-          name={agent.name}
-          description={agent.description}
-          modelId={agent.modelId}
-          modelDisplayName={agent.modelDisplayName}
-        />
-      }
-      className="p-3"
-      tooltipTriggerAsChild
-      trigger={content}
-    />
-  );
-}
-
 function EditorCell({ editor }: { editor: AutomationTriggerRow["editor"] }) {
   return (
     <Tooltip
@@ -257,17 +215,7 @@ function buildColumns({
         </DataTable.CellContent>
       ),
     },
-    {
-      id: "agent",
-      header: "Agent",
-      enableSorting: false,
-      meta: { className: "w-44", headerAlign: "left" },
-      cell: (info) => (
-        <DataTable.CellContent className="w-full justify-start">
-          <AgentCell agent={info.row.original.agent} />
-        </DataTable.CellContent>
-      ),
-    },
+    agentColumn(),
     typeColumn(),
     creditsColumn(),
     ...(showPoolColumn
