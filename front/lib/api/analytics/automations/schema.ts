@@ -46,6 +46,31 @@ export type AutomationTriggersBody = z.infer<
   typeof AutomationTriggersBodySchema
 >;
 
+export const UserAutomationTriggersFilterSchema = z.object({
+  agentIds: z.array(z.string()).optional(),
+  kinds: z.array(z.enum(["schedule", "webhook"])).optional(),
+});
+
+export type UserAutomationTriggersFilter = z.infer<
+  typeof UserAutomationTriggersFilterSchema
+>;
+
+export const UserAutomationTriggersBodySchema = ConsumptionPeriodSchema.extend({
+  search: z.string().trim().optional(),
+  filter: UserAutomationTriggersFilterSchema.optional(),
+  limit: z
+    .number()
+    .int()
+    .positive()
+    .max(100)
+    .default(DEFAULT_AUTOMATION_TRIGGERS_LIMIT),
+  offset: z.number().int().nonnegative().default(0),
+});
+
+export type UserAutomationTriggersBody = z.infer<
+  typeof UserAutomationTriggersBodySchema
+>;
+
 export const AutomationTriggerBreakdownBodySchema =
   ConsumptionPeriodSchema.extend({
     triggerId: z.string().min(1),
