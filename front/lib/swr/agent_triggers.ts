@@ -29,6 +29,7 @@ import type {
   TriggerExecutionMode,
 } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
@@ -521,36 +522,17 @@ export function useTriggerEstimation({
   };
 }
 
-async function postBulkTriggerUpdate({
-  url,
-  body,
-}: {
-  url: string;
-  body: Record<string, unknown>;
-}): Promise<BulkTriggerUpdateOutcome | { error: string }> {
-  const response = await clientFetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    const errorData = await getErrorFromResponse(response);
-    return { error: errorData.message };
-  }
-  return response.json();
-}
-
-function bulkOutcomeDescription(
-  { updatedCount, skippedCount }: BulkTriggerUpdateOutcome,
-  done: string
+function executionModeOutcomeSentence(
+  executionMode: TriggerExecutionMode
 ): string {
-  const parts = [
-    `${updatedCount} automation${pluralize(updatedCount)} ${done}.`,
-  ];
-  if (skippedCount > 0) {
-    parts.push(`${skippedCount} could not be changed.`);
+  switch (executionMode) {
+    case "workspace_pool":
+      return "now run on the workspace's credits";
+    case "user_pool":
+      return "now run on their editor's credits";
+    default:
+      return assertNever(executionMode);
   }
-  return parts.join(" ");
 }
 
 export function useBulkUpdateTriggerExecutionMode({
@@ -568,30 +550,38 @@ export function useBulkUpdateTriggerExecutionMode({
       selection: BulkTriggerSelection;
       executionMode: TriggerExecutionMode;
     }): Promise<BulkTriggerUpdateOutcome | null> => {
-      const result = await postBulkTriggerUpdate({
-        url: `/api/w/${workspaceId}/triggers/bulk-execution-mode`,
-        body: { selection, executionMode },
-      });
-      if ("error" in result) {
+      const response = await clientFetch(
+        `/api/w/${workspaceId}/triggers/bulk-execution-mode`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ selection, executionMode }),
+        }
+      );
+      if (!response.ok) {
+        const errorData = await getErrorFromResponse(response);
         sendNotification({
           type: "error",
           title: "Failed to update the trigger pool",
-          description: `Error: ${result.error}`,
+          description: `Error: ${errorData.message}`,
         });
         return null;
       }
 
+      const outcome: BulkTriggerUpdateOutcome = await response.json();
+      const parts = [
+        `${outcome.updatedCount} automation${pluralize(outcome.updatedCount)} ${executionModeOutcomeSentence(executionMode)}.`,
+      ];
+      if (outcome.skippedCount > 0) {
+        parts.push(`${outcome.skippedCount} could not be changed.`);
+      }
+
       sendNotification({
-        type: result.updatedCount > 0 ? "success" : "info",
+        type: outcome.updatedCount > 0 ? "success" : "info",
         title: "Trigger pool updated",
-        description: bulkOutcomeDescription(
-          result,
-          executionMode === "workspace_pool"
-            ? "now run on the workspace's credits"
-            : "now run on their editor's credits"
-        ),
+        description: parts.join(" "),
       });
-      return result;
+      return outcome;
     },
     [workspaceId, sendNotification]
   );
