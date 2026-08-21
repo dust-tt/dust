@@ -94,10 +94,10 @@ function PokeNavbar({ regionUrls, showRegionPicker = false }: PokeNavbarProps) {
         </div>
       </div>
       <div className="items-right flex items-center gap-4">
+        <PokeThemeSelector />
         <PokeFavoriteButton />
         {showRegionPicker && <PokeRegionDropdown regionUrls={regionUrls} />}
         <PokeSearchCommand />
-        <PokeThemeSelector />
       </div>
     </nav>
   );
