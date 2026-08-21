@@ -4,6 +4,7 @@ import {
   SKILL_AVAILABILITIES,
   SKILL_STATUSES,
 } from "@app/types/assistant/skill_configuration_constants";
+import { JOB_TYPES } from "@app/types/job_type";
 import { z } from "zod";
 
 export const WORKSPACE_MANAGEMENT_SERVER_NAME = "workspace_management" as const;
@@ -12,6 +13,10 @@ export const LIST_AGENTS_TOOL_NAME = "list_agents" as const;
 export const GET_AGENT_DETAILS_TOOL_NAME = "get_agent_details" as const;
 export const LIST_SKILLS_TOOL_NAME = "list_skills" as const;
 export const GET_SKILL_DETAILS_TOOL_NAME = "get_skill_details" as const;
+export const LIST_WORKSPACE_MEMBERS_TOOL_NAME =
+  "list_workspace_members" as const;
+
+export const MAX_MEMBERS = 100;
 
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 50;
@@ -121,6 +126,27 @@ const listSkillsSchema = {
   ...paginationSchemaShape,
 };
 
+const listWorkspaceMembersSchema = {
+  userIds: z
+    .array(z.string())
+    .min(1)
+    .max(MAX_MEMBERS)
+    .optional()
+    .describe("Stable IDs of specific active workspace members to look up."),
+  jobType: z
+    .enum(JOB_TYPES)
+    .optional()
+    .describe(
+      `List all active members with this job function (up to ${MAX_MEMBERS}).`
+    ),
+  groupId: z
+    .string()
+    .optional()
+    .describe(
+      `List all active members of this workspace group (up to ${MAX_MEMBERS}).`
+    ),
+};
+
 const getSkillSchema = {
   skillId: z
     .string()
@@ -182,6 +208,20 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     displayLabels: {
       running: "Retrieving skill",
       done: "Retrieved skill",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: LIST_WORKSPACE_MEMBERS_TOOL_NAME,
+    description:
+      "List active workspace members with their role, job function and groups. " +
+      "Exactly one filter must be provided. Admin and manager only.",
+    schema: listWorkspaceMembersSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing workspace members",
+      done: "Workspace members listed",
     },
     toolCostCategory: "basic",
     freeUsage: true,

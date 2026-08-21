@@ -90,7 +90,6 @@ import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/w
 import { default as workdayServer } from "@app/lib/api/actions/servers/workday";
 import { default as workspaceAnalyticsServer } from "@app/lib/api/actions/servers/workspace_analytics";
 import { default as workspaceManagementServer } from "@app/lib/api/actions/servers/workspace_management";
-import { default as workspacePeopleServer } from "@app/lib/api/actions/servers/workspace_people";
 import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -303,8 +302,6 @@ export async function getInternalMCPServer(
       return workdayServer(auth, toolContext);
     case "user_analytics":
       return userAnalyticsServer(auth, toolContext);
-    case "workspace_people":
-      return workspacePeopleServer(auth, toolContext);
     case "user_memory":
       return userMemoryServer(auth, toolContext);
     case "activation_recommendations":

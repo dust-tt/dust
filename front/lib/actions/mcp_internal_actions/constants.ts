@@ -105,7 +105,6 @@ import {
 import { WORKDAY_SERVER } from "@app/lib/api/actions/servers/workday/metadata";
 import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import { WORKSPACE_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/workspace_management/metadata";
-import { WORKSPACE_PEOPLE_SERVER } from "@app/lib/api/actions/servers/workspace_people/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type {
   InternalMCPServerDefinitionType,
@@ -155,7 +154,8 @@ export const ASHBY_SERVER_NAME = "ashby";
 
 // IDs of internal MCP servers that are no longer present.
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
-export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4, 28];
+// 1047 was workspace_people, folded into workspace_management as list_workspace_members.
+export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4, 28, 1047];
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
@@ -248,7 +248,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "workspace_analytics",
   "workspace_management",
   "activation_recommendations",
-  "workspace_people",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -1267,17 +1266,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: ACTIVATION_RECOMMENDATIONS_SERVER,
-  },
-  workspace_people: {
-    id: 1047,
-    availability: "auto_hidden_builder",
-    allowMultipleInstances: false,
-    isRestricted: undefined,
-    isPreview: false,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: WORKSPACE_PEOPLE_SERVER,
   },
   agent_templates: {
     id: 1041,

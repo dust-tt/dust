@@ -1,15 +1,14 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { ToolContext } from "@app/lib/actions/types";
+import type {
+  ToolHandlerExtra,
+  ToolHandlerResult,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { workspaceManagerGuard } from "@app/lib/actions/mcp_internal_actions/utils";
+import { MAX_MEMBERS } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import {
-  LIST_WORKSPACE_MEMBERS_TOOL_NAME,
-  MAX_MEMBERS,
-  WORKSPACE_PEOPLE_SERVER_NAME,
-  WORKSPACE_PEOPLE_TOOLS_METADATA,
-} from "@app/lib/api/actions/servers/workspace_people/metadata";
+  makeTextLines,
+  renderFields,
+} from "@app/lib/api/actions/servers/workspace_management/tools/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -19,7 +18,6 @@ import type { JobType } from "@app/types/job_type";
 import { isJobType, JOB_TYPE_LABELS } from "@app/types/job_type";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 type WorkspaceMember = {
   userId: string;
@@ -70,7 +68,7 @@ async function buildMemberRows(
   });
 }
 
-async function listByUserIds(
+async function listMembersByUserIds(
   auth: Authenticator,
   userIds: string[]
 ): Promise<Result<WorkspaceMember[], MCPError>> {
@@ -126,7 +124,7 @@ async function listByUserIds(
   );
 }
 
-async function listByJobType(
+async function listMembersByJobType(
   auth: Authenticator,
   jobType: JobType
 ): Promise<Result<WorkspaceMember[], MCPError>> {
@@ -158,7 +156,7 @@ async function listByJobType(
   );
 }
 
-async function listByGroupId(
+async function listMembersByGroupId(
   auth: Authenticator,
   groupId: string
 ): Promise<Result<WorkspaceMember[], MCPError>> {
@@ -199,61 +197,57 @@ async function listByGroupId(
   );
 }
 
-const handlers: ToolHandlers<typeof WORKSPACE_PEOPLE_TOOLS_METADATA> = {
-  list_workspace_members: async ({ userIds, jobType, groupId }, { auth }) => {
-    if (!auth.isManager()) {
-      return new Err(
-        new MCPError(
-          "Only workspace admins and managers can list other members' workspace context."
-        )
-      );
-    }
-
-    const filterCount = [userIds, jobType, groupId].filter(Boolean).length;
-    if (filterCount > 1) {
-      return new Err(
-        new MCPError("Provide exactly one of userIds, jobType, or groupId.")
-      );
-    }
-    if (filterCount === 0) {
-      return new Err(
-        new MCPError("Provide exactly one of userIds, jobType, or groupId.")
-      );
-    }
-
-    const result = userIds
-      ? await listByUserIds(auth, userIds)
-      : jobType
-        ? await listByJobType(auth, jobType as JobType)
-        : await listByGroupId(auth, groupId as string);
-
-    if (result.isErr()) {
-      return result;
-    }
-    return new Ok([
-      { type: "text" as const, text: JSON.stringify(result.value) },
-    ]);
-  },
-};
-
-export const TOOLS = buildTools(WORKSPACE_PEOPLE_TOOLS_METADATA, handlers);
-
-function createServer(
-  auth: Authenticator,
-  toolContext?: ToolContext
-): McpServer {
-  const server = makeInternalMCPServer(WORKSPACE_PEOPLE_SERVER_NAME);
-
-  for (const tool of TOOLS) {
-    if (tool.name === LIST_WORKSPACE_MEMBERS_TOOL_NAME && !auth.isManager()) {
-      continue;
-    }
-    registerTool(auth, toolContext, server, tool, {
-      monitoringName: WORKSPACE_PEOPLE_SERVER_NAME,
-    });
+// Unlike the other tools here, this one exposes other members' identity and role, so it stays
+// manager-only. `createServer` also skips registering it for everyone else.
+export async function listWorkspaceMembers(
+  {
+    userIds,
+    jobType,
+    groupId,
+  }: { userIds?: string[]; jobType?: JobType; groupId?: string },
+  { auth }: ToolHandlerExtra
+): Promise<ToolHandlerResult> {
+  const denied = workspaceManagerGuard(auth);
+  if (denied) {
+    return new Err(denied);
   }
 
-  return server;
-}
+  const filterCount = [userIds, jobType, groupId].filter(Boolean).length;
+  if (filterCount !== 1) {
+    return new Err(
+      new MCPError("Provide exactly one of userIds, jobType, or groupId.", {
+        tracked: false,
+      })
+    );
+  }
 
-export default createServer;
+  const result = userIds
+    ? await listMembersByUserIds(auth, userIds)
+    : jobType
+      ? await listMembersByJobType(auth, jobType)
+      : await listMembersByGroupId(auth, groupId as string);
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  if (result.value.length === 0) {
+    return new Ok([{ type: "text" as const, text: "No members found." }]);
+  }
+
+  return new Ok([
+    makeTextLines(
+      result.value.map((member) =>
+        [
+          `${member.name} [${member.userId}]`,
+          renderFields({
+            email: member.email,
+            role: member.role,
+            jobFunction: member.jobFunction?.label ?? null,
+            groups: member.groups.join("|") || null,
+          }),
+        ].join(" — ")
+      )
+    ),
+  ]);
+}
