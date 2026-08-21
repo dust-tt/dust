@@ -629,7 +629,8 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_LIGHT,
         name: "dust-light",
-        description: "Same as dust but running Claude Sonnet 4.6.",
+        description:
+          "A faster, lighter Dust agent running GPT-5.6 Luna with high reasoning.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_KIMI:

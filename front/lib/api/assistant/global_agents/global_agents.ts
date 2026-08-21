@@ -1113,7 +1113,6 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE,
     GLOBAL_AGENTS_SID.DUST_ANT_SONNET_EDGE_LIGHT,
     GLOBAL_AGENTS_SID.DUST_HAIKU,
-    GLOBAL_AGENTS_SID.DUST_LIGHT,
     GLOBAL_AGENTS_SID.DUST_EDGE,
     GLOBAL_AGENTS_SID.DUST_KIMI,
     GLOBAL_AGENTS_SID.DUST_KIMI_MEDIUM,
@@ -1170,6 +1169,12 @@ export async function getGlobalAgents(
   if (!flags.includes("dust_internal_global_agents")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => !isGlobalAgentId(sId) || !DUST_INTERNAL_AGENTS.includes(sId)
+    );
+  }
+
+  if (!flags.includes("dust_light_agent")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_LIGHT
     );
   }
 
