@@ -18,6 +18,7 @@ import {
   showDebugTools,
 } from "@app/lib/development";
 import { serializeMention } from "@app/lib/mentions/format";
+import { isNavigationLocked } from "@app/lib/navigation-lock";
 import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -31,11 +32,14 @@ import { isOnlyAdmin, isOnlyManager, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
+  BarChart01,
   Beaker02,
   BookOpen01,
   ChevronDown,
   ChromeLogo,
   cn,
+  Dialog,
+  DialogContent,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -54,21 +58,61 @@ import {
   MessageChatCircle,
   MessagePlusCircle,
   MessageTextCircle01,
+  SafeSuspense,
   Separator,
   Shapes,
   ShapesPlus,
   SlackLogo,
+  Spinner,
   Star01,
+  safeLazy,
   Terminal,
   User01,
 } from "@dust-tt/sparkle";
 import { useCallback, useContext, useMemo, useState } from "react";
+
+const canReload = () => !isNavigationLocked();
+
+// UserMenu is mounted across the product, so keep the analytics tables and
+// charting libraries out of the base application bundle until this dialog is
+// opened for the first time.
+const UserAnalyticsPopover = safeLazy(
+  () =>
+    import("@app/components/UserAnalyticsPopover").then((mod) => ({
+      default: mod.UserAnalyticsPopover,
+    })),
+  { canReload }
+);
 
 interface UserMenuProps {
   user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
   subscription: SubscriptionType | null;
   creditUsageState?: CreditUsageState | null;
+}
+
+interface UserAnalyticsPopoverFallbackProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+function UserAnalyticsPopoverFallback({
+  open,
+  onOpenChange,
+}: UserAnalyticsPopoverFallbackProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="2xl" height="xl" className="h-[90vh]">
+        <div
+          className="flex h-full items-center justify-center"
+          aria-busy="true"
+          aria-label="Loading analytics"
+        >
+          <Spinner />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function UserMenu({
@@ -78,9 +122,11 @@ export function UserMenu({
   creditUsageState,
 }: UserMenuProps) {
   const router = useAppRouter();
-  const { featureFlags } = useFeatureFlags();
+  const { featureFlags, hasFeature } = useFeatureFlags();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsAndTriggersOpen, setToolsAndTriggersOpen] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [hasOpenedAnalytics, setHasOpenedAnalytics] = useState(false);
 
   const sendNotification = useSendNotification();
   const devMode = useDevMode();
@@ -243,6 +289,23 @@ export function UserMenu({
         onOpenChange={setToolsAndTriggersOpen}
         owner={owner}
       />
+      {hasOpenedAnalytics && (
+        <SafeSuspense
+          fallback={
+            <UserAnalyticsPopoverFallback
+              open={analyticsOpen}
+              onOpenChange={setAnalyticsOpen}
+            />
+          }
+        >
+          <UserAnalyticsPopover
+            key={owner.sId}
+            open={analyticsOpen}
+            onOpenChange={setAnalyticsOpen}
+            owner={owner}
+          />
+        </SafeSuspense>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger className="hover:bg-hover data-[state=open]:bg-selected rounded-xl p-2 m-2">
           <div className="group flex cursor-pointer items-center justify-between gap-2">
@@ -400,6 +463,16 @@ export function UserMenu({
                 icon={ShapesPlus}
                 onSelect={() => setToolsAndTriggersOpen(true)}
               />
+              {hasFeature("enable_analytics_consumption") && (
+                <DropdownMenuItem
+                  label="Analytics"
+                  icon={BarChart01}
+                  onSelect={() => {
+                    setHasOpenedAnalytics(true);
+                    setAnalyticsOpen(true);
+                  }}
+                />
+              )}
             </>
           )}
 
