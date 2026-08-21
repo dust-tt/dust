@@ -6,6 +6,7 @@ import {
   filterSelectionCount,
   getFilterSummaries,
 } from "@app/components/workspace/analytics/filterPanel/filterState";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { TriggerKind } from "@app/types/assistant/triggers";
 
 export const AUTOMATIONS_FILTER_CATEGORIES = [
@@ -64,6 +65,26 @@ export type AutomationsTriggersFilter = {
   editorIds?: string[];
   kinds?: TriggerKind[];
 };
+
+// Availability counts ignore the type filter: trigger kinds are not a
+// consumption dimension, so they cannot be expressed as a scope filter.
+export function toAutomationsScopeFilter(
+  filter: AutomationsFilter
+): ConsumptionScopeFilter {
+  const scopeFilter: ConsumptionScopeFilter = {};
+
+  const agentIds = filter.agent?.map((option) => option.id);
+  if (agentIds && agentIds.length > 0) {
+    scopeFilter.agents = agentIds;
+  }
+
+  const editorIds = filter.member?.map((option) => option.id);
+  if (editorIds && editorIds.length > 0) {
+    scopeFilter.users = editorIds;
+  }
+
+  return scopeFilter;
+}
 
 function isTriggerKind(id: string): id is TriggerKind {
   return id === "schedule" || id === "webhook";

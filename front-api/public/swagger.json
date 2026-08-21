@@ -6189,6 +6189,15 @@
                     "minimum": 1,
                     "default": 30
                   },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "all",
+                      "automations"
+                    ],
+                    "default": "all",
+                    "description": "Restricts which documents the facets are computed over. `automations` counts only trigger-originated runs."
+                  },
                   "filter": {
                     "type": "object",
                     "description": "Map of consumption dimensions to selected values.",

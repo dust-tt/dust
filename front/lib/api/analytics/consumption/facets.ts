@@ -3,6 +3,7 @@ import { listConsumptionFacetCatalog } from "@app/lib/api/analytics/consumption/
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
+  ConsumptionFacetScope,
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
 } from "@app/lib/api/analytics/consumption/scope";
@@ -11,6 +12,7 @@ import {
   CONSUMPTION_DIMENSION_FIELDS,
   CONSUMPTION_DIMENSION_FILTER_KEYS,
   CONSUMPTION_SCOPE_DIMENSIONS,
+  TRIGGER_ID_FIELD,
 } from "@app/lib/api/analytics/consumption/scope";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
@@ -25,6 +27,7 @@ import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
 // The workspace catalog includes selectable entities that have never generated
@@ -32,6 +35,19 @@ import type { estypes } from "@elastic/elasticsearch";
 // users, agents, or skills are deleted.
 const FACET_COMPOSITE_PAGE_SIZE = 1_000;
 const FACET_ES_QUERY_CONCURRENCY = 6;
+
+function facetScopeFilters(
+  scope: ConsumptionFacetScope
+): estypes.QueryDslQueryContainer[] {
+  switch (scope) {
+    case "all":
+      return [];
+    case "automations":
+      return [{ exists: { field: TRIGGER_ID_FIELD } }];
+    default:
+      return assertNever(scope);
+  }
+}
 
 export type ConsumptionFacet = {
   value: string;
@@ -108,6 +124,7 @@ type FetchDimensionFacetBucketsArgs = {
   period: ConsumptionPeriod;
   filter: ConsumptionScopeFilter;
   dimension: ConsumptionScopeDimension;
+  scopeFilters: estypes.QueryDslQueryContainer[];
 };
 
 async function fetchDimensionFacetBuckets(
@@ -135,6 +152,7 @@ async function fetchDimensionFacetBucketsWithoutTracing({
   period,
   filter,
   dimension,
+  scopeFilters,
 }: FetchDimensionFacetBucketsArgs): Promise<
   Result<FacetBuckets, ElasticsearchError>
 > {
@@ -150,6 +168,7 @@ async function fetchDimensionFacetBucketsWithoutTracing({
         auth,
         startDate: period.startDate,
         endDate: period.endDate,
+        extraFilters: scopeFilters,
       }),
       {
         aggregations: {
@@ -174,6 +193,7 @@ async function fetchDimensionFacetBucketsWithoutTracing({
                   startDate: period.startDate,
                   endDate: period.endDate,
                   filter: filterWithoutDimension(filter, dimension),
+                  extraFilters: scopeFilters,
                 }),
               },
             },
@@ -271,11 +291,14 @@ async function fetchConsumptionFacetsWithoutTracing(
   {
     period,
     filter = {},
+    scope = "all",
   }: {
     period: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
+    scope?: ConsumptionFacetScope;
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
+  const scopeFilters = facetScopeFilters(scope);
   const bucketResults = await concurrentExecutor(
     CONSUMPTION_SCOPE_DIMENSIONS,
     async (dimension) => ({
@@ -285,6 +308,7 @@ async function fetchConsumptionFacetsWithoutTracing(
         period,
         filter,
         dimension,
+        scopeFilters,
       }),
     }),
     { concurrency: FACET_ES_QUERY_CONCURRENCY }
@@ -371,6 +395,7 @@ export async function fetchConsumptionFacets(
   input: {
     period: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
+    scope?: ConsumptionFacetScope;
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
   return tracer.trace("analytics.consumption.facets", async (span) => {

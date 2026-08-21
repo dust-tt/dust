@@ -605,6 +605,7 @@ export function AutomationsTriggersTable({
           />
           <AutomationsFilterPanel
             owner={owner}
+            period={period}
             filter={filter}
             onFilterChange={onFilterChange}
           />

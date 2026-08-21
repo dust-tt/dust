@@ -325,6 +325,69 @@ describe("fetchConsumptionFacets", () => {
     expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(8);
   });
 
+  it("restricts the automations scope to trigger-originated documents", async () => {
+    const { authenticator } = await createResourceTest({ role: "manager" });
+    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
+      agent: [],
+      user: [],
+      api_key: [],
+      group: [],
+      model: [],
+      tool: [],
+      skill: [],
+      source: [],
+    });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({ values: { buckets: [] } })
+    );
+
+    const result = await fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+      filter: { users: ["user_1"] },
+      scope: "automations",
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const triggerExists = { exists: { field: "trigger_id" } };
+    for (const [query, options] of vi.mocked(searchConsumptionAnalytics).mock
+      .calls) {
+      // Both the value enumeration and the availability count must be scoped.
+      expect(query.bool?.filter).toContainEqual(triggerExists);
+      expect(
+        options?.aggregations?.values?.aggs?.contextual?.filter?.bool?.filter
+      ).toContainEqual(triggerExists);
+    }
+  });
+
+  it("leaves documents unscoped by default", async () => {
+    const { authenticator } = await createResourceTest({ role: "manager" });
+    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
+      agent: [],
+      user: [],
+      api_key: [],
+      group: [],
+      model: [],
+      tool: [],
+      skill: [],
+      source: [],
+    });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({ values: { buckets: [] } })
+    );
+
+    const result = await fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+    });
+
+    expect(result.isOk()).toBe(true);
+    for (const [query] of vi.mocked(searchConsumptionAnalytics).mock.calls) {
+      expect(query.bool?.filter).not.toContainEqual({
+        exists: { field: "trigger_id" },
+      });
+    }
+  });
+
   it("returns the Elasticsearch failure before resolving historical labels", async () => {
     const { authenticator } = await createResourceTest({ role: "manager" });
     const error = new ElasticsearchError("query_error", "query failed");

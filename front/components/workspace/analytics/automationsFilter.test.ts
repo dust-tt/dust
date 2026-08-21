@@ -1,6 +1,7 @@
 import {
   automationsFilterSelectionCount,
   getAutomationsFilterSummaries,
+  toAutomationsScopeFilter,
   toAutomationsTriggersFilter,
 } from "@app/components/workspace/analytics/automationsFilter";
 import { describe, expect, it } from "vitest";
@@ -76,6 +77,39 @@ describe("toAutomationsTriggersFilter", () => {
     expect(toAutomationsTriggersFilter({ agent: [agentOption] })).toEqual({
       agentIds: ["agent-1"],
     });
+  });
+});
+
+describe("toAutomationsScopeFilter", () => {
+  it("maps agents and members to their consumption dimensions", () => {
+    expect(
+      toAutomationsScopeFilter({
+        agent: [agentOption],
+        member: [memberOption],
+      })
+    ).toEqual({
+      agents: ["agent-1"],
+      users: ["member-1"],
+    });
+  });
+
+  it("drops the type category, which is not a consumption dimension", () => {
+    expect(
+      toAutomationsScopeFilter({
+        type: [
+          {
+            id: "schedule",
+            name: "Schedule",
+            category: "type",
+            disabled: false,
+          },
+        ],
+      })
+    ).toEqual({});
+  });
+
+  it("omits empty categories", () => {
+    expect(toAutomationsScopeFilter({ agent: [], member: [] })).toEqual({});
   });
 });
 

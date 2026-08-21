@@ -100,6 +100,61 @@ describe("POST /api/w/:wId/analytics/consumption/facets", () => {
     expect(failedResponse.status).toBe(500);
   });
 
+  it("forwards the requested scope and defaults to all", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "manager",
+    });
+    vi.mocked(fetchConsumptionFacets).mockResolvedValue(new Ok(RESPONSE));
+
+    const scopedResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/analytics/consumption/facets`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope: "automations" }),
+      }
+    );
+
+    expect(scopedResponse.status).toBe(200);
+    expect(fetchConsumptionFacets).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ scope: "automations" })
+    );
+
+    const defaultResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/analytics/consumption/facets`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+
+    expect(defaultResponse.status).toBe(200);
+    expect(fetchConsumptionFacets).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ scope: "all" })
+    );
+  });
+
+  it("rejects an unknown scope", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "manager",
+    });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/analytics/consumption/facets`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope: "not-a-scope" }),
+      }
+    );
+
+    expect(response.status).toBe(400);
+    expect(fetchConsumptionFacets).not.toHaveBeenCalled();
+  });
+
   it("rejects unknown filter dimensions", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       role: "manager",

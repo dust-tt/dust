@@ -1,6 +1,7 @@
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/period";
 import {
+  CONSUMPTION_FACET_SCOPES,
   CONSUMPTION_METRICS,
   CONSUMPTION_SCOPE_DIMENSIONS,
   CONSUMPTION_SCOPE_FILTER_KEYS,
@@ -37,6 +38,12 @@ export const ConsumptionBodySchema = ConsumptionPeriodSchema.extend({
 });
 
 export type ConsumptionBody = z.infer<typeof ConsumptionBodySchema>;
+
+export const ConsumptionFacetsBodySchema = ConsumptionBodySchema.extend({
+  scope: z.enum(CONSUMPTION_FACET_SCOPES).optional().default("all"),
+});
+
+export type ConsumptionFacetsBody = z.infer<typeof ConsumptionFacetsBodySchema>;
 
 export const DEFAULT_CONSUMPTION_BREAKDOWN_COUNT = 10;
 
