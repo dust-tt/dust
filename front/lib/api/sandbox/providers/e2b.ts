@@ -21,6 +21,7 @@ import type {
 } from "@app/lib/api/sandbox/provider";
 import {
   isSandboxExecUser,
+  SandboxExecTimeoutError,
   SandboxNotFoundError,
   traceSandboxOperation,
 } from "@app/lib/api/sandbox/provider";
@@ -36,7 +37,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { CommandHandle } from "e2b";
-import { CommandExitError, NotFoundError, Sandbox } from "e2b";
+import { CommandExitError, NotFoundError, Sandbox, TimeoutError } from "e2b";
 
 const ONE_HOUR_MS = 60 * 60 * 1_000;
 
@@ -565,6 +566,11 @@ export class E2BSandboxProvider implements SandboxProvider {
               stdout: err.stdout,
               stderr: err.stderr,
             });
+          }
+          // The command ran past `timeoutMs`. Map to our own error so callers
+          // can tell an exec timeout from an infra failure.
+          if (err instanceof TimeoutError) {
+            return new Err(new SandboxExecTimeoutError(start.opts.timeoutMs));
           }
           return new Err(normalizeError(err));
         }

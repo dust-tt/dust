@@ -64,9 +64,12 @@ vi.mock("e2b", () => {
 
   class NotFoundError extends Error {}
 
+  class TimeoutError extends Error {}
+
   return {
     CommandExitError,
     NotFoundError,
+    TimeoutError,
     Sandbox: {
       connect: mockConnect,
       create: mockCreate,
@@ -75,7 +78,7 @@ vi.mock("e2b", () => {
   };
 });
 
-import { CommandExitError, NotFoundError } from "e2b";
+import { CommandExitError, NotFoundError, TimeoutError } from "e2b";
 
 import {
   SANDBOX_AGENT_PROXIED_SAFE_PATH,
@@ -83,6 +86,7 @@ import {
   SANDBOX_AGENT_SERVICE_HOME,
   SANDBOX_ROOT_SAFE_PATH,
 } from "../hardening";
+import { SandboxExecTimeoutError } from "../provider";
 import { rootCommand } from "../root_command";
 import { E2BSandboxProvider } from "./e2b";
 
@@ -303,6 +307,31 @@ describe("E2BSandboxProvider", () => {
         user: "agent",
       })
     );
+  });
+
+  it("maps the E2B timeout error when a command runs past its exec timeout", async () => {
+    const provider = new E2BSandboxProvider({
+      apiKey: "api-key",
+      domain: undefined,
+    });
+    mockCommandHandleWait.mockRejectedValue(
+      new TimeoutError("[deadline_exceeded] the operation timed out")
+    );
+
+    const result = await provider.exec(
+      "provider-id",
+      "sleep 999",
+      { timeoutMs: 120_000 },
+      { workspaceId: "workspace-id" }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(SandboxExecTimeoutError);
+      expect(result.error.message).toBe(
+        new SandboxExecTimeoutError(120_000).message
+      );
+    }
   });
 
   it("runs agent-proxied workload commands in a clean shell with its own home", async () => {
