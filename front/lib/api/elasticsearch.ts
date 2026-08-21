@@ -2,8 +2,24 @@ import config from "@app/lib/api/config";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { estypes } from "@elastic/elasticsearch";
-import { Client, errors as esErrors } from "@elastic/elasticsearch";
+import type {
+  Client,
+  errors as esErrors,
+  estypes,
+} from "@elastic/elasticsearch";
+
+// The client and its transport are 542 modules and nothing needs them until a
+// query runs, so the SDK is resolved on first use instead of at boot. The
+// callers below are a mix of sync and async, hence a require rather than a
+// dynamic import.
+let elasticsearch: typeof import("@elastic/elasticsearch") | undefined;
+
+function getElasticsearch(): typeof import("@elastic/elasticsearch") {
+  elasticsearch ??=
+    require("@elastic/elasticsearch") as typeof import("@elastic/elasticsearch");
+  return elasticsearch;
+}
+
 import moment from "moment-timezone";
 
 let esClient: Client | null = null;
@@ -76,14 +92,15 @@ function extractErrorReason(err: esErrors.ResponseError): string {
 }
 
 function toElasticsearchError(err: unknown): ElasticsearchError {
-  if (err instanceof esErrors.ResponseError) {
+  const { errors } = getElasticsearch();
+  if (err instanceof errors.ResponseError) {
     const statusCode = err.statusCode ?? undefined;
     const reason = extractErrorReason(err);
     return new ElasticsearchError("query_error", reason, statusCode, {
       cause: err,
     });
   }
-  if (err instanceof esErrors.ConnectionError) {
+  if (err instanceof errors.ConnectionError) {
     return new ElasticsearchError(
       "connection_error",
       "Failed to connect to Elasticsearch",
@@ -115,7 +132,7 @@ export async function getClient(): Promise<Client> {
   }
 
   const { url, username, password } = config.getElasticsearchConfig();
-  esClient = new Client({
+  esClient = new (getElasticsearch().Client)({
     node: url,
     auth: { username, password },
     tls: { rejectUnauthorized: false },
