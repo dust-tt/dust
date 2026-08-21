@@ -771,8 +771,6 @@ export function APIKeysList({
               />
             </div>
           )}
-
-          <Separator />
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-foreground">
               {filteredRows.length.toLocaleString()} API key
@@ -815,11 +813,6 @@ export function APIKeysList({
             )}
           </div>
         </>
-      )}
-      {showAnalyticsConsumption && (
-        <p className="text-xs text-muted-foreground">
-          Credit consumption is grouped by API key name for the selected period.
-        </p>
       )}
     </div>
   );
