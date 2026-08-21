@@ -1,3 +1,10 @@
+import {
+  GET_AGENT_DETAILS_TOOL_NAME,
+  GET_SKILL_DETAILS_TOOL_NAME,
+  LIST_AGENTS_TOOL_NAME,
+  LIST_SKILLS_TOOL_NAME,
+  WORKSPACE_MANAGEMENT_SERVER_NAME,
+} from "@app/lib/api/actions/servers/workspace_management/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
@@ -8,11 +15,12 @@ export const workspaceAnalyticsSkill = {
   name: "Workspace Analytics",
   userFacingDescription:
     "Analyze how your workspace is being used — for example, which agents " +
-    "are used most. Available to workspace admins and managers only.",
+    "are used most — and inventory its agents and skills. Available to " +
+    "workspace admins and managers only.",
   agentFacingDescription:
     "Enable when a workspace admin or manager asks about workspace usage " +
-    "analytics, such as which agents are used most. Restricted to admins and " +
-    "managers.",
+    "analytics, such as which agents are used most, or wants to inventory the " +
+    "workspace's agents and skills. Restricted to admins and managers.",
   instructions:
     "You help workspace admins and managers analyze how their Dust workspace " +
     "is being used. Use the available workspace analytics tools to answer the " +
@@ -39,12 +47,22 @@ export const workspaceAnalyticsSkill = {
     "- To scope any tool to specific models, call get_top_models first to get " +
     "the exact model ids in use, then pass them as modelIds — never guess a " +
     "model id from its display name.\n" +
+    `- To inventory what EXISTS rather than what is used — which agents or ` +
+    `skills the workspace has, whether they are published or discoverable, ` +
+    `which ones nobody uses — call ${LIST_AGENTS_TOOL_NAME} or ` +
+    `${LIST_SKILLS_TOOL_NAME}, then ${GET_AGENT_DETAILS_TOOL_NAME} or ` +
+    `${GET_SKILL_DETAILS_TOOL_NAME} to inspect a single one.\n` +
+    `- Listing the agents other members have not published is admin-only, so ` +
+    `fall back to the default view if it reports an authorization error.\n` +
     "- Chart timeseries results so the admin can see the trend.\n" +
     "- Credit figures are estimates; when reporting them, tell the admin they " +
     "are approximate and point to the workspace Usage page for exact billed " +
     "amounts.",
-  mcpServers: [{ name: "workspace_analytics" }],
-  version: 4,
+  mcpServers: [
+    { name: "workspace_analytics" },
+    { name: WORKSPACE_MANAGEMENT_SERVER_NAME },
+  ],
+  version: 5,
   icon: "ActionPieChartIcon",
   isRestricted: async (auth: Authenticator) => {
     if (!auth.isManager()) {

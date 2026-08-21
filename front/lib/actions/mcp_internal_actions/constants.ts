@@ -104,6 +104,7 @@ import {
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { WORKDAY_SERVER } from "@app/lib/api/actions/servers/workday/metadata";
 import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
+import { WORKSPACE_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import { WORKSPACE_PEOPLE_SERVER } from "@app/lib/api/actions/servers/workspace_people/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type {
@@ -245,6 +246,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "wakeups",
   "plan_mode",
   "workspace_analytics",
+  "workspace_management",
   "activation_recommendations",
   "workspace_people",
 ] as const;
@@ -1209,6 +1211,17 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: WORKSPACE_ANALYTICS_SERVER,
+  },
+  workspace_management: {
+    id: 1048,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: WORKSPACE_MANAGEMENT_SERVER,
   },
   exa_people_and_company: {
     id: 1036,

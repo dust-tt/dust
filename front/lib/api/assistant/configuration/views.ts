@@ -241,6 +241,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
               [Op.in]: filteredIds,
             },
             status: "archived",
+            ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
           },
         });
       });

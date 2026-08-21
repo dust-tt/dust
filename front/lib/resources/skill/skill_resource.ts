@@ -428,6 +428,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ]);
   }
 
+  // Mirrors `SkillDefinition["kind"]` for code-defined skills; anything without a global sId is
+  // authored in the workspace.
+  get kind(): "custom" | "global" | "system" {
+    if (!this.globalSId) {
+      return "custom";
+    }
+
+    return this.isSystemSkill ? "system" : "global";
+  }
+
   get isSystemSkill(): boolean {
     if (!this.globalSId) {
       return false;
