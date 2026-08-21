@@ -500,6 +500,11 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare prunedContext: boolean | null;
   declare costCredits: number | null;
 
+  // Set only when a "gracefully_stopped" message was ended by the user confirming the
+  // smooth-shutdown workflow-alert-threshold popup, as opposed to the other graceful-stop
+  // reasons (queued-message preemption, orphan cleanup, message deletion).
+  declare stoppedBySmoothShutdown: boolean | null;
+
   // The concrete provider/model/effort triplet used by the message when
   // running the agent. Legacy: null when the message runs the agent's configured model.
   declare resolvedProviderId: string | null;
@@ -594,6 +599,11 @@ AgentMessageModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: true,
       defaultValue: false,
+    },
+    stoppedBySmoothShutdown: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: null,
     },
     costCredits: {
       type: DataTypes.INTEGER,

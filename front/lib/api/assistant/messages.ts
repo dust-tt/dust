@@ -825,6 +825,7 @@ async function renderSingleAgentMessage(
     completionDurationMs: getCompletionDuration(created, completedTs, actions),
     reactions: reactionsByMessageId[message.id] ?? [],
     prunedContext: agentMessage.prunedContext ?? false,
+    stoppedBySmoothShutdown: agentMessage.stoppedBySmoothShutdown ?? false,
     costCredits: agentMessage.costCredits ?? null,
     // Aggregated only when rendering a single agent message (see
     // batchRenderAgentMessages), so it is `null` for bulk conversation rendering.
