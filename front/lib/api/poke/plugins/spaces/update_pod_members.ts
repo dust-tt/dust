@@ -2,8 +2,6 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import type { GroupResource } from "@app/lib/resources/group_resource";
-import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
-import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
@@ -89,29 +87,25 @@ async function syncGroupMembers(
 }
 
 async function getManualMemberGroup(
+  auth: Authenticator,
   space: SpaceResource
 ): Promise<GroupResource | null> {
-  const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-    space,
-    filterOnManagementMode: true,
-  });
-  if (memberGroupSpaces.length !== 1) {
+  // The manual member group only exists for manually-managed pods.
+  if (space.managementMode !== "manual") {
     return null;
   }
-  return memberGroupSpaces[0].group;
+  return space.fetchManualMemberGroup(auth);
 }
 
 async function getManualEditorGroup(
+  auth: Authenticator,
   space: SpaceResource
 ): Promise<GroupResource | null> {
-  const editorGroupSpaces = await GroupSpaceEditorResource.fetchBySpace({
-    space,
-    filterOnManagementMode: true,
-  });
-  if (editorGroupSpaces.length !== 1) {
+  // The manual editor group only exists for manually-managed pods.
+  if (space.managementMode !== "manual") {
     return null;
   }
-  return editorGroupSpaces[0].group;
+  return space.fetchManualEditorGroup(auth);
 }
 
 export const updatePodMembersPlugin = createPlugin({
@@ -151,8 +145,8 @@ export const updatePodMembersPlugin = createPlugin({
       activeOnly: true,
     });
 
-    const memberGroup = await getManualMemberGroup(resource);
-    const editorGroup = await getManualEditorGroup(resource);
+    const memberGroup = await getManualMemberGroup(auth, resource);
+    const editorGroup = await getManualEditorGroup(auth, resource);
 
     const currentMembers = memberGroup
       ? await memberGroup.getActiveMembers(auth)
@@ -194,12 +188,12 @@ export const updatePodMembersPlugin = createPlugin({
       );
     }
 
-    const memberGroup = await getManualMemberGroup(resource);
+    const memberGroup = await getManualMemberGroup(auth, resource);
     if (!memberGroup) {
       return new Err(new Error("Pod does not have a member group"));
     }
 
-    const editorGroup = await getManualEditorGroup(resource);
+    const editorGroup = await getManualEditorGroup(auth, resource);
     if (!editorGroup) {
       return new Err(new Error("Pod does not have an editor group"));
     }
