@@ -101,10 +101,8 @@ function ToolValidationDetailsDialog({
   conversationId,
   isSubmitting,
 }: ToolValidationDetailsDialogProps) {
-  const toolOverride = getToolOverride(validationRequest.metadata);
-
   return (
-    <Dialog defaultOpen={toolOverride?.detailsOpen ?? false}>
+    <Dialog>
       <DialogTrigger asChild>
         <Button
           label="Review details"
