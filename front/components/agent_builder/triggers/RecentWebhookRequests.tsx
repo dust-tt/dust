@@ -64,7 +64,6 @@ function RecentWebhookRequestsContent({
   const { webhookRequests, isWebhookRequestsLoading, isWebhookRequestsError } =
     useWebhookRequestTriggersForTrigger({
       owner,
-      agentConfigurationId,
       triggerId: trigger.sId ?? null,
       disabled: !trigger || !agentConfigurationId || !isOpen,
     });

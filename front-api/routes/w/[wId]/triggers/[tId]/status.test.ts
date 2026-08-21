@@ -10,20 +10,12 @@ import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
-function patchStatus(
-  workspace: { sId: string },
-  aId: string,
-  tId: string,
-  body: unknown
-) {
-  return honoApp.request(
-    `/api/w/${workspace.sId}/assistant/agent_configurations/${aId}/triggers/${tId}/status`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }
-  );
+function patchStatus(workspace: { sId: string }, tId: string, body: unknown) {
+  return honoApp.request(`/api/w/${workspace.sId}/triggers/${tId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 // A second workspace member whose triggers the session user does not edit.
@@ -33,7 +25,7 @@ async function createOtherEditorAuth(workspace: WorkspaceType) {
   return Authenticator.fromUserIdAndWorkspaceId(otherUser.sId, workspace.sId);
 }
 
-describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/status", () => {
+describe("PATCH /api/w/:wId/triggers/:tId/status", () => {
   it("lets the editor enable their own disabled trigger", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "PATCH",
@@ -48,7 +40,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
       agentConfigurationId: agent.sId,
     });
 
-    const response = await patchStatus(workspace, agent.sId, trigger.sId, {
+    const response = await patchStatus(workspace, trigger.sId, {
       status: "enabled",
     });
 
@@ -69,7 +61,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
       status: "enabled",
     });
 
-    const response = await patchStatus(workspace, agent.sId, trigger.sId, {
+    const response = await patchStatus(workspace, trigger.sId, {
       status: "disabled",
     });
 
@@ -93,7 +85,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
       status: "enabled",
     });
 
-    const response = await patchStatus(workspace, agent.sId, trigger.sId, {
+    const response = await patchStatus(workspace, trigger.sId, {
       status: "disabled",
     });
 
@@ -122,7 +114,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
       status: "disabled_by_manager",
     });
 
-    const response = await patchStatus(workspace, agent.sId, trigger.sId, {
+    const response = await patchStatus(workspace, trigger.sId, {
       status: target,
     });
 
@@ -143,7 +135,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
       status: "disabled_by_manager",
     });
 
-    const response = await patchStatus(workspace, agent.sId, trigger.sId, {
+    const response = await patchStatus(workspace, trigger.sId, {
       status: "enabled",
     });
 
@@ -167,24 +159,18 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
       status: "enabled",
     });
 
-    const disableResponse = await patchStatus(
-      workspace,
-      agent.sId,
-      trigger.sId,
-      { status: "disabled" }
-    );
+    const disableResponse = await patchStatus(workspace, trigger.sId, {
+      status: "disabled",
+    });
     expect(disableResponse.status).toBe(204);
     let updated = await TriggerResource.fetchById(auth, trigger.sId);
     // Managers have the same standing as admins here, so even a manager's
     // own trigger locks the same way an admin's action would.
     expect(updated?.status).toBe("disabled_by_manager");
 
-    const enableResponse = await patchStatus(
-      workspace,
-      agent.sId,
-      trigger.sId,
-      { status: "enabled" }
-    );
+    const enableResponse = await patchStatus(workspace, trigger.sId, {
+      status: "enabled",
+    });
     expect(enableResponse.status).toBe(204);
     updated = await TriggerResource.fetchById(auth, trigger.sId);
     expect(updated?.status).toBe("enabled");
@@ -202,7 +188,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
       status: "enabled",
     });
 
-    const response = await patchStatus(workspace, agent.sId, trigger.sId, {
+    const response = await patchStatus(workspace, trigger.sId, {
       status: "disabled",
     });
 
@@ -223,7 +209,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
       status: "disabled_by_manager",
     });
 
-    const response = await patchStatus(workspace, agent.sId, trigger.sId, {
+    const response = await patchStatus(workspace, trigger.sId, {
       status: "enabled",
     });
 
@@ -244,7 +230,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
       status: "enabled",
     });
 
-    const response = await patchStatus(workspace, agent.sId, trigger.sId, {
+    const response = await patchStatus(workspace, trigger.sId, {
       status: "disabled",
     });
 
@@ -276,7 +262,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
       status,
     });
 
-    const response = await patchStatus(workspace, agent.sId, trigger.sId, {
+    const response = await patchStatus(workspace, trigger.sId, {
       status: target,
     });
 
@@ -286,45 +272,16 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
   });
 
   it("returns 404 for an unknown trigger", async () => {
-    const { workspace, user } = await createPrivateApiMockRequest({
+    const { workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
     });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
-    const response = await patchStatus(workspace, agent.sId, "unknown", {
+    const response = await patchStatus(workspace, "unknown", {
       status: "enabled",
     });
 
     expect(response.status).toBe(404);
-  });
-
-  it("returns 400 when the trigger belongs to another agent", async () => {
-    const { workspace, user } = await createPrivateApiMockRequest({
-      method: "PATCH",
-      role: "admin",
-    });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    const otherAgent = await AgentConfigurationFactory.createTestAgent(auth, {
-      name: "Other Test Agent",
-    });
-    const trigger = await TriggerFactory.webhook(auth, {
-      agentConfigurationId: otherAgent.sId,
-    });
-
-    const response = await patchStatus(workspace, agent.sId, trigger.sId, {
-      status: "enabled",
-    });
-
-    expect(response.status).toBe(400);
   });
 
   it.each<{ body: unknown }>([
@@ -344,7 +301,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
       agentConfigurationId: agent.sId,
     });
 
-    const response = await patchStatus(workspace, agent.sId, trigger.sId, body);
+    const response = await patchStatus(workspace, trigger.sId, body);
 
     expect(response.status).toBe(400);
   });
