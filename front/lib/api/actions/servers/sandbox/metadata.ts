@@ -169,7 +169,7 @@ export const SANDBOX_SERVER = {
     description:
       "Execute code and commands in the conversation's Computer (an isolated Linux environment).",
     authorization: null,
-    icon: "CommandLineIcon",
+    icon: "TerminalSquareIcon",
     documentationUrl: null,
   },
   tools: SANDBOX_TOOLS_METADATA,
