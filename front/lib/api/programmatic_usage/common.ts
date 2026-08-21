@@ -100,16 +100,17 @@ export type UsageAggregations = {
 };
 
 /**
- * Query-side mirror of isProgrammaticUsage: API-key requests, messages with no
- * context origin, or a listed programmatic origin. Single source of truth for
- * splitting analytics docs into programmatic vs user.
+ * Query-side mirror of `isProgrammaticUsageFromContext`: API-key requests OR a
+ * listed programmatic origin. Kept strictly equivalent to the runtime predicate
+ * (which classifies a missing origin as `"web"` → user), so ES/analytics and the
+ * recording path (Metronome + rate-limiter) split docs identically. Single
+ * source of truth for programmatic vs user.
  */
 export function getProgrammaticUsageFilterClause(): estypes.QueryDslQueryContainer {
   return {
     bool: {
       should: [
         { term: { auth_method: "api_key" } },
-        { bool: { must_not: { exists: { field: "context_origin" } } } },
         { terms: { context_origin: PROGRAMMATIC_USAGE_ORIGINS } },
       ],
       minimum_should_match: 1,
