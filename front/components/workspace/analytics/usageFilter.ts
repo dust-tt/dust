@@ -2,14 +2,15 @@ import type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
 } from "@app/lib/api/analytics/consumption/scope";
-import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
+import {
+  CONSUMPTION_DIMENSION_FILTER_KEYS,
+  CONSUMPTION_SCOPE_DIMENSIONS,
+} from "@app/lib/api/analytics/consumption/scope";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
-import { isConnectorProvider } from "@app/types/data_source";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const USAGE_FILTER_CATEGORIES = [
   "agent",
@@ -48,6 +49,22 @@ export const USAGE_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   skill: "Skill",
   source: "Source",
   api_key: "API key",
+};
+
+// "member" maps to the "user" dimension; every other category maps directly
+// to its same-named consumption dimension.
+export const USAGE_FILTER_CATEGORY_BY_DIMENSION: Record<
+  ConsumptionScopeDimension,
+  UsageFilterCategory
+> = {
+  agent: "agent",
+  user: "member",
+  group: "group",
+  model: "model",
+  tool: "tool",
+  skill: "skill",
+  source: "source",
+  api_key: "api_key",
 };
 
 export const USAGE_FILTER_AGENT_SCOPES = [
@@ -133,9 +150,39 @@ export interface UsageFilterGroup {
 export type UsageFilterOptionForCategory<C extends UsageFilterCategory> =
   Extract<UsageFilterOption, { kind: C }>;
 
-export type UsageFilter = {
-  [C in UsageFilterCategory]?: UsageFilterOptionForCategory<C>[];
+// Ids only: names, avatars and scopes are re-resolved from the facets
+// response, so a shared link never carries a stale name.
+export type UsageFilter = Partial<Record<UsageFilterCategory, string[]>>;
+
+export type UsageFilterOptionsByCategory = {
+  [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
 };
+
+export type UsageFilterOptionIndex = Record<
+  UsageFilterCategory,
+  Map<string, UsageFilterOption>
+>;
+
+function toOptionIndex(
+  options: UsageFilterOption[]
+): Map<string, UsageFilterOption> {
+  return new Map(options.map((option) => [option.id, option]));
+}
+
+export function indexUsageFilterOptions(
+  options: UsageFilterOptionsByCategory
+): UsageFilterOptionIndex {
+  return {
+    agent: toOptionIndex(options.agent),
+    member: toOptionIndex(options.member),
+    group: toOptionIndex(options.group),
+    model: toOptionIndex(options.model),
+    tool: toOptionIndex(options.tool),
+    skill: toOptionIndex(options.skill),
+    source: toOptionIndex(options.source),
+    api_key: toOptionIndex(options.api_key),
+  };
+}
 
 export interface UsageFilterSummary {
   category: UsageFilterCategory;
@@ -144,11 +191,12 @@ export interface UsageFilterSummary {
 }
 
 export function getUsageFilterSummaries(
-  filter: UsageFilter
+  filter: UsageFilter,
+  index: UsageFilterOptionIndex
 ): UsageFilterSummary[] {
   return USAGE_FILTER_CATEGORIES.flatMap((category) => {
-    const options = filter[category];
-    if (!options?.length) {
+    const ids = filter[category];
+    if (!ids?.length) {
       return [];
     }
 
@@ -156,10 +204,62 @@ export function getUsageFilterSummaries(
       {
         category,
         categoryLabel: USAGE_FILTER_CATEGORY_SINGULAR_LABEL[category],
-        options: options.map(({ id, name }) => ({ id, name })),
+        options: ids.map((id) => ({
+          id,
+          name: index[category].get(id)?.name ?? id,
+        })),
       },
     ];
   });
+}
+
+// The panel's selection column needs the full option to draw an icon, so an
+// id the current facets don't cover is left out of it.
+export function resolveUsageFilterOptions(
+  filter: UsageFilter,
+  index: UsageFilterOptionIndex
+): Partial<Record<UsageFilterCategory, UsageFilterOption[]>> {
+  const resolved: Partial<Record<UsageFilterCategory, UsageFilterOption[]>> =
+    {};
+
+  for (const category of USAGE_FILTER_CATEGORIES) {
+    const ids = filter[category];
+    if (!ids?.length) {
+      continue;
+    }
+    const options = ids.flatMap((id) => index[category].get(id) ?? []);
+    if (options.length > 0) {
+      resolved[category] = options;
+    }
+  }
+
+  return resolved;
+}
+
+// An id that no longer resolves to a facet is a deleted entity with no traffic
+// in the period. Returns null when there is nothing to drop.
+export function pruneUsageFilter(
+  filter: UsageFilter,
+  index: UsageFilterOptionIndex
+): UsageFilter | null {
+  const pruned: UsageFilter = {};
+  let hasDroppedId = false;
+
+  for (const category of USAGE_FILTER_CATEGORIES) {
+    const ids = filter[category];
+    if (!ids?.length) {
+      continue;
+    }
+    const keptIds = ids.filter((id) => index[category].has(id));
+    if (keptIds.length !== ids.length) {
+      hasDroppedId = true;
+    }
+    if (keptIds.length > 0) {
+      pruned[category] = keptIds;
+    }
+  }
+
+  return hasDroppedId ? pruned : null;
 }
 
 export function usageFilterSelectionCount(filter: UsageFilter): number {
@@ -169,25 +269,26 @@ export function usageFilterSelectionCount(filter: UsageFilter): number {
   );
 }
 
-export function toggleUsageFilterOption<C extends UsageFilterCategory>(
-  filter: UsageFilter,
-  category: C,
-  option: NoInfer<UsageFilterOptionForCategory<C>>
-): UsageFilter {
-  const current = filter[category] ?? [];
-  const isSelected = current.some((e) => e.id === option.id);
-  const next = isSelected
-    ? current.filter((e) => e.id !== option.id)
-    : [...current, option];
-  return { ...filter, [category]: next.length > 0 ? next : undefined };
-}
-
-export function removeUsageFilterOption(
+export function toggleUsageFilterId(
   filter: UsageFilter,
   category: UsageFilterCategory,
   id: string
 ): UsageFilter {
-  const next = (filter[category] ?? []).filter((e) => e.id !== id);
+  const current = filter[category] ?? [];
+  const next = current.includes(id)
+    ? current.filter((selectedId) => selectedId !== id)
+    : [...current, id];
+  return { ...filter, [category]: next.length > 0 ? next : undefined };
+}
+
+export function removeUsageFilterId(
+  filter: UsageFilter,
+  category: UsageFilterCategory,
+  id: string
+): UsageFilter {
+  const next = (filter[category] ?? []).filter(
+    (selectedId) => selectedId !== id
+  );
   return { ...filter, [category]: next.length > 0 ? next : undefined };
 }
 
@@ -198,140 +299,65 @@ export function clearUsageFilterCategory(
   return { ...filter, [category]: undefined };
 }
 
-export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
+export function addUsageFilterIds(
   filter: UsageFilter,
-  category: C,
-  options: NoInfer<UsageFilterOptionForCategory<C>>[]
+  category: UsageFilterCategory,
+  ids: string[]
 ): UsageFilter {
   const current = filter[category] ?? [];
-  const currentIds = new Set(current.map((e) => e.id));
-  const additions = options.filter((e) => !currentIds.has(e.id));
+  const currentIds = new Set(current);
+  const additions = ids.filter((id) => !currentIds.has(id));
   if (additions.length === 0) {
     return filter;
   }
   return { ...filter, [category]: [...current, ...additions] };
 }
 
-type AttributionFilterRow = {
-  id: string;
-  name: string;
-  pictureUrl: string | null;
-};
-
-function usageFilterOptionFromAttributionRow(
-  dimension: ConsumptionScopeDimension,
-  row: AttributionFilterRow
-): UsageFilterOption {
-  const baseOption = {
-    id: row.id,
-    name: row.name,
-    disabled: false,
-  };
-
-  switch (dimension) {
-    case "agent":
-      return { ...baseOption, kind: "agent", image: row.pictureUrl };
-    case "user":
-      return { ...baseOption, kind: "member", image: row.pictureUrl };
-    case "group":
-      return { ...baseOption, kind: "group" };
-    case "model":
-      return { ...baseOption, kind: "model", tier: undefined };
-    case "tool":
-      return { ...baseOption, kind: "tool", icon: null };
-    case "skill":
-      return { ...baseOption, kind: "skill", icon: null };
-    case "source":
-      return {
-        ...baseOption,
-        kind: "source",
-        connectorProvider: isConnectorProvider(row.id) ? row.id : undefined,
-      };
-    case "api_key":
-      return { ...baseOption, kind: "api_key" };
-    default:
-      return assertNever(dimension);
-  }
-}
-
-function addUsageFilterOption(
-  filter: UsageFilter,
-  option: UsageFilterOption
-): UsageFilter {
-  switch (option.kind) {
-    case "agent":
-      return selectAllUsageFilterOptions(filter, "agent", [option]);
-    case "member":
-      return selectAllUsageFilterOptions(filter, "member", [option]);
-    case "group":
-      return selectAllUsageFilterOptions(filter, "group", [option]);
-    case "model":
-      return selectAllUsageFilterOptions(filter, "model", [option]);
-    case "tool":
-      return selectAllUsageFilterOptions(filter, "tool", [option]);
-    case "skill":
-      return selectAllUsageFilterOptions(filter, "skill", [option]);
-    case "source":
-      return selectAllUsageFilterOptions(filter, "source", [option]);
-    case "api_key":
-      return selectAllUsageFilterOptions(filter, "api_key", [option]);
-    default:
-      return assertNever(option);
-  }
-}
-
-export function addUsageFilterFromAttributionRow(
+export function addUsageFilterDimensionId(
   filter: UsageFilter,
   dimension: ConsumptionScopeDimension,
-  row: AttributionFilterRow
+  id: string
 ): UsageFilter {
-  return addUsageFilterOption(
+  return addUsageFilterIds(
     filter,
-    usageFilterOptionFromAttributionRow(dimension, row)
+    USAGE_FILTER_CATEGORY_BY_DIMENSION[dimension],
+    [id]
   );
 }
 
-export function removeUsageFilterFromAttributionRow(
+export function removeUsageFilterDimensionId(
   filter: UsageFilter,
   dimension: ConsumptionScopeDimension,
-  row: AttributionFilterRow
+  id: string
 ): UsageFilter {
-  const option = usageFilterOptionFromAttributionRow(dimension, row);
-  return removeUsageFilterOption(filter, option.kind, option.id);
+  return removeUsageFilterId(
+    filter,
+    USAGE_FILTER_CATEGORY_BY_DIMENSION[dimension],
+    id
+  );
 }
 
-// Maps an attribution row to the filter UI option shape, replacing that
-// dimension while preserving the other filters.
-export function setUsageFilterFromAttributionRow(
+// Replaces that dimension's selection while preserving the other filters.
+export function setUsageFilterDimensionId(
   filter: UsageFilter,
   dimension: ConsumptionScopeDimension,
-  row: AttributionFilterRow
+  id: string
 ): UsageFilter {
   return {
     ...filter,
-    ...addUsageFilterFromAttributionRow({}, dimension, row),
+    [USAGE_FILTER_CATEGORY_BY_DIMENSION[dimension]]: [id],
   };
 }
 
-// "member" maps to the "user" dimension; every other category maps directly
-// to its same-named consumption dimension.
 export function toConsumptionScopeFilter(
   filter: UsageFilter
 ): ConsumptionScopeFilter {
   const scopeFilter: ConsumptionScopeFilter = {};
 
-  const memberIds = filter.member?.map((entity) => entity.id);
-  if (memberIds && memberIds.length > 0) {
-    scopeFilter.users = memberIds;
-  }
-
-  for (const category of USAGE_FILTER_CATEGORIES) {
-    if (category === "member") {
-      continue;
-    }
-    const ids = filter[category]?.map((entity) => entity.id);
+  for (const dimension of CONSUMPTION_SCOPE_DIMENSIONS) {
+    const ids = filter[USAGE_FILTER_CATEGORY_BY_DIMENSION[dimension]];
     if (ids && ids.length > 0) {
-      scopeFilter[CONSUMPTION_DIMENSION_FILTER_KEYS[category]] = ids;
+      scopeFilter[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]] = ids;
     }
   }
 

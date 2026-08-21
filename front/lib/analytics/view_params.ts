@@ -3,7 +3,10 @@ import {
   consumptionDimensionFromQueryParam,
   DEFAULT_CONSUMPTION_DIMENSION,
 } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import type { UsageFilterCategory } from "@app/components/workspace/analytics/usageFilter";
+import type {
+  UsageFilter,
+  UsageFilterCategory,
+} from "@app/components/workspace/analytics/usageFilter";
 import { USAGE_FILTER_CATEGORIES } from "@app/components/workspace/analytics/usageFilter";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import {
@@ -20,7 +23,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 export type AnalyticsViewState = {
   period: ConsumptionPeriodSelection;
   dimension: ConsumptionDimension;
-  filter: Partial<Record<UsageFilterCategory, string[]>>;
+  filter: UsageFilter;
 };
 
 export const DEFAULT_ANALYTICS_VIEW_STATE: AnalyticsViewState = {

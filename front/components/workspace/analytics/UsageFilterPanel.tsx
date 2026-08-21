@@ -10,6 +10,8 @@ import type {
   UsageFilterOption,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
+  indexUsageFilterOptions,
+  resolveUsageFilterOptions,
   toConsumptionScopeFilter,
   USAGE_FILTER_AGENT_SCOPES,
   USAGE_FILTER_CATEGORIES,
@@ -107,9 +109,9 @@ export function useUsageFilterPanelState({
     setDraftFilter,
     clearAllCategories,
     clearCategory,
-    toggleOption,
-    removeOption,
-    selectAllFiltered,
+    toggleId,
+    removeId,
+    addIds,
   } = useUsageFilter(filter);
   const [activeCategory, setActiveCategory] =
     useState<UsageFilterCategory>("agent");
@@ -150,9 +152,9 @@ export function useUsageFilterPanelState({
     setDraftFilter,
     clearAllCategories,
     clearCategory,
-    toggleOption,
-    removeOption,
-    selectAllFiltered,
+    toggleId,
+    removeId,
+    addIds,
     activeCategory,
     setActiveCategory,
     activeScope,
@@ -197,9 +199,9 @@ export function UsageFilterPanelView({
     setDraftFilter,
     clearAllCategories,
     clearCategory,
-    toggleOption,
-    removeOption,
-    selectAllFiltered,
+    toggleId,
+    removeId,
+    addIds,
     activeCategory,
     setActiveCategory,
     activeScope,
@@ -249,15 +251,26 @@ export function UsageFilterPanelView({
 
   const optionListKey = `${isOpen}|${activeCategory}|${searchText}|${activeScope}|${activeTier}`;
   const selectedIdsForActiveCategory = useMemo(
-    () =>
-      new Set((draftFilter[activeCategory] ?? []).map((option) => option.id)),
+    () => new Set(draftFilter[activeCategory] ?? []),
     [draftFilter, activeCategory]
   );
-  const enabledFilteredOptions = filteredOptions.filter(
-    (option) => !option.disabled
+  const unselectedEnabledOptionIds = filteredOptions
+    .filter(
+      (option) =>
+        !option.disabled && !selectedIdsForActiveCategory.has(option.id)
+    )
+    .map((option) => option.id);
+  // Selecting every option of a category and filtering on nothing are the
+  // same query, so the affordance only shows once the list is narrowed.
+  const isWholeCategoryListed = filteredOptions.length === activeOptions.length;
+
+  const optionIndex = useMemo(
+    () => indexUsageFilterOptions(categoryOptions),
+    [categoryOptions]
   );
-  const unselectedEnabledOptions = enabledFilteredOptions.filter(
-    (option) => !selectedIdsForActiveCategory.has(option.id)
+  const resolvedDraftFilter = useMemo(
+    () => resolveUsageFilterOptions(draftFilter, optionIndex),
+    [draftFilter, optionIndex]
   );
 
   const appliedSelectionCount = usageFilterSelectionCount(filter);
@@ -364,7 +377,7 @@ export function UsageFilterPanelView({
                 <UsageFilterModelComplexityControls
                   moreModelsCatalog={categoryOptions.model}
                   selectedModelIds={selectedIdsForActiveCategory}
-                  onToggleModel={(model) => toggleOption("model", model)}
+                  onToggleModel={(modelId) => toggleId("model", modelId)}
                   activeTier={activeTier}
                   onTierChange={(tier) => {
                     setActiveTier(tier);
@@ -394,13 +407,15 @@ export function UsageFilterPanelView({
                   options={filteredOptions}
                   selectedIds={selectedIdsForActiveCategory}
                   onToggleOption={(option) =>
-                    toggleOption(activeCategory, option)
+                    toggleId(activeCategory, option.id)
                   }
-                  onSelectAll={() =>
-                    selectAllFiltered(activeCategory, unselectedEnabledOptions)
+                  onSelectAll={
+                    isWholeCategoryListed
+                      ? undefined
+                      : () => addIds(activeCategory, unselectedEnabledOptionIds)
                   }
                   selectAllLabel="Select all"
-                  hasSelectableOptions={unselectedEnabledOptions.length > 0}
+                  hasSelectableOptions={unselectedEnabledOptionIds.length > 0}
                   renderIcon={(option) => (
                     <UsageFilterOptionIcon option={option} />
                   )}
@@ -419,9 +434,9 @@ export function UsageFilterPanelView({
           <FilterSelectionSummary<UsageFilterCategory, UsageFilterOption>
             categoriesWithSelection={categoriesWithSelection}
             categoryLabels={USAGE_FILTER_CATEGORY_LABEL}
-            filter={draftFilter}
+            filter={resolvedDraftFilter}
             onClearCategory={clearCategory}
-            onRemoveOption={removeOption}
+            onRemoveOption={removeId}
             renderIcon={(option) => <UsageFilterOptionIcon option={option} />}
           />
         </div>

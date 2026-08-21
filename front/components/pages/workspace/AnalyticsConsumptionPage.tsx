@@ -7,21 +7,22 @@ import { ConsumptionOverview } from "@app/components/workspace/analytics/consump
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionSummaryProps } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
 import { ConsumptionSummary } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
-import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { consumptionDimensionFromQueryParam } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import type { UsageFilterPanelProps } from "@app/components/workspace/analytics/UsageFilterPanel";
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
 import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
-import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
+import type { UsageFilterOptionIndex } from "@app/components/workspace/analytics/usageFilter";
 import {
-  addUsageFilterFromAttributionRow,
-  removeUsageFilterFromAttributionRow,
-  setUsageFilterFromAttributionRow,
+  addUsageFilterDimensionId,
+  indexUsageFilterOptions,
+  pruneUsageFilter,
+  removeUsageFilterDimensionId,
+  setUsageFilterDimensionId,
   toConsumptionScopeFilter,
+  usageFilterSelectionCount,
 } from "@app/components/workspace/analytics/usageFilter";
-import { useQueryParams } from "@app/hooks/useQueryParams";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
+import { useAnalyticsViewState } from "@app/hooks/useAnalyticsViewState";
+import type { ConsumptionFacetOptions } from "@app/hooks/useConsumptionFacets";
+import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -34,7 +35,7 @@ import {
 } from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
 import type { ComponentType, ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 const canReload = () => !isNavigationLocked();
 
@@ -114,6 +115,19 @@ export function AnalyticsConsumptionPage() {
   const { hasFeature } = useFeatureFlags();
   const isEnabled = hasFeature("enable_analytics_consumption");
   const state = useAnalyticsConsumptionState();
+  // Selected ids carry no names, so the chips resolve them against the same
+  // facets the panel reads. Each host wires its own facets endpoint.
+  const { options: categoryOptions, isFacetsSettled } = useConsumptionFacets({
+    workspaceId: owner.sId,
+    period: state.period,
+    filter: state.scopeFilter,
+    disabled: !isEnabled || !state.hasSelection,
+  });
+  const optionIndex = useAnalyticsConsumptionOptionIndex({
+    categoryOptions,
+    isFacetsSettled,
+    state,
+  });
 
   if (!isEnabled) {
     return (
@@ -133,13 +147,20 @@ export function AnalyticsConsumptionPage() {
     );
   }
 
-  return <AnalyticsConsumptionContent owner={owner} state={state} />;
+  return (
+    <AnalyticsConsumptionContent
+      optionIndex={optionIndex}
+      owner={owner}
+      state={state}
+    />
+  );
 }
 
 interface AnalyticsConsumptionContentProps {
   components?: AnalyticsConsumptionComponents;
   embedded?: boolean;
   headerBadge?: ReactNode;
+  optionIndex: UsageFilterOptionIndex;
   owner: LightWorkspaceType;
   showExport?: boolean;
   showMemberGroupFilter?: boolean;
@@ -154,6 +175,7 @@ export function AnalyticsConsumptionContent({
   components = WORKSPACE_CONSUMPTION_COMPONENTS,
   embedded = false,
   headerBadge,
+  optionIndex,
   owner,
   showExport = true,
   showMemberGroupFilter = true,
@@ -166,9 +188,9 @@ export function AnalyticsConsumptionContent({
   const {
     dimension,
     filter,
-    handleDimensionChange,
     period,
     scopeFilter,
+    setDimension,
     setFilter,
     setPeriod,
     shouldReduceMotion,
@@ -228,7 +250,11 @@ export function AnalyticsConsumptionContent({
               showMemberGroupFilter={showMemberGroupFilter}
             />
           </div>
-          <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
+          <UsageFilterSummary
+            filter={filter}
+            optionIndex={optionIndex}
+            onFilterChange={setFilter}
+          />
         </div>
         <LazyMotion features={domMax}>
           <m.div
@@ -256,21 +282,21 @@ export function AnalyticsConsumptionContent({
         filter={scopeFilter}
         onAddFilter={(selectedRow) => {
           setFilter((current) =>
-            addUsageFilterFromAttributionRow(current, dimension, selectedRow)
+            addUsageFilterDimensionId(current, dimension, selectedRow.id)
           );
         }}
         onRemoveFilter={(selectedRow) => {
           setFilter((current) =>
-            removeUsageFilterFromAttributionRow(current, dimension, selectedRow)
+            removeUsageFilterDimensionId(current, dimension, selectedRow.id)
           );
         }}
         dimension={dimension}
-        onDimensionChange={handleDimensionChange}
+        onDimensionChange={setDimension}
         onViewAll={(nextDimension, selectedRow) => {
           setFilter((current) =>
-            setUsageFilterFromAttributionRow(current, dimension, selectedRow)
+            setUsageFilterDimensionId(current, dimension, selectedRow.id)
           );
-          handleDimensionChange(nextDimension);
+          setDimension(nextDimension);
         }}
         showExport={showExport}
       />
@@ -279,25 +305,18 @@ export function AnalyticsConsumptionContent({
 }
 
 export function useAnalyticsConsumptionState() {
-  const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
-    DEFAULT_CONSUMPTION_PERIOD
-  );
-  const { dimension: dimensionParam } = useQueryParams(["dimension"]);
-  const dimension = consumptionDimensionFromQueryParam(dimensionParam.value);
-  const [filter, setFilter] = useState<UsageFilter>({});
+  const { period, dimension, filter, setPeriod, setDimension, setFilter } =
+    useAnalyticsViewState();
   const scopeFilter = useMemo(() => toConsumptionScopeFilter(filter), [filter]);
   const shouldReduceMotion = useReducedMotion();
-
-  const handleDimensionChange = (nextDimension: ConsumptionDimension) => {
-    dimensionParam.setParam(nextDimension);
-  };
 
   return {
     dimension,
     filter,
-    handleDimensionChange,
+    hasSelection: usageFilterSelectionCount(filter) > 0,
     period,
     scopeFilter,
+    setDimension,
     setFilter,
     setPeriod,
     shouldReduceMotion,
@@ -307,3 +326,33 @@ export function useAnalyticsConsumptionState() {
 type AnalyticsConsumptionState = ReturnType<
   typeof useAnalyticsConsumptionState
 >;
+
+// A filter id the facets no longer resolve is a deleted entity with no traffic
+// in the period: it is dropped from the state and from the URL.
+export function useAnalyticsConsumptionOptionIndex({
+  categoryOptions,
+  isFacetsSettled,
+  state,
+}: {
+  categoryOptions: ConsumptionFacetOptions;
+  isFacetsSettled: boolean;
+  state: AnalyticsConsumptionState;
+}): UsageFilterOptionIndex {
+  const { filter, setFilter } = state;
+  const optionIndex = useMemo(
+    () => indexUsageFilterOptions(categoryOptions),
+    [categoryOptions]
+  );
+
+  useEffect(() => {
+    if (!isFacetsSettled) {
+      return;
+    }
+    const pruned = pruneUsageFilter(filter, optionIndex);
+    if (pruned) {
+      setFilter(pruned);
+    }
+  }, [filter, isFacetsSettled, optionIndex, setFilter]);
+
+  return optionIndex;
+}

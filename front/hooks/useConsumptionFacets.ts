@@ -1,11 +1,10 @@
 import type {
   UsageFilterAgentOption,
   UsageFilterApiKeyOption,
-  UsageFilterCategory,
   UsageFilterGroupOption,
   UsageFilterMemberOption,
   UsageFilterModelOption,
-  UsageFilterOptionForCategory,
+  UsageFilterOptionsByCategory,
   UsageFilterSkillOption,
   UsageFilterSourceOption,
   UsageFilterToolOption,
@@ -22,9 +21,7 @@ import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/
 import { isConnectorProvider } from "@app/types/data_source";
 import { useMemo } from "react";
 
-export type ConsumptionFacetOptions = {
-  [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
-};
+export type ConsumptionFacetOptions = UsageFilterOptionsByCategory;
 
 const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
   agent: [],
@@ -134,5 +131,8 @@ export function useConsumptionFacets({
     isFacetsLoading: !error && !data && !disabled,
     isFacetsError: error,
     isFacetsValidating: isValidating,
+    // SWR keeps the previous response while a new one is in flight, so
+    // `options` only covers the requested period once this is true.
+    isFacetsSettled: !disabled && !isValidating && data !== undefined,
   };
 }

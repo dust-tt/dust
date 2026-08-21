@@ -1,6 +1,7 @@
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/period";
 import {
+  CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION,
   CONSUMPTION_METRICS,
   CONSUMPTION_SCOPE_DIMENSIONS,
   CONSUMPTION_SCOPE_FILTER_KEYS,
@@ -15,7 +16,7 @@ export const DEFAULT_CONSUMPTION_TOP_LIMIT = 10;
 
 const ConsumptionFilterSchema = z.record(
   z.enum(CONSUMPTION_SCOPE_FILTER_KEYS),
-  z.string().array()
+  z.string().array().max(CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION)
 );
 
 export const ConsumptionPeriodSchema = z.object({
