@@ -213,9 +213,6 @@ export const GovernancePage = () => {
                 ) : undefined
               }
             >
-              {id === "agents" && isAdmin && (
-                <InactiveAgentArchival owner={owner} />
-              )}
               {id === "frame" && isAdmin && (
                 <InteractiveContentSharing
                   sharingPolicy={sharingPolicy}
@@ -256,6 +253,7 @@ export const GovernancePage = () => {
               <ExtensionMcpToolsSection owner={owner} />
               <SlackPersonalFooterRemovalToggle owner={owner} />
               <WorkspaceAnalyticsToggle owner={owner} />
+              <InactiveAgentArchival owner={owner} />
             </GovernanceSettingSection>
             <GovernanceSettingSection
               label="Messaging apps"

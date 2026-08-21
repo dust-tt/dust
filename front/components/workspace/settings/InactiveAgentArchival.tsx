@@ -95,7 +95,7 @@ export function InactiveAgentArchival({ owner }: InactiveAgentArchivalProps) {
               inputMode="numeric"
               pattern="[0-9]*"
               size="sm"
-              className="w-16"
+              className="w-24"
               containerClassName="w-auto"
               disabled={isChanging}
               isError={!isThresholdValid}
