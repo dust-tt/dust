@@ -6394,6 +6394,7 @@
                 "favorites",
                 "published",
                 "admin_internal",
+                "manage_unrestricted",
                 "global",
                 "workspace"
               ]

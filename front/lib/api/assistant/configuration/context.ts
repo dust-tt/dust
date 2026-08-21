@@ -39,13 +39,17 @@ function isActiveWorkspaceAgentConfiguration(
 
 export async function getActiveWorkspaceAgentConfiguration(
   auth: Authenticator,
-  agentId: string
+  agentId: string,
+  {
+    dangerouslySkipPermissionFiltering,
+  }: { dangerouslySkipPermissionFiltering?: boolean } = {}
 ): Promise<
   Result<ActiveWorkspaceAgentConfiguration, APIErrorWithContentfulStatusCode>
 > {
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId,
     variant: "full",
+    dangerouslySkipPermissionFiltering,
   });
 
   if (!agentConfiguration || (!agentConfiguration.canRead && !auth.isAdmin())) {
@@ -74,11 +78,26 @@ export async function getActiveWorkspaceAgentConfiguration(
 export async function getAgentConfigurationContext(
   auth: Authenticator,
   agentId: string,
-  { requireEditorGroup = false }: { requireEditorGroup?: boolean } = {}
+  {
+    requireEditorGroup = false,
+    dangerouslySkipPermissionFiltering,
+  }: {
+    requireEditorGroup?: boolean;
+    // Resolves the agent and its skills even when they request spaces the caller cannot read.
+    // Only for callers re-saving the agent as-is: dropping them would silently strip the agent's
+    // skills from the new version.
+    dangerouslySkipPermissionFiltering?: boolean;
+  } = {}
 ): Promise<
   Result<AgentConfigurationContext, APIErrorWithContentfulStatusCode>
 > {
-  const agentResult = await getActiveWorkspaceAgentConfiguration(auth, agentId);
+  const agentResult = await getActiveWorkspaceAgentConfiguration(
+    auth,
+    agentId,
+    {
+      dangerouslySkipPermissionFiltering,
+    }
+  );
   if (agentResult.isErr()) {
     return agentResult;
   }
@@ -87,7 +106,8 @@ export async function getAgentConfigurationContext(
 
   const skills = await SkillResource.listByAgentConfiguration(
     auth,
-    agentConfiguration
+    agentConfiguration,
+    { dangerouslySkipPermissionFiltering }
   );
   const editorsResult = await GroupResource.findEditorGroupForAgent(
     auth,

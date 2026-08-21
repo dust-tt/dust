@@ -1632,9 +1632,13 @@ export async function updateAgentConfigurationsScope(
     return new Ok(undefined);
   }
 
+  // Admins may publish or unpublish any agent of the workspace, including the ones built on
+  // spaces they cannot read (the manage agents page lists those behind "Show hidden agents").
+  // Changing the scope touches nothing the spaces protect.
   const agentConfigs = await getAgentConfigurations(auth, {
     agentIds,
     variant: "light",
+    dangerouslySkipPermissionFiltering: auth.isAdmin(),
   });
 
   const editableAgents = agentConfigs.filter(
