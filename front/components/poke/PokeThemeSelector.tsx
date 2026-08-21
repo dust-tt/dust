@@ -44,7 +44,8 @@ export function PokeThemeSelector() {
             icon={option.icon}
             aria-label={`${option.label} theme`}
             tooltip={`${option.label} theme`}
-            className="bg-none after:hidden hover:bg-transparent active:bg-transparent dark:hover:bg-transparent dark:active:bg-transparent"
+            className="after:hidden"
+            style={{ background: "transparent" }}
           />
         );
       })}
