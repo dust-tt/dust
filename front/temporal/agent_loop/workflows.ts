@@ -407,17 +407,20 @@ export async function agentLoopWorkflow({
         }
 
         if (!workflowAlertThresholdNotified) {
-          const workflowAlertResult = await checkWorkflowAlertThresholdActivity(
-            authType,
-            {
-              agentLoopArgs: {
-                ...agentLoopArgs,
-                initialStartTime,
-              },
+          try {
+            const workflowAlertResult =
+              await checkWorkflowAlertThresholdActivity(authType, {
+                agentLoopArgs: {
+                  ...agentLoopArgs,
+                  initialStartTime,
+                },
+              });
+            if (workflowAlertResult.crossed) {
+              workflowAlertThresholdNotified = true;
             }
-          );
-          if (workflowAlertResult.crossed) {
-            workflowAlertThresholdNotified = true;
+          } catch {
+            // Non-critical: the smooth shutdown notification is best-effort and must never
+            // fail the agent loop.
           }
         }
       }
