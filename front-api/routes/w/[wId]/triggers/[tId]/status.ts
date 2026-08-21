@@ -8,11 +8,10 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
-  aId: z.string(),
   tId: z.string(),
 });
 
-// Mounted at /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/status.
+// Mounted at /api/w/:wId/triggers/:tId/status.
 const app = workspaceApp();
 
 /** @ignoreswagger */
@@ -22,7 +21,7 @@ app.patch(
   validate("json", PatchTriggerStatusRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
-    const { aId, tId } = ctx.req.valid("param");
+    const { tId } = ctx.req.valid("param");
     const { status } = ctx.req.valid("json");
 
     const trigger = await TriggerResource.fetchById(auth, tId);
@@ -32,17 +31,6 @@ app.patch(
         api_error: {
           type: "trigger_not_found",
           message: "Trigger not found.",
-        },
-      });
-    }
-
-    if (trigger.agentConfigurationId !== aId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "Trigger does not belong to the specified agent configuration.",
         },
       });
     }
@@ -96,7 +84,7 @@ app.patch(
 
     if (result.isErr()) {
       logger.error(
-        { error: result.error, aId, tId, targetStatus: status },
+        { error: result.error, tId, targetStatus: status },
         "Error updating trigger status"
       );
       return apiError(ctx, {

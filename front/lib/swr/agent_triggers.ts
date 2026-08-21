@@ -51,7 +51,7 @@ export function useAgentTriggers({
 
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
     agentConfigurationId
-      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers`
+      ? `/api/w/${workspaceId}/triggers?aId=${agentConfigurationId}`
       : null,
     triggersFetcher,
     { disabled }
@@ -108,7 +108,7 @@ export function useDeleteTrigger({
     async (triggerId: string): Promise<boolean> => {
       try {
         const response = await clientFetch(
-          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+          `/api/w/${workspaceId}/triggers?aId=${agentConfigurationId}`,
           {
             method: "DELETE",
             headers: {
@@ -154,7 +154,7 @@ export function useCreateTrigger({
     ): Promise<boolean> => {
       try {
         const response = await clientFetch(
-          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+          `/api/w/${workspaceId}/triggers?aId=${agentConfigurationId}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -214,7 +214,7 @@ export function useUpdateTrigger({
     ): Promise<boolean> => {
       try {
         const response = await clientFetch(
-          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+          `/api/w/${workspaceId}/triggers?aId=${agentConfigurationId}`,
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -273,7 +273,7 @@ export function useUpdateTriggerStatus({
     }): Promise<boolean> => {
       try {
         const response = await clientFetch(
-          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/status`,
+          `/api/w/${workspaceId}/triggers/${triggerId}/status`,
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -334,7 +334,7 @@ export function useUpdateTriggerExecutionMode({
       executionMode: TriggerExecutionMode;
     }): Promise<boolean> => {
       const response = await clientFetch(
-        `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/execution_mode`,
+        `/api/w/${workspaceId}/triggers/${triggerId}/execution_mode`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },

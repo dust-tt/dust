@@ -13,12 +13,11 @@ import { describe, expect, it } from "vitest";
 
 function patchExecutionMode(
   workspace: { sId: string },
-  aId: string,
   tId: string,
   body: unknown
 ) {
   return honoApp.request(
-    `/api/w/${workspace.sId}/assistant/agent_configurations/${aId}/triggers/${tId}/execution_mode`,
+    `/api/w/${workspace.sId}/triggers/${tId}/execution_mode`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -43,7 +42,7 @@ async function grantWorkspacePoolToEverybody(workspace: WorkspaceType) {
   });
 }
 
-describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/execution_mode", () => {
+describe("PATCH /api/w/:wId/triggers/:tId/execution_mode", () => {
   it("lets an admin move a trigger to the workspace pool", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "PATCH",
@@ -59,12 +58,9 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/ex
       agentConfigurationId: agent.sId,
     });
 
-    const response = await patchExecutionMode(
-      workspace,
-      agent.sId,
-      trigger.sId,
-      { executionMode: "workspace_pool" }
-    );
+    const response = await patchExecutionMode(workspace, trigger.sId, {
+      executionMode: "workspace_pool",
+    });
 
     expect(response.status).toBe(204);
     const updated = await TriggerResource.fetchById(auth, trigger.sId);
@@ -88,12 +84,9 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/ex
       executionMode: "workspace_pool",
     });
 
-    const response = await patchExecutionMode(
-      workspace,
-      agent.sId,
-      trigger.sId,
-      { executionMode: "user_pool" }
-    );
+    const response = await patchExecutionMode(workspace, trigger.sId, {
+      executionMode: "user_pool",
+    });
 
     expect(response.status).toBe(204);
     const updated = await TriggerResource.fetchById(auth, trigger.sId);
@@ -115,12 +108,9 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/ex
       agentConfigurationId: agent.sId,
     });
 
-    const response = await patchExecutionMode(
-      workspace,
-      agent.sId,
-      trigger.sId,
-      { executionMode: "workspace_pool" }
-    );
+    const response = await patchExecutionMode(workspace, trigger.sId, {
+      executionMode: "workspace_pool",
+    });
 
     expect(response.status).toBe(403);
     const updated = await TriggerResource.fetchById(auth, trigger.sId);
@@ -145,12 +135,9 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/ex
       executionMode: "workspace_pool",
     });
 
-    const response = await patchExecutionMode(
-      workspace,
-      agent.sId,
-      trigger.sId,
-      { executionMode: "user_pool" }
-    );
+    const response = await patchExecutionMode(workspace, trigger.sId, {
+      executionMode: "user_pool",
+    });
 
     expect(response.status).toBe(403);
     const updated = await TriggerResource.fetchById(editorAuth, trigger.sId);
@@ -171,12 +158,9 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/ex
       agentConfigurationId: agent.sId,
     });
 
-    const response = await patchExecutionMode(
-      workspace,
-      agent.sId,
-      trigger.sId,
-      { executionMode: "workspace_pool" }
-    );
+    const response = await patchExecutionMode(workspace, trigger.sId, {
+      executionMode: "workspace_pool",
+    });
 
     expect(response.status).toBe(404);
   });
@@ -191,41 +175,12 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/ex
       workspace.sId
     );
     await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
-    const response = await patchExecutionMode(workspace, agent.sId, "unknown", {
+    const response = await patchExecutionMode(workspace, "unknown", {
       executionMode: "workspace_pool",
     });
 
     expect(response.status).toBe(404);
-  });
-
-  it("returns 400 when the trigger belongs to another agent", async () => {
-    const { workspace, user } = await createPrivateApiMockRequest({
-      method: "PATCH",
-      role: "admin",
-    });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    const otherAgent = await AgentConfigurationFactory.createTestAgent(auth, {
-      name: "Other Test Agent",
-    });
-    const trigger = await TriggerFactory.webhook(auth, {
-      agentConfigurationId: otherAgent.sId,
-    });
-
-    const response = await patchExecutionMode(
-      workspace,
-      agent.sId,
-      trigger.sId,
-      { executionMode: "workspace_pool" }
-    );
-
-    expect(response.status).toBe(400);
   });
 
   it("rejects an unknown execution mode", async () => {
@@ -243,12 +198,9 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/ex
       agentConfigurationId: agent.sId,
     });
 
-    const response = await patchExecutionMode(
-      workspace,
-      agent.sId,
-      trigger.sId,
-      { executionMode: "team_pool" }
-    );
+    const response = await patchExecutionMode(workspace, trigger.sId, {
+      executionMode: "team_pool",
+    });
 
     expect(response.status).toBe(400);
   });

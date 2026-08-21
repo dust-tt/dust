@@ -7,17 +7,16 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
-  aId: z.string(),
   tId: z.string(),
 });
 
-// Mounted at /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/webhook_requests.
+// Mounted at /api/w/:wId/triggers/:tId/webhook_requests.
 const app = workspaceApp();
 
 /** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const { aId, tId } = ctx.req.valid("param");
+  const { tId } = ctx.req.valid("param");
 
   const trigger = await TriggerResource.fetchById(auth, tId);
   if (!trigger) {
@@ -26,17 +25,6 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
       api_error: {
         type: "trigger_not_found",
         message: "Trigger not found.",
-      },
-    });
-  }
-
-  if (trigger.agentConfigurationId !== aId) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "Trigger does not belong to the specified agent configuration.",
       },
     });
   }
@@ -51,7 +39,6 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     logger.error(
       {
         error: error instanceof Error ? error.message : String(error),
-        aId,
         tId,
       },
       "Error fetching webhook requests"

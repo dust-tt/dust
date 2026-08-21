@@ -11,11 +11,10 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
-  aId: z.string(),
   tId: z.string(),
 });
 
-// Mounted at /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/execution_mode.
+// Mounted at /api/w/:wId/triggers/:tId/execution_mode.
 const app = workspaceApp();
 
 /** @ignoreswagger */
@@ -25,7 +24,7 @@ app.patch(
   validate("json", PatchTriggerExecutionModeRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
-    const { aId, tId } = ctx.req.valid("param");
+    const { tId } = ctx.req.valid("param");
     const { executionMode } = ctx.req.valid("json");
 
     const featureFlags = await getFeatureFlags(auth);
@@ -50,17 +49,6 @@ app.patch(
       });
     }
 
-    if (trigger.agentConfigurationId !== aId) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "Trigger does not belong to the specified agent configuration.",
-        },
-      });
-    }
-
     const result = await trigger.setExecutionMode(auth, executionMode);
     if (result.isErr()) {
       if (result.error instanceof TriggerExecutionModeForbiddenError) {
@@ -74,7 +62,7 @@ app.patch(
       }
 
       logger.error(
-        { error: result.error, aId, tId, executionMode },
+        { error: result.error, tId, executionMode },
         "Error updating trigger execution mode"
       );
       return apiError(ctx, {
