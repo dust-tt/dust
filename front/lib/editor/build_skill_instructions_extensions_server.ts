@@ -8,6 +8,7 @@ import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { BlockIdExtension } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
+import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { KnowledgeNode } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import {
@@ -16,7 +17,6 @@ import {
 } from "@app/components/editor/extensions/skill_builder/RawMarkdownBlockNode";
 import { SkillNode } from "@app/components/editor/extensions/skill_builder/SkillNode";
 import { ToolNode } from "@app/components/editor/extensions/skill_builder/ToolNode";
-import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import type { Extensions } from "@tiptap/core";
 import { Heading } from "@tiptap/extension-heading";
 import { Markdown } from "@tiptap/markdown";

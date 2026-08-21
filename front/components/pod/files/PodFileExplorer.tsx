@@ -12,10 +12,7 @@ import type {
   FolderEntry,
 } from "@app/components/file_explorer/types";
 import { useFileExplorerDownload } from "@app/components/file_explorer/useFileExplorerDownload";
-import {
-  isFilePreviewableContentType,
-  joinMountRelativePath,
-} from "@app/components/file_explorer/utils";
+import { joinMountRelativePath } from "@app/components/file_explorer/utils";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { CreateFolderDialog } from "@app/components/pod/files/CreateFolderDialog";
 import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
@@ -48,6 +45,7 @@ import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
 } from "@app/types/data_source_view";
+import { isFilePreviewableContentType } from "@app/types/file_preview";
 import {
   frameV2ContentType,
   getSupportedFileExtensions,
