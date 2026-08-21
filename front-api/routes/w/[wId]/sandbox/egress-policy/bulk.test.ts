@@ -98,6 +98,16 @@ function allowedDomainsAt(path: string): string[] {
   return JSON.parse(stored).allowedDomains ?? [];
 }
 
+function requestedDomainsAt(
+  path: string
+): { domain: string; requestedAtMs: number }[] {
+  const stored = fileStorageMock.getObject(path);
+  if (stored === undefined) {
+    return [];
+  }
+  return JSON.parse(stored).requestedDomains ?? [];
+}
+
 // The GCS mock's prefix listing is override-driven; point the sandboxes/vlt_
 // prefix at the given Pods so they read back as "configured".
 function markConfigured(wId: string, pods: SpaceResource[]) {
@@ -452,6 +462,76 @@ describe("POST /api/w/:wId/sandbox/egress-policy/bulk", () => {
     expect(await response.json()).toEqual({
       results: [{ scopeId: podA.sId, success: true }],
     });
+    // A no-op remove must not create the Pod policy file — otherwise the Pod
+    // would show up as "configured" to the file-existence-based listing.
+    expect(
+      fileStorageMock.getObject(podPolicyPath(workspace.sId, podA.sId))
+    ).toBe(undefined);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+  });
+
+  it("preserves a Pod's pending requests when a domain is added", async () => {
+    const { workspace, auth, podA } = await setupTest();
+
+    const seed = await writeOwnerPolicy(auth, {
+      ownerId: podA.sId,
+      policy: {
+        allowedDomains: ["api.github.com"],
+        requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 1 }],
+      },
+    });
+    if (seed.isErr()) {
+      throw seed.error;
+    }
+
+    const response = await postBulk(workspace.sId, {
+      includeWorkspace: false,
+      podIds: [podA.sId],
+      operation: { operation: "add", domain: "example.com" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      results: [{ scopeId: podA.sId, success: true }],
+    });
+    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podA.sId))).toEqual([
+      "api.github.com",
+      "example.com",
+    ]);
+    // The unrelated pending request must survive the admin add.
+    expect(requestedDomainsAt(podPolicyPath(workspace.sId, podA.sId))).toEqual([
+      { domain: "api.stripe.com", requestedAtMs: 1 },
+    ]);
+  });
+
+  it("rejects writes to an archived Pod and leaves it untouched", async () => {
+    const { workspace, auth } = await setupTest();
+    const archivedPod = await SpaceFactory.project(workspace);
+    const metadata = await ProjectMetadataResource.makeNew(auth, archivedPod, {
+      description: null,
+    });
+    await metadata.archive();
+
+    const response = await postBulk(workspace.sId, {
+      includeWorkspace: false,
+      podIds: [archivedPod.sId],
+      operation: { operation: "add", domain: "api.github.com" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      results: [
+        {
+          scopeId: archivedPod.sId,
+          success: false,
+          errorMessage: "Pod not found.",
+        },
+      ],
+    });
+    // The archived Pod's policy file is never created.
+    expect(
+      fileStorageMock.getObject(podPolicyPath(workspace.sId, archivedPod.sId))
+    ).toBe(undefined);
     expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
   });
 });
