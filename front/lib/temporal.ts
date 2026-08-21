@@ -6,7 +6,6 @@ import type {
 } from "@temporalio/client";
 import { Client, Connection, WorkflowNotFoundError } from "@temporalio/client";
 import { OpenTelemetryWorkflowClientInterceptor } from "@temporalio/interceptors-opentelemetry";
-import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
 type TemporalNamespaces = "agent" | "connectors" | "front" | "relocation";
@@ -84,26 +83,6 @@ export async function getConnectionOptions(
       },
     },
   };
-}
-
-export async function getTemporalAgentWorkerConnection(): Promise<{
-  connection: NativeConnection;
-  namespace: string | undefined;
-}> {
-  const connectionOptions = await getConnectionOptions(
-    temporalWorkspaceToEnvVar["agent"]
-  );
-  const connection = await NativeConnection.connect(connectionOptions);
-  return { connection, namespace: process.env.TEMPORAL_AGENT_NAMESPACE };
-}
-
-export async function getTemporalWorkerConnection(): Promise<{
-  connection: NativeConnection;
-  namespace: string | undefined;
-}> {
-  const connectionOptions = await getConnectionOptions();
-  const connection = await NativeConnection.connect(connectionOptions);
-  return { connection, namespace: process.env.TEMPORAL_NAMESPACE };
 }
 
 export async function getTemporalClientForAgentNamespace() {

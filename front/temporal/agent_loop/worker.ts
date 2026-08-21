@@ -4,8 +4,8 @@ import {
 } from "@app/lib/api/instrumentation/init";
 import { NoopSpanExporter } from "@app/lib/api/instrumentation/noop_span_exporter";
 import { markShuttingDownWithDelayedAbort } from "@app/lib/shutdown_signal";
-import { getTemporalAgentWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
+import { getTemporalAgentWorkerConnection } from "@app/lib/temporal_worker";
 import logger from "@app/logger/logger";
 import {
   compactionActivity,
