@@ -346,16 +346,20 @@ function buildColumns({
       accessorKey: "credits",
       header: "Credits",
       enableSorting: false,
-      meta: { className: "h-16 w-32", headerAlign: "right" },
+      meta: { className: "h-16 w-32", headerAlign: "left" },
       cell: (info) => (
-        <ConsumptionCell isLoading={isConsumptionLoading}>
+        <ConsumptionCell isLoading={isConsumptionLoading} align="left">
           <DataTable.BasicCellContent
-            className="justify-end text-right tabular-nums"
+            className="justify-start text-left tabular-nums"
             label={`${
               info.row.original.credits === null
                 ? "—"
                 : formatCredits(info.row.original.credits)
-            }/${info.row.original.monthlyCap}`}
+            }/${
+              info.row.original.monthlyCap === "Unlimited"
+                ? "∞"
+                : info.row.original.monthlyCap
+            }`}
           />
         </ConsumptionCell>
       ),
