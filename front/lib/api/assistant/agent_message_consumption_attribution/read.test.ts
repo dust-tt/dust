@@ -165,7 +165,7 @@ describe("getAgentMessageConsumption", () => {
     });
   });
 
-  it("merges a direct sub-agent bill into its run-agent tool row", async () => {
+  it("merges a sub-agent subtree bill into its run-agent tool row", async () => {
     const {
       auth,
       workspace,
@@ -318,14 +318,14 @@ describe("getAgentMessageConsumption", () => {
 
     expect(consumption).toMatchObject({
       billedCredits: BILLED_CREDITS,
-      totalBilledCredits: 30,
+      totalBilledCredits: 33,
       details: {
         agentWorkCredits: 4,
         tools: [
           expect.objectContaining({
             label: "Run Research agent",
             callCount: 1,
-            attributedCredits: 26,
+            attributedCredits: 29,
             directCredits: 4,
             toolName: "run_research_agent",
           }),
