@@ -644,6 +644,27 @@ export const PEOPLE: Record<string, TeamMember> = {
     linkedIn: "https://www.linkedin.com/in/ulysse-levallois/",
     github: "https://github.com/ulysse-lev",
   },
+  radjakahoul: {
+    name: "Radja Kahoul",
+    title: "Product Designer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0BQG0QNJDV-2e1ab9c6f57f-512",
+    linkedIn: "https://www.linkedin.com/in/radja-kahoul",
+    github: "",
+  },
+  stevening: {
+    name: "Steven Ing",
+    title: "Brand Designer",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0AGD927ML7-561f2926a6ca-512",
+    linkedIn: "https://www.linkedin.com/in/steven-ing-56a49191",
+    github: "",
+  },
+  eddymontalvo: {
+    name: "Eddy Montalvo",
+    title: "Partnership Lead",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0BQL5M3TAB-6052749f31dd-512",
+    linkedIn: "https://www.linkedin.com/in/eddy-montalvo",
+    github: "",
+  },
 };
 
 export const TEAM_AVATAR_URLS: string[] = Object.values(PEOPLE).map(
