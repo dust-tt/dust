@@ -1,7 +1,7 @@
-import { defineCachedResourceList } from "@app/lib/api/resources/cached_resource_lookup";
 import type { Authenticator } from "@app/lib/auth";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { defineCachedResourceList } from "@app/lib/resources/cached_resource_store";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
