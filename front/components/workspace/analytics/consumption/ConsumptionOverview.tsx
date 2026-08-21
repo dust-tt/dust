@@ -3,7 +3,7 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import { timeAgoFrom } from "@app/lib/utils";
-import { Page, Tooltip } from "@dust-tt/sparkle";
+import { LoadingBlock, Page, Tooltip } from "@dust-tt/sparkle";
 
 export interface ConsumptionOverviewProps {
   workspaceId: string;
@@ -45,9 +45,7 @@ export function ConsumptionOverviewView({
   showIndexingDetails = false,
 }: ConsumptionOverviewViewProps) {
   if (isOverviewLoading) {
-    return (
-      <div className="h-5 w-80 animate-pulse rounded bg-muted-background" />
-    );
+    return <LoadingBlock className="h-5 w-80" />;
   }
 
   if (isOverviewError || !overview) {
