@@ -1,8 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -146,17 +146,6 @@ makeScript(
         "Renamed space / changed kind to 'regular'"
       );
 
-      // Remove the global group from the old space.
-      await GroupSpaceModel.destroy({
-        where: {
-          groupId: globalGroup.id,
-          vaultId: globalSpace.id,
-          workspaceId: workspace.id,
-        },
-        transaction: t,
-      });
-      scriptLogger.info("Removed global group from the space");
-
       // Create a member group for the restricted space.
       const memberGroup = await GroupResource.makeNew(
         {
@@ -171,20 +160,9 @@ makeScript(
         "Created member group"
       );
 
-      // Link the member group to the space.
-      await GroupSpaceModel.create(
-        {
-          groupId: memberGroup.id,
-          groupKind: memberGroup.kind,
-          vaultId: globalSpace.id,
-          workspaceId: workspace.id,
-          kind: "member",
-        },
-        { transaction: t }
-      );
-      scriptLogger.info("Linked member group to the space");
+      const memberGroups: GroupResource[] = [memberGroup];
 
-      // If group management mode, link provisioned groups.
+      // If group management mode, also attach the selected provisioned groups.
       if (managementMode === "group" && groupIds) {
         const groupIdsArray = groupIds.split(",").map((id) => id.trim());
         const groupsRes = await GroupResource.fetchByIds(auth, groupIdsArray);
@@ -193,23 +171,7 @@ makeScript(
             `Failed to fetch provisioned groups: ${groupsRes.error.message}`
           );
         }
-
-        for (const group of groupsRes.value) {
-          await GroupSpaceModel.create(
-            {
-              groupId: group.id,
-              groupKind: group.kind,
-              vaultId: globalSpace.id,
-              workspaceId: workspace.id,
-              kind: "member",
-            },
-            { transaction: t }
-          );
-          scriptLogger.info(
-            { groupId: group.sId, groupName: group.name },
-            "Linked provisioned group to the space"
-          );
-        }
+        memberGroups.push(...groupsRes.value);
       }
 
       // Update management mode if needed.
@@ -223,6 +185,28 @@ makeScript(
         );
         scriptLogger.info("Set managementMode to 'group'");
       }
+
+      // Rewrite the space's group_permissions for restricted access: drop the global group's grant
+      // and grant the member (+ provisioned) groups. `group_vaults` is gone, so grants are the
+      // source of truth; the space is now a restricted regular space, where every group holds a
+      // `member` grant.
+      await GroupPermissionResource.deleteAllForResource(auth, {
+        resourceType: "space",
+        resourceId: globalSpace.id,
+        transaction: t,
+      });
+      for (const group of memberGroups) {
+        await GroupPermissionResource.grant(auth, {
+          group,
+          grantType: "member",
+          resourceType: "space",
+          resourceId: globalSpace.id,
+          transaction: t,
+        });
+      }
+      scriptLogger.info(
+        "Rewrote space group_permissions for restricted access"
+      );
 
       // Create a new global space.
       const newGlobalSpace = await SpaceResource.makeNew(
