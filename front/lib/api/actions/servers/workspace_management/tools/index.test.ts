@@ -1,13 +1,17 @@
+import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
+import createWorkspaceManagementServer from "@app/lib/api/actions/servers/workspace_management";
 import { TOOLS } from "@app/lib/api/actions/servers/workspace_management/tools";
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
@@ -25,6 +29,25 @@ function createTestExtra(auth: Authenticator, runContext?: unknown) {
     auth,
     runContext,
   } as Parameters<(typeof TOOLS)[0]["handler"]>[1];
+}
+
+// Lists the tools the server actually registers for this caller, which is what the model sees.
+async function toolNamesFor(auth: Authenticator): Promise<string[]> {
+  const client = new Client({
+    name: "workspace-management-test",
+    version: "1",
+  });
+  const [clientTransport, serverTransport] =
+    InMemoryWithAuthTransport.createLinkedPair();
+
+  const server = createWorkspaceManagementServer(auth);
+  await server.connect(serverTransport);
+  await client.connect(clientTransport);
+
+  const { tools } = await client.listTools();
+  await client.close();
+
+  return tools.map((tool) => tool.name);
 }
 
 // Mirrors production: the MCP layer validates the input and applies the schema's defaults
@@ -370,6 +393,230 @@ describe("workspace_management tools", () => {
       );
       expect(archived[0]).toContain("Archived Skill");
       expect(archived[0]).toContain("status: archived");
+    });
+  });
+
+  describe("list_workspace_members", () => {
+    it("rejects lookups from a non-manager", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "user",
+      });
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      const result = await runTool(
+        "list_workspace_members",
+        { userIds: [targetUser.sId] },
+        authenticator
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("admins and managers");
+      }
+    });
+
+    it("allows managers to list members", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "manager",
+      });
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      const lines = await callToolLines(
+        "list_workspace_members",
+        { userIds: [targetUser.sId] },
+        authenticator
+      );
+
+      expect(lines).toEqual([expect.stringContaining(targetUser.sId)]);
+      expect(lines[0]).toContain(") - user");
+    });
+
+    it("rejects calls with more than one filter", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const result = await runTool(
+        "list_workspace_members",
+        { userIds: ["u"], jobType: "engineering" },
+        authenticator
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("at most one");
+      }
+    });
+
+    it("lists the whole workspace when no filter is given", async () => {
+      const { workspace, authenticator, user } = await createResourceTest({
+        role: "admin",
+      });
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+
+      const lines = await callToolLines(
+        "list_workspace_members",
+        {},
+        authenticator
+      );
+
+      const text = lines.join("\n");
+      expect(text).toContain(user.sId);
+      expect(text).toContain(otherUser.sId);
+      // Everything fits under the cap, so no truncation notice.
+      expect(text).not.toContain("Narrow with");
+    });
+
+    it("returns role, job function, and groups for a member batch", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const salesUser = await UserFactory.basic();
+      const engineeringUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, salesUser, {
+        role: "builder",
+      });
+      await MembershipFactory.associate(workspace, engineeringUser, {
+        role: "user",
+      });
+      await salesUser.setMetadata("job_type", "sales");
+      await engineeringUser.setMetadata("job_type", "engineering");
+      const group = await GroupFactory.regularManual(
+        workspace,
+        "Enterprise Sales"
+      );
+      await GroupFactory.withMembers(authenticator, group, [salesUser]);
+
+      const lines = await callToolLines(
+        "list_workspace_members",
+        { userIds: [salesUser.sId, engineeringUser.sId], includeGroups: true },
+        authenticator
+      );
+
+      expect(lines).toHaveLength(2);
+      expect(lines[0]).toContain(salesUser.sId);
+      expect(lines[0]).toContain(") - builder");
+      expect(lines[0]).toContain("groups: Enterprise Sales");
+      expect(lines[1]).toContain(engineeringUser.sId);
+      expect(lines[1]).toContain(") - user");
+
+      // Groups are opt-in.
+      const withoutGroups = await callTool(
+        "list_workspace_members",
+        { userIds: [salesUser.sId] },
+        authenticator
+      );
+      expect(withoutGroups).not.toContain("groups:");
+    });
+
+    it("returns only members matching a jobType filter", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const salesUser = await UserFactory.basic();
+      const engineeringUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, salesUser, { role: "user" });
+      await MembershipFactory.associate(workspace, engineeringUser, {
+        role: "user",
+      });
+      await salesUser.setMetadata("job_type", "sales");
+      await engineeringUser.setMetadata("job_type", "engineering");
+
+      const text = await callTool(
+        "list_workspace_members",
+        { jobType: "sales" },
+        authenticator
+      );
+
+      expect(text).toContain(salesUser.sId);
+      expect(text).not.toContain(engineeringUser.sId);
+    });
+
+    it("returns only members belonging to a groupId filter", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const groupUser = await UserFactory.basic();
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, groupUser, { role: "user" });
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+      const group = await GroupFactory.regularManual(workspace, "Sales Team");
+      await GroupFactory.withMembers(authenticator, group, [groupUser]);
+
+      const text = await callTool(
+        "list_workspace_members",
+        { groupId: group.sId },
+        authenticator
+      );
+
+      expect(text).toContain(groupUser.sId);
+      expect(text).not.toContain(otherUser.sId);
+    });
+
+    it("paginates with cursor and limit", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+
+      const firstPage = await callToolLines(
+        "list_workspace_members",
+        { limit: 1 },
+        authenticator
+      );
+
+      // One member row, then the footer pointing at the next page.
+      expect(firstPage).toHaveLength(2);
+      expect(firstPage[1]).toBe(
+        "Showing 1 of 2. Pass cursor: 1 for the next page."
+      );
+
+      const secondPage = await callToolLines(
+        "list_workspace_members",
+        { limit: 1, cursor: 1 },
+        authenticator
+      );
+
+      expect(secondPage).toHaveLength(2);
+      expect(secondPage[1]).toBe("Showing 1 of 2.");
+      expect(secondPage[0]).not.toBe(firstPage[0]);
+    });
+
+    it("rejects a cursor past the end", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const result = await runTool(
+        "list_workspace_members",
+        { cursor: 500 },
+        authenticator
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("out of range");
+      }
+    });
+
+    it("is not registered for non-managers", async () => {
+      const { authenticator: memberAuth } = await createResourceTest({
+        role: "user",
+      });
+      const { authenticator: managerAuth } = await createResourceTest({
+        role: "manager",
+      });
+
+      expect(await toolNamesFor(memberAuth)).not.toContain(
+        "list_workspace_members"
+      );
+      expect(await toolNamesFor(managerAuth)).toContain(
+        "list_workspace_members"
+      );
     });
   });
 
