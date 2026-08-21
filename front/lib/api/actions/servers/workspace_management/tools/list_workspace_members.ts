@@ -4,10 +4,15 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { workspaceManagerGuard } from "@app/lib/actions/mcp_internal_actions/utils";
-import { MAX_MEMBERS } from "@app/lib/api/actions/servers/workspace_management/metadata";
+import {
+  DEFAULT_MEMBERS_PAGE_SIZE,
+  MAX_MEMBERS_PAGE_SIZE,
+} from "@app/lib/api/actions/servers/workspace_management/metadata";
 import {
   makeTextLines,
+  paginate,
   renderFields,
+  renderPageFooter,
 } from "@app/lib/api/actions/servers/workspace_management/tools/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -16,8 +21,31 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { JobType } from "@app/types/job_type";
 import { isJobType, JOB_TYPE_LABELS } from "@app/types/job_type";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+
+type MemberPage = {
+  members: WorkspaceMember[];
+  total: number;
+  nextCursor: number | null;
+};
+
+type PageArgs = { cursor?: number; limit?: number };
+
+// The three list paths all resolve their matches to user model ids first, so paginating the ids
+// means only the current page's users, groups and job types are ever fetched.
+function paginateMemberIds(
+  userModelIds: ModelId[],
+  { cursor, limit }: PageArgs
+) {
+  return paginate(userModelIds, {
+    cursor,
+    limit,
+    defaultPageSize: DEFAULT_MEMBERS_PAGE_SIZE,
+    maxPageSize: MAX_MEMBERS_PAGE_SIZE,
+  });
+}
 
 type WorkspaceMember = {
   userId: string;
@@ -70,8 +98,9 @@ async function buildMemberRows(
 
 async function listMembersByUserIds(
   auth: Authenticator,
-  userIds: string[]
-): Promise<Result<WorkspaceMember[], MCPError>> {
+  userIds: string[],
+  pageArgs: PageArgs
+): Promise<Result<MemberPage, MCPError>> {
   const uniqueUserIds = [...new Set(userIds)];
   const users = await UserResource.fetchByIds(uniqueUserIds);
   const userBySId = new Map(users.map((u) => [u.sId, u]));
@@ -107,27 +136,40 @@ async function listMembersByUserIds(
     return u ? [u] : [];
   });
 
-  const userModelIds = orderedUsers.map((u) => u.id);
+  const paginated = paginateMemberIds(
+    orderedUsers.map((u) => u.id),
+    pageArgs
+  );
+  if (paginated.isErr()) {
+    return new Err(paginated.error);
+  }
+  const { page, total, nextCursor } = paginated.value;
+
+  const pagedUsers = orderedUsers.filter((u) => page.includes(u.id));
   const jobTypesByUserId =
     await UserResource.fetchUserScopedMetadataValuesByUserModelIds(
       "job_type",
-      userModelIds
+      page
     );
 
-  return new Ok(
-    await buildMemberRows(
+  return new Ok({
+    members: await buildMemberRows(
       auth,
-      orderedUsers,
+      pagedUsers,
       membershipByUserId,
       jobTypesByUserId
-    )
-  );
+    ),
+    total,
+    nextCursor,
+  });
 }
 
-async function listMembersByJobType(
+// Omitting `jobType` lists every active member.
+async function listAllMembers(
   auth: Authenticator,
-  jobType: JobType
-): Promise<Result<WorkspaceMember[], MCPError>> {
+  jobType: JobType | undefined,
+  pageArgs: PageArgs
+): Promise<Result<MemberPage, MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
 
   const { memberships } = await MembershipResource.getActiveMemberships({
@@ -142,24 +184,39 @@ async function listMembersByJobType(
       allModelIds
     );
 
-  const matchingModelIds = allModelIds
-    .filter((id) => jobTypesByUserId.get(id) === jobType)
-    .slice(0, MAX_MEMBERS);
+  const matchingModelIds = jobType
+    ? allModelIds.filter((id) => jobTypesByUserId.get(id) === jobType)
+    : allModelIds;
 
-  if (matchingModelIds.length === 0) {
-    return new Ok([]);
+  const paginated = paginateMemberIds(matchingModelIds, pageArgs);
+  if (paginated.isErr()) {
+    return new Err(paginated.error);
+  }
+  const { page, total, nextCursor } = paginated.value;
+
+  if (page.length === 0) {
+    return new Ok({ members: [], total, nextCursor });
   }
 
-  const users = await UserResource.fetchByModelIds(matchingModelIds);
-  return new Ok(
-    await buildMemberRows(auth, users, membershipByUserId, jobTypesByUserId)
-  );
+  const users = await UserResource.fetchByModelIds(page);
+
+  return new Ok({
+    members: await buildMemberRows(
+      auth,
+      users,
+      membershipByUserId,
+      jobTypesByUserId
+    ),
+    total,
+    nextCursor,
+  });
 }
 
 async function listMembersByGroupId(
   auth: Authenticator,
-  groupId: string
-): Promise<Result<WorkspaceMember[], MCPError>> {
+  groupId: string,
+  pageArgs: PageArgs
+): Promise<Result<MemberPage, MCPError>> {
   const groupRes = await GroupResource.fetchById(auth, groupId);
   if (groupRes.isErr()) {
     return new Err(new MCPError(`Group not found: ${groupId}.`));
@@ -170,13 +227,17 @@ async function listMembersByGroupId(
     auth,
     [group]
   );
-  const groupMemberModelIds = (membersByGroupId[group.id] ?? []).slice(
-    0,
-    MAX_MEMBERS
+  const paginated = paginateMemberIds(
+    membersByGroupId[group.id] ?? [],
+    pageArgs
   );
+  if (paginated.isErr()) {
+    return new Err(paginated.error);
+  }
+  const { page: groupMemberModelIds, total, nextCursor } = paginated.value;
 
   if (groupMemberModelIds.length === 0) {
-    return new Ok([]);
+    return new Ok({ members: [], total, nextCursor });
   }
 
   const workspace = auth.getNonNullableWorkspace();
@@ -192,9 +253,16 @@ async function listMembersByGroupId(
       groupMemberModelIds
     );
 
-  return new Ok(
-    await buildMemberRows(auth, users, membershipByUserId, jobTypesByUserId)
-  );
+  return new Ok({
+    members: await buildMemberRows(
+      auth,
+      users,
+      membershipByUserId,
+      jobTypesByUserId
+    ),
+    total,
+    nextCursor,
+  });
 }
 
 // Unlike the other tools here, this one exposes other members' identity and role, so it stays
@@ -204,7 +272,15 @@ export async function listWorkspaceMembers(
     userIds,
     jobType,
     groupId,
-  }: { userIds?: string[]; jobType?: JobType; groupId?: string },
+    cursor,
+    limit,
+  }: {
+    userIds?: string[];
+    jobType?: JobType;
+    groupId?: string;
+    cursor?: number;
+    limit?: number;
+  },
   { auth }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
   const denied = workspaceManagerGuard(auth);
@@ -213,41 +289,45 @@ export async function listWorkspaceMembers(
   }
 
   const filterCount = [userIds, jobType, groupId].filter(Boolean).length;
-  if (filterCount !== 1) {
+  if (filterCount > 1) {
     return new Err(
-      new MCPError("Provide exactly one of userIds, jobType, or groupId.", {
+      new MCPError("Provide at most one of userIds, jobType, or groupId.", {
         tracked: false,
       })
     );
   }
 
+  const pageArgs = { cursor, limit };
   const result = userIds
-    ? await listMembersByUserIds(auth, userIds)
-    : jobType
-      ? await listMembersByJobType(auth, jobType)
-      : await listMembersByGroupId(auth, groupId as string);
+    ? await listMembersByUserIds(auth, userIds, pageArgs)
+    : groupId
+      ? await listMembersByGroupId(auth, groupId, pageArgs)
+      : await listAllMembers(auth, jobType, pageArgs);
 
   if (result.isErr()) {
     return result;
   }
+  const { members, total, nextCursor } = result.value;
 
-  if (result.value.length === 0) {
+  if (members.length === 0) {
     return new Ok([{ type: "text" as const, text: "No members found." }]);
   }
 
-  return new Ok([
-    makeTextLines(
-      result.value.map((member) =>
-        [
-          `${member.name} [${member.userId}]`,
-          renderFields({
-            email: member.email,
-            role: member.role,
-            jobFunction: member.jobFunction?.label ?? null,
-            groups: member.groups.join("|") || null,
-          }),
-        ].join(" — ")
-      )
-    ),
-  ]);
+  const lines = members.map((member) =>
+    [
+      `${member.name} [${member.userId}]`,
+      renderFields({
+        email: member.email,
+        role: member.role,
+        jobFunction: member.jobFunction?.label ?? null,
+        groups: member.groups.join("|") || null,
+      }),
+    ].join(" — ")
+  );
+
+  if (total > members.length) {
+    lines.push(renderPageFooter({ shown: members.length, total, nextCursor }));
+  }
+
+  return new Ok([makeTextLines(lines)]);
 }

@@ -42,14 +42,25 @@ export function renderPageFooter({
     : `${footer} Pass cursor: ${nextCursor} for the next page.`;
 }
 
-// Slices `rows` for the requested page. Both list tools fetch the whole set and paginate in
-// memory, like the skill_authoring server does: workspaces hold hundreds of agents and skills,
-// not millions, and it keeps `total` exact.
+// Slices `rows` for the requested page. The list tools fetch the whole set and paginate in
+// memory, like the skill_authoring server does: workspaces hold hundreds of agents, skills and
+// members, not millions, and it keeps `total` exact. Tools whose rows are cheaper than an agent
+// configuration pass their own, larger page sizes.
 export function paginate<T>(
   rows: T[],
-  { cursor, limit }: { cursor?: number; limit?: number }
+  {
+    cursor,
+    limit,
+    defaultPageSize = DEFAULT_PAGE_SIZE,
+    maxPageSize = MAX_PAGE_SIZE,
+  }: {
+    cursor?: number;
+    limit?: number;
+    defaultPageSize?: number;
+    maxPageSize?: number;
+  }
 ): Result<{ page: T[]; total: number; nextCursor: number | null }, MCPError> {
-  const pageSize = Math.min(limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+  const pageSize = Math.min(limit ?? defaultPageSize, maxPageSize);
   const offset = cursor ?? 0;
 
   if (offset >= rows.length && offset > 0) {

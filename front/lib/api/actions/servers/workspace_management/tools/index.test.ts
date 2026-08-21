@@ -4,8 +4,8 @@ import { TOOLS } from "@app/lib/api/actions/servers/workspace_management/tools";
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -33,7 +33,10 @@ function createTestExtra(auth: Authenticator, runContext?: unknown) {
 
 // Lists the tools the server actually registers for this caller, which is what the model sees.
 async function toolNamesFor(auth: Authenticator): Promise<string[]> {
-  const client = new Client({ name: "workspace-management-test", version: "1" });
+  const client = new Client({
+    name: "workspace-management-test",
+    version: "1",
+  });
   const [clientTransport, serverTransport] =
     InMemoryWithAuthTransport.createLinkedPair();
 
@@ -434,22 +437,39 @@ describe("workspace_management tools", () => {
       expect(lines[0]).toContain("role: user");
     });
 
-    it.each([
-      ["more than one filter", { userIds: ["u"], jobType: "engineering" }],
-      ["no filter", {}],
-    ])("rejects calls with %s", async (_label, params) => {
+    it("rejects calls with more than one filter", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       const result = await runTool(
         "list_workspace_members",
-        params,
+        { userIds: ["u"], jobType: "engineering" },
         authenticator
       );
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain("exactly one");
+        expect(result.error.message).toContain("at most one");
       }
+    });
+
+    it("lists the whole workspace when no filter is given", async () => {
+      const { workspace, authenticator, user } = await createResourceTest({
+        role: "admin",
+      });
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+
+      const lines = await callToolLines(
+        "list_workspace_members",
+        {},
+        authenticator
+      );
+
+      const text = lines.join("\n");
+      expect(text).toContain(user.sId);
+      expect(text).toContain(otherUser.sId);
+      // Everything fits under the cap, so no truncation notice.
+      expect(text).not.toContain("Narrow with");
     });
 
     it("returns role, job function, and groups for a member batch", async () => {
@@ -528,6 +548,51 @@ describe("workspace_management tools", () => {
 
       expect(text).toContain(groupUser.sId);
       expect(text).not.toContain(otherUser.sId);
+    });
+
+    it("paginates with cursor and limit", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+
+      const firstPage = await callToolLines(
+        "list_workspace_members",
+        { limit: 1 },
+        authenticator
+      );
+
+      // One member row, then the footer pointing at the next page.
+      expect(firstPage).toHaveLength(2);
+      expect(firstPage[1]).toBe(
+        "Showing 1 of 2. Pass cursor: 1 for the next page."
+      );
+
+      const secondPage = await callToolLines(
+        "list_workspace_members",
+        { limit: 1, cursor: 1 },
+        authenticator
+      );
+
+      expect(secondPage).toHaveLength(2);
+      expect(secondPage[1]).toBe("Showing 1 of 2.");
+      expect(secondPage[0]).not.toBe(firstPage[0]);
+    });
+
+    it("rejects a cursor past the end", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const result = await runTool(
+        "list_workspace_members",
+        { cursor: 500 },
+        authenticator
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("out of range");
+      }
     });
 
     it("is not registered for non-managers", async () => {

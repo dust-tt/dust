@@ -16,7 +16,9 @@ export const GET_SKILL_DETAILS_TOOL_NAME = "get_skill_details" as const;
 export const LIST_WORKSPACE_MEMBERS_TOOL_NAME =
   "list_workspace_members" as const;
 
-export const MAX_MEMBERS = 100;
+// Member rows are far cheaper than an agent configuration, so this tool pages much wider.
+export const DEFAULT_MEMBERS_PAGE_SIZE = 100;
+export const MAX_MEMBERS_PAGE_SIZE = 1000;
 
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 50;
@@ -130,20 +132,36 @@ const listWorkspaceMembersSchema = {
   userIds: z
     .array(z.string())
     .min(1)
-    .max(MAX_MEMBERS)
+    .max(MAX_MEMBERS_PAGE_SIZE)
     .optional()
-    .describe("Stable IDs of specific active workspace members to look up."),
+    .describe(
+      "Stable IDs of specific active workspace members to look up. Omit every " +
+        "filter to list the whole workspace; at most one filter may be set."
+    ),
   jobType: z
     .enum(JOB_TYPES)
     .optional()
-    .describe(
-      `List all active members with this job function (up to ${MAX_MEMBERS}).`
-    ),
+    .describe("Only return active members with this job function."),
   groupId: z
     .string()
     .optional()
+    .describe("Only return active members of this workspace group."),
+  cursor: z
+    .number()
+    .int()
+    .nonnegative()
+    .optional()
     .describe(
-      `List all active members of this workspace group (up to ${MAX_MEMBERS}).`
+      "Pagination offset from a previous call's nextCursor. Omit for the first page."
+    ),
+  limit: z
+    .number()
+    .int()
+    .positive()
+    .max(MAX_MEMBERS_PAGE_SIZE)
+    .optional()
+    .describe(
+      `Members per page. Default ${DEFAULT_MEMBERS_PAGE_SIZE}, max ${MAX_MEMBERS_PAGE_SIZE}.`
     ),
 };
 
@@ -216,7 +234,7 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     name: LIST_WORKSPACE_MEMBERS_TOOL_NAME,
     description:
       "List active workspace members with their role, job function and groups. " +
-      "Exactly one filter must be provided. Admin and manager only.",
+      "Admin and manager only.",
     schema: listWorkspaceMembersSchema,
     stake: "never_ask",
     displayLabels: {
