@@ -159,11 +159,11 @@ export function WorkspacePage() {
     temporalFrontNamespace,
   } = workspaceInfo;
 
-  // The Usage tab (AWU usage chart + credit pool) is backed by Metronome usage
-  // data, so it applies to any workspace with a Metronome contract — both
-  // credit-priced and legacy shadow contracts. There's no need to gate it on a
-  // feature flag in poke: it's staff tooling, not customer-facing exposure.
-  const hasMetronomeUsage =
+  // Credit diagnostics are backed by Metronome usage data, so they apply to
+  // any workspace with a Metronome contract — both credit-priced and legacy
+  // shadow contracts. The activity chart itself is available to every
+  // workspace.
+  const hasMetronomeBillingUsage =
     metronomeCustomerId !== null &&
     activeSubscription.metronomeContractId !== null;
   return (
@@ -299,7 +299,7 @@ export function WorkspacePage() {
               <TabsTrigger value="triggers" label="Triggers" />
               <TabsTrigger value="webhooksources" label="Webhook Sources" />
               <TabsTrigger value="credits" label="API Usage" />
-              {hasMetronomeUsage && <TabsTrigger value="usage" label="Usage" />}
+              <TabsTrigger value="usage" label="Usage" />
             </TabsList>
 
             <TabsContent value="metadata">
@@ -362,32 +362,31 @@ export function WorkspacePage() {
                 loadOnInit
               />
             </TabsContent>
-            {hasMetronomeUsage && (
-              <TabsContent value="usage">
-                <PokeUsageTab
-                  owner={owner}
-                  subscription={activeSubscription}
-                  stripeSubscription={stripeSubscription}
-                  poolCreditState={poolCreditState}
-                  programmaticCreditState={programmaticCreditState}
-                  programmaticWarningReached={programmaticWarningReached}
-                  programmaticSpendLimitRateCapCount={
-                    programmaticSpendLimitRateCapCount
-                  }
-                  programmaticEsConsumedAwuCredits={
-                    programmaticEsConsumedAwuCredits
-                  }
-                  programmaticMetronomeConsumedAwuCredits={
-                    programmaticMetronomeConsumedAwuCredits
-                  }
-                  creditUsageConfig={creditUsageConfig}
-                  poolAlert={poolAlert}
-                  programmaticAlerts={programmaticAlerts}
-                  usageCapAlert={usageCapAlert}
-                  defaultAlerts={defaultAlerts}
-                />
-              </TabsContent>
-            )}
+            <TabsContent value="usage">
+              <PokeUsageTab
+                owner={owner}
+                hasMetronomeBillingUsage={hasMetronomeBillingUsage}
+                subscription={activeSubscription}
+                stripeSubscription={stripeSubscription}
+                poolCreditState={poolCreditState}
+                programmaticCreditState={programmaticCreditState}
+                programmaticWarningReached={programmaticWarningReached}
+                programmaticSpendLimitRateCapCount={
+                  programmaticSpendLimitRateCapCount
+                }
+                programmaticEsConsumedAwuCredits={
+                  programmaticEsConsumedAwuCredits
+                }
+                programmaticMetronomeConsumedAwuCredits={
+                  programmaticMetronomeConsumedAwuCredits
+                }
+                creditUsageConfig={creditUsageConfig}
+                poolAlert={poolAlert}
+                programmaticAlerts={programmaticAlerts}
+                usageCapAlert={usageCapAlert}
+                defaultAlerts={defaultAlerts}
+              />
+            </TabsContent>
           </Tabs>
         </div>
       </div>

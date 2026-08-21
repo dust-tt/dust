@@ -31,6 +31,7 @@ import {
 
 interface PokeUsageTabProps {
   owner: WorkspaceType;
+  hasMetronomeBillingUsage: boolean;
   subscription: SubscriptionType;
   stripeSubscription: PokeStripeSubscriptionWire | null;
   poolCreditState: WorkspacePoolCreditState;
@@ -336,6 +337,7 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
 
 export function PokeUsageTab({
   owner,
+  hasMetronomeBillingUsage,
   subscription,
   stripeSubscription,
   poolCreditState,
@@ -350,6 +352,10 @@ export function PokeUsageTab({
   usageCapAlert,
   defaultAlerts,
 }: PokeUsageTabProps) {
+  if (!hasMetronomeBillingUsage) {
+    return <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />;
+  }
+
   const billingCycleStartDay = stripeSubscription?.current_period_start
     ? new Date(stripeSubscription.current_period_start * 1000).getDate()
     : subscription.startDate
