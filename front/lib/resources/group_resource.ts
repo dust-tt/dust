@@ -85,6 +85,7 @@ type CachedGroup = {
   workspaceId: ModelId;
   workOSGroupId: string | null;
   poolCapAwuCredits: number | null;
+  workflowAlertThresholdAwuCredits: number | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -140,6 +141,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: g.workspaceId,
       workOSGroupId: g.workOSGroupId,
       poolCapAwuCredits: g.poolCapAwuCredits,
+      workflowAlertThresholdAwuCredits: g.workflowAlertThresholdAwuCredits,
       createdAt: g.createdAt.getTime(),
       updatedAt: g.updatedAt.getTime(),
     }));
@@ -180,6 +182,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: data.workspaceId,
       workOSGroupId: data.workOSGroupId,
       poolCapAwuCredits: data.poolCapAwuCredits,
+      workflowAlertThresholdAwuCredits: data.workflowAlertThresholdAwuCredits,
       createdAt: new Date(data.createdAt),
       updatedAt: new Date(data.updatedAt),
     });
@@ -1434,6 +1437,64 @@ export class GroupResource extends BaseResource<GroupModel> {
     return result;
   }
 
+  // For each user, the highest per-group workflow alert threshold among the
+  // cap-eligible (provisioned) groups they belong to. Users with no group
+  // enabling the smooth shutdown flow are absent from the map. Mirrors
+  // listMaxPoolCapAwuCreditsByUserModelIdInWorkspace: when a user belongs to
+  // multiple groups with a threshold set, the highest value applies.
+  static async listMaxWorkflowAlertThresholdAwuCreditsByUserModelIdInWorkspace({
+    workspace,
+    userModelIds,
+  }: {
+    workspace: LightWorkspaceType;
+    userModelIds: ModelId[];
+  }): Promise<Map<ModelId, number>> {
+    const result = new Map<ModelId, number>();
+    if (userModelIds.length === 0) {
+      return result;
+    }
+
+    const now = new Date();
+    const memberships = await GroupMembershipModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        userId: userModelIds,
+        status: "active",
+        startAt: { [Op.lte]: now },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+      },
+    });
+    if (memberships.length === 0) {
+      return result;
+    }
+
+    const groupModelIds = [...new Set(memberships.map((m) => m.groupId))];
+    const groups = await GroupModel.findAll({
+      where: {
+        id: groupModelIds,
+        workspaceId: workspace.id,
+        kind: [...CAP_ELIGIBLE_GROUP_KINDS],
+        workflowAlertThresholdAwuCredits: { [Op.ne]: null },
+      },
+    });
+    const thresholdByGroupId = new Map(
+      groups.map((g) => [g.id, g.workflowAlertThresholdAwuCredits])
+    );
+
+    for (const m of memberships) {
+      const threshold = thresholdByGroupId.get(m.groupId);
+      if (threshold === undefined || threshold === null) {
+        continue;
+      }
+      const existing = result.get(m.userId);
+      if (existing === undefined || threshold > existing) {
+        result.set(m.userId, threshold);
+      }
+    }
+
+    return result;
+  }
+
   static async getMemberCountsForGroups(
     auth: Authenticator,
     groups: GroupResource[]
@@ -2454,6 +2515,24 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  // Per-group credit threshold that triggers the smooth shutdown flow for a member.
+  // Pass null to disable smooth shutdown for this group.
+  async updateWorkflowAlertThreshold(
+    auth: Authenticator,
+    workflowAlertThresholdAwuCredits: number | null
+  ): Promise<Result<undefined, Error>> {
+    if (!auth.isManager()) {
+      return new Err(
+        new Error(
+          "Only admins and managers can update group workflow alert thresholds."
+        )
+      );
+    }
+
+    await this.update({ workflowAlertThresholdAwuCredits });
+    return new Ok(undefined);
+  }
+
   // Deletion
 
   async delete(
@@ -2906,6 +2985,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       kind: this.kind,
       memberCount: 0, // Default value, use toJSONWithMemberCount for actual count
       poolCapAwuCredits: this.poolCapAwuCredits,
+      workflowAlertThresholdAwuCredits: this.workflowAlertThresholdAwuCredits,
     };
   }
 
@@ -2919,6 +2999,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       kind: this.kind,
       memberCount,
       poolCapAwuCredits: this.poolCapAwuCredits,
+      workflowAlertThresholdAwuCredits: this.workflowAlertThresholdAwuCredits,
     };
   }
 

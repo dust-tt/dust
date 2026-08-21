@@ -98,6 +98,9 @@ export type GroupType = {
   // Per-group usage spend limit (excluding seat allowance), applied per member.
   // null means the group carries no cap (falls back to the workspace default).
   poolCapAwuCredits: number | null;
+  // Per-group credit threshold that triggers the smooth shutdown flow for a member.
+  // null means the group has no threshold (smooth shutdown is disabled for that group).
+  workflowAlertThresholdAwuCredits: number | null;
   // Member sIds, only populated when explicitly requested
   memberIds?: string[];
 };

@@ -18,6 +18,10 @@ export class GroupModel extends WorkspaceAwareModel<GroupModel> {
   // Per-group usage spend limit (excluding seat allowance), applied per member.
   // null means the group carries no cap (falls back to the workspace default).
   declare poolCapAwuCredits: CreationOptional<number | null>;
+
+  // Per-group credit threshold that triggers the smooth shutdown flow for a member.
+  // null means the group has no threshold (smooth shutdown is disabled for that group).
+  declare workflowAlertThresholdAwuCredits: CreationOptional<number | null>;
 }
 
 GroupModel.init(
@@ -45,6 +49,10 @@ GroupModel.init(
       allowNull: true,
     },
     poolCapAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    workflowAlertThresholdAwuCredits: {
       type: DataTypes.INTEGER,
       allowNull: true,
     },

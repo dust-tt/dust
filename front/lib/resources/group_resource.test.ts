@@ -929,6 +929,114 @@ describe("GroupResource", () => {
     });
   });
 
+  describe("updateWorkflowAlertThreshold", () => {
+    it("persists a threshold and clears it with null", async () => {
+      const regularGroup = await GroupResource.makeNew({
+        name: "Workflow Alert Group",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      expect(regularGroup.workflowAlertThresholdAwuCredits).toBeNull();
+
+      const setResult = await regularGroup.updateWorkflowAlertThreshold(
+        authenticator,
+        5000
+      );
+      expect(setResult.isOk()).toBe(true);
+
+      const afterSet = await GroupResource.fetchById(
+        authenticator,
+        regularGroup.sId
+      );
+      if (afterSet.isErr()) {
+        throw afterSet.error;
+      }
+      expect(afterSet.value.workflowAlertThresholdAwuCredits).toBe(5000);
+
+      const clearResult = await regularGroup.updateWorkflowAlertThreshold(
+        authenticator,
+        null
+      );
+      expect(clearResult.isOk()).toBe(true);
+
+      const afterClear = await GroupResource.fetchById(
+        authenticator,
+        regularGroup.sId
+      );
+      if (afterClear.isErr()) {
+        throw afterClear.error;
+      }
+      expect(afterClear.value.workflowAlertThresholdAwuCredits).toBeNull();
+    });
+  });
+
+  describe("listMaxWorkflowAlertThresholdAwuCreditsByUserModelIdInWorkspace", () => {
+    it("returns the highest threshold across a user's provisioned groups, ignoring unset and non-provisioned groups", async () => {
+      const user2 = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user2, { role: "user" });
+
+      // Provisioned groups are synced from WorkOS; members are seeded directly.
+      const alert500 = await GroupResource.makeNew(
+        {
+          name: "Alert 500",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-alert-500",
+        },
+        { memberIds: [user.id] }
+      );
+      await alert500.updateWorkflowAlertThreshold(authenticator, 500);
+
+      const alert800 = await GroupResource.makeNew(
+        {
+          name: "Alert 800",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-alert-800",
+        },
+        { memberIds: [user.id] }
+      );
+      await alert800.updateWorkflowAlertThreshold(authenticator, 800);
+
+      // No threshold set: user2 belongs only here, so they have no group threshold.
+      await GroupResource.makeNew(
+        {
+          name: "No threshold",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-no-threshold",
+        },
+        { memberIds: [user.id, user2.id] }
+      );
+
+      // Regular (Space-backed) groups are not cap-eligible: even with a higher
+      // threshold, they must not contribute to any member's group threshold.
+      const regularGroup = await GroupResource.makeNew(
+        {
+          name: "Regular with threshold",
+          workspaceId: workspace.id,
+          kind: "regular_auto",
+        },
+        { memberIds: [user.id, user2.id] }
+      );
+      await regularGroup.updateWorkflowAlertThreshold(authenticator, 10_000);
+
+      const result =
+        await GroupResource.listMaxWorkflowAlertThresholdAwuCreditsByUserModelIdInWorkspace(
+          {
+            workspace,
+            userModelIds: [user.id, user2.id],
+          }
+        );
+
+      // user is in both provisioned groups with a threshold → the highest wins;
+      // the regular group's higher threshold is ignored.
+      expect(result.get(user.id)).toBe(800);
+      // user2 is only in groups with no threshold / non-eligible groups → absent.
+      expect(result.has(user2.id)).toBe(false);
+    });
+  });
+
   describe("listWorkspaceGroupsFromKey", () => {
     it("system key: populates cache on first call and serves from cache on second", async () => {
       const key = await KeyFactory.system(systemGroup);
