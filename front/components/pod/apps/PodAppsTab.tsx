@@ -6,7 +6,6 @@ import { PendingPodAppTile } from "@app/components/pod/apps/PendingPodAppTile";
 import { PodAppImportReportDialog } from "@app/components/pod/apps/PodAppImportReportDialog";
 import { PodAppTile } from "@app/components/pod/apps/PodAppTile";
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
-import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import {
   useClonePodApp,
   useDeletePodApp,
@@ -17,6 +16,7 @@ import {
 import type { PodAppImportSummary } from "@app/types/api/pod_app_archive";
 import type { PodApp, PodAppFrame } from "@app/types/api/pod_apps";
 import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
+import type { CustomResourceIconType } from "@app/types/resources_icon_names";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";

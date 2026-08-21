@@ -14,8 +14,6 @@ import { toAssignableRole } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
 import { mutate } from "swr";
 
-export const MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY = 300;
-
 // Matches the invitations list regardless of query params (e.g. `?includeExpired=true`).
 export async function mutateWorkspaceInvitations(owner: WorkspaceType) {
   const invitationsPath = `/api/w/${owner.sId}/invitations`;

@@ -1,4 +1,4 @@
-import { CONVERSATION_FILES_AGGREGATE_KEY } from "@app/components/agent_builder/observability/constants";
+import { CONVERSATION_FILES_AGGREGATE_KEY } from "@app/lib/api/analytics/observability_constants";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import {
   AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME,

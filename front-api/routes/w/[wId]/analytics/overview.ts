@@ -1,4 +1,4 @@
-import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import { DEFAULT_PERIOD_DAYS } from "@app/lib/api/analytics/observability_constants";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/lib/api/workspace/analytics";

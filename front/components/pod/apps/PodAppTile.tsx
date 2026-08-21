@@ -1,9 +1,9 @@
-import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import {
   getIcon,
   ResourceAvatar,
 } from "@app/components/resources/resources_icons";
 import type { PodApp, PodAppFrame } from "@app/types/api/pod_apps";
+import type { CustomResourceIconType } from "@app/types/resources_icon_names";
 import {
   Card,
   CardActionButton,

@@ -1,4 +1,4 @@
-import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import { DEFAULT_PERIOD_DAYS } from "@app/lib/api/analytics/observability_constants";
 import type { GetWorkspaceTopUsersResponse } from "@app/lib/api/analytics/workspace_analytics";
 import { fetchTopUsers } from "@app/lib/api/assistant/observability/top_users";
 import { workspaceApp } from "@front-api/middlewares/ctx";

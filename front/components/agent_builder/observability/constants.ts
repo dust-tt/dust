@@ -1,13 +1,13 @@
 import type { AnalyticsVisibleOrigin } from "@app/lib/api/analytics/source_labels";
 import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
 
+export type { ObservabilityTimeRangeType } from "@app/lib/api/analytics/observability_constants";
+export {
+  CONVERSATION_FILES_AGGREGATE_KEY,
+  DEFAULT_PERIOD_DAYS,
+  OBSERVABILITY_TIME_RANGE,
+} from "@app/lib/api/analytics/observability_constants";
 export type { AnalyticsVisibleOrigin };
-
-export const OBSERVABILITY_TIME_RANGE = [7, 14, 30, 90] as const;
-export type ObservabilityTimeRangeType =
-  (typeof OBSERVABILITY_TIME_RANGE)[number];
-
-export const DEFAULT_PERIOD_DAYS = 30;
 
 export const USAGE_METRICS_PALETTE = {
   messages: "text-golden-500",
@@ -78,8 +78,6 @@ export const INDEXED_SHADES = [
 export const INDEXED_COLORS = INDEXED_SHADES.flatMap((shade) =>
   INDEXED_BASE_COLORS.map((color) => buildColorClass(color, shade))
 );
-
-export const CONVERSATION_FILES_AGGREGATE_KEY = "__conversation_files__";
 
 export const MAX_TOOLS_DISPLAYED = 5;
 
