@@ -40,7 +40,7 @@ export function useAutomationsTriggers({
     format: "json",
   };
 
-  const { data, error, isLoading, isValidating } = useConsumptionQuery<
+  const { data, error, mutate, isLoading, isValidating } = useConsumptionQuery<
     AutomationTriggersBody,
     GetAutomationTriggersResponse
   >({ url, body, disabled });
@@ -50,6 +50,7 @@ export function useAutomationsTriggers({
     totalCount: data?.totalCount ?? 0,
     medianRunCount: data?.medianRunCount ?? 0,
     medianCostPerRun: data?.medianCostPerRun ?? 0,
+    mutateTriggers: mutate,
     isTriggersLoading: !error && isLoading,
     isTriggersError: error,
     isTriggersValidating: isValidating,

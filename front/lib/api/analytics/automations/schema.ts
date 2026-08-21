@@ -19,20 +19,28 @@ export type AutomationTriggersFilter = z.infer<
   typeof AutomationTriggersFilterSchema
 >;
 
-export const AutomationTriggersBodySchema = ConsumptionPeriodSchema.extend({
-  limit: z
-    .number()
-    .int()
-    .positive()
-    .max(100)
-    .default(DEFAULT_AUTOMATION_TRIGGERS_LIMIT),
-  offset: z.number().int().nonnegative().default(0),
+export const AutomationTriggersQuerySchema = ConsumptionPeriodSchema.extend({
   search: z.string().trim().optional(),
   filter: AutomationTriggersFilterSchema.optional(),
-  // csv ignores limit/offset and returns every trigger matching the period,
-  // search and filter, up to the same ranking cap used for the page view.
-  format: z.enum(["json", "csv"]).optional().default("json"),
 });
+
+export type AutomationTriggersQuery = z.infer<
+  typeof AutomationTriggersQuerySchema
+>;
+
+export const AutomationTriggersBodySchema =
+  AutomationTriggersQuerySchema.extend({
+    limit: z
+      .number()
+      .int()
+      .positive()
+      .max(100)
+      .default(DEFAULT_AUTOMATION_TRIGGERS_LIMIT),
+    offset: z.number().int().nonnegative().default(0),
+    // csv ignores limit/offset and returns every trigger matching the period,
+    // search and filter, up to the same ranking cap used for the page view.
+    format: z.enum(["json", "csv"]).optional().default("json"),
+  });
 
 export type AutomationTriggersBody = z.infer<
   typeof AutomationTriggersBodySchema

@@ -70,6 +70,18 @@ export const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 42;
 export const TRIGGER_EXECUTION_MODES = ["user_pool", "workspace_pool"] as const;
 export type TriggerExecutionMode = (typeof TRIGGER_EXECUTION_MODES)[number];
 
+export function isTriggerExecutionMode(
+  value: string
+): value is TriggerExecutionMode {
+  return (TRIGGER_EXECUTION_MODES as readonly string[]).includes(value);
+}
+
+export type BulkTriggerUpdateOutcome = {
+  updatedCount: number;
+  // Triggers the caller may not move (insufficient role or permission).
+  skippedCount: number;
+};
+
 export const TRIGGER_STATUSES = [
   "enabled",
   "disabled",

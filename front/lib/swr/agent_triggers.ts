@@ -1,4 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { BulkTriggerSelection } from "@app/lib/api/triggers/bulk_selection";
 import { clientFetch } from "@app/lib/egress/client";
 import { parseMatcherExpression } from "@app/lib/matcher";
 import {
@@ -23,11 +24,13 @@ import type {
   PostWebhookFilterGeneratorResponseBody,
 } from "@app/types/api/assistant/configuration/triggers/webhook_filter_generator";
 import type {
+  BulkTriggerUpdateOutcome,
   ScheduleConfig,
   TriggerExecutionMode,
 } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
@@ -516,4 +519,82 @@ export function useTriggerEstimation({
     isEstimationValidating: isValidating,
     mutateEstimation: mutate,
   };
+}
+
+async function postBulkTriggerUpdate({
+  url,
+  body,
+}: {
+  url: string;
+  body: Record<string, unknown>;
+}): Promise<BulkTriggerUpdateOutcome | { error: string }> {
+  const response = await clientFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const errorData = await getErrorFromResponse(response);
+    return { error: errorData.message };
+  }
+  return response.json();
+}
+
+function bulkOutcomeDescription(
+  { updatedCount, skippedCount }: BulkTriggerUpdateOutcome,
+  done: string
+): string {
+  const parts = [
+    `${updatedCount} automation${pluralize(updatedCount)} ${done}.`,
+  ];
+  if (skippedCount > 0) {
+    parts.push(`${skippedCount} could not be changed.`);
+  }
+  return parts.join(" ");
+}
+
+export function useBulkUpdateTriggerExecutionMode({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const doBulkUpdateTriggerExecutionMode = useCallback(
+    async ({
+      selection,
+      executionMode,
+    }: {
+      selection: BulkTriggerSelection;
+      executionMode: TriggerExecutionMode;
+    }): Promise<BulkTriggerUpdateOutcome | null> => {
+      const result = await postBulkTriggerUpdate({
+        url: `/api/w/${workspaceId}/triggers/bulk-execution-mode`,
+        body: { selection, executionMode },
+      });
+      if ("error" in result) {
+        sendNotification({
+          type: "error",
+          title: "Failed to update the trigger pool",
+          description: `Error: ${result.error}`,
+        });
+        return null;
+      }
+
+      sendNotification({
+        type: result.updatedCount > 0 ? "success" : "info",
+        title: "Trigger pool updated",
+        description: bulkOutcomeDescription(
+          result,
+          executionMode === "workspace_pool"
+            ? "now run on the workspace's credits"
+            : "now run on their editor's credits"
+        ),
+      });
+      return result;
+    },
+    [workspaceId, sendNotification]
+  );
+
+  return doBulkUpdateTriggerExecutionMode;
 }

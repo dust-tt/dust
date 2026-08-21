@@ -12,7 +12,7 @@ import {
   Icon,
   LoadingBlock,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import {
   flexRender,
   getCoreRowModel,
@@ -20,6 +20,9 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Fragment } from "react";
+
+// The id sparkle's createSelectionColumn gives its checkbox column.
+const SELECTION_COLUMN_ID = "select";
 
 export type TriggerRowData = AutomationTriggerRow & {
   onClick: () => void;
@@ -90,6 +93,12 @@ function TriggerSkeletonCell({ columnId, rowIndex }: TriggerSkeletonCellProps) {
           <LoadingBlock className="h-6 w-20 rounded-[9px]" />
         </div>
       );
+    case SELECTION_COLUMN_ID:
+      return (
+        <div className="flex h-12 items-center">
+          <LoadingBlock className="h-4 w-4 rounded-sm" />
+        </div>
+      );
     case "status":
       return (
         <div className="flex h-12 items-center justify-center">
@@ -117,6 +126,8 @@ interface AutomationsTriggersRowsTableProps<T extends TriggerRowData> {
   medianCostPerRun: number;
   isLoading?: boolean;
   skeletonRowCount: number;
+  rowSelection: RowSelectionState;
+  onRowSelectionChange: (selection: RowSelectionState) => void;
 }
 
 export function AutomationsTriggersRowsTable<T extends TriggerRowData>({
@@ -129,10 +140,19 @@ export function AutomationsTriggersRowsTable<T extends TriggerRowData>({
   medianCostPerRun,
   isLoading = false,
   skeletonRowCount,
+  rowSelection,
+  onRowSelectionChange,
 }: AutomationsTriggersRowsTableProps<T>) {
   const table = useReactTable({
     data,
     columns,
+    state: { rowSelection },
+    enableRowSelection: true,
+    onRowSelectionChange: (updater) =>
+      onRowSelectionChange(
+        typeof updater === "function" ? updater(rowSelection) : updater
+      ),
+    getRowId: (row) => row.triggerId,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
