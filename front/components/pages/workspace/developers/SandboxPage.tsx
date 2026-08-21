@@ -1,5 +1,6 @@
 import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
 import { NetworkSection } from "@app/components/pages/workspace/developers/sections/NetworkSection";
+import { AgentRequestedDomainsSetting } from "@app/components/sandbox/AgentRequestedDomainsSetting";
 import { MultiPodNetworkSection } from "@app/components/sandbox/MultiPodNetworkSection";
 import type { SandboxScopeSelection } from "@app/components/sandbox/SandboxScopeSelector";
 import { SandboxScopeSelector } from "@app/components/sandbox/SandboxScopeSelector";
@@ -88,6 +89,7 @@ export function SandboxPage() {
 
     return (
       <>
+        <AgentRequestedDomainsSetting />
         {canAdministratePods ? renderNetwork() : <NetworkSection />}
         <EnvironmentSection />
       </>
