@@ -17,3 +17,11 @@ export const gracefullyStopAgentLoopSignal = defineSignal<[void]>(
 export const interruptAgentLoopSignal = defineSignal<[void]>(
   "interrupt_agent_loop_signal"
 );
+
+// Signal to request a smooth shutdown of the agent loop workflow: the user declined to continue
+// past a workflow alert credit threshold. Behaves like gracefullyStopAgentLoopSignal (in-flight
+// activities continue to completion, the loop exits at the next step boundary), but finalization
+// additionally generates and posts a short summary of progress so far.
+export const requestSmoothShutdownAgentLoopSignal = defineSignal<[void]>(
+  "request_smooth_shutdown_agent_loop_signal"
+);

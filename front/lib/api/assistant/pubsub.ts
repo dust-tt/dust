@@ -13,6 +13,7 @@ import {
   cancelAgentLoopSignal,
   gracefullyStopAgentLoopSignal,
   interruptAgentLoopSignal,
+  requestSmoothShutdownAgentLoopSignal,
 } from "@app/temporal/agent_loop/signals";
 import type {
   AgentActionSuccessEvent,
@@ -173,6 +174,20 @@ export async function gracefullyStopAgentLoop(
     messageIds,
     conversationId,
     signal: gracefullyStopAgentLoopSignal,
+  });
+}
+
+export async function requestSmoothShutdownAgentLoop(
+  auth: Authenticator,
+  {
+    messageIds,
+    conversationId,
+  }: { messageIds: string[]; conversationId: string }
+): Promise<void> {
+  await signalAgentLoops(auth, {
+    messageIds,
+    conversationId,
+    signal: requestSmoothShutdownAgentLoopSignal,
   });
 }
 

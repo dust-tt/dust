@@ -1,4 +1,7 @@
-import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
+import {
+  gracefullyStopAgentLoop,
+  requestSmoothShutdownAgentLoop,
+} from "@app/lib/api/assistant/pubsub";
 import { terminateMessageGeneration } from "@app/lib/api/cancel";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationError } from "@app/types/assistant/conversation";
@@ -16,7 +19,7 @@ const ParamsSchema = z.object({
 });
 
 const PostMessageEventBodySchema = z.object({
-  action: z.enum(["cancel", "gracefully_stop", "interrupt"]),
+  action: z.enum(["cancel", "gracefully_stop", "interrupt", "smooth_shutdown"]),
   messageIds: z.array(z.string()),
 });
 
@@ -58,7 +61,7 @@ const app = workspaceApp();
  *             properties:
  *               action:
  *                 type: string
- *                 enum: [cancel, gracefully_stop, interrupt]
+ *                 enum: [cancel, gracefully_stop, interrupt, smooth_shutdown]
  *               messageIds:
  *                 type: array
  *                 items:
@@ -111,6 +114,12 @@ app.post(
         break;
       case "gracefully_stop":
         await gracefullyStopAgentLoop(auth, {
+          messageIds,
+          conversationId,
+        });
+        break;
+      case "smooth_shutdown":
+        await requestSmoothShutdownAgentLoop(auth, {
           messageIds,
           conversationId,
         });

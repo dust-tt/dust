@@ -29,6 +29,7 @@ import {
   cancelAgentLoopSignal,
   gracefullyStopAgentLoopSignal,
   interruptAgentLoopSignal,
+  requestSmoothShutdownAgentLoopSignal,
 } from "@app/temporal/agent_loop/signals";
 import type { AgentLoopInstrumentationSinks } from "@app/temporal/agent_loop/sinks";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
@@ -187,6 +188,14 @@ const {
   startToCloseTimeout: "1 minute",
 });
 
+// Longer timeout than the other finalize activities: this one makes an extra one-shot LLM
+// call to generate the progress summary.
+const { finalizeSmoothShutdownAgentLoopActivity } = proxyActivities<
+  typeof finalizeActivities
+>({
+  startToCloseTimeout: "2 minutes",
+});
+
 const { finalizeErroredSandboxChildToolActivity } = proxyActivities<
   typeof finalizeSandboxChildToolActivities
 >({
@@ -276,6 +285,14 @@ export async function agentLoopWorkflow({
     gracefulStopRequested = true;
   });
 
+  // Smooth shutdown: same cooperative stop as graceful stop, but the user declined to continue
+  // past a workflow alert credit threshold, so finalization also posts a progress summary.
+  let smoothShutdownRequested = false;
+
+  setHandler(requestSmoothShutdownAgentLoopSignal, () => {
+    smoothShutdownRequested = true;
+  });
+
   // Credit stop: the per-step gate found the workspace pool exhausted.
   let creditStopRequested = false;
 
@@ -357,7 +374,11 @@ export async function agentLoopWorkflow({
           }
         }
 
-        if (!shouldContinue || gracefulStopRequested) {
+        if (
+          !shouldContinue ||
+          gracefulStopRequested ||
+          smoothShutdownRequested
+        ) {
           break;
         }
 
@@ -395,7 +416,12 @@ export async function agentLoopWorkflow({
       };
 
       await CancellationScope.nonCancellable(async () => {
-        if (gracefulStopRequested) {
+        if (smoothShutdownRequested) {
+          await finalizeSmoothShutdownAgentLoopActivity(
+            authType,
+            argsWithRunIds
+          );
+        } else if (gracefulStopRequested) {
           await finalizeGracefullyStoppedAgentLoopActivity(
             authType,
             argsWithRunIds
