@@ -6,6 +6,7 @@ import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumpti
 import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
+import { getTierForModel } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
@@ -13,7 +14,6 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import type { MCPServerViewDisplayMetadata } from "@app/lib/resources/mcp_server_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import tracer from "@app/logger/tracer";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
@@ -224,10 +224,8 @@ async function listConsumptionFacetCatalogWithoutTracing(
         pictureUrl: null,
         maker: getModelMaker(model),
         tier:
-          ModelsTierResource.getTierForModel(
-            model.modelId,
-            model.defaultReasoningEffort
-          ) ?? undefined,
+          getTierForModel(model.modelId, model.defaultReasoningEffort) ??
+          undefined,
       })),
     tool: toolFacetCatalogEntries(mcpServerViews),
     skill: skills.map((skill) => ({
