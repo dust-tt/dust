@@ -47,6 +47,7 @@ interface AutomationsFilterPanelProps {
   period: ConsumptionPeriodSelection;
   filter: AutomationsFilter;
   onFilterChange: (next: AutomationsFilter) => void;
+  categories?: readonly AutomationsFilterCategory[];
 }
 
 export function AutomationsFilterPanel({
@@ -54,6 +55,7 @@ export function AutomationsFilterPanel({
   period,
   filter,
   onFilterChange,
+  categories = AUTOMATIONS_FILTER_CATEGORIES,
 }: AutomationsFilterPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const {
@@ -66,7 +68,7 @@ export function AutomationsFilterPanel({
     selectAllFiltered,
   } = useAutomationsFilter(filter);
   const [activeCategory, setActiveCategory] =
-    useState<AutomationsFilterCategory>("agent");
+    useState<AutomationsFilterCategory>(categories[0]);
   const [searchText, setSearchText] = useState("");
   const [contentScrollContainer, setContentScrollContainer] =
     useState<HTMLDivElement | null>(null);
@@ -133,21 +135,22 @@ export function AutomationsFilterPanel({
   const unselectedEnabledOptions = filteredOptions.filter(
     (option) => !option.disabled && !selectedIdsForActiveCategory.has(option.id)
   );
-  const appliedSelectionCount = automationsFilterSelectionCount(filter);
+  const appliedSelectionCount = automationsFilterSelectionCount(
+    filter,
+    categories
+  );
   const categoriesWithSelection = useMemo(
     () =>
-      AUTOMATIONS_FILTER_CATEGORIES.filter(
-        (category) => (draftFilter[category]?.length ?? 0) > 0
-      ),
-    [draftFilter]
+      categories.filter((category) => (draftFilter[category]?.length ?? 0) > 0),
+    [categories, draftFilter]
   );
   const categorySelectionCounts = useMemo(() => {
     const counts: Partial<Record<AutomationsFilterCategory, number>> = {};
-    for (const category of AUTOMATIONS_FILTER_CATEGORIES) {
+    for (const category of categories) {
       counts[category] = draftFilter[category]?.length ?? 0;
     }
     return counts;
-  }, [draftFilter]);
+  }, [categories, draftFilter]);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -191,7 +194,7 @@ export function AutomationsFilterPanel({
       <PopoverContent fullWidth align="end" className="w-auto rounded-2xl p-0">
         <div className="flex h-96 flex-row divide-x divide-border">
           <FilterCategoryNav
-            categories={AUTOMATIONS_FILTER_CATEGORIES}
+            categories={categories}
             categoryLabels={AUTOMATIONS_FILTER_CATEGORY_LABEL}
             selectionCounts={categorySelectionCounts}
             activeCategory={activeCategory}

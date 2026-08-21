@@ -183,6 +183,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
+  isEditedBy(auth: Authenticator): boolean {
+    return this.editor === auth.getNonNullableUser().id;
+  }
+
   canUpdateStatusTo(auth: Authenticator, to: TriggerStatus): boolean {
     if (this.status === to) {
       return true;
@@ -912,8 +916,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     const canUseTargetMode = await canUseExecutionMode(auth, executionMode);
     const updatable = canUseTargetMode
       ? triggers.filter(
-          (trigger) =>
-            auth.isManager() || trigger.editor === auth.getNonNullableUser().id
+          (trigger) => auth.isManager() || trigger.isEditedBy(auth)
         )
       : [];
 
@@ -1157,8 +1160,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     executionMode: TriggerExecutionMode
   ): Promise<Result<undefined, Error>> {
-    const isEditor =
-      auth.isManager() || this.editor === auth.getNonNullableUser().id;
+    const isEditor = auth.isManager() || this.isEditedBy(auth);
     if (!isEditor || !(await canUseExecutionMode(auth, executionMode))) {
       return new Err(
         new TriggerExecutionModeForbiddenError(

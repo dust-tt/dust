@@ -4,18 +4,27 @@ import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_
 import type { GetAutomationTriggerBreakdownResponse } from "@app/lib/api/analytics/automations/breakdown";
 import type { AutomationTriggerBreakdownBody } from "@app/lib/api/analytics/automations/schema";
 
+// A workspace-scoped breakdown reads the manager-only analytics endpoint; a
+// user-scoped one reads its own automations, whatever the caller's role.
+export type AutomationsScope = "workspace" | "user";
+
 export function useAutomationsTriggerBreakdown({
   workspaceId,
   triggerId,
   period,
+  scope,
   disabled,
 }: {
   workspaceId: string;
   triggerId: string;
   period: ConsumptionPeriodSelection;
+  scope: AutomationsScope;
   disabled?: boolean;
 }) {
-  const url = `/api/w/${workspaceId}/analytics/automations/trigger-breakdown`;
+  const url =
+    scope === "user"
+      ? `/api/w/${workspaceId}/me/automations/trigger-breakdown`
+      : `/api/w/${workspaceId}/analytics/automations/trigger-breakdown`;
   const body: AutomationTriggerBreakdownBody = {
     triggerId,
     period: period.kind,

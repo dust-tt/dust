@@ -1,3 +1,4 @@
+import type { AutomationsScope } from "@app/hooks/useAutomationsTriggerBreakdown";
 import { useAutomationsTriggerBreakdown } from "@app/hooks/useAutomationsTriggerBreakdown";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { AutomationTriggerCreditDestination } from "@app/lib/api/analytics/automations/breakdown";
@@ -7,8 +8,10 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { LoadingBlock, Tooltip } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
-const CAPTION_TOOLTIP_LABEL =
-  "Compared to the median across all triggers for this period.";
+const CAPTION_TOOLTIP_LABEL: Record<AutomationsScope, string> = {
+  workspace: "Compared to the median across all triggers for this period.",
+  user: "Compared to the median across your triggers for this period.",
+};
 
 const RATIO_MORE_THRESHOLD = 1.5;
 const RATIO_LESS_THRESHOLD = 1 / RATIO_MORE_THRESHOLD;
@@ -84,13 +87,15 @@ function CreditDestinationBlock({
   workspaceId,
   triggerId,
   period,
+  scope,
 }: {
   workspaceId: string;
   triggerId: string;
   period: ConsumptionPeriodSelection;
+  scope: AutomationsScope;
 }) {
   const { creditDestination, isBreakdownLoading, isBreakdownError } =
-    useAutomationsTriggerBreakdown({ workspaceId, triggerId, period });
+    useAutomationsTriggerBreakdown({ workspaceId, triggerId, period, scope });
 
   if (isBreakdownLoading) {
     return (
@@ -140,6 +145,7 @@ interface AutomationsTriggerBreakdownProps {
   workspaceId: string;
   trigger: AutomationTriggerRow;
   period: ConsumptionPeriodSelection;
+  scope: AutomationsScope;
   medianRunCount: number;
   medianCostPerRun: number;
 }
@@ -148,6 +154,7 @@ export function AutomationsTriggerBreakdown({
   workspaceId,
   trigger,
   period,
+  scope,
   medianRunCount,
   medianCostPerRun,
 }: AutomationsTriggerBreakdownProps) {
@@ -167,7 +174,7 @@ export function AutomationsTriggerBreakdown({
           </>
         }
         caption={ratioCaption(trigger.runCount, medianRunCount)}
-        captionTooltipLabel={CAPTION_TOOLTIP_LABEL}
+        captionTooltipLabel={CAPTION_TOOLTIP_LABEL[scope]}
       />
       <StatBlock
         label="What each run costs"
@@ -185,6 +192,7 @@ export function AutomationsTriggerBreakdown({
         workspaceId={workspaceId}
         triggerId={trigger.triggerId}
         period={period}
+        scope={scope}
       />
     </div>
   );

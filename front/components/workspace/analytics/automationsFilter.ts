@@ -18,6 +18,12 @@ export const AUTOMATIONS_FILTER_CATEGORIES = [
 export type AutomationsFilterCategory =
   (typeof AUTOMATIONS_FILTER_CATEGORIES)[number];
 
+// A member filters their own automations, so the member category is dropped.
+export const USER_AUTOMATIONS_FILTER_CATEGORIES = [
+  "agent",
+  "type",
+] as const satisfies readonly AutomationsFilterCategory[];
+
 export const AUTOMATIONS_FILTER_CATEGORY_LABEL: Record<
   AutomationsFilterCategory,
   string
@@ -46,18 +52,22 @@ export type AutomationsFilter = CategoryFilter<
   AutomationsFilterOption
 >;
 
-export function getAutomationsFilterSummaries(filter: AutomationsFilter) {
+export function getAutomationsFilterSummaries(
+  filter: AutomationsFilter,
+  categories: readonly AutomationsFilterCategory[] = AUTOMATIONS_FILTER_CATEGORIES
+) {
   return getFilterSummaries(
     filter,
-    AUTOMATIONS_FILTER_CATEGORIES,
+    categories,
     AUTOMATIONS_FILTER_CATEGORY_SINGULAR_LABEL
   );
 }
 
 export function automationsFilterSelectionCount(
-  filter: AutomationsFilter
+  filter: AutomationsFilter,
+  categories: readonly AutomationsFilterCategory[] = AUTOMATIONS_FILTER_CATEGORIES
 ): number {
-  return filterSelectionCount(filter, AUTOMATIONS_FILTER_CATEGORIES);
+  return filterSelectionCount(filter, categories);
 }
 
 export type AutomationsTriggersFilter = {
@@ -101,5 +111,15 @@ export function toAutomationsTriggersFilter(
     ...(agentIds && agentIds.length > 0 ? { agentIds } : {}),
     ...(editorIds && editorIds.length > 0 ? { editorIds } : {}),
     ...(kinds && kinds.length > 0 ? { kinds } : {}),
+  };
+}
+
+export function toUserAutomationsTriggersFilter(
+  filter: AutomationsFilter
+): Omit<AutomationsTriggersFilter, "editorIds"> {
+  const { agentIds, kinds } = toAutomationsTriggersFilter(filter);
+  return {
+    ...(agentIds ? { agentIds } : {}),
+    ...(kinds ? { kinds } : {}),
   };
 }
