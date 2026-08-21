@@ -101,10 +101,8 @@ function ToolValidationDetailsDialog({
   conversationId,
   isSubmitting,
 }: ToolValidationDetailsDialogProps) {
-  const toolOverride = getToolOverride(validationRequest.metadata);
-
   return (
-    <Dialog defaultOpen={toolOverride?.detailsOpen ?? false}>
+    <Dialog>
       <DialogTrigger asChild>
         <Button
           label="Review details"
@@ -119,7 +117,7 @@ function ToolValidationDetailsDialog({
         className="gap-4 p-5"
         preventAutoFocusOnClose={false}
       >
-        <DialogHeader className="gap-1 p-0">
+        <DialogHeader className="static gap-1 p-0">
           <DialogTitle visual={<Avatar icon={icon} size="sm" />}>
             {approvalTitle}
           </DialogTitle>
@@ -183,6 +181,8 @@ export function ToolValidationCard({
   const displayLabel =
     validationRequest.metadata.displayLabel ??
     asDisplayName(validationRequest.metadata.toolName);
+  const showDetailsInline =
+    canCurrentUserRespond && toolOverride?.detailsInline === true;
 
   const canAlwaysAllow = ["low", "medium"].includes(
     validationRequest.stake ?? ""
@@ -204,6 +204,7 @@ export function ToolValidationCard({
         <div className="flex shrink-0 items-center gap-2">
           {approvalProgress && <ApprovalProgress {...approvalProgress} />}
           {canCurrentUserRespond &&
+            !showDetailsInline &&
             Object.keys(validationRequest.inputs).length > 0 && (
               <ToolValidationDetailsDialog
                 validationRequest={validationRequest}
@@ -220,6 +221,15 @@ export function ToolValidationCard({
       </div>
 
       <div className="text-base text-muted-foreground">{displayLabel}</div>
+
+      {showDetailsInline && (
+        <ToolValidationDetails
+          blockedAction={validationRequest}
+          user={currentUser}
+          owner={owner}
+          conversationId={conversationId}
+        />
+      )}
 
       {canCurrentUserRespond ? (
         <>
