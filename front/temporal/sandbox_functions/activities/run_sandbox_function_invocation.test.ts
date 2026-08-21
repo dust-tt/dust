@@ -1,3 +1,4 @@
+import { SandboxExecTimeoutError } from "@app/lib/api/sandbox/provider";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -129,6 +130,40 @@ describe("runSandboxFunctionInvocationActivity", () => {
         type: "sandbox_function_invocation_error",
         invocationId: invocation.sId,
         error: { code: "invocation_failed", message: "sandbox unavailable" },
+      }),
+      { invocationId: invocation.sId }
+    );
+  });
+
+  it("fails the invocation without throwing when execution times out", async () => {
+    const { adminAuth, authenticator, sandboxFunction, invocation } =
+      await setup();
+    const timeoutError = new SandboxExecTimeoutError(120_000);
+    vi.spyOn(
+      SandboxFunctionInvocationResource.prototype,
+      "execute"
+    ).mockResolvedValue(new Err(timeoutError));
+
+    await expect(
+      runSandboxFunctionInvocationActivity(authenticator.toJSON(), {
+        sandboxFunctionId: sandboxFunction.sId,
+        invocationId: invocation.sId,
+      })
+    ).resolves.toBeUndefined();
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      adminAuth,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("errored");
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "sandbox_function_invocation_error",
+        invocationId: invocation.sId,
+        error: {
+          code: "invocation_failed",
+          message: timeoutError.message,
+        },
       }),
       { invocationId: invocation.sId }
     );
