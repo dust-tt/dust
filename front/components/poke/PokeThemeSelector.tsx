@@ -33,7 +33,7 @@ export function PokeThemeSelector() {
       size="sm"
       value={theme}
       onValueChange={handleThemeChange}
-      style={{ background: "transparent" }}
+      style={{ background: "transparent", borderColor: "transparent" }}
     >
       {THEME_ORDER.map((themeOption) => {
         const option = THEME_OPTIONS[themeOption];
