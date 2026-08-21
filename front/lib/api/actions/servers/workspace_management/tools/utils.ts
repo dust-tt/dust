@@ -6,11 +6,38 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export function makeJsonText(value: unknown) {
+export function makeTextLines(lines: string[]) {
   return {
     type: "text" as const,
-    text: JSON.stringify(value, null, 2),
+    text: lines.join("\n"),
   };
+}
+
+// Renders `key: value` pairs on one line, dropping the empty ones so absent fields cost nothing.
+export function renderFields(
+  fields: Record<string, string | number | boolean | null | undefined>
+): string {
+  return Object.entries(fields)
+    .filter(([, value]) => value !== null && value !== undefined && value !== "")
+    .map(([key, value]) => `${key}: ${value}`)
+    .join(", ");
+}
+
+// Trailer both list tools share: how many rows matched, and how to get the next page.
+export function renderPageFooter({
+  shown,
+  total,
+  nextCursor,
+}: {
+  shown: number;
+  total: number;
+  nextCursor: number | null;
+}): string {
+  const footer = `Showing ${shown} of ${total}.`;
+
+  return nextCursor === null
+    ? footer
+    : `${footer} Pass cursor: ${nextCursor} for the next page.`;
 }
 
 // Slices `rows` for the requested page. Both list tools fetch the whole set and paginate in

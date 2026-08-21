@@ -3,8 +3,10 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  makeJsonText,
+  makeTextLines,
   paginate,
+  renderFields,
+  renderPageFooter,
 } from "@app/lib/api/actions/servers/workspace_management/tools/utils";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
@@ -60,23 +62,33 @@ export async function listSkills(
     ? await SkillResource.batchFetchUsage(auth, page)
     : null;
 
+  if (total === 0) {
+    return new Ok([
+      { type: "text" as const, text: `No ${kind} skills found.` },
+    ]);
+  }
+
   return new Ok([
-    makeJsonText({
-      total,
-      nextCursor,
-      skills: page.map((skill) => ({
-        sId: skill.sId,
-        name: skill.name,
-        userFacingDescription: skill.userFacingDescription,
-        agentFacingDescription: skill.agentFacingDescription,
-        availability: skill.availability,
-        status: skill.status,
-        kind: skill.kind,
-        canWrite: skill.canWrite(auth),
-        ...(usageBySkillId
-          ? { agentsUsingCount: usageBySkillId.get(skill.sId)?.count ?? 0 }
-          : {}),
-      })),
-    }),
+    makeTextLines([
+      ...page.map((skill) =>
+        [
+          `${skill.name} [${skill.sId}]`,
+          renderFields({
+            kind: skill.kind,
+            availability: skill.availability,
+            status: skill.status,
+            canWrite: skill.canWrite(auth),
+            agentsUsing: usageBySkillId
+              ? usageBySkillId.get(skill.sId)?.count ?? 0
+              : null,
+          }),
+          skill.userFacingDescription,
+          skill.agentFacingDescription,
+        ]
+          .filter(Boolean)
+          .join(" — ")
+      ),
+      renderPageFooter({ shown: page.length, total, nextCursor }),
+    ]),
   ]);
 }

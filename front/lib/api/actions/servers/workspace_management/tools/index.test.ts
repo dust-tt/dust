@@ -58,12 +58,12 @@ async function callTool(
   return content.text;
 }
 
-async function callToolJson(
+async function callToolLines(
   name: string,
   params: Record<string, unknown>,
   auth: Authenticator
 ) {
-  return JSON.parse(await callTool(name, params, auth));
+  return (await callTool(name, params, auth)).split("\n");
 }
 
 // Creates, as another workspace member, one published agent, one unpublished agent the caller
@@ -122,12 +122,11 @@ describe("workspace_management tools", () => {
     });
     await setupOtherMembersAgents(workspace);
 
-    const { agents } = await callToolJson("list_agents", {}, authenticator);
+    const text = await callTool("list_agents", {}, authenticator);
 
-    const names = agents.map((a: { name: string }) => a.name);
-    expect(names).toContain("Published Agent");
-    expect(names).not.toContain("Unpublished Agent");
-    expect(names).not.toContain("Restricted Space Agent");
+    expect(text).toContain("Published Agent");
+    expect(text).not.toContain("Unpublished Agent");
+    expect(text).not.toContain("Restricted Space Agent");
   });
 
   it("refuses all_unrestricted for regular members", async () => {
@@ -154,17 +153,11 @@ describe("workspace_management tools", () => {
       });
       await setupOtherMembersAgents(workspace);
 
-      const { agents, view } = await callToolJson(
-        "list_agents",
-        {},
-        authenticator
-      );
+      const text = await callTool("list_agents", {}, authenticator);
 
-      expect(view).toBe("all");
-      const names = agents.map((a: { name: string }) => a.name);
-      expect(names).toContain("Published Agent");
-      expect(names).not.toContain("Unpublished Agent");
-      expect(names).not.toContain("Restricted Space Agent");
+      expect(text).toContain("Published Agent");
+      expect(text).not.toContain("Unpublished Agent");
+      expect(text).not.toContain("Restricted Space Agent");
     });
 
     it("returns unpublished and restricted space agents with all_unrestricted", async () => {
@@ -173,16 +166,15 @@ describe("workspace_management tools", () => {
       });
       await setupOtherMembersAgents(workspace);
 
-      const { agents } = await callToolJson(
+      const text = await callTool(
         "list_agents",
         { view: "all_unrestricted" },
         authenticator
       );
 
-      const names = agents.map((a: { name: string }) => a.name);
-      expect(names).toContain("Published Agent");
-      expect(names).toContain("Unpublished Agent");
-      expect(names).toContain("Restricted Space Agent");
+      expect(text).toContain("Published Agent");
+      expect(text).toContain("Unpublished Agent");
+      expect(text).toContain("Restricted Space Agent");
     });
 
     it("refuses all_unrestricted for managers who are not admins", async () => {
@@ -217,20 +209,20 @@ describe("workspace_management tools", () => {
       await archiveAgentConfiguration(authenticator, removed.sId);
 
       // The default view also carries Dust's global agents, so assert on membership.
-      const active = await callToolJson("list_agents", {}, authenticator);
-      const activeNames = active.agents.map((a: { name: string }) => a.name);
-      expect(activeNames).toContain(kept.name);
-      expect(activeNames).not.toContain("Removed Agent");
+      const active = await callTool("list_agents", {}, authenticator);
+      expect(active).toContain(kept.name);
+      expect(active).not.toContain("Removed Agent");
 
-      const archived = await callToolJson(
+      const archived = await callToolLines(
         "list_agents",
         { view: "archived" },
         authenticator
       );
-      expect(archived.view).toBe("archived");
-      expect(archived.agents).toEqual([
-        expect.objectContaining({ name: "Removed Agent", status: "archived" }),
+      expect(archived).toEqual([
+        expect.stringContaining(`Removed Agent [${removed.sId}]`),
+        "Showing 1 of 1.",
       ]);
+      expect(archived[0]).toContain("status: archived");
     });
 
     it("returns the agent's scope, model and tags, and paginates", async () => {
@@ -242,33 +234,27 @@ describe("workspace_management tools", () => {
         name: "Zebra Agent",
       });
 
-      const firstPage = await callToolJson(
+      const firstPage = await callToolLines(
         "list_agents",
         { namePrefix: "Aardvark", limit: 1 },
         authenticator
       );
 
-      expect(firstPage.total).toBe(1);
-      expect(firstPage.nextCursor).toBeNull();
-      expect(firstPage.agents).toEqual([
-        expect.objectContaining({
-          name: "Aardvark Agent",
-          scope: "visible",
-          status: "active",
-          model: "gpt-5-mini",
-          tags: [],
-          canEdit: true,
-        }),
-      ]);
+      expect(firstPage).toHaveLength(2);
+      expect(firstPage[0]).toContain("Aardvark Agent");
+      expect(firstPage[0]).toContain(
+        "scope: visible, status: active, model: gpt-5-mini"
+      );
+      expect(firstPage[0]).toContain("canEdit: true");
+      expect(firstPage[1]).toBe("Showing 1 of 1.");
 
       // Both agents match, so the first page must hand back a cursor for the second.
-      const paged = await callToolJson(
+      const paged = await callToolLines(
         "list_agents",
         { namePrefix: "", limit: 1 },
         authenticator
       );
-      expect(paged.total).toBeGreaterThan(1);
-      expect(paged.nextCursor).toBe(1);
+      expect(paged.at(-1)).toContain("Pass cursor: 1 for the next page.");
     });
   });
 
@@ -315,23 +301,19 @@ describe("workspace_management tools", () => {
         availability: "users_and_agents",
       });
 
-      const { skills } = await callToolJson("list_skills", {}, authenticator);
+      const lines = await callToolLines("list_skills", {}, authenticator);
 
-      expect(skills).toEqual([
-        expect.objectContaining({
-          name: "Discoverable Skill",
-          availability: "users_and_agents",
-          status: "active",
-          kind: "custom",
-          canWrite: true,
-        }),
-        expect.objectContaining({
-          name: "Editors Only Skill",
-          availability: "editors",
-        }),
+      expect(lines).toEqual([
+        expect.stringContaining("Discoverable Skill"),
+        expect.stringContaining("Editors Only Skill"),
+        "Showing 2 of 2.",
       ]);
+      expect(lines[0]).toContain(
+        "kind: custom, availability: users_and_agents, status: active, canWrite: true"
+      );
+      expect(lines[1]).toContain("availability: editors");
       // Usage is opt-in.
-      expect(skills[0]).not.toHaveProperty("agentsUsingCount");
+      expect(lines[0]).not.toContain("agentsUsing");
     });
 
     it("filters by availability", async () => {
@@ -345,29 +327,30 @@ describe("workspace_management tools", () => {
         availability: "users_and_agents",
       });
 
-      const { skills, total } = await callToolJson(
+      const lines = await callToolLines(
         "list_skills",
         { availability: ["users_and_agents"] },
         authenticator
       );
 
-      expect(total).toBe(1);
-      expect(skills[0].name).toBe("Discoverable Skill");
+      expect(lines).toEqual([
+        expect.stringContaining("Discoverable Skill"),
+        "Showing 1 of 1.",
+      ]);
     });
 
     it("returns the agent count when includeUsage is set", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
       await SkillFactory.create(authenticator, { name: "Unused Skill" });
 
-      const { skills } = await callToolJson(
+      const lines = await callToolLines(
         "list_skills",
         { includeUsage: true },
         authenticator
       );
 
-      expect(skills).toEqual([
-        expect.objectContaining({ name: "Unused Skill", agentsUsingCount: 0 }),
-      ]);
+      expect(lines[0]).toContain("Unused Skill");
+      expect(lines[0]).toContain("agentsUsing: 0");
     });
 
     it("excludes archived skills unless asked for them", async () => {
@@ -377,17 +360,16 @@ describe("workspace_management tools", () => {
         status: "archived",
       });
 
-      const active = await callToolJson("list_skills", {}, authenticator);
-      expect(active.total).toBe(0);
+      const active = await callTool("list_skills", {}, authenticator);
+      expect(active).toBe("No custom skills found.");
 
-      const archived = await callToolJson(
+      const archived = await callToolLines(
         "list_skills",
         { status: "archived" },
         authenticator
       );
-      expect(archived.skills).toEqual([
-        expect.objectContaining({ name: "Archived Skill", status: "archived" }),
-      ]);
+      expect(archived[0]).toContain("Archived Skill");
+      expect(archived[0]).toContain("status: archived");
     });
   });
 
@@ -399,21 +381,16 @@ describe("workspace_management tools", () => {
         instructions: "Do the thing, then the other thing.",
       });
 
-      const { skill } = await callToolJson(
+      const text = await callTool(
         "get_skill_details",
         { skillId: created.sId },
         authenticator
       );
 
-      expect(skill).toEqual(
-        expect.objectContaining({
-          sId: created.sId,
-          name: "Documented Skill",
-          kind: "custom",
-          instructions: "Do the thing, then the other thing.",
-          tools: [],
-        })
-      );
+      expect(text).toContain(`Skill Documented Skill [${created.sId}]`);
+      expect(text).toContain("kind: custom");
+      expect(text).toContain("- Tools: none");
+      expect(text).toContain("Do the thing, then the other thing.");
     });
 
     it("reports an unknown skill without failing", async () => {

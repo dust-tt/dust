@@ -6,8 +6,10 @@ import type {
 import { workspaceAdminGuard } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentViewType } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import {
-  makeJsonText,
+  makeTextLines,
   paginate,
+  renderFields,
+  renderPageFooter,
 } from "@app/lib/api/actions/servers/workspace_management/tools/utils";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { Authenticator } from "@app/lib/auth";
@@ -102,22 +104,31 @@ export async function listAgents(
   }
   const { page, total, nextCursor } = paginated.value;
 
+  if (total === 0) {
+    return new Ok([
+      { type: "text" as const, text: `No agents found for view '${view}'.` },
+    ]);
+  }
+
   return new Ok([
-    makeJsonText({
-      total,
-      nextCursor,
-      view,
-      agents: page.map((agent) => ({
-        sId: agent.sId,
-        name: agent.name,
-        description: agent.description,
-        scope: agent.scope,
-        status: agent.status,
-        model: agent.model.modelId,
-        tags: agent.tags.map((tag) => tag.name),
-        versionCreatedAt: agent.versionCreatedAt,
-        canEdit: agent.canEdit,
-      })),
-    }),
+    makeTextLines([
+      ...page.map((agent) =>
+        [
+          `${agent.name} [${agent.sId}]`,
+          renderFields({
+            scope: agent.scope,
+            status: agent.status,
+            model: agent.model.modelId,
+            tags: agent.tags.map((tag) => tag.name).join("|") || null,
+            updated: agent.versionCreatedAt,
+            canEdit: agent.canEdit,
+          }),
+          agent.description,
+        ]
+          .filter(Boolean)
+          .join(" — ")
+      ),
+      renderPageFooter({ shown: page.length, total, nextCursor }),
+    ]),
   ]);
 }
