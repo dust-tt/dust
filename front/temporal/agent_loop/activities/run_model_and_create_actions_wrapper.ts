@@ -11,6 +11,7 @@ import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { METRICS } from "@app/temporal/agent_loop/activities/instrumentation";
 import {
   AGENT_LOOP_COST_HARD_CAP_USD,
   AGENT_LOOP_SUBAGENT_HARD_CAP,
@@ -142,6 +143,7 @@ async function _runModelAndCreateActionsActivity({
     }
     throw runAgentDataRes.error;
   }
+  durationRecorder.record(METRICS.TIME_TO_DATA_LOADED);
 
   const { auth, ...runAgentData } = runAgentDataRes.value;
   const isRootAgentMessage = !runAgentData.userMessage.agenticMessageData;
@@ -313,6 +315,7 @@ async function _runModelAndCreateActionsActivity({
       runIds: currentRunIds,
     })
   );
+  durationRecorder.record(METRICS.TIME_TO_ACTIONS_CREATED);
 
   const needsApproval = createResult.actionBlobs.some((a) => a.needsApproval);
   if (needsApproval) {
