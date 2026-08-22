@@ -136,9 +136,9 @@ export const SHOPIFY_SERVER = {
     version: "1.0.0",
     description:
       "Export product catalog, customer lifetime value, and sales data from a Shopify store.",
-    // Pilot (phase 1) uses a merchant-provided token injected via authInfo; no
-    // Dust OAuth provider yet. Phase 2 will set
-    // `authorization: { provider: "shopify", supported_use_cases: [...] }`.
+    // No Shopify OAuth provider yet (preview): auth uses requiresBearerToken
+    // instead — a merchant access token as bearer + the shop domain via the
+    // `X-Shopify-Shop` custom header. This becomes an OAuth provider later.
     authorization: null,
     icon: "ActionTableIcon",
     documentationUrl: null,
