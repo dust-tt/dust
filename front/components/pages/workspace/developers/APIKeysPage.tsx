@@ -1,11 +1,22 @@
+import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
+import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
 import { APIKeysList } from "@app/components/workspace/api-keys/APIKeysList";
 import { EditKeyCapDialog } from "@app/components/workspace/api-keys/EditKeyCapDialog";
 import { EditKeyCreditCapDialog } from "@app/components/workspace/api-keys/EditKeyCreditCapDialog";
 import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
 import type { KeyRole } from "@app/components/workspace/api-keys/utils";
+import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
+import { formatCredits } from "@app/lib/client/credits";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useKeys } from "@app/lib/swr/apps";
@@ -15,16 +26,84 @@ import type { KeyType } from "@app/types/key";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
-import { BookOpen01, Button, Page } from "@dust-tt/sparkle";
+import { BookOpen01, Button, LoadingBlock, Page } from "@dust-tt/sparkle";
 import get from "lodash/get";
 import { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 interface APIKeysProps {
   owner: WorkspaceType;
+  period: ConsumptionPeriodSelection;
+  isAnalyticsConsumptionEnabled: boolean;
 }
 
-export function APIKeys({ owner }: APIKeysProps) {
+const MAX_API_KEY_CONSUMPTION_ROWS = 100;
+
+interface APIKeysOverviewProps {
+  keys: KeyType[];
+  totalCredits: number;
+  consumingKeyCount: number;
+  isConsumptionLoading: boolean;
+  isConsumptionError: boolean;
+}
+
+function APIKeysOverview({
+  keys,
+  totalCredits,
+  consumingKeyCount,
+  isConsumptionLoading,
+  isConsumptionError,
+}: APIKeysOverviewProps) {
+  if (isConsumptionLoading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2">
+        <LoadingBlock className="h-24 rounded-xl" />
+        <LoadingBlock className="h-24 rounded-xl" />
+      </div>
+    );
+  }
+
+  const activeKeyCount = keys.filter((key) => key.status === "active").length;
+  const cappedKeyCount = keys.filter(
+    (key) => key.status === "active" && key.creditState === "capped"
+  ).length;
+  const revokedKeyCount = keys.length - activeKeyCount;
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <SummaryCard
+        label="Credits"
+        value={isConsumptionError ? "—" : formatCredits(totalCredits)}
+        hint={
+          isConsumptionError
+            ? "Credit consumption is temporarily unavailable"
+            : consumingKeyCount > 0
+              ? `${consumingKeyCount.toLocaleString()} API ${
+                  consumingKeyCount === 1 ? "key" : "keys"
+                } used this period`
+              : "No API key consumption this period"
+        }
+      />
+      <SummaryCard
+        label="Keys active"
+        value={`${activeKeyCount.toLocaleString()} / ${keys.length.toLocaleString()}`}
+        hint={
+          cappedKeyCount > 0
+            ? `${cappedKeyCount.toLocaleString()} at the monthly cap`
+            : revokedKeyCount > 0
+              ? `${revokedKeyCount.toLocaleString()} revoked`
+              : null
+        }
+      />
+    </div>
+  );
+}
+
+export function APIKeys({
+  owner,
+  period,
+  isAnalyticsConsumptionEnabled,
+}: APIKeysProps) {
   const { mutate } = useSWRConfig();
   const { subscription } = useAuth();
   const showLegacyUsdMonthlyCap = !isCreditPricedPlan(subscription.plan);
@@ -36,6 +115,36 @@ export function APIKeys({ owner }: APIKeysProps) {
   const { groups, isGroupsError, isGroupsLoading } = useGroups({ owner });
   const isDataLoading = isKeysLoading || isGroupsLoading;
   const isDataError = Boolean(isKeysError || isGroupsError);
+
+  const apiKeyNames = useMemo(
+    () => [...new Set(keys.map((key) => key.name))].sort(),
+    [keys]
+  );
+  const consumptionFilter = useMemo<ConsumptionScopeFilter | undefined>(
+    () => (apiKeyNames.length > 0 ? { api_keys: apiKeyNames } : undefined),
+    [apiKeyNames]
+  );
+  const {
+    rows: consumptionRows,
+    totalCredits,
+    totalCount: consumingKeyCount,
+    hasMore: hasMoreConsumptionRows,
+    isTopLoading: isConsumptionLoading,
+    isTopError: consumptionError,
+  } = useConsumptionTop({
+    workspaceId: owner.sId,
+    dimension: "api_key",
+    period,
+    limit: Math.max(
+      1,
+      Math.min(apiKeyNames.length, MAX_API_KEY_CONSUMPTION_ROWS)
+    ),
+    filter: consumptionFilter,
+    disabled:
+      !isAnalyticsConsumptionEnabled ||
+      isKeysLoading ||
+      apiKeyNames.length === 0,
+  });
 
   const groupsById = useMemo(() => {
     return groups.reduce<Record<ModelId, GroupType>>((acc, group) => {
@@ -204,11 +313,25 @@ export function APIKeys({ owner }: APIKeysProps) {
             showLegacyUsdMonthlyCap={showLegacyUsdMonthlyCap}
           />
         </Page.Horizontal>
+        {isAnalyticsConsumptionEnabled && !isKeysError && (
+          <APIKeysOverview
+            keys={keys}
+            totalCredits={totalCredits}
+            consumingKeyCount={consumingKeyCount}
+            isConsumptionLoading={isKeysLoading || isConsumptionLoading}
+            isConsumptionError={Boolean(consumptionError)}
+          />
+        )}
         <APIKeysList
           keys={keys}
           groupsById={groupsById}
           isLoading={isDataLoading}
           isError={isDataError}
+          consumptionRows={consumptionRows}
+          isConsumptionLoading={isConsumptionLoading}
+          isConsumptionError={Boolean(consumptionError)}
+          hasMoreConsumptionRows={hasMoreConsumptionRows}
+          showAnalyticsConsumption={isAnalyticsConsumptionEnabled}
           isRevoking={isRevoking}
           isGenerating={isGenerating}
           onRevoke={handleRevoke}
@@ -241,14 +364,47 @@ export function APIKeys({ owner }: APIKeysProps) {
 
 export function APIKeysPage() {
   const owner = useWorkspace();
+  const { hasFeature } = useFeatureFlags();
+  const isAnalyticsConsumptionEnabled = hasFeature(
+    "enable_analytics_consumption"
+  );
+  const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
+    DEFAULT_CONSUMPTION_PERIOD
+  );
 
   return (
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
-        title="API Keys"
-        description="API Keys allow you to securely connect to Dust from other applications and work with your data programmatically."
+        title={
+          isAnalyticsConsumptionEnabled ? (
+            <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
+              <div className="flex max-w-2xl flex-col gap-1">
+                <Page.H variant="h3">API Keys</Page.H>
+                <Page.P variant="secondary">
+                  Create and manage API keys, track what they consume, and
+                  control their monthly spend.
+                </Page.P>
+              </div>
+              <ConsumptionPeriodSelector
+                period={period}
+                onPeriodChange={setPeriod}
+              />
+            </div>
+          ) : (
+            "API Keys"
+          )
+        }
+        description={
+          isAnalyticsConsumptionEnabled
+            ? undefined
+            : "API Keys allow you to securely connect to Dust from other applications and work with your data programmatically."
+        }
       />
-      <APIKeys owner={owner} />
+      <APIKeys
+        owner={owner}
+        period={period}
+        isAnalyticsConsumptionEnabled={isAnalyticsConsumptionEnabled}
+      />
     </Page.Vertical>
   );
 }

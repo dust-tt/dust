@@ -1,3 +1,4 @@
+import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { formatCredits } from "@app/lib/client/credits";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { GroupType } from "@app/types/groups";
@@ -35,6 +36,7 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import capitalize from "lodash/capitalize";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { prettifyGroupName } from "./utils";
 
@@ -47,6 +49,11 @@ interface APIKeysListProps {
   groupsById: Record<ModelId, GroupType>;
   isLoading: boolean;
   isError: boolean;
+  consumptionRows: ConsumptionTopRow[];
+  isConsumptionLoading: boolean;
+  isConsumptionError: boolean;
+  hasMoreConsumptionRows: boolean;
+  showAnalyticsConsumption: boolean;
   isRevoking: boolean;
   isGenerating: boolean;
   onRevoke: (key: KeyType) => Promise<void>;
@@ -63,6 +70,7 @@ interface APIKeyRowData {
   scope: string;
   secret: string;
   status: APIKeyStatus;
+  credits: number | null;
   monthlyCap: string;
   lastUsedAt: number | null;
   menuItems: MenuItem[];
@@ -150,22 +158,55 @@ function matchesAPIKeySearch(row: APIKeyRowData, search: string): boolean {
   ].some((value) => value.toLowerCase().includes(normalizedSearch));
 }
 
+interface ConsumptionCellProps {
+  isLoading: boolean;
+  children: ReactNode;
+  align?: "left" | "right";
+}
+
+function ConsumptionCell({
+  isLoading,
+  children,
+  align = "right",
+}: ConsumptionCellProps) {
+  if (isLoading) {
+    return (
+      <DataTable.CellContent
+        className={
+          align === "right" ? "w-full justify-end" : "w-full justify-start"
+        }
+      >
+        <LoadingBlock className="h-3 w-16" />
+      </DataTable.CellContent>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 function buildColumns({
   actionsDisabled,
   capLabel,
+  isConsumptionLoading,
   onRevoke,
+  showAnalyticsConsumption,
 }: {
   actionsDisabled: boolean;
   capLabel: string;
+  isConsumptionLoading: boolean;
   onRevoke: (key: KeyType) => Promise<void>;
+  showAnalyticsConsumption: boolean;
 }): ColumnDef<APIKeyRowData>[] {
-  return [
+  const columns: ColumnDef<APIKeyRowData>[] = [
     {
       id: "name",
       accessorFn: (row) => row.name,
       header: "Name",
       enableSorting: true,
-      meta: { className: "h-16 w-40", headerAlign: "left" },
+      meta: {
+        className: showAnalyticsConsumption ? "h-16 w-36" : "h-16 w-40",
+        headerAlign: "left",
+      },
       cell: (info) => (
         <div className="flex flex-col justify-center">
           <span className="truncate text-sm font-medium text-foreground">
@@ -183,7 +224,9 @@ function buildColumns({
       header: "Scope",
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-28 @lg-table:table-cell",
+        className: showAnalyticsConsumption
+          ? "hidden h-16 w-28 @md-table:table-cell"
+          : "hidden h-16 w-28 @lg-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => (
@@ -202,7 +245,9 @@ function buildColumns({
       header: "Key",
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-28 @lg-table:table-cell",
+        className: showAnalyticsConsumption
+          ? "hidden h-16 w-24 @xl-table:table-cell"
+          : "hidden h-16 w-28 @lg-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => {
@@ -223,7 +268,9 @@ function buildColumns({
       header: "Spaces",
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-40 @md-table:table-cell",
+        className: showAnalyticsConsumption
+          ? "hidden h-16 w-40 @lg-table:table-cell"
+          : "hidden h-16 w-40 @md-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => {
@@ -266,12 +313,33 @@ function buildColumns({
       },
     },
     {
+      id: "credits",
+      accessorKey: "credits",
+      header: "Credits",
+      enableSorting: false,
+      meta: { className: "h-16 w-32", headerAlign: "left" },
+      cell: (info) => (
+        <ConsumptionCell isLoading={isConsumptionLoading} align="left">
+          <DataTable.BasicCellContent
+            className="justify-start text-left tabular-nums"
+            label={`${
+              info.row.original.credits === null
+                ? "—"
+                : formatCredits(info.row.original.credits)
+            }/${info.row.original.monthlyCap}`}
+          />
+        </ConsumptionCell>
+      ),
+    },
+    {
       id: "monthlyCap",
       accessorKey: "monthlyCap",
       header: capLabel,
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-28 @md-table:table-cell",
+        className: showAnalyticsConsumption
+          ? "hidden h-16 w-24 @md-table:table-cell"
+          : "hidden h-16 w-28 @md-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => (
@@ -333,7 +401,9 @@ function buildColumns({
       header: "",
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-20 @xs-table:table-cell",
+        className: showAnalyticsConsumption
+          ? "hidden h-16 w-24 @xs-table:table-cell"
+          : "hidden h-16 w-20 @xs-table:table-cell",
         headerAlign: "right",
       },
       cell: (info) =>
@@ -353,7 +423,9 @@ function buildColumns({
       id: "actions",
       header: "",
       enableSorting: false,
-      meta: { className: "h-16 w-10" },
+      meta: {
+        className: showAnalyticsConsumption ? "h-16 w-12" : "h-16 w-10",
+      },
       cell: (info) =>
         info.row.original.menuItems.length > 0 ? (
           <DataTable.CellContent className="w-full justify-end">
@@ -365,6 +437,12 @@ function buildColumns({
         ) : null,
     },
   ];
+
+  if (showAnalyticsConsumption) {
+    return columns.filter((column) => column.id !== "monthlyCap");
+  }
+
+  return columns.filter((column) => column.id !== "credits");
 }
 
 export function APIKeysList({
@@ -372,6 +450,11 @@ export function APIKeysList({
   groupsById,
   isLoading,
   isError,
+  consumptionRows,
+  isConsumptionLoading,
+  isConsumptionError,
+  hasMoreConsumptionRows,
+  showAnalyticsConsumption,
   isRevoking,
   isGenerating,
   onRevoke,
@@ -392,6 +475,10 @@ export function APIKeysList({
   });
   const [sorting, setSorting] = useState<SortingState>([]);
 
+  const consumptionByName = useMemo(
+    () => new Map(consumptionRows.map((row) => [row.name, row])),
+    [consumptionRows]
+  );
   const actionsDisabled = isRevoking || isGenerating;
   const rows = useMemo<APIKeyRowData[]>(
     () =>
@@ -400,6 +487,12 @@ export function APIKeysList({
         const scope = formatKeyScope(key.role);
         const status = getKeyStatus(key);
         const creator = key.creator ?? "Unknown creator";
+        const consumption = consumptionByName.get(key.name);
+        const isConsumptionKnown =
+          showAnalyticsConsumption &&
+          (Boolean(consumption) ||
+            (!hasMoreConsumptionRows && !isConsumptionError));
+        const credits = consumption?.credits ?? (isConsumptionKnown ? 0 : null);
         const menuItems: MenuItem[] =
           key.status === "active"
             ? [
@@ -420,6 +513,7 @@ export function APIKeysList({
           scope,
           secret: key.secret,
           status,
+          credits,
           monthlyCap: formatMonthlyCap({
             key,
             showLegacyUsdMonthlyCap,
@@ -429,7 +523,17 @@ export function APIKeysList({
           menuItems,
         };
       }),
-    [groupsById, keys, onEditCap, showCreditMonthlyCap, showLegacyUsdMonthlyCap]
+    [
+      consumptionByName,
+      groupsById,
+      hasMoreConsumptionRows,
+      isConsumptionError,
+      keys,
+      onEditCap,
+      showAnalyticsConsumption,
+      showCreditMonthlyCap,
+      showLegacyUsdMonthlyCap,
+    ]
   );
 
   const scopeOptions = useMemo(
@@ -441,9 +545,17 @@ export function APIKeysList({
       buildColumns({
         actionsDisabled,
         capLabel: showCreditMonthlyCap ? "Credits cap" : "Monthly cap",
+        isConsumptionLoading,
         onRevoke,
+        showAnalyticsConsumption,
       }),
-    [actionsDisabled, onRevoke, showCreditMonthlyCap]
+    [
+      actionsDisabled,
+      isConsumptionLoading,
+      onRevoke,
+      showAnalyticsConsumption,
+      showCreditMonthlyCap,
+    ]
   );
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
@@ -597,8 +709,6 @@ export function APIKeysList({
               />
             </div>
           )}
-
-          <Separator />
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-foreground">
               {filteredRows.length.toLocaleString()} API key
