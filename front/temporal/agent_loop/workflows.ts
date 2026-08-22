@@ -15,7 +15,6 @@ import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_lo
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
 import {
   MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
-  RUN_MODEL_MAX_RETRIES,
   TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
 } from "@app/temporal/agent_loop/config";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
@@ -78,8 +77,10 @@ const { runModelAndCreateActionsActivity } = proxyActivities<
   startToCloseTimeout: "10 minutes",
   heartbeatTimeout: MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
   retry: {
-    maximumAttempts: RUN_MODEL_MAX_RETRIES,
-    backoffCoefficient: 1,
+    // Attempts past RUN_MODEL_MAX_RETRIES only serve non-model failures (worker-shutdown
+    // interruptions, timeouts, internal errors): real model errors self-limit in run_model
+    // (see shouldSurfaceModelError).
+    maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
   },
 });
 
@@ -91,8 +92,10 @@ const {
   heartbeatTimeout: MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
   cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
   retry: {
-    maximumAttempts: RUN_MODEL_MAX_RETRIES,
-    backoffCoefficient: 1,
+    // Attempts past RUN_MODEL_MAX_RETRIES only serve non-model failures (worker-shutdown
+    // interruptions, timeouts, internal errors): real model errors self-limit in run_model
+    // (see shouldSurfaceModelError).
+    maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
   },
 });
 
