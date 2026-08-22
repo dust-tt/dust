@@ -30,6 +30,7 @@ import { SkillDetailsPage } from "@dust-tt/front/components/poke/pages/SkillDeta
 import { SkillSuggestionDetailsPage } from "@dust-tt/front/components/poke/pages/SkillSuggestionDetailsPage";
 import { SpaceDataSourceViewPage } from "@dust-tt/front/components/poke/pages/SpaceDataSourceViewPage";
 import { SpacePage } from "@dust-tt/front/components/poke/pages/SpacePage";
+import { SuperusersPage } from "@dust-tt/front/components/poke/pages/SuperusersPage";
 import { TemplateDetailPage } from "@dust-tt/front/components/poke/pages/TemplateDetailPage";
 import { TemplatesListPage } from "@dust-tt/front/components/poke/pages/TemplatesListPage";
 import { TriggerDetailsPage } from "@dust-tt/front/components/poke/pages/TriggerDetailsPage";
@@ -78,6 +79,7 @@ export const routes: RouteObject[] = [
           { path: "coupons", element: <CouponsPage /> },
           { path: "pokefy", element: <PokefyPage /> },
           { path: "production-checks", element: <ProductionChecksPage /> },
+          { path: "superusers", element: <SuperusersPage /> },
           { path: "email-templates", element: <EmailTemplatesPage /> },
           {
             path: "global-agent-feedbacks",
