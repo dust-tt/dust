@@ -1,5 +1,6 @@
 import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ModelIdType,
@@ -125,5 +126,22 @@ export class AgentConfigurationFactory {
       instructionsHtml: overrides.instructionsHtml ?? null,
       actions: [],
     };
+  }
+
+  /** Backdates every version of an agent, for features that treat a young agent differently. */
+  static async setCreatedAtForTest(
+    auth: Authenticator,
+    agentId: string,
+    createdAt: Date
+  ): Promise<void> {
+    await AgentConfigurationModel.update(
+      { createdAt },
+      {
+        where: {
+          sId: agentId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
   }
 }
