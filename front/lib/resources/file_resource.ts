@@ -2,11 +2,7 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 import config from "@app/lib/api/config";
-import {
-  SCOPED_PREFIX_CONVERSATION,
-  SCOPED_PREFIX_POD,
-  sanitizeFileSystemName,
-} from "@app/lib/api/file_system";
+import { sanitizeFileSystemName } from "@app/lib/api/file_system";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   getProcessedContentType,
@@ -54,6 +50,10 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import { CoreAPI } from "@app/types/core/core_api";
+import {
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+} from "@app/types/file_system";
 import type {
   AuthorizedFileAccessAllowlist,
   AuthorizedFileRef,
@@ -433,6 +433,24 @@ export class FileResource extends BaseResource<FileModel> {
     });
 
     return files.map((f) => new this(this.model, f.get()));
+  }
+
+  static async fetchByFileSystemNodeIds(
+    auth: Authenticator,
+    fileSystemNodeIds: number[]
+  ): Promise<FileResource[]> {
+    if (fileSystemNodeIds.length === 0) {
+      return [];
+    }
+
+    const files = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        fileSystemNodeId: { [Op.in]: fileSystemNodeIds },
+      },
+    });
+
+    return files.map((file) => new this(this.model, file.get()));
   }
 
   static async deleteAllForWorkspace(auth: Authenticator) {
@@ -1154,6 +1172,24 @@ export class FileResource extends BaseResource<FileModel> {
     return result;
   }
 
+  async setPublishedFrameSource(
+    auth: Authenticator,
+    {
+      metadata,
+      fileSystemNodeId,
+    }: {
+      metadata: FileUseCaseMetadata;
+      fileSystemNodeId: number;
+    }
+  ) {
+    const result = await this.update({
+      useCaseMetadata: metadata,
+      fileSystemNodeId,
+    });
+    await this.resolveAndSetMountFilePath(auth);
+    return result;
+  }
+
   /**
    * Public entry point to trigger mount path resolution. Idempotent — no-ops when a path is
    * already set or when the file's use case isn't mount-eligible. Used by backfill scripts.
@@ -1470,6 +1506,11 @@ export class FileResource extends BaseResource<FileModel> {
       fileName: sanitizeFileSystemName(newFileName),
       mountFilePath: newMountFilePath,
     });
+  }
+
+  // Binds this file to the Dust file system node holding its live source.
+  bindToFileSystemNode(fileSystemNodeId: number) {
+    return this.update({ fileSystemNodeId });
   }
 
   updateMount({

@@ -72,6 +72,24 @@ export interface FileSystemBackend {
   exists(scopedPath: string): Promise<Result<boolean, DustFileSystemError>>;
 
   /**
+   * The id of the node at `scopedPath`, or `Err("not_found")` when nothing is
+   * there. Backends without nodes return `Ok(null)`.
+   */
+  nodeIdForPath(
+    scopedPath: string
+  ): Promise<Result<number | null, DustFileSystemError>>;
+
+  /**
+   * The current scoped path of the node with this id, following every move and
+   * rename since the id was stored. `Err("not_found")` when the node no longer
+   * exists or lives outside this file system's mounts. Backends without nodes
+   * return `Ok(null)`.
+   */
+  pathForNodeId(
+    nodeId: number
+  ): Promise<Result<string | null, DustFileSystemError>>;
+
+  /**
    * When `content` is a `Readable`, the data is streamed to storage without buffering it in
    * memory; the stream is consumed (or destroyed on error) by the backend.
    */
