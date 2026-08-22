@@ -5,14 +5,11 @@ import { DustError } from "@app/lib/error";
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
-import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -526,13 +523,9 @@ describe("SpaceResource", () => {
           regularSpace.sId
         );
         expect(updatedSpace).not.toBeNull();
-        const groupSpaces = await GroupSpaceModel.findAll({
-          where: {
-            vaultId: regularSpace.id,
-            workspaceId: workspace.id,
-          },
-        });
-        const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
+        const associatedGroupIds = updatedSpace!.groups.map(
+          (group) => group.groupId
+        );
         expect(associatedGroupIds).toContain(provisionedGroup1.id);
         expect(associatedGroupIds).toContain(provisionedGroup2.id);
       });
@@ -581,13 +574,13 @@ describe("SpaceResource", () => {
         expect(result.isOk()).toBe(true);
 
         // Verify only group2 is associated (plus the regular group)
-        const groupSpaces = await GroupSpaceModel.findAll({
-          where: {
-            vaultId: regularSpace.id,
-            workspaceId: workspace.id,
-          },
-        });
-        const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
+        const refetchedSpace = await SpaceResource.fetchById(
+          adminAuth,
+          regularSpace.sId
+        );
+        const associatedGroupIds = refetchedSpace!.groups.map(
+          (group) => group.groupId
+        );
         expect(associatedGroupIds).not.toContain(provisionedGroup1.id);
         expect(associatedGroupIds).toContain(provisionedGroup2.id);
         expect(associatedGroupIds).toContain(regularGroup.id); // Regular group should still be there
@@ -794,19 +787,19 @@ describe("SpaceResource", () => {
         expect(result.isOk()).toBe(true);
 
         // Verify global group was added
-        const groupSpaces = await GroupSpaceModel.findAll({
-          where: {
-            vaultId: regularSpace.id,
-            workspaceId: workspace.id,
-          },
-        });
-        const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
+        const updatedSpace = await SpaceResource.fetchById(
+          adminAuth,
+          regularSpace.sId
+        );
+        const associatedGroupIds = updatedSpace!.groups.map(
+          (group) => group.groupId
+        );
         expect(associatedGroupIds).toContain(globalGroup.id);
       });
 
       it("should remove global group when changing from open to restricted", async () => {
-        // First make it open through updatePermissions so both the group_vaults association and the
-        // group_permissions grant are written (space.groups is sourced from group_permissions).
+        // First make it open through updatePermissions so the global group's grant is written
+        // (space.groups is sourced from group_permissions).
         const openResult = await regularSpace.updatePermissions(adminAuth, {
           name: "Test Space",
           isRestricted: false,
@@ -837,14 +830,14 @@ describe("SpaceResource", () => {
         expect(result.isOk()).toBe(true);
 
         // Verify global group was removed
-        const groupSpaces = await GroupSpaceModel.findAll({
-          where: {
-            vaultId: regularSpace.id,
-            workspaceId: workspace.id,
-            groupId: globalGroup.id,
-          },
-        });
-        expect(groupSpaces.length).toBe(0);
+        const refetchedSpace = await SpaceResource.fetchById(
+          adminAuth,
+          regularSpace.sId
+        );
+        const associatedGroupIds = refetchedSpace!.groups.map(
+          (group) => group.groupId
+        );
+        expect(associatedGroupIds).not.toContain(globalGroup.id);
       });
 
       it("should not change global group when restricted state stays the same", async () => {
@@ -857,14 +850,12 @@ describe("SpaceResource", () => {
           editorIds: [],
         });
 
-        const groupSpacesBefore = await GroupSpaceModel.findAll({
-          where: {
-            vaultId: regularSpace.id,
-            workspaceId: workspace.id,
-          },
-        });
-        const globalGroupPresentBefore = groupSpacesBefore.some(
-          (gs) => gs.groupId === globalGroup.id
+        const spaceBefore = await SpaceResource.fetchById(
+          adminAuth,
+          regularSpace.sId
+        );
+        const globalGroupPresentBefore = spaceBefore!.groups.some(
+          (group) => group.groupId === globalGroup.id
         );
 
         // Update but keep restricted
@@ -876,14 +867,12 @@ describe("SpaceResource", () => {
           editorIds: [],
         });
 
-        const groupSpacesAfter = await GroupSpaceModel.findAll({
-          where: {
-            vaultId: regularSpace.id,
-            workspaceId: workspace.id,
-          },
-        });
-        const globalGroupPresentAfter = groupSpacesAfter.some(
-          (gs) => gs.groupId === globalGroup.id
+        const spaceAfter = await SpaceResource.fetchById(
+          adminAuth,
+          regularSpace.sId
+        );
+        const globalGroupPresentAfter = spaceAfter!.groups.some(
+          (group) => group.groupId === globalGroup.id
         );
 
         expect(globalGroupPresentBefore).toBe(globalGroupPresentAfter);
@@ -1005,20 +994,8 @@ describe("SpaceResource", () => {
               workspaceId: workspace.id,
               managementMode: "manual",
             },
-            { members: [projectMemberGroup] }
+            { members: [projectMemberGroup], editors: [projectEditorGroup] }
           );
-
-          // Link the editor group to the project space with kind="project_editor"
-          await GroupSpaceEditorResource.makeNew(adminAuth, {
-            group: projectEditorGroup,
-            space: projectSpace,
-          });
-
-          // The association was created directly (not through createSpace/updatePermissions), so
-          // seed the space's group_permissions from it — access is served from the table.
-          await projectSpace.writeGroupPermissions(adminAuth, {
-            ...(await projectSpace.fetchAssociatedGroups()),
-          });
         });
 
         it("should not allow simple members to update space permissions", async () => {
@@ -1470,20 +1447,11 @@ describe("SpaceResource", () => {
               workspaceId: workspace.id,
               managementMode: "group",
             },
-            { members: [projectMemberGroup, provisionedMemberGroup] }
+            {
+              members: [projectMemberGroup, provisionedMemberGroup],
+              editors: [provisionedEditorGroup],
+            }
           );
-
-          // Link the editor group to the project space with kind="project_editor"
-          await GroupSpaceEditorResource.makeNew(adminAuth, {
-            group: provisionedEditorGroup,
-            space: projectSpace,
-          });
-
-          // The association was created directly (not through createSpace/updatePermissions), so
-          // seed the space's group_permissions from it — access is served from the table.
-          await projectSpace.writeGroupPermissions(adminAuth, {
-            ...(await projectSpace.fetchAssociatedGroups()),
-          });
         });
 
         it("should not allow simple members to update space permissions", async () => {
@@ -1594,23 +1562,18 @@ describe("SpaceResource", () => {
 
           expect(result.isOk()).toBe(true);
 
-          // Verify the new provisioned group is associated
-          const groupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-            space: projectSpace,
-          });
-          const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
+          // Verify the associations via the space's group_permissions grants (the source of truth).
+          const refetchedSpace = await SpaceResource.fetchById(
+            adminAuth,
+            projectSpace.sId
+          );
+          const associatedGroupIds = refetchedSpace!.groups.map(
+            (group) => group.groupId
+          );
+          // The new provisioned member group is associated.
           expect(associatedGroupIds).toContain(newProvisionedMemberGroup.id);
-
-          // Verify editor group is still associated
-          const editorGroupSpaces = await GroupSpaceModel.findAll({
-            where: {
-              vaultId: projectSpace.id,
-              workspaceId: workspace.id,
-              kind: "project_editor",
-            },
-          });
-          const editorGroupIds = editorGroupSpaces.map((gs) => gs.groupId);
-          expect(editorGroupIds).toContain(provisionedEditorGroup.id);
+          // The editor group is still associated.
+          expect(associatedGroupIds).toContain(provisionedEditorGroup.id);
         });
       });
     });

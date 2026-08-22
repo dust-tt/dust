@@ -1,3 +1,4 @@
+import { Authenticator } from "@app/lib/auth";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
@@ -82,8 +83,11 @@ describe("GET /api/v1/w/:wId/spaces", () => {
 
     // A key is a workspace member, and the global group only ever reads a project, so the key has
     // to hold the project's own member group to be a member of it.
-    const { members } = await project.fetchAssociatedGroups();
-    const key = await KeyFactory.regular([globalGroup, ...members]);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const memberGroup = await project.fetchManualMemberGroup(adminAuth);
+    const key = await KeyFactory.regular([globalGroup, memberGroup]);
 
     const defaultResponse = await honoApp.request(
       `/api/v1/w/${workspace.sId}/spaces`,

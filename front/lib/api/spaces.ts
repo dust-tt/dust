@@ -21,12 +21,10 @@ import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversati
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
@@ -769,21 +767,10 @@ export async function createSpaceAndGroup(
     const memberGroups: GroupResource[] = [membersGroup];
 
     if (!isRestricted) {
-      // Set the global group as viewer for non-restricted project spaces
+      // Include the global group so the space's grants mark it as open (viewer for projects,
+      // member for regular spaces); the grant is written by `writeGroupPermissions` below.
       assert(globalGroup, "Global group must exist");
       memberGroups.push(globalGroup);
-      await GroupSpaceModel.create(
-        {
-          kind: space.isProject() ? "project_viewer" : "member",
-          groupId: globalGroup.id,
-          groupKind: globalGroup.kind,
-          vaultId: space.id,
-          workspaceId: owner.id,
-        },
-        {
-          transaction: t,
-        }
-      );
     }
 
     // Handle member-based space creation
@@ -848,13 +835,6 @@ export async function createSpaceAndGroup(
 
           const selectedGroups = selectedGroupsResult.value;
           memberGroups.push(...selectedGroups);
-          for (const selectedGroup of selectedGroups) {
-            await GroupSpaceMemberResource.makeNew(auth, {
-              group: selectedGroup,
-              space,
-              transaction: t,
-            });
-          }
         }
         break;
       default:

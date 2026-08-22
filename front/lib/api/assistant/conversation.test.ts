@@ -33,6 +33,7 @@ import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -89,7 +90,6 @@ import { runOnRedis } from "@app/lib/api/redis";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
-import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -2620,18 +2620,10 @@ describe("postUserMessage", () => {
     });
 
     it("should allow posting a message without an auth user to an open Pod when user association is disabled", async () => {
-      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
-      );
-      await GroupSpaceViewerResource.makeNew(internalAdminAuth, {
-        group: globalGroup,
-        space: projectSpace,
-      });
-      // Sync group_permissions so the space reads as open (production does this after attaching the
-      // viewer via `syncGroupPermissions`); `isOpen` is now sourced from grants.
-      await projectSpace.writeGroupPermissions(
-        internalAdminAuth,
-        await projectSpace.fetchAssociatedGroups()
+      await GroupSpaceFactory.associate(
+        projectSpace,
+        globalGroup,
+        "project_viewer"
       );
 
       const apiKey = await KeyFactory.regular(globalGroup);
@@ -2674,18 +2666,10 @@ describe("postUserMessage", () => {
     });
 
     it("should reject posting a message without an auth user to an open Pod when user association is enabled", async () => {
-      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
-      );
-      await GroupSpaceViewerResource.makeNew(internalAdminAuth, {
-        group: globalGroup,
-        space: projectSpace,
-      });
-      // Sync group_permissions so the space reads as open (production does this after attaching the
-      // viewer via `syncGroupPermissions`); `isOpen` is now sourced from grants.
-      await projectSpace.writeGroupPermissions(
-        internalAdminAuth,
-        await projectSpace.fetchAssociatedGroups()
+      await GroupSpaceFactory.associate(
+        projectSpace,
+        globalGroup,
+        "project_viewer"
       );
 
       const apiKey = await KeyFactory.regular(globalGroup);

@@ -8,7 +8,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import type { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -1122,20 +1122,21 @@ export class GroupResource extends BaseResource<GroupModel> {
       return [];
     }
 
-    // Find groups associated with the space through GroupSpaceModel
-    const groupSpaces = await GroupSpaceModel.findAll({
+    // Find groups associated with the space through its group_permissions grants.
+    const spaceGrants = await GroupPermissionModel.findAll({
       where: {
-        vaultId: spaceModelId,
+        resourceType: "space",
+        resourceId: spaceModelId,
         workspaceId: workspace.id,
       },
       attributes: ["groupId"],
     });
 
-    if (groupSpaces.length === 0) {
+    if (spaceGrants.length === 0) {
       return [];
     }
 
-    const groupIds = groupSpaces.map((gs) => gs.groupId);
+    const groupIds = [...new Set(spaceGrants.map((grant) => grant.groupId))];
     const { groupKinds } = options;
 
     const whereClause: WhereOptions<GroupModel> = {
@@ -2488,14 +2489,6 @@ export class GroupResource extends BaseResource<GroupModel> {
           transaction,
         }
       );
-
-      await GroupSpaceModel.destroy({
-        where: {
-          groupId: this.id,
-          workspaceId: owner.id,
-        },
-        transaction,
-      });
 
       await GroupAgentModel.destroy({
         where: {
