@@ -3,6 +3,7 @@ import {
   formatValidationWarningsForLLM,
   validateTailwindCode,
   validateTypeScriptSyntax,
+  validateUseFileCalls,
 } from "@app/lib/api/files/content_validation";
 import { describe, expect, it } from "vitest";
 
@@ -426,6 +427,114 @@ const MyComponent = () => {
         "TypeScript syntax errors detected"
       );
       expect(result.error.message).toContain("error TS");
+    }
+  });
+});
+
+describe("validateUseFileCalls", () => {
+  it("should pass code without useFile calls", () => {
+    const code = `
+      const MyComponent = () => {
+        return <div>Hello</div>;
+      };
+    `;
+    const result = validateUseFileCalls(code);
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("should pass useFile with a string literal file ID", () => {
+    const code = `
+      const MyComponent = () => {
+        const file = useFile("fil_ABCDEFGHIJ");
+        return <div>{file?.name}</div>;
+      };
+    `;
+    const result = validateUseFileCalls(code);
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("should pass useFile with a scoped path string literal", () => {
+    const code = `const file = useFile("conversation-conv_123/report.csv");`;
+    const result = validateUseFileCalls(code);
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("should pass useFile with a no-substitution template literal", () => {
+    const code = "const file = useFile(`fil_ABCDEFGHIJ`);";
+    const result = validateUseFileCalls(code);
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("should reject useFile with a variable argument", () => {
+    const code = `
+      const MyComponent = ({ fileId }) => {
+        const file = useFile(fileId);
+        return <div>{file?.name}</div>;
+      };
+    `;
+    const result = validateUseFileCalls(code);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "Invalid useFile() calls detected"
+      );
+      expect(result.error.message).toContain("useFile(fileId)");
+      expect(result.error.message).toContain("string literal");
+    }
+  });
+
+  it("should reject useFile with string concatenation", () => {
+    const code = `const file = useFile("fil_" + fileSuffix);`;
+    const result = validateUseFileCalls(code);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain('useFile("fil_" + fileSuffix)');
+    }
+  });
+
+  it("should reject useFile with a template literal containing substitutions", () => {
+    const code =
+      "const file = useFile(`conversation-${conversationId}/report.csv`);";
+    const result = validateUseFileCalls(code);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("${...}");
+    }
+  });
+
+  it("should reject useFile with no arguments", () => {
+    const code = `const file = useFile();`;
+    const result = validateUseFileCalls(code);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("useFile()");
+      expect(result.error.message).toContain(
+        "requires a string literal file ID or scoped path"
+      );
+    }
+  });
+
+  it("should reject multiple invalid useFile calls", () => {
+    const code = `
+      const a = useFile(fileId);
+      const b = useFile(getPath());
+    `;
+    const result = validateUseFileCalls(code);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("useFile(fileId)");
+      expect(result.error.message).toContain("useFile(getPath())");
+    }
+  });
+
+  it("should mention shared frame authorization in the error message", () => {
+    const code = `const file = useFile(dynamicPath);`;
+    const result = validateUseFileCalls(code);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "authorized when the Frame is shared"
+      );
     }
   });
 });

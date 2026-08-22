@@ -2,6 +2,7 @@ import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import {
   validateTailwindCode,
   validateTypeScriptSyntax,
+  validateUseFileCalls,
 } from "@app/lib/api/files/content_validation";
 import {
   getFileContent,
@@ -87,6 +88,14 @@ export async function createClientExecutableFile(
   if (syntaxValidation.isErr()) {
     return new Err({
       message: syntaxValidation.error.message,
+      tracked: false,
+    });
+  }
+
+  const useFileValidation = validateUseFileCalls(content);
+  if (useFileValidation.isErr()) {
+    return new Err({
+      message: useFileValidation.error.message,
       tracked: false,
     });
   }
@@ -244,6 +253,14 @@ export async function editClientExecutableFile(
       if (syntaxValidation.isErr()) {
         return new Err({
           message: syntaxValidation.error.message,
+          tracked: false,
+        });
+      }
+
+      const useFileValidation = validateUseFileCalls(updatedContent);
+      if (useFileValidation.isErr()) {
+        return new Err({
+          message: useFileValidation.error.message,
           tracked: false,
         });
       }
