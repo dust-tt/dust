@@ -246,6 +246,7 @@ def _annotate_boxes(
     slide_w_emu: int,
     slide_h_emu: int,
     effective_boxes: Optional[Dict[int, BoxEmu]] = None,
+    draw_boxes: bool = True,
 ):
     """Overlay each top-level shape's bounding box on the slide image and
     compute pixel metrics. Box positions are read from the file (exact even
@@ -253,6 +254,13 @@ def _annotate_boxes(
     pixels (colors/positions are faithful). Draws box outlines, an `#id` label
     just OUTSIDE each box (detail goes to stdout, not onto the image), a tint on
     text boxes, and a red wash over peer-overlap regions.
+
+    `draw_boxes=False` computes the same findings but draws only the collision
+    wash. That is the QA default: the per-shape tint and outlines answer "which
+    box is #id" at the cost of the question QA actually asks - is this copy
+    legible on this background, is this margin even - because a 16%-alpha wash
+    over every text box and a 3px saturated outline around it change exactly the
+    pixels being judged.
 
     `effective_boxes` maps a shape_id to a box (EMU) grown to wrap copy that
     overflows its declared box; when present the overlay draws and tests that
@@ -363,6 +371,14 @@ def _annotate_boxes(
             nearest = min(abs(yc - my) for yc in rows)
             if nearest / ppi > MARKER_ALIGN_TOL_IN:
                 findings["markers"].append((m.shape_id, nearest / ppi))
+
+    if not draw_boxes:
+        out_path = image_path.with_name(image_path.stem + "-qa.png")
+        try:
+            Image.alpha_composite(base, overlay).convert("RGB").save(out_path)
+        except (OSError, ValueError):
+            return None
+        return out_path, findings
 
     for i, shape in enumerate(shapes):
         x0, y0, x1, y1 = to_px(shape)

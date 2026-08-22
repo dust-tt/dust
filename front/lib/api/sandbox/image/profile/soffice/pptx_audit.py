@@ -33,6 +33,7 @@ from pptx_geometry import (
     _fit_estimate,
     _frame_text_len,
     _grows_to_fit,
+    emu_to_inches,
     shape_kind,
 )
 from pptx_typography import placeholder_type, resolve_placeholder_defaults
@@ -187,12 +188,23 @@ def _fit_tokens(shape: BaseShape, layout_chain) -> List[str]:
     return tokens
 
 
+def embedded_image(shape: BaseShape):
+    """A shape's image part, or None. python-pptx RAISES on `.image` for a
+    picture placeholder with no picture in it, which `getattr(..., None)` does
+    not catch - and a template full of empty picture placeholders is exactly
+    what an audit walks."""
+    try:
+        return getattr(shape, "image", None)
+    except (ValueError, KeyError, AttributeError):
+        return None
+
+
 def _image_markers(shape: BaseShape) -> List[str]:
     """Aspect-ratio distortion and low-resolution warnings for a picture (or a
     populated picture placeholder). Distortion compares the display box ratio to
     the image's crop-adjusted native ratio - squished/stretched photos read as
     sloppy even when nothing overflows."""
-    image = getattr(shape, "image", None)
+    image = embedded_image(shape)
     if image is None:
         return []
     size = getattr(image, "size", None)
@@ -285,7 +297,16 @@ def _shape_warning_markers(
             shape.height,
         )
         if None not in (left, top, width, height):
-            if (
+            if width <= 0 or height <= 0:
+                # A box collapsed on one axis renders nothing at all: the text
+                # is in the file, invisible on the slide, and every other check
+                # here reads it as present. Comes from arithmetic that produced
+                # a zero width/height, so it is always the model's own bug.
+                markers.append(
+                    f"[!] zero-size box ({emu_to_inches(width):.1f}x"
+                    f"{emu_to_inches(height):.1f}in) - its content does not render"
+                )
+            elif (
                 left < -EDGE_EPSILON_EMU
                 or top < -EDGE_EPSILON_EMU
                 or left + width > ctx.width_emu + EDGE_EPSILON_EMU
@@ -483,39 +504,103 @@ def _listed_slide_count(path: str) -> Optional[int]:
     return len(re.findall(r"<[\w]*:?sldId[\s>/]", m.group(1)))
 
 
-def _deck_structural_tally(path: str) -> Optional[Dict[str, int]]:
-    """Roll up per-slide structural issues across the deck: stacked boxes,
-    distorted images, and shapes off the slide. Informational at the deck level
-    (some may be inherited from the template), so the agent knows to look - the
-    per-slide --slide view is where each is judged and fixed."""
+STRUCTURAL_KINDS = ("zero_size", "off_slide", "distorted", "stacked")
+
+# Per-kind label for the --compare structural line and its blocker message.
+STRUCTURAL_LABELS = {
+    "zero_size": "zero-size",
+    "off_slide": "off-slide",
+    "distorted": "distorted-img",
+    "stacked": "stacked",
+}
+
+
+def _slide_structural(slide: Slide, sw: int, sh: int) -> Dict[str, List[int]]:
+    """Structural faults on one slide, per kind, as the shape ids carrying
+    them."""
+    found: Dict[str, List[int]] = {kind: [] for kind in STRUCTURAL_KINDS}
+    shapes = [
+        s for s in slide.shapes
+        if None not in (s.left, s.top, s.width, s.height)
+    ]
+    for i, a in enumerate(shapes):
+        if a.width <= 0 or a.height <= 0:
+            found["zero_size"].append(a.shape_id)
+        elif sw and sh and (
+            a.left < -EDGE_EPSILON_EMU or a.top < -EDGE_EPSILON_EMU
+            or a.left + a.width > sw + EDGE_EPSILON_EMU
+            or a.top + a.height > sh + EDGE_EPSILON_EMU
+        ):
+            found["off_slide"].append(a.shape_id)
+        if any("distorted" in m for m in _image_markers(a)):
+            found["distorted"].append(a.shape_id)
+        for b in shapes[i + 1:]:
+            kind, _, _ = _classify_overlap(
+                (a.left, a.top, a.width, a.height),
+                (b.left, b.top, b.width, b.height),
+            )
+            if kind == "stacked":
+                found["stacked"].append(a.shape_id)
+    return found
+
+
+def _deck_structural_audit(
+    file_path: str, source_path: Optional[str]
+) -> Optional[Dict[str, List[Tuple[int, int, bool]]]]:
+    """Structural faults across the deck as (slide_no, shape_id, inherited).
+
+    `inherited` means the exemplar this slide was cloned from carries the SAME
+    fault on the same shape id at the same geometry - the template shipped it.
+    Both halves are needed: geometry alone would excuse a photo the model
+    swapped into an inherited box at the wrong aspect ratio, and the fault alone
+    would excuse a shape the model dragged further off the canvas.
+
+    Baselining per shape rather than per deck matters: a template with ten
+    decorations bleeding off the canvas would otherwise buy a free pass for ten
+    real defects."""
     try:
-        prs = Presentation(path)
+        prs = Presentation(file_path)
+        src_prs = Presentation(source_path) if source_path else None
     except Exception:  # noqa: BLE001
         return None
     sw, sh = prs.slide_width or 0, prs.slide_height or 0
-    stacked = distorted = off_slide = 0
-    for slide in prs.slides:
-        shapes = [
-            s for s in slide.shapes
-            if None not in (s.left, s.top, s.width, s.height)
-        ]
-        for i, a in enumerate(shapes):
-            if sw and sh and (
-                a.left < -EDGE_EPSILON_EMU or a.top < -EDGE_EPSILON_EMU
-                or a.left + a.width > sw + EDGE_EPSILON_EMU
-                or a.top + a.height > sh + EDGE_EPSILON_EMU
-            ):
-                off_slide += 1
-            if any("distorted" in m for m in _image_markers(a)):
-                distorted += 1
-            for b in shapes[i + 1:]:
-                kind, _, _ = _classify_overlap(
-                    (a.left, a.top, a.width, a.height),
-                    (b.left, b.top, b.width, b.height),
+    mapping = _exemplar_map(prs, src_prs) if src_prs else {}
+    src_slides = list(src_prs.slides) if src_prs else []
+    src_w, src_h = (
+        (src_prs.slide_width or 0, src_prs.slide_height or 0)
+        if src_prs
+        else (0, 0)
+    )
+    src_geometry: Dict[int, Dict[int, Tuple[int, int, int, int]]] = {}
+    src_faults: Dict[int, Dict[str, set]] = {}
+    for i, slide in enumerate(src_slides, start=1):
+        src_geometry[i] = {
+            s.shape_id: (s.left, s.top, s.width, s.height) for s in slide.shapes
+        }
+        src_faults[i] = {
+            kind: set(ids)
+            for kind, ids in _slide_structural(slide, src_w, src_h).items()
+        }
+
+    out: Dict[str, List[Tuple[int, int, bool]]] = {
+        kind: [] for kind in STRUCTURAL_KINDS
+    }
+    for slide_no, slide in enumerate(prs.slides, start=1):
+        src_no = mapping.get(slide_no, -1)
+        exemplar = src_geometry.get(src_no, {})
+        faults = src_faults.get(src_no, {})
+        geometry = {
+            s.shape_id: (s.left, s.top, s.width, s.height) for s in slide.shapes
+        }
+        found = _slide_structural(slide, sw, sh)
+        for kind, ids in found.items():
+            for sid in ids:
+                inherited = (
+                    sid in faults.get(kind, ())
+                    and exemplar.get(sid) == geometry.get(sid)
                 )
-                if kind == "stacked":
-                    stacked += 1
-    return {"stacked": stacked, "distorted": distorted, "off_slide": off_slide}
+                out[kind].append((slide_no, sid, inherited))
+    return out
 
 
 def _content_slot_indices(shape: BaseShape) -> set:
@@ -621,6 +706,78 @@ def _drop_audit(
         dropped = len(src_ids - out_ids)
         if dropped >= SHAPE_DROP_MIN and kept / len(src_ids) < SHAPE_RETENTION_FLOOR:
             findings.append((out_no, best_i + 1, kept, dropped))
+    return findings
+
+
+# Text repeated on this many output slides is the template's furniture (footer,
+# confidentiality stamp, brand line), kept on purpose - never a leftover.
+FURNITURE_SLIDES = 3
+# How many leftover shapes to name before summarising the rest.
+LEFTOVER_LISTED = 8
+
+
+def _exemplar_map(out_prs, src_prs) -> Dict[int, int]:
+    """Output slide number -> the 1-based template slide it was cloned from,
+    matched on shape-id overlap (pptx_slides copies ids when it duplicates)."""
+    src_ids = [{sh.shape_id for sh in s.shapes} for s in src_prs.slides]
+    mapping: Dict[int, int] = {}
+    for out_no, out_slide in enumerate(out_prs.slides, start=1):
+        ids = {sh.shape_id for sh in out_slide.shapes}
+        best_i, best_overlap = None, 0
+        for i, candidate in enumerate(src_ids):
+            overlap = len(ids & candidate)
+            if overlap > best_overlap:
+                best_overlap, best_i = overlap, i
+        if best_i is not None and best_overlap >= 2:
+            mapping[out_no] = best_i + 1
+    return mapping
+
+
+def _shape_texts(slide: Slide) -> Dict[int, str]:
+    return {
+        sh.shape_id: flatten_text(" ".join(_shape_text_iter(sh))).strip()
+        for sh in slide.shapes
+    }
+
+
+def _leftover_copy_audit(
+    file_path: str, source_path: str
+) -> List[Tuple[int, int, str]]:
+    """Shapes on a cloned slide still carrying the exemplar's own copy.
+
+    A template's building-block slide ships scaffolding text - step numbers, a
+    stage name, a section word, lorem - and an exemplar cloned for its layout
+    keeps every shape the model did not explicitly rewrite. Those survivors
+    render as confident-looking nonsense next to the real content, and nothing
+    else in the audit sees them because the shape is neither empty nor
+    overflowing. Text that repeats across several output slides is the
+    template's furniture and is excluded.
+
+    Returns (slide_no, shape_id, text)."""
+    try:
+        out_prs = Presentation(file_path)
+        src_prs = Presentation(source_path)
+    except Exception:  # noqa: BLE001 - degrade visibly in the caller
+        return []
+    mapping = _exemplar_map(out_prs, src_prs)
+    if not mapping:
+        return []
+    out_slides = list(out_prs.slides)
+    src_texts = [_shape_texts(s) for s in src_prs.slides]
+    seen_on: Dict[str, int] = {}
+    for slide in out_slides:
+        for text in set(_shape_texts(slide).values()):
+            if text:
+                seen_on[text] = seen_on.get(text, 0) + 1
+
+    findings: List[Tuple[int, int, str]] = []
+    for out_no, src_no in mapping.items():
+        exemplar = src_texts[src_no - 1]
+        for sid, text in _shape_texts(out_slides[out_no - 1]).items():
+            if len(text) < 2 or seen_on.get(text, 0) >= FURNITURE_SLIDES:
+                continue
+            if exemplar.get(sid) == text:
+                findings.append((out_no, sid, text))
     return findings
 
 
