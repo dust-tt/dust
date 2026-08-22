@@ -74,6 +74,7 @@ from pptx_audit import (
     _deck_fidelity,
     _deck_structural_audit,
     _drop_audit,
+    _filler_audit,
     _hole_audit,
     _effective_font_size_pt,
     _fit_tokens,
@@ -1114,6 +1115,24 @@ def print_compare(file_path: str, source_path: str) -> str:
         else:
             lines.append("  legible: every text shape reads on its background")
 
+    # Template filler still in the deck. No template needed and no judgment
+    # call: lorem or a bracketed prompt in a delivered deck is always a defect.
+    filler = _filler_audit(file_path)
+    if filler:
+        lines.append(
+            f"  filler:  [!] {len(filler)} shape(s) still hold template filler"
+        )
+        for slide_no, sid, text in filler[:LEFTOVER_LISTED]:
+            blockers += 1
+            lines.append(
+                f"    [!] slide {slide_no} #{sid}: {ellipsize(text, 60)!r}"
+            )
+        if len(filler) > LEFTOVER_LISTED:
+            blockers += len(filler) - LEFTOVER_LISTED
+            lines.append(
+                f"    [!] ... and {len(filler) - LEFTOVER_LISTED} more"
+            )
+
     # Cloned slides that came out mostly empty canvas. The shape-retention
     # advisory below counts shapes; this measures the hole, which is what the
     # reader sees - dropping one full-bleed photo keeps most of the shapes and
@@ -1479,6 +1498,11 @@ def _slide_shape_blockers(
     layout_chain = _resolve_layout_chain(file_path, slide)
     out: List[Tuple[int, str]] = []
     for shape in shapes:
+        text = flatten_text(" ".join(_shape_text_iter(shape))).strip()
+        if text and _is_leftover_suspect(text):
+            out.append(
+                (shape.shape_id, f"still holds template filler: {ellipsize(text, 50)!r}")
+            )
         markers = _shape_warning_markers(
             shape,
             placeholder_type(shape),

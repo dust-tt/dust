@@ -64,6 +64,33 @@ def test_spacer_write_only_counts_interior():
     assert A._filled_spacer_slots(out, src) == set()
 
 
+
+
+def test_filler_detector_catches_lorem_past_its_opening_words():
+    """A template's second and third filler paragraphs never say "lorem ipsum";
+    matching only the opening words let four slides of untouched filler ship."""
+    assert A._is_leftover_suspect("Lorem ipsum dolor sit amet, consectetur.")
+    assert A._is_leftover_suspect(
+        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris."
+    )
+    assert A._is_leftover_suspect(
+        "Duis aute irure dolor in reprehenderit in voluptate velit esse."
+    )
+    assert A._is_leftover_suspect("[Slide Title]")
+    assert A._is_leftover_suspect("Click to add text")
+
+
+def test_filler_detector_leaves_real_copy_alone():
+    for line in (
+        "70+ connectors and MCP servers",
+        "Start with one workflow. Expand from there.",
+        "Pods and Frames for shared work",
+        "EUR 24 per seat per month",
+        "Contrat de vente, douleur et suivi",
+    ):
+        assert not A._is_leftover_suspect(line), line
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]
