@@ -499,6 +499,12 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare completedAt: Date | null;
   declare prunedContext: boolean | null;
   declare costCredits: number | null;
+  // Cumulative billed credits for this message and all of its `run_agent`
+  // sub-agents (recursively). `costCredits` is this message's own cost;
+  // `totalCostCredits` additionally rolls up the cost of every sub-agent it
+  // spawned. Maintained incrementally at finalize (see credit_cost.ts), so it
+  // can be read directly instead of walking the sub-agent tree at read time.
+  declare totalCostCredits: number | null;
 
   // The concrete provider/model/effort triplet used by the message when
   // running the agent. Legacy: null when the message runs the agent's configured model.
@@ -596,6 +602,11 @@ AgentMessageModel.init(
       defaultValue: false,
     },
     costCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    totalCostCredits: {
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null,
