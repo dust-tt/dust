@@ -115,23 +115,32 @@ const wrapWithErrorCheck = async <T>(
   try {
     return await callback();
   } catch (e) {
-    if (APIResponseError.isAPIResponseError(e)) {
-      if (
-        (e.code === "internal_server_error" && e.status === 500) ||
-        (e.code === "service_unavailable" && e.status === 503)
-      ) {
-        if (Context.current().info.attempt > 20) {
-          logger.error(
-            {
-              ...loggerArgs,
-              error: e,
-              attempt: Context.current().info.attempt,
-            },
-            "Failed to get make notion call. Giving up and moving on"
-          );
-          return null;
-        }
-      }
+    const isRetriableApiError =
+      APIResponseError.isAPIResponseError(e) &&
+      ((e.code === "internal_server_error" && e.status === 500) ||
+        (e.code === "service_unavailable" && e.status === 503));
+    // Transient upstream 5xx (502/504/530) surface as UnknownHTTPResponseError rather than
+    // APIResponseError (see the Notion `cast_known_errors` interceptor). When a cursor or
+    // resource consistently fails with one of these, it never recovers on its own and would
+    // otherwise be retried forever. We give up after enough attempts and move on — Notion
+    // workspaces are resynced daily so nothing is lost forever.
+    const isTransientUpstreamError =
+      UnknownHTTPResponseError.isUnknownHTTPResponseError(e) &&
+      [502, 504, 530].includes(e.status);
+
+    if (
+      (isRetriableApiError || isTransientUpstreamError) &&
+      Context.current().info.attempt > 20
+    ) {
+      logger.error(
+        {
+          ...loggerArgs,
+          error: e,
+          attempt: Context.current().info.attempt,
+        },
+        "Failed to make notion call. Giving up and moving on"
+      );
+      return null;
     }
 
     throw e;
