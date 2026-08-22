@@ -424,17 +424,31 @@ SHAPE_RETENTION_FLOOR = 0.6
 SHAPE_DROP_MIN = 2
 
 
-def _imagery_in_shape(shape: BaseShape) -> int:
+# Share of the slide an image must cover to count as the slide's imagery. The
+# deck's own footer logo is ~0.16% and a small 3-up icon ~1.1%, so this floor
+# keeps the icons and drops the furniture. Without it a deck that stripped every
+# photo still scored "imagery on 11/11 slides" - the template's logo, cloned onto
+# each slide - and passed the gate that exists to catch exactly that.
+IMAGERY_MIN_AREA = 0.005
+
+
+def _imagery_in_shape(shape: BaseShape, slide_area_emu: int = 0) -> int:
     """Count pictures, charts, tables, and any image-bearing shape (a picture
-    placeholder or picture-filled auto shape), recursing into groups."""
+    placeholder or picture-filled auto shape), recursing into groups. Pictures
+    smaller than IMAGERY_MIN_AREA of the slide are furniture, not imagery."""
     kind = shape_kind(shape)
     if kind == "group":
-        return sum(_imagery_in_shape(inner) for inner in shape.shapes)
-    if kind in ("pic", "chart", "table"):
-        return 1
-    if _has_embedded_blip(getattr(shape, "_element", None)):
-        return 1
-    return 0
+        return sum(_imagery_in_shape(inner, slide_area_emu) for inner in shape.shapes)
+    if kind not in ("pic", "chart", "table") and not _has_embedded_blip(
+        getattr(shape, "_element", None)
+    ):
+        return 0
+    if slide_area_emu and kind not in ("chart", "table"):
+        width, height = shape.width, shape.height
+        if None not in (width, height):
+            if width * height < slide_area_emu * IMAGERY_MIN_AREA:
+                return 0
+    return 1
 
 
 def _slide_bg_has_image(slide: Slide) -> bool:
@@ -461,10 +475,11 @@ def _deck_fidelity(prs: PresentationType) -> DeckFidelity:
     imagery_slides = 0
     imagery_objs = 0
     bare_slides = 0
+    slide_area = (prs.slide_width or 0) * (prs.slide_height or 0)
     for slide in prs.slides:
         name = slide.slide_layout.name or "?"
         layout_counts[name] = layout_counts.get(name, 0) + 1
-        n = sum(_imagery_in_shape(s) for s in slide.shapes)
+        n = sum(_imagery_in_shape(s, slide_area) for s in slide.shapes)
         imagery_objs += n
         has_imagery = n > 0 or _slide_bg_has_image(slide)
         if has_imagery:
@@ -778,6 +793,79 @@ def _leftover_copy_audit(
                 continue
             if exemplar.get(sid) == text:
                 findings.append((out_no, sid, text))
+    return findings
+
+
+# A cloned slide covering less than this share of its exemplar's footprint has
+# had its content removed rather than replaced, and renders as a title over a
+# void. Shape counting misses it: dropping one full-bleed photo out of four
+# shapes keeps 75% of the shapes and loses 60% of the slide.
+COVERAGE_FLOOR = 0.5
+# Below this absolute drop the difference is trimming, not a hole.
+COVERAGE_MIN_DROP = 0.15
+
+
+def _slide_coverage(slide: Slide, slide_w: int, slide_h: int) -> float:
+    """Share of the canvas covered by the slide's shapes, by scanline union so
+    overlapping boxes are not double-counted."""
+    if not slide_w or not slide_h:
+        return 0.0
+    boxes = [
+        (s.left, s.top, s.left + s.width, s.top + s.height)
+        for s in slide.shapes
+        if None not in (s.left, s.top, s.width, s.height)
+        and s.width > 0
+        and s.height > 0
+    ]
+    if not boxes:
+        return 0.0
+    edges = sorted({y for box in boxes for y in (box[1], box[3])})
+    covered = 0
+    for top, bottom in zip(edges, edges[1:]):
+        spans = sorted(
+            (box[0], box[2]) for box in boxes if box[1] <= top and box[3] >= bottom
+        )
+        merged_x = 0
+        reach = None
+        for left, right in spans:
+            if reach is None or left > reach:
+                merged_x += right - left
+                reach = right
+            elif right > reach:
+                merged_x += right - reach
+                reach = right
+        covered += merged_x * (bottom - top)
+    return covered / (slide_w * slide_h)
+
+
+def _hole_audit(
+    file_path: str, source_path: str
+) -> List[Tuple[int, int, float, float]]:
+    """Cloned slides that ended up mostly empty canvas: (slide_no, src_no,
+    coverage, exemplar coverage)."""
+    try:
+        out_prs = Presentation(file_path)
+        src_prs = Presentation(source_path)
+    except Exception:  # noqa: BLE001 - degrade visibly in the caller
+        return []
+    mapping = _exemplar_map(out_prs, src_prs)
+    if not mapping:
+        return []
+    out_slides = list(out_prs.slides)
+    src_slides = list(src_prs.slides)
+    ow, oh = out_prs.slide_width or 0, out_prs.slide_height or 0
+    sw, sh = src_prs.slide_width or 0, src_prs.slide_height or 0
+    findings: List[Tuple[int, int, float, float]] = []
+    for out_no, src_no in sorted(mapping.items()):
+        out_cov = _slide_coverage(out_slides[out_no - 1], ow, oh)
+        src_cov = _slide_coverage(src_slides[src_no - 1], sw, sh)
+        if src_cov <= 0:
+            continue
+        if (
+            out_cov < src_cov * COVERAGE_FLOOR
+            and src_cov - out_cov >= COVERAGE_MIN_DROP
+        ):
+            findings.append((out_no, src_no, out_cov, src_cov))
     return findings
 
 
