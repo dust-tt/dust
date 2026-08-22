@@ -72,7 +72,7 @@ def set_text(paragraph, text):
 
 \`.text\` only for a placeholder \`--slide\` reports empty. Keep the extra runs only for deliberate mixed styling mid-line.
 
-**Rewrite or delete every shape you cloned.** An exemplar carries the template's own scaffolding: a stage name, \`01\`..\`06\`, \`HOW\`, a lorem line. Anything you leave renders as content next to your copy. \`--slide\` lists every shape on the slide: account for all of them.
+**Rewrite or delete every shape you cloned.** An exemplar carries the template's own scaffolding: a stage name, \`01\`..\`06\`, \`HOW\`, filler paragraphs. Anything you leave renders as content next to your copy. \`--slide\` lists every shape on the slide: account for all of them, columns 2 and 3 included. Filler rarely says "Lorem ipsum" - the second and third paragraphs start "Ut enim ad minim veniam" and "Duis aute irure dolor", and they look like copy until you read them.
 
 **Content slots, not spacers.** \`--slide\` prints the skeleton \`p[0]\`, \`p[1]\`, ... incl \`(empty)\` spacers. Write the slots the template fills (often \`p[2]\`, \`p[4]\`, \`p[6]\`): a spacer inherits other styling and strands the markers pinned beside the real rows. Fewer items than slots: clear the surplus, delete its markers. More items: clone a denser exemplar.
 
@@ -132,6 +132,7 @@ The defect list is mechanical and reliable. Clear every \`[!]\` before you look 
 | marker | fix |
 |---|---|
 | \`unreadable - #INK on #BG (1.3:1)\` | set \`font.color.rgb\` on every run of that shape, taking the colour from a \`--layouts\` placeholder on the same background |
+| \`still holds template filler\` | you cloned a shape and never rewrote it; write your copy or delete the shape |
 | \`zero-size box\` | you wrote a 0 width or height; restore the exemplar's box |
 | \`extends past slide edge\` | move or shrink it back inside the slide |
 | \`image distorted\` | resize the box to the image's native ratio, or crop |
@@ -155,7 +156,7 @@ A box you cannot read back is a real defect, not a render artifact. Fix, re-run 
 
 \`pptx_inspect /tmp/deck.pptx --compare /files/conversation/template.pptx\`
 
-Design fidelity, legibility and package integrity in one pass, baselined against the template so its own faults are not reported as yours. Copy the finished deck back to \`/files/conversation/\` once it passes. Clear every \`[!]\`: fonts dropped or imagery stripped (you rebuilt instead of editing: start again from the copy - a footer logo does not count as a slide's imagery), text that renders unreadable, \`canvas:\` slides you cloned and then emptied, shapes you pushed off the slide or stretched, layout collapse, density, and under \`Package:\` anything that stops PowerPoint opening the file. Package faults mean you edited the zip by hand: redo those edits through \`pptx_slides\` and python-pptx. \`leftover: [i]\` lists shapes still carrying the template's copy: replace or delete the ones you cloned. No template: \`--validate\` runs the package half alone. Deliver on \`[QA: PASS]\`, every slide read back clean.
+Design fidelity, legibility and package integrity in one pass, baselined against the template so its own faults are not reported as yours. Copy the finished deck back to \`/files/conversation/\` once it passes. Clear every \`[!]\`: fonts dropped or imagery stripped (you rebuilt instead of editing: start again from the copy - a footer logo does not count as a slide's imagery), text that renders unreadable, \`filler:\` shapes you never rewrote, \`canvas:\` slides you cloned and then emptied, shapes you pushed off the slide or stretched, layout collapse, density, and under \`Package:\` anything that stops PowerPoint opening the file. Package faults mean you edited the zip by hand: redo those edits through \`pptx_slides\` and python-pptx. \`leftover: [i]\` lists shapes still carrying the template's copy: replace or delete the ones you cloned. No template: \`--validate\` runs the package half alone. Deliver on \`[QA: PASS]\`, every slide read back clean.
 
 ## Defaults
 

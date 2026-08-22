@@ -355,8 +355,23 @@ def _shape_warning_markers(
     return markers
 
 
+# Filler that must never reach a delivered deck. The lorem list is deliberately
+# not just "lorem ipsum": a template's second and third filler paragraphs start
+# at "Ut enim ad minim veniam" and "Duis aute irure dolor", so matching only the
+# opening words missed four slides of untouched filler sitting in the columns
+# beside real copy. These tokens are Latin fragments no business deck contains.
+_LOREM_TOKENS = (
+    "lorem ipsum", "dolor sit amet", "consectetur", "adipiscing", "eiusmod",
+    "incididunt", "quis nostrud", "ullamco", "commodo consequat", "duis aute",
+    "reprehenderit", "voluptate velit", "cillum dolore", "fugiat nulla",
+    "excepteur", "occaecat", "cupidatat", "proident", "officia deserunt",
+    "mollit anim", "est laborum",
+)
+
 _LEFTOVER_RE = re.compile(
-    r"^[\[<].*[\]>]$|lorem ipsum|^x{3,}$|click to add|<[^>]+>", re.IGNORECASE
+    r"^[\[<].*[\]>]$|^x{3,}$|click to add|<[^>]+>|"
+    + "|".join(re.escape(t) for t in _LOREM_TOKENS),
+    re.IGNORECASE,
 )
 
 
@@ -789,7 +804,14 @@ def _leftover_copy_audit(
     for out_no, src_no in mapping.items():
         exemplar = src_texts[src_no - 1]
         for sid, text in _shape_texts(out_slides[out_no - 1]).items():
-            if len(text) < 2 or seen_on.get(text, 0) >= FURNITURE_SLIDES:
+            if len(text) < 2:
+                continue
+            if (
+                seen_on.get(text, 0) >= FURNITURE_SLIDES
+                and not _is_leftover_suspect(text)
+            ):
+                # Repeated text is the template's furniture - unless it is
+                # filler, which repeats precisely because it was never replaced.
                 continue
             if exemplar.get(sid) == text:
                 findings.append((out_no, sid, text))
@@ -867,6 +889,23 @@ def _hole_audit(
         ):
             findings.append((out_no, src_no, out_cov, src_cov))
     return findings
+
+
+def _filler_audit(file_path: str) -> List[Tuple[int, int, str]]:
+    """Every shape still holding template filler: lorem, a bracketed prompt, an
+    unreplaced tag. Needs no template to compare against, and no judgment -
+    filler in a delivered deck is always wrong."""
+    try:
+        prs = Presentation(file_path)
+    except Exception:  # noqa: BLE001 - degrade visibly in the caller
+        return []
+    out: List[Tuple[int, int, str]] = []
+    for slide_no, slide in enumerate(prs.slides, start=1):
+        for shape in slide.shapes:
+            text = flatten_text(" ".join(_shape_text_iter(shape))).strip()
+            if text and _is_leftover_suspect(text):
+                out.append((slide_no, shape.shape_id, text))
+    return out
 
 
 def _shape_text_iter(shape: BaseShape) -> Iterable[str]:
