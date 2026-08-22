@@ -68,7 +68,12 @@ def render_via_soffice(
             msg = tail[-1] if tail else "soffice produced no output"
             raise ValueError(f"pdf conversion failed: {msg}")
 
-    pdftoppm_args = ["pdftoppm", "-jpeg", "-r", "100"]
+    # 150 dpi, not 100: a 10in slide rasterizes to 1500px, which is what the
+    # reader's vision pipeline keeps (it downscales to a 1568px long edge). At
+    # 100 dpi a third of that resolution was thrown away for nothing, and 10pt
+    # captions - exactly the copy that goes wrong - were unreadable in the QA
+    # image. The published JPEG is still capped by render_publish.
+    pdftoppm_args = ["pdftoppm", "-jpeg", "-r", "150"]
     if item_idx is not None:
         pdftoppm_args.extend(["-f", str(item_idx), "-l", str(item_idx)])
     pdftoppm_args.extend([str(pdf_path), str(out_dir / item_name)])

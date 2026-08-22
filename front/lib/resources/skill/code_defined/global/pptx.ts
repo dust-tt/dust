@@ -31,7 +31,7 @@ Structure only from pptx_inspect: never markitdown, never a PDF render. Patterns
 
 theme = your whole palette. fonts = what layouts resolve to, so \`theme-fallback\` text has left the template. words/slide max = density ceiling. pic/chart/table = slides carrying imagery worth cloning.
 
-\`[!]\` blocks delivery: empty placeholder, manual bullet, overflow, overset, distorted or low-res image, stacked boxes, hidden shape. \`[i]\` = judgment call (partial overlap, underfilled, off-centre, tight margin): confirm in the render.
+\`[!]\` blocks delivery, \`[i]\` is a judgment call to confirm in the render.
 
 ## 2. Pick a mode, list one edit per slide
 
@@ -47,7 +47,7 @@ pptx_slides FILE --move 27 --to 5
 pptx_slides FILE --delete 14-16,20-24
 \`\`\`
 
-Every add, move, delete through \`pptx_slides\`: shares image parts, deep-clones charts; hand-edited \`sldId\`s strand orphan parts. Structure first, content after: duplicating later clones your edits. Never content on \`BLANK\`. Never an emoji or drawn rectangle in place of the template's icon or photo.
+One slide per point in the outline: two slides with the same title and the same shape are a duplicate, not a build-up. Every add, move, delete through \`pptx_slides\`: shares image parts, deep-clones charts; hand-edited \`sldId\`s strand orphan parts. Structure first, content after: duplicating later clones your edits. Never content on \`BLANK\`. Never an emoji or drawn rectangle in place of the template's icon or photo.
 
 **Clone slides, not layouts.** \`add_slide(layout)\` gives an empty frame: the template's photos and icons live on its slides, not its layouts, so a layout-built deck comes out image-free and fails §5. The overview's pic/chart/table counts say which slides carry them: duplicate those.
 
@@ -72,11 +72,25 @@ def set_text(paragraph, text):
 
 \`.text\` only for a placeholder \`--slide\` reports empty. Keep the extra runs only for deliberate mixed styling mid-line.
 
+**Rewrite or delete every shape you cloned.** An exemplar carries the template's own scaffolding: a stage name, \`01\`..\`06\`, \`HOW\`, a lorem line. Anything you leave renders as content next to your copy. \`--slide\` lists every shape on the slide: account for all of them.
+
 **Content slots, not spacers.** \`--slide\` prints the skeleton \`p[0]\`, \`p[1]\`, ... incl \`(empty)\` spacers. Write the slots the template fills (often \`p[2]\`, \`p[4]\`, \`p[6]\`): a spacer inherits other styling and strands the markers pinned beside the real rows. Fewer items than slots: clear the surplus, delete its markers. More items: clone a denser exemplar.
 
 **Empty placeholder renders "Click to add ..."**; covering it does not suppress it. Fill (\`slide.shapes.title.text\`, \`slide.placeholders[idx].text_frame.text\`) or delete (\`sp.element.getparent().remove(sp.element)\`).
 
-**Layout styles it.** Bullets from the layout via \`paragraph.level\`; a typed bullet char doubles them. Leave \`font.name\`, \`font.size\`, \`font.color\` unset. Shape outside a placeholder falls back to Arial: copy typeface + color from the matching \`--layouts\` placeholder.
+**A new text box has no styling and no colour.** Inside a placeholder the layout supplies typeface, size and colour, so leave \`font.name\` / \`font.size\` / \`font.color\` unset. A box you add with \`shapes.add_textbox\` inherits none of that: it renders in Arial at the presentation's default colour, which is near-black on every deck including the dark ones, so your copy lands black on a black slide. Set all three explicitly on every run, copying the values from the \`--layouts\` placeholder that sits on the same background. Better still: don't add a box, edit the one the exemplar already has.
+
+One pass, one script, shaped like this:
+
+\`\`\`python
+prs = Presentation("/tmp/deck.pptx")
+for slide, edits in PLAN.items():                  # your per-slide list from §2
+    for shape_id, lines in edits:
+        tf = SHAPES[shape_id].text_frame
+        for slot, line in zip(CONTENT_SLOTS, lines):   # slot indices read off --slide
+            set_text(tf.paragraphs[slot], line)
+prs.save("/tmp/deck.pptx")
+\`\`\`
 
 **Constrained shapes** (chevron, trapezoid, pill): sloped sides eat the text area. Margins >= 0.25", longest word on one line, cut the label rather than shrink the font.
 
@@ -89,9 +103,13 @@ _, rId = pic.part.get_or_add_image_part("/files/conversation/logo.png")
 pic._element.blipFill.blip.set(qn("r:embed"), rId)
 \`\`\`
 
-Never retype a brand name for a logo. Never text over a background image that already carries text: delete that picture or clone another exemplar.
+A replacement with a different native aspect ratio needs the box resized on both axes (or cropped), or it renders stretched. Never retype a brand name for a logo. Never text over a background image that already carries text: delete that picture or clone another exemplar.
 
-**Adapt, don't gut.** Resize, move, remove template shapes so your content fits; scale images on both axes or crop, never one. Deleting most of an exemplar's shapes = wrong exemplar.
+**Adapt, don't gut.** Resize, move, remove template shapes so your content fits; scale images on both axes or crop, never one. Deleting most of an exemplar's shapes = wrong exemplar. Keep every box inside the slide: a box that starts at a negative coordinate or runs past the right edge is clipped, not "bleeding".
+
+**Fill the box or resize it.** A \`vanchor=middle\` box two lines deep in a 5-inch frame floats its copy in the middle of the slide with a hole above it. Either give the slot the content it was built for, or shrink the box to the copy.
+
+**Parallel columns stay parallel.** Same top, same width, same size, same colour across a row: a heading at 22pt in one column and 14pt in the next reads as a bug.
 
 **Drawn content** (native chart, diagram, callout): derive the safe rect first, left + width from the title placeholder, top below the title, bottom above the footer band.
 
@@ -101,25 +119,45 @@ Remove builder guidance (\`<Client name>\`, bracketed prompts, notes). Never rem
 
 \`pptx_fonts /tmp/deck.pptx --install\` first: every face the deck asks for, extracted from the file or fetched from Google Fonts. What it still reports as substituted measures ~10% off, leave that copy slack.
 
-\`pptx_inspect FILE --qa 2,5,7-9 --grid\` (pass timeoutMs 120000 for a big batch)
+\`pptx_inspect FILE --qa 2,5,7-9\` (pass timeoutMs 120000 for a big batch)
 
-\`--grid\` tiles the batch into a few images, cells captioned with their slide number. Open every one with the \`files__cat\` tool; a bash \`cat\` of an image returns binary garbage. Render comes back as text: you cannot see images, say so, don't claim you looked.
+Every slide you touched, not a sample of them. Batch them in one call: the deck converts once and the rest is per slide.
 
-Read each box back against its \`#id\` text: fully readable, inside its box, uncovered, legible on its background. Pictures undistorted, filling their box. Markers beside their rows. Charts and tables unclipped. A box you cannot read back is a real defect, not a render artifact.
+One full-size image per slide plus that slide's defect list. Open every one with the \`files__cat\` tool; a bash \`cat\` of an image returns binary garbage. Render comes back as text: you cannot see images, say so, don't claim you looked. \`--qa N --boxes\` redraws it with \`#id\` labels when you need to place a finding on a box.
 
-Overflow: cut text or resize the box, never below the template's sizes. Faint: recolor. Stacked: move. Text bunched at the top of a tall box: \`tf.vertical_anchor = MSO_ANCHOR.MIDDLE\` on that box only, no wholesale re-centering. Stranded marker: shorten that row's copy, or delete the marker if it holds no item.
+The defect list is mechanical and reliable. Clear every \`[!]\` before you look at anything else:
 
-Fix, re-run \`--qa N\` on that slide, look again: a \`--qa\` from before your last edit is stale. Grid cells are narrow, re-run a plain \`--qa N\` on anything unreadable at that size. A few pixels of reflow is not a defect, compare against the template's own slide. Autofit text and dense tables render least reliably: say they need a PowerPoint check.
+| marker | fix |
+|---|---|
+| \`unreadable - #INK on #BG (1.3:1)\` | set \`font.color.rgb\` on every run of that shape, taking the colour from a \`--layouts\` placeholder on the same background |
+| \`zero-size box\` | you wrote a 0 width or height; restore the exemplar's box |
+| \`extends past slide edge\` | move or shrink it back inside the slide |
+| \`image distorted\` | resize the box to the image's native ratio, or crop |
+| \`stacked with shape #N\` / \`text-on-text\` | move one box clear, or shorten the copy |
+| \`empty placeholder\` | fill it, or delete the shape |
+| \`text overset\` / \`text runs ~Nin below its box\` | cut copy or grow the box, never below the template's sizes |
+| \`thin - ... (2.4:1)\` | fine for a large heading, recolour if it is body copy |
+| \`underfilled\` on a \`vanchor=middle\` box | the copy floats in the middle of a tall box: shorten the box or add the content the slot expects |
+
+Then read the render itself, per slide, and answer all of it:
+
+1. Every line legible on what is behind it.
+2. Nothing clipped by a box edge or the slide edge; no word broken across a shape.
+3. Pictures undistorted and filling their box; markers beside their rows.
+4. No leftover template copy, no gap where content should be.
+5. Columns and rows aligned; the slide reads like the template's own.
+
+A box you cannot read back is a real defect, not a render artifact. Fix, re-run \`--qa N\` on that slide, look again: a \`--qa\` from before your last edit is stale. A few pixels of reflow is not a defect, compare against the template's own slide. Autofit text and dense tables render least reliably: say they need a PowerPoint check.
 
 ## 5. Audit, then deliver
 
 \`pptx_inspect /tmp/deck.pptx --compare /files/conversation/template.pptx\`
 
-Design fidelity + package integrity in one pass. Copy the finished deck back to \`/files/conversation/\` once it passes. Clear every \`[!]\`: fonts dropped or imagery stripped (you rebuilt instead of editing: start again from the copy), layout collapse, density, and under \`Package:\` anything that stops PowerPoint opening the file (stranded part, relationship pointing nowhere, duplicate shape id). Package faults mean you edited the zip by hand: redo those edits through \`pptx_slides\` and python-pptx. No template: \`--validate\` runs the package half alone. Deliver on \`[QA: PASS]\`, every slide read back clean.
+Design fidelity, legibility and package integrity in one pass, baselined against the template so its own faults are not reported as yours. Copy the finished deck back to \`/files/conversation/\` once it passes. Clear every \`[!]\`: fonts dropped or imagery stripped (you rebuilt instead of editing: start again from the copy), text that renders unreadable, shapes you pushed off the slide or stretched, layout collapse, density, and under \`Package:\` anything that stops PowerPoint opening the file. Package faults mean you edited the zip by hand: redo those edits through \`pptx_slides\` and python-pptx. \`leftover: [i]\` lists shapes still carrying the template's copy: replace or delete the ones you cloned. No template: \`--validate\` runs the package half alone. Deliver on \`[QA: PASS]\`, every slide read back clean.
 
 ## Defaults
 
-Density: the template's max words/slide is a hard ceiling, overflow to \`slide.notes_slide.notes_text_frame\`. Palette: the theme's six accents only. Margins 0.5", bottom 0.5" is the master's logo band. Every slide wants a visual, preferably the template's own; an added chart is native python-pptx (\`XL_CHART_TYPE.BAR_CLUSTERED\`, \`LINE\`) so it inherits the theme, matplotlib only with \`bg1\`/\`tx1\`/accents from the theme line. Vary layouts. No accent lines under titles, no decorative color bars or edge stripes.
+Density: the template's max words/slide is a hard ceiling, overflow to \`slide.notes_slide.notes_text_frame\`. Palette: the theme's six accents only. Margins 0.5", bottom 0.5" is the master's logo band. Every slide wants a visual, preferably the template's own; an added chart is native python-pptx (\`XL_CHART_TYPE.BAR_CLUSTERED\`, \`LINE\`) so it inherits the theme, matplotlib only with \`bg1\`/\`tx1\`/accents from the theme line and its own axis labels rewritten in plain words. Vary layouts. No accent lines under titles, no decorative color bars or edge stripes.
 `;
 
 export const pptxSkill = {
@@ -135,7 +173,7 @@ export const pptxSkill = {
   instructions: PPTX_SKILL_INSTRUCTIONS,
   exposeInstructions: true,
   mcpServers: [{ name: "sandbox" }],
-  version: 7,
+  version: 8,
   icon: "ActionSlideshowIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
