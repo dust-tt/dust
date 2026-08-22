@@ -651,7 +651,7 @@ app.post(
                 "There was an error enqueueing the the document for asynchronous upsert.",
             },
           },
-          enqueueRes.error
+          { error: enqueueRes.error }
         );
       }
       return ctx.json({

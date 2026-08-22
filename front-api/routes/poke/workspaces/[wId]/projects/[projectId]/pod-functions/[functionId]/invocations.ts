@@ -126,7 +126,7 @@ app.get(
                 message: "Failed to read the MCP action output.",
               },
             },
-            outputResult.error
+            { error: outputResult.error }
           );
         default:
           return assertNever(outputResult.error.type);

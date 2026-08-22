@@ -75,7 +75,7 @@ export function makeResolveAuthenticationApp(
                 message: `Failed to resolve ${label}`,
               },
             },
-            result.error
+            { error: result.error }
           );
       }
     }

@@ -159,7 +159,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
           message: "Error uploading file.",
         },
       },
-      normalizeError(error)
+      { error: normalizeError(error) }
     );
   }
 });

@@ -182,7 +182,7 @@ app.post(
             message: "Failed to retrieve consumption facets.",
           },
         },
-        result.error
+        { error: result.error }
       );
     }
 
