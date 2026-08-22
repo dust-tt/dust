@@ -20,6 +20,7 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
 
 export type ConversationConsumptionMessageFacts = {
+  conversationId: string;
   agentConfigurationId: string;
   parentAgentConfigurationId: string | null;
   billedCredits: number | null;
@@ -697,7 +698,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     return { messages };
   }
 
-  private static async fetchDirectConversationsConsumptionFacts(
+  static async fetchDirectConversationsConsumptionFacts(
     auth: Authenticator,
     {
       conversations,
@@ -712,8 +713,8 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     messages: ConversationConsumptionMessageFacts[];
   }> {
     const workspaceId = auth.getNonNullableWorkspace().id;
-    const conversationModelIds = conversations.map(
-      (conversation) => conversation.id
+    const conversationIdsByModelId = new Map(
+      conversations.map((conversation) => [conversation.id, conversation.sId])
     );
     const parentAgentIdsByConversationModelId = new Map(
       conversations.flatMap((conversation) => {
@@ -736,20 +737,31 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       ],
       where: {
         workspaceId,
-        conversationId: { [Op.in]: conversationModelIds },
+        conversationId: { [Op.in]: [...conversationIdsByModelId.keys()] },
       },
       order: [["id", "ASC"]],
     });
-    const messageFacts = agentMessages.map((agentMessage) => ({
-      agentMessageModelId: agentMessage.id,
-      agentConfigurationId: agentMessage.agentConfigurationId,
-      parentAgentConfigurationId:
-        parentAgentIdsByConversationModelId.get(agentMessage.conversationId) ??
-        null,
-      billedCredits: agentMessage.costCredits,
-      dustRunIds: agentMessage.runIds ?? [],
-      status: agentMessage.status,
-    }));
+
+    const messageFacts = agentMessages.map((agentMessage) => {
+      const conversationId = conversationIdsByModelId.get(
+        agentMessage.conversationId
+      );
+      assert(conversationId, "Agent message conversation not found.");
+
+      return {
+        agentMessageModelId: agentMessage.id,
+        conversationId,
+        agentConfigurationId: agentMessage.agentConfigurationId,
+        parentAgentConfigurationId:
+          parentAgentIdsByConversationModelId.get(
+            agentMessage.conversationId
+          ) ?? null,
+        billedCredits: agentMessage.costCredits,
+        dustRunIds: agentMessage.runIds ?? [],
+        status: agentMessage.status,
+      };
+    });
+
     const fetchedAgentMessageModelIds = messageFacts.map(
       (message) => message.agentMessageModelId
     );

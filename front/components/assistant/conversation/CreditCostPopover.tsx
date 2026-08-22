@@ -97,11 +97,9 @@ export function CreditCostPopover({
       disabled: !hasOpened,
     });
 
-  const ownCredits = consumption?.billedCredits ?? credits ?? 0;
-  const childCredits =
-    consumption?.subAgentBilledCredits ?? subAgentCredits ?? 0;
   const totalCredits =
-    consumption?.totalBilledCredits ?? ownCredits + childCredits;
+    consumption?.totalBilledCredits ??
+    (consumption?.billedCredits ?? credits ?? 0) + (subAgentCredits ?? 0);
   const details = consumption?.details;
 
   if (totalCredits <= 0) {
@@ -191,13 +189,6 @@ export function CreditCostPopover({
                 value={formatCreditValue(details.agentWorkCredits)}
                 icon={InternalActionIcons.ActionBrainIcon}
               />
-              {childCredits > 0 && (
-                <CreditDetailRow
-                  label="Sub-agents"
-                  value={formatCreditValue(childCredits)}
-                  icon={InternalActionIcons.ActionRobotIcon}
-                />
-              )}
               {visibleTools.map((tool) => (
                 <CreditDetailRow
                   key={`${tool.internalMCPServerName ?? "external"}:${tool.toolName}:${tool.label}`}
