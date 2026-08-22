@@ -10,6 +10,7 @@ import type {
 } from "@app/types/api/sandbox/env_vars";
 import { SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
@@ -26,7 +27,14 @@ const PostPodSandboxEnvVarBodySchema = z.object({
 
 // Mounted at /api/w/:wId/spaces/:spaceId/sandbox/env-vars. Pods are project
 // spaces: non-project spaces have no pod-scoped env vars and 404.
+//
+// Pod env vars stay workspace-admin only (read and write): unlike the
+// egress-policy leaf, they are not opened to Pod members. The parent sandbox
+// sub-app no longer applies the admin gate, so it is re-applied here for every
+// route, including the mounted /:id sub-app.
 const app = workspaceApp();
+
+app.use("*", ensureIsAdmin());
 
 /** @ignoreswagger */
 app.get(

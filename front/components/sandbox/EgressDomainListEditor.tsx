@@ -20,6 +20,9 @@ interface EgressDomainListEditorProps {
   pendingRequests?: { domain: string }[];
   onApproveRequest?: (domain: string) => void;
   onRejectRequest?: (domain: string) => void;
+  // Read-only viewers (non-admin pod members) see the domains and any pending
+  // requests, but no add input and no remove/approve/reject controls.
+  readOnly?: boolean;
 }
 
 // Add/remove editor for a sandbox egress allowlist, shared by the workspace
@@ -34,6 +37,7 @@ export function EgressDomainListEditor({
   pendingRequests,
   onApproveRequest,
   onRejectRequest,
+  readOnly = false,
 }: EgressDomainListEditorProps) {
   const [domainInput, setDomainInput] = useState("");
 
@@ -74,34 +78,36 @@ export function EgressDomainListEditor({
 
   return (
     <>
-      <form
-        className="flex flex-col gap-3 sm:flex-row sm:items-start"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void handleAddDomain();
-        }}
-      >
-        <div className="grow">
-          <Input
-            label="Domain"
-            name="domain"
-            placeholder="e.g. api.openai.com or *.mistral.ai"
-            value={domainInput}
-            message={domainInputMessage}
-            messageStatus={isDomainInputInvalid ? "error" : "info"}
-            onChange={(event) => setDomainInput(event.target.value)}
-            disabled={isUpdating}
+      {!readOnly && (
+        <form
+          className="flex flex-col gap-3 sm:flex-row sm:items-start"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleAddDomain();
+          }}
+        >
+          <div className="grow">
+            <Input
+              label="Domain"
+              name="domain"
+              placeholder="e.g. api.openai.com or *.mistral.ai"
+              value={domainInput}
+              message={domainInputMessage}
+              messageStatus={isDomainInputInvalid ? "error" : "info"}
+              onChange={(event) => setDomainInput(event.target.value)}
+              disabled={isUpdating}
+            />
+          </div>
+          <Button
+            type="submit"
+            label="Add domain"
+            icon={Plus}
+            disabled={!canAddDomain}
+            isLoading={isUpdating}
+            className="mt-0 sm:mt-7"
           />
-        </div>
-        <Button
-          type="submit"
-          label="Add domain"
-          icon={Plus}
-          disabled={!canAddDomain}
-          isLoading={isUpdating}
-          className="mt-0 sm:mt-7"
-        />
-      </form>
+        </form>
+      )}
 
       {allowedDomains.length === 0 && (pendingRequests?.length ?? 0) === 0 ? (
         <ContentMessage variant="outline" size="lg">
@@ -122,24 +128,28 @@ export function EgressDomainListEditor({
                   Pending approval
                 </span>
               </div>
-              <Button
-                variant="highlight"
-                size="mini"
-                label="Approve"
-                tooltip={`Add ${request.domain} to the allowlist`}
-                disabled={isUpdating}
-                onClick={() => onApproveRequest?.(request.domain)}
-                className="shrink-0"
-              />
-              <Button
-                variant="ghost"
-                size="mini"
-                icon={XClose}
-                tooltip={`Reject ${request.domain}`}
-                disabled={isUpdating}
-                onClick={() => onRejectRequest?.(request.domain)}
-                className="shrink-0"
-              />
+              {!readOnly && (
+                <>
+                  <Button
+                    variant="highlight"
+                    size="mini"
+                    label="Approve"
+                    tooltip={`Add ${request.domain} to the allowlist`}
+                    disabled={isUpdating}
+                    onClick={() => onApproveRequest?.(request.domain)}
+                    className="shrink-0"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="mini"
+                    icon={XClose}
+                    tooltip={`Reject ${request.domain}`}
+                    disabled={isUpdating}
+                    onClick={() => onRejectRequest?.(request.domain)}
+                    className="shrink-0"
+                  />
+                </>
+              )}
             </div>
           ))}
           {allowedDomains.map((domain) => (
@@ -150,17 +160,19 @@ export function EgressDomainListEditor({
               >
                 {domain}
               </pre>
-              <Button
-                variant="warning"
-                size="mini"
-                icon={Trash01}
-                tooltip={`Remove ${domain}`}
-                disabled={isUpdating}
-                onClick={() => {
-                  void handleRemoveDomain(domain);
-                }}
-                className="shrink-0"
-              />
+              {!readOnly && (
+                <Button
+                  variant="warning"
+                  size="mini"
+                  icon={Trash01}
+                  tooltip={`Remove ${domain}`}
+                  disabled={isUpdating}
+                  onClick={() => {
+                    void handleRemoveDomain(domain);
+                  }}
+                  className="shrink-0"
+                />
+              )}
             </div>
           ))}
         </div>
