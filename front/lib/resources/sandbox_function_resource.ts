@@ -12,6 +12,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import type { PodAppShareResource } from "@app/lib/resources/pod_app_share_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -324,10 +325,16 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     auth: Authenticator,
     {
       includeDeletedSpace,
+      podAppShare,
       dangerouslyBypassSpacePermissionFilter = false,
       ...options
     }: ResourceFindOptions<SandboxFunctionModel> & {
       includeDeletedSpace?: boolean;
+      // An active workspace share of the function's app widens resolution for workspace users,
+      // the way the frame-share capability does for frame viewers. Opt-in: only the
+      // pod_app_toolset MCP server's handlers pass it. Per-function userIdentity policies still
+      // apply at invocation.
+      podAppShare?: PodAppShareResource;
       // Reserved for resolution paths whose authorization is established before the fetch:
       // fetchByIdForExecution and the tool workflow (an invocation row), and fetchInAppFolder
       // (a validated frame share capability, enforced by its own query constraints).
@@ -362,6 +369,13 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         .map((space) => [space.id, space])
     );
 
+    const podAppShareSpace =
+      podAppShare && auth.isUser()
+        ? (spaces.find(
+            (space) => space.isProject() && space.id === podAppShare.spaceId
+          ) ?? null)
+        : null;
+
     const files = await FileResource.fetchByModelIdsWithAuth(
       auth,
       Array.from(
@@ -380,8 +394,15 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     return sandboxFunctions.flatMap((sandboxFunction) => {
       const blob = sandboxFunction.get();
+      // Three prioritized gates: the caller's own access, the app a workspace share grants,
+      // then the pre-authorized bypass (spacesById is only built for it).
+      const podAppShareGrantsFunction =
+        podAppShareSpace?.id === blob.spaceId &&
+        appPrefixFromSlug(blob.slug) === podAppShare?.appName;
       const space =
-        accessibleSpacesById.get(blob.spaceId) ?? spacesById?.get(blob.spaceId);
+        accessibleSpacesById.get(blob.spaceId) ??
+        (podAppShareGrantsFunction ? podAppShareSpace : undefined) ??
+        spacesById?.get(blob.spaceId);
       const file = filesById.get(blob.fileId);
       if (!space || !file) {
         return [];
@@ -509,6 +530,42 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     const [sandboxFunction] = await this.baseFetch(auth, {
       where: { spaceId: space.id, slug },
+    });
+
+    return sandboxFunction ?? null;
+  }
+
+  /**
+   * The functions a workspace share exposes: the shared app's published functions, resolvable by
+   * any workspace user. Only the pod_app_toolset MCP server should call this.
+   */
+  static async listByPodAppShare(
+    auth: Authenticator,
+    share: PodAppShareResource
+  ): Promise<SandboxFunctionResource[]> {
+    const sandboxFunctions = await this.baseFetch(auth, {
+      where: { spaceId: share.spaceId },
+      podAppShare: share,
+    });
+
+    return sandboxFunctions.filter(
+      (sandboxFunction) =>
+        appPrefixFromSlug(sandboxFunction.slug) === share.appName
+    );
+  }
+
+  static async fetchBySlugWithPodAppShare(
+    auth: Authenticator,
+    share: PodAppShareResource,
+    slug: string
+  ): Promise<SandboxFunctionResource | null> {
+    if (appPrefixFromSlug(slug) !== share.appName) {
+      return null;
+    }
+
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { spaceId: share.spaceId, slug },
+      podAppShare: share,
     });
 
     return sandboxFunction ?? null;
@@ -729,6 +786,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description: this.description,
       executionMode: this.executionMode,
       defaultStake: this.defaultStake,
+      // A null stored policy means "optional", matching authorizeSandboxFunctionInvocation.
+      userIdentity: this.userIdentity ?? "optional",
     };
   }
 

@@ -1,5 +1,6 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { getFileContent } from "@app/lib/api/files/utils";
+import { unsharePodApp } from "@app/lib/api/projects/app_shares";
 import { deleteProjectFile } from "@app/lib/api/projects/context";
 import { createPodFrameFile } from "@app/lib/api/projects/pod_frame_file";
 import {
@@ -20,6 +21,7 @@ import { unpublishSandboxFunction } from "@app/lib/api/sandbox_functions/unpubli
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { PodAppShareResource } from "@app/lib/resources/pod_app_share_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -346,11 +348,15 @@ export async function listPodApps(
     return new Err(listResult.error);
   }
 
-  const [sandboxFunctions, databaseOnDiskNames, metadata] = await Promise.all([
-    SandboxFunctionResource.listBySpace(auth, pod),
-    listPodDatabaseOnDiskNames(auth, pod),
-    ProjectMetadataResource.fetchBySpace(auth, pod),
-  ]);
+  const [sandboxFunctions, databaseOnDiskNames, metadata, shares] =
+    await Promise.all([
+      SandboxFunctionResource.listBySpace(auth, pod),
+      listPodDatabaseOnDiskNames(auth, pod),
+      ProjectMetadataResource.fetchBySpace(auth, pod),
+      PodAppShareResource.listBySpace(auth, pod),
+    ]);
+
+  const shareByPrefix = new Map(shares.map((share) => [share.appName, share]));
 
   const functionsByPrefix = groupFunctionsByAppPrefix(sandboxFunctions);
   const pinnedFramePaths = new Set(
@@ -424,6 +430,7 @@ export async function listPodApps(
       ),
       collidingFolderNames:
         prefixFolders.length > 1 ? prefixFolders.map((f) => f.name) : [],
+      share: shareByPrefix.get(prefix)?.toJSON() ?? null,
     });
   }
 
@@ -558,6 +565,15 @@ export async function deletePodApp(
         await metadata.removeFramePath(frame.path);
       }
     }
+  }
+
+  // 5bis. Revoke the app's workspace share (toolset views + share row) before the folder goes.
+  // Idempotent and retry-safe, like every step before the folder delete.
+  const unshareResult = await unsharePodApp(auth, pod, prefix);
+  if (unshareResult.isErr() && unshareResult.error.code !== "not_shared") {
+    return new Err(
+      new PodAppDeleteError("internal", unshareResult.error.message)
+    );
   }
 
   // 6. Source folder last. `deleteProjectFile` recurses and deletes each FileResource underneath,

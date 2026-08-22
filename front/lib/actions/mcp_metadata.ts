@@ -899,6 +899,7 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
       // TODO: the types are slightly incompatible: we have an unknown as the values of `properties`
       //  whereas JSONSchema expects a JSONSchema7Definition.
       inputSchema: inputSchema as JSONSchema,
+      ...(dustMeta?.stake ? { stake: dustMeta.stake } : {}),
       ...(dustMeta?.displayLabels
         ? { displayLabels: dustMeta.displayLabels }
         : {}),

@@ -53,6 +53,7 @@ import { default as openaiUsageServer } from "@app/lib/api/actions/servers/opena
 import { default as outlookCalendarServer } from "@app/lib/api/actions/servers/outlook/calendar_server";
 import { default as outlookMailServer } from "@app/lib/api/actions/servers/outlook/mail_server";
 import { default as planModeServer } from "@app/lib/api/actions/servers/plan_mode";
+import { default as podAppToolsetServer } from "@app/lib/api/actions/servers/pod_app_toolset";
 import { default as podManagerServer } from "@app/lib/api/actions/servers/pod_manager";
 import { default as podTasksServer } from "@app/lib/api/actions/servers/pod_tasks";
 import { default as pokeServer } from "@app/lib/api/actions/servers/poke";
@@ -294,6 +295,8 @@ export async function getInternalMCPServer(
       return sandboxServer(auth, toolContext);
     case "sandbox_functions":
       return sandboxFunctionsServer(auth, toolContext);
+    case "pod_app_toolset":
+      return podAppToolsetServer(auth, mcpServerId, toolContext);
     case "wakeups":
       return wakeupsServer(auth, toolContext);
     case "plan_mode":

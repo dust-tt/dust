@@ -74,6 +74,10 @@ export type MCPToolType = {
   name: string;
   description: string;
   inputSchema?: JSONSchema;
+  // The stake the tool declares for itself (via `_meta.dust`). Used as the default when no
+  // admin override exists — the only stake channel for dynamically-listed internal tools,
+  // which have no static registry entry to carry it.
+  stake?: MCPToolStakeLevelType;
   // Optional for remote MCP servers (external sources may not have this).
   // Mandatory for internal MCP servers (enforced via ServerMetadata type).
   displayLabels?: ToolDisplayLabels;

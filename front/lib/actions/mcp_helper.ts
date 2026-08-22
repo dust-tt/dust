@@ -223,7 +223,12 @@ export function getMcpServerDisplayName(
 
     const serverConfig = INTERNAL_MCP_SERVERS[res.value.name];
 
-    if (serverConfig.isPreview === true) {
+    // Pod app toolsets carry a user-authored per-instance name; the preview label is about the
+    // server type and would read as if the user's own toolset were unreleased.
+    if (
+      serverConfig.isPreview === true &&
+      res.value.name !== "pod_app_toolset"
+    ) {
       displayName += " (Preview)";
     }
     // Only matches the old internal Notion server; the new official Notion is a remote
