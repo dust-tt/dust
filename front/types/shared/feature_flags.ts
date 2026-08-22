@@ -28,6 +28,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
+  openai_flex_processing: {
+    description:
+      "Run trigger and wake-up agent runs on OpenAI flex processing (cheaper, slower), falling back to standard processing when flex does not deliver",
+    stage: "dust_only",
+  },
   anthropic_cache_diagnostics: {
     description:
       "Opt into Anthropic prompt-cache diagnostics to report cache-miss reasons on agent-loop steps",

@@ -14,6 +14,9 @@ export class OpenAIGptFiveDotFiveGlobalOpenAIResponsesStream extends WithOpenAIG
     standardOutput: 30.0,
   };
 
+  // Verified 2026-08-21: https://developers.openai.com/api/docs/pricing
+  static readonly supportsFlexProcessing = true;
+
   static readonly region = GLOBAL;
 
   static readonly id = this.buildId();

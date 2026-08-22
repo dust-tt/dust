@@ -38,6 +38,17 @@ export const toolSpecificationSchema = z.object({
 });
 export type ToolSpecification = z.infer<typeof toolSpecificationSchema>;
 
+// In practice we use only flex and auto but others are included for completeness.
+// Only used by OpenAI
+const serviceTierSchema = z.enum([
+  "auto",
+  "default",
+  "flex",
+  "scale",
+  "priority",
+]);
+export type ServiceTier = z.infer<typeof serviceTierSchema>;
+
 export const inputConfigSchema = z.object({
   temperature: temperatureSchema.optional(),
   reasoning: reasoningSchema.optional(),
@@ -53,6 +64,7 @@ export const inputConfigSchema = z.object({
   toolSearchEnabled: z.boolean().optional(),
   outputFormat: outputFormatSchema.optional(),
   cacheKey: z.string().optional(),
+  serviceTier: serviceTierSchema.optional(),
 });
 export type InputConfig = z.infer<typeof inputConfigSchema>;
 

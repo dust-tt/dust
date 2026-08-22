@@ -252,6 +252,9 @@ export abstract class LLM<
           emitTokenUsageMetrics(currentEvent.content, [
             ...metricTags,
             "surface:stream",
+            ...(currentEvent.content.serviceTier
+              ? [`service_tier:${currentEvent.content.serviceTier}`]
+              : []),
           ]);
         }
 

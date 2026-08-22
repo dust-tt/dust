@@ -694,6 +694,7 @@ export class RunResource extends BaseResource<RunModel> {
       cacheCreationTokens: usage.cacheCreationTokens ?? null,
       longCacheCreationTokens: usage.longCacheCreationTokens ?? null,
       isBatch,
+      serviceTier: usage.serviceTier,
       inferenceRegion,
     });
 
