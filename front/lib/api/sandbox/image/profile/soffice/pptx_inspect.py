@@ -74,6 +74,7 @@ from pptx_audit import (
     _deck_fidelity,
     _deck_structural_audit,
     _drop_audit,
+    _hole_audit,
     _effective_font_size_pt,
     _fit_tokens,
     _has_embedded_blip,
@@ -1112,6 +1113,23 @@ def print_compare(file_path: str, source_path: str) -> str:
                 )
         else:
             lines.append("  legible: every text shape reads on its background")
+
+    # Cloned slides that came out mostly empty canvas. The shape-retention
+    # advisory below counts shapes; this measures the hole, which is what the
+    # reader sees - dropping one full-bleed photo keeps most of the shapes and
+    # loses most of the slide.
+    holes = _hole_audit(file_path, source_path)
+    if holes:
+        lines.append(
+            f"  canvas:  [!] {len(holes)} cloned slide(s) left mostly empty"
+        )
+        for out_no, src_no, cov, src_cov in holes[:LEFTOVER_LISTED]:
+            blockers += 1
+            lines.append(
+                f"    [!] slide {out_no} covers {cov:.0%} of the canvas; its "
+                f"exemplar (template slide {src_no}) covers {src_cov:.0%}. "
+                "Put the exemplar's content back, or clone a sparser one."
+            )
 
     # Exemplar copy still on a cloned slide: the template's scaffolding words
     # ("Pilot", "HOW", "01".."06", a stage label) shipped as if they were

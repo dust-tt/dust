@@ -78,6 +78,8 @@ def set_text(paragraph, text):
 
 **Empty placeholder renders "Click to add ..."**; covering it does not suppress it. Fill (\`slide.shapes.title.text\`, \`slide.placeholders[idx].text_frame.text\`) or delete (\`sp.element.getparent().remove(sp.element)\`).
 
+**The layout draws the bullets.** Body placeholders bullet by \`paragraph.level\`; typing \`•\`, \`-\` or \`*\` at the start of the line stacks your glyph on the layout's ("● • Private answers"). Write the bare text and set the level.
+
 **A new text box has no styling and no colour.** Inside a placeholder the layout supplies typeface, size and colour, so leave \`font.name\` / \`font.size\` / \`font.color\` unset. A box you add with \`shapes.add_textbox\` inherits none of that: it renders in Arial at the presentation's default colour, which is near-black on every deck including the dark ones, so your copy lands black on a black slide. Set all three explicitly on every run, copying the values from the \`--layouts\` placeholder that sits on the same background. Better still: don't add a box, edit the one the exemplar already has.
 
 One pass, one script, shaped like this:
@@ -105,7 +107,7 @@ pic._element.blipFill.blip.set(qn("r:embed"), rId)
 
 A replacement with a different native aspect ratio needs the box resized on both axes (or cropped), or it renders stretched. Never retype a brand name for a logo. Never text over a background image that already carries text: delete that picture or clone another exemplar.
 
-**Adapt, don't gut.** Resize, move, remove template shapes so your content fits; scale images on both axes or crop, never one. Deleting most of an exemplar's shapes = wrong exemplar. Keep every box inside the slide: a box that starts at a negative coordinate or runs past the right edge is clipped, not "bleeding".
+**Adapt, don't gut.** Resize, move, remove template shapes so your content fits; scale images on both axes or crop, never one. Deleting an exemplar's photo or its second column leaves a title over an empty canvas, which reads worse than a plain slide: put content in that space or clone a sparser exemplar. Deleting most of an exemplar's shapes = wrong exemplar. Keep every box inside the slide: a box that starts at a negative coordinate or runs past the right edge is clipped, not "bleeding".
 
 **Fill the box or resize it.** A \`vanchor=middle\` box two lines deep in a 5-inch frame floats its copy in the middle of the slide with a hole above it. Either give the slot the content it was built for, or shrink the box to the copy.
 
@@ -153,7 +155,7 @@ A box you cannot read back is a real defect, not a render artifact. Fix, re-run 
 
 \`pptx_inspect /tmp/deck.pptx --compare /files/conversation/template.pptx\`
 
-Design fidelity, legibility and package integrity in one pass, baselined against the template so its own faults are not reported as yours. Copy the finished deck back to \`/files/conversation/\` once it passes. Clear every \`[!]\`: fonts dropped or imagery stripped (you rebuilt instead of editing: start again from the copy), text that renders unreadable, shapes you pushed off the slide or stretched, layout collapse, density, and under \`Package:\` anything that stops PowerPoint opening the file. Package faults mean you edited the zip by hand: redo those edits through \`pptx_slides\` and python-pptx. \`leftover: [i]\` lists shapes still carrying the template's copy: replace or delete the ones you cloned. No template: \`--validate\` runs the package half alone. Deliver on \`[QA: PASS]\`, every slide read back clean.
+Design fidelity, legibility and package integrity in one pass, baselined against the template so its own faults are not reported as yours. Copy the finished deck back to \`/files/conversation/\` once it passes. Clear every \`[!]\`: fonts dropped or imagery stripped (you rebuilt instead of editing: start again from the copy - a footer logo does not count as a slide's imagery), text that renders unreadable, \`canvas:\` slides you cloned and then emptied, shapes you pushed off the slide or stretched, layout collapse, density, and under \`Package:\` anything that stops PowerPoint opening the file. Package faults mean you edited the zip by hand: redo those edits through \`pptx_slides\` and python-pptx. \`leftover: [i]\` lists shapes still carrying the template's copy: replace or delete the ones you cloned. No template: \`--validate\` runs the package half alone. Deliver on \`[QA: PASS]\`, every slide read back clean.
 
 ## Defaults
 
