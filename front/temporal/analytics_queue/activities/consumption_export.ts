@@ -18,8 +18,10 @@ import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/c
 import logger from "@app/logger/logger";
 import { createHash } from "crypto";
 
+// Kept as a top-level prefix (not nested under `w/{workspaceId}/`) so a single GCS
+// lifecycle matches_prefix rule can target every workspace's exports for expiry.
 export function buildConsumptionExportGcsPrefix(workspaceId: string): string {
-  return `w/${workspaceId}/consumption_exports/`;
+  return `consumption_exports/${workspaceId}/`;
 }
 
 export function buildConsumptionExportGcsPath(
@@ -35,7 +37,7 @@ export function buildConsumptionExportBucketPartsGcsPrefix(
   workspaceId: string,
   exportId: string
 ): string {
-  return `w/${workspaceId}/consumption_exports_tmp/${exportId}/`;
+  return `consumption_exports_tmp/${workspaceId}/${exportId}/`;
 }
 
 function buildConsumptionExportBucketPartGcsPath(
