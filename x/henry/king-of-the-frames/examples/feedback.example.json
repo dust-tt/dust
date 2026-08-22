@@ -1,0 +1,16 @@
+{
+  "collectedAt": "2026-01-02T12:00:00Z",
+  "uniqueReviewerCount": 3,
+  "matchups": [
+    {
+      "packId": "example-pack",
+      "votesBySlot": {
+        "1": 2,
+        "2": 1,
+        "3": 0
+      },
+      "noneVotes": 0,
+      "comments": []
+    }
+  ]
+}
