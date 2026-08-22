@@ -92,6 +92,15 @@ export const getPodRoute = (workspaceId: string, spaceId: string) => {
   return `/w/${workspaceId}/pods/${spaceId}`;
 };
 
+/** The App builder, full screen. `appId` is the sId of the Pod backing the App. */
+export const getAppRoute = (workspaceId: string, appId: string) => {
+  return `/w/${workspaceId}/apps/${appId}`;
+};
+
+export const getNewAppRoute = (workspaceId: string) => {
+  return `/w/${workspaceId}/apps/new`;
+};
+
 export const getGetStartedRoute = (workspaceId: string) => {
   return `/w/${workspaceId}/for-you`;
 };

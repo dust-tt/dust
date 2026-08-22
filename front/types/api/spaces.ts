@@ -109,6 +109,10 @@ export type RichSpaceType = SpaceType & {
   tabsOrder: string[];
   /** Workspace admins control membership and connected data (project spaces only). */
   isAdminControlled: boolean;
+  /** This Pod is an App: surfaced under Apps and rendered by the full-screen App builder. */
+  isApp: boolean;
+  /** sId of the App's single continuous conversation. Null unless `isApp`. */
+  appConversationId: string | null;
 };
 
 export type GetSpaceResponseBody = {

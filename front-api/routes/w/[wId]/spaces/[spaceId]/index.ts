@@ -160,6 +160,13 @@ const app = workspaceApp();
  *                         isAdminControlled:
  *                           type: boolean
  *                           description: Whether workspace admins control membership and connected data for this Pod.
+ *                         isApp:
+ *                           type: boolean
+ *                           description: Whether this Pod is an App, rendered by the full-screen App builder.
+ *                         appConversationId:
+ *                           type: string
+ *                           nullable: true
+ *                           description: sId of the App's single continuous conversation. Null unless isApp.
  *       401:
  *         description: Unauthorized
  *   patch:
@@ -327,6 +334,8 @@ app.get(
           (meta?.frameTabs ?? []).map((tab) => tab.path)
         ),
         isAdminControlled: meta?.isAdminControlled ?? false,
+        isApp: meta?.isApp ?? false,
+        appConversationId: meta?.appConversationId ?? null,
       },
     });
   }

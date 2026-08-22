@@ -6,6 +6,7 @@ import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
 import { IndexPage } from "@spa/app/pages/IndexPage";
 import { adminFullPageRoutes, adminRoutes } from "@spa/app/routes/adminRoutes";
+import { appBuilderRoutes } from "@spa/app/routes/appBuilderRoutes";
 import { appsRoutes } from "@spa/app/routes/appsRoutes";
 import {
   builderContentRoutes,
@@ -76,6 +77,7 @@ export const routes: RouteObject[] = [
 
           // Routes WITHOUT AppContentLayout (no sidebar/navigation chrome)
           ...adminFullPageRoutes,
+          ...appBuilderRoutes,
           ...builderFullPageRoutes,
           ...builderRedirectRoutes,
           ...conversationRedirectRoutes,

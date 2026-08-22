@@ -22,7 +22,7 @@ const CONTENT_FRAGMENT_POST_CONCURRENCY = 8;
 export function useSubmitMessage({
   owner,
   user,
-  conversationId,
+  conversationId: boundConversationId,
 }: {
   owner: WorkspaceType;
   user: UserType;
@@ -40,7 +40,13 @@ export function useSubmitMessage({
       origin?: ClientMessageOrigin;
       skipToolsValidation?: boolean;
       modelSelection?: ModelSelectionType;
+      /**
+       * Overrides the bound conversation, for callers that only learn it as they submit — the App
+       * builder creates the App and posts its first prompt in one go.
+       */
+      conversationId?: string;
     }): Promise<Result<PostMessagesResponseBody, SubmitMessageError>> => {
+      const conversationId = messageData.conversationId ?? boundConversationId;
       if (!conversationId) {
         return new Err({
           type: "message_send_error",
@@ -168,6 +174,6 @@ export function useSubmitMessage({
 
       return new Ok(await mRes.json());
     },
-    [owner, user, conversationId, contextOrigin]
+    [owner, user, boundConversationId, contextOrigin]
   );
 }

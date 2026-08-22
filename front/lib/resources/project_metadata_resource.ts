@@ -211,6 +211,14 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ isAdminControlled }, transaction);
   }
 
+  /** Promotes the Pod to an App and pins the conversation the App builder resumes. */
+  async markAsApp(
+    { appConversationId }: { appConversationId: string },
+    transaction?: Transaction
+  ) {
+    await this.update({ isApp: true, appConversationId }, transaction);
+  }
+
   async updateInitialTodoAnalysisLookback(
     initialTodoAnalysisLookback: string | null,
     transaction?: Transaction
