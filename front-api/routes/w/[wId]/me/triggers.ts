@@ -6,6 +6,9 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/me/triggers.
+// Deprecated 2026-08-21: the personal automations view moved to
+// /api/w/:wId/me/automations/triggers. Delete once deployed clients have
+// cycled out.
 const app = workspaceApp();
 
 /** @ignoreswagger */
