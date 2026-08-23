@@ -222,7 +222,7 @@ async function resolveFramesByFolderName(
  * rather than from the sandbox, so listing apps never has to wake a sleeping pod. A database created
  * seconds ago may not be replicated yet.
  */
-async function listPodDatabaseOnDiskNames(
+export async function listPodDatabaseOnDiskNames(
   auth: Authenticator,
   pod: SpaceResource
 ): Promise<string[]> {
