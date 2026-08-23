@@ -9,6 +9,10 @@ import {
 } from "@app/tests/utils/conversation_test_factories";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import {
+  MANIFEST,
+  seedAppFolder,
+} from "@app/tests/utils/pod_app_publish_test_helpers";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -47,56 +51,6 @@ vi.mock("@app/lib/lock", async (importOriginal) => {
     ) => callback(),
   };
 });
-
-const MANIFEST = {
-  version: 1,
-  name: "Task List",
-  description: "Tasks.",
-  frames: [{ path: "TaskList.tsx" }],
-  functions: [
-    {
-      name: "add-task",
-      path: "src/add.ts",
-      description: "Add.",
-      executionMode: "fast",
-      defaultStake: "low",
-    },
-  ],
-  databases: [{ name: "tasks", path: "databases/tasks.db.ts" }],
-};
-
-/** Seeds the pod listing with an app folder's files and its manifest content. */
-function seedAppFolder({
-  folder,
-  relPaths,
-  manifest,
-  extraRootFolders = [],
-}: {
-  folder: string;
-  relPaths: string[];
-  manifest: unknown;
-  extraRootFolders?: { folder: string; relPaths: string[] }[];
-}) {
-  const all = [{ folder, relPaths }, ...extraRootFolders];
-  fileStorageMock.setFilesByPrefix((prefix) =>
-    all.flatMap(({ folder: f, relPaths: rps }) =>
-      rps.map((relPath) => ({
-        name: `${prefix}${f}/${relPath}`,
-        metadata: {
-          contentType: relPath.endsWith(".tsx")
-            ? "application/vnd.dust.frame"
-            : "text/plain",
-          size: "10",
-        },
-      }))
-    )
-  );
-  fileStorageMock.setFileContent((filePath) =>
-    filePath.endsWith(`${folder}/manifest.json`)
-      ? JSON.stringify(manifest)
-      : null
-  );
-}
 
 beforeEach(() => {
   vi.clearAllMocks();
