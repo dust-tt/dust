@@ -92,6 +92,25 @@ describe("listPodApps with manifests", () => {
     expect(result.value[0].manifestError).not.toBeNull();
   });
 
+  it("lists a folder holding ONLY a malformed manifest, with a manifestError", async () => {
+    const { auth, projectId } = await setupProjectConversation();
+    const pod = await SpaceResource.fetchById(auth, projectId);
+    assert(pod);
+    // No functions/ or databases/ subfolder, no frame: the malformed manifest alone must still
+    // make this an app, via the manifestPath disjunct rather than the legacy heuristic.
+    seedFolders([{ folder: "Broken", relPaths: ["manifest.json"] }], {
+      Broken: { version: 99 },
+    });
+
+    const result = await listPodApps(auth, pod);
+
+    assert(result.isOk(), result.isErr() ? result.error.message : "");
+    expect(result.value).toHaveLength(1);
+    expect(result.value[0].prefix).toEqual("broken");
+    expect(result.value[0].displayName).toBeNull();
+    expect(result.value[0].manifestError).not.toBeNull();
+  });
+
   it("leaves manifest-less folders on the legacy heuristic", async () => {
     const { auth, projectId } = await setupProjectConversation();
     const pod = await SpaceResource.fetchById(auth, projectId);
