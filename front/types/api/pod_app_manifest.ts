@@ -5,7 +5,11 @@ import {
   SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX,
   SANDBOX_FUNCTION_STAKES,
 } from "@app/types/api/sandbox_functions";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 /**
  * A Pod app's own manifest: `manifest.json` at the root of the app folder, declaring the app's
@@ -26,9 +30,8 @@ export const POD_APP_MANIFEST_FILE = "manifest.json";
 export const POD_APP_MANIFEST_VERSION = 1;
 
 /**
- * Suffix a database schema file must keep wherever it lives. Same value as
- * POD_DATABASE_SCHEMA_FILE_SUFFIX in lib/api/projects/apps.ts, which cannot be imported from a
- * types module.
+ * Suffix a database schema file must keep wherever it lives. apps.ts's
+ * POD_DATABASE_SCHEMA_FILE_SUFFIX aliases this constant rather than redeclaring it.
  */
 export const POD_APP_MANIFEST_DB_FILE_SUFFIX = ".db.ts";
 
@@ -110,6 +113,31 @@ export const PodAppPublishManifestSchema = z
   });
 
 export type PodAppPublishManifest = z.infer<typeof PodAppPublishManifestSchema>;
+
+/**
+ * Parse and validate a `manifest.json` buffer. Shared by `publishPodApp` and `listPodApps`'s
+ * `readAppManifests`, whose only difference is how they map the returned `Err` string into their
+ * own error shape.
+ */
+export function parsePodAppManifest(
+  buffer: Buffer
+): Result<PodAppPublishManifest, string> {
+  let json: unknown;
+  try {
+    json = JSON.parse(buffer.toString("utf-8"));
+  } catch (err) {
+    return new Err(
+      `manifest.json is not valid JSON: ${normalizeError(err).message}`
+    );
+  }
+
+  const validation = PodAppPublishManifestSchema.safeParse(json);
+  if (!validation.success) {
+    return new Err(fromError(validation.error).toString());
+  }
+
+  return new Ok(validation.data);
+}
 
 /** What a manifest publish did, as the business layer reports it and the tool returns it. */
 export type PodAppPublishSummary = {
