@@ -276,6 +276,32 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: true,
   },
+  {
+    name: "publish_app",
+    description:
+      "Publish a pod app in one call from the manifest.json at the root of its folder: " +
+      "reconcile its databases, publish its functions and Frames, and unpublish functions " +
+      "the manifest no longer declares. Prefer this over the individual publish and " +
+      "db_reconcile tools once the app has a manifest; use those to iterate on a single " +
+      "function or database.",
+    schema: {
+      folder: z
+        .string()
+        .min(1)
+        .describe(
+          "The app folder name at the pod root (e.g. `TaskList`). Its manifest.json declares " +
+            "the app's name, description, frames, functions and databases, each with a " +
+            "folder-relative source path."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Publishing pod app...",
+      done: "Published pod app",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
 ] as const;
 
 export const SANDBOX_FUNCTIONS_SERVER = {
