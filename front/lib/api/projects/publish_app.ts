@@ -1,5 +1,6 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { listPodDatabaseOnDiskNames } from "@app/lib/api/projects/apps";
+import { createPodFrameFile } from "@app/lib/api/projects/pod_frame_file";
 import { buildPodAppPublishPlan } from "@app/lib/api/projects/publish_app_plan";
 import { reconcileDatabaseFromPodPath } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
@@ -116,6 +117,10 @@ export async function publishPodApp(
     );
   }
   const folderRelPaths = new Set<string>();
+  // Content type as reported by the listing, keyed by folder-relative path. Lets the frame step
+  // tell "no FileResource, but a Frame-typed object exists" apart from "not a Frame at all"
+  // without a second listing call.
+  const contentTypeByRelPath = new Map<string, string>();
   const collidingFolderNames = new Set<string>();
   for (const entry of listResult.value) {
     if (entry.isDirectory || !entry.path.startsWith(`${podRoot}/`)) {
@@ -130,7 +135,9 @@ export async function publishPodApp(
     }
     const [head, ...rest] = segments;
     if (head === trimmed) {
-      folderRelPaths.add(rest.join("/"));
+      const relPath = rest.join("/");
+      folderRelPaths.add(relPath);
+      contentTypeByRelPath.set(relPath, entry.contentType);
     } else if (normalizeAppPrefix(head) === prefix) {
       collidingFolderNames.add(head);
     }
@@ -282,13 +289,61 @@ export async function publishPodApp(
 
     for (const frame of plan.framesToPublish) {
       const mountPath = mountPathByRelPath.get(frame.relPath);
-      const file = mountPath ? fileByMountPath.get(mountPath) : undefined;
-      if (!file || !isInteractiveContentType(file.contentType)) {
+      let file = mountPath ? fileByMountPath.get(mountPath) : undefined;
+
+      if (file && !isInteractiveContentType(file.contentType)) {
         warnings.push(
-          `Frame ${frame.relPath}: not a Frame file (create it as interactive content, then retry).`
+          `Frame ${frame.relPath}: its FileResource content type is '${file.contentType}', ` +
+            "not a Frame. Create it as interactive content, then retry."
         );
         continue;
       }
+
+      // No FileResource: the manifest declares a frame that exists only as a bare storage
+      // object (e.g. copied into the pod, which loses the FileResource). Recreate it in place
+      // the same way `importPodApp` does, so the manifest-first flow self-heals.
+      if (!file) {
+        const contentType = contentTypeByRelPath.get(frame.relPath);
+        if (
+          contentType === undefined ||
+          !isInteractiveContentType(contentType)
+        ) {
+          warnings.push(
+            contentType === undefined
+              ? `Frame ${frame.relPath}: not a Frame file (create it as interactive content, then retry).`
+              : `Frame ${frame.relPath}: its content type is '${contentType}', not a Frame. ` +
+                  "Create it as interactive content, then retry."
+          );
+          continue;
+        }
+        if (frame.relPath.includes("/")) {
+          warnings.push(
+            `Frame ${frame.relPath}: cannot auto-create a Frame in a subfolder; create it ` +
+              "as interactive content, then retry."
+          );
+          continue;
+        }
+        const sourceResult = await dustFs.readBuffer(frame.scopedPath);
+        if (sourceResult.isErr() || sourceResult.value === null) {
+          warnings.push(`Frame ${frame.relPath}: could not read its source.`);
+          continue;
+        }
+        const createResult = await createPodFrameFile(auth, {
+          space: pod,
+          folderName: trimmed,
+          fileName: frame.relPath,
+          contentType,
+          content: sourceResult.value.toString("utf-8"),
+        });
+        if (createResult.isErr()) {
+          warnings.push(
+            `Frame ${frame.relPath}: ${createResult.error.message}`
+          );
+          continue;
+        }
+        file = createResult.value;
+      }
+
       const result = await publishFrame(auth, {
         file,
         reader: createMountFrameSourceReader(dustFs, folderPath),

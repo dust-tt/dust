@@ -1,3 +1,4 @@
+import { createPodFrameFile } from "@app/lib/api/projects/pod_frame_file";
 import { publishPodApp } from "@app/lib/api/projects/publish_app";
 import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { reconcileDatabaseFromPodPath } from "@app/lib/api/sandbox_functions/dsbx_db";
@@ -6,6 +7,7 @@ import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { setupProjectConversation } from "@app/tests/utils/conversation_test_factories";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
@@ -34,6 +36,18 @@ vi.mock("@app/lib/api/viz/publish_frame", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@app/lib/api/viz/publish_frame")>();
   return { ...actual, publishFrame: vi.fn() };
+});
+
+// The real `createPodFrameFile` (FileResource.makeNew + uploadContent + moveProjectFile) drives
+// `ensureAuthorizedFileAccessForShare`'s reference analysis, which reaches well past what the GCS
+// storage mock models here and times out. These tests verify `publishPodApp`'s branching around
+// it, not the primitive itself.
+vi.mock("@app/lib/api/projects/pod_frame_file", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@app/lib/api/projects/pod_frame_file")
+    >();
+  return { ...actual, createPodFrameFile: vi.fn() };
 });
 
 vi.mock("@app/lib/lock", async (importOriginal) => {
@@ -90,11 +104,16 @@ function seedAppFolder({
       }))
     )
   );
-  fileStorageMock.setFileContent((filePath) =>
-    filePath.endsWith(`${folder}/manifest.json`)
-      ? JSON.stringify(manifest)
-      : null
-  );
+  fileStorageMock.setFileContent((filePath) => {
+    if (filePath.endsWith(`${folder}/manifest.json`)) {
+      return JSON.stringify(manifest);
+    }
+    // Generic body for any other seeded file (e.g. a frame source read by the auto-create path).
+    const isSeeded = all.some(({ folder: f, relPaths: rps }) =>
+      rps.some((relPath) => filePath.endsWith(`${f}/${relPath}`))
+    );
+    return isSeeded ? "// seeded content" : null;
+  });
 }
 
 async function podFor(
@@ -122,6 +141,19 @@ beforeEach(() => {
     new Ok({ database: "tasklist__tasks", created: true, statements: [] })
   );
   vi.mocked(publishFrame).mockResolvedValue(new Ok({ warnings: [] }));
+  vi.mocked(createPodFrameFile).mockImplementation(
+    async (auth, { space, fileName, contentType }) => {
+      const file = await FileFactory.create(auth, auth.user(), {
+        contentType,
+        fileName,
+        fileSize: 10,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: space.sId },
+      });
+      return new Ok(file);
+    }
+  );
 });
 
 describe("publishPodApp", () => {
@@ -138,13 +170,10 @@ describe("publishPodApp", () => {
       ],
       manifest: MANIFEST,
     });
-    // The real createPodFrameFile primitive (FileResource.makeNew + uploadContent +
-    // moveProjectFile) drives ensureAuthorizedFileAccessForShare's reference analysis, which
-    // reaches well past what the GCS storage mock models here and timed out. Per the brief's
-    // documented fallback, assert the frame lands in `warnings` (its path exists in the folder
-    // listing, but no FileResource is registered for it) rather than in `publishedFrameNames`.
-    // publishFrame's happy path (a real FileResource) is exercised by mocking `publishFrame`
-    // itself, as this test already does.
+    // The frame's source exists in the folder listing as a Frame-typed object, but has no
+    // FileResource (e.g. lost by a folder copy). `publishPodApp` must recreate it via
+    // `createPodFrameFile` (mocked above; the real primitive times out under the GCS storage
+    // mock) rather than warning it away.
 
     const result = await publishPodApp(auth, pod, { folderName: "TaskList" });
 
@@ -153,9 +182,16 @@ describe("publishPodApp", () => {
     expect(result.value.displayName).toBe("Task List");
     expect(result.value.reconciledDatabaseNames).toEqual(["tasklist__tasks"]);
     expect(result.value.publishedFunctionSlugs).toEqual(["tasklist__add-task"]);
-    expect(result.value.publishedFrameNames).toEqual([]);
-    expect(result.value.warnings.join(" ")).toContain("TaskList.tsx");
-    expect(vi.mocked(publishFrame)).not.toHaveBeenCalled();
+    expect(result.value.publishedFrameNames).toEqual(["TaskList.tsx"]);
+    expect(vi.mocked(createPodFrameFile)).toHaveBeenCalledWith(
+      auth,
+      expect.objectContaining({
+        folderName: "TaskList",
+        fileName: "TaskList.tsx",
+        contentType: "application/vnd.dust.frame",
+      })
+    );
+    expect(vi.mocked(publishFrame)).toHaveBeenCalled();
     expect(vi.mocked(reconcileDatabaseFromPodPath)).toHaveBeenCalledWith(
       auth,
       expect.objectContaining({
@@ -169,6 +205,34 @@ describe("publishPodApp", () => {
     ).toBeLessThan(
       vi.mocked(buildSandboxFunctionOnSandbox).mock.invocationCallOrder[0]
     );
+  });
+
+  it("warns instead of auto-creating a frame whose source is not interactive content", async () => {
+    const { auth, projectId } = await setupProjectConversation();
+    const pod = await podFor(projectId, auth);
+    seedAppFolder({
+      folder: "TaskList",
+      // "Notes.txt" does not end in ".tsx", so seedAppFolder's listing marks it "text/plain".
+      relPaths: [
+        "manifest.json",
+        "Notes.txt",
+        "src/add.ts",
+        "databases/tasks.db.ts",
+      ],
+      manifest: { ...MANIFEST, frames: [{ path: "Notes.txt" }] },
+    });
+
+    const result = await publishPodApp(auth, pod, { folderName: "TaskList" });
+
+    assert(result.isOk(), result.isErr() ? result.error.message : "");
+    expect(result.value.publishedFrameNames).toEqual([]);
+    expect(result.value.warnings.join(" ")).toContain("Notes.txt");
+    expect(result.value.warnings.join(" ")).toContain("text/plain");
+    expect(vi.mocked(createPodFrameFile)).not.toHaveBeenCalled();
+    expect(vi.mocked(publishFrame)).not.toHaveBeenCalled();
+    // The rest of the publish still went through.
+    expect(result.value.reconciledDatabaseNames).toEqual(["tasklist__tasks"]);
+    expect(result.value.publishedFunctionSlugs).toEqual(["tasklist__add-task"]);
   });
 
   it("publishes a frame-less, database-less app", async () => {
