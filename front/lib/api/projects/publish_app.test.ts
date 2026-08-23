@@ -9,6 +9,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { setupProjectConversation } from "@app/tests/utils/conversation_test_factories";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import {
+  MANIFEST,
+  seedAppFolder,
+} from "@app/tests/utils/pod_app_publish_test_helpers";
 import { frameContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
@@ -61,61 +65,6 @@ vi.mock("@app/lib/lock", async (importOriginal) => {
     ) => callback(),
   };
 });
-
-const MANIFEST = {
-  version: 1,
-  name: "Task List",
-  description: "Tasks.",
-  frames: [{ path: "TaskList.tsx" }],
-  functions: [
-    {
-      name: "add-task",
-      path: "src/add.ts",
-      description: "Add.",
-      executionMode: "fast",
-      defaultStake: "low",
-    },
-  ],
-  databases: [{ name: "tasks", path: "databases/tasks.db.ts" }],
-};
-
-/** Seeds the pod listing with an app folder's files and its manifest content. */
-function seedAppFolder({
-  folder,
-  relPaths,
-  manifest,
-  extraRootFolders = [],
-}: {
-  folder: string;
-  relPaths: string[];
-  manifest: unknown;
-  extraRootFolders?: { folder: string; relPaths: string[] }[];
-}) {
-  const all = [{ folder, relPaths }, ...extraRootFolders];
-  fileStorageMock.setFilesByPrefix((prefix) =>
-    all.flatMap(({ folder: f, relPaths: rps }) =>
-      rps.map((relPath) => ({
-        name: `${prefix}${f}/${relPath}`,
-        metadata: {
-          contentType: relPath.endsWith(".tsx")
-            ? "application/vnd.dust.frame"
-            : "text/plain",
-          size: "10",
-        },
-      }))
-    )
-  );
-  fileStorageMock.setFileContent((filePath) => {
-    if (filePath.endsWith(`${folder}/manifest.json`)) {
-      return JSON.stringify(manifest);
-    }
-    // Generic body for any other seeded file (e.g. a frame source read by the auto-create path).
-    const isSeeded = all.some(({ folder: f, relPaths: rps }) =>
-      rps.some((relPath) => filePath.endsWith(`${f}/${relPath}`))
-    );
-    return isSeeded ? "// seeded content" : null;
-  });
-}
 
 async function podFor(
   projectId: string,

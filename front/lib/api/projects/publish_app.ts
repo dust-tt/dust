@@ -1,5 +1,8 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
-import { listPodDatabaseOnDiskNames } from "@app/lib/api/projects/apps";
+import {
+  listPodDatabaseOnDiskNames,
+  validatePodAppFolderName,
+} from "@app/lib/api/projects/apps";
 import { createPodFrameFile } from "@app/lib/api/projects/pod_frame_file";
 import { buildPodAppPublishPlan } from "@app/lib/api/projects/publish_app_plan";
 import { reconcileDatabaseFromPodPath } from "@app/lib/api/sandbox_functions/dsbx_db";
@@ -14,16 +17,13 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { PodAppPublishSummary } from "@app/types/api/pod_app_manifest";
 import {
   POD_APP_MANIFEST_FILE,
-  PodAppPublishManifestSchema,
+  parsePodAppManifest,
 } from "@app/types/api/pod_app_manifest";
-import { MAX_POD_APP_NAME_LENGTH } from "@app/types/api/pod_apps";
 import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
 import { SCOPED_PREFIX_POD } from "@app/types/file_system";
 import { frameContentType, isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { fromError } from "zod-validation-error";
 
 export type PodAppPublishErrorCode =
   | "not_a_pod"
@@ -74,28 +74,11 @@ export async function publishPodApp(
     );
   }
 
-  const trimmed = folderName.trim();
-  if (
-    trimmed.length === 0 ||
-    trimmed.length > MAX_POD_APP_NAME_LENGTH ||
-    trimmed.includes("/")
-  ) {
-    return new Err(
-      new PodAppPublishError(
-        "invalid_name",
-        `Invalid app folder name '${folderName}'.`
-      )
-    );
+  const nameResult = validatePodAppFolderName(folderName);
+  if (nameResult.isErr()) {
+    return new Err(new PodAppPublishError("invalid_name", nameResult.error));
   }
-  const prefix = normalizeAppPrefix(trimmed);
-  if (!prefix) {
-    return new Err(
-      new PodAppPublishError(
-        "invalid_name",
-        `'${trimmed}' has no letters or digits to derive an app prefix from.`
-      )
-    );
-  }
+  const { folderName: trimmed, prefix } = nameResult.value;
 
   const fsResult = await DustFileSystem.forPod(auth, pod);
   if (fsResult.isErr()) {
@@ -173,27 +156,13 @@ export async function publishPodApp(
       )
     );
   }
-  let manifestJson: unknown;
-  try {
-    manifestJson = JSON.parse(manifestResult.value.toString("utf-8"));
-  } catch (err) {
+  const manifestParseResult = parsePodAppManifest(manifestResult.value);
+  if (manifestParseResult.isErr()) {
     return new Err(
-      new PodAppPublishError(
-        "invalid_manifest",
-        `${POD_APP_MANIFEST_FILE} is not valid JSON: ${normalizeError(err).message}`
-      )
+      new PodAppPublishError("invalid_manifest", manifestParseResult.error)
     );
   }
-  const validation = PodAppPublishManifestSchema.safeParse(manifestJson);
-  if (!validation.success) {
-    return new Err(
-      new PodAppPublishError(
-        "invalid_manifest",
-        fromError(validation.error).toString()
-      )
-    );
-  }
-  const manifest = validation.data;
+  const manifest = manifestParseResult.value;
 
   const [sandboxFunctions, databaseOnDiskNames] = await Promise.all([
     SandboxFunctionResource.listBySpace(auth, pod),
@@ -306,6 +275,9 @@ export async function publishPodApp(
       // bundler performs the real validation (TS/JSX parse etc.) and rejects non-frame sources
       // with a meaningful error.
       if (!file) {
+        // A Frame recreated deeper than the app folder's top level would be invisible to listing,
+        // delete, export and clone: `collectAppFolders` in apps.ts only recognizes a Frame at the
+        // TOP of the app folder (`segments.length === 2`) as the app's own Frame.
         if (frame.relPath.includes("/")) {
           warnings.push(
             `Frame ${frame.relPath}: cannot auto-create a Frame in a subfolder; create it ` +

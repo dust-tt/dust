@@ -6,6 +6,7 @@ import {
   listPodApps,
   POD_DATABASE_SCHEMA_FILE_SUFFIX,
   stripExtension,
+  validatePodAppFolderName,
 } from "@app/lib/api/projects/apps";
 import { createPodFrameFile } from "@app/lib/api/projects/pod_frame_file";
 import { reconcileDatabaseFromPodPath } from "@app/lib/api/sandbox_functions/dsbx_db";
@@ -30,8 +31,6 @@ import {
   POD_APP_ARCHIVE_MANIFEST_FILE,
   PodAppManifestSchema,
 } from "@app/types/api/pod_app_archive";
-import { MAX_POD_APP_NAME_LENGTH } from "@app/types/api/pod_apps";
-import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
 import { SCOPED_PREFIX_POD } from "@app/types/file_system";
 import { isInteractiveContentType } from "@app/types/files";
 import {
@@ -410,29 +409,11 @@ export async function importPodApp(
   }
   const { manifest, fileBuffers } = parseResult.value;
 
-  const folderName = (name ?? manifest.name).trim();
-  if (folderName.length > MAX_POD_APP_NAME_LENGTH) {
-    return new Err(
-      new PodAppImportError(
-        "invalid_name",
-        `'${folderName}' is longer than ${MAX_POD_APP_NAME_LENGTH} characters.`
-      )
-    );
+  const nameResult = validatePodAppFolderName(name ?? manifest.name);
+  if (nameResult.isErr()) {
+    return new Err(new PodAppImportError("invalid_name", nameResult.error));
   }
-  const prefix = normalizeAppPrefix(folderName);
-  if (!prefix) {
-    return new Err(
-      new PodAppImportError(
-        "invalid_name",
-        `'${folderName}' has no letters or digits to name an app with.`
-      )
-    );
-  }
-  if (folderName.includes("/")) {
-    return new Err(
-      new PodAppImportError("invalid_name", "An app name cannot contain '/'.")
-    );
-  }
+  const { folderName, prefix } = nameResult.value;
 
   const appsResult = await listPodApps(auth, pod);
   if (appsResult.isErr()) {

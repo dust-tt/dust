@@ -28,6 +28,7 @@ import type {
   FileSystemEntry,
   FileSystemFileEntry,
 } from "@app/types/api/file_system/types";
+import { POD_APP_MANIFEST_DB_FILE_SUFFIX } from "@app/types/api/pod_app_manifest";
 import type {
   PodApp,
   PodAppCloneSummary,
@@ -36,6 +37,7 @@ import type {
   PodAppFrame,
   PodAppFunction,
 } from "@app/types/api/pod_apps";
+import { MAX_POD_APP_NAME_LENGTH } from "@app/types/api/pod_apps";
 import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
 import { SCOPED_PREFIX_POD } from "@app/types/file_system";
 import { isInteractiveContentType } from "@app/types/files";
@@ -58,8 +60,12 @@ const APP_SHAPED_SUBFOLDERS = [
   APP_DATABASES_SUBFOLDER,
 ];
 
-/** Suffix of a database's schema file, e.g. `chat.db.ts` declares the `chat` database. */
-export const POD_DATABASE_SCHEMA_FILE_SUFFIX = ".db.ts";
+/**
+ * Suffix of a database's schema file, e.g. `chat.db.ts` declares the `chat` database. Aliases
+ * POD_APP_MANIFEST_DB_FILE_SUFFIX in types/api/pod_app_manifest.ts, which the manifest schema
+ * also needs and cannot import this lib module for.
+ */
+export const POD_DATABASE_SCHEMA_FILE_SUFFIX = POD_APP_MANIFEST_DB_FILE_SUFFIX;
 
 /**
  * A folder's accumulated file-system facts, before published functions and databases are joined in.
@@ -615,6 +621,34 @@ function fileEntriesOf(entries: FileSystemEntry[]): FileSystemFileEntry[] {
 }
 
 /**
+ * Validate a candidate app folder name and derive its prefix: trimmed, within the max length,
+ * free of '/', and holding at least one letter or digit for `normalizeAppPrefix` to derive a
+ * prefix from. Shared by `publishPodApp`, `clonePodApp` and `importPodApp`, which each wrap the
+ * returned `Err` string in their own error class.
+ */
+export function validatePodAppFolderName(
+  name: string
+): Result<{ folderName: string; prefix: string }, string> {
+  const folderName = name.trim();
+  if (folderName.length > MAX_POD_APP_NAME_LENGTH) {
+    return new Err(
+      `'${folderName}' is longer than ${MAX_POD_APP_NAME_LENGTH} characters.`
+    );
+  }
+  if (folderName.includes("/")) {
+    return new Err("An app name cannot contain '/'.");
+  }
+  const prefix = normalizeAppPrefix(folderName);
+  if (!prefix) {
+    return new Err(
+      `'${folderName}' has no letters or digits to name an app with.`
+    );
+  }
+
+  return new Ok({ folderName, prefix });
+}
+
+/**
  * Clone a Pod app into a new folder in the same Pod.
  *
  * What carries over: every file under the app folder, its published functions (re-published under the
@@ -641,21 +675,11 @@ export async function clonePodApp(
     );
   }
 
-  const folderName = newName.trim();
-  const newPrefix = normalizeAppPrefix(folderName);
-  if (!newPrefix) {
-    return new Err(
-      new PodAppCloneError(
-        "invalid_name",
-        `'${newName}' has no letters or digits to name an app with.`
-      )
-    );
+  const nameResult = validatePodAppFolderName(newName);
+  if (nameResult.isErr()) {
+    return new Err(new PodAppCloneError("invalid_name", nameResult.error));
   }
-  if (folderName.includes("/")) {
-    return new Err(
-      new PodAppCloneError("invalid_name", "An app name cannot contain '/'.")
-    );
-  }
+  const { folderName, prefix: newPrefix } = nameResult.value;
 
   const appsResult = await listPodApps(auth, pod);
   if (appsResult.isErr()) {
