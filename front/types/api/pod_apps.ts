@@ -53,6 +53,12 @@ export type PodApp = {
   prefix: string;
   /** The folder name as authored (`TaskList`), falling back to the prefix if the folder is gone. */
   name: string;
+  /** The manifest's display name, or null when the folder has no (valid) manifest. */
+  displayName: string | null;
+  /** The manifest's description, or null when the folder has no (valid) manifest. */
+  description: string | null;
+  /** Why the folder's manifest.json could not be used, or null when absent or valid. */
+  manifestError: string | null;
   /** Canonical scoped path of the app folder, or null when only published artifacts remain. */
   folderPath: string | null;
   frames: PodAppFrame[];

@@ -28,7 +28,11 @@ import type {
   FileSystemEntry,
   FileSystemFileEntry,
 } from "@app/types/api/file_system/types";
-import { POD_APP_MANIFEST_DB_FILE_SUFFIX } from "@app/types/api/pod_app_manifest";
+import {
+  POD_APP_MANIFEST_DB_FILE_SUFFIX,
+  POD_APP_MANIFEST_FILE,
+  PodAppPublishManifestSchema,
+} from "@app/types/api/pod_app_manifest";
 import type {
   PodApp,
   PodAppCloneSummary,
@@ -44,6 +48,8 @@ import { isInteractiveContentType } from "@app/types/files";
 import { getPodStateBasePath } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { fromError } from "zod-validation-error";
 
 /** A litestream replica directory is named after the database file it replicates. */
 const POD_DATABASE_FILE_SUFFIX = ".db";
@@ -76,6 +82,8 @@ type AppFolder = {
   fileCount: number;
   frameEntries: FileSystemFileEntry[];
   hasAppShapedSubfolder: boolean;
+  /** Canonical path of the folder's `manifest.json`, or null when the folder has none. */
+  manifestPath: string | null;
 };
 
 /** Drop the last extension from a file name, e.g. `add-task.ts` -> `add-task`. */
@@ -122,6 +130,7 @@ function collectAppFolders(
       fileCount: 0,
       frameEntries: [],
       hasAppShapedSubfolder: false,
+      manifestPath: null,
     };
     folders.set(name, folder);
 
@@ -154,6 +163,10 @@ function collectAppFolders(
 
     const folder = folderFor(segments[0]);
     folder.fileCount += 1;
+
+    if (segments.length === 2 && segments[1] === POD_APP_MANIFEST_FILE) {
+      folder.manifestPath = entry.path;
+    }
 
     // A file inside an app subfolder implies that subfolder, whether or not GCS holds a placeholder
     // object for it.
@@ -316,6 +329,61 @@ function groupFunctionsByAppPrefix(
   return byPrefix;
 }
 
+type AppManifestReadResult =
+  | { manifest: { name: string; description: string }; error: null }
+  | { manifest: null; error: string };
+
+/**
+ * Read and validate each folder's manifest.json for listing purposes. One small GCS read per
+ * manifest-bearing folder; a pod holds few apps, so no batching. A malformed manifest never hides
+ * the folder — the error is reported on the app instead.
+ */
+async function readAppManifests(
+  dustFs: DustFileSystem,
+  folders: AppFolder[]
+): Promise<Map<string, AppManifestReadResult>> {
+  const results = new Map<string, AppManifestReadResult>();
+  for (const folder of folders) {
+    if (!folder.manifestPath) {
+      continue;
+    }
+    const bufferResult = await dustFs.readBuffer(folder.manifestPath);
+    if (bufferResult.isErr() || bufferResult.value === null) {
+      results.set(folder.name, {
+        manifest: null,
+        error: "manifest.json could not be read.",
+      });
+      continue;
+    }
+    let json: unknown;
+    try {
+      json = JSON.parse(bufferResult.value.toString("utf-8"));
+    } catch (err) {
+      results.set(folder.name, {
+        manifest: null,
+        error: `manifest.json is not valid JSON: ${normalizeError(err).message}`,
+      });
+      continue;
+    }
+    const validation = PodAppPublishManifestSchema.safeParse(json);
+    if (!validation.success) {
+      results.set(folder.name, {
+        manifest: null,
+        error: fromError(validation.error).toString(),
+      });
+      continue;
+    }
+    results.set(folder.name, {
+      manifest: {
+        name: validation.data.name,
+        description: validation.data.description,
+      },
+      error: null,
+    });
+  }
+  return results;
+}
+
 /**
  * List a Pod's apps.
  *
@@ -372,6 +440,7 @@ export async function listPodApps(
     folders,
     pinnedFramePaths
   );
+  const manifestsByFolderName = await readAppManifests(dustFs, folders);
 
   // Several folder names can normalize onto one prefix (`Task List` and `Task-List` both give
   // `task-list`), and such folders genuinely share published slugs and databases. Group by prefix so
@@ -407,6 +476,7 @@ export async function listPodApps(
     );
 
     const isApp =
+      prefixFolders.some((folder) => folder.manifestPath !== null) ||
       prefixFolders.some((folder) => folder.hasAppShapedSubfolder) ||
       frames.length > 0 ||
       functions.length > 0 ||
@@ -416,10 +486,16 @@ export async function listPodApps(
     }
 
     const [primaryFolder] = prefixFolders;
+    const manifestRead = primaryFolder
+      ? manifestsByFolderName.get(primaryFolder.name)
+      : undefined;
     apps.push({
       prefix,
       // With no folder left, the prefix is the only name the app still has.
       name: primaryFolder?.name ?? prefix,
+      displayName: manifestRead?.manifest?.name ?? null,
+      description: manifestRead?.manifest?.description ?? null,
+      manifestError: manifestRead?.error ?? null,
       folderPath: primaryFolder?.path ?? null,
       frames,
       functions,
