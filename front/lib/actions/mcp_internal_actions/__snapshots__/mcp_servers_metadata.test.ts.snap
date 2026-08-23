@@ -2108,6 +2108,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "publish_app": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "unpublish": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -3321,6 +3325,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "inspect_invocations": "never_ask",
     "list": "never_ask",
     "publish": "low",
+    "publish_app": "low",
     "unpublish": "high",
   },
   "search": {
