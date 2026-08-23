@@ -89,8 +89,9 @@ Pod file system rather than splitting it between the conversation and the Pod ro
 Write the \`manifest.json\` declaring the app's \`name\`, \`description\`, and the \`frames\` /
 \`functions\` / \`databases\` it publishes, each entry pointing at a folder-relative \`path\` — the
 \`functions/\` and \`databases/\` folders above are convention, not a requirement, so what matters is
-the manifest's paths, not where a source happens to sit. Publishing the app, described in full
-under "Publishing, discovering, and invoking" below, always reads this manifest.
+the manifest's paths, not where a source happens to sit. Publish the whole app in one call with
+\`${toolName("publish_app")}\`, passing just the folder name — see "Publishing, discovering, and
+invoking" below for what that call does and when to re-run it.
 
 \`\`\`json
 // MyApp/manifest.json
