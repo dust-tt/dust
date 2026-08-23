@@ -31,7 +31,7 @@ import type {
 import {
   POD_APP_MANIFEST_DB_FILE_SUFFIX,
   POD_APP_MANIFEST_FILE,
-  PodAppPublishManifestSchema,
+  parsePodAppManifest,
 } from "@app/types/api/pod_app_manifest";
 import type {
   PodApp,
@@ -48,8 +48,6 @@ import { isInteractiveContentType } from "@app/types/files";
 import { getPodStateBasePath } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { fromError } from "zod-validation-error";
 
 /** A litestream replica directory is named after the database file it replicates. */
 const POD_DATABASE_FILE_SUFFIX = ".db";
@@ -355,28 +353,15 @@ async function readAppManifests(
       });
       continue;
     }
-    let json: unknown;
-    try {
-      json = JSON.parse(bufferResult.value.toString("utf-8"));
-    } catch (err) {
-      results.set(folder.name, {
-        manifest: null,
-        error: `manifest.json is not valid JSON: ${normalizeError(err).message}`,
-      });
-      continue;
-    }
-    const validation = PodAppPublishManifestSchema.safeParse(json);
-    if (!validation.success) {
-      results.set(folder.name, {
-        manifest: null,
-        error: fromError(validation.error).toString(),
-      });
+    const parseResult = parsePodAppManifest(bufferResult.value);
+    if (parseResult.isErr()) {
+      results.set(folder.name, { manifest: null, error: parseResult.error });
       continue;
     }
     results.set(folder.name, {
       manifest: {
-        name: validation.data.name,
-        description: validation.data.description,
+        name: parseResult.value.name,
+        description: parseResult.value.description,
       },
       error: null,
     });
@@ -434,13 +419,10 @@ export async function listPodApps(
   const folders = Array.from(
     collectAppFolders(listResult.value, podRoot).values()
   );
-  const framesByFolderName = await resolveFramesByFolderName(
-    auth,
-    dustFs,
-    folders,
-    pinnedFramePaths
-  );
-  const manifestsByFolderName = await readAppManifests(dustFs, folders);
+  const [framesByFolderName, manifestsByFolderName] = await Promise.all([
+    resolveFramesByFolderName(auth, dustFs, folders, pinnedFramePaths),
+    readAppManifests(dustFs, folders),
+  ]);
 
   // Several folder names can normalize onto one prefix (`Task List` and `Task-List` both give
   // `task-list`), and such folders genuinely share published slugs and databases. Group by prefix so
