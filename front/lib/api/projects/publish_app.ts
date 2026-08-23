@@ -19,7 +19,7 @@ import {
 import { MAX_POD_APP_NAME_LENGTH } from "@app/types/api/pod_apps";
 import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
 import { SCOPED_PREFIX_POD } from "@app/types/file_system";
-import { isInteractiveContentType } from "@app/types/files";
+import { frameContentType, isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -117,10 +117,6 @@ export async function publishPodApp(
     );
   }
   const folderRelPaths = new Set<string>();
-  // Content type as reported by the listing, keyed by folder-relative path. Lets the frame step
-  // tell "no FileResource, but a Frame-typed object exists" apart from "not a Frame at all"
-  // without a second listing call.
-  const contentTypeByRelPath = new Map<string, string>();
   const collidingFolderNames = new Set<string>();
   for (const entry of listResult.value) {
     if (entry.isDirectory || !entry.path.startsWith(`${podRoot}/`)) {
@@ -135,9 +131,7 @@ export async function publishPodApp(
     }
     const [head, ...rest] = segments;
     if (head === trimmed) {
-      const relPath = rest.join("/");
-      folderRelPaths.add(relPath);
-      contentTypeByRelPath.set(relPath, entry.contentType);
+      folderRelPaths.add(rest.join("/"));
     } else if (normalizeAppPrefix(head) === prefix) {
       collidingFolderNames.add(head);
     }
@@ -300,22 +294,18 @@ export async function publishPodApp(
       }
 
       // No FileResource: the manifest declares a frame that exists only as a bare storage
-      // object (e.g. copied into the pod, which loses the FileResource). Recreate it in place
-      // the same way `importPodApp` does, so the manifest-first flow self-heals.
+      // object (e.g. copied into the pod, or written directly inside the sandbox, both of which
+      // lose the FileResource). Recreate it in place the same way `importPodApp` does, so the
+      // manifest-first flow self-heals.
+      //
+      // The manifest declaring the path as a frame is trusted over the listing's storage MIME
+      // type: files written inside the sandbox get their GCS Content-Type guessed from the
+      // extension by gcsfuse, and `.tsx` guesses to `application/x-tiled-tsx` (a Tiled tileset),
+      // not a Frame type — so that guess can never pass an interactive-content check. The
+      // manifest is the authoritative statement that the path is a frame; `publishFrame`'s
+      // bundler performs the real validation (TS/JSX parse etc.) and rejects non-frame sources
+      // with a meaningful error.
       if (!file) {
-        const contentType = contentTypeByRelPath.get(frame.relPath);
-        if (
-          contentType === undefined ||
-          !isInteractiveContentType(contentType)
-        ) {
-          warnings.push(
-            contentType === undefined
-              ? `Frame ${frame.relPath}: not a Frame file (create it as interactive content, then retry).`
-              : `Frame ${frame.relPath}: its content type is '${contentType}', not a Frame. ` +
-                  "Create it as interactive content, then retry."
-          );
-          continue;
-        }
         if (frame.relPath.includes("/")) {
           warnings.push(
             `Frame ${frame.relPath}: cannot auto-create a Frame in a subfolder; create it ` +
@@ -332,7 +322,7 @@ export async function publishPodApp(
           space: pod,
           folderName: trimmed,
           fileName: frame.relPath,
-          contentType,
+          contentType: frameContentType,
           content: sourceResult.value.toString("utf-8"),
         });
         if (createResult.isErr()) {

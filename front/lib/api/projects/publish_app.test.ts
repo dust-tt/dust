@@ -9,6 +9,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { setupProjectConversation } from "@app/tests/utils/conversation_test_factories";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { frameContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -188,7 +189,7 @@ describe("publishPodApp", () => {
       expect.objectContaining({
         folderName: "TaskList",
         fileName: "TaskList.tsx",
-        contentType: "application/vnd.dust.frame",
+        contentType: frameContentType,
       })
     );
     expect(vi.mocked(publishFrame)).toHaveBeenCalled();
@@ -207,12 +208,14 @@ describe("publishPodApp", () => {
     );
   });
 
-  it("warns instead of auto-creating a frame whose source is not interactive content", async () => {
+  it("auto-creates a declared frame even when storage guessed a non-frame content type", async () => {
     const { auth, projectId } = await setupProjectConversation();
     const pod = await podFor(projectId, auth);
     seedAppFolder({
       folder: "TaskList",
-      // "Notes.txt" does not end in ".tsx", so seedAppFolder's listing marks it "text/plain".
+      // "Notes.txt" does not end in ".tsx", so seedAppFolder's listing marks it "text/plain" —
+      // mirroring gcsfuse's extension-based guess for a sandbox-authored file. The manifest
+      // declaring it as a frame must still be trusted over that guessed storage MIME type.
       relPaths: [
         "manifest.json",
         "Notes.txt",
@@ -225,9 +228,42 @@ describe("publishPodApp", () => {
     const result = await publishPodApp(auth, pod, { folderName: "TaskList" });
 
     assert(result.isOk(), result.isErr() ? result.error.message : "");
+    expect(result.value.publishedFrameNames).toEqual(["Notes.txt"]);
+    expect(result.value.warnings).toEqual([]);
+    expect(vi.mocked(createPodFrameFile)).toHaveBeenCalledWith(
+      auth,
+      expect.objectContaining({
+        folderName: "TaskList",
+        fileName: "Notes.txt",
+        contentType: frameContentType,
+      })
+    );
+    expect(vi.mocked(publishFrame)).toHaveBeenCalled();
+    // The rest of the publish still went through.
+    expect(result.value.reconciledDatabaseNames).toEqual(["tasklist__tasks"]);
+    expect(result.value.publishedFunctionSlugs).toEqual(["tasklist__add-task"]);
+  });
+
+  it("warns instead of auto-creating a frame declared in a subfolder", async () => {
+    const { auth, projectId } = await setupProjectConversation();
+    const pod = await podFor(projectId, auth);
+    seedAppFolder({
+      folder: "TaskList",
+      relPaths: [
+        "manifest.json",
+        "sub/Frame.tsx",
+        "src/add.ts",
+        "databases/tasks.db.ts",
+      ],
+      manifest: { ...MANIFEST, frames: [{ path: "sub/Frame.tsx" }] },
+    });
+
+    const result = await publishPodApp(auth, pod, { folderName: "TaskList" });
+
+    assert(result.isOk(), result.isErr() ? result.error.message : "");
     expect(result.value.publishedFrameNames).toEqual([]);
-    expect(result.value.warnings.join(" ")).toContain("Notes.txt");
-    expect(result.value.warnings.join(" ")).toContain("text/plain");
+    expect(result.value.warnings.join(" ")).toContain("sub/Frame.tsx");
+    expect(result.value.warnings.join(" ")).toContain("subfolder");
     expect(vi.mocked(createPodFrameFile)).not.toHaveBeenCalled();
     expect(vi.mocked(publishFrame)).not.toHaveBeenCalled();
     // The rest of the publish still went through.
