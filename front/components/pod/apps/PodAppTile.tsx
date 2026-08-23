@@ -5,13 +5,16 @@ import {
 } from "@app/components/resources/resources_icons";
 import type { PodApp, PodAppFrame } from "@app/types/api/pod_apps";
 import {
+  AlertCircle,
   Card,
   CardActionButton,
   Chip,
   Download01,
   Edit04,
   GitBranch01,
+  Icon,
   Spinner,
+  Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
@@ -139,7 +142,7 @@ export function PodAppTile({
         <div className="flex min-w-0 flex-col gap-1">
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate heading-base text-foreground dark:text-foreground-night">
-              {app.name}
+              {app.displayName ?? app.name}
             </span>
             {isDraft && !isDeleting && (
               <Chip
@@ -149,7 +152,23 @@ export function PodAppTile({
                 className="shrink-0"
               />
             )}
+            {app.manifestError && (
+              <Tooltip
+                label={app.manifestError}
+                tooltipTriggerAsChild
+                trigger={
+                  <span className="flex shrink-0 items-center text-warning">
+                    <Icon visual={AlertCircle} size="xs" />
+                  </span>
+                }
+              />
+            )}
           </div>
+          {app.description && (
+            <span className="line-clamp-2 copy-sm text-muted-foreground dark:text-muted-foreground-night">
+              {app.description}
+            </span>
+          )}
           {isDeleting && (
             <span className="copy-xs text-muted-foreground dark:text-muted-foreground-night">
               Deleting…
