@@ -26,7 +26,6 @@ import {
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
-import type { SANDBOX_FUNCTIONS_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 
 const FILES_EDIT_TOOL = getPrefixedToolName(
@@ -49,12 +48,10 @@ const FILES_MOVE_TOOL = getPrefixedToolName(
   FILES_SERVER_NAME,
   FILES_MOVE_ACTION_NAME
 );
-function sandboxFunctionsToolName(
-  name: (typeof SANDBOX_FUNCTIONS_TOOLS_METADATA)[number]["name"]
-): string {
-  return getPrefixedToolName(SANDBOX_FUNCTIONS_SERVER_NAME, name);
-}
-const PUBLISH_APP_TOOL = sandboxFunctionsToolName("publish_app");
+const PUBLISH_APP_TOOL = getPrefixedToolName(
+  SANDBOX_FUNCTIONS_SERVER_NAME,
+  "publish_app"
+);
 
 const UPDATING_SECTION_LEGACY = `\
 ### Updating Existing Files:
