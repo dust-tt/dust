@@ -64,11 +64,6 @@ const MCP_TOOL_OVERRIDES: Partial<
     },
   },
   [SANDBOX_FUNCTIONS_SERVER_NAME]: {
-    publish: {
-      title: () => "Publish this function?",
-      approveLabel: "Publish",
-      alwaysAllowLabel: () => "Always allow agent to publish Pod functions",
-    },
     unpublish: {
       title: () => "Unpublish this function?",
       approveLabel: "Unpublish",

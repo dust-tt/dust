@@ -105,7 +105,8 @@ describe("resolvePodDatabaseName", () => {
   const prefix = "myapp__";
 
   it("is idempotent for an already-qualified name", () => {
-    // db_list reports on-disk names, so the model may hand one straight back to db_reconcile.
+    // db_list reports on-disk names, so the model may hand one straight back into the
+    // manifest's database name for publish_app to reconcile.
     expect(
       resolvePodDatabaseName({
         prefix,

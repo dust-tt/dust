@@ -120,7 +120,8 @@ export function podDatabaseNameWithoutAppPrefix(name: string): string {
  *
  * `name` is the database's app-relative name as the schema file declares it (`chat`). An
  * already-qualified name is accepted too and re-qualified to itself, because `db_list` reports
- * on-disk names and a model may well copy `myapp__chat` from it straight into `db_reconcile`.
+ * on-disk names and a model may well copy `myapp__chat` from it straight into the manifest's
+ * database name for `publish_app` to reconcile.
  *
  * Mirrors `resolveDatabasePath` in cli/dust-sandbox/pod/db.ts so reconcile applies schema changes
  * to exactly the file `db()` will open:

@@ -1,10 +1,7 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   POD_DATABASE_NAME_REGEX,
-  SANDBOX_FUNCTION_EXECUTION_MODES,
   SANDBOX_FUNCTION_SLUG_REGEX,
-  SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX,
-  SANDBOX_FUNCTION_STAKES,
 } from "@app/types/api/sandbox_functions";
 import { z } from "zod";
 
@@ -40,80 +37,6 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
     displayLabels: {
       running: "Getting pod function...",
       done: "Got pod function",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
-  {
-    name: "publish",
-    description:
-      "Publish a pod function from a TypeScript source file in the current pod. The source " +
-      "must default-export a `fetch(request: Request): Promise<Response>` handler and export a " +
-      "`schema` with zod `input` and `output`. Set `schema.userIdentity` to `optional`, " +
-      "`workspace_user_required`, `interactive_workspace_user_required`, or " +
-      "`pod_member_required`. It is bundled on the " +
-      "pod sandbox (only `zod` is available to import), and its contract is extracted from the " +
-      "`schema` export. The published slug is prefixed with the app the source lives in, so " +
-      "re-publishing the same name from the same app replaces the previous version while another " +
-      "app's function of the same name is left alone.",
-    schema: {
-      slug: z
-        .string()
-        .regex(SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX)
-        .describe(
-          "The function's name within its app: lowercase alphanumeric with single hyphen " +
-            "separators (e.g. `send-slack-message`). Do not include the app prefix; publish " +
-            "derives it from `path` and reports the full slug back."
-        ),
-      description: z
-        .string()
-        .min(1)
-        .describe(
-          "Short description of what the function does, shown by the list tool."
-        ),
-      path: z
-        .string()
-        .min(1)
-        .describe(
-          "Scoped path to the function's TypeScript source in the pod, as shown by the files " +
-            "tools. It lives in its app's `functions` folder (e.g. " +
-            "`pod-<id>/MyApp/functions/greet.ts`). The app folder's name becomes the published " +
-            "slug's prefix; a source at the pod root keeps its bare name."
-        ),
-      executionMode: z
-        .enum(SANDBOX_FUNCTION_EXECUTION_MODES)
-        .describe(
-          "`fast` runs synchronously and returns in a fraction of the time, but cannot call Dust " +
-            "tools through `dsbx tools`. It can still read and write pod state, run local " +
-            "binaries and make outbound HTTP calls, though those count against its execution " +
-            "ceiling. `durable` is for a function that calls `dsbx tools`, which may wait on the " +
-            "user for approval or authentication. Keep the functions a Frame calls on user " +
-            "interaction or on a poll `fast`, and isolate `dsbx tools` calls in their own " +
-            "`durable` functions."
-        ),
-      defaultStake: z
-        .enum(SANDBOX_FUNCTION_STAKES)
-        .describe(
-          "How much approval the function should require once it is shared as a tool, derived " +
-            "from what it does rather than from how it is called: `never_ask` for a read that " +
-            "changes nothing, `low` for anything that writes/deletes, and `high` only for something " +
-            "extremely dangerous."
-        ),
-      domains: z
-        .array(z.string())
-        .optional()
-        .describe(
-          "Exact domains or wildcards (e.g. `api.stripe.com`, `*.stripe.com`) the function " +
-            "makes outbound HTTPS requests to at runtime. Declare every domain the function " +
-            "needs — each becomes a request a workspace admin reviews before the Pod can reach " +
-            "it; it never grants access on its own. A domain the Pod (or workspace) already " +
-            "allows is skipped."
-        ),
-    },
-    stake: "low",
-    displayLabels: {
-      running: "Publishing pod function...",
-      done: "Published pod function",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -249,41 +172,14 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
     freeUsage: true,
   },
   {
-    name: "db_reconcile",
-    description:
-      "Apply a pod database's drizzle schema file to its live database (additive changes only).",
-    schema: {
-      database: z
-        .string()
-        .regex(POD_DATABASE_NAME_REGEX)
-        .describe(
-          "The database's short name as declared by the schema file (e.g. `chat`), without " +
-            "the app prefix."
-        ),
-      path: z
-        .string()
-        .min(1)
-        .describe(
-          "Scoped path to the database's drizzle schema file in the pod, as shown by the " +
-            "files tools (e.g. `pod-<id>/MyApp/databases/chat.db.ts`)."
-        ),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Reconciling pod database...",
-      done: "Reconciled pod database",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
-  {
     name: "publish_app",
     description:
       "Publish a pod app in one call from the manifest.json at the root of its folder: " +
       "reconcile its databases, publish its functions and its UI entry point (frame), and " +
-      "unpublish functions the manifest no longer declares. Prefer this over the individual " +
-      "publish and db_reconcile tools once the app has a manifest; use those to iterate on a " +
-      "single function or database.",
+      "unpublish functions the manifest no longer declares. This is the only way to publish " +
+      "a pod app's functions and databases. The manifest does not declare egress domains: " +
+      "to let a function make outbound HTTPS calls, request its domains with the " +
+      "request_egress_domain tool.",
     schema: {
       folder: z
         .string()

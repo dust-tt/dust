@@ -74,6 +74,7 @@ Pod file system rather than splitting it between the conversation and the Pod ro
 \`\`\`
 /files/pod-<podId>/
   MyApp/
+    manifest.json      declares the app: name, description, frames, functions, databases
     MyApp.tsx          the Frame's source; its directory is the Frame's bundling root
     functions/
       list-notes.ts    one file per function, named after the function; the app folder
@@ -85,6 +86,37 @@ Pod file system rather than splitting it between the conversation and the Pod ro
       notes.db.ts      one shared drizzle schema file per database
 \`\`\`
 
+Write the \`manifest.json\` declaring the app's \`name\`, \`description\`, and the \`frames\` /
+\`functions\` / \`databases\` it publishes, each entry pointing at a folder-relative \`path\` — the
+\`functions/\` and \`databases/\` folders above are convention, not a requirement, so what matters is
+the manifest's paths, not where a source happens to sit. Publishing the app, described in full
+under "Publishing, discovering, and invoking" below, always reads this manifest.
+
+\`\`\`json
+// MyApp/manifest.json
+{
+  "version": 1,
+  "name": "MyApp",
+  "description": "A shared notes app.",
+  "frames": [{ "path": "MyApp.tsx" }],
+  "functions": [
+    {
+      "name": "list-notes",
+      "path": "functions/list-notes.ts",
+      "description": "List all notes.",
+      "executionMode": "fast"
+    },
+    {
+      "name": "post-note",
+      "path": "functions/post-note.ts",
+      "description": "Create a note.",
+      "executionMode": "durable"
+    }
+  ],
+  "databases": [{ "name": "notes", "path": "databases/notes.db.ts" }]
+}
+\`\`\`
+
 Nothing the app owns stays in the conversation file system: a conversation file belongs to one
 conversation, while the app is shared by every conversation in the Pod, exactly like the functions
 it publishes. If the app's Frame does not exist yet, or still sits in the conversation, the Frames
@@ -93,10 +125,10 @@ skill covers creating it and moving it into the app folder with \`${FILES_MOVE_T
 
 Functions that no Frame calls still get an app folder, named after what they do together.
 
-**Copying an app folder still needs two steps of its own.** The databases and the published slugs
-follow the new folder, but nothing is live until you publish the copy's functions and reconcile its
-databases. After copying \`MyApp/\` to \`MyAppCopy/\`, do both, and the copy is a separate app with its
-own data. Renaming an app folder is the same.
+**Copying an app folder still needs a publish of its own.** The manifest.json, databases and
+published slugs all follow the new folder, but nothing is live until you publish the copy — see
+"Publishing, discovering, and invoking" below. After copying \`MyApp/\` to \`MyAppCopy/\`, publish
+the copy, and it is a separate app with its own data. Renaming an app folder is the same.
 
 The copy's Frame needs no edit **as long as it refers to its own functions by bare name** (see
 "Calling a function from a Frame"), because those references resolve against whichever app folder the
@@ -109,8 +141,8 @@ references to bare names and re-publish it.
 Write the source as a TypeScript file in the app's \`functions\` folder, at
 \`pod-<podId>/<AppName>/functions/<name>.ts\` (the Computer mounts it at
 \`/files/pod-<podId>/<AppName>/functions/<name>.ts\`; the \`files\` MCP server reaches it under the
-same scoped path). Keep it in an app folder: that folder is what namespaces the function, and a
-source left at the Pod root publishes under its bare name instead. The module must:
+same scoped path). Keep it in an app folder: that folder is what namespaces the function, and the
+manifest that publishes it lives at the folder's root. The module must:
 
 - export a \`schema\` object with a \`description\` and zod \`input\` and \`output\` schemas,
 - default-export an object with a \`fetch(request: Request): Promise<Response>\` method (the Bun and
@@ -170,10 +202,11 @@ Functions of the same Pod can share durable SQLite databases (via \`drizzle-orm\
   file — the prefix is applied for you from the app folder. \`${toolName("db_list")}\` shows the
   resulting on-disk names (\`myapp__chat\`), which is how the db tools address a database; \`db()\`
   and the schema file always use the short name.
-- **Name functions that use this db.ts by writting a comment a the top** 
-- **Apply the schema file with \`${toolName("db_reconcile")}\`**; it creates the database and
-  applies additive DDL after edits, and enforces the rules below. Publishing does not touch
-  databases; an unreconciled database does not exist at runtime.
+- **Name functions that use this db.ts by writting a comment a the top**
+- **Declare the schema file in the app's manifest.json \`databases\` list**; publishing the app (see
+  "Publishing, discovering, and invoking" below) reconciles it — creating the database and applying
+  additive DDL after edits, and enforcing the rules below — before publishing functions. An
+  undeclared database does not exist at runtime.
 - **At runtime open a database with \`db(name)\` from \`@dust/pod\`** and query it with the imported
   table objects.
 
@@ -257,25 +290,30 @@ loading state.
 
 #### Publishing, discovering, and invoking
 
-Once the source is on the Pod, use \`${toolName("publish")}\` to build it. It requires you to state
-\`executionMode\` on every publish. Publishing bundles and type-checks the source on the Computer
-and extracts the input and output JSON schemas from the \`schema\` export. The stored bundle is owned
-by the platform and runs from a read-only mount, so a published function can be executed but never
-overwritten from within the Computer.
+Once the manifest and the sources it points at are on the Pod, publish the whole app in one call
+with \`${toolName("publish_app")}\`, passing just the folder name. This is the only way to publish a
+pod app's functions and databases — there is no tool to publish or reconcile them one at a time. It
+reconciles every database the manifest declares, bundles and type-checks every function's source on
+the Computer and extracts each one's input and output JSON schemas from its \`schema\` export,
+publishes every declared frame, and unpublishes any function carrying this app's prefix that the
+manifest no longer lists. Re-run it after any change, including editing just one function's source.
+A published function's stored bundle is owned by the platform and runs from a read-only mount, so
+it can be executed but never overwritten from within the Computer.
 
-**The published slug is \`<app>__<name>\`.** You pass the bare \`<name>\`; publish derives the prefix
-from the app folder in \`path\` (\`TaskList\` becomes \`tasklist\`, \`Task List\` becomes \`task-list\`) and
-reports the full slug back. Use that reported slug for the tools that address the function:
-\`${toolName("get")}\`, \`${toolName("call")}\` and \`${toolName("unpublish")}\`. A Frame in the same
-app is the exception and uses the bare \`<name>\` instead, see "Calling a function from a Frame".
-Only the app folder
-contributes, so \`functions/\` and any folder nested under it never appear in the slug, and moving a
-source inside its app does not rename the function. A source at the Pod root has no app folder and
-keeps its bare name; moving it into one later *does* rename its function, leaving the old slug
-published and stale, so put it in its app folder from the start.
+The manifest does not declare egress domains: request a function's outbound domains with the
+Computer's \`request_egress_domain\` tool, independently of publishing.
+
+**The published slug is \`<app>__<name>\`.** You write the bare \`<name>\` in the manifest;
+\`${toolName("publish_app")}\` derives the prefix from the app folder (\`TaskList\` becomes
+\`tasklist\`, \`Task List\` becomes \`task-list\`) and reports the full slugs back. Use the reported
+slug for the tools that address the function: \`${toolName("get")}\`, \`${toolName("call")}\` and
+\`${toolName("unpublish")}\`. A Frame in the same app is the exception and uses the bare \`<name>\`
+instead, see "Calling a function from a Frame". Only the app folder contributes, so \`functions/\`
+and any folder nested under it never appear in the slug, and moving a source inside its app does
+not rename the function.
 
 Publishing again under the same app and name replaces that version. Two different apps can each
-publish a \`refresh\` and they stay separate functions, so you never have to invent
+declare a \`refresh\` function and they stay separate, so you never have to invent
 \`refresh-tasklist\` to dodge a clash.
 
 Use \`${toolName("list")}\` and \`${toolName("get")}\` to see what the Pod has already
@@ -288,11 +326,11 @@ you need the result now rather than asking a Frame to fetch it for you.
 To debug a function, use \`${toolName("inspect_invocations")}\` to inspect its most recent inputs,
 results, errors, statuses, and timestamps.
 
-The live databases have their own tools: \`${toolName("db_list")}\` (sizes),
-\`${toolName("db_schema")}\` (live storage types only; column modes exist only in the authored
-file), \`${toolName("db_query")}\` (one SQL statement; no schema changes; a result too large to
-return inline is written to a pod file whose path it reports), and \`${toolName("db_reconcile")}\`
-(apply an edited \`databases/{db}.db.ts\`). See each tool's description for its arguments.
+Once \`${toolName("publish_app")}\` has reconciled a database, it has its own read tools:
+\`${toolName("db_list")}\` (sizes), \`${toolName("db_schema")}\` (live storage types only; column
+modes exist only in the authored file), and \`${toolName("db_query")}\` (one SQL statement; no
+schema changes; a result too large to return inline is written to a pod file whose path it
+reports). See each tool's description for its arguments.
 
 #### Calling a function from a Frame
 
@@ -300,7 +338,7 @@ A Frame calls published functions through the injected \`@dust/react-hooks\` mod
 \`call\` tool. There are two ways to name a function, and which one you use matters:
 
 - **A Frame inside an app folder refers to its own app's functions by bare name**: pass
-  \`add-task\`, the same name you passed to \`${toolName("publish")}\`, with no Pod and no app
+  \`add-task\`, the same \`name\` declared for it in the manifest, with no Pod and no app
   prefix. The reference resolves against the app folder the Frame itself lives in, so the app stays
   copyable: a copy's Frame calls the copy's functions with no edit to its source. Use this for every
   function the Frame's own app publishes.
@@ -474,7 +512,7 @@ app-specific subset of users, keep that list in the database and check it agains
 \`currentUser().sId\` — the platform tells you the caller's standing (workspace member, Pod
 member, Pod editor), not what your app allows them to do.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
-  version: 8,
+  version: 9,
   icon: "PuzzleIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

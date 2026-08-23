@@ -11,9 +11,9 @@ import { podEnv } from "./context.ts";
  *
  * `db(name)` returns a cached Drizzle instance over the pod's live SQLite
  * database at `${DUST_POD_DATABASES_DIR}/{prefix}{name}.db`. Databases are
- * created by `dsbx db reconcile` (the db_reconcile tool), never here: the file
- * is opened must-exist so a typo'd name errors clearly instead of minting an
- * empty database. Functions that never call `db()` pay nothing.
+ * created by `dsbx db reconcile` (invoked by the publish_app tool), never
+ * here: the file is opened must-exist so a typo'd name errors clearly instead
+ * of minting an empty database. Functions that never call `db()` pay nothing.
  *
  * `name` is the app-relative name the function's source writes, and the app
  * prefix comes from the environment ({@link POD_DATABASE_PREFIX_ENV}) rather
@@ -127,8 +127,9 @@ export class PodDatabaseNotDeclaredError extends PodDatabaseError {
     super(
       `Pod database "${dbName}" does not exist (no database file at ${path}). ` +
         `Databases are created by their first reconcile: define the tables in ` +
-        `databases/${dbName}.db.ts, apply it with the db_reconcile tool, and ` +
-        `declare "${dbName}" in the function's schema.databases.`
+        `databases/${dbName}.db.ts, declare it in the app's manifest.json databases list and ` +
+        `publish the app with publish_app, and declare "${dbName}" in the function's ` +
+        `schema.databases.`
     );
     this.name = "PodDatabaseNotDeclaredError";
   }
