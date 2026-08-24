@@ -52,6 +52,7 @@ export interface ModelPickerProps {
   owner: LightWorkspaceType;
   buttonVariant: "outline" | "ghost-secondary";
   buttonSize: "xs" | "sm";
+  buttonIsRounded?: boolean;
   showLabel: boolean;
   // Which side the dropdown opens toward. Mirrors the agent picker: "top" in an
   // active conversation (input bar pinned to the bottom), "bottom" on the new
@@ -84,6 +85,7 @@ export function ModelPicker({
   owner,
   buttonVariant,
   buttonSize,
+  buttonIsRounded = false,
   showLabel,
   side = "top",
   disabled,
@@ -351,9 +353,10 @@ export function ModelPicker({
     >
       <DropdownMenuTrigger asChild>
         <Button
-          className="px-2"
+          className={showLabel ? "px-2" : undefined}
           variant={buttonVariant}
           size={buttonSize}
+          isRounded={buttonIsRounded}
           icon={buttonIcon}
           label={showLabel ? label : undefined}
           tooltip={showLabel ? undefined : `Model picker: ${label}`}
