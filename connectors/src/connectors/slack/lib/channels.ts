@@ -3,11 +3,13 @@ import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
 } from "@connectors/connectors/slack/lib/utils";
+import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ProviderWorkflowError } from "@connectors/lib/error";
 import { SlackChannelModel } from "@connectors/lib/models/slack";
 import { heartbeat } from "@connectors/lib/temporal";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -463,15 +465,26 @@ async function _getTypedChannelsUncached(
       method: "conversations.list",
       useCase: "batch_sync",
     });
-    const c = await slackClient.conversations.list({
-      types,
-      // despite the limit being 1000, slack may return fewer channels
-      // we observed ~50 channels per call at times see https://github.com/dust-tt/tasks/issues/1655
-      limit: 999,
-      cursor: nextCursor,
-      exclude_archived: true,
-    });
+    const c = await throttleWithRedis(
+      RATE_LIMITS["conversations.list"],
+      `${connectorId}-conversations-list`,
+      { canBeIgnored: false },
+      () =>
+        slackClient.conversations.list({
+          types,
+          // despite the limit being 1000, slack may return fewer channels
+          // we observed ~50 channels per call at times see https://github.com/dust-tt/tasks/issues/1655
+          limit: 999,
+          cursor: nextCursor,
+          exclude_archived: true,
+        }),
+      { source: "getChannels" }
+    );
     nbCalls++;
+
+    if (!c) {
+      throw new Error("Throttled conversations.list returned no response");
+    }
 
     logger.info(
       {
