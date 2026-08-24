@@ -1,18 +1,17 @@
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
+import type { AutomationTriggersFilter } from "@app/lib/api/analytics/automations/schema";
+import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import type {
-  AutomationTriggersBody,
-  AutomationTriggersFilter,
-} from "@app/lib/api/analytics/automations/schema";
-import type {
-  AutomationTriggerRow,
-  GetAutomationTriggersResponse,
-} from "@app/lib/api/analytics/automations/triggers";
-import type { PokeListTriggers } from "@app/lib/api/poke/triggers";
+  PokeTriggerSearchBody,
+  PokeTriggerSearchResponse,
+} from "@app/lib/api/poke/triggers";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
-import type { PokeGetWebhookRequestsResponseBody } from "@app/types/api/poke/triggers";
+import type {
+  PokeAgentTriggerRow,
+  PokeGetWebhookRequestsResponseBody,
+} from "@app/types/api/poke/triggers";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
@@ -20,63 +19,75 @@ import type { Fetcher } from "swr";
 const pokeTriggersUrl = (workspaceId: string) =>
   `/api/poke/workspaces/${workspaceId}/triggers`;
 
-export function usePokeTriggers({
-  disabled,
-  owner,
-}: PokeConditionalFetchProps) {
-  const { fetcher } = useFetcher();
-  const triggersFetcher: Fetcher<PokeListTriggers> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    pokeTriggersUrl(owner.sId),
-    triggersFetcher,
-    { disabled }
-  );
+type UsePokeTriggersProps =
+  | {
+      scope: "agent";
+      owner: LightWorkspaceType;
+      agentId: string;
+      disabled?: boolean;
+    }
+  | {
+      scope: "workspace";
+      owner: LightWorkspaceType;
+      period: ConsumptionPeriodSelection;
+      limit: number;
+      offset?: number;
+      search?: string;
+      filter?: AutomationTriggersFilter;
+      disabled?: boolean;
+    };
 
-  return {
-    data: data?.triggers ?? [],
-    isLoading: !disabled && !error && !data,
-    isError: error,
-    mutate,
-  };
-}
-
-export function usePokeAutomationTriggers({
-  owner,
-  period,
-  limit,
-  offset = 0,
-  search,
-  filter,
-  disabled,
-}: {
-  owner: LightWorkspaceType;
-  period: ConsumptionPeriodSelection;
-  limit: number;
-  offset?: number;
-  search?: string;
-  filter?: AutomationTriggersFilter;
-  disabled?: boolean;
-}) {
+export function usePokeTriggers(props: UsePokeTriggersProps) {
+  const { owner, disabled } = props;
   const url = `${pokeTriggersUrl(owner.sId)}/search`;
-  const body: Omit<AutomationTriggersBody, "format"> = {
-    period: period.kind,
-    days:
-      period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
-    limit,
-    offset,
-    search: search?.trim(),
-    filter,
-  };
+  const body: PokeTriggerSearchBody =
+    props.scope === "agent"
+      ? {
+          scope: "agent",
+          agentId: props.agentId,
+        }
+      : {
+          scope: "workspace",
+          period: props.period.kind,
+          days:
+            props.period.kind === "days"
+              ? props.period.days
+              : DEFAULT_CONSUMPTION_PERIOD_DAYS,
+          limit: props.limit,
+          offset: props.offset ?? 0,
+          search: props.search?.trim(),
+          filter: props.filter,
+        };
 
   const { data, error, mutate, isValidating } = useConsumptionQuery<
-    Omit<AutomationTriggersBody, "format">,
-    GetAutomationTriggersResponse
+    PokeTriggerSearchBody,
+    PokeTriggerSearchResponse
   >({ url, body, disabled });
 
+  if (props.scope === "agent") {
+    const response =
+      data?.scope === "agent" && data.agentId === props.agentId
+        ? data
+        : undefined;
+
+    return {
+      scope: "agent" as const,
+      agentId: props.agentId,
+      triggers: response?.triggers ?? emptyArray<PokeAgentTriggerRow>(),
+      isTriggersLoading: !disabled && !error && !response,
+      isTriggersValidating: !disabled && !error && isValidating,
+      isTriggersError: error,
+      mutateTriggers: mutate,
+    };
+  }
+
+  const response = data?.scope === "workspace" ? data : undefined;
+
   return {
-    triggers: data?.triggers ?? emptyArray<AutomationTriggerRow>(),
-    totalCount: data?.totalCount ?? 0,
-    isTriggersLoading: !disabled && !error && !data,
+    scope: "workspace" as const,
+    triggers: response?.triggers ?? emptyArray<AutomationTriggerRow>(),
+    totalCount: response?.totalCount ?? 0,
+    isTriggersLoading: !disabled && !error && !response,
     isTriggersValidating: !disabled && !error && isValidating,
     isTriggersError: error,
     mutateTriggers: mutate,

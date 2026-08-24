@@ -17,11 +17,13 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import logger from "@app/logger/logger";
 import {
   createOrUpdateAgentSchedule,
   deleteTriggerSchedule,
 } from "@app/temporal/triggers/schedule_client";
+import type { PokeAgentTriggerRow } from "@app/types/api/poke/triggers";
 import type {
   BulkTriggerUpdateOutcome,
   ScheduleConfig,
@@ -31,12 +33,16 @@ import type {
   TriggerType,
   WebhookConfig,
 } from "@app/types/assistant/triggers";
-import { getTriggerStatusOwner } from "@app/types/assistant/triggers";
+import {
+  getTriggerStatusOwner,
+  isScheduleTrigger,
+} from "@app/types/assistant/triggers";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
 import type {
@@ -1349,6 +1355,64 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       id,
       workspaceId,
     });
+  }
+
+  private getPokeConfigurationSummary(): string {
+    const trigger = this.toJSON();
+    if (isScheduleTrigger(trigger)) {
+      return `${describeScheduleConfig(trigger.configuration)} (${trigger.configuration.timezone})`;
+    }
+
+    const { configuration } = trigger;
+    const parts: string[] = [];
+    if (configuration.event) {
+      parts.push(configuration.event);
+    }
+    if (configuration.filter) {
+      parts.push("+ filter");
+    }
+    if (configuration.includePayload) {
+      parts.push("w/ payload");
+    }
+    return parts.length > 0 ? parts.join(" ") : "All events";
+  }
+
+  toPokeListJSON({
+    agentName,
+    agentIsAvailable,
+    editor,
+    provider,
+  }: {
+    agentName: string;
+    agentIsAvailable: boolean;
+    editor: UserResource | null;
+    provider: WebhookProvider | null;
+  }): PokeAgentTriggerRow {
+    return {
+      triggerId: this.sId,
+      name: this.name,
+      agent: {
+        agentId: this.agentConfigurationId,
+        name: agentName,
+        isAvailable: agentIsAvailable,
+      },
+      kind: this.kind,
+      origin: this.origin,
+      provider: this.kind === "webhook" ? provider : null,
+      configurationSummary: this.getPokeConfigurationSummary(),
+      status: this.status,
+      editor: editor
+        ? {
+            name:
+              editor.fullName() ||
+              editor.username ||
+              editor.email ||
+              "Unknown user",
+            email: editor.email ?? null,
+          }
+        : null,
+      createdAt: this.createdAt.getTime(),
+    };
   }
 
   toJSON(): TriggerType {

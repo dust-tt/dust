@@ -1,17 +1,12 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
-import type { TriggerWithProviderType } from "@app/lib/api/poke/triggers";
 import { formatCredits } from "@app/lib/client/credits";
 import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { TriggerType } from "@app/types/assistant/triggers";
+import type { PokeAgentTriggerRow } from "@app/types/api/poke/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Chip, IconButton, LinkWrapper, Trash01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-
-type TriggerDisplayType = TriggerWithProviderType;
 
 function ConsumptionCell({ trigger }: { trigger: AutomationTriggerRow }) {
   const { credits, runCount } = trigger;
@@ -41,29 +36,22 @@ function ConsumptionCell({ trigger }: { trigger: AutomationTriggerRow }) {
 
 export function makeColumnsForTriggers(
   owner: LightWorkspaceType,
-  agentConfigurations: LightAgentConfigurationType[],
   onTriggerDeleted: () => Promise<void>
-): ColumnDef<TriggerDisplayType>[] {
-  const agentConfigMap = new Map(
-    agentConfigurations.map((agent) => [agent.sId, agent])
-  );
-
+): ColumnDef<PokeAgentTriggerRow>[] {
   return [
     {
-      accessorKey: "sId",
+      accessorKey: "triggerId",
       cell: ({ row }) => {
         const trigger = row.original;
-        const agent = agentConfigMap.get(trigger.agentConfigurationId);
-
-        if (!agent) {
-          return trigger.sId;
+        if (!trigger.agent.isAvailable) {
+          return trigger.triggerId;
         }
 
         return (
           <LinkWrapper
-            href={`/poke/${owner.sId}/assistants/${agent.sId}/triggers/${trigger.sId}`}
+            href={`/poke/${owner.sId}/assistants/${trigger.agent.agentId}/triggers/${trigger.triggerId}`}
           >
-            {trigger.sId}
+            {trigger.triggerId}
           </LinkWrapper>
         );
       },
@@ -82,10 +70,7 @@ export function makeColumnsForTriggers(
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Agent name" />
       ),
-      accessorFn: (row) => {
-        const agent = agentConfigMap.get(row.agentConfigurationId);
-        return agent?.name ?? row.agentConfigurationId;
-      },
+      accessorFn: (row) => row.agent.name,
     },
     {
       accessorKey: "kind",
@@ -111,7 +96,13 @@ export function makeColumnsForTriggers(
       },
     },
     {
-      accessorKey: "provider",
+      id: "provider",
+      accessorFn: (trigger) => {
+        if (trigger.kind === "webhook") {
+          return trigger.provider ?? "Custom";
+        }
+        return "-";
+      },
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Provider" />
       ),
@@ -127,28 +118,10 @@ export function makeColumnsForTriggers(
       },
     },
     {
-      accessorKey: "configuration",
+      accessorKey: "configurationSummary",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Configuration" />
       ),
-      cell: ({ row }) => {
-        const trigger = row.original;
-        if (trigger.kind === "schedule") {
-          return `${describeScheduleConfig(trigger.configuration)} (${trigger.configuration.timezone})`;
-        }
-        // Webhook: show event + filter summary
-        const parts: string[] = [];
-        if (trigger.configuration.event) {
-          parts.push(trigger.configuration.event);
-        }
-        if (trigger.configuration.filter) {
-          parts.push("+ filter");
-        }
-        if (trigger.configuration.includePayload) {
-          parts.push("w/ payload");
-        }
-        return parts.length > 0 ? parts.join(" ") : "All events";
-      },
     },
     {
       accessorKey: "status",
@@ -158,21 +131,13 @@ export function makeColumnsForTriggers(
     },
     {
       id: "editorEmail",
-      accessorFn: (row) => {
-        if (row.editorUser) {
-          return row.editorUser.email;
-        }
-        return row.editor?.toString() ?? "";
-      },
+      accessorFn: (row) => row.editor?.email ?? row.editor?.name ?? "",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Editor" />
       ),
       cell: ({ row }) => {
         const trigger = row.original;
-        if (trigger.editorUser) {
-          return `${trigger.editorUser.email}`;
-        }
-        return trigger.editor?.toString() ?? "-";
+        return trigger.editor?.email ?? trigger.editor?.name ?? "-";
       },
     },
     {
@@ -192,6 +157,7 @@ export function makeColumnsForTriggers(
 
         return (
           <IconButton
+            aria-label={`Delete trigger ${trigger.name}`}
             icon={Trash01}
             size="xs"
             variant="outline"
@@ -276,7 +242,7 @@ export function makeColumnsForAutomationTriggers(
           onClick={async () => {
             await deleteTrigger(owner, onTriggerDeleted, {
               name: row.original.name,
-              sId: row.original.triggerId,
+              triggerId: row.original.triggerId,
             });
           }}
         />
@@ -288,7 +254,7 @@ export function makeColumnsForAutomationTriggers(
 async function deleteTrigger(
   owner: LightWorkspaceType,
   onTriggerDeleted: () => Promise<void>,
-  trigger: Pick<TriggerType, "name" | "sId">
+  trigger: { name: string; triggerId: string }
 ) {
   if (
     !window.confirm(
@@ -300,7 +266,7 @@ async function deleteTrigger(
 
   try {
     const r = await clientFetch(
-      `/api/poke/workspaces/${owner.sId}/triggers?tId=${trigger.sId}`,
+      `/api/poke/workspaces/${owner.sId}/triggers?tId=${trigger.triggerId}`,
       {
         method: "DELETE",
         headers: {
