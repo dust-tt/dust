@@ -1,6 +1,5 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import exportRawRoute from "./export-raw";
-import exportTableRoute from "./export-table";
 import facets from "./facets";
 import overview from "./overview";
 import timeseries from "./timeseries";
@@ -16,7 +15,6 @@ import topUsers from "./top-users";
 const app = workspaceApp();
 
 app.route("/export-raw", exportRawRoute);
-app.route("/export-table", exportTableRoute);
 app.route("/facets", facets);
 app.route("/overview", overview);
 app.route("/timeseries", timeseries);

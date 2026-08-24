@@ -2,6 +2,11 @@ import {
   exportTable,
   stringifyExportTableAsCsv,
 } from "@app/lib/api/analytics/export_tables";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
@@ -73,6 +78,14 @@ app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
       },
     });
   }
+
+  void emitAuditLogEvent({
+    auth,
+    action: "analytics.export_downloaded",
+    targets: [buildAuditLogTarget("workspace", owner)],
+    context: getAuditLogContext(auth),
+    metadata: { table, period: `${startDate}:${endDate}` },
+  });
 
   if (format === "json") {
     return ctx.json(result.value.rows);
