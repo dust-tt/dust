@@ -316,6 +316,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Bypass the activated-user check in the activation orchestrator so already-activated users are still nudged",
     stage: "dust_only",
   },
+  dust_pod_goal: {
+    description:
+      "Enable the Dust Pod Goal skill for persistent job loops in Pods",
+    stage: "dust_only",
+  },
   admin_controlled_pods: {
     description:
       "Enable admin-controlled Pods: admins manage membership and attach connected data (Space DataSourceViews) to the Pod itself.",
