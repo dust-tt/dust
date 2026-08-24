@@ -34,6 +34,7 @@ interface WorkAreaSectionProps {
   copy: WorkAreaSectionCopy;
   actions: readonly WorkAreaSectionAction[];
   disabled?: boolean;
+  skillTag?: string;
 }
 
 export function WorkAreaSection({
@@ -44,6 +45,7 @@ export function WorkAreaSection({
   copy,
   actions,
   disabled,
+  skillTag,
 }: WorkAreaSectionProps) {
   const router = useAppRouter();
   const sendNotification = useSendNotification();
@@ -94,7 +96,7 @@ export function WorkAreaSection({
         : [];
       const res = await createConversationWithMessage({
         messageData: {
-          input: message,
+          input: skillTag ? `${skillTag}\n\n${message}` : message,
           mentions,
           contentFragments: { uploaded: [], contentNodes: [] },
         },
@@ -118,6 +120,7 @@ export function WorkAreaSection({
       owner.sId,
       router,
       sendNotification,
+      skillTag,
     ]
   );
 

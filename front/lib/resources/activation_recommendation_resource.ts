@@ -183,11 +183,13 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
       limit = 5,
       sinceDaysAgo,
       spaceModelId,
+      activationPodModelId,
     }: {
       status: ActivationRecommendationStatus;
       limit?: number;
       sinceDaysAgo?: number;
       spaceModelId?: ModelId;
+      activationPodModelId?: ModelId;
     }
   ): Promise<
     {
@@ -195,12 +197,12 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
       conversationSId: string | null;
     }[]
   > {
-    const user = auth.getNonNullableUser();
-
     const where: WhereOptions<ActivationRecommendationModel> = {
-      userId: user.id,
       workspaceId: auth.getNonNullableWorkspace().id,
       status,
+      ...(activationPodModelId !== undefined
+        ? { activationPodId: activationPodModelId }
+        : { userId: auth.getNonNullableUser().id }),
     };
 
     if (sinceDaysAgo !== undefined) {
