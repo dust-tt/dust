@@ -1,10 +1,19 @@
-import type { PokeListTriggers } from "@app/lib/api/poke/triggers";
+import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
+import type {
+  PokeGetTriggerConsumptionResponse,
+  PokeListTriggers,
+} from "@app/lib/api/poke/triggers";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { PokeGetWebhookRequestsResponseBody } from "@app/types/api/poke/triggers";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
+
+const EMPTY_TRIGGER_CONSUMPTION_STATS: PokeGetTriggerConsumptionResponse["statsByTriggerId"] =
+  {};
 
 export function usePokeTriggers({
   disabled,
@@ -23,6 +32,41 @@ export function usePokeTriggers({
     isLoading: !error && !data,
     isError: error,
     mutate,
+  };
+}
+
+export function usePokeTriggerConsumption({
+  owner,
+  period,
+  triggerIds,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  period: ConsumptionPeriodSelection;
+  triggerIds: string[];
+  disabled?: boolean;
+}) {
+  const url = `/api/poke/workspaces/${owner.sId}/triggers/consumption`;
+  const body = {
+    period: period.kind,
+    days:
+      period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
+    triggerIds,
+  };
+
+  const { data, error, isLoading, isValidating } = useConsumptionQuery<
+    typeof body,
+    PokeGetTriggerConsumptionResponse
+  >({
+    url,
+    body,
+    disabled: disabled || triggerIds.length === 0,
+  });
+
+  return {
+    statsByTriggerId: data?.statsByTriggerId ?? EMPTY_TRIGGER_CONSUMPTION_STATS,
+    isConsumptionLoading: !error && (isLoading || isValidating),
+    isConsumptionError: error,
   };
 }
 

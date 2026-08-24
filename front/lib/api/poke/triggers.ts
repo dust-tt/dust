@@ -1,3 +1,4 @@
+import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { TriggerWithProviderAndEditor } from "@app/lib/triggers/admin/list_with_metadata";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TriggerType } from "@app/types/assistant/triggers";
@@ -7,6 +8,17 @@ export type TriggerWithProviderType = TriggerWithProviderAndEditor;
 
 export type PokeListTriggers = {
   triggers: TriggerWithProviderType[];
+};
+
+export type PokeTriggerConsumptionStats = {
+  credits: number;
+  estimatedRunCount: number;
+  estimatedCreditsPerRun: number | null;
+};
+
+export type PokeGetTriggerConsumptionResponse = {
+  period: ConsumptionPeriod;
+  statsByTriggerId: Record<string, PokeTriggerConsumptionStats>;
 };
 
 export type PokeGetTriggerExecutionStats = {

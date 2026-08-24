@@ -1,5 +1,9 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
-import type { TriggerWithProviderType } from "@app/lib/api/poke/triggers";
+import type {
+  PokeTriggerConsumptionStats,
+  TriggerWithProviderType,
+} from "@app/lib/api/poke/triggers";
+import { formatCredits } from "@app/lib/client/credits";
 import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
@@ -9,12 +13,66 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { Chip, IconButton, LinkWrapper, Trash01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
-type TriggerDisplayType = TriggerWithProviderType;
+type TriggerDisplayType = TriggerWithProviderType & {
+  consumption?: PokeTriggerConsumptionStats;
+};
+
+interface TriggerConsumptionColumnState {
+  isError: boolean;
+  isLoading: boolean;
+}
+
+interface ConsumptionCellProps {
+  consumption: PokeTriggerConsumptionStats | undefined;
+  state: TriggerConsumptionColumnState;
+}
+
+function ConsumptionCell({ consumption, state }: ConsumptionCellProps) {
+  if (state.isError || state.isLoading) {
+    return (
+      <div className="flex min-h-10 w-52 items-center whitespace-nowrap">
+        <span className="text-sm text-muted-foreground">
+          {state.isError ? "Unavailable" : "Loading…"}
+        </span>
+      </div>
+    );
+  }
+
+  const credits = consumption?.credits ?? 0;
+  const estimatedRunCount = consumption?.estimatedRunCount ?? 0;
+  const estimatedCreditsPerRun = consumption?.estimatedCreditsPerRun ?? null;
+
+  const runUnit = estimatedRunCount === 1 ? "run" : "runs";
+  const creditsPerRun =
+    estimatedCreditsPerRun === null
+      ? "— credits/run"
+      : `${formatCredits(estimatedCreditsPerRun)} credits/run`;
+  const creditsLabel = `${formatCredits(credits)} credits`;
+  const estimatesLabel = `Est. ${estimatedRunCount.toLocaleString("en-US")} ${runUnit} · ${creditsPerRun}`;
+
+  return (
+    <div className="flex min-h-10 w-52 flex-col justify-center overflow-hidden whitespace-nowrap tabular-nums">
+      <span
+        className="w-full truncate text-sm font-medium"
+        title={creditsLabel}
+      >
+        {creditsLabel}
+      </span>
+      <span
+        className="w-full truncate text-xs text-muted-foreground"
+        title={estimatesLabel}
+      >
+        {estimatesLabel}
+      </span>
+    </div>
+  );
+}
 
 export function makeColumnsForTriggers(
   owner: LightWorkspaceType,
   agentConfigurations: LightAgentConfigurationType[],
-  onTriggerDeleted: () => Promise<void>
+  onTriggerDeleted: () => Promise<void>,
+  consumptionState?: TriggerConsumptionColumnState
 ): ColumnDef<TriggerDisplayType>[] {
   const agentConfigMap = new Map(
     agentConfigurations.map((agent) => [agent.sId, agent])
@@ -122,6 +180,21 @@ export function makeColumnsForTriggers(
         return parts.length > 0 ? parts.join(" ") : "All events";
       },
     },
+    ...(consumptionState
+      ? [
+          {
+            id: "consumption",
+            enableSorting: false,
+            header: "Consumption",
+            cell: ({ row }) => (
+              <ConsumptionCell
+                consumption={row.original.consumption}
+                state={consumptionState}
+              />
+            ),
+          } satisfies ColumnDef<TriggerDisplayType>,
+        ]
+      : []),
     {
       accessorKey: "status",
       header: ({ column }) => (

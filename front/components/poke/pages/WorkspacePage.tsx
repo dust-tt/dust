@@ -20,7 +20,7 @@ import {
   ActiveSubscriptionTable,
   PlanLimitationsTable,
 } from "@app/components/poke/subscriptions/table";
-import { TriggerDataTable } from "@app/components/poke/triggers/table";
+import { WorkspaceTriggerDataTable } from "@app/components/poke/triggers/table";
 import { WebhookSourceDataTable } from "@app/components/poke/webhook_sources/table";
 import { WorkspaceMetadataTab } from "@app/components/poke/workspace/MetadataTab";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
@@ -353,7 +353,7 @@ export function WorkspacePage() {
             </TabsContent>
 
             <TabsContent value="triggers">
-              <TriggerDataTable owner={owner} loadOnInit />
+              <WorkspaceTriggerDataTable owner={owner} />
             </TabsContent>
             <TabsContent value="webhooksources">
               <WebhookSourceDataTable owner={owner} loadOnInit />
