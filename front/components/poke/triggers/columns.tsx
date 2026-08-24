@@ -184,8 +184,10 @@ export function makeColumnsForTriggers(
       ? [
           {
             id: "consumption",
-            enableSorting: false,
-            header: "Consumption",
+            accessorFn: (row) => row.consumption?.credits ?? 0,
+            header: ({ column }) => (
+              <PokeColumnSortableHeader column={column} label="Consumption" />
+            ),
             cell: ({ row }) => (
               <ConsumptionCell
                 consumption={row.original.consumption}
