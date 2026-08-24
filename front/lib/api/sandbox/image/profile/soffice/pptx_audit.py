@@ -754,11 +754,16 @@ FURNITURE_MAX_AREA = 0.06
 # each survivor is a judgment call; the whole slide is not.
 UNTOUCHED_MIN_SHAPES = 3
 UNTOUCHED_SHARE = 0.7
-# Body copy repeated on this many slides is a broken deck whatever its origin.
+# Body copy appearing this many times is a broken deck whatever its origin -
+# counted as OCCURRENCES, not distinct slides, so three columns of one slide all
+# carrying the same paragraph is caught as readily as one paragraph on nine
+# slides. Both are the same mistake and both shipped.
 REPEATED_TEXT_SLIDES = 3
 # Short lines legitimately recur (a stage label, a column header); a sentence
 # this long appearing verbatim on three slides does not.
 REPEATED_TEXT_MIN_WORDS = 6
+# One picture carrying this many slides is padding, not imagery.
+REPEATED_IMAGE_SLIDES = 4
 # How many leftover shapes to name before summarising the rest.
 LEFTOVER_LISTED = 8
 
@@ -806,7 +811,12 @@ def _chrome_text(prs: PresentationType) -> set:
 
 
 def _is_furniture(shape: BaseShape, slide_w: int, slide_h: int) -> bool:
-    """A small box hugging a slide edge: a footer, a page number, a stamp."""
+    """A small box in the slide's top or bottom band: a footer, a page number, a
+    running head, a confidentiality stamp.
+
+    Top and bottom only. Allowing any edge treated a content column that happens
+    to start half an inch from the left margin as furniture, which quietly
+    excused it from every check that skips furniture."""
     left, top, width, height = shape.left, shape.top, shape.width, shape.height
     if None in (left, top, width, height) or width <= 0 or height <= 0:
         return False
@@ -815,12 +825,52 @@ def _is_furniture(shape: BaseShape, slide_w: int, slide_h: int) -> bool:
     if width * height > slide_w * slide_h * FURNITURE_MAX_AREA:
         return False
     band = int(EMU_PER_INCH * FURNITURE_EDGE_BAND_IN)
-    return (
-        top <= band
-        or left <= band
-        or slide_h - (top + height) <= band
-        or slide_w - (left + width) <= band
-    )
+    return top + height <= band or top >= slide_h - band
+
+
+def _imagery_assets(prs: PresentationType) -> Dict[str, List[int]]:
+    """Content-sized image identity -> the slides it appears on. Keyed by the
+    image's own bytes, so the same picture reused under different part names
+    still counts once."""
+    slide_area = (prs.slide_width or 0) * (prs.slide_height or 0)
+    where: Dict[str, List[int]] = {}
+    for slide_no, slide in enumerate(prs.slides, start=1):
+        for shape in slide.shapes:
+            if not _imagery_in_shape(shape, slide_area):
+                continue
+            image = embedded_image(shape)
+            key = getattr(image, "sha1", None)
+            if not key:
+                continue
+            slides = where.setdefault(key, [])
+            if slide_no not in slides:
+                slides.append(slide_no)
+    return where
+
+
+def _repeated_image_audit(
+    file_path: str, source_path: str
+) -> List[Tuple[str, List[int]]]:
+    """One picture used as the content image of many slides: (sha1, slides).
+
+    The text version of this is a paragraph pasted onto every slide; this is the
+    same move with a photo, and it is what a model reaches for when a gate asks
+    for more imagery than the deck has points needing one. Baselined against the
+    template: a brand illustration the template itself repeats is design."""
+    try:
+        prs = Presentation(file_path)
+        src_prs = Presentation(source_path)
+    except Exception:  # noqa: BLE001 - degrade visibly in the caller
+        return []
+    src_usage = _imagery_assets(src_prs)
+    findings: List[Tuple[str, List[int]]] = []
+    for key, slides in _imagery_assets(prs).items():
+        if len(slides) < REPEATED_IMAGE_SLIDES:
+            continue
+        if len(src_usage.get(key, ())) >= REPEATED_IMAGE_SLIDES:
+            continue
+        findings.append((key, slides))
+    return sorted(findings, key=lambda item: -len(item[1]))
 
 
 def _repeated_text_audit(file_path: str) -> List[Tuple[str, List[int]]]:
@@ -841,6 +891,7 @@ def _repeated_text_audit(file_path: str) -> List[Tuple[str, List[int]]]:
     for text in _chrome_text(prs):
         chrome.add(text)
     where: Dict[str, List[int]] = {}
+    counts: Dict[str, int] = {}
     for slide_no, slide in enumerate(prs.slides, start=1):
         for shape in slide.shapes:
             if _is_furniture(shape, slide_w, slide_h):
@@ -851,13 +902,14 @@ def _repeated_text_audit(file_path: str) -> List[Tuple[str, List[int]]]:
                     continue
                 if text in chrome:
                     continue
+                counts[text] = counts.get(text, 0) + 1
                 slides = where.setdefault(text, [])
                 if slide_no not in slides:
                     slides.append(slide_no)
     return sorted(
-        ((text, slides) for text, slides in where.items()
-         if len(slides) >= REPEATED_TEXT_SLIDES),
-        key=lambda item: -len(item[1]),
+        ((text, where[text]) for text, n in counts.items()
+         if n >= REPEATED_TEXT_SLIDES),
+        key=lambda item: -counts[item[0]],
     )
 
 

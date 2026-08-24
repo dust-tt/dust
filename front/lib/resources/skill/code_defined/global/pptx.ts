@@ -111,7 +111,7 @@ A replacement with a different native aspect ratio needs the box resized on both
 
 **Fill the box or resize it.** A \`vanchor=middle\` box two lines deep in a 5-inch frame floats its copy in the middle of the slide with a hole above it. Either give the slot the content it was built for, or shrink the box to the copy.
 
-**Parallel columns stay parallel.** Same top, same width, same size, same colour across a row: a heading at 22pt in one column and 14pt in the next reads as a bug.
+**Parallel columns stay parallel.** Same top, same width, same size, same colour across a row: a heading at 22pt in one column and 14pt in the next reads as a bug. Each column gets its own copy: three columns repeating one paragraph is a slide with one column and two mistakes.
 
 **Drawn content** (native chart, diagram, callout): derive the safe rect first, left + width from the title placeholder, top below the title, bottom above the footer band.
 
@@ -133,7 +133,8 @@ The defect list is mechanical and reliable. Clear every \`[!]\` before you look 
 |---|---|
 | \`unreadable - #INK on #BG (1.3:1)\` | set \`font.color.rgb\` on every run of that shape, taking the colour from a \`--layouts\` placeholder on the same background |
 | \`still holds template filler\` | you cloned a shape and never rewrote it; write your copy or delete the shape |
-| \`slides 2,3,4...: '<same sentence>'\` | one line is repeated across slides; write each slide its own copy |
+| \`on slide(s) 2,3,4: '<same sentence>'\` | one line appears more than once, across slides or across a slide's own columns; write each its own copy |
+| \`text clipped: 3 of 20 words rendered\` | the box draws only part of its copy; shorten it or grow the box |
 | \`zero-size box\` | you wrote a 0 width or height; restore the exemplar's box |
 | \`extends past slide edge\` | move or shrink it back inside the slide |
 | \`image distorted\` | resize the box to the image's native ratio, or crop |
@@ -157,7 +158,7 @@ A box you cannot read back is a real defect, not a render artifact. Fix, re-run 
 
 \`pptx_inspect /tmp/deck.pptx --compare /files/conversation/template.pptx\`
 
-Design fidelity, legibility and package integrity in one pass, baselined against the template so its own faults are not reported as yours. Copy the finished deck back to \`/files/conversation/\` once it passes. Clear every \`[!]\`: fonts dropped or imagery stripped (you rebuilt instead of editing: start again from the copy - a footer logo does not count as a slide's imagery), text that renders unreadable, \`filler:\` shapes you never rewrote, \`cloned:\` slides that are still the template's slide under a new title, \`repeats:\` one sentence spread across slides, \`canvas:\` slides you cloned and then emptied, shapes you pushed off the slide or stretched, layout collapse, density, and under \`Package:\` anything that stops PowerPoint opening the file. Package faults mean you edited the zip by hand: redo those edits through \`pptx_slides\` and python-pptx. \`leftover: [i]\` lists shapes still carrying the template's copy: replace or delete the ones you cloned. No template: \`--validate\` runs the package half alone. Deliver on \`[QA: PASS]\`, every slide read back clean.
+Design fidelity, legibility and package integrity in one pass, baselined against the template so its own faults are not reported as yours. Copy the finished deck back to \`/files/conversation/\` once it passes. Clear every \`[!]\`: fonts dropped or imagery stripped (you rebuilt instead of editing: start again from the copy - a footer logo does not count as a slide's imagery), text that renders unreadable, \`filler:\` shapes you never rewrote, \`cloned:\` slides that are still the template's slide under a new title, \`repeats:\` one sentence used more than once, \`padding:\` one picture standing in as the imagery of many slides, \`canvas:\` slides you cloned and then emptied, shapes you pushed off the slide or stretched, layout collapse, density, and under \`Package:\` anything that stops PowerPoint opening the file. Package faults mean you edited the zip by hand: redo those edits through \`pptx_slides\` and python-pptx. \`leftover: [i]\` lists shapes still carrying the template's copy: replace or delete the ones you cloned. No template: \`--validate\` runs the package half alone. Deliver on \`[QA: PASS]\`, every slide read back clean.
 
 ## Defaults
 
