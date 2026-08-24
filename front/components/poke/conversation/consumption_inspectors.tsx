@@ -1,103 +1,13 @@
 import { ConversationCreditUsageBreakdown } from "@app/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown";
-import { MessageConsumptionBreakdown } from "@app/components/assistant/conversation/MessageConsumptionBreakdown";
 import { formatCreditValue } from "@app/lib/client/credits";
+import { usePokeConversationConsumption } from "@app/poke/swr/conversation_consumption";
 import {
-  usePokeAgentMessageConsumption,
-  usePokeConversationConsumption,
-} from "@app/poke/swr/conversation_consumption";
-import type { PokeAgentMessageType } from "@app/types/poke";
-import {
-  Chip,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-
-interface PokeMessageConsumptionInspectorProps {
-  conversationId: string;
-  message: PokeAgentMessageType;
-  workspaceId: string;
-}
-
-export function PokeMessageConsumptionInspector({
-  conversationId,
-  message,
-  workspaceId,
-}: PokeMessageConsumptionInspectorProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const { consumption, isConsumptionError, isConsumptionLoading } =
-    usePokeAgentMessageConsumption({
-      conversationId,
-      disabled: !isOpen,
-      messageId: message.sId,
-      workspaceId,
-    });
-
-  const billedCredits = consumption
-    ? (consumption.billedCredits ?? 0)
-    : (message.costCredits ?? 0);
-  const childCredits =
-    consumption?.totalBilledCredits !== undefined
-      ? Math.max(
-          consumption.totalBilledCredits - (consumption.billedCredits ?? 0),
-          0
-        )
-      : (message.subAgentCostCredits ?? 0);
-  const totalCredits =
-    consumption?.totalBilledCredits ?? billedCredits + childCredits;
-
-  return (
-    <Collapsible
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      className="mt-2 rounded-md border border-separator bg-background"
-    >
-      <CollapsibleTrigger className="min-h-11 w-full justify-between gap-3 px-3 py-2 text-left focus-visible:ring-2 focus-visible:ring-ring">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-foreground">
-            Customer consumption breakdown
-          </span>
-          <Chip label="relational" size="mini" color="info" />
-          {consumption?.details && (
-            <Chip
-              label={`attribution v${consumption.details.attributionVersion}`}
-              size="mini"
-            />
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {isConsumptionLoading && <Spinner size="xs" />}
-          <span className="text-sm tabular-nums text-muted-foreground">
-            {formatCreditValue(totalCredits)}
-          </span>
-        </div>
-      </CollapsibleTrigger>
-      <CollapsibleContent animated={false} className="border-t border-border">
-        <div className="px-3 py-2">
-          {isConsumptionError && (
-            <p role="alert" className="mb-2 text-sm text-warning">
-              The customer breakdown could not be loaded. The stored charge is
-              shown as a fallback.
-            </p>
-          )}
-          <MessageConsumptionBreakdown
-            details={consumption?.details}
-            isLoading={isConsumptionLoading && !consumption}
-            totalCredits={totalCredits}
-          />
-          {consumption && (
-            <div className="-mx-3 mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-border px-3 pt-2 text-xs text-muted-foreground">
-              <span>Direct message: {formatCreditValue(billedCredits)}</span>
-              <span>Sub-agents: {formatCreditValue(childCredits)}</span>
-            </div>
-          )}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
 
 interface PokeConversationConsumptionInspectorProps {
   conversationId: string;

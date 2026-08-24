@@ -1,7 +1,4 @@
-import {
-  PokeConversationConsumptionInspector,
-  PokeMessageConsumptionInspector,
-} from "@app/components/poke/conversation/consumption_inspectors";
+import { PokeConversationConsumptionInspector } from "@app/components/poke/conversation/consumption_inspectors";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import type { AgentMessageCreditsToolBreakdown } from "@app/lib/api/assistant/credit_cost";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -473,30 +470,27 @@ interface CostBreakdownViewProps {
 
 function CostBreakdownView({ message }: CostBreakdownViewProps) {
   const breakdown = message.costBreakdown;
-  const stored = message.costCredits;
-  if (!breakdown && stored == null) {
+  if (!breakdown) {
     return null;
   }
 
-  const mismatch =
-    stored != null && breakdown != null && stored !== breakdown.totalAwu;
+  const stored = message.costCredits;
+  const mismatch = stored != null && stored !== breakdown.totalAwu;
 
   return (
     <div className="mt-2 rounded-md border border-separator bg-muted-background px-2 py-1.5">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <span className="shrink-0 text-sm font-medium text-foreground">
-          Billing audit
+          Cost
         </span>
         <MetadataItem label="stored" mono>
           {stored != null ? `${formatCredits(stored)} AWU` : "—"}
         </MetadataItem>
         <MetadataItem label="analytics" mono>
-          {breakdown ? `${formatCredits(breakdown.totalAwu)} AWU` : "—"}
+          {`${formatCredits(breakdown.totalAwu)} AWU`}
         </MetadataItem>
         <MetadataItem label="llm / tools" mono>
-          {breakdown
-            ? `${formatCredits(breakdown.llmAwu)} / ${formatCredits(breakdown.toolAwu)}`
-            : "—"}
+          {`${formatCredits(breakdown.llmAwu)} / ${formatCredits(breakdown.toolAwu)}`}
         </MetadataItem>
         {message.subAgentCostCredits != null &&
           message.subAgentCostCredits > 0 && (
@@ -638,7 +632,6 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
 };
 
 interface AgentMessageViewProps {
-  conversationId: string;
   message: PokeAgentMessageType;
   useMarkdown: boolean;
   owner: LightWorkspaceType;
@@ -646,7 +639,6 @@ interface AgentMessageViewProps {
 }
 
 const AgentMessageView = ({
-  conversationId,
   message,
   useMarkdown,
   owner,
@@ -764,11 +756,6 @@ const AgentMessageView = ({
           </div>
         </div>
         <CostBreakdownView message={message} />
-        <PokeMessageConsumptionInspector
-          conversationId={conversationId}
-          message={message}
-          workspaceId={owner.sId}
-        />
         {providerPassthroughEntries.map((entry) => (
           <ProviderPassthroughView
             key={entry.key}
@@ -1313,7 +1300,6 @@ export function ConversationPage() {
                           return (
                             <AgentMessageView
                               key={`message-${i}-${j}`}
-                              conversationId={conversationId}
                               message={m}
                               useMarkdown={useMarkdown}
                               owner={owner}
