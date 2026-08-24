@@ -88,7 +88,8 @@ export function getQueueForUserMessageOrigin(
   }
 }
 
-// Max retry attempts for the runModelAndCreateActions activity.
+// Attempt after which run_model surfaces a retryable model error to the user instead of throwing
+// for a Temporal retry (see shouldSurfaceModelError).
 export const RUN_MODEL_MAX_RETRIES = 5;
 
 // Leave room for our code to surface a retryable agent error before Temporal enforces StartToClose.
