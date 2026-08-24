@@ -11,6 +11,7 @@ import {
   AgentMessageModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
+import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
@@ -145,6 +146,10 @@ export async function checkCreditSpendCheckpointActivity(
   );
 
   try {
+    if (!conversation.actionRequired) {
+      notifyManualActionRequired(auth, { conversationId: conversation.sId });
+    }
+
     await ConversationResource.markAsActionRequired(auth, { conversation });
 
     await publishConversationRelatedEvent({
