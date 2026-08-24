@@ -918,14 +918,21 @@ type SeatCreditTransfer = {
  * immediate moves between two recurring-credit seats (e.g. `pro` → `max`).
  *
  * A transfer is needed when a user is still assigned to one allowance seat in
- * Metronome but the DB has already moved them to a different allowance seat,
- * and the old seat credit still has a positive balance. The caller then empties
- * the old credit (by `remaining`) and debits the new one (by `consumed`), so
- * the move carries usage over instead of resetting it — e.g. 2000/8000 used on
- * `pro` becomes 2000/40000 used on `max` (remaining 6000 → 38000).
+ * Metronome but the DB has already moved them to a different allowance seat.
+ * The caller then empties the old credit's unused balance (`remaining`, when
+ * positive) and reconciles the new one to `allocation − consumed`, so the move
+ * carries usage over instead of resetting it — e.g. 2000/8000 used on `pro`
+ * becomes 2000/40000 used on `max` (remaining 6000 → 38000). This holds even
+ * when the origin is fully consumed: 8000/8000 on `pro` becomes 8000/40000 on
+ * `max` (remaining 0 → 32000), NOT a fresh 40000 on top of the 8000 already
+ * spent (which would let the user spend 48000).
  *
- * Keying the trigger on "old credit still has a balance" makes the whole thing
- * idempotent: once the old credit is emptied, a re-run finds nothing to do.
+ * Idempotency does NOT come from the origin balance — it comes from two other
+ * places: once the sync reassigns the user to the new seat,
+ * `metronomeSeatByUser` matches `desiredSeatByUser` and no transfer is
+ * detected; and the destination adjustment reconciles to an absolute target
+ * (`allocation − consumed`), so re-running before the reassignment propagates
+ * converges to the same balance rather than double-debiting.
  *
  * Also covers same-allowance moves between billing frequencies (e.g. `max` →
  * `max_yearly`): they share a credit name but are distinct recurring credits,
@@ -964,9 +971,12 @@ export function computeSeatCreditTransfers({
       continue;
     }
     const remaining = balanceByUser.get(userSId);
-    // No balance left → nothing to carry over (fresh seat, or already
-    // transferred on a prior run).
-    if (remaining === undefined || remaining <= 0) {
+    // No balance reading for this user → we can't derive how much was consumed,
+    // so skip rather than guess. A zero or negative (overdrawn) balance is NOT
+    // skipped: a fully-consumed origin is exactly when the consumed amount must
+    // be carried onto the new seat — otherwise the new seat keeps its full fresh
+    // allowance on top of what was already spent.
+    if (remaining === undefined) {
       continue;
     }
     const allocation = allocationBySeatType.get(oldSeatType);
@@ -1057,7 +1067,10 @@ async function resolveSeatAdjustmentTimestamp({
  * Detect users who moved between two recurring-credit seats (Metronome still
  * has them on the old seat, the DB on the new one) and empty their old seat
  * credit. Returns the transfers whose old credit was successfully emptied, so
- * the caller can credit the new seat once it's been assigned.
+ * the caller can credit the new seat once it's been assigned. Origins with no
+ * unused balance (fully consumed or overdrawn) are returned without an
+ * adjustment — there is nothing to reclaim, but their consumed amount is still
+ * carried onto the new seat.
  *
  * Runs BEFORE seat reconciliation while the old seat is still assigned: a
  * manual ledger entry requires the seat to be active at the adjustment
@@ -1159,6 +1172,14 @@ async function emptyOriginSeatCreditsForTransfers({
   const emptied: SeatCreditTransfer[] = [];
   for (const t of transfers) {
     await heartbeat();
+    // A fully-consumed (or overdrawn) origin has no unused balance to reclaim,
+    // so there is nothing to empty — but the consumed amount must still be
+    // carried onto the new seat. Keep it in the returned transfers and skip the
+    // origin adjustment.
+    if (t.remaining <= 0) {
+      emptied.push(t);
+      continue;
+    }
     const recurringCreditId = recurringCreditIdBySeatType.get(t.oldSeatType);
     if (!recurringCreditId) {
       logger.warn(
