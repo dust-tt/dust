@@ -5,7 +5,7 @@ import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_rol
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/assistant/observability/messages_metrics", async () => ({
-  fetchMessageMetrics: vi.fn(
+  fetchConsumptionUsageMetrics: vi.fn(
     async () =>
       new Ok([
         {
@@ -21,7 +21,7 @@ vi.mock("@app/lib/api/assistant/observability/messages_metrics", async () => ({
 vi.mock(
   "@app/lib/api/assistant/observability/active_users_metrics",
   async () => ({
-    fetchActiveUsersMetrics: vi.fn(
+    fetchConsumptionActiveUsersMetrics: vi.fn(
       async () =>
         new Ok([
           {
@@ -43,7 +43,7 @@ vi.mock(
     ...(await importOriginal<
       typeof import("@app/lib/api/assistant/observability/context_origin")
     >()),
-    fetchContextOriginDailyBreakdown: vi.fn(
+    fetchConsumptionContextOriginDailyBreakdown: vi.fn(
       async () =>
         new Ok([{ date: "2024-06-01", origin: "web", messageCount: 10 }])
     ),
@@ -52,7 +52,7 @@ vi.mock(
 
 vi.mock("@app/lib/api/analytics/agents_export", async () => ({
   AGENT_EXPORT_HEADERS: ["agentId", "name", "messages"],
-  fetchAgentExportRows: vi.fn(
+  fetchConsumptionAgentExportRows: vi.fn(
     async () =>
       new Ok([{ agentId: "agent-123", name: "TestAgent", messages: 5 }])
   ),
@@ -61,7 +61,7 @@ vi.mock("@app/lib/api/analytics/agents_export", async () => ({
 
 vi.mock("@app/lib/api/analytics/users_export", async () => ({
   USER_EXPORT_HEADERS: ["userName", "messageCount"],
-  fetchUserExportRows: vi.fn(
+  fetchConsumptionUserExportRows: vi.fn(
     async () => new Ok([{ userName: "Alice", messageCount: 7 }])
   ),
 }));
@@ -96,8 +96,7 @@ vi.mock("@app/lib/api/assistant/observability/skill_usage", async () => ({
 }));
 
 vi.mock("@app/lib/api/assistant/observability/tool_usage", async () => ({
-  fetchAvailableTools: vi.fn(async () => new Ok([])),
-  fetchToolUsageMetrics: vi.fn(async () => new Ok([])),
+  fetchConsumptionToolUsageExport: vi.fn(async () => new Ok([])),
 }));
 
 vi.mock("@app/lib/api/analytics/messages_export", async () => ({

@@ -1,3 +1,4 @@
+import { buildConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/scope";
 import { fetchUsedSkills } from "@app/lib/api/assistant/observability/skill_usage";
 import { formatDateFromMillis } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
@@ -7,7 +8,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { estypes } from "@elastic/elasticsearch";
 
 export const SKILL_EXPORT_HEADERS = [
   "skillId",
@@ -25,7 +25,8 @@ export type SkillExportRow = Record<
 
 export async function fetchSkillExportRows(
   auth: Authenticator,
-  baseQuery: estypes.QueryDslQueryContainer,
+  startDate: string,
+  endDate: string,
   timezone: string
 ): Promise<Result<SkillExportRow[], Error>> {
   const activeCustomSkills = await SkillResource.listByWorkspace(auth, {
@@ -36,7 +37,14 @@ export async function fetchSkillExportRows(
     withFileAttachments: false,
   });
 
-  const usedSkillsResult = await fetchUsedSkills(baseQuery);
+  const query = buildConsumptionScopeQuery({
+    auth,
+    startDate,
+    endDate,
+    extraFilters: [{ term: { consumption_type: "tool" } }],
+  });
+
+  const usedSkillsResult = await fetchUsedSkills(query);
   if (usedSkillsResult.isErr()) {
     return new Err(usedSkillsResult.error);
   }

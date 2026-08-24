@@ -1,9 +1,17 @@
+import {
+  AGENT_MESSAGE_ID_FIELD,
+  buildConsumptionScopeQuery,
+  CARDINALITY_PRECISION_THRESHOLD,
+  COMPLETED_AT_FIELD,
+} from "@app/lib/api/analytics/consumption/scope";
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import {
   bucketsToArray,
   formatDateFromMillis,
   searchAnalytics,
+  searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
@@ -194,6 +202,95 @@ export async function fetchContextOriginDailyBreakdown(
         date,
         origin: String(originBucket.key),
         messageCount: originBucket.doc_count ?? 0,
+      });
+    }
+  }
+
+  return new Ok(points);
+}
+
+type ConsumptionOriginSubBucket = {
+  key: string;
+  doc_count: number;
+  unique_messages?: estypes.AggregationsCardinalityAggregate;
+};
+
+type ConsumptionDailyOriginDateBucket = {
+  key: number;
+  key_as_string: string;
+  doc_count: number;
+  by_origin: estypes.AggregationsMultiBucketAggregateBase<ConsumptionOriginSubBucket>;
+};
+
+type ConsumptionDailyOriginAggs = {
+  by_date: estypes.AggregationsMultiBucketAggregateBase<ConsumptionDailyOriginDateBucket>;
+};
+
+// Consumption-index counterpart of `fetchContextOriginDailyBreakdown`, scoped
+// to the `source` export table. A message can now have several documents
+// (one per LLM run-usage, one per tool call) under the same origin, so
+// messageCount has to be a distinct count rather than a raw document count.
+export async function fetchConsumptionContextOriginDailyBreakdown(
+  auth: Authenticator,
+  startDate: string,
+  endDate: string,
+  timezone: string = "UTC"
+): Promise<Result<ContextOriginDailyPoint[], Error>> {
+  const query = buildConsumptionScopeQuery({ auth, startDate, endDate });
+
+  const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
+    by_date: {
+      date_histogram: {
+        field: COMPLETED_AT_FIELD,
+        calendar_interval: "day",
+        time_zone: timezone,
+      },
+      aggs: {
+        by_origin: {
+          terms: {
+            field: "context_origin",
+            size: 20,
+            missing: UNKNOWN_CONTEXT_ORIGIN,
+          },
+          aggs: {
+            unique_messages: {
+              cardinality: {
+                field: AGENT_MESSAGE_ID_FIELD,
+                precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+
+  const result = await searchConsumptionAnalytics<
+    never,
+    ConsumptionDailyOriginAggs
+  >(query, { aggregations: aggs, size: 0 });
+
+  if (result.isErr()) {
+    return new Err(new Error(result.error.message));
+  }
+
+  const dateBuckets = bucketsToArray<ConsumptionDailyOriginDateBucket>(
+    result.value.aggregations?.by_date?.buckets
+  );
+
+  const points: ContextOriginDailyPoint[] = [];
+
+  for (const dateBucket of dateBuckets) {
+    const date = formatDateFromMillis(dateBucket.key, timezone);
+    const originBuckets = bucketsToArray<ConsumptionOriginSubBucket>(
+      dateBucket.by_origin?.buckets
+    );
+
+    for (const originBucket of originBuckets) {
+      points.push({
+        date,
+        origin: String(originBucket.key),
+        messageCount: Math.round(originBucket.unique_messages?.value ?? 0),
       });
     }
   }

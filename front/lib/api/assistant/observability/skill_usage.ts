@@ -2,6 +2,7 @@ import {
   bucketsToArray,
   formatDateFromMillis,
   searchAnalytics,
+  searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -265,25 +266,30 @@ export async function fetchAvailableSkillsBySkillId(
   );
 }
 
+type ConsumptionSkillIdListAggs = {
+  by_skill_id: estypes.AggregationsMultiBucketAggregateBase<SkillBucket>;
+};
+
+// Consumption-index counterpart of the old `fetchUsedSkills`, scoped to the
+// `skills` export table. `tool.attributed_skill_ids` is a flat field on this
+// index, so no nested aggregation is needed.
 export async function fetchUsedSkills(
-  baseQuery: estypes.QueryDslQueryContainer
+  query: estypes.QueryDslQueryContainer
 ): Promise<Result<string[], Error>> {
   const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
-    skills_nested: {
-      nested: { path: "skills_used" },
-      aggs: {
-        by_skill_id: {
-          terms: {
-            field: "skills_used.skill_id",
-            size: 1000,
-            order: { _count: "desc" },
-          },
-        },
+    by_skill_id: {
+      terms: {
+        field: "tool.attributed_skill_ids",
+        size: 1000,
+        order: { _count: "desc" },
       },
     },
   };
 
-  const result = await searchAnalytics<never, SkillIdListAggs>(baseQuery, {
+  const result = await searchConsumptionAnalytics<
+    never,
+    ConsumptionSkillIdListAggs
+  >(query, {
     aggregations: aggs,
     size: 0,
   });
@@ -293,7 +299,7 @@ export async function fetchUsedSkills(
   }
 
   const skillIdBuckets = bucketsToArray<SkillBucket>(
-    result.value.aggregations?.skills_nested?.by_skill_id?.buckets
+    result.value.aggregations?.by_skill_id?.buckets
   );
 
   return new Ok(skillIdBuckets.map((bucket) => bucket.key));

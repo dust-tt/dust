@@ -1,7 +1,7 @@
 import type { AgentExportRow } from "@app/lib/api/analytics/agents_export";
 import {
   AGENT_EXPORT_HEADERS,
-  fetchAgentExportRows,
+  fetchConsumptionAgentExportRows,
   toAgentExportCsvRow,
 } from "@app/lib/api/analytics/agents_export";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
@@ -22,20 +22,17 @@ import {
 } from "@app/lib/api/analytics/skills_export";
 import type { UserExportRow } from "@app/lib/api/analytics/users_export";
 import {
-  fetchUserExportRows,
+  fetchConsumptionUserExportRows,
   USER_EXPORT_HEADERS,
 } from "@app/lib/api/analytics/users_export";
-import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
-import { fetchContextOriginDailyBreakdown } from "@app/lib/api/assistant/observability/context_origin";
-import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
+import { fetchConsumptionActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
+import { fetchConsumptionContextOriginDailyBreakdown } from "@app/lib/api/assistant/observability/context_origin";
+import { fetchConsumptionUsageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import {
   fetchAvailableSkills,
   fetchSkillUsageMetrics,
 } from "@app/lib/api/assistant/observability/skill_usage";
-import {
-  fetchAvailableTools,
-  fetchToolUsageMetrics,
-} from "@app/lib/api/assistant/observability/tool_usage";
+import { fetchConsumptionToolUsageExport } from "@app/lib/api/assistant/observability/tool_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { formatDateFromMillis } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
@@ -45,6 +42,14 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import moment from "moment-timezone";
+
+// `buildConsumptionScopeQuery`'s `completed_at` filter is a half-open
+// [start, end) range, while this endpoint's `endDate` is an inclusive
+// calendar day. Advance it by one day so the range still covers the whole
+// requested last day.
+function toExclusiveEndDate(endDate: string): string {
+  return moment.utc(endDate).add(1, "day").format("YYYY-MM-DD");
+}
 
 type AnalyticsExportTable =
   | "usage_metrics"
@@ -197,27 +202,26 @@ export async function exportTable({
 }): Promise<Result<ExportTableData, Error>> {
   switch (table) {
     case "usage_metrics":
-      return exportUsageMetrics({ startDate, endDate, timezone, owner });
+      return exportUsageMetrics({ auth, startDate, endDate, timezone });
     case "active_users":
-      return exportActiveUsers({ startDate, endDate, timezone, owner });
+      return exportActiveUsers({ auth, startDate, endDate, timezone });
     case "source":
-      return exportSource({ startDate, endDate, timezone, owner });
+      return exportSource({ auth, startDate, endDate, timezone });
     case "agents":
       return exportAgents({
         auth,
         startDate,
         endDate,
-        owner,
         includeHiddenAgents,
       });
     case "users":
-      return exportUsers({ startDate, endDate, timezone, owner });
+      return exportUsers({ auth, startDate, endDate, timezone, owner });
     case "skills":
-      return exportSkills({ auth, startDate, endDate, timezone, owner });
+      return exportSkills({ auth, startDate, endDate, timezone });
     case "skill_usage":
       return exportSkillUsage({ startDate, endDate, timezone, owner });
     case "tool_usage":
-      return exportToolUsage({ startDate, endDate, timezone, owner });
+      return exportToolUsage({ auth, startDate, endDate, timezone });
     case "messages":
       return exportMessages({ auth, startDate, endDate, timezone, owner });
     case "feedback":
@@ -255,26 +259,20 @@ export function stringifyExportTableAsCsv(data: ExportTableData): string {
 }
 
 async function exportUsageMetrics({
+  auth,
   startDate,
   endDate,
   timezone,
-  owner,
 }: {
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
-  owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
+  const result = await fetchConsumptionUsageMetrics(
+    auth,
     startDate,
-    endDate,
-  });
-
-  const result = await fetchMessageMetrics(
-    baseQuery,
-    "day",
-    ["conversations", "activeUsers"] as const,
+    toExclusiveEndDate(endDate),
     timezone
   );
 
@@ -299,18 +297,18 @@ async function exportUsageMetrics({
 }
 
 async function exportActiveUsers({
+  auth,
   startDate,
   endDate,
   timezone,
-  owner,
 }: {
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
-  owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
-  const result = await fetchActiveUsersMetrics(
-    owner,
+  const result = await fetchConsumptionActiveUsersMetrics(
+    auth,
     startDate,
     endDate,
     timezone
@@ -339,23 +337,22 @@ async function exportActiveUsers({
 }
 
 async function exportSource({
+  auth,
   startDate,
   endDate,
   timezone,
-  owner,
 }: {
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
-  owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
+  const result = await fetchConsumptionContextOriginDailyBreakdown(
+    auth,
     startDate,
-    endDate,
-  });
-
-  const result = await fetchContextOriginDailyBreakdown(baseQuery, timezone);
+    toExclusiveEndDate(endDate),
+    timezone
+  );
 
   if (result.isErr()) {
     return new Err(
@@ -384,24 +381,17 @@ async function exportAgents({
   auth,
   startDate,
   endDate,
-  owner,
   includeHiddenAgents,
 }: {
   auth: Authenticator;
   startDate: string;
   endDate: string;
-  owner: WorkspaceType;
   includeHiddenAgents: boolean;
 }): Promise<Result<ExportTableData, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
-    startDate,
-    endDate,
-  });
-
-  const result = await fetchAgentExportRows(
-    baseQuery,
+  const result = await fetchConsumptionAgentExportRows(
     auth,
+    startDate,
+    toExclusiveEndDate(endDate),
     includeHiddenAgents
   );
 
@@ -419,30 +409,26 @@ async function exportAgents({
 }
 
 async function exportUsers({
+  auth,
   startDate,
   endDate,
   timezone,
   owner,
 }: {
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
   owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
-    startDate,
-    endDate,
-  });
-
-  // `startDate` / `endDate` are plain YYYY-MM-DD days. Elasticsearch rounds a
-  // date-only `lte` up to the end of that day, but the membership SQL filters
-  // compare against instants, so the bounds have to be widened to the full day
-  // in the requested timezone. Without this, memberships that started earlier
-  // today (or ended later today) are dropped from the export.
-  const result = await fetchUserExportRows({
-    baseQuery,
-    owner,
+  // `startDate` / `endDate` are plain YYYY-MM-DD days. The membership SQL
+  // filters compare against instants, so the bounds have to be widened to the
+  // full day in the requested timezone. Without this, memberships that
+  // started earlier today (or ended later today) are dropped from the export.
+  const result = await fetchConsumptionUserExportRows({
+    auth,
+    esStartDate: startDate,
+    esEndDate: toExclusiveEndDate(endDate),
     startDate: moment.tz(startDate, timezone).startOf("day").toDate(),
     endDate: moment.tz(endDate, timezone).endOf("day").toDate(),
     timezone,
@@ -466,21 +452,18 @@ async function exportSkills({
   startDate,
   endDate,
   timezone,
-  owner,
 }: {
   auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
-  owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
+  const result = await fetchSkillExportRows(
+    auth,
     startDate,
-    endDate,
-  });
-
-  const result = await fetchSkillExportRows(auth, baseQuery, timezone);
+    toExclusiveEndDate(endDate),
+    timezone
+  );
 
   if (result.isErr()) {
     return new Err(
@@ -560,55 +543,30 @@ async function exportSkillUsage({
 }
 
 async function exportToolUsage({
+  auth,
   startDate,
   endDate,
   timezone,
-  owner,
 }: {
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
-  owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
+  const result = await fetchConsumptionToolUsageExport(
+    auth,
     startDate,
-    endDate,
-  });
+    toExclusiveEndDate(endDate),
+    timezone
+  );
 
-  const toolsResult = await fetchAvailableTools(baseQuery);
-  if (toolsResult.isErr()) {
+  if (result.isErr()) {
     return new Err(
-      new Error(
-        `Failed to retrieve available tools: ${toolsResult.error.message}`
-      )
+      new Error(`Failed to retrieve tool usage: ${result.error.message}`)
     );
   }
 
-  const nestedRows = await concurrentExecutor(
-    toolsResult.value,
-    async (item) => {
-      const usageResult = await fetchToolUsageMetrics(
-        baseQuery,
-        item.serverName,
-        timezone
-      );
-      if (usageResult.isErr()) {
-        throw new Error(
-          `Failed to retrieve tool usage for ${item.serverName}: ${usageResult.error.message}`
-        );
-      }
-      return usageResult.value.map<ToolUsageRow>((point) => ({
-        date: point.date,
-        toolName: item.serverName,
-        executions: point.executionCount,
-        uniqueUsers: point.uniqueUsers,
-      }));
-    },
-    { concurrency: 8 }
-  );
-
-  const rows = nestedRows.flat().sort((a, b) => {
+  const rows = [...result.value].sort((a, b) => {
     const dateCompare = a.date.localeCompare(b.date);
     if (dateCompare !== 0) {
       return dateCompare;

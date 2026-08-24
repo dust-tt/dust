@@ -1,7 +1,12 @@
 import {
+  buildConsumptionScopeQuery,
+  CARDINALITY_PRECISION_THRESHOLD,
+} from "@app/lib/api/analytics/consumption/scope";
+import {
   bucketsToArray,
   formatDateFromMillis,
   searchAnalytics,
+  searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
@@ -225,6 +230,105 @@ export async function fetchAvailableTools(
   }));
 
   return new Ok(tools);
+}
+
+export type ToolUsageExportRow = {
+  date: string;
+  toolName: string;
+  executions: number;
+  uniqueUsers: number;
+};
+
+type ConsumptionToolUsageServerBucket = {
+  key: string;
+  doc_count: number;
+  unique_users?: estypes.AggregationsCardinalityAggregate;
+};
+
+type ConsumptionToolUsageDateBucket = {
+  key: number;
+  key_as_string: string;
+  doc_count: number;
+  by_server: estypes.AggregationsMultiBucketAggregateBase<ConsumptionToolUsageServerBucket>;
+};
+
+type ConsumptionToolUsageAggs = {
+  by_date: estypes.AggregationsMultiBucketAggregateBase<ConsumptionToolUsageDateBucket>;
+};
+
+// Consumption-index counterpart of the old `fetchAvailableTools` +
+// `fetchToolUsageMetrics` fan-out, scoped to the `tool_usage` export table.
+// The index already carries one flat document per tool invocation, so a
+// single query discovers both which tools ran and their daily metrics —
+// unlike the old per-server nested-agg fan-out, `doc_count` is already a
+// correct invocation count here and does not need to become a cardinality.
+export async function fetchConsumptionToolUsageExport(
+  auth: Authenticator,
+  startDate: string,
+  endDate: string,
+  timezone: string = "UTC"
+): Promise<Result<ToolUsageExportRow[], Error>> {
+  const query = buildConsumptionScopeQuery({
+    auth,
+    startDate,
+    endDate,
+    extraFilters: [{ term: { consumption_type: "tool" } }],
+  });
+
+  const result = await searchConsumptionAnalytics<
+    never,
+    ConsumptionToolUsageAggs
+  >(query, {
+    aggregations: {
+      by_date: {
+        date_histogram: {
+          field: "completed_at",
+          calendar_interval: "day",
+          time_zone: timezone,
+        },
+        aggs: {
+          by_server: {
+            terms: { field: "tool.server_name", size: 100 },
+            aggs: {
+              unique_users: {
+                cardinality: {
+                  field: "user.id",
+                  precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    size: 0,
+  });
+
+  if (result.isErr()) {
+    return new Err(new Error(result.error.message));
+  }
+
+  const dateBuckets = bucketsToArray<ConsumptionToolUsageDateBucket>(
+    result.value.aggregations?.by_date?.buckets
+  );
+
+  const rows: ToolUsageExportRow[] = [];
+  for (const dateBucket of dateBuckets) {
+    const date = formatDateFromMillis(dateBucket.key, timezone);
+    const serverBuckets = bucketsToArray<ConsumptionToolUsageServerBucket>(
+      dateBucket.by_server?.buckets
+    );
+    for (const serverBucket of serverBuckets) {
+      rows.push({
+        date,
+        toolName: String(serverBucket.key),
+        executions: serverBucket.doc_count ?? 0,
+        uniqueUsers: Math.round(serverBucket.unique_users?.value ?? 0),
+      });
+    }
+  }
+
+  return new Ok(rows);
 }
 
 export async function resolveServerDisplayNames(

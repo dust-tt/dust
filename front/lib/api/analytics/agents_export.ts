@@ -1,5 +1,17 @@
+import {
+  AGENT_MESSAGE_ID_FIELD,
+  buildConsumptionScopeQuery,
+  CARDINALITY_PRECISION_THRESHOLD,
+  CONVERSATION_ID_FIELD,
+  metricSubAgg,
+  metricValue,
+} from "@app/lib/api/analytics/consumption/scope";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import {
+  bucketsToArray,
+  searchAnalytics,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
@@ -18,6 +30,26 @@ type TopAgentExportBucket = {
 
 type TopAgentsExportAggs = {
   by_agent?: estypes.AggregationsMultiBucketAggregateBase<TopAgentExportBucket>;
+};
+
+type ConsumptionTopAgentExportBucket = {
+  key: string;
+  doc_count: number;
+  unique_messages?: estypes.AggregationsCardinalityAggregate;
+  unique_users?: estypes.AggregationsCardinalityAggregate;
+  unique_conversations?: estypes.AggregationsCardinalityAggregate;
+  metric?: estypes.AggregationsSumAggregate;
+};
+
+type ConsumptionTopAgentsExportAggs = {
+  by_agent?: estypes.AggregationsMultiBucketAggregateBase<ConsumptionTopAgentExportBucket>;
+};
+
+type AgentEsMetrics = {
+  messages: number;
+  distinctUsersReached: number;
+  distinctConversations: number;
+  credits: number;
 };
 
 interface AgentMetadataRow {
@@ -83,7 +115,6 @@ export async function fetchAgentExportRows(
   auth: Authenticator,
   includeHiddenAgents: boolean
 ): Promise<Result<AgentExportRow[], Error>> {
-  const owner = auth.getNonNullableWorkspace();
   const esResult = await searchAnalytics<never, TopAgentsExportAggs>(
     {
       bool: {
@@ -118,7 +149,7 @@ export async function fetchAgentExportRows(
     esResult.value.aggregations?.by_agent?.buckets
   );
 
-  const esMetrics = new Map(
+  const esMetrics = new Map<string, AgentEsMetrics>(
     buckets.map((b) => [
       String(b.key),
       {
@@ -130,6 +161,99 @@ export async function fetchAgentExportRows(
     ])
   );
 
+  const rows = await assembleAgentExportRows(
+    auth,
+    esMetrics,
+    buckets.map((b) => String(b.key)),
+    includeHiddenAgents
+  );
+
+  return new Ok(rows);
+}
+
+// Consumption-index counterpart of `fetchAgentExportRows`, scoped to the
+// `agents` export table. `agent.id` (not `agent.attributed_id`) is used so
+// sub-agent runs are not rolled up into the parent agent's numbers, and
+// "messages" becomes a distinct count since the index carries multiple
+// documents per agent message.
+export async function fetchConsumptionAgentExportRows(
+  auth: Authenticator,
+  startDate: string,
+  endDate: string,
+  includeHiddenAgents: boolean
+): Promise<Result<AgentExportRow[], Error>> {
+  const query = buildConsumptionScopeQuery({ auth, startDate, endDate });
+
+  const esResult = await searchConsumptionAnalytics<
+    never,
+    ConsumptionTopAgentsExportAggs
+  >(query, {
+    aggregations: {
+      by_agent: {
+        terms: { field: "agent.id", size: 10000 },
+        aggs: {
+          unique_messages: {
+            cardinality: {
+              field: AGENT_MESSAGE_ID_FIELD,
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+          unique_users: {
+            cardinality: {
+              field: "user.id",
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+          unique_conversations: {
+            cardinality: {
+              field: CONVERSATION_ID_FIELD,
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+          ...metricSubAgg("credit_micro"),
+        },
+      },
+    },
+    size: 0,
+  });
+
+  if (esResult.isErr()) {
+    return new Err(new Error(esResult.error.message));
+  }
+
+  const buckets = bucketsToArray<ConsumptionTopAgentExportBucket>(
+    esResult.value.aggregations?.by_agent?.buckets
+  );
+
+  const esMetrics = new Map<string, AgentEsMetrics>(
+    buckets.map((b) => [
+      String(b.key),
+      {
+        messages: Math.round(b.unique_messages?.value ?? 0),
+        distinctUsersReached: Math.round(b.unique_users?.value ?? 0),
+        distinctConversations: Math.round(b.unique_conversations?.value ?? 0),
+        credits: Math.round(metricValue("credit_micro", b.metric)),
+      },
+    ])
+  );
+
+  const rows = await assembleAgentExportRows(
+    auth,
+    esMetrics,
+    buckets.map((b) => String(b.key)),
+    includeHiddenAgents
+  );
+
+  return new Ok(rows);
+}
+
+async function assembleAgentExportRows(
+  auth: Authenticator,
+  esMetrics: Map<string, AgentEsMetrics>,
+  allAgentIdsFromEs: string[],
+  includeHiddenAgents: boolean
+): Promise<AgentExportRow[]> {
+  const owner = auth.getNonNullableWorkspace();
   const scopeFilter = (alias: string) =>
     includeHiddenAgents ? "" : `AND ${alias}."scope" != 'hidden'`;
 
@@ -205,9 +329,7 @@ export async function fetchAgentExportRows(
     };
   });
 
-  const globalAgentIds = buckets
-    .map((b) => String(b.key))
-    .filter(isGlobalAgentId);
+  const globalAgentIds = allAgentIdsFromEs.filter(isGlobalAgentId);
   if (globalAgentIds.length > 0) {
     const globalAgents = await getAgentConfigurations(auth, {
       agentIds: globalAgentIds,
@@ -235,5 +357,5 @@ export async function fetchAgentExportRows(
 
   rows.sort((a, b) => b.messages - a.messages);
 
-  return new Ok(rows);
+  return rows;
 }

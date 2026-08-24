@@ -1,4 +1,16 @@
-import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import {
+  AGENT_MESSAGE_ID_FIELD,
+  buildConsumptionScopeQuery,
+  CARDINALITY_PRECISION_THRESHOLD,
+  COMPLETED_AT_FIELD,
+  CONVERSATION_ID_FIELD,
+} from "@app/lib/api/analytics/consumption/scope";
+import {
+  bucketsToArray,
+  searchAnalytics,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
@@ -237,3 +249,87 @@ export type GetWorkspaceUsageMetricsResponse = {
     "timestamp" | "count" | "conversations" | "activeUsers"
   >[];
 };
+
+export type ConsumptionUsageMetricsPoint = {
+  timestamp: number;
+  count: number;
+  conversations: number;
+  activeUsers: number;
+};
+
+type ConsumptionUsageMetricsBucket = {
+  key: number;
+  unique_messages?: estypes.AggregationsCardinalityAggregate;
+  unique_conversations?: estypes.AggregationsCardinalityAggregate;
+  active_users?: estypes.AggregationsCardinalityAggregate;
+};
+
+type ConsumptionUsageMetricsAggs = {
+  by_interval?: estypes.AggregationsMultiBucketAggregateBase<ConsumptionUsageMetricsBucket>;
+};
+
+// Consumption-index counterpart of `fetchMessageMetrics`, scoped to the
+// `usage_metrics` export table. The consumption index carries one document per
+// LLM run-usage or tool call, so "messages" has to be a distinct count rather
+// than a raw document count.
+export async function fetchConsumptionUsageMetrics(
+  auth: Authenticator,
+  startDate: string,
+  endDate: string,
+  timezone: string = "UTC"
+): Promise<Result<ConsumptionUsageMetricsPoint[], Error>> {
+  const query = buildConsumptionScopeQuery({ auth, startDate, endDate });
+
+  const result = await searchConsumptionAnalytics<
+    never,
+    ConsumptionUsageMetricsAggs
+  >(query, {
+    aggregations: {
+      by_interval: {
+        date_histogram: {
+          field: COMPLETED_AT_FIELD,
+          calendar_interval: "day",
+          time_zone: timezone,
+        },
+        aggs: {
+          unique_messages: {
+            cardinality: {
+              field: AGENT_MESSAGE_ID_FIELD,
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+          unique_conversations: {
+            cardinality: {
+              field: CONVERSATION_ID_FIELD,
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+          active_users: {
+            cardinality: {
+              field: "user.id",
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+        },
+      },
+    },
+    size: 0,
+  });
+
+  if (result.isErr()) {
+    return new Err(new Error(result.error.message));
+  }
+
+  const buckets = bucketsToArray<ConsumptionUsageMetricsBucket>(
+    result.value.aggregations?.by_interval?.buckets
+  );
+
+  return new Ok(
+    buckets.map((bucket) => ({
+      timestamp: bucket.key,
+      count: Math.round(bucket.unique_messages?.value ?? 0),
+      conversations: Math.round(bucket.unique_conversations?.value ?? 0),
+      activeUsers: Math.round(bucket.active_users?.value ?? 0),
+    }))
+  );
+}
