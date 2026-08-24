@@ -58,23 +58,19 @@ app.post(
 
     return ctx.json({
       period,
-      statsByTriggerId: Object.fromEntries(
-        uniqueTriggerIds.map((triggerId) => {
-          const stat = statsByTriggerId.get(triggerId);
-          const estimatedRunCount = stat?.runCount ?? 0;
-          const credits = stat?.credits ?? 0;
+      stats: uniqueTriggerIds.map((triggerId) => {
+        const stat = statsByTriggerId.get(triggerId);
+        const estimatedRunCount = stat?.runCount ?? 0;
+        const credits = stat?.credits ?? 0;
 
-          return [
-            triggerId,
-            {
-              credits,
-              estimatedRunCount,
-              estimatedCreditsPerRun:
-                estimatedRunCount > 0 ? credits / estimatedRunCount : null,
-            },
-          ];
-        })
-      ),
+        return {
+          triggerId,
+          credits,
+          estimatedRunCount,
+          estimatedCreditsPerRun:
+            estimatedRunCount > 0 ? credits / estimatedRunCount : null,
+        };
+      }),
     });
   }
 );

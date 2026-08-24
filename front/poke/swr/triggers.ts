@@ -4,6 +4,7 @@ import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_
 import type {
   PokeGetTriggerConsumptionResponse,
   PokeListTriggers,
+  PokeTriggerConsumptionStats,
 } from "@app/lib/api/poke/triggers";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
@@ -12,8 +13,10 @@ import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers"
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 
-const EMPTY_TRIGGER_CONSUMPTION_STATS: PokeGetTriggerConsumptionResponse["statsByTriggerId"] =
-  {};
+const EMPTY_TRIGGER_CONSUMPTION_STATS: Record<
+  string,
+  PokeTriggerConsumptionStats
+> = {};
 
 export function usePokeTriggers({
   disabled,
@@ -63,9 +66,14 @@ export function usePokeTriggerConsumption({
     body,
     disabled: isDisabled,
   });
+  const statsByTriggerId = data
+    ? Object.fromEntries(
+        data.stats.map(({ triggerId, ...stats }) => [triggerId, stats])
+      )
+    : EMPTY_TRIGGER_CONSUMPTION_STATS;
 
   return {
-    statsByTriggerId: data?.statsByTriggerId ?? EMPTY_TRIGGER_CONSUMPTION_STATS,
+    statsByTriggerId,
     isConsumptionLoading: !isDisabled && !error && (isLoading || isValidating),
     isConsumptionError: error,
   };

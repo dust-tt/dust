@@ -16,9 +16,13 @@ export type PokeTriggerConsumptionStats = {
   estimatedCreditsPerRun: number | null;
 };
 
+export type PokeTriggerConsumptionStat = PokeTriggerConsumptionStats & {
+  triggerId: string;
+};
+
 export type PokeGetTriggerConsumptionResponse = {
   period: ConsumptionPeriod;
-  statsByTriggerId: Record<string, PokeTriggerConsumptionStats>;
+  stats: PokeTriggerConsumptionStat[];
 };
 
 export type PokeGetTriggerExecutionStats = {
