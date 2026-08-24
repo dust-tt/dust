@@ -1,59 +1,15 @@
-import { DEFAULT_AUTOMATION_TRIGGERS_LIMIT } from "@app/lib/api/analytics/automations/schema";
-import type { UserAutomationTriggers } from "@app/lib/api/analytics/automations/user_triggers";
-import { fetchUserAutomationTriggers } from "@app/lib/api/analytics/automations/user_triggers";
+import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
+import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock(
-  import("@app/lib/api/analytics/automations/user_triggers"),
-  async (orig) => {
-    const mod = await orig();
-    return {
-      ...mod,
-      fetchUserAutomationTriggers: vi.fn(),
-    };
-  }
-);
-
-const TRIGGERS: UserAutomationTriggers = {
-  period: {
-    startDate: "2026-07-01T00:00:00.000Z",
-    endDate: "2026-08-01T00:00:00.000Z",
-  },
-  totalCount: 1,
-  isConsumptionAvailable: true,
-  medianRunCount: 4,
-  medianCostPerRun: 2,
-  triggers: [
-    {
-      triggerId: "trg1",
-      name: "Competitor watch",
-      kind: "schedule",
-      status: "enabled",
-      agent: {
-        agentId: "agent1",
-        name: "deep-dive",
-        pictureUrl: null,
-        description: null,
-        modelId: null,
-        modelDisplayName: null,
-      },
-      editor: {
-        name: "Adrien Simon",
-        email: "adrien@dust.tt",
-        pictureUrl: null,
-      },
-      scheduleDescription: "Every day at 9:00",
-      webhookSourceName: null,
-      webhookSourceRestricted: false,
-      webhookIcon: null,
-      runCount: 8,
-      credits: 16,
-      executionMode: "user_pool",
-    },
-  ],
-};
+vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
+  const mod = await orig();
+  return { ...mod, searchConsumptionAnalytics: vi.fn() };
+});
 
 function postTriggersRequest(wId: string, body: Record<string, unknown> = {}) {
   return honoApp.request(`/api/w/${wId}/me/automations/triggers`, {
@@ -63,56 +19,81 @@ function postTriggersRequest(wId: string, body: Record<string, unknown> = {}) {
   });
 }
 
+function mockConsumption() {
+  vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+    new Ok({
+      took: 1,
+      timed_out: false,
+      _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+      hits: {
+        total: { value: 0, relation: "eq" },
+        max_score: null,
+        hits: [],
+      },
+      aggregations: {
+        by_trigger: { buckets: [] },
+        total_count: { value: 0 },
+      },
+    })
+  );
+}
+
 describe("POST /api/w/:wId/me/automations/triggers", () => {
-  it("returns the caller's own triggers, defaulting to the current cycle", async () => {
-    vi.mocked(fetchUserAutomationTriggers).mockResolvedValue(TRIGGERS);
-    const { workspace } = await createPrivateApiMockRequest({ role: "user" });
+  afterEach(() => {
+    vi.mocked(searchConsumptionAnalytics).mockReset();
+  });
+
+  it("returns the caller's own triggers", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const trigger = await TriggerFactory.schedule(auth, {
+      agentConfigurationId: agent.sId,
+      name: "Competitor watch",
+      configuration: { cron: "0 9 * * *", timezone: "UTC" },
+    });
+    mockConsumption();
 
     const response = await postTriggersRequest(workspace.sId);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual(TRIGGERS);
-    expect(vi.mocked(fetchUserAutomationTriggers)).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        limit: DEFAULT_AUTOMATION_TRIGGERS_LIMIT,
-        offset: 0,
-      })
-    );
-  });
-
-  it("forwards the period, page, search and filter", async () => {
-    vi.mocked(fetchUserAutomationTriggers).mockResolvedValue(TRIGGERS);
-    const { workspace } = await createPrivateApiMockRequest({ role: "user" });
-
-    const response = await postTriggersRequest(workspace.sId, {
-      period: "days",
-      days: 7,
-      limit: 10,
-      offset: 20,
-      search: "  competitor  ",
-      filter: { agentIds: ["agent1"], kinds: ["schedule"] },
+    await expect(response.json()).resolves.toMatchObject({
+      totalCount: 1,
+      isConsumptionAvailable: true,
+      triggers: [
+        expect.objectContaining({
+          triggerId: trigger.sId,
+          name: "Competitor watch",
+          runCount: 0,
+          credits: 0,
+        }),
+      ],
     });
-
-    expect(response.status).toBe(200);
-    expect(vi.mocked(fetchUserAutomationTriggers)).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        limit: 10,
-        offset: 20,
-        search: "competitor",
-        filter: { agentIds: ["agent1"], kinds: ["schedule"] },
-      })
-    );
   });
 
-  it("returns 400 on a negative offset", async () => {
-    const { workspace } = await createPrivateApiMockRequest({ role: "user" });
+  it("applies filters and validates the request", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    await TriggerFactory.schedule(auth, {
+      agentConfigurationId: agent.sId,
+      name: "Competitor watch",
+      configuration: { cron: "0 9 * * *", timezone: "UTC" },
+    });
+    mockConsumption();
 
-    const response = await postTriggersRequest(workspace.sId, { offset: -1 });
+    const filtered = await postTriggersRequest(workspace.sId, {
+      search: "  competitor  ",
+      filter: { agentIds: [agent.sId], kinds: ["schedule"] },
+    });
+    expect(filtered.status).toBe(200);
+    await expect(filtered.json()).resolves.toMatchObject({ totalCount: 1 });
 
-    expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({
+    const invalid = await postTriggersRequest(workspace.sId, { offset: -1 });
+    expect(invalid.status).toBe(400);
+    await expect(invalid.json()).resolves.toMatchObject({
       error: { type: "invalid_request_error" },
     });
   });

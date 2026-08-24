@@ -158,7 +158,7 @@ async function resolveTriggerIdsForSearch(
  * always compare against the full active set, never just the triggers
  * ranked ahead of it.
  */
-async function fetchTriggersRanking(
+export async function fetchTriggersRanking(
   auth: Authenticator,
   {
     period,
@@ -166,12 +166,14 @@ async function fetchTriggersRanking(
     offset,
     search,
     filter,
+    consumptionScopeFilter = {},
   }: {
     period: ConsumptionPeriod;
     limit: number;
     offset: number;
     search?: string;
     filter?: AutomationTriggersFilter;
+    consumptionScopeFilter?: ConsumptionScopeFilter;
   }
 ): Promise<
   Result<
@@ -184,7 +186,7 @@ async function fetchTriggersRanking(
     ElasticsearchError
   >
 > {
-  const scopeFilter: ConsumptionScopeFilter = {};
+  const scopeFilter: ConsumptionScopeFilter = { ...consumptionScopeFilter };
   if (filter?.agentIds?.length) {
     scopeFilter.agents = filter.agentIds;
   }

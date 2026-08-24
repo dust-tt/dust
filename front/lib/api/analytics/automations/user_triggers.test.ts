@@ -28,6 +28,14 @@ function mockConsumption(
 ) {
   vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
     new Ok({
+      took: 1,
+      timed_out: false,
+      _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+      hits: {
+        total: { value: 0, relation: "eq" },
+        max_score: null,
+        hits: [],
+      },
       aggregations: {
         by_trigger: {
           buckets: buckets.map(({ key, runs, creditMicro }) => ({
@@ -36,8 +44,9 @@ function mockConsumption(
             runs: { value: runs },
           })),
         },
+        total_count: { value: buckets.length },
       },
-    }) as Awaited<ReturnType<typeof searchConsumptionAnalytics>>
+    })
   );
 }
 
@@ -121,6 +130,16 @@ describe("fetchUserAutomationTriggers", () => {
     const { triggers, totalCount } = result;
     expect(totalCount).toBe(1);
     expect(triggers.map((trigger) => trigger.triggerId)).toEqual([mine.sId]);
+    expect(vi.mocked(searchConsumptionAnalytics)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bool: {
+          filter: expect.arrayContaining([
+            { term: { "user.id": authenticator.getNonNullableUser().sId } },
+          ]),
+        },
+      }),
+      expect.anything()
+    );
   });
 
   it("still lists the triggers when the consumption query fails", async () => {

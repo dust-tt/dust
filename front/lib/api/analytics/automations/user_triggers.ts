@@ -5,108 +5,19 @@ import type {
 } from "@app/lib/api/analytics/automations/triggers";
 import {
   buildAutomationTriggerRows,
+  fetchTriggersRanking,
   median,
 } from "@app/lib/api/analytics/automations/triggers";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import {
-  buildConsumptionScopeQuery,
-  CONVERSATION_ID_FIELD,
-  CREDIT_MICRO_FIELD,
-  TRIGGER_ID_FIELD,
-} from "@app/lib/api/analytics/consumption/scope";
-import {
-  bucketsToArray,
-  searchConsumptionAnalytics,
-} from "@app/lib/api/elasticsearch";
+import { CARDINALITY_PRECISION_THRESHOLD } from "@app/lib/api/analytics/consumption/scope";
 import type { Authenticator } from "@app/lib/auth";
-import { microCreditsToCredits } from "@app/lib/credits/units";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import logger from "@app/logger/logger";
-import type { estypes } from "@elastic/elasticsearch";
-
-const CREDIT_AGG = "credit_micro";
-const RUNS_AGG = "runs";
-
-type TriggerBucket = {
-  key: string;
-  [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
-  [RUNS_AGG]?: estypes.AggregationsCardinalityAggregate;
-};
-
-type TriggerAggs = {
-  by_trigger?: estypes.AggregationsMultiBucketAggregateBase<TriggerBucket>;
-};
 
 type TriggerConsumption = { runCount: number; credits: number };
 
 export type UserAutomationTriggers = AutomationTriggers & {
-  // False when the consumption query failed: the rows are still listed, with
-  // their credits and runs left at zero.
   isConsumptionAvailable: boolean;
 };
-
-/**
- * Credits and runs over the period for a known set of triggers. Unlike the
- * workspace-wide ranking, the set comes from the database, so a trigger that
- * never ran still gets a row — with zeroes.
- */
-async function fetchTriggersConsumption(
-  auth: Authenticator,
-  { period, triggerIds }: { period: ConsumptionPeriod; triggerIds: string[] }
-): Promise<Map<string, TriggerConsumption> | null> {
-  if (triggerIds.length === 0) {
-    return new Map();
-  }
-
-  const query = buildConsumptionScopeQuery({
-    auth,
-    startDate: period.startDate,
-    endDate: period.endDate,
-    extraFilters: [{ terms: { [TRIGGER_ID_FIELD]: triggerIds } }],
-  });
-
-  const result = await searchConsumptionAnalytics<never, TriggerAggs>(query, {
-    aggregations: {
-      by_trigger: {
-        terms: {
-          field: TRIGGER_ID_FIELD,
-          size: triggerIds.length,
-          order: { [CREDIT_AGG]: "desc" },
-        },
-        aggs: {
-          [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
-          // One trigger run is one conversation.
-          [RUNS_AGG]: { cardinality: { field: CONVERSATION_ID_FIELD } },
-        },
-      },
-    },
-    size: 0,
-  });
-  if (result.isErr()) {
-    logger.error(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        err: result.error,
-      },
-      "[AutomationsAnalytics] Failed to retrieve user trigger consumption."
-    );
-    return null;
-  }
-
-  const buckets = bucketsToArray<TriggerBucket>(
-    result.value.aggregations?.by_trigger?.buckets
-  );
-
-  return new Map(
-    buckets.map((bucket) => [
-      String(bucket.key),
-      {
-        runCount: Math.round(bucket[RUNS_AGG]?.value ?? 0),
-        credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
-      },
-    ])
-  );
-}
 
 function matchesFilter(
   trigger: TriggerResource,
@@ -157,12 +68,23 @@ export async function fetchUserAutomationTriggers(
 
   const searchTerm = search?.toLowerCase();
 
-  const consumption = await fetchTriggersConsumption(auth, {
+  const rankingResult = await fetchTriggersRanking(auth, {
     period,
-    triggerIds: editorTriggers.map((trigger) => trigger.sId),
+    limit: CARDINALITY_PRECISION_THRESHOLD,
+    offset: 0,
+    consumptionScopeFilter: { users: [auth.getNonNullableUser().sId] },
   });
   const consumptionByTriggerId: Map<string, TriggerConsumption> =
-    consumption ?? new Map();
+    rankingResult.isOk()
+      ? new Map(
+          rankingResult.value.ranking.map(
+            ({ triggerId, runCount, credits }) => [
+              triggerId,
+              { runCount, credits },
+            ]
+          )
+        )
+      : new Map();
 
   const ranked: RankedTriggerWithResource[] = editorTriggers
     .filter((trigger) => matchesFilter(trigger, { searchTerm, filter }))
@@ -180,9 +102,7 @@ export async function fetchUserAutomationTriggers(
 
   // Triggers that never ran have nothing to compare a "how often" or "per run
   // cost" stat against, so the baseline only looks at the ones that did.
-  const active = [...consumptionByTriggerId.values()].filter(
-    (entry) => entry.runCount > 0
-  );
+  const active = ranked.filter((entry) => entry.runCount > 0);
 
   const rows = await buildAutomationTriggerRows(
     auth,
@@ -193,8 +113,10 @@ export async function fetchUserAutomationTriggers(
     period,
     totalCount: ranked.length,
     triggers: rows,
-    medianRunCount: median(active.map((c) => c.runCount)),
-    medianCostPerRun: median(active.map((c) => c.credits / c.runCount)),
-    isConsumptionAvailable: consumption !== null,
+    medianRunCount: median(active.map(({ runCount }) => runCount)),
+    medianCostPerRun: median(
+      active.map(({ credits, runCount }) => credits / runCount)
+    ),
+    isConsumptionAvailable: rankingResult.isOk(),
   };
 }
