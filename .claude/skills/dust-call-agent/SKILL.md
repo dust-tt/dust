@@ -1,6 +1,6 @@
 ---
 name: dust-call-agent
-description: Call a Dust agent to get information (read a slack thread, a notion URL, a google drive document...), perform an action (post a message to slack, create a calendar event, ...), provide context on any topic regarding Dust (the company, current discussions, customers...) or in general have the Dust agent perform a given task.
+description: Call a Dust agent for Dust company context or to access tools, data, and actions unavailable through the current agent's native capabilities. Never use a Dust agent as a proxy for Slack, Notion, Google Drive, calendars, or any other service when native access is available; use the native tool instead because it is faster and more efficient.
 ---
 
 Access Dust agents that have context on all the company, e.g. recent projects, engineering, sales, marketing, etc., via the Dust CLI non-interactively, e.g.:
