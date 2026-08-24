@@ -158,7 +158,7 @@ async function resolveTriggerIdsForSearch(
  * always compare against the full active set, never just the triggers
  * ranked ahead of it.
  */
-async function fetchTriggersRanking(
+export async function fetchTriggersRanking(
   auth: Authenticator,
   {
     period,
@@ -166,12 +166,14 @@ async function fetchTriggersRanking(
     offset,
     search,
     filter,
+    consumptionScopeFilter = {},
   }: {
     period: ConsumptionPeriod;
     limit: number;
     offset: number;
     search?: string;
     filter?: AutomationTriggersFilter;
+    consumptionScopeFilter?: ConsumptionScopeFilter;
   }
 ): Promise<
   Result<
@@ -184,7 +186,7 @@ async function fetchTriggersRanking(
     ElasticsearchError
   >
 > {
-  const scopeFilter: ConsumptionScopeFilter = {};
+  const scopeFilter: ConsumptionScopeFilter = { ...consumptionScopeFilter };
   if (filter?.agentIds?.length) {
     scopeFilter.agents = filter.agentIds;
   }
@@ -241,7 +243,7 @@ async function fetchTriggersRanking(
   );
   const ranked = buckets.map((bucket) => ({
     triggerId: String(bucket.key),
-    runCount: Math.round(bucket[RUNS_AGG]?.value ?? 0),
+    runCount: bucket[RUNS_AGG]?.value ?? 0,
     credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
   }));
   // Triggers that never ran have nothing to compare a "how often" or "per
