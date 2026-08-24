@@ -1,4 +1,5 @@
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
+import { generateSmoothShutdownSummary } from "@app/lib/api/assistant/conversation/smooth_shutdown_summary";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 // TODO(2026-07-31 QOS): move these message fetches behind a resource method instead of using
@@ -9,14 +10,21 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import { finalizeSmoothShutdownAgentLoopActivity } from "@app/temporal/agent_loop/activities/finalize";
+import { finalizeGracefullyStoppedAgentLoopActivity } from "@app/temporal/agent_loop/activities/finalize";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import {
+  getAgentLoopDataWithAuth,
+  isAgentLoopDataSoftDeleteError,
+} from "@app/types/assistant/agent_run";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import maxBy from "lodash/maxBy";
 
 async function findPausedAgentMessage(
   auth: Authenticator,
@@ -218,10 +226,61 @@ export async function continueWorkflowAlertThresholdPause(
 }
 
 /**
+ * Persists a short summary of progress so far as one more text step on the message (a one-shot
+ * LLM call, see `generateSmoothShutdownSummary`), so it reads as the agent's final reply once the
+ * message is finalized. Written before finalizing, not after: the terminal event's content is
+ * re-read from the DB at publish time, so this has to land first for the client to see it without
+ * a reload. Best-effort — logs and returns on any failure so the caller still finalizes as a
+ * plain graceful stop.
+ */
+async function writeSmoothShutdownRecap(
+  auth: Authenticator,
+  agentLoopArgs: AgentLoopArgs
+): Promise<void> {
+  const dataRes = await getAgentLoopDataWithAuth(auth, agentLoopArgs);
+  if (dataRes.isErr()) {
+    if (!isAgentLoopDataSoftDeleteError(dataRes.error)) {
+      logger.warn(
+        {
+          agentMessageId: agentLoopArgs.agentMessageId,
+          conversationId: agentLoopArgs.conversationId,
+          error: dataRes.error,
+        },
+        "[SmoothShutdown] Failed to load agent loop data; stopping without a recap"
+      );
+    }
+    return;
+  }
+  const { agentMessage, conversation } = dataRes.value;
+
+  const summaryRes = await generateSmoothShutdownSummary(auth, conversation);
+  if (summaryRes.isErr()) {
+    logger.warn(
+      {
+        agentMessageId: agentLoopArgs.agentMessageId,
+        conversationId: agentLoopArgs.conversationId,
+        error: summaryRes.error,
+      },
+      "[SmoothShutdown] Failed to generate progress summary; stopping without one"
+    );
+    return;
+  }
+
+  const step = (maxBy(agentMessage.contents, "step")?.step ?? 0) + 1;
+  await AgentStepContentResource.createNewVersion({
+    workspaceId: auth.getNonNullableWorkspace().id,
+    agentMessageId: agentMessage.agentMessageId,
+    step,
+    index: 0,
+    type: "text_content",
+    value: { type: "text_content", value: summaryRes.value },
+  });
+}
+
+/**
  * The user declined to continue past the workflow alert threshold. The paused workflow already
- * exited, so there is nothing left to signal — finalize directly with the same smooth-shutdown
- * logic (progress summary) the workflow itself would have run had it been signaled while still
- * active.
+ * exited, so there is nothing left to signal — write the smooth-shutdown recap directly, then
+ * finalize with the same activity a plain graceful stop would use.
  */
 export async function declineWorkflowAlertThresholdPause(
   auth: Authenticator,
@@ -258,7 +317,7 @@ export async function declineWorkflowAlertThresholdPause(
     return new Ok(undefined);
   }
 
-  await finalizeSmoothShutdownAgentLoopActivity(auth.toJSON(), {
+  const agentLoopArgs: AgentLoopArgs = {
     agentMessageId,
     agentMessageVersion,
     conversationId,
@@ -266,7 +325,13 @@ export async function declineWorkflowAlertThresholdPause(
     userMessageId,
     userMessageVersion,
     userMessageOrigin,
-  });
+  };
+
+  await writeSmoothShutdownRecap(auth, agentLoopArgs);
+  await finalizeGracefullyStoppedAgentLoopActivity(
+    auth.toJSON(),
+    agentLoopArgs
+  );
 
   return new Ok(undefined);
 }
