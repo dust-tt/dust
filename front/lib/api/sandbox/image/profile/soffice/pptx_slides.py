@@ -151,7 +151,13 @@ def _clone_slide_append(prs, src_index: int):
         sp_tree.append(copy.deepcopy(shape._element))
 
     rid_map = _copy_slide_rels(src, dest, pkg)
-    _rewrite_rids(sp_tree, rid_map)
+    # Rewrite across the whole cSld, not just the shape tree: a slide background
+    # override lives in <p:bg>, a sibling of <p:spTree>, and its picture fill
+    # carries an r:embed of its own. Rewriting only the shapes left that r:embed
+    # pointing at the SOURCE slide's relationship id, which on the copy resolves
+    # to whatever else happens to hold that id - so duplicating a slide with a
+    # picture background silently gave the copy a different image behind it.
+    _rewrite_rids(dest._element.cSld, rid_map)
 
     return list(prs.slides._sldIdLst)[-1]  # add_slide appended it last
 

@@ -69,11 +69,11 @@ def _contrast_text(color):
 # text from background regardless of contrast polarity or gradient. Returns each
 # detected line's vertical centre (px): the input for marker alignment.
 #
-# Per-row colour and contrast were tried here and dropped: legible white-on-brand
-# text over the template's gradient measures only ~1.4-3.0 (no threshold
-# separates intended low-contrast from broken), and the per-strip ink colour is
-# too noisy to judge colour uniformity. The deterministic `--compare` slot audit
-# catches the colour-mismatch defect at its source instead.
+# Contrast is NOT measured here. Sampling it per detected row was tried and
+# dropped - a row strip mixes glyphs with whatever the box sits on, so legible
+# white-on-brand text scored as low as broken dark-on-dark. `pptx_contrast`
+# measures it per rendered WORD box instead, where the ink is a solid fraction of
+# the pixels, and that separates the two cleanly (1.1-1.6 broken, 2.4+ legible).
 TEXTROW_EDGE_DELTA = 60  # adjacent-sample manhattan diff that marks a glyph edge
 TEXTROW_X_STEP = 2  # sample every Nth column (speed; detection is robust to it)
 
@@ -345,7 +345,14 @@ def _annotate_boxes(
             ix0, iy0 = max(ax0, bx0), max(ay0, by0)
             ix1, iy1 = min(ax1, bx1), min(ay1, by1)
             if ix1 > ix0 and iy1 > iy0:
-                draw.rectangle([ix0, iy0, ix1, iy1], fill=(255, 0, 0, 130))
+                # Wash only on the --boxes diagnostic view. On the plain QA
+                # render it is a lie of omission: the pdf-word check downstream
+                # clears most of these pairs (a designed overlay, two boxes whose
+                # text sits in opposite halves), so a red block appears over
+                # perfectly good copy with no finding to explain it, and the
+                # render stops being a faithful picture of the slide.
+                if draw_boxes:
+                    draw.rectangle([ix0, iy0, ix1, iy1], fill=(255, 0, 0, 130))
                 findings["overlaps"].append(
                     _overlap_finding(
                         a, b, ea, eb, pen, kind, has_text(a), has_text(b)
