@@ -792,7 +792,7 @@ describe("updateAgentMessageDBAndMemory", () => {
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
         update: {
-          type: "modelInteractionDurationMs",
+          type: "usageMetadata",
           modelInteractionDurationMs: 100,
         },
       });
@@ -842,7 +842,7 @@ describe("updateAgentMessageDBAndMemory", () => {
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
         update: {
-          type: "modelInteractionDurationMs",
+          type: "usageMetadata",
           modelInteractionDurationMs: 75,
         },
       });
@@ -885,7 +885,7 @@ describe("updateAgentMessageDBAndMemory", () => {
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
         update: {
-          type: "modelInteractionDurationMs",
+          type: "usageMetadata",
           modelInteractionDurationMs: 99.7,
         },
       });
@@ -939,7 +939,7 @@ describe("updateAgentMessageDBAndMemory", () => {
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
         update: {
-          type: "runIds",
+          type: "usageMetadata",
           runIds: ["run1", "run2"],
         },
       });
@@ -988,7 +988,7 @@ describe("updateAgentMessageDBAndMemory", () => {
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
         update: {
-          type: "runIds",
+          type: "usageMetadata",
           runIds: ["run2", "run3"],
         },
       });
@@ -1004,6 +1004,54 @@ describe("updateAgentMessageDBAndMemory", () => {
         expect.arrayContaining(["run1", "run2", "run3"])
       );
       expect(dbMessage?.runIds?.length).toBe(3);
+    });
+
+    it("should update runIds and modelInteractionDurationMs together in a single call", async () => {
+      // Arrange: Create agent message
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        {
+          name: "Test Agent",
+        }
+      );
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [],
+      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
+
+      // Act: Update both fields at once
+      await updateAgentMessageDBAndMemory(auth, {
+        agentMessage,
+        update: {
+          type: "usageMetadata",
+          runIds: ["run1", "run2"],
+          modelInteractionDurationMs: 100,
+        },
+      });
+
+      // Assert: Both fields should be updated in database
+      const dbMessage = await AgentMessageModel.findOne({
+        where: {
+          id: agentMessage.agentMessageId,
+          workspaceId: workspace.id,
+        },
+      });
+      expect(dbMessage?.runIds).toEqual(
+        expect.arrayContaining(["run1", "run2"])
+      );
+      expect(dbMessage?.runIds?.length).toBe(2);
+      expect(dbMessage?.modelInteractionDurationMs).toBe(100);
+
+      // Assert: In-memory object should be updated
+      expect(agentMessage.modelInteractionDurationMs).toBe(100);
     });
   });
 
