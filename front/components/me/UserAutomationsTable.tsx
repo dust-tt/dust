@@ -27,6 +27,7 @@ import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
+import { isManager } from "@app/types/user";
 import {
   Button,
   DataTable,
@@ -71,7 +72,13 @@ function LockedToggle({ label }: { label: string }) {
   );
 }
 
-function RunningCell({ row }: { row: TriggerRowData }) {
+function RunningCell({
+  row,
+  canEnableManagerDisabled,
+}: {
+  row: TriggerRowData;
+  canEnableManagerDisabled: boolean;
+}) {
   switch (row.status) {
     case "enabled":
     case "disabled":
@@ -86,7 +93,16 @@ function RunningCell({ row }: { row: TriggerRowData }) {
         />
       );
     case "disabled_by_manager":
-      return (
+      return canEnableManagerDisabled ? (
+        <SliderToggle
+          selected={false}
+          disabled={row.isStatusPending}
+          onClick={(event) => {
+            event.stopPropagation();
+            row.onToggleStatus();
+          }}
+        />
+      ) : (
         <LockedToggle label="Disabled by a manager or admin, who can re-enable it." />
       );
     case "relocating":
@@ -138,9 +154,11 @@ function ActionsCell({
 function buildColumns({
   workspaceId,
   expandedRowId,
+  canEnableManagerDisabled,
 }: {
   workspaceId: string;
   expandedRowId: string | null;
+  canEnableManagerDisabled: boolean;
 }): ColumnDef<TriggerRowData>[] {
   return [
     nameColumn(),
@@ -154,7 +172,10 @@ function buildColumns({
       meta: { className: "w-16" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-center">
-          <RunningCell row={info.row.original} />
+          <RunningCell
+            row={info.row.original}
+            canEnableManagerDisabled={canEnableManagerDisabled}
+          />
         </DataTable.CellContent>
       ),
     },
@@ -179,6 +200,7 @@ interface UserAutomationsTableProps {
 
 export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
   const workspaceId = owner.sId;
+  const canEnableManagerDisabled = isManager(owner);
   const period = DEFAULT_CONSUMPTION_PERIOD;
 
   const [filter, setFilter] = useState<AutomationsFilter>({});
@@ -301,8 +323,13 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
   );
 
   const columns = useMemo(
-    () => buildColumns({ workspaceId, expandedRowId }),
-    [workspaceId, expandedRowId]
+    () =>
+      buildColumns({
+        workspaceId,
+        expandedRowId,
+        canEnableManagerDisabled,
+      }),
+    [workspaceId, expandedRowId, canEnableManagerDisabled]
   );
 
   const firstRowIndex = pagination.pageIndex * pagination.pageSize;
