@@ -420,7 +420,7 @@ export const sandboxSkill = {
   },
   mcpServers: [{ name: "sandbox" }],
   version: 1,
-  icon: "CommandLineIcon",
+  icon: "TerminalSquareIcon",
   // Auto-enabled for dust-like agents, which are heavy users of it.
   // This allows adding the bash tool eagerly, as it's used for a wide variety of use cases and deferring it would
   // increase significantly the number of tool searches ran overall.

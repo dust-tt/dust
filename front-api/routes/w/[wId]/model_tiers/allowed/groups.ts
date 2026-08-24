@@ -3,8 +3,12 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import {
+  clearGroupMaxAllowedTier,
+  listGroupAllowedTierNames,
+  setGroupMaxAllowedTier,
+} from "@app/lib/model_tiers/allowed_tiers";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import type { GetGroupAllowedModelTiersResponseBody } from "@app/types/api/model_tiers";
 import {
   GroupAllowedModelTierBodySchema,
@@ -26,7 +30,7 @@ app.get(
   async (ctx): HandlerResult<GetGroupAllowedModelTiersResponseBody> => {
     const auth = ctx.get("auth");
 
-    const groups = await ModelsTierResource.listGroupAllowedTierNames(auth);
+    const groups = await listGroupAllowedTierNames(auth);
 
     return ctx.json({ groups });
   }
@@ -41,7 +45,7 @@ app.post(
     const auth = ctx.get("auth");
     const body = ctx.req.valid("json");
 
-    const result = await ModelsTierResource.setGroupMaxAllowedTier(auth, body);
+    const result = await setGroupMaxAllowedTier(auth, body);
 
     if (result.isErr()) {
       return apiError(ctx, modelTierErrorToApiError(result.error));
@@ -79,10 +83,7 @@ app.delete(
     const auth = ctx.get("auth");
     const body = ctx.req.valid("json");
 
-    const result = await ModelsTierResource.clearGroupMaxAllowedTier(
-      auth,
-      body
-    );
+    const result = await clearGroupMaxAllowedTier(auth, body);
 
     if (result.isErr()) {
       return apiError(ctx, modelTierErrorToApiError(result.error));

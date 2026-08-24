@@ -18,15 +18,7 @@ type ConsumptionTimeseriesBody = ConsumptionBody & {
   breakdownCount?: number;
 };
 
-export function useConsumptionTimeseries({
-  workspaceId,
-  period,
-  mode,
-  breakdownBy,
-  breakdownCount,
-  filter,
-  disabled,
-}: {
+export interface UseConsumptionTimeseriesParams {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   mode: ConsumptionTimeseriesMode;
@@ -35,7 +27,17 @@ export function useConsumptionTimeseries({
   breakdownCount?: number;
   filter?: ConsumptionScopeFilter;
   disabled?: boolean;
-}) {
+}
+
+export function useConsumptionTimeseries({
+  workspaceId,
+  period,
+  mode,
+  breakdownBy,
+  breakdownCount,
+  filter,
+  disabled,
+}: UseConsumptionTimeseriesParams) {
   const url = `/api/w/${workspaceId}/analytics/consumption/timeseries`;
   const body: ConsumptionTimeseriesBody = {
     period: period.kind,

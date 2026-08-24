@@ -109,6 +109,7 @@ import {
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
+  cn,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -130,62 +131,95 @@ import {
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
-import type { MutableRefObject, ReactElement } from "react";
+import type { MutableRefObject, ReactElement, ReactNode } from "react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
 
-// Popover (not Tooltip) so the "Learn more" link inside stays reachable.
-function PrunedContextChip() {
+interface MessageInfoChipProps {
+  children: ReactNode;
+  label: string;
+  title: string;
+}
+
+// Popover, not Tooltip: on touch there is no hover, and links inside must stay reachable.
+function MessageInfoChip({ children, label, title }: MessageInfoChipProps) {
   return (
     <PopoverRoot>
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="cursor-pointer rounded-lg border-0 bg-transparent p-0 outline-hidden ring-offset-background transition focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
-          aria-label="Context limit reached. Open details."
+          className={cn(
+            "cursor-pointer rounded-lg border-0 bg-transparent p-0 transition",
+            "outline-hidden ring-offset-background",
+            "focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
+          )}
+          aria-label={`${label}. Open details.`}
         >
-          <Chip
-            label="Context limit reached"
-            size="xs"
-            color="primary"
-            icon={InfoCircle}
-          />
+          <Chip label={label} size="xs" color="primary" icon={InfoCircle} />
         </button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
         className="flex w-[min(24rem,calc(100vw-1.5rem))] flex-col gap-2"
       >
-        <div className="font-semibold">
-          This conversation reached its size limit
-        </div>
+        <div className="font-semibold">{title}</div>
         <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground">
-          <p>
-            Dust had to trim part of the tool output used to generate this
-            message to fit the model&apos;s context window. This usually happens
-            when a search or other tool returns more data than the model can
-            process at once.
-          </p>
-          <p>
-            For best accuracy, first use <code>/compact</code> to summarize this
-            conversation and free up context. If needed, start a fresh
-            conversation or narrow your request.
-          </p>
-          <p>
-            <a
-              href={CONTEXT_WINDOW_DOC_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-foreground"
-            >
-              Learn more
-            </a>
-          </p>
+          {children}
         </div>
       </PopoverContent>
     </PopoverRoot>
+  );
+}
+
+interface PremiumDowngradeChipProps {
+  modelName: string | null;
+}
+
+function PremiumDowngradeChip({ modelName }: PremiumDowngradeChipProps) {
+  return (
+    <MessageInfoChip
+      label="Premium limit reached"
+      title={modelName ? `Ran on ${modelName}` : "Ran on a Standard model"}
+    >
+      <p>
+        You have reached your limit of premium messages for the current 7 day
+        window.
+      </p>
+      <p>Credit-based plans have no such limit.</p>
+    </MessageInfoChip>
+  );
+}
+
+function PrunedContextChip() {
+  return (
+    <MessageInfoChip
+      label="Context limit reached"
+      title="This conversation reached its size limit"
+    >
+      <p>
+        Dust had to trim part of the tool output used to generate this message
+        to fit the model&apos;s context window. This usually happens when a
+        search or other tool returns more data than the model can process at
+        once.
+      </p>
+      <p>
+        For best accuracy, first use <code>/compact</code> to summarize this
+        conversation and free up context. If needed, start a fresh conversation
+        or narrow your request.
+      </p>
+      <p>
+        <a
+          href={CONTEXT_WINDOW_DOC_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-foreground"
+        >
+          Learn more
+        </a>
+      </p>
+    </MessageInfoChip>
   );
 }
 
@@ -993,6 +1027,12 @@ export function AgentMessage({
         })
       : null;
 
+  const isFairUseDowngrade =
+    agentMessage.modelResolutionMethod === "fair_use_downgrade";
+  const downgradedModelName = agentMessage.resolvedModel
+    ? (getSupportedModelConfig(agentMessage.resolvedModel)?.displayName ?? null)
+    : null;
+
   const renderName = useCallback(
     () => (
       <span className="inline-flex items-center">
@@ -1118,7 +1158,11 @@ export function AgentMessage({
             name={agentConfiguration.name}
             timestamp={timestamp}
             infoChip={
-              agentMessage.prunedContext ? <PrunedContextChip /> : undefined
+              isFairUseDowngrade ? (
+                <PremiumDowngradeChip modelName={downgradedModelName} />
+              ) : agentMessage.prunedContext ? (
+                <PrunedContextChip />
+              ) : undefined
             }
             completionStatus={undefined}
             renderName={renderName}

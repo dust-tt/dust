@@ -169,11 +169,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to the new consumption-based Analytics dashboard, built alongside the current one while it is brought to parity.",
     stage: "dust_only",
   },
-  enable_analytics_automations: {
-    description:
-      "Access to the Automation analytics page, breaking down what triggers and programmatic runs cost.",
-    stage: "dust_only",
-  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
@@ -368,7 +363,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   enforce_premium_model_message_limit: {
     description:
-      "Enforce the premium-model cap: block a message once the user has spent 25 premium-tier messages in the rolling week, on workspaces with a non-credit-priced (legacy) plan. Usage is counted regardless, so the flag only controls blocking.",
+      "Enforce the premium-model cap: once the user has spent 25 premium-tier messages in the rolling week, run the message on the Standard stream instead, on workspaces with a non-credit-priced (legacy) plan. Usage is counted regardless, so the flag only controls enforcement.",
     stage: "dust_only",
   },
   editable_tool_inputs: {

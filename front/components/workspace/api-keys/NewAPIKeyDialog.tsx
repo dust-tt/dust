@@ -51,6 +51,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface NewAPIKeyDialogProps {
   groups: GroupType[];
+  disabled?: boolean;
   isGenerating: boolean;
   isRevoking: boolean;
   onCreate: (params: {
@@ -65,6 +66,7 @@ interface NewAPIKeyDialogProps {
 
 export const NewAPIKeyDialog = ({
   groups,
+  disabled,
   isGenerating,
   isRevoking,
   onCreate,
@@ -154,7 +156,7 @@ export const NewAPIKeyDialog = ({
         <Button
           label="Create API Key"
           icon={Plus}
-          disabled={isGenerating || isRevoking}
+          disabled={disabled || isGenerating || isRevoking}
         />
       </SheetTrigger>
       <SheetContent size="lg">

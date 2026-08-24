@@ -1,10 +1,11 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { formatCredits } from "@app/lib/client/credits";
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
-import { ArrowUpRight, Button, Chip } from "@dust-tt/sparkle";
+import { ArrowUpRight, Button, Chip, LoadingBlock } from "@dust-tt/sparkle";
 
 const TARGET_CHIP: Record<
   CreditUsageTarget,
@@ -26,23 +27,69 @@ function cycleElapsedPercent({
   return Math.round(Math.min(Math.max(elapsedRatio, 0), 1) * 100);
 }
 
-interface ConsumptionSummaryProps {
+export interface ConsumptionSummaryProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
+  usageHref?: string;
+  usageLinkLabel?: string;
 }
 
 export function ConsumptionSummary({
   workspaceId,
   period: periodSelection,
+  usageHref = `/w/${workspaceId}/usage`,
+  usageLinkLabel = "Manage in Usage",
 }: ConsumptionSummaryProps) {
   const { overview, isOverviewLoading, isOverviewError } =
     useConsumptionOverview({ workspaceId, period: periodSelection });
 
+  return (
+    <ConsumptionSummaryView
+      overview={overview}
+      isOverviewLoading={isOverviewLoading}
+      isOverviewError={Boolean(isOverviewError)}
+      usageHref={usageHref}
+      usageLinkLabel={usageLinkLabel}
+    />
+  );
+}
+
+interface ConsumptionSummaryViewProps {
+  overview: GetConsumptionOverviewResponse | null;
+  isOverviewLoading: boolean;
+  isOverviewError: boolean;
+  usageHref: string;
+  usageLinkLabel: string;
+  responsiveLayout?: boolean;
+}
+
+export function ConsumptionSummaryView({
+  overview,
+  isOverviewLoading,
+  isOverviewError,
+  usageHref,
+  usageLinkLabel,
+  responsiveLayout = false,
+}: ConsumptionSummaryViewProps) {
   if (isOverviewLoading) {
     return (
-      <div className="flex items-stretch gap-6">
-        <div className="h-24 flex-1 animate-pulse rounded-xl bg-muted-background" />
-        <div className="h-24 flex-1 animate-pulse rounded-xl bg-muted-background" />
+      <div
+        className={
+          responsiveLayout
+            ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+            : "flex items-stretch gap-6"
+        }
+      >
+        <LoadingBlock
+          className={
+            responsiveLayout ? "h-24 rounded-xl" : "h-24 flex-1 rounded-xl"
+          }
+        />
+        <LoadingBlock
+          className={
+            responsiveLayout ? "h-24 rounded-xl" : "h-24 flex-1 rounded-xl"
+          }
+        />
       </div>
     );
   }
@@ -56,7 +103,13 @@ export function ConsumptionSummary({
   return (
     <div className="flex flex-col gap-4">
       {creditUsage && (
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-panel-background p-2">
+        <div
+          className={
+            responsiveLayout
+              ? "flex flex-col items-start justify-between gap-3 rounded-xl border border-border bg-panel-background p-2 sm:flex-row sm:items-center"
+              : "flex items-center justify-between gap-4 rounded-xl border border-border bg-panel-background p-2"
+          }
+        >
           <div className="flex items-center gap-2">
             <Chip
               size="mini"
@@ -69,15 +122,21 @@ export function ConsumptionSummary({
             </span>
           </div>
           <Button
-            label="Manage in Usage"
+            label={usageLinkLabel}
             variant="highlight-ghost"
             size="xs"
             iconRight={ArrowUpRight}
-            href={`/w/${workspaceId}/usage`}
+            href={usageHref}
           />
         </div>
       )}
-      <div className="flex items-stretch gap-6">
+      <div
+        className={
+          responsiveLayout
+            ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+            : "flex items-stretch gap-6"
+        }
+      >
         <SummaryCard
           label="Used this period"
           value={formatCredits(totalCredits)}

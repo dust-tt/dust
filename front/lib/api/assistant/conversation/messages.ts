@@ -343,6 +343,7 @@ export const createAgentMessages = async (
           agentMessage: AgentMessageType;
           agentMessageRow: AgentMessageModel;
           parentId: number;
+          modelResolution: AgentMessageModelResolution;
         }
       | {
           type: "delete";
@@ -396,14 +397,14 @@ export const createAgentMessages = async (
             agentConfigurationVersion: agentConfiguration.version,
             conversationId: conversation.id,
             workspaceId: owner.id,
-            // Copy over the values from the original agent message row.
             skipToolsValidation: metadata.agentMessageRow.skipToolsValidation,
-            resolvedProviderId: metadata.agentMessageRow.resolvedProviderId,
-            resolvedModelId: metadata.agentMessageRow.resolvedModelId,
+            resolvedProviderId:
+              metadata.modelResolution.resolvedModel.providerId,
+            resolvedModelId: metadata.modelResolution.resolvedModel.modelId,
             resolvedReasoningEffort:
-              metadata.agentMessageRow.resolvedReasoningEffort,
+              metadata.modelResolution.resolvedModel.reasoningEffort,
             modelResolutionMethod:
-              metadata.agentMessageRow.modelResolutionMethod,
+              metadata.modelResolution.modelResolutionMethod,
           },
           { transaction }
         );

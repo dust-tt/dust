@@ -2,10 +2,10 @@ import {
   getDefaultTierId,
   getEffortStops,
   getInitialEffort,
-  getModelEffortTier,
   getTierLockReason,
   isPremiumModel,
 } from "@app/components/model_picker/modelPickerUtils";
+import { getTierForModel } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import {
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
@@ -39,25 +39,23 @@ const lockedReasonByEffort = (
   );
 
 describe("modelPickerUtils premium gating", () => {
-  describe("getModelEffortTier", () => {
+  describe("getTierForModel", () => {
     it("mirrors the static tier table", () => {
-      expect(getModelEffortTier(CLAUDE_OPUS_4_8_MODEL_ID, "light")).toBe(
+      expect(getTierForModel(CLAUDE_OPUS_4_8_MODEL_ID, "light")).toBe(
         "premium"
       );
-      expect(getModelEffortTier(CLAUDE_SONNET_5_MODEL_ID, "light")).toBe(
+      expect(getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "light")).toBe(
         "cost_efficient"
       );
-      expect(getModelEffortTier(CLAUDE_SONNET_5_MODEL_ID, "medium")).toBe(
+      expect(getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "medium")).toBe(
         "balanced"
       );
-      expect(getModelEffortTier(CLAUDE_SONNET_5_MODEL_ID, "high")).toBe(
-        "premium"
-      );
+      expect(getTierForModel(CLAUDE_SONNET_5_MODEL_ID, "high")).toBe("premium");
     });
 
     it("treats models absent from the static table as premium", () => {
       const customModelId = "my-custom-model-from-eap" as ModelIdType;
-      expect(getModelEffortTier(customModelId, "high")).toBe("premium");
+      expect(getTierForModel(customModelId, "high")).toBe("premium");
     });
   });
 
@@ -187,13 +185,13 @@ describe("modelPickerUtils premium gating", () => {
   describe("getInitialEffort", () => {
     it("never returns a premium effort when gated (mixed models)", () => {
       expect(
-        getModelEffortTier(
+        getTierForModel(
           CLAUDE_SONNET_5_MODEL_ID,
           getInitialEffort(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, GATED)
         )
       ).not.toBe("premium");
       expect(
-        getModelEffortTier(
+        getTierForModel(
           GEMINI_2_5_PRO_MODEL_CONFIG.modelId,
           getInitialEffort(GEMINI_2_5_PRO_MODEL_CONFIG, GATED)
         )

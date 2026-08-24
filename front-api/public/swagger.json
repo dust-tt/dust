@@ -258,7 +258,7 @@
             "in": "query",
             "name": "table",
             "required": true,
-            "description": "The analytics table to export:\n- \"usage_metrics\": Messages, conversations, and active users over time.\n- \"active_users\": Daily, weekly, and monthly active user counts.\n- \"source\": Message volume by context origin (web, slack, etc.).\n- \"agents\": Top agents by message count, including credits.\n- \"users\": Top users by message count, including credits.\n- \"skills\": Skill metadata catalog.\n- \"skill_usage\": Skill executions and unique users over time.\n- \"tool_usage\": Tool executions and unique users over time.\n- \"messages\": Detailed message-level logs, including comma-separated lists of tools (as \"server__tool\") and skills used per message, and the cost in credits of each message.\n- \"feedback\": Detailed message-level feedback (thumbs, content, conversation URL).\n",
+            "description": "The analytics table to export:\n- \"usage_metrics\": Messages, conversations, and active users over time.\n- \"active_users\": Daily, weekly, and monthly active user counts.\n- \"source\": Message volume by context origin (web, slack, etc.).\n- \"agents\": Top agents by message count, including credits.\n- \"users\": Top users by message count, including credits, last login date and membership status (active, revoked, unregistered).\n- \"skills\": Skill metadata catalog.\n- \"skill_usage\": Skill executions and unique users over time.\n- \"tool_usage\": Tool executions and unique users over time.\n- \"messages\": Detailed message-level logs, including comma-separated lists of tools (as \"server__tool\") and skills used per message, and the cost in credits of each message.\n- \"feedback\": Detailed message-level feedback (thumbs, content, conversation URL).\n",
             "schema": {
               "type": "string",
               "enum": [
@@ -6189,6 +6189,32 @@
                     "minimum": 1,
                     "default": 30
                   },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "all",
+                      "automations"
+                    ],
+                    "default": "all",
+                    "description": "Restricts which documents the facets are computed over. `automations` counts only trigger-originated runs."
+                  },
+                  "dimensions": {
+                    "type": "array",
+                    "description": "Dimensions to compute facets for. Defaults to every dimension. Omitted dimensions come back as empty arrays.",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "agent",
+                        "user",
+                        "api_key",
+                        "group",
+                        "model",
+                        "tool",
+                        "skill",
+                        "source"
+                      ]
+                    }
+                  },
                   "filter": {
                     "type": "object",
                     "description": "Map of consumption dimensions to selected values.",
@@ -6394,6 +6420,7 @@
                 "favorites",
                 "published",
                 "admin_internal",
+                "manage_unrestricted",
                 "global",
                 "workspace"
               ]
@@ -11437,9 +11464,12 @@
             "enum": [
               "agent",
               "user",
-              "auto"
+              "auto",
+              "auto_fast",
+              "auto_complex",
+              "fair_use_downgrade"
             ],
-            "description": "How resolvedModel was chosen - agent (configured model), user (per-message picker), or auto (routed through the auto model). Null (legacy)."
+            "description": "How resolvedModel was chosen - agent (configured model), user (per-message picker), auto/auto_fast/auto_complex (routed through a model stream), or fair_use_downgrade (premium allowance spent, ran the Standard stream instead). Null (legacy)."
           }
         }
       },
@@ -11625,9 +11655,12 @@
             "enum": [
               "agent",
               "user",
-              "auto"
+              "auto",
+              "auto_fast",
+              "auto_complex",
+              "fair_use_downgrade"
             ],
-            "description": "How resolvedModel was chosen - agent (configured model), user (per-message picker), or auto (routed through the auto model). Null (legacy)."
+            "description": "How resolvedModel was chosen - agent (configured model), user (per-message picker), auto/auto_fast/auto_complex (routed through a model stream), or fair_use_downgrade (premium allowance spent, ran the Standard stream instead). Null (legacy)."
           },
           "activitySteps": {
             "type": "array",

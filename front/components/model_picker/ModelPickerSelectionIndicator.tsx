@@ -17,16 +17,14 @@ export function ModelPickerSelectionIndicator({
   size = "sm",
 }: ModelPickerSelectionIndicatorProps) {
   if (!canRevert) {
-    return (
-      <Icon visual={Check} size={size} className="text-muted-foreground" />
-    );
+    return <Icon visual={Check} size={size} className="text-foreground" />;
   }
 
   return (
     <button
       type="button"
       aria-label="Revert to default"
-      className="group/indicator flex items-center justify-center text-muted-foreground hover:text-foreground"
+      className="group/indicator flex items-center justify-center text-foreground"
       onClick={(e) => {
         e.stopPropagation();
         onRevert();

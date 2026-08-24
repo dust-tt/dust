@@ -566,8 +566,8 @@
  *         modelResolutionMethod:
  *           type: string
  *           nullable: true
- *           enum: [agent, user, auto]
- *           description: How resolvedModel was chosen - agent (configured model), user (per-message picker), or auto (routed through the auto model). Null (legacy).
+ *           enum: [agent, user, auto, auto_fast, auto_complex, fair_use_downgrade]
+ *           description: How resolvedModel was chosen - agent (configured model), user (per-message picker), auto/auto_fast/auto_complex (routed through a model stream), or fair_use_downgrade (premium allowance spent, ran the Standard stream instead). Null (legacy).
  *     PrivateLightAgentMessage:
  *       type: object
  *       description: A lighter agent message used in paginated message list responses.
@@ -691,8 +691,8 @@
  *         modelResolutionMethod:
  *           type: string
  *           nullable: true
- *           enum: [agent, user, auto]
- *           description: How resolvedModel was chosen - agent (configured model), user (per-message picker), or auto (routed through the auto model). Null (legacy).
+ *           enum: [agent, user, auto, auto_fast, auto_complex, fair_use_downgrade]
+ *           description: How resolvedModel was chosen - agent (configured model), user (per-message picker), auto/auto_fast/auto_complex (routed through a model stream), or fair_use_downgrade (premium allowance spent, ran the Standard stream instead). Null (legacy).
  *         activitySteps:
  *           type: array
  *           items:

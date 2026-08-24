@@ -2,7 +2,6 @@ import { PluginRunsList } from "@app/components/poke/plugins/PluginRunsList";
 import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
 import {
   PokeCard,
-  PokeCardDescription,
   PokeCardHeader,
   PokeCardTitle,
 } from "@app/components/poke/shadcn/ui/card";
@@ -21,16 +20,13 @@ interface PluginCardProps {
 function PluginCard({ onClick, plugin }: PluginCardProps) {
   return (
     <PokeCard
-      className="flex h-20 w-44 cursor-pointer hover:bg-muted-background"
+      className="flex h-16 w-full cursor-pointer items-center hover:bg-muted-background"
       onClick={onClick}
     >
-      <PokeCardHeader className="flex space-y-2 overflow-hidden p-2 text-left">
+      <PokeCardHeader className="flex overflow-hidden p-2 text-left">
         <PokeCardTitle className="text-sm font-medium">
           {plugin.name}
         </PokeCardTitle>
-        <PokeCardDescription className="overflow-hidden truncate whitespace-normal text-sm">
-          {plugin.description}
-        </PokeCardDescription>
       </PokeCardHeader>
     </PokeCard>
   );
@@ -73,7 +69,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
   }, [plugins, searchQuery]);
 
   return (
-    <div className="flex min-h-48 flex-col rounded-lg border border-separator bg-muted-background">
+    <div className="flex min-h-48 flex-col rounded-lg border bg-background">
       <div className="flex items-center justify-between gap-3 rounded-t-lg border-b border-separator bg-background p-4">
         <div className="flex items-center gap-3">
           <h2 className="text-md font-bold">Plugins</h2>
@@ -109,8 +105,8 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
               </div>
             ) : (
               <div
-                className="grid w-full gap-3 p-4"
-                // 11rem is the fixed width of the card.
+                className="grid w-full gap-3 p-3"
+                // 11rem is the minimum card width.
                 style={{
                   gridTemplateColumns: "repeat(auto-fill, minmax(11rem, 1fr))",
                 }}

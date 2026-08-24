@@ -205,6 +205,7 @@ export interface InputBarContainerProps {
   disableInput: boolean;
   submitBlockMessage: string | null;
   placeholder?: string;
+  animatePlaceholder?: boolean;
   onShake: () => void;
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
@@ -312,6 +313,7 @@ const InputBarContainer = ({
   disableInput,
   submitBlockMessage,
   placeholder,
+  animatePlaceholder,
   onShake,
   isCompact = false,
   onExpandInputBar,
@@ -801,6 +803,7 @@ const InputBarContainer = ({
       spaceIdRef,
     },
     placeholderOverride: disableInput ? submitBlockMessage : placeholder,
+    animatePlaceholder: !disableInput && animatePlaceholder,
     onSuggestionActiveChangeRef,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";

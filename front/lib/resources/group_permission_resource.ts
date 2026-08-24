@@ -314,6 +314,42 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     return autoGroups[0] ?? null;
   }
 
+  // All regular_auto groups holding any instance grant on the resource, regardless of grant type. A
+  // space's auto-created groups (its manual member group, and for projects its editor group) are
+  // regular_auto; the workspace global group (a viewer) and provisioned groups are excluded by kind.
+  // This is how callers recover a space's own groups: grant type alone cannot identify them because
+  // an open regular space's member group holds a `reader` grant like the global group.
+  static async listRegularAutoGroupsForResource(
+    auth: Authenticator,
+    {
+      resourceType,
+      resourceId,
+      transaction,
+    }: {
+      resourceType: GroupPermissionResourceType;
+      resourceId: number;
+      transaction?: Transaction;
+    }
+  ): Promise<GroupResource[]> {
+    const grants = await GroupPermissionModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        resourceType,
+        resourceId,
+      },
+      transaction,
+    });
+    const groupIds = [...new Set(grants.map((grant) => grant.groupId))];
+    if (groupIds.length === 0) {
+      return [];
+    }
+
+    return GroupResource.fetchByModelIds(auth, groupIds, {
+      groupKinds: ["regular_auto"],
+      transaction,
+    });
+  }
+
   // The regular_auto groups backing user-level grants, keyed by grant (see `grantKey`) — the
   // batched counterpart of `findRegularAutoGroupForGrant`.
   static async findRegularAutoGroupsForGrants(

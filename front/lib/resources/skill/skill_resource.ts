@@ -140,7 +140,12 @@ type ReplaceSkillReferenceTagsOptions = {
   html?: boolean;
 };
 
-type SkillFetchContext =
+type SkillFetchContext = {
+  // Returns skills requesting spaces the caller cannot read. Only for callers that must operate
+  // on a skill without gaining access to what its spaces protect, e.g. an admin re-saving an
+  // agent they do not edit: dropping the skill would silently strip it from the new version.
+  dangerouslySkipPermissionFiltering?: boolean;
+} & (
   | {
       agentLoopData?: AgentLoopExecutionData;
       effectiveSpaceIds: string[];
@@ -148,7 +153,8 @@ type SkillFetchContext =
   | {
       agentLoopData?: never;
       effectiveSpaceIds?: string[];
-    };
+    }
+);
 
 type SkillResourceConstructorOptions =
   | {
@@ -422,6 +428,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ]);
   }
 
+  // Mirrors `SkillDefinition["kind"]` for code-defined skills; anything without a global sId is
+  // authored in the workspace.
+  get kind(): "custom" | "global" | "system" {
+    if (!this.globalSId) {
+      return "custom";
+    }
+
+    return this.isSystemSkill ? "system" : "global";
+  }
+
   get isSystemSkill(): boolean {
     if (!this.globalSId) {
       return false;
@@ -668,6 +684,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     context: {
       agentLoopData?: AgentLoopExecutionData;
       effectiveSpaceIds?: string[];
+      dangerouslySkipPermissionFiltering?: boolean;
       transaction?: Transaction;
     } = {}
   ): Promise<SkillResource[]> {
@@ -675,6 +692,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const {
       agentLoopData,
       effectiveSpaceIds: providedEffectiveSpaceIds,
+      dangerouslySkipPermissionFiltering,
       transaction,
     } = context;
 
@@ -718,9 +736,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // A missing/deleted requested space is treated as not readable (see `canReadRequestedSpaces`),
     // so skills referencing one are dropped here too.
-    const allowedCustomSkills = customSkills.filter((skill) =>
-      canReadRequestedSpaces(auth, spaceById, skill.requestedSpaceIds)
-    );
+    const allowedCustomSkills = dangerouslySkipPermissionFiltering
+      ? customSkills
+      : customSkills.filter((skill) =>
+          canReadRequestedSpaces(auth, spaceById, skill.requestedSpaceIds)
+        );
     const allowedCustomSkillIds = allowedCustomSkills.map((skill) => skill.id);
 
     let allowedCustomSkillsRes: SkillResource[] = [];
@@ -1046,6 +1066,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       agentLoopData,
       effectiveSpaceIds,
+      dangerouslySkipPermissionFiltering,
       onlyActive = false,
       withInstructions = true,
       withTools = true,
@@ -1091,7 +1112,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         withTools,
         withFileAttachments,
       },
-      { agentLoopData, effectiveSpaceIds }
+      { agentLoopData, effectiveSpaceIds, dangerouslySkipPermissionFiltering }
     );
   }
 
@@ -1234,6 +1255,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       agentLoopData,
       effectiveSpaceIds,
+      dangerouslySkipPermissionFiltering,
       status,
       transaction,
       withInstructions,
@@ -1243,6 +1265,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }: {
       agentLoopData?: AgentLoopExecutionData;
       effectiveSpaceIds?: string[];
+      dangerouslySkipPermissionFiltering?: boolean;
       status?: SkillStatus | SkillStatus[];
       transaction?: Transaction;
       withInstructions?: boolean;
@@ -1267,7 +1290,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         withToolMetadata,
         withFileAttachments,
       },
-      { agentLoopData, effectiveSpaceIds, transaction }
+      {
+        agentLoopData,
+        effectiveSpaceIds,
+        dangerouslySkipPermissionFiltering,
+        transaction,
+      }
     );
   }
 
@@ -1386,7 +1414,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async listByAgentConfiguration(
     auth: Authenticator,
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
-    { agentLoopData, effectiveSpaceIds }: SkillFetchContext = {}
+    {
+      agentLoopData,
+      effectiveSpaceIds,
+      dangerouslySkipPermissionFiltering,
+    }: SkillFetchContext = {}
   ): Promise<SkillResource[]> {
     const refs = await this.getSkillReferencesForAgent(
       auth,
@@ -1400,6 +1432,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.fetchBySkillReferences(auth, refs, {
       agentLoopData,
       effectiveSpaceIds,
+      dangerouslySkipPermissionFiltering,
     });
   }
 

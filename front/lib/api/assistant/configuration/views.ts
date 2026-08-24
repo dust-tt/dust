@@ -68,6 +68,7 @@ function determineGlobalAgentIdsToFetch(
     case "global":
     case "list":
     case "manage":
+    case "manage_unrestricted":
     case "all":
     case "analytics":
     case "favorites":
@@ -107,7 +108,11 @@ async function fetchGlobalAgentConfigurationForView(
       !agentPrefix || a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
   );
 
-  if (agentsGetView === "global" || agentsGetView === "manage") {
+  if (
+    agentsGetView === "global" ||
+    agentsGetView === "manage" ||
+    agentsGetView === "manage_unrestricted"
+  ) {
     // All global agents in global and manage views.
     return matchingGlobalAgents;
   }
@@ -174,6 +179,9 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
 
   switch (agentsGetView) {
     case "admin_internal":
+    // The manage agents page lets admins list every agent of the workspace, including the ones
+    // they neither edit nor can read the spaces of. Space filtering is skipped below.
+    case "manage_unrestricted":
       return AgentConfigurationModel.findAll({
         ...baseAgentsSequelizeQuery,
         where: baseWhereConditions,
@@ -233,6 +241,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
               [Op.in]: filteredIds,
             },
             status: "archived",
+            ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
           },
         });
       });
@@ -342,10 +351,12 @@ async function fetchWorkspaceAgentConfigurationsForView(
   );
 
   // Analytics counts credits for agents built on spaces a manager cannot read,
-  // so the manager analytics view has to list them as well.
+  // so the manager analytics view has to list them as well. The unrestricted manage view does the
+  // same for admins, and is gated on the role by its caller.
   const skipPermissionFiltering =
     dangerouslySkipPermissionFiltering ||
-    (agentsGetView === "analytics" && auth.isManager());
+    (agentsGetView === "analytics" && auth.isManager()) ||
+    agentsGetView === "manage_unrestricted";
 
   const allowedAgentModels = skipPermissionFiltering
     ? agentModels
@@ -412,6 +423,10 @@ export async function getAgentConfigurationsForView({
     throw new Error(
       "Superuser view is for dust superusers or internal admin auths only."
     );
+  }
+
+  if (agentsGetView === "manage_unrestricted" && !auth.isAdmin()) {
+    throw new Error("The unrestricted manage view is for admins only.");
   }
 
   if (

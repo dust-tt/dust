@@ -110,8 +110,9 @@ function sortToolsStakes(
 /**
  * Creates a minimal mock authenticator for testing.
  * Used to instantiate MCP servers so we can list registered tools. Some servers
- * gate registration on auth (e.g. agent_memory on user presence, workspace_people
- * on isManager), so the mock must include those methods.
+ * gate registration on auth (e.g. agent_memory on user presence,
+ * workspace_management's list_workspace_members on isManager), so the mock must include those
+ * methods.
  */
 function createMockAuthenticator(): Authenticator {
   const mockWorkspace = {

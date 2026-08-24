@@ -111,6 +111,27 @@ export class SandboxNotFoundError extends Error {
   }
 }
 
+/**
+ * Returned when a command ran past its execution timeout and was killed by the
+ * provider. The command may have partially executed.
+ */
+export class SandboxExecTimeoutError extends Error {
+  constructor(timeoutMs?: number) {
+    super(
+      timeoutMs === undefined
+        ? "The sandbox command timed out."
+        : `The sandbox command timed out after ${timeoutMs}ms.`
+    );
+    this.name = "SandboxExecTimeoutError";
+  }
+}
+
+export function isSandboxExecTimeoutError(
+  error: Error
+): error is SandboxExecTimeoutError {
+  return error instanceof SandboxExecTimeoutError;
+}
+
 // ---------------------------------------------------------------------------
 // Provider interface
 // ---------------------------------------------------------------------------

@@ -8,17 +8,19 @@ import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/cons
 import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 
+export interface UseConsumptionOverviewParams {
+  workspaceId: string;
+  period: ConsumptionPeriodSelection;
+  filter?: ConsumptionScopeFilter;
+  disabled?: boolean;
+}
+
 export function useConsumptionOverview({
   workspaceId,
   period,
   filter,
   disabled,
-}: {
-  workspaceId: string;
-  period: ConsumptionPeriodSelection;
-  filter?: ConsumptionScopeFilter;
-  disabled?: boolean;
-}) {
+}: UseConsumptionOverviewParams) {
   const url = `/api/w/${workspaceId}/analytics/consumption/overview`;
   const body: ConsumptionBody = {
     period: period.kind,

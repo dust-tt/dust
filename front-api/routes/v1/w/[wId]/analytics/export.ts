@@ -24,7 +24,7 @@
  *           - "active_users": Daily, weekly, and monthly active user counts.
  *           - "source": Message volume by context origin (web, slack, etc.).
  *           - "agents": Top agents by message count, including credits.
- *           - "users": Top users by message count, including credits.
+ *           - "users": Top users by message count, including credits, last login date and membership status (active, revoked, unregistered).
  *           - "skills": Skill metadata catalog.
  *           - "skill_usage": Skill executions and unique users over time.
  *           - "tool_usage": Tool executions and unique users over time.

@@ -22,6 +22,7 @@ import { UsageFilterModelComplexityControls } from "@app/components/workspace/an
 import { UsageFilterOptionIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionIcon";
 import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
+import type { ConsumptionFacetOptions } from "@app/hooks/useConsumptionFacets";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
@@ -41,11 +42,12 @@ import { useMemo, useState } from "react";
 
 const DEFAULT_MODEL_TIER: ModelsTierName = "balanced";
 
-interface UsageFilterPanelProps {
+export interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
   period: ConsumptionPeriodSelection;
   filter: UsageFilter;
   onFilterChange: (next: UsageFilter) => void;
+  showMemberGroupFilter?: boolean;
 }
 
 export function UsageFilterPanel({
@@ -53,7 +55,50 @@ export function UsageFilterPanel({
   period,
   filter,
   onFilterChange,
+  showMemberGroupFilter = true,
 }: UsageFilterPanelProps) {
+  const state = useUsageFilterPanelState({
+    owner,
+    filter,
+    showMemberGroupFilter,
+  });
+  const {
+    options: categoryOptions,
+    isFacetsLoading,
+    isFacetsError,
+    isFacetsValidating,
+  } = useConsumptionFacets({
+    workspaceId: owner.sId,
+    period,
+    filter: state.draftScopeFilter,
+    disabled: !state.isOpen,
+  });
+
+  return (
+    <UsageFilterPanelView
+      filter={filter}
+      onFilterChange={onFilterChange}
+      showMemberGroupFilter={showMemberGroupFilter}
+      state={state}
+      categoryOptions={categoryOptions}
+      isFacetsLoading={isFacetsLoading}
+      isFacetsError={Boolean(isFacetsError)}
+      isFacetsValidating={isFacetsValidating}
+    />
+  );
+}
+
+interface UseUsageFilterPanelStateParams {
+  owner: LightWorkspaceType;
+  filter: UsageFilter;
+  showMemberGroupFilter: boolean;
+}
+
+export function useUsageFilterPanelState({
+  owner,
+  filter,
+  showMemberGroupFilter,
+}: UseUsageFilterPanelStateParams) {
   const [isOpen, setIsOpen] = useState(false);
   // Selections are staged while the panel is open and only propagated when
   // the user clicks Apply. Facet availability follows the staged query.
@@ -80,24 +125,12 @@ export function UsageFilterPanel({
     () => toConsumptionScopeFilter(draftFilter),
     [draftFilter]
   );
-  const {
-    options: categoryOptions,
-    isFacetsLoading,
-    isFacetsError,
-    isFacetsValidating,
-  } = useConsumptionFacets({
-    workspaceId: owner.sId,
-    period,
-    filter: draftScopeFilter,
-    disabled: !isOpen,
-  });
-
   const isMemberCategoryActive = isOpen && activeCategory === "member";
   const { groups: workspaceGroups } = useGroups({
     owner,
     kinds: MANAGEABLE_GROUP_KINDS,
     withMembers: true,
-    disabled: !isMemberCategoryActive,
+    disabled: !isMemberCategoryActive || !showMemberGroupFilter,
   });
 
   const groups = useMemo<UsageFilterGroup[]>(
@@ -109,6 +142,77 @@ export function UsageFilterPanel({
       })),
     [workspaceGroups]
   );
+
+  return {
+    isOpen,
+    setIsOpen,
+    draftFilter,
+    setDraftFilter,
+    clearAllCategories,
+    clearCategory,
+    toggleOption,
+    removeOption,
+    selectAllFiltered,
+    activeCategory,
+    setActiveCategory,
+    activeScope,
+    setActiveScope,
+    activeTier,
+    setActiveTier,
+    searchText,
+    setSearchText,
+    contentScrollContainer,
+    setContentScrollContainer,
+    selectedGroups,
+    draftScopeFilter,
+    groups,
+  };
+}
+
+interface UsageFilterPanelViewProps {
+  filter: UsageFilter;
+  onFilterChange: (next: UsageFilter) => void;
+  showMemberGroupFilter: boolean;
+  state: ReturnType<typeof useUsageFilterPanelState>;
+  categoryOptions: ConsumptionFacetOptions;
+  isFacetsLoading: boolean;
+  isFacetsError: boolean;
+  isFacetsValidating: boolean;
+}
+
+export function UsageFilterPanelView({
+  filter,
+  onFilterChange,
+  showMemberGroupFilter,
+  state,
+  categoryOptions,
+  isFacetsLoading,
+  isFacetsError,
+  isFacetsValidating,
+}: UsageFilterPanelViewProps) {
+  const {
+    isOpen,
+    setIsOpen,
+    draftFilter,
+    setDraftFilter,
+    clearAllCategories,
+    clearCategory,
+    toggleOption,
+    removeOption,
+    selectAllFiltered,
+    activeCategory,
+    setActiveCategory,
+    activeScope,
+    setActiveScope,
+    activeTier,
+    setActiveTier,
+    searchText,
+    setSearchText,
+    contentScrollContainer,
+    setContentScrollContainer,
+    selectedGroups,
+    groups,
+  } = state;
 
   const activeOptions = categoryOptions[activeCategory];
   const filteredOptions = useMemo(() => {
@@ -248,7 +352,7 @@ export function UsageFilterPanel({
               ref={setContentScrollContainer}
               className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
             >
-              {activeCategory === "member" && (
+              {activeCategory === "member" && showMemberGroupFilter && (
                 <UsageFilterMemberGroupsControls
                   groups={groups}
                   selectedGroups={selectedGroups.items}

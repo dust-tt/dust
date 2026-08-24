@@ -112,7 +112,7 @@ export function TemplatesDataTable() {
   const columns = makeColumnsForTemplates();
 
   return (
-    <div className="border-material-200 my-4 flex w-full flex-col gap-2 rounded-lg border p-4">
+    <div className="my-4 flex w-full flex-col gap-2 rounded-lg border p-4">
       <div className="flex w-full items-center justify-between gap-3">
         <h2 className="text-md flex-grow pb-4 font-bold">Templates:</h2>
         {(dustRegionSyncEnabled || isDevelopment()) && (

@@ -151,7 +151,7 @@ export function NotionRequestsPage() {
 
       <div className="mt-6 flex flex-col gap-6">
         {/* Request Configuration */}
-        <div className="border-material-200 rounded-lg border p-4">
+        <div className="rounded-lg border p-4">
           <h4 className="mb-3 text-lg font-semibold">Request</h4>
 
           {/* Method Selector */}
@@ -231,7 +231,7 @@ export function NotionRequestsPage() {
 
         {/* Response Display */}
         {response && (
-          <div className="border-material-200 rounded-lg border p-4">
+          <div className="rounded-lg border p-4">
             <h4 className="mb-3 text-lg font-semibold">Response</h4>
             <div className="mb-3 flex items-center gap-2">
               <span className="text-sm font-medium">Status:</span>

@@ -34,7 +34,7 @@ describe("workspace-analytics code-defined skill", () => {
     expect(skill).toBeNull();
   });
 
-  it("is visible to admins by default and wires the workspace_analytics server", async () => {
+  it("is visible to admins by default and wires the analytics and management servers", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
     const skill = await GlobalSkillsRegistry.getById(
@@ -44,7 +44,10 @@ describe("workspace-analytics code-defined skill", () => {
     expect(skill).toMatchObject({
       sId: "workspace-analytics",
       name: "Workspace Analytics",
-      mcpServers: [{ name: "workspace_analytics" }],
+      mcpServers: [
+        { name: "workspace_analytics" },
+        { name: "workspace_management" },
+      ],
     });
   });
 });

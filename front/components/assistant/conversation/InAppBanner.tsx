@@ -1,9 +1,9 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { TRACKING_AREAS, trackEvent, withTracking } from "@app/lib/tracking";
 import { Button, XClose } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 const MODEL_PICKER_IMAGE_PATH = "/static/Model_Picker_Banner.png";
 const MODEL_PICKER_BANNER_LOCAL_STORAGE_KEY = "model-picker-banner-dismissed";
@@ -20,6 +20,17 @@ function ModelPickerBanner({
   onShowModelPickerBanner,
 }: ModelPickerBannerProps) {
   const { openModelPickerRef } = useContext(InputBarContext);
+
+  // Impression event: denominator for the dismiss / CTA click rates.
+  useEffect(() => {
+    if (showModelPickerBanner) {
+      trackEvent({
+        area: TRACKING_AREAS.CONVERSATION,
+        object: "model_picker_banner",
+        action: "view",
+      });
+    }
+  }, [showModelPickerBanner]);
 
   const onDismiss = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -60,16 +71,20 @@ function ModelPickerBanner({
           icon={XClose}
           size="icon-xs"
           className="absolute right-1 top-1"
-          onClick={onDismiss}
+          onClick={withTracking(
+            TRACKING_AREAS.CONVERSATION,
+            "dismiss_model_picker_banner",
+            onDismiss
+          )}
         />
       </div>
       <div className="relative px-4 py-3">
         <div className="mb-1 text-pretty text-sm font-medium text-foreground">
-          Choose your model straight from the input bar
+          Choose your model from the input bar
         </div>
         <h4 className="mb-3 text-xs leading-tight text-primary">
-          The global model agents (GPT, Claude, Gemini) changed home. Use the
-          model picker with any agent instead.
+          GPT, Claude, Gemini and more are now available in the model picker.
+          Choose one to use with any agent.
         </h4>
         <div className="flex flex-wrap items-center gap-2">
           <Button

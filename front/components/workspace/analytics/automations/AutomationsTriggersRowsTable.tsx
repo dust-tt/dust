@@ -1,4 +1,5 @@
 import { AutomationsTriggerBreakdown } from "@app/components/workspace/analytics/automations/AutomationsTriggerBreakdown";
+import type { AutomationsScope } from "@app/hooks/useAutomationsTriggerBreakdown";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import {
@@ -12,7 +13,7 @@ import {
   Icon,
   LoadingBlock,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import {
   flexRender,
   getCoreRowModel,
@@ -20,6 +21,11 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Fragment } from "react";
+
+// The id sparkle's createSelectionColumn gives its checkbox column.
+const SELECTION_COLUMN_ID = "select";
+
+const NO_ROW_SELECTION: RowSelectionState = {};
 
 export type TriggerRowData = AutomationTriggerRow & {
   onClick: () => void;
@@ -90,6 +96,12 @@ function TriggerSkeletonCell({ columnId, rowIndex }: TriggerSkeletonCellProps) {
           <LoadingBlock className="h-6 w-20 rounded-[9px]" />
         </div>
       );
+    case SELECTION_COLUMN_ID:
+      return (
+        <div className="flex h-12 items-center">
+          <LoadingBlock className="h-4 w-4 rounded-sm" />
+        </div>
+      );
     case "status":
       return (
         <div className="flex h-12 items-center justify-center">
@@ -112,11 +124,14 @@ interface AutomationsTriggersRowsTableProps<T extends TriggerRowData> {
   columns: ColumnDef<T>[];
   workspaceId: string;
   period: ConsumptionPeriodSelection;
+  scope: AutomationsScope;
   expandedRowId: string | null;
   medianRunCount: number;
   medianCostPerRun: number;
   isLoading?: boolean;
   skeletonRowCount: number;
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: (selection: RowSelectionState) => void;
 }
 
 export function AutomationsTriggersRowsTable<T extends TriggerRowData>({
@@ -124,15 +139,25 @@ export function AutomationsTriggersRowsTable<T extends TriggerRowData>({
   columns,
   workspaceId,
   period,
+  scope,
   expandedRowId,
   medianRunCount,
   medianCostPerRun,
   isLoading = false,
   skeletonRowCount,
+  rowSelection = NO_ROW_SELECTION,
+  onRowSelectionChange,
 }: AutomationsTriggersRowsTableProps<T>) {
   const table = useReactTable({
     data,
     columns,
+    state: { rowSelection },
+    enableRowSelection: true,
+    onRowSelectionChange: (updater) =>
+      onRowSelectionChange?.(
+        typeof updater === "function" ? updater(rowSelection) : updater
+      ),
+    getRowId: (row) => row.triggerId,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
@@ -237,6 +262,7 @@ export function AutomationsTriggersRowsTable<T extends TriggerRowData>({
                       >
                         <AutomationsTriggerBreakdown
                           workspaceId={workspaceId}
+                          scope={scope}
                           trigger={row.original}
                           period={period}
                           medianRunCount={medianRunCount}

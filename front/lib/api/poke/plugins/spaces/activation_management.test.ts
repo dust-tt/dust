@@ -10,17 +10,13 @@ import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockPostActivationNudge,
   mockListActivationPodsByUser,
   mockStartActivationWorkspaceSchedule,
+  mockStartActivationWorkspaceWorkflow,
 } = vi.hoisted(() => ({
-  mockPostActivationNudge: vi.fn(),
   mockListActivationPodsByUser: vi.fn(),
   mockStartActivationWorkspaceSchedule: vi.fn(),
-}));
-
-vi.mock("@app/lib/api/activation/nudge", () => ({
-  postActivationNudge: mockPostActivationNudge,
+  mockStartActivationWorkspaceWorkflow: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/activation/pods", () => ({
@@ -29,17 +25,20 @@ vi.mock("@app/lib/api/activation/pods", () => ({
 
 vi.mock("@app/temporal/activation_scheduler/client", () => ({
   startActivationWorkspaceSchedule: mockStartActivationWorkspaceSchedule,
+  startActivationWorkspaceWorkflow: mockStartActivationWorkspaceWorkflow,
 }));
 
 beforeEach(async () => {
-  mockPostActivationNudge.mockReset();
   mockListActivationPodsByUser.mockReset();
   mockStartActivationWorkspaceSchedule.mockReset();
+  mockStartActivationWorkspaceWorkflow.mockReset();
 
-  mockPostActivationNudge.mockResolvedValue(new Ok({ conversationId: "conv" }));
   // No user has a pod yet, so every target is provisioned fresh.
   mockListActivationPodsByUser.mockResolvedValue(new Map());
   mockStartActivationWorkspaceSchedule.mockResolvedValue(new Ok(undefined));
+  mockStartActivationWorkspaceWorkflow.mockResolvedValue(
+    new Ok("activation-workspace-test-manual-1")
+  );
 
   // The canonical ActivationPod row is orthogonal to the schedule lifecycle
   // under test. Stub it out.
@@ -55,8 +54,14 @@ beforeEach(async () => {
   ).mockResolvedValue(new Ok(undefined));
 });
 
-async function makeWorkspaceWithEditor() {
-  const workspace = await WorkspaceFactory.basic();
+async function makeWorkspaceWithEditor({
+  byok = false,
+}: {
+  byok?: boolean;
+} = {}) {
+  const workspace = byok
+    ? await WorkspaceFactory.byok()
+    : await WorkspaceFactory.basic();
   const editor = await UserFactory.basic();
   await MembershipFactory.associate(workspace, editor, { role: "admin" });
 
@@ -75,8 +80,22 @@ async function makeWorkspaceWithEditor() {
   return { workspace, adminAuth, editor };
 }
 
+const pluginArgs = {
+  groupId: [] as string[],
+  sessionGoal: "",
+  pushedResource: [] as string[],
+  workAreas: "",
+  activationPlaybook: "",
+  targetingMode: ["users"] as string[],
+  guidance: ["curated"] as string[],
+  pctActivated: 0,
+  pctNotActivated: 0,
+  forceRecreate: false,
+  overrideChecks: false,
+};
+
 describe("activationManagementPlugin.execute", () => {
-  it("starts the workspace's Activation schedule once provisioning succeeds", async () => {
+  it("starts the workspace's Activation schedule and queues a Temporal workflow", async () => {
     const { workspace, adminAuth, editor } = await makeWorkspaceWithEditor();
     const workAreas =
       "Enterprise account planning — Prepare account plans for strategic customers.";
@@ -84,31 +103,82 @@ describe("activationManagementPlugin.execute", () => {
       "Prioritize actions that reduce time spent preparing account plans.";
 
     const result = await activationManagementPlugin.execute(adminAuth, null, {
+      ...pluginArgs,
       targetUserIds: [editor.sId],
-      groupId: [],
-      sessionGoal: "",
-      pushedResource: [],
       workAreas,
       activationPlaybook,
-      targetingMode: ["users"],
-      guidance: ["curated"],
-      pctActivated: 0,
-      pctNotActivated: 0,
-      forceRecreate: false,
     });
 
     expect(result.isOk()).toBe(true);
     expect(mockStartActivationWorkspaceSchedule).toHaveBeenCalledWith({
       workspaceId: workspace.sId,
     });
-    expect(mockPostActivationNudge).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(mockStartActivationWorkspaceWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
+        workspaceId: workspace.sId,
+        userIds: [editor.sId],
+        overrideChecks: false,
         context: expect.objectContaining({ workAreas, activationPlaybook }),
       })
     );
 
     expect(ActivationPodResource.makeNew).toHaveBeenCalled();
+  });
+
+  it("forwards overrideChecks to the Temporal workflow", async () => {
+    const { workspace, adminAuth, editor } = await makeWorkspaceWithEditor();
+
+    const result = await activationManagementPlugin.execute(adminAuth, null, {
+      ...pluginArgs,
+      targetUserIds: [editor.sId],
+      overrideChecks: true,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockStartActivationWorkspaceWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: workspace.sId,
+        userIds: [editor.sId],
+        overrideChecks: true,
+      })
+    );
+  });
+
+  it("refuses BYOK workspaces without provisioning or starting a workflow", async () => {
+    const { adminAuth, editor } = await makeWorkspaceWithEditor({ byok: true });
+
+    const result = await activationManagementPlugin.execute(adminAuth, null, {
+      ...pluginArgs,
+      targetUserIds: [editor.sId],
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("BYOK");
+    }
+    expect(mockStartActivationWorkspaceSchedule).not.toHaveBeenCalled();
+    expect(mockStartActivationWorkspaceWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("starts a one-off workflow for a BYOK workspace when overrideChecks is set", async () => {
+    const { workspace, adminAuth, editor } = await makeWorkspaceWithEditor({
+      byok: true,
+    });
+
+    const result = await activationManagementPlugin.execute(adminAuth, null, {
+      ...pluginArgs,
+      targetUserIds: [editor.sId],
+      overrideChecks: true,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockStartActivationWorkspaceWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: workspace.sId,
+        userIds: [editor.sId],
+        overrideChecks: true,
+      })
+    );
   });
 
   it("returns Err and does not report success when starting the schedule fails", async () => {
@@ -118,22 +188,14 @@ describe("activationManagementPlugin.execute", () => {
     );
 
     const result = await activationManagementPlugin.execute(adminAuth, null, {
+      ...pluginArgs,
       targetUserIds: [editor.sId],
-      groupId: [],
-      sessionGoal: "",
-      pushedResource: [],
-      workAreas: "",
-      activationPlaybook: "",
-      targetingMode: ["users"],
-      guidance: ["curated"],
-      pctActivated: 0,
-      pctNotActivated: 0,
-      forceRecreate: false,
     });
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.message).toContain("temporal unavailable");
     }
+    expect(mockStartActivationWorkspaceWorkflow).not.toHaveBeenCalled();
   });
 });

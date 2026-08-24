@@ -32,14 +32,8 @@ import { SPACE_KINDS } from "@app/types/space";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 async function fetchNonGlobalGroup(space: SpaceResource, auth: Authenticator) {
-  const groupReference = space.groups.find((group) => !group.isGlobal());
-  if (!groupReference) {
-    return null;
-  }
-  const [group] = await space.fetchGroupResources(auth, {
-    groupReferences: [groupReference],
-  });
-  return group;
+  const [group] = await space.fetchRegularAutoGroups(auth);
+  return group ?? null;
 }
 
 describe("createSpaceAndGroup", () => {
@@ -1219,7 +1213,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           space.sId
         );
         // Verify the space has the global group
-        expect(reloadedSpace!.groups.some((g) => g.isGlobal())).toBe(true);
+        expect(reloadedSpace!.groups.some((g) => g.isReader())).toBe(true);
 
         // Create an active API key for the global group
         await KeyFactory.regular(globalGroup);
@@ -1256,7 +1250,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           space.sId
         );
         // Verify the space has the global group
-        expect(reloadedSpace!.groups.some((g) => g.isGlobal())).toBe(true);
+        expect(reloadedSpace!.groups.some((g) => g.isReader())).toBe(true);
 
         // Create an active API key for the global group
         await KeyFactory.regular(globalGroup);

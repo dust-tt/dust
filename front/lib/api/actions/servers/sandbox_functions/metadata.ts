@@ -285,7 +285,7 @@ export const SANDBOX_FUNCTIONS_SERVER = {
     description:
       "Pod functions: schema-typed callables bundled and run on the pod's " +
       "sandbox.",
-    icon: "CommandLineIcon",
+    icon: "TerminalSquareIcon",
     authorization: null,
     documentationUrl: null,
   },

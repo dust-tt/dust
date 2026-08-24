@@ -17,8 +17,12 @@ import {
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
 import type { GetConsumptionFacetsResponse } from "@app/lib/api/analytics/consumption/facets";
-import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionFacetsBody } from "@app/lib/api/analytics/consumption/schema";
+import type {
+  ConsumptionFacetScope,
+  ConsumptionScopeDimension,
+  ConsumptionScopeFilter,
+} from "@app/lib/api/analytics/consumption/scope";
 import { isConnectorProvider } from "@app/types/data_source";
 import { useMemo } from "react";
 
@@ -37,6 +41,15 @@ const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
   api_key: [],
 };
 
+export interface UseConsumptionFacetsParams {
+  workspaceId: string;
+  period: ConsumptionPeriodSelection;
+  filter?: ConsumptionScopeFilter;
+  scope?: ConsumptionFacetScope;
+  dimensions?: ConsumptionScopeDimension[];
+  disabled?: boolean;
+}
+
 function baseOption(facet: {
   value: string;
   label: string;
@@ -49,7 +62,7 @@ function baseOption(facet: {
   };
 }
 
-function toFacetOptions(
+export function toConsumptionFacetOptions(
   data: GetConsumptionFacetsResponse
 ): ConsumptionFacetOptions {
   return {
@@ -102,28 +115,27 @@ export function useConsumptionFacets({
   workspaceId,
   period,
   filter,
+  scope = "all",
+  dimensions,
   disabled,
-}: {
-  workspaceId: string;
-  period: ConsumptionPeriodSelection;
-  filter?: ConsumptionScopeFilter;
-  disabled?: boolean;
-}) {
+}: UseConsumptionFacetsParams) {
   const url = `/api/w/${workspaceId}/analytics/consumption/facets`;
-  const body: ConsumptionBody = {
+  const body: ConsumptionFacetsBody = {
     period: period.kind,
     days:
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
     filter: normalizedConsumptionFilter(filter),
+    scope,
+    dimensions,
   };
 
   const { data, error, isValidating } = useConsumptionQuery<
-    ConsumptionBody,
+    ConsumptionFacetsBody,
     GetConsumptionFacetsResponse
   >({ url, body, disabled });
 
   const options = useMemo(
-    () => (data ? toFacetOptions(data) : EMPTY_FACET_OPTIONS),
+    () => (data ? toConsumptionFacetOptions(data) : EMPTY_FACET_OPTIONS),
     [data]
   );
 

@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
-import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
+import { setUserMaxAllowedTier } from "@app/lib/model_tiers/allowed_tiers";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -23,7 +23,7 @@ describe("getModelTierAccessErrorForAgentConfiguration", () => {
   async function restrictedUserAuth() {
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
-    await ModelsTierResource.setUserMaxAllowedTier(adminAuth, {
+    await setUserMaxAllowedTier(adminAuth, {
       userId: user.sId,
       tierName: "balanced",
     });

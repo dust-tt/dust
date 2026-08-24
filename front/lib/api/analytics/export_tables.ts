@@ -44,6 +44,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
+import moment from "moment-timezone";
 
 type AnalyticsExportTable =
   | "usage_metrics"
@@ -434,11 +435,16 @@ async function exportUsers({
     endDate,
   });
 
+  // `startDate` / `endDate` are plain YYYY-MM-DD days. Elasticsearch rounds a
+  // date-only `lte` up to the end of that day, but the membership SQL filters
+  // compare against instants, so the bounds have to be widened to the full day
+  // in the requested timezone. Without this, memberships that started earlier
+  // today (or ended later today) are dropped from the export.
   const result = await fetchUserExportRows({
     baseQuery,
     owner,
-    startDate: new Date(startDate),
-    endDate: new Date(endDate),
+    startDate: moment.tz(startDate, timezone).startOf("day").toDate(),
+    endDate: moment.tz(endDate, timezone).endOf("day").toDate(),
     timezone,
   });
 

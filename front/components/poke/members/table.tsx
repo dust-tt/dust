@@ -123,7 +123,7 @@ export function MembersDataTable({
 
   return (
     <>
-      <div className="border-material-200 my-4 flex w-full flex-col rounded-lg border p-4">
+      <div className="my-4 flex w-full flex-col rounded-lg border p-4">
         <div className="flex justify-between gap-3">
           <h2 className="text-md mb-4 font-bold">
             {groupName ? `"${groupName}" Members:` : "Members:"}

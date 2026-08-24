@@ -2,13 +2,18 @@ import {
   archiveAgentConfiguration,
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { describe, expect, it } from "vitest";
@@ -56,6 +61,68 @@ async function setupTest(role: "admin" | "user") {
 }
 
 describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", () => {
+  it("updates an agent of another member built on a restricted space, keeping its space and skills", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+
+    // The agent is authored and edited by another member, and both the agent and its skill
+    // require a space the acting admin is not a member of: what "Show hidden agents" surfaces.
+    const agentOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, agentOwner, {
+      role: "builder",
+    });
+    const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      agentOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const skill = await SkillFactory.create(agentOwnerAuth, {
+      name: "Restricted skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      {
+        name: "Restricted space agent",
+        model: { ...INITIAL_MODEL },
+        requestedSpaceIds: [restrictedSpace.id],
+      }
+    );
+    await skill.addToAgent(agentOwnerAuth, agent);
+
+    const targetModel = await findTargetModel(auth);
+    const response = await postBatchUpdateModel(workspace, {
+      agentIds: [agent.sId],
+      modelId: targetModel.modelId,
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      success: true,
+      updatedAgentIds: [agent.sId],
+      skippedAgentIds: [],
+    });
+
+    // Fetched as "full" so the skills of the new version can be listed from it below.
+    const updatedAgent = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "full",
+      dangerouslySkipPermissionFiltering: true,
+    });
+    assert(updatedAgent);
+    expect(updatedAgent.model.modelId).toBe(targetModel.modelId);
+    expect(updatedAgent.version).toBe(agent.version + 1);
+    // The new version stays restricted to the space and keeps the skill.
+    expect(updatedAgent.requestedSpaceIds).toEqual([restrictedSpace.sId]);
+    const updatedSkills = await SkillResource.listByAgentConfiguration(
+      auth,
+      updatedAgent,
+      { dangerouslySkipPermissionFiltering: true }
+    );
+    expect(updatedSkills.map((s) => s.sId)).toEqual([skill.sId]);
+  });
+
   it("saves a new version of the selected agents with the new model", async () => {
     const { workspace, auth, agent, tag } = await setupTest("admin");
     const target = await findTargetModel(auth);

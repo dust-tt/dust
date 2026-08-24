@@ -1,6 +1,7 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   GrantType,
@@ -83,6 +84,16 @@ GroupPermissionModel.init(
         fields: ["workspaceId", "groupId"],
         concurrently: true,
       },
+      // Space-load direction: hydrating a space's groups (the hottest query after the cached auth
+      // path) joins on (workspaceId, resourceType='space', resourceId). A partial index scoped to
+      // space grants keeps that hot slice small and cache-resident, independent of how large the
+      // polymorphic table grows for other resource types.
+      {
+        name: "group_permissions_space_ws_rid",
+        fields: ["workspaceId", "resourceId"],
+        where: { resourceType: "space" },
+        concurrently: true,
+      },
     ],
   }
 );
@@ -94,4 +105,16 @@ GroupPermissionModel.belongsTo(GroupModel, {
 GroupModel.hasMany(GroupPermissionModel, {
   foreignKey: { name: "groupId", allowNull: false },
   sourceKey: "id",
+});
+
+// A space's instance-level grants, keyed on `resourceId` and pinned to `resourceType: "space"`.
+// `resourceId` is a polymorphic column (not a real FK), hence `constraints: false`; the scope keeps
+// the join from matching same-numbered ids of other resource types. Used to source a space's
+// associated groups from `group_permissions` instead of `group_vaults` (being removed).
+SpaceModel.hasMany(GroupPermissionModel, {
+  as: "spaceGrants",
+  foreignKey: "resourceId",
+  sourceKey: "id",
+  scope: { resourceType: "space" },
+  constraints: false,
 });

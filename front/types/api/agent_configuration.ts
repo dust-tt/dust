@@ -23,6 +23,7 @@ export const GetAgentConfigurationsQuerySchema = z.object({
       "global",
       "list",
       "manage",
+      "manage_unrestricted",
       "published",
       "workspace",
     ])

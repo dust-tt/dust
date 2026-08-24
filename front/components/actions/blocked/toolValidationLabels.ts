@@ -27,7 +27,7 @@ type ToolOverride = {
   title?: (inputs: Record<string, unknown>) => string;
   approveLabel?: string;
   alwaysAllowLabel?: (inputs: Record<string, unknown>) => string;
-  detailsOpen?: boolean;
+  detailsInline?: boolean;
 };
 
 // Display data needed to compute the title and always-allow label of a tool validation card, for
@@ -41,7 +41,7 @@ export type ToolValidationLabelData = Pick<
   | "argumentsRequiringApproval"
 >;
 
-/** Overrides title, alwaysAllowLabel, and details expansion for specific MCP tools */
+/** Overrides validation labels and details placement for specific MCP tools. */
 const MCP_TOOL_OVERRIDES: Partial<
   Record<string, Partial<Record<string, ToolOverride>>>
 > = {
@@ -60,7 +60,7 @@ const MCP_TOOL_OVERRIDES: Partial<
   sandbox: {
     add_egress_domain: {
       title: () => `Allow agent to add a domain to the Computer?`,
-      detailsOpen: true,
+      detailsInline: true,
     },
   },
   [SANDBOX_FUNCTIONS_SERVER_NAME]: {

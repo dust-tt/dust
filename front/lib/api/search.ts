@@ -49,8 +49,9 @@ function getSpaceAccessPriority(space: SpaceResource) {
     return 2;
   }
 
-  // For restricted spaces: provisioned groups get higher priority than manual membership.
-  if (space.groups.some((g) => g.isProvisioned())) {
+  // For restricted spaces: provisioned groups get higher priority than manual membership. A space
+  // in group management mode is backed by provisioned (IdP-owned) groups.
+  if (space.managementMode === "group") {
     return 1;
   }
 

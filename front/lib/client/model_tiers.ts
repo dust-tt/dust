@@ -1,8 +1,8 @@
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getModelsTierDisplayName } from "@app/lib/api/assistant/token_pricing/tiers";
+import type { ModelsTierDefinition } from "@app/lib/model_tiers/allowed_tiers";
 import { resolveAllowedModelTiers } from "@app/lib/model_tiers/resolve_allowed";
 import { expandTiersUpTo } from "@app/lib/model_tiers/tier_order";
-import type { ModelsTierDefinition } from "@app/lib/resources/models_tier_resource";
 
 type ResolvedModelTiersForUser = ReturnType<typeof resolveAllowedModelTiers>;
 

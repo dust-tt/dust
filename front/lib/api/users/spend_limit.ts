@@ -658,8 +658,22 @@ export async function recordUserSpendLimitUsage(
   }: { user: UserResource; incrementBy: number; cycle?: BillingCycle }
 ): Promise<void> {
   // Only whole positive credits are recordable (the counter is an integer
-  // INCRBY); skip anything else rather than letting it reach the counter.
-  if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
+  // INCRBY); skip anything else rather than letting it reach the counter. A
+  // non-integer should never happen (credits are integer end-to-end), so log
+  // it loudly; a non-positive delta is a normal no-op (e.g. a retry with no
+  // new usage) and stays silent.
+  if (!Number.isInteger(incrementBy)) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        userId: user.sId,
+        incrementBy,
+      },
+      "[SpendLimitRateCap] Non-integer credit delta; skipping counter update."
+    );
+    return;
+  }
+  if (incrementBy <= 0) {
     return;
   }
 

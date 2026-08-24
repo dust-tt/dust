@@ -242,6 +242,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "StatuspageLogo",
   "StripeLogo",
   "SupabaseLogo",
+  "TerminalSquareIcon",
   "UkgLogo",
   "ValTownLogo",
   "VantaLogo",

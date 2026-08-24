@@ -118,14 +118,8 @@ async function fetchRegularAutoGroup(
   space: SpaceResource,
   auth: Authenticator
 ) {
-  const groupReference = space.groups.find((group) => group.isRegularAuto());
-  if (!groupReference) {
-    return null;
-  }
-  const [group] = await space.fetchGroupResources(auth, {
-    groupReferences: [groupReference],
-  });
-  return group;
+  const [group] = await space.fetchRegularAutoGroups(auth);
+  return group ?? null;
 }
 
 async function createActiveProgrammaticCredit(
@@ -2633,6 +2627,12 @@ describe("postUserMessage", () => {
         group: globalGroup,
         space: projectSpace,
       });
+      // Sync group_permissions so the space reads as open (production does this after attaching the
+      // viewer via `syncGroupPermissions`); `isOpen` is now sourced from grants.
+      await projectSpace.writeGroupPermissions(
+        internalAdminAuth,
+        await projectSpace.fetchAssociatedGroups()
+      );
 
       const apiKey = await KeyFactory.regular(globalGroup);
       const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
@@ -2681,6 +2681,12 @@ describe("postUserMessage", () => {
         group: globalGroup,
         space: projectSpace,
       });
+      // Sync group_permissions so the space reads as open (production does this after attaching the
+      // viewer via `syncGroupPermissions`); `isOpen` is now sourced from grants.
+      await projectSpace.writeGroupPermissions(
+        internalAdminAuth,
+        await projectSpace.fetchAssociatedGroups()
+      );
 
       const apiKey = await KeyFactory.regular(globalGroup);
       const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(

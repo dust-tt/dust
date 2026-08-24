@@ -325,6 +325,115 @@ describe("fetchConsumptionFacets", () => {
     expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(8);
   });
 
+  it("restricts the automations scope to trigger-originated documents", async () => {
+    const { authenticator } = await createResourceTest({ role: "manager" });
+    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
+      agent: [],
+      user: [],
+      api_key: [],
+      group: [],
+      model: [],
+      tool: [],
+      skill: [],
+      source: [],
+    });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({ values: { buckets: [] } })
+    );
+
+    const result = await fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+      filter: { users: ["user_1"] },
+      scope: "automations",
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const triggerExists = { exists: { field: "trigger_id" } };
+    for (const [query, options] of vi.mocked(searchConsumptionAnalytics).mock
+      .calls) {
+      // Both the value enumeration and the availability count must be scoped.
+      expect(query.bool?.filter).toContainEqual(triggerExists);
+      expect(
+        options?.aggregations?.values?.aggs?.contextual?.filter?.bool?.filter
+      ).toContainEqual(triggerExists);
+    }
+  });
+
+  it("leaves documents unscoped by default", async () => {
+    const { authenticator } = await createResourceTest({ role: "manager" });
+    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
+      agent: [],
+      user: [],
+      api_key: [],
+      group: [],
+      model: [],
+      tool: [],
+      skill: [],
+      source: [],
+    });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({ values: { buckets: [] } })
+    );
+
+    const result = await fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+    });
+
+    expect(result.isOk()).toBe(true);
+    for (const [query] of vi.mocked(searchConsumptionAnalytics).mock.calls) {
+      expect(query.bool?.filter).not.toContainEqual({
+        exists: { field: "trigger_id" },
+      });
+    }
+  });
+
+  it("sweeps and resolves only the requested dimensions", async () => {
+    const { authenticator } = await createResourceTest({ role: "manager" });
+    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
+      agent: [{ value: "agent-1", label: "Agent one", pictureUrl: null }],
+      user: [{ value: "user-1", label: "User one", pictureUrl: null }],
+      api_key: [],
+      group: [],
+      model: [],
+      tool: [],
+      skill: [],
+      source: [],
+    });
+    vi.mocked(resolveDimensionLabels).mockResolvedValue(new Map());
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({ values: { buckets: [] } })
+    );
+
+    const result = await fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+      dimensions: ["agent", "user"],
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(2);
+    expect(listConsumptionFacetCatalog).toHaveBeenCalledWith(authenticator, [
+      "agent",
+      "user",
+    ]);
+
+    const sweptFields = vi
+      .mocked(searchConsumptionAnalytics)
+      .mock.calls.map(
+        ([, options]) =>
+          options?.aggregations?.values?.composite?.sources?.[0]?.value?.terms
+            ?.field
+      );
+    expect(sweptFields.sort()).toEqual(["agent.attributed_id", "user.id"]);
+
+    if (result.isOk()) {
+      expect(result.value.facets.agent).toHaveLength(1);
+      expect(result.value.facets.user).toHaveLength(1);
+      expect(result.value.facets.model).toEqual([]);
+      expect(result.value.facets.tool).toEqual([]);
+    }
+  });
+
   it("returns the Elasticsearch failure before resolving historical labels", async () => {
     const { authenticator } = await createResourceTest({ role: "manager" });
     const error = new ElasticsearchError("query_error", "query failed");

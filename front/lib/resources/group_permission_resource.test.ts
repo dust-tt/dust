@@ -1007,6 +1007,106 @@ describe("GroupPermissionResource", () => {
     });
   });
 
+  describe("listRegularAutoGroupsForResource", () => {
+    const onSpace = (resourceId: number) => ({
+      resourceType: "space" as const,
+      resourceId,
+    });
+
+    it("returns every regular_auto group with a grant on the resource, regardless of grant type", async () => {
+      // A space's member group holds `member` and its editor group holds `admin`; both are
+      // regular_auto and both must come back even though their grant types differ.
+      const memberGroup = await GroupFactory.regularAuto(workspace, "member");
+      const editorGroup = await GroupFactory.regularAuto(workspace, "editor");
+      await GroupPermissionResource.grant(auth, {
+        group: memberGroup,
+        grantType: "member",
+        ...onSpace(100),
+      });
+      await GroupPermissionResource.grant(auth, {
+        group: editorGroup,
+        grantType: "admin",
+        ...onSpace(100),
+      });
+
+      const groups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(
+          auth,
+          onSpace(100)
+        );
+      expect(groups.map((g) => g.id).sort()).toEqual(
+        [memberGroup.id, editorGroup.id].sort()
+      );
+    });
+
+    it("returns a regular_auto group even when it holds only a reader grant", async () => {
+      // On an open regular space the member group (regular_auto) holds a `reader` grant just like the
+      // global group; grant type can't tell them apart, so it must still be found by kind.
+      await GroupPermissionResource.grant(auth, {
+        group: groupA,
+        grantType: "reader",
+        ...onSpace(101),
+      });
+
+      const groups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(
+          auth,
+          onSpace(101)
+        );
+      expect(groups.map((g) => g.id)).toEqual([groupA.id]);
+    });
+
+    it("excludes non-regular_auto groups (manual, provisioned, global)", async () => {
+      const globalRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+      if (globalRes.isErr()) {
+        throw globalRes.error;
+      }
+      const globalGroup = globalRes.value;
+      const provisionedGroup = await GroupFactory.provisioned(
+        workspace,
+        "prov"
+      );
+
+      // Only groupA is regular_auto; the manual, provisioned, and global groups must be excluded.
+      await GroupPermissionResource.grant(auth, {
+        group: groupA,
+        grantType: "member",
+        ...onSpace(102),
+      });
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        grantType: "member",
+        ...onSpace(102),
+      });
+      await GroupPermissionResource.grant(auth, {
+        group: provisionedGroup,
+        grantType: "member",
+        ...onSpace(102),
+      });
+      await GroupPermissionResource.grant(auth, {
+        group: globalGroup,
+        grantType: "reader",
+        ...onSpace(102),
+      });
+
+      const groups =
+        await GroupPermissionResource.listRegularAutoGroupsForResource(
+          auth,
+          onSpace(102)
+        );
+      expect(groups.map((g) => g.id)).toEqual([groupA.id]);
+    });
+
+    it("returns an empty array when the resource has no grants", async () => {
+      expect(
+        await GroupPermissionResource.listRegularAutoGroupsForResource(
+          auth,
+          onSpace(999)
+        )
+      ).toEqual([]);
+    });
+  });
+
   describe("grantToEverybody / revokeFromEverybody", () => {
     it("grants and revokes an instance-level permission on the global group", async () => {
       const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(

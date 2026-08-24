@@ -38,12 +38,7 @@ app.get(
 
     const members: Record<string, UserTypeWithWorkspaces[]> = {};
 
-    const groupReferences = space.groups.filter((group) =>
-      space.managementMode === "manual"
-        ? group.isRegularAuto()
-        : group.isProvisioned()
-    );
-    const groups = await space.fetchGroupResources(auth, { groupReferences });
+    const groups = await space.fetchMembershipGroups(auth);
 
     const memberships = await getMembers(auth);
     const memberById = new Map(memberships.members.map((m) => [m.sId, m]));

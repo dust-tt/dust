@@ -25,7 +25,9 @@ app.route("/catalog", catalog);
 
 function resolveCacheKey(
   ctx: Context
-): { cacheKey: string } | { err: ReturnType<typeof apiError> } {
+):
+  | { cacheKey: string; cacheKeysToDelete: string[] }
+  | { err: ReturnType<typeof apiError> } {
   const resourceId = ctx.req.query("resourceId");
   const rawKey = ctx.req.query("rawKey");
   const params = ctx.req.query("params");
@@ -90,7 +92,10 @@ function resolveCacheKey(
     }
 
     try {
-      return { cacheKey: operations.buildKey(parsedParams) };
+      return {
+        cacheKey: operations.buildKey(parsedParams),
+        cacheKeysToDelete: operations.buildKeysToDelete(parsedParams),
+      };
     } catch {
       return {
         err: apiError(ctx, {
@@ -105,7 +110,7 @@ function resolveCacheKey(
   }
 
   if (isString(rawKey)) {
-    return { cacheKey: rawKey };
+    return { cacheKey: rawKey, cacheKeysToDelete: [rawKey] };
   }
 
   return {
@@ -188,7 +193,7 @@ app.delete("/", async (ctx): HandlerResult<DeletePokeCacheResponseBody> => {
   if ("err" in r) {
     return r.err;
   }
-  const { cacheKey } = r;
+  const { cacheKey, cacheKeysToDelete } = r;
 
   const redisInstance = ctx.req.query("redisInstance");
   if (redisInstance !== "cache" && redisInstance !== "stream") {
@@ -205,11 +210,11 @@ app.delete("/", async (ctx): HandlerResult<DeletePokeCacheResponseBody> => {
   const runFn = redisInstance === "cache" ? runOnRedisCache : runOnRedis;
 
   await runFn({ origin: "poke_cache_invalidation" }, async (client) => {
-    await client.del(cacheKey);
+    await Promise.all(cacheKeysToDelete.map((key) => client.del(key)));
   });
 
   logger.info(
-    { redisKey: cacheKey, redisInstance },
+    { redisKeys: cacheKeysToDelete, redisInstance },
     "Poke cache invalidation performed"
   );
 
@@ -249,8 +254,8 @@ app.delete(
       });
     }
 
-    const pattern = operations.keyPattern;
-    if (!pattern) {
+    const patterns = operations.keyPatternsToDelete;
+    if (patterns.length === 0) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -265,14 +270,16 @@ app.delete(
       async (client) => {
         let count = 0;
         let batch: string[] = [];
-        for await (const key of client.scanIterator({
-          MATCH: pattern,
-          COUNT: DELETE_ALL_BATCH_SIZE,
-        })) {
-          batch.push(key);
-          if (batch.length >= DELETE_ALL_BATCH_SIZE) {
-            count += await client.del(batch);
-            batch = [];
+        for (const pattern of patterns) {
+          for await (const key of client.scanIterator({
+            MATCH: pattern,
+            COUNT: DELETE_ALL_BATCH_SIZE,
+          })) {
+            batch.push(key);
+            if (batch.length >= DELETE_ALL_BATCH_SIZE) {
+              count += await client.del(batch);
+              batch = [];
+            }
           }
         }
         if (batch.length > 0) {
@@ -283,12 +290,12 @@ app.delete(
     );
 
     logger.info(
-      { redisKeyPattern: pattern, deletedCount },
+      { redisKeyPatterns: patterns, deletedCount },
       "Poke cache bulk invalidation performed"
     );
 
     return ctx.json({
-      pattern,
+      pattern: operations.keyPattern ?? patterns[0],
       deletedCount,
     });
   }

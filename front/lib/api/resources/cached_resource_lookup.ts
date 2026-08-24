@@ -22,15 +22,17 @@ type CacheKeyDefinition<Input> = {
   keyPattern: string;
 };
 
-type ReadFromKeyFirstDefinition<Input> = CacheKeyDefinition<Input> & {
-  mirrorToCanonicalOnHit?: boolean;
+type CacheKeyMigrationDefinition<Input> = {
+  previousKey: CacheKeyDefinition<Input>;
+  readFrom: "previous" | "new";
+  copyToOtherKey: "after_load" | "after_read";
 };
 
 type CachedResourceLookupDefinition<Input, Snapshot, Resource> = {
   id: string;
   version: number;
   key: (input: Input) => string;
-  readFromKeyFirst?: ReadFromKeyFirstDefinition<Input>;
+  migration?: CacheKeyMigrationDefinition<Input>;
   loadFromDatabase: (
     input: Input,
     transaction?: Transaction
@@ -107,7 +109,7 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
   id,
   version,
   key,
-  readFromKeyFirst,
+  migration,
   loadFromDatabase,
   toSnapshot,
   fromSnapshot,
@@ -117,18 +119,26 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
   Resource
 >): OperableCachedResourceLookup<Input, Resource> {
   const versionedKey = (input: Input) => `v${version}:${key(input)}`;
-  const readFromKeyFirstOptions = readFromKeyFirst
+  const migrationOptions = migration
     ? {
-        cacheId: readFromKeyFirst.cacheId,
-        resolver: readFromKeyFirst.key,
-        mirrorToCanonicalOnHit: readFromKeyFirst.mirrorToCanonicalOnHit,
+        previousKey: {
+          cacheId: migration.previousKey.cacheId,
+          resolver: migration.previousKey.key,
+        },
+        readFrom: migration.readFrom,
+        copyToOtherKey: migration.copyToOtherKey,
       }
     : undefined;
-  const operationsCacheKey = readFromKeyFirst ?? {
+  const newCacheKey = {
     cacheId: id,
     key: versionedKey,
     keyPattern: `v${version}:*`,
   };
+  const operationsCacheKey =
+    migration?.readFrom === "previous" ? migration.previousKey : newCacheKey;
+  const cacheKeysToDelete = migration
+    ? [newCacheKey, migration.previousKey]
+    : [newCacheKey];
 
   const loadSnapshotFromDatabase = async (
     input: Input
@@ -147,7 +157,7 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
     {
       cacheId: id,
       cacheNullValues: false,
-      readFromKeyFirst: readFromKeyFirstOptions,
+      migration: migrationOptions,
     }
   );
   const invalidateSnapshot = invalidateCacheWithRedis(
@@ -155,7 +165,7 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
     versionedKey,
     {
       cacheId: id,
-      readFromKeyFirst: readFromKeyFirstOptions,
+      migration: migrationOptions,
     }
   );
   const invalidateSnapshots = batchInvalidateCacheWithRedis(
@@ -163,7 +173,7 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
     versionedKey,
     {
       cacheId: id,
-      readFromKeyFirst: readFromKeyFirstOptions,
+      migration: migrationOptions,
     }
   );
 
@@ -217,9 +227,19 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
             operationsCacheKey.cacheId,
             operationsCacheKey.key(toLookupInput(input))
           ),
+        buildKeysToDelete: (input) =>
+          cacheKeysToDelete.map((cacheKey) =>
+            buildCacheWithRedisKey(
+              cacheKey.cacheId,
+              cacheKey.key(toLookupInput(input))
+            )
+          ),
         keyPattern: buildCacheWithRedisKey(
           operationsCacheKey.cacheId,
           operationsCacheKey.keyPattern
+        ),
+        keyPatternsToDelete: cacheKeysToDelete.map((cacheKey) =>
+          buildCacheWithRedisKey(cacheKey.cacheId, cacheKey.keyPattern)
         ),
       }),
   };

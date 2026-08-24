@@ -2653,7 +2653,23 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
   },
-  "workspace_people": {
+  "workspace_management": {
+    "get_agent_details": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_skill_details": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_agents": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_skills": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "list_workspace_members": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -3478,7 +3494,11 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_top_users": "never_ask",
     "get_usage_timeseries": "never_ask",
   },
-  "workspace_people": {
+  "workspace_management": {
+    "get_agent_details": "never_ask",
+    "get_skill_details": "never_ask",
+    "list_agents": "never_ask",
+    "list_skills": "never_ask",
     "list_workspace_members": "never_ask",
   },
   "zendesk": {

@@ -1,5 +1,6 @@
+import { getTierForModel } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { Authenticator } from "@app/lib/auth";
-import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
+import { resolveAllowedTierNames } from "@app/lib/model_tiers/allowed_tiers";
 import type {
   AgentConfigurationScope,
   GenericErrorContent,
@@ -68,8 +69,8 @@ export async function getModelTierAccessErrorForAgentConfiguration(
   // tiered as the tier it is named after, at its only effort (`none`).
   const tierName =
     modelResolutionMethod && isModelStreamId(modelResolutionMethod)
-      ? ModelsTierResource.getTierForModel(modelResolutionMethod, "none")
-      : ModelsTierResource.getTierForModel(
+      ? getTierForModel(modelResolutionMethod, "none")
+      : getTierForModel(
           model.modelId,
           reasoningEffort ??
             getMinimumReasoningEffort(model.supportedReasoningEfforts)
@@ -79,8 +80,7 @@ export async function getModelTierAccessErrorForAgentConfiguration(
     return null;
   }
 
-  const { tiers: allowedTierNames } =
-    await ModelsTierResource.resolveAllowedTierNames(auth);
+  const { tiers: allowedTierNames } = await resolveAllowedTierNames(auth);
 
   if (allowedTierNames.includes(tierName)) {
     return null;

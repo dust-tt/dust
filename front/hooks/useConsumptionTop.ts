@@ -36,6 +36,7 @@ const CONSUMPTION_TOP_ENDPOINTS = {
 export type ConsumptionTopRow = {
   id: string;
   name: string;
+  detailsHref?: string;
   pictureUrl: string | null;
   description: string | null;
   icon: string | null;
@@ -46,7 +47,7 @@ export type ConsumptionTopRow = {
   previousCredits: number | null;
 };
 
-type ConsumptionTopResponse =
+export type ConsumptionTopResponse =
   | GetConsumptionTopAgentsResponse
   | GetConsumptionTopUsersResponse
   | GetConsumptionTopGroupsResponse
@@ -56,10 +57,24 @@ type ConsumptionTopResponse =
   | GetConsumptionTopSourcesResponse
   | GetConsumptionTopApiKeysResponse;
 
+export interface UseConsumptionTopParams {
+  workspaceId: string;
+  dimension: ConsumptionDimension;
+  period: ConsumptionPeriodSelection;
+  limit: number;
+  offset?: number;
+  search?: string;
+  filter?: ConsumptionScopeFilter;
+  sortOrder?: ConsumptionTopSortOrder;
+  disabled?: boolean;
+}
+
 // Narrowed on the collection each response carries rather than on the requested
 // dimension, so a row shape that drifts from its endpoint is a type error here
 // instead of a silently empty table.
-function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
+export function toConsumptionTopRows(
+  data: ConsumptionTopResponse
+): ConsumptionTopRow[] {
   if ("agents" in data) {
     return data.agents.map((row) => ({
       id: row.agentId,
@@ -186,17 +201,7 @@ export function useConsumptionTop({
   filter,
   sortOrder = "desc",
   disabled,
-}: {
-  workspaceId: string;
-  dimension: ConsumptionDimension;
-  period: ConsumptionPeriodSelection;
-  limit: number;
-  offset?: number;
-  search?: string;
-  filter?: ConsumptionScopeFilter;
-  sortOrder?: ConsumptionTopSortOrder;
-  disabled?: boolean;
-}) {
+}: UseConsumptionTopParams) {
   const url = `/api/w/${workspaceId}/analytics/consumption/${CONSUMPTION_TOP_ENDPOINTS[dimension]}`;
   const body: ConsumptionTopBody = {
     period: period.kind,
@@ -215,7 +220,7 @@ export function useConsumptionTop({
   >({ url, body, disabled });
 
   const rows = useMemo(
-    () => (data ? toRows(data) : emptyArray<ConsumptionTopRow>()),
+    () => (data ? toConsumptionTopRows(data) : emptyArray<ConsumptionTopRow>()),
     [data]
   );
 

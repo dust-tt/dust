@@ -235,22 +235,19 @@ export function useDeleteWebhookSource({
 
 export function useWebhookRequestTriggersForTrigger({
   owner,
-  agentConfigurationId,
   triggerId,
   disabled,
 }: {
   owner: LightWorkspaceType;
-  agentConfigurationId: string | null;
   triggerId: string | null;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const configFetcher: Fetcher<GetWebhookRequestsResponseBody> = fetcher;
 
-  const url =
-    agentConfigurationId && triggerId
-      ? `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/webhook_requests`
-      : null;
+  const url = triggerId
+    ? `/api/w/${owner.sId}/triggers/${triggerId}/webhook_requests`
+    : null;
 
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     disabled,

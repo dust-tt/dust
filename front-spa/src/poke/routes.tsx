@@ -1,4 +1,5 @@
 import Custom404 from "@dust-tt/front/components/pages/Custom404";
+import { AnalyticsPage } from "@dust-tt/front/components/poke/pages/AnalyticsPage";
 import { AppPage } from "@dust-tt/front/components/poke/pages/AppPage";
 import { AssistantDetailsPage } from "@dust-tt/front/components/poke/pages/AssistantDetailsPage";
 import { AssistantInstructionsPage } from "@dust-tt/front/components/poke/pages/AssistantInstructionsPage";
@@ -97,6 +98,7 @@ export const routes: RouteObject[] = [
         element: <PokeWorkspacePage />,
         children: [
           { index: true, element: <WorkspacePage /> },
+          { path: "analytics", element: <AnalyticsPage /> },
           { path: "memberships", element: <MembershipsPage /> },
           { path: "llm-traces/:runId", element: <LLMTracePage /> },
           {

@@ -111,7 +111,7 @@ function QueryContent({ owner, dataSource }: QueryContentProps) {
 
       <div className="mt-6 flex flex-col gap-6">
         {/* Table Selection */}
-        <div className="border-material-200 rounded-lg border p-4">
+        <div className="rounded-lg border p-4">
           <h4 className="mb-3 text-lg font-semibold">Select Tables</h4>
           <div className="text-sm text-gray-600">
             {totalTables} table{totalTables !== 1 ? "s" : ""} available
@@ -156,7 +156,7 @@ function QueryContent({ owner, dataSource }: QueryContentProps) {
         </div>
 
         {/* Query Input */}
-        <div className="border-material-200 rounded-lg border p-4">
+        <div className="rounded-lg border p-4">
           <h4 className="mb-3 text-lg font-semibold">SQL Query</h4>
           <TextArea
             value={query}
@@ -192,7 +192,7 @@ function QueryContent({ owner, dataSource }: QueryContentProps) {
 
         {/* Results Display */}
         {queryResult && (
-          <div className="border-material-200 rounded-lg border p-4">
+          <div className="rounded-lg border p-4">
             <h4 className="mb-3 text-lg font-semibold">Results</h4>
             <div className="mb-2 text-sm text-gray-600">
               {queryResult.results.length} row

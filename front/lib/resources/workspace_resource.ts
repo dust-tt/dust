@@ -197,11 +197,14 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     id: "workspace_by_sid",
     version: WORKSPACE_CACHE_KEY_VERSION,
     key: (workspaceId: string) => workspaceId,
-    readFromKeyFirst: {
-      cacheId: "_fetchByIdUncached",
-      key: (workspaceId: string) => `workspace:v2:${workspaceId}`,
-      keyPattern: "workspace:v2:*",
-      mirrorToCanonicalOnHit: false,
+    migration: {
+      previousKey: {
+        cacheId: "_fetchByIdUncached",
+        key: (workspaceId: string) => `workspace:v2:${workspaceId}`,
+        keyPattern: "workspace:v2:*",
+      },
+      readFrom: "new",
+      copyToOtherKey: "after_read",
     },
     loadFromDatabase: WorkspaceResource.fetchByIdFromDatabase,
     toSnapshot: (workspace) => workspace.toCacheSnapshot(),

@@ -1,6 +1,7 @@
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { EU_UPLIFT_MODEL_IDS } from "@app/lib/api/assistant/token_pricing/eu";
 import {
+  GPT_5_4_MODEL_ID,
   GPT_5_5_MODEL_ID,
   GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
   GPT_5_MODEL_ID,
@@ -39,7 +40,8 @@ describe("computeTokensCostForUsageInMicroUsd", () => {
   it("combines the OpenAI EU uplift with the batch discount", () => {
     const usage = {
       modelId: GPT_5_5_MODEL_ID,
-      promptTokens: 1_000_000,
+      // Kept below the long-context threshold so this only exercises uplift and batch.
+      promptTokens: 200_000,
       completionTokens: 1_000_000,
       cachedTokens: null,
       isBatch: true,
@@ -50,13 +52,13 @@ describe("computeTokensCostForUsageInMicroUsd", () => {
         ...usage,
         inferenceRegion: "global",
       })
-    ).toBe(17_500_000);
+    ).toBe(15_500_000);
     expect(
       computeTokensCostForUsageInMicroUsd({
         ...usage,
         inferenceRegion: "eu",
       })
-    ).toBe(19_250_000);
+    ).toBe(17_050_000);
   });
 
   it("does not uplift OpenAI models without regional premium pricing", () => {
@@ -78,6 +80,70 @@ describe("computeTokensCostForUsageInMicroUsd", () => {
         inferenceRegion: "global",
       })
     );
+  });
+
+  it("uses standard GPT 5.4 pricing through 272k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GPT_5_4_MODEL_ID,
+        promptTokens: 272_000,
+        completionTokens: 1_000,
+        cachedTokens: null,
+      })
+    ).toBe(695_000);
+  });
+
+  it("uses GPT 5.4 long-context pricing above 272k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GPT_5_4_MODEL_ID,
+        promptTokens: 272_001,
+        completionTokens: 1_000,
+        cachedTokens: null,
+      })
+    ).toBe(1_382_505);
+  });
+
+  it("uses standard GPT 5.5 pricing through 272k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GPT_5_5_MODEL_ID,
+        promptTokens: 272_000,
+        completionTokens: 1_000,
+        cachedTokens: null,
+      })
+    ).toBe(1_390_000);
+  });
+
+  it("uses GPT 5.5 long-context pricing above 272k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GPT_5_5_MODEL_ID,
+        promptTokens: 272_001,
+        completionTokens: 1_000,
+        cachedTokens: null,
+      })
+    ).toBe(2_765_010);
+  });
+
+  it("uses GPT 5.5 long-context cached input pricing with the EU uplift", () => {
+    const usage = {
+      modelId: GPT_5_5_MODEL_ID,
+      promptTokens: 272_001,
+      completionTokens: 1_000,
+      cachedTokens: 100_000,
+    };
+    const globalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+      ...usage,
+      inferenceRegion: "global",
+    });
+    const euCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+      ...usage,
+      inferenceRegion: "eu",
+    });
+
+    expect(globalCostMicroUsd).toBe(1_865_010);
+    expect(euCostMicroUsd).toBeCloseTo(globalCostMicroUsd * 1.1, 6);
   });
 
   it("uses standard Terra pricing through 272k prompt tokens", () => {

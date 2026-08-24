@@ -9,7 +9,7 @@ import { WorkspaceAnalyticsTimeRangeSelector } from "@app/components/workspace/a
 import { WorkspaceUserCreditsTable } from "@app/components/workspace/analytics/WorkspaceUserCreditsTable";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
-import { Page, SafeSuspense, safeLazy } from "@dust-tt/sparkle";
+import { LoadingBlock, Page, SafeSuspense, safeLazy } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 // Dynamic imports for chart components to exclude recharts from server bundle.
@@ -63,7 +63,7 @@ const WorkspaceSkillUsageChart = safeLazy(
 );
 
 function ChartFallback() {
-  return <div className="h-64 animate-pulse rounded-lg bg-muted-background" />;
+  return <LoadingBlock className="h-64 rounded-lg" />;
 }
 
 export function AnalyticsPage() {

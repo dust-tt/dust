@@ -207,7 +207,7 @@ export const ConversationMessageTitle = React.forwardRef<
           <span className="text-sm font-medium">{renderName(name)}</span>
           <span className="text-xs text-muted-foreground">{timestamp}</span>
           {infoChip && (
-            <div className="inline-flex self-[anchor-center]">{infoChip}</div>
+            <div className="inline-flex self-center">{infoChip}</div>
           )}
         </div>
         <div className="ml-1 inline-flex items-center">

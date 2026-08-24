@@ -23,7 +23,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import type { ComponentType } from "react";
 import { Fragment } from "react";
+import type { ConsumptionAttributionBreakdownProps } from "./ConsumptionAttributionBreakdown";
 import { ConsumptionAttributionBreakdown } from "./ConsumptionAttributionBreakdown";
 import type { ConsumptionDimension } from "./consumptionDimensions";
 
@@ -100,7 +102,7 @@ function AttributionSkeletonCell({
   }
 }
 
-interface ConsumptionAttributionRowsTableProps {
+export interface ConsumptionAttributionRowsTableProps {
   data: AttributionRowData[];
   columns: ColumnDef<AttributionRowData>[];
   workspaceId: string;
@@ -120,7 +122,12 @@ interface ConsumptionAttributionRowsTableProps {
   onSortingChange: OnChangeFn<SortingState>;
 }
 
-export function ConsumptionAttributionRowsTable({
+interface ConsumptionAttributionRowsTableViewProps
+  extends ConsumptionAttributionRowsTableProps {
+  BreakdownComponent: ComponentType<ConsumptionAttributionBreakdownProps>;
+}
+
+export function ConsumptionAttributionRowsTableView({
   data,
   columns,
   workspaceId,
@@ -135,7 +142,8 @@ export function ConsumptionAttributionRowsTable({
   isAvatarRounded = false,
   sorting,
   onSortingChange,
-}: ConsumptionAttributionRowsTableProps) {
+  BreakdownComponent,
+}: ConsumptionAttributionRowsTableViewProps) {
   const table = useReactTable({
     data,
     columns,
@@ -243,7 +251,7 @@ export function ConsumptionAttributionRowsTable({
                           "data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-exit"
                         )}
                       >
-                        <ConsumptionAttributionBreakdown
+                        <BreakdownComponent
                           workspaceId={workspaceId}
                           selectedDimension={dimension}
                           selectedRow={row.original}
@@ -259,5 +267,16 @@ export function ConsumptionAttributionRowsTable({
             ))}
       </DataTable.Body>
     </DataTable.Root>
+  );
+}
+
+export function ConsumptionAttributionRowsTable(
+  props: ConsumptionAttributionRowsTableProps
+) {
+  return (
+    <ConsumptionAttributionRowsTableView
+      {...props}
+      BreakdownComponent={ConsumptionAttributionBreakdown}
+    />
   );
 }
