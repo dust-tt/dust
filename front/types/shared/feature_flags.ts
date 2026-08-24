@@ -371,6 +371,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Skip the per-user daily free-usage cost cap enforced at the LLM call site. Escape hatch to unstick legitimate workspaces that legitimately exceed the free-usage limit.",
     stage: "on_demand",
   },
+  disable_fair_use_awu_limit: {
+    description:
+      "Disable the per-user fair-use AWU credit limit on this workspace: skip both the pre-message enforcement (read) and the usage recording (write). Escape hatch for workspaces that should not be subject to the fair-use cap.",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
