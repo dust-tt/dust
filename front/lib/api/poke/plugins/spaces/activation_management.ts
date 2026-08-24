@@ -634,31 +634,30 @@ export const activationManagementPlugin = createPlugin({
     }
     const pushed = resolvedPushedResource.value;
 
-    const context: ActivationNudgeContext = isGoalPod
-      ? {
-          sessionGoal: GOAL_POD_BOOTSTRAP_SESSION_GOAL,
-          pushedResourceType: null,
-          pushedResourceName: null,
-          workAreas: declaredIntent,
-          activationPlaybook: GOAL_POD_BOOTSTRAP_PLAYBOOK,
-        }
-      : useGuidance
-        ? {
-            sessionGoal: sessionGoal?.trim() ? sessionGoal.trim() : null,
-            pushedResourceType: pushed?.type ?? null,
-            pushedResourceName: pushed?.name ?? null,
-            workAreas: workAreas?.trim() ? workAreas.trim() : null,
-            activationPlaybook: activationPlaybook?.trim()
-              ? activationPlaybook.trim()
-              : null,
-          }
-        : {
-            sessionGoal: null,
-            pushedResourceType: null,
-            pushedResourceName: null,
-            workAreas: null,
-            activationPlaybook: null,
-          };
+    let context: ActivationNudgeContext = {
+      sessionGoal: null,
+      pushedResourceType: null,
+      pushedResourceName: null,
+      workAreas: null,
+      activationPlaybook: null,
+    };
+    if (isGoalPod) {
+      context = {
+        sessionGoal: GOAL_POD_BOOTSTRAP_SESSION_GOAL,
+        pushedResourceType: null,
+        pushedResourceName: null,
+        workAreas: declaredIntent,
+        activationPlaybook: GOAL_POD_BOOTSTRAP_PLAYBOOK,
+      };
+    } else if (useGuidance) {
+      context = {
+        sessionGoal: sessionGoal?.trim() || null,
+        pushedResourceType: pushed?.type ?? null,
+        pushedResourceName: pushed?.name ?? null,
+        workAreas: workAreas?.trim() || null,
+        activationPlaybook: activationPlaybook?.trim() || null,
+      };
+    }
 
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId,
