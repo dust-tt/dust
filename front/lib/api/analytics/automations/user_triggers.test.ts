@@ -165,7 +165,7 @@ describe("fetchUserAutomationTriggers", () => {
     expect(result.triggers[0]).toMatchObject({ runCount: 0, credits: 0 });
   });
 
-  it("filters on kind and name search", async () => {
+  it("filters agents in Elasticsearch and applies kind and name filters", async () => {
     const { authenticator } = await createResourceTest({ role: "user" });
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
@@ -183,11 +183,21 @@ describe("fetchUserAutomationTriggers", () => {
       period: PERIOD,
       limit: 25,
       offset: 0,
-      filter: { kinds: ["schedule"] },
+      filter: { agentIds: [agent.sId], kinds: ["schedule"] },
     });
     expect(kindFiltered.triggers.map((t) => t.triggerId)).toEqual([
       schedule.sId,
     ]);
+    expect(vi.mocked(searchConsumptionAnalytics)).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        bool: {
+          filter: expect.arrayContaining([
+            { term: { "agent.attributed_id": agent.sId } },
+          ]),
+        },
+      }),
+      expect.anything()
+    );
 
     const searched = await fetchUserAutomationTriggers(authenticator, {
       period: PERIOD,

@@ -243,7 +243,7 @@ export async function fetchTriggersRanking(
   );
   const ranked = buckets.map((bucket) => ({
     triggerId: String(bucket.key),
-    runCount: Math.round(bucket[RUNS_AGG]?.value ?? 0),
+    runCount: bucket[RUNS_AGG]?.value ?? 0,
     credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
   }));
   // Triggers that never ran have nothing to compare a "how often" or "per

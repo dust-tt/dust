@@ -72,7 +72,10 @@ export async function fetchUserAutomationTriggers(
     period,
     limit: CARDINALITY_PRECISION_THRESHOLD,
     offset: 0,
-    consumptionScopeFilter: { users: [auth.getNonNullableUser().sId] },
+    consumptionScopeFilter: {
+      users: [auth.getNonNullableUser().sId],
+      agents: filter?.agentIds,
+    },
   });
   const consumptionByTriggerId: Map<string, TriggerConsumption> =
     rankingResult.isOk()
