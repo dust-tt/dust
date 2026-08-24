@@ -360,7 +360,10 @@ export function PokeUsageTab({
     return (
       <div className="flex flex-col gap-4">
         <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />
-        <PokeMembersUsageTable owner={owner} />
+        <PokeMembersUsageTable
+          owner={owner}
+          isCreditBased={hasMetronomeBillingUsage}
+        />
       </div>
     );
   }
@@ -395,7 +398,10 @@ export function PokeUsageTab({
       <PokeDefaultAlertsCard defaultAlerts={defaultAlerts} />
       <PokeCreditPoolCard owner={owner} />
       <PokeTopUpsHistoryTable owner={owner} />
-      <PokeMembersUsageTable owner={owner} />
+      <PokeMembersUsageTable
+        owner={owner}
+        isCreditBased={hasMetronomeBillingUsage}
+      />
       {billingCycleStartDay && (
         <PokeAwuUsageFromAnalyticsChart
           owner={owner}

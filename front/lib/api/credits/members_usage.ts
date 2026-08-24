@@ -1642,6 +1642,7 @@ async function resolveMembersUsagePageUsers({
         workspace,
         userIds: allUsers.map((u) => u.sId),
         freeSeatUserIds,
+        cycle: spendLimitCycleOverrideForAuth(auth),
       });
       for (const u of allUsers) {
         sortKeyByUserId.set(u.sId, creditsByUserId.get(u.sId) ?? 0);
@@ -1789,6 +1790,10 @@ export async function getMembersUsage({
       workspace,
       userIds: users.map((u) => u.sId),
       freeSeatUserIds,
+      // Non-credit workspaces have no Metronome billing period to anchor the
+      // window on; fall back to the UTC calendar month (same window the spend
+      // caps use) so consumed (ES) reflects real usage instead of 0.
+      cycle: spendLimitCycleOverrideForAuth(auth),
     }),
     fetchSeatDataForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,

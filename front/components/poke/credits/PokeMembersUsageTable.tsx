@@ -160,6 +160,10 @@ function FreeSeatBalanceBadges({
 
 interface PokeMembersUsageTableProps {
   owner: WorkspaceType;
+  // Credit-priced workspaces (Metronome contract). Gates the credit-only
+  // columns (user cap, seat balance/allowance, credit state), which are
+  // meaningless for non-credit workspaces.
+  isCreditBased: boolean;
 }
 
 function makeColumns({
@@ -168,14 +172,18 @@ function makeColumns({
   orderColumn,
   orderDirection,
   onToggleSort,
+  showFairUse,
+  showCreditColumns,
 }: {
   owner: WorkspaceType;
   onReconciled: () => void;
   orderColumn: OrderColumn;
   orderDirection: SortDirection;
   onToggleSort: (column: OrderColumn) => void;
+  showFairUse: boolean;
+  showCreditColumns: boolean;
 }): ColumnDef<MemberUsageType>[] {
-  return [
+  const columns: ColumnDef<MemberUsageType>[] = [
     {
       accessorKey: "name",
       enableSorting: false,
@@ -402,9 +410,30 @@ function makeColumns({
       ),
     },
   ];
+
+  return columns.filter((col) => {
+    const key =
+      "accessorKey" in col && typeof col.accessorKey === "string"
+        ? col.accessorKey
+        : (col.id ?? "");
+    if (key === "fairUse") {
+      return showFairUse;
+    }
+    if (
+      key === "spendLimitAwuCredits" ||
+      key === "memberUsageLimit" ||
+      key === "creditState"
+    ) {
+      return showCreditColumns;
+    }
+    return true;
+  });
 }
 
-export function PokeMembersUsageTable({ owner }: PokeMembersUsageTableProps) {
+export function PokeMembersUsageTable({
+  owner,
+  isCreditBased,
+}: PokeMembersUsageTableProps) {
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -480,6 +509,10 @@ export function PokeMembersUsageTable({ owner }: PokeMembersUsageTableProps) {
     []
   );
 
+  // The fair-use limit is plan-level, so it's uniform across members: show the
+  // column when any member carries a fair-use limit (i.e. the plan has one).
+  const showFairUse = members.some((m) => Boolean(m.fairUse));
+
   const columns = useMemo(
     () =>
       makeColumns({
@@ -488,8 +521,18 @@ export function PokeMembersUsageTable({ owner }: PokeMembersUsageTableProps) {
         orderColumn,
         orderDirection,
         onToggleSort: toggleSort,
+        showFairUse,
+        showCreditColumns: isCreditBased,
       }),
-    [owner, mutateMembersUsage, orderColumn, orderDirection, toggleSort]
+    [
+      owner,
+      mutateMembersUsage,
+      orderColumn,
+      orderDirection,
+      toggleSort,
+      showFairUse,
+      isCreditBased,
+    ]
   );
 
   if (isMembersUsageError) {
@@ -517,12 +560,14 @@ export function PokeMembersUsageTable({ owner }: PokeMembersUsageTableProps) {
           options={MEMBERSHIP_SEAT_TYPES}
           onChange={handleSeatTypeFilterChange}
         />
-        <EnumFilterDropdown
-          label="Credit state"
-          value={creditStateFilter}
-          options={USER_CREDIT_STATES}
-          onChange={handleCreditStateFilterChange}
-        />
+        {isCreditBased && (
+          <EnumFilterDropdown
+            label="Credit state"
+            value={creditStateFilter}
+            options={USER_CREDIT_STATES}
+            onChange={handleCreditStateFilterChange}
+          />
+        )}
       </div>
       <PokeDataTable
         columns={columns}
