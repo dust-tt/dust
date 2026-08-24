@@ -79,7 +79,10 @@ function RunningCell({ row }: { row: TriggerRowData }) {
         <SliderToggle
           selected={row.status === "enabled"}
           disabled={row.isStatusPending}
-          onClick={row.onToggleStatus}
+          onClick={(event) => {
+            event.stopPropagation();
+            row.onToggleStatus();
+          }}
         />
       );
     case "disabled_by_manager":
@@ -210,6 +213,7 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
 
   const {
     triggers,
+    agents,
     totalCount,
     medianRunCount,
     medianCostPerRun,
@@ -323,6 +327,7 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
           filter={filter}
           onFilterChange={setFilter}
           categories={USER_AUTOMATIONS_FILTER_CATEGORIES}
+          agentOptions={agents}
         />
       </div>
       <AutomationsFilterSummary

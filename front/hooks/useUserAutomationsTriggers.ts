@@ -44,6 +44,8 @@ export function useUserAutomationsTriggers({
 
   return {
     triggers: data?.triggers ?? emptyArray<AutomationTriggerRow>(),
+    agents:
+      data?.agents ?? emptyArray<UserAutomationTriggers["agents"][number]>(),
     totalCount: data?.totalCount ?? 0,
     medianRunCount: data?.medianRunCount ?? 0,
     medianCostPerRun: data?.medianCostPerRun ?? 0,
