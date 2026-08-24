@@ -4,7 +4,7 @@ import { GrantFreeCreditsButton } from "@app/components/poke/credits/GrantFreeCr
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCredits, formatCreditsPrecise } from "@app/lib/client/credits";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { getMetronomeAlertUrl } from "@app/lib/metronome/urls";
 import { usePokeMembersUsage } from "@app/poke/swr/credits";
@@ -237,17 +237,17 @@ function makeColumns({
         } = row.original;
         return (
           <div className="flex flex-col text-xs">
-            <span>ES {formatCredits(consumedAwuCredits)}</span>
+            <span>ES {formatCreditsPrecise(consumedAwuCredits)}</span>
             <span className="text-muted-foreground">
               RL{" "}
               {rateLimiterSpendAwuCredits !== null
-                ? formatCredits(rateLimiterSpendAwuCredits)
+                ? formatCreditsPrecise(rateLimiterSpendAwuCredits)
                 : "-"}
             </span>
             <span className="text-muted-foreground">
               MT{" "}
               {metronomeConsumedAwuCredits !== null
-                ? formatCredits(metronomeConsumedAwuCredits)
+                ? formatCreditsPrecise(metronomeConsumedAwuCredits)
                 : "-"}
             </span>
           </div>

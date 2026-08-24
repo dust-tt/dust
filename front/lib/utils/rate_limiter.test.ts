@@ -1,4 +1,8 @@
 import {
+  microCreditsToCredits,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
+import {
   afterAll,
   afterEach,
   beforeAll,
@@ -369,5 +373,54 @@ describe("fixed-window counter", () => {
     const countB = await getFixedWindowCount({ key, bounds: windowB });
     expect(countA.isOk() && countA.value).toBe(4);
     expect(countB.isOk() && countB.value).toBe(7);
+  });
+
+  // Mirrors the spend-cap recorder/enforcer: the counter stores microCredits
+  // (credits × 1e6) so it survives a switch to fractional credits. Recording a
+  // fractional 2.5-credit delta must land as 2_500_000 microCredits, and
+  // enforcement blocks once the counter reaches the cap scaled up the same way
+  // (cap × 1e6).
+  it("stores fractional credits as integer microCredits and enforces caps at the microCredit scale", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    const bounds = boundsFor("microcredits");
+    fixedWindowKeysToExpire.add(`${key}:${bounds.label}`);
+
+    const capCredits = 5;
+
+    // First fractional delta: 2.5 credits recorded as microCredits.
+    await addFixedWindowCount({
+      key,
+      bounds,
+      incrementBy: roundCreditsToMicroCredits(2.5),
+      logger,
+    });
+
+    const afterFirst = await getFixedWindowCount({ key, bounds });
+    expect(afterFirst.isOk() && afterFirst.value).toBe(2_500_000);
+    // 2.5 < 5 credits: enforcement does not block yet.
+    expect(
+      afterFirst.isOk() &&
+        afterFirst.value >= roundCreditsToMicroCredits(capCredits)
+    ).toBe(false);
+
+    // Second fractional delta brings the total to exactly the cap.
+    await addFixedWindowCount({
+      key,
+      bounds,
+      incrementBy: roundCreditsToMicroCredits(2.5),
+      logger,
+    });
+
+    const afterSecond = await getFixedWindowCount({ key, bounds });
+    expect(afterSecond.isOk() && afterSecond.value).toBe(5_000_000);
+    // Reached cap × 1e6: enforcement blocks.
+    expect(
+      afterSecond.isOk() &&
+        afterSecond.value >= roundCreditsToMicroCredits(capCredits)
+    ).toBe(true);
+    // The poke read converts the counter back to whole credits.
+    expect(afterSecond.isOk() && microCreditsToCredits(afterSecond.value)).toBe(
+      5
+    );
   });
 });

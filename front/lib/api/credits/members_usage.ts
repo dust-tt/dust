@@ -9,6 +9,10 @@ import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import { getProgrammaticUsageFilterClause } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import type { BillingCycle } from "@app/lib/client/subscription";
+import {
+  microCreditsToCredits,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
 import { listPerUserCreditBalanceAlertsForWorkspace } from "@app/lib/metronome/alerts/per_user_credit_balance";
 import type {
   MetronomeCapAlertIds,
@@ -1081,7 +1085,7 @@ export async function resyncSpendLimitCountersFromEsUsage(
           user.toJSON()
         ),
         bounds,
-        value: Math.max(0, Math.round(consumed)),
+        value: Math.max(0, roundCreditsToMicroCredits(consumed)),
         logger,
       });
       return setResult.isOk();
@@ -1139,7 +1143,7 @@ export async function resyncApiKeySpendLimitCountersFromEsUsage(
       const setResult = await setFixedWindowCount({
         key: makeApiKeySpendLimitAwuCreditsRateLimitKey(key.id),
         bounds,
-        value: Math.max(0, Math.round(consumed)),
+        value: Math.max(0, roundCreditsToMicroCredits(consumed)),
         logger,
       });
       return setResult.isOk();
@@ -1195,7 +1199,7 @@ export async function resyncProgrammaticSpendLimitCounterFromEsUsage(
       workspace
     ),
     bounds,
-    value: Math.max(0, Math.round(consumed)),
+    value: Math.max(0, roundCreditsToMicroCredits(consumed)),
     logger,
   });
   return new Ok({ programmaticCounterSeeded: setResult.isOk() });
@@ -1875,7 +1879,12 @@ export async function getMembersUsage({
             ),
             bounds,
           });
-          return [u.sId, result.isOk() ? result.value : 0] as const;
+          // The counter stores microCredits; convert back to credits so it
+          // lines up with the ES/MT figures (all in credits).
+          return [
+            u.sId,
+            result.isOk() ? microCreditsToCredits(result.value) : 0,
+          ] as const;
         },
         { concurrency: 8 }
       );

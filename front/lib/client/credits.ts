@@ -9,6 +9,14 @@ export function formatCredits(credits: number): string {
   return credits.toLocaleString("en-US", { maximumFractionDigits: 1 });
 }
 
+// Format AWU credits with full fractional precision (up to 6 decimals,
+// trailing zeros trimmed). Used by Poke debugging views that surface
+// microcredit-derived figures (e.g. the rate-limiter counter), where an
+// integer-rounded display would hide fractional-credit divergence.
+export function formatCreditsPrecise(credits: number): string {
+  return credits.toLocaleString("en-US", { maximumFractionDigits: 6 });
+}
+
 export function formatCreditValue(credits: number): string {
   return `${formatCredits(credits)} credit${pluralize(credits)}`;
 }

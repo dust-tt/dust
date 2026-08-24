@@ -5,6 +5,7 @@ import {
   reconcileWorkspaceApiKeyCreditStates,
 } from "@app/lib/api/metronome/reconcile_credit_state";
 import type { Authenticator } from "@app/lib/auth";
+import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import {
   clearMetronomeApiKeyCapAlert,
   upsertMetronomeApiKeyCapAlert,
@@ -353,8 +354,17 @@ async function readApiKeySpendLimitCountWithLazySeed(
     key: redisKey,
     bounds,
     logger,
-    fetchSeedValue: () =>
-      getEsConsumedAwuCreditsForApiKey(auth, { apiKeyName }),
+    // The counter stores microCredits; convert the ES credit value before
+    // seeding. Preserve the null contract (ES read failed → skip seed, do not
+    // seed as 0).
+    fetchSeedValue: async () => {
+      const consumedAwuCredits = await getEsConsumedAwuCreditsForApiKey(auth, {
+        apiKeyName,
+      });
+      return consumedAwuCredits === null
+        ? null
+        : roundCreditsToMicroCredits(consumedAwuCredits);
+    },
   });
 }
 
@@ -400,7 +410,9 @@ export async function isApiKeySpendLimitRateCapReached(
     return false;
   }
 
-  return count >= threshold;
+  // The counter stores microCredits; scale the credit threshold up so the
+  // comparison stays integer-on-integer.
+  return count >= roundCreditsToMicroCredits(threshold);
 }
 
 /**
@@ -415,23 +427,10 @@ export async function recordApiKeySpendLimitUsage(
   auth: Authenticator,
   { keyModelId, incrementBy }: { keyModelId: number; incrementBy: number }
 ): Promise<void> {
-  // Only whole positive credits are recordable (the counter is an integer
-  // INCRBY); skip anything else rather than letting it reach the counter. A
-  // non-integer should never happen (credits are integer end-to-end), so log
-  // it loudly; a non-positive delta is a normal no-op (e.g. a retry with no
-  // new usage) and stays silent.
-  if (!Number.isInteger(incrementBy)) {
-    logger.error(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        keyModelId,
-        incrementBy,
-      },
-      "[ApiKeySpendLimitRateCap] Non-integer credit delta; skipping counter update."
-    );
-    return;
-  }
-  if (incrementBy <= 0) {
+  // Credits may be fractional; the counter stores microCredits (integer
+  // INCRBY), so convert before recording. A non-positive or non-finite delta is
+  // a normal no-op (e.g. a retry with no new usage) and stays silent.
+  if (!Number.isFinite(incrementBy) || incrementBy <= 0) {
     return;
   }
 
@@ -442,10 +441,12 @@ export async function recordApiKeySpendLimitUsage(
     return;
   }
 
+  const incrementByMicroCredits = roundCreditsToMicroCredits(incrementBy);
+
   await addFixedWindowCount({
     key: makeApiKeySpendLimitAwuCreditsRateLimitKey(keyModelId),
     bounds,
-    incrementBy,
+    incrementBy: incrementByMicroCredits,
     logger,
   });
 }
