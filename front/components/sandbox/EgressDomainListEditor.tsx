@@ -80,7 +80,7 @@ export function EgressDomainListEditor({
     domainInputResult?.isErr() === true || isDuplicate;
   const canAddDomain = normalizedDomain !== null && !isDuplicate && !isUpdating;
 
-  const handleAddDomain = async () => {
+  const handleSubmitDomain = async () => {
     if (!canAddDomain || normalizedDomain === null) {
       return;
     }
@@ -104,7 +104,7 @@ export function EgressDomainListEditor({
           className="flex flex-col gap-3 sm:flex-row sm:items-start"
           onSubmit={(event) => {
             event.preventDefault();
-            void handleAddDomain();
+            void handleSubmitDomain();
           }}
         >
           <div className="grow">

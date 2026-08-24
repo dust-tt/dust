@@ -188,7 +188,11 @@ app.post(
       domain: parsedBody.data.domain,
     });
     if (result.isErr()) {
-      // Invalid domain or the pending-request cap — both are caller-actionable.
+      // The reachable failures are caller-actionable — an invalid domain or a
+      // full pending-request cap — so 400. requestOwnerPolicyDomain returns a
+      // flat Error, so a rare GCS write failure also lands here rather than
+      // 500; that is accepted because mapping the path to 500 would instead
+      // mislabel the common, user-actionable cap case.
       return apiError(ctx, {
         status_code: 400,
         api_error: {
