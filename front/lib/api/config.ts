@@ -6,7 +6,7 @@ const PRODUCTION_DUST_API = "https://dust.tt";
 
 // Same for every user/workspace: how much a user can spend in a billing cycle before the agent
 // loop pauses and asks them to confirm they want to keep going.
-const DEFAULT_WORKFLOW_ALERT_THRESHOLD_AWU_CREDITS = 1;
+const DEFAULT_WORKFLOW_ALERT_THRESHOLD_AWU_CREDITS = 1500;
 
 // Pluggable base URL resolver (e.g. RegionContext in the SPA).
 let baseUrlResolver: (() => string) | null = null;
