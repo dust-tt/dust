@@ -922,7 +922,7 @@ async function renderSingleAgentMessage(
     reactions: reactionsByMessageId[message.id] ?? [],
     prunedContext: agentMessage.prunedContext ?? false,
     pausedAtWorkflowAlertThreshold:
-      agentMessage.pausedAtWorkflowAlertThreshold ?? false,
+      agentMessage.workflowAlertThresholdStatus === "paused",
     costCredits: agentMessage.costCredits ?? null,
     // Aggregated only when rendering a single agent message (see
     // batchRenderAgentMessages), so it is `null` for bulk conversation rendering.

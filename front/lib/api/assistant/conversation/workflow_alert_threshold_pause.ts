@@ -3,6 +3,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 // TODO(2026-07-31 QOS): move these message fetches behind a resource method instead of using
 // models directly in lib/api.
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
   MessageModel,
@@ -49,11 +50,7 @@ async function findPausedAgentMessage(
         model: AgentMessageModel,
         as: "agentMessage",
         required: true,
-        attributes: [
-          "id",
-          "pausedAtWorkflowAlertThreshold",
-          "pausedAtWorkflowAlertThresholdStep",
-        ],
+        attributes: ["id", "workflowAlertThresholdStatus"],
       },
     ],
   });
@@ -64,7 +61,7 @@ async function findPausedAgentMessage(
     );
   }
 
-  if (!message.agentMessage.pausedAtWorkflowAlertThreshold) {
+  if (message.agentMessage.workflowAlertThresholdStatus !== "paused") {
     return new Err(
       new DustError(
         "agent_message_not_resumable",
@@ -72,6 +69,18 @@ async function findPausedAgentMessage(
       )
     );
   }
+
+  // Like every other resume path, the step to relaunch from is derived from the message's own
+  // step content rather than stored on the message: the loop was fully stopped (not mid-tool), so
+  // no new step content can have been written since the pause.
+  const lastStepContent = await AgentStepContentModel.findOne({
+    where: {
+      agentMessageId: message.agentMessage.id,
+      workspaceId,
+    },
+    attributes: ["step"],
+    order: [["step", "DESC"]],
+  });
 
   const parentMessage = await MessageModel.findOne({
     where: {
@@ -114,7 +123,7 @@ async function findPausedAgentMessage(
     agentMessageId: message.sId,
     agentMessageVersion: message.version,
     agentMessageModelId: message.agentMessage.id,
-    pausedAtStep: message.agentMessage.pausedAtWorkflowAlertThresholdStep ?? 0,
+    pausedAtStep: (lastStepContent?.step ?? 0) + 1,
     userMessageId: parentMessage.sId,
     userMessageVersion: parentMessage.version,
     userMessageOrigin: parentMessage.userMessage.userContextOrigin,
@@ -135,14 +144,13 @@ async function clearWorkflowAlertThresholdPause(
 ): Promise<{ applied: boolean }> {
   const [updatedCount] = await AgentMessageModel.update(
     {
-      pausedAtWorkflowAlertThreshold: false,
-      ...(acknowledge ? { workflowAlertThresholdAcknowledged: true } : {}),
+      workflowAlertThresholdStatus: acknowledge ? "acknowledged" : null,
     },
     {
       where: {
         id: agentMessageModelId,
         workspaceId: auth.getNonNullableWorkspace().id,
-        pausedAtWorkflowAlertThreshold: true,
+        workflowAlertThresholdStatus: "paused",
       },
     }
   );
