@@ -1,17 +1,16 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { LinkWrapper } from "@app/lib/platform";
 import {
   useAgentConfigurations,
   useSimilarAgents,
 } from "@app/lib/swr/assistants";
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { Avatar, Icon, LinkExternal01, Spinner } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useReducer } from "react";
+import { Avatar, Icon, InfoCircle, Spinner } from "@dust-tt/sparkle";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { useWatch } from "react-hook-form";
 
 const DEBOUNCE_DELAY_MS = 250;
@@ -70,10 +69,11 @@ interface AgentBuilderSimilarAgentsSectionProps {
 export function AgentBuilderSimilarAgentsSection({
   agentConfigurationId,
 }: AgentBuilderSimilarAgentsSectionProps) {
-  const { owner } = useAgentBuilderContext();
+  const { owner, user } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags();
   const isCreatingNew = !agentConfigurationId;
   const isSimilarAgentsCheckEnabled = hasFeature("similar_agents_check");
+  const [displayedAgentId, setDisplayedAgentId] = useState<string | null>(null);
 
   const description = useWatch<
     AgentBuilderFormData,
@@ -194,13 +194,13 @@ export function AgentBuilderSimilarAgentsSection({
                 <span className="text-sm font-medium text-foreground">
                   {agent.name}
                 </span>
-                <LinkWrapper
-                  href={getAgentBuilderRoute(owner.sId, agent.sId)}
-                  target="_blank"
+                <button
+                  type="button"
+                  onClick={() => setDisplayedAgentId(agent.sId)}
                   className="text-muted-foreground hover:text-foreground"
                 >
-                  <Icon visual={LinkExternal01} size="xs" />
-                </LinkWrapper>
+                  <Icon visual={InfoCircle} size="xs" />
+                </button>
               </div>
               <span className="line-clamp-1 text-xs text-muted-foreground">
                 {agent.description}
@@ -209,6 +209,12 @@ export function AgentBuilderSimilarAgentsSection({
           </div>
         ))}
       </div>
+      <AgentDetailsSheet
+        owner={owner}
+        user={user}
+        agentId={displayedAgentId}
+        onClose={() => setDisplayedAgentId(null)}
+      />
     </div>
   );
 }
