@@ -22,17 +22,6 @@ const { expireWakeUpActivity, runWakeUpActivity } = proxyActivities<
   },
 });
 
-function isActivityFailureOf(
-  error: unknown,
-  activityType: string
-): error is ActivityFailure {
-  if (!(error instanceof ActivityFailure)) {
-    return false;
-  }
-
-  return error.activityType === activityType;
-}
-
 export async function agentTriggerWorkflow({
   userId,
   workspaceId,
@@ -44,25 +33,20 @@ export async function agentTriggerWorkflow({
   triggerId: string;
   webhookRequestId?: number;
 }) {
-  try {
-    await runTriggeredAgentsActivity({
-      userId,
-      workspaceId,
-      triggerId,
-      webhookRequestId,
-    });
-  } catch (error) {
-    // Older workers threw TriggerNonRetryableError for expected terminal states
-    // (trigger, user or agent gone before the run); newer ones log and return.
-    if (
-      isActivityFailureOf(error, "runTriggeredAgentsActivity") &&
-      error.retryState === RetryState.NON_RETRYABLE_FAILURE
-    ) {
-      return;
-    }
+  await runTriggeredAgentsActivity({
+    userId,
+    workspaceId,
+    triggerId,
+    webhookRequestId,
+  });
+}
 
-    throw error;
+function isRunWakeUpActivityFailure(error: unknown): error is ActivityFailure {
+  if (!(error instanceof ActivityFailure)) {
+    return false;
   }
+
+  return error.activityType === "runWakeUpActivity";
 }
 
 function isWakeUpActivityRetryExhausted(error: ActivityFailure): boolean {
@@ -82,7 +66,7 @@ export async function wakeUpWorkflow({
   try {
     await runWakeUpActivity({ workspaceId, wakeUpId });
   } catch (error) {
-    if (isActivityFailureOf(error, "runWakeUpActivity")) {
+    if (isRunWakeUpActivityFailure(error)) {
       // Older workers used WakeUpNonRetryableError for expected stale wake-up states.
       if (error.retryState === RetryState.NON_RETRYABLE_FAILURE) {
         return;
