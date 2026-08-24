@@ -31,10 +31,6 @@ export async function checkCreditsActivity(
   });
 }
 
-// Spend only grows, so once the user has confirmed continuing past the threshold for this
-// message, every later run (including ones relaunched by continuing) would otherwise cross it
-// again on the very first step and pause right back. This is a single-row lookup, not the full
-// conversation fetch the crossed path below does.
 async function hasAcknowledgedWorkflowAlertThreshold(
   auth: Authenticator,
   { agentMessageId }: { agentMessageId: string }
@@ -59,15 +55,9 @@ async function hasAcknowledgedWorkflowAlertThreshold(
 }
 
 /**
- * Cheap per-step check (no conversation fetch): does the current user's spend cross their
- * workflow alert threshold? Only on the step it first crosses does this load the conversation
- * and publish a notification event — the workflow guards against calling this again for the
- * same message once it returns `crossed: true`, so the heavier fetch happens at most once.
- *
- * Returns `acknowledged: true` once, the first time it observes the durable "acknowledged" flag,
- * so the workflow can stop calling this activity (and reading that flag) for the rest of the
- * execution: acknowledgment can't change mid-execution, since the only way to set it requires a
- * pause, which requires this execution to have already exited.
+ * Does the current user's spend cross their workflow alert threshold?
+ * `acknowledged` lets the workflow stop calling this activity for the
+ * rest of the execution, since it can't flip back once observed true.
  */
 export async function checkWorkflowAlertThresholdActivity(
   authType: AuthenticatorType,
@@ -100,12 +90,7 @@ export async function checkWorkflowAlertThresholdActivity(
 
   const step = maxBy(agentMessage.contents, "step")?.step ?? 0;
 
-  // Persisted here (rather than in a dedicated finalize step) so it survives a refresh: the
-  // workflow just falls through to the ordinary success finalize path when it breaks the loop,
-  // exactly like a blocked tool action's `needsApproval` exit — the durable "paused" marker is
-  // this activity's job, the same way a blocked action's status is set when it's first created.
-  // The step to resume at is not stored here: like every other resume path, it's derived from the
-  // message's own agentStepContents rows when the pause is resolved.
+  // Persisted here so the pause survives a refresh.
   await AgentMessageModel.update(
     {
       workflowAlertThresholdStatus: "paused",

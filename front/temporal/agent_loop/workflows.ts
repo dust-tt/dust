@@ -140,12 +140,14 @@ const { checkCreditsActivity } = proxyActivities<typeof creditCheckActivities>({
   },
 });
 
+// No retries: this is a fail-open check, so a
+// failure should resolve immediately rather than delaying the step with retries.
 const { checkWorkflowAlertThresholdActivity } = proxyActivities<
   typeof creditCheckActivities
 >({
-  startToCloseTimeout: "2 minutes",
+  startToCloseTimeout: "1 minutes",
   retry: {
-    maximumAttempts: 3,
+    maximumAttempts: 1,
   },
 });
 
