@@ -1,4 +1,3 @@
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import logger from "@app/logger/logger";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { normalizeError } from "@extension/shared/lib/utils";
@@ -20,7 +19,6 @@ export function useMcpServer() {
 
   const { workspace } = useExtensionAuth();
   const workspaceId = workspace?.sId;
-  const { hasFeature } = useFeatureFlags();
 
   const disconnectServer = useCallback(async () => {
     if (platform.mcp) {
@@ -45,10 +43,7 @@ export function useMcpServer() {
       return;
     }
 
-    if (
-      hasFeature("browser_extension_mcp_tools") &&
-      workspace?.metadata?.disableExtensionMcpTools === true
-    ) {
+    if (workspace?.metadata?.disableExtensionMcpTools === true) {
       setIsSupported(false);
       return;
     }
@@ -116,7 +111,7 @@ export function useMcpServer() {
       setIsConnected(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- workspace object excluded; workspaceId triggers re-runs.
-  }, [platform.mcp, workspaceId, hasFeature]);
+  }, [platform.mcp, workspaceId]);
 
   return {
     server,

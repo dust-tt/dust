@@ -281,11 +281,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Dummy feature flag used for testing feature flag behavior",
     stage: "dust_only",
   },
-  browser_extension_mcp_tools: {
-    description:
-      "Show the browser extension MCP tools toggle in workspace access settings",
-    stage: "dust_only",
-  },
   sensitivity_labels: {
     description:
       "Enable Microsoft sensitivity labels for data classification on connectors and MCP servers",
