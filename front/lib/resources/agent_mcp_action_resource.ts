@@ -674,73 +674,59 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     }
 
     const workspaceId = auth.getNonNullableWorkspace().id;
-    const agentMessageIds = [
-      ...new Set(
-        functionCallStepContents.map((content) => content.agentMessageId)
-      ),
-    ];
 
     const toolExecutions = await AgentStepContentToolExecutionModel.findAll({
-      attributes: ["agentMCPActionId", "stepContentId"],
+      attributes: ["stepContentId", "agentMCPActionId"],
       where: {
         workspaceId,
-        agentMessageId: { [Op.in]: agentMessageIds },
+        stepContentId: {
+          [Op.in]: functionCallStepContents.map((content) => content.id),
+        },
       },
     });
-
-    const stepContentsMap = new Map(
-      functionCallStepContents.map((content) => [content.id, content])
-    );
-    const actionIdsByStepContentId = new Map<ModelId, ModelId[]>();
-    for (const toolExecution of toolExecutions) {
-      if (!stepContentsMap.has(toolExecution.stepContentId)) {
-        continue;
-      }
-      const actionIds =
-        actionIdsByStepContentId.get(toolExecution.stepContentId) ?? [];
-      actionIds.push(toolExecution.agentMCPActionId);
-      actionIdsByStepContentId.set(toolExecution.stepContentId, actionIds);
-    }
-    if (actionIdsByStepContentId.size === 0) {
+    if (toolExecutions.length === 0) {
       return [];
     }
 
     const actions = await AgentMCPActionModel.findAll({
       where: {
         workspaceId,
-        agentMessageId: { [Op.in]: agentMessageIds },
+        id: {
+          [Op.in]: toolExecutions.map(
+            (toolExecution) => toolExecution.agentMCPActionId
+          ),
+        },
       },
     });
     const actionsById = new Map(actions.map((action) => [action.id, action]));
+    const stepContentsMap = new Map(
+      functionCallStepContents.map((content) => [content.id, content])
+    );
 
     const resources: AgentMCPActionResource[] = [];
-    for (const stepContent of functionCallStepContents) {
-      const actionIds = actionIdsByStepContentId.get(stepContent.id) ?? [];
-      for (const actionId of actionIds) {
-        const action = actionsById.get(actionId);
-        assert(action, "Action not found.");
+    for (const toolExecution of toolExecutions) {
+      const action = actionsById.get(toolExecution.agentMCPActionId);
+      assert(action, "Action not found.");
 
-        // Sandbox-child actions share their parent's stepContent and must not
-        // surface as separate executions in the conversation timeline.
-        if (
-          isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
-        ) {
-          continue;
-        }
-
-        const internalMCPServerName = action.toolConfiguration.toolServerId
-          ? getInternalMCPServerNameFromSId(
-              action.toolConfiguration.toolServerId
-            )
-          : null;
-
-        resources.push(
-          new this(this.model, action.get(), stepContent, {
-            internalMCPServerName,
-            mcpServerId: action.toolConfiguration.toolServerId,
-          })
-        );
+      // Sandbox-child actions share their parent's stepContent and must not
+      // surface as separate executions in the conversation timeline.
+      if (isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)) {
+        continue;
       }
+
+      const stepContent = stepContentsMap.get(toolExecution.stepContentId);
+      assert(stepContent, "Step content not found.");
+
+      const internalMCPServerName = action.toolConfiguration.toolServerId
+        ? getInternalMCPServerNameFromSId(action.toolConfiguration.toolServerId)
+        : null;
+
+      resources.push(
+        new this(this.model, action.get(), stepContent, {
+          internalMCPServerName,
+          mcpServerId: action.toolConfiguration.toolServerId,
+        })
+      );
     }
 
     return resources;
