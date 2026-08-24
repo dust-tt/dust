@@ -1,22 +1,35 @@
-import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
 import type {
-  PokeGetTriggerConsumptionResponse,
   PokeListTriggers,
-  PokeTriggerConsumptionStats,
+  PokeTriggerOrderColumn,
+  PokeTriggerProviderFilter,
+  PokeTriggerSearchBody,
+  PokeTriggerSearchResponse,
+  PokeTriggerSearchRow,
 } from "@app/lib/api/poke/triggers";
-import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { PokeGetWebhookRequestsResponseBody } from "@app/types/api/poke/triggers";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
+import { mutate as globalMutate } from "swr";
 
-const EMPTY_TRIGGER_CONSUMPTION_STATS: Record<
-  string,
-  PokeTriggerConsumptionStats
-> = {};
+const pokeTriggersUrl = (workspaceId: string) =>
+  `/api/poke/workspaces/${workspaceId}/triggers`;
+
+export async function clearPokeTriggerCaches(owner: LightWorkspaceType) {
+  const triggersUrl = pokeTriggersUrl(owner.sId);
+  const searchUrl = `${triggersUrl}/search`;
+
+  await globalMutate(
+    (key) =>
+      key === triggersUrl || (Array.isArray(key) && key[0] === searchUrl),
+    undefined,
+    { revalidate: false }
+  );
+}
 
 export function usePokeTriggers({
   disabled,
@@ -25,57 +38,72 @@ export function usePokeTriggers({
   const { fetcher } = useFetcher();
   const triggersFetcher: Fetcher<PokeListTriggers> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/triggers`,
+    pokeTriggersUrl(owner.sId),
     triggersFetcher,
     { disabled }
   );
 
   return {
     data: data?.triggers ?? [],
-    isLoading: !error && !data,
+    isLoading: !disabled && !error && !data,
     isError: error,
     mutate,
   };
 }
 
-export function usePokeTriggerConsumption({
+export function usePokeTriggerSearch({
   owner,
   period,
-  triggerIds,
+  limit,
+  offset,
+  search,
+  providers,
+  orderColumn,
+  orderDirection,
   disabled,
 }: {
   owner: LightWorkspaceType;
   period: ConsumptionPeriodSelection;
-  triggerIds: string[];
+  limit: number;
+  offset: number;
+  search?: string;
+  providers?: PokeTriggerProviderFilter[];
+  orderColumn: PokeTriggerOrderColumn;
+  orderDirection: "asc" | "desc";
   disabled?: boolean;
 }) {
-  const url = `/api/poke/workspaces/${owner.sId}/triggers/consumption`;
-  const body = {
+  const { fetcherWithBody } = useFetcher();
+  const url = `${pokeTriggersUrl(owner.sId)}/search`;
+  const body: PokeTriggerSearchBody = {
     period: period.kind,
     days:
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
-    triggerIds,
+    limit,
+    offset,
+    search: search?.trim() || undefined,
+    providers,
+    orderColumn,
+    orderDirection,
   };
-  const isDisabled = Boolean(disabled) || triggerIds.length === 0;
 
-  const { data, error, isLoading, isValidating } = useConsumptionQuery<
-    typeof body,
-    PokeGetTriggerConsumptionResponse
-  >({
-    url,
-    body,
-    disabled: isDisabled,
+  const { data, error, isValidating, mutate } = useSWRWithDefaults<
+    [string, PokeTriggerSearchBody, string],
+    PokeTriggerSearchResponse
+  >([url, body, "POST"], fetcherWithBody, {
+    disabled,
+    keepPreviousData: true,
+    revalidateOnFocus: false,
   });
-  const statsByTriggerId = data
-    ? Object.fromEntries(
-        data.stats.map(({ triggerId, ...stats }) => [triggerId, stats])
-      )
-    : EMPTY_TRIGGER_CONSUMPTION_STATS;
 
   return {
-    statsByTriggerId,
-    isConsumptionLoading: !isDisabled && !error && (isLoading || isValidating),
-    isConsumptionError: error,
+    triggers: data?.triggers ?? emptyArray<PokeTriggerSearchRow>(),
+    totalTriggers: data?.total ?? 0,
+    appliedOrderColumn: data?.appliedOrderColumn,
+    appliedOrderDirection: data?.appliedOrderDirection,
+    isTriggersLoading: !disabled && !error && !data,
+    isTriggersValidating: !disabled && !error && isValidating,
+    isTriggersError: error,
+    mutateTriggers: mutate,
   };
 }
 

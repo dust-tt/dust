@@ -11,10 +11,14 @@ export function PokeColumnSortableHeader<TData>({
   column,
   label,
 }: PokeColumnSortableHeaderProps<TData>) {
+  const nextDirection =
+    column.getIsSorted() === "asc" ? "descending" : "ascending";
+
   return (
     <div className="flex items-center space-x-2">
       <p>{label}</p>
       <IconButton
+        aria-label={`Sort ${label} ${nextDirection}`}
         variant="outline"
         icon={ArrowsUpDownIcon}
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}

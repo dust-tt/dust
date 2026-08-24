@@ -353,7 +353,7 @@ export function WorkspacePage() {
             </TabsContent>
 
             <TabsContent value="triggers">
-              <TriggerDataTable owner={owner} loadOnInit />
+              <TriggerDataTable owner={owner} />
             </TabsContent>
             <TabsContent value="webhooksources">
               <WebhookSourceDataTable owner={owner} loadOnInit />

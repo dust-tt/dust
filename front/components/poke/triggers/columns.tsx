@@ -1,6 +1,7 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import type {
   PokeTriggerConsumptionStats,
+  PokeTriggerSearchRow,
   TriggerWithProviderType,
 } from "@app/lib/api/poke/triggers";
 import { formatCredits } from "@app/lib/client/credits";
@@ -8,47 +9,46 @@ import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { TriggerType } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Chip, IconButton, LinkWrapper, Trash01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
-type TriggerDisplayType = TriggerWithProviderType & {
-  consumption?: PokeTriggerConsumptionStats;
-};
+type TriggerDisplayType = TriggerWithProviderType | PokeTriggerSearchRow;
 
-interface TriggerConsumptionColumnState {
-  isError: boolean;
-  isLoading: boolean;
+function isPokeTriggerSearchRow(
+  trigger: TriggerDisplayType
+): trigger is PokeTriggerSearchRow {
+  return "agentName" in trigger;
 }
 
 interface ConsumptionCellProps {
-  consumption: PokeTriggerConsumptionStats | undefined;
-  state: TriggerConsumptionColumnState;
+  consumption: PokeTriggerConsumptionStats | null;
 }
 
-function ConsumptionCell({ consumption, state }: ConsumptionCellProps) {
-  if (state.isError || state.isLoading) {
+function ConsumptionCell({ consumption }: ConsumptionCellProps) {
+  if (consumption === null) {
     return (
       <div className="flex min-h-10 w-52 items-center whitespace-nowrap">
-        <span className="text-sm text-muted-foreground">
-          {state.isError ? "Unavailable" : "Loading…"}
-        </span>
+        <span className="text-sm text-muted-foreground">Unavailable</span>
       </div>
     );
   }
 
-  const credits = consumption?.credits ?? 0;
-  const estimatedRunCount = consumption?.estimatedRunCount ?? 0;
-  const estimatedCreditsPerRun = consumption?.estimatedCreditsPerRun ?? null;
+  const { credits, estimatedRunCount, estimatedCreditsPerRun } = consumption;
 
-  const runUnit = estimatedRunCount === 1 ? "run" : "runs";
-  const creditsPerRun =
-    estimatedCreditsPerRun === null
-      ? "— credits/run"
-      : `${formatCredits(estimatedCreditsPerRun)} credits/run`;
   const creditsLabel = `${formatCredits(credits)} credits`;
-  const estimatesLabel = `Est. ${estimatedRunCount.toLocaleString("en-US")} ${runUnit} · ${creditsPerRun}`;
+  const estimatesLabel = (() => {
+    if (estimatedRunCount === null) {
+      return "Run estimate unavailable";
+    }
+
+    const runUnit = estimatedRunCount === 1 ? "run" : "runs";
+    const creditsPerRun =
+      estimatedCreditsPerRun === null
+        ? "— credits/run"
+        : `${formatCredits(estimatedCreditsPerRun)} credits/run`;
+    return `Est. ${estimatedRunCount.toLocaleString("en-US")} ${runUnit} · ${creditsPerRun}`;
+  })();
 
   return (
     <div className="flex min-h-10 w-52 flex-col justify-center overflow-hidden whitespace-nowrap tabular-nums">
@@ -72,7 +72,7 @@ export function makeColumnsForTriggers(
   owner: LightWorkspaceType,
   agentConfigurations: LightAgentConfigurationType[],
   onTriggerDeleted: () => Promise<void>,
-  consumptionState?: TriggerConsumptionColumnState
+  options?: { disableActions?: boolean; includeConsumption?: boolean }
 ): ColumnDef<TriggerDisplayType>[] {
   const agentConfigMap = new Map(
     agentConfigurations.map((agent) => [agent.sId, agent])
@@ -84,14 +84,17 @@ export function makeColumnsForTriggers(
       cell: ({ row }) => {
         const trigger = row.original;
         const agent = agentConfigMap.get(trigger.agentConfigurationId);
+        const hasResolvedAgent = isPokeTriggerSearchRow(trigger)
+          ? trigger.agentName !== null
+          : agent !== undefined;
 
-        if (!agent) {
+        if (!hasResolvedAgent) {
           return trigger.sId;
         }
 
         return (
           <LinkWrapper
-            href={`/poke/${owner.sId}/assistants/${agent.sId}/triggers/${trigger.sId}`}
+            href={`/poke/${owner.sId}/assistants/${trigger.agentConfigurationId}/triggers/${trigger.sId}`}
           >
             {trigger.sId}
           </LinkWrapper>
@@ -114,7 +117,9 @@ export function makeColumnsForTriggers(
       ),
       accessorFn: (row) => {
         const agent = agentConfigMap.get(row.agentConfigurationId);
-        return agent?.name ?? row.agentConfigurationId;
+        return isPokeTriggerSearchRow(row)
+          ? (row.agentName ?? row.agentConfigurationId)
+          : (agent?.name ?? row.agentConfigurationId);
       },
     },
     {
@@ -141,7 +146,13 @@ export function makeColumnsForTriggers(
       },
     },
     {
-      accessorKey: "provider",
+      id: "provider",
+      accessorFn: (row) => {
+        if (row.kind !== "webhook") {
+          return "-";
+        }
+        return row.provider ?? "custom";
+      },
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Provider" />
       ),
@@ -158,11 +169,13 @@ export function makeColumnsForTriggers(
     },
     {
       accessorKey: "configuration",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Configuration" />
-      ),
+      enableSorting: false,
+      header: "Configuration",
       cell: ({ row }) => {
         const trigger = row.original;
+        if (isPokeTriggerSearchRow(trigger)) {
+          return trigger.configurationDescription;
+        }
         if (trigger.kind === "schedule") {
           return `${describeScheduleConfig(trigger.configuration)} (${trigger.configuration.timezone})`;
         }
@@ -180,18 +193,22 @@ export function makeColumnsForTriggers(
         return parts.length > 0 ? parts.join(" ") : "All events";
       },
     },
-    ...(consumptionState
+    ...(options?.includeConsumption
       ? [
           {
             id: "consumption",
-            accessorFn: (row) => row.consumption?.credits ?? 0,
+            accessorFn: (row) =>
+              isPokeTriggerSearchRow(row) ? (row.consumption?.credits ?? 0) : 0,
             header: ({ column }) => (
               <PokeColumnSortableHeader column={column} label="Consumption" />
             ),
             cell: ({ row }) => (
               <ConsumptionCell
-                consumption={row.original.consumption}
-                state={consumptionState}
+                consumption={
+                  isPokeTriggerSearchRow(row.original)
+                    ? row.original.consumption
+                    : null
+                }
               />
             ),
           } satisfies ColumnDef<TriggerDisplayType>,
@@ -206,6 +223,9 @@ export function makeColumnsForTriggers(
     {
       id: "editorEmail",
       accessorFn: (row) => {
+        if (isPokeTriggerSearchRow(row)) {
+          return row.editorEmail ?? "";
+        }
         if (row.editorUser) {
           return row.editorUser.email;
         }
@@ -216,6 +236,9 @@ export function makeColumnsForTriggers(
       ),
       cell: ({ row }) => {
         const trigger = row.original;
+        if (isPokeTriggerSearchRow(trigger)) {
+          return trigger.editorEmail ?? "-";
+        }
         if (trigger.editorUser) {
           return `${trigger.editorUser.email}`;
         }
@@ -239,9 +262,11 @@ export function makeColumnsForTriggers(
 
         return (
           <IconButton
+            aria-label={`Delete trigger ${trigger.name}`}
             icon={Trash01}
             size="xs"
             variant="outline"
+            disabled={options?.disableActions}
             onClick={async () => {
               await deleteTrigger(owner, onTriggerDeleted, trigger);
             }}
@@ -255,7 +280,7 @@ export function makeColumnsForTriggers(
 async function deleteTrigger(
   owner: LightWorkspaceType,
   onTriggerDeleted: () => Promise<void>,
-  trigger: TriggerType
+  trigger: Pick<TriggerDisplayType, "name" | "sId">
 ) {
   if (
     !window.confirm(

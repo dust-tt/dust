@@ -7,7 +7,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import tId from "./[tId]";
-import consumption from "./consumption";
+import search from "./search";
 
 const DeleteTriggerQuerySchema = z.object({
   tId: z.string(),
@@ -54,7 +54,7 @@ app.delete("/", validate("query", DeleteTriggerQuerySchema), async (ctx) => {
   return ctx.body(null, 204);
 });
 
-app.route("/consumption", consumption);
+app.route("/search", search);
 app.route("/:tId", tId);
 
 export default app;
