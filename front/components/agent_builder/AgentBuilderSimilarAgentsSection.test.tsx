@@ -2,7 +2,6 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { act, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AgentBuilderSimilarAgentsSection } from "./AgentBuilderSimilarAgentsSection";
@@ -20,12 +19,15 @@ const owner: LightWorkspaceType = {
   metronomeCustomerId: null,
 };
 
+const user = { sId: "user_1" };
+
 vi.mock("@app/components/agent_builder/AgentBuilderContext", () => ({
-  useAgentBuilderContext: () => ({ owner }),
+  useAgentBuilderContext: () => ({ owner, user }),
 }));
 
-vi.mock("@app/lib/platform", () => ({
-  LinkWrapper: ({ children }: { children: ReactNode }) => children,
+vi.mock("@app/components/assistant/details/AgentDetailsSheet", () => ({
+  AgentDetailsSheet: ({ agentId }: { agentId: string | null }) =>
+    agentId ? <div data-testid="agent-details-sheet">{agentId}</div> : null,
 }));
 
 let isSimilarAgentsCheckEnabledMock = true;
