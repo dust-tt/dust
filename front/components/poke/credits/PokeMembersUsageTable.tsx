@@ -255,6 +255,26 @@ function makeColumns({
       },
     },
     {
+      id: "fairUse",
+      // Per-user fair-use AWU usage (used / limit, credits). Applies to
+      // non-credit-based plans (free/trial); "—" when the plan carries no
+      // fair-use limit.
+      header: "Fair-use",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const { fairUse } = row.original;
+        if (!fairUse) {
+          return <span>—</span>;
+        }
+        return (
+          <span>
+            {formatCreditsPrecise(fairUse.usedCredits)} /{" "}
+            {formatCreditsPrecise(fairUse.limitCredits)}
+          </span>
+        );
+      },
+    },
+    {
       accessorKey: "spendLimitAwuCredits",
       header: "User cap",
       enableSorting: false,

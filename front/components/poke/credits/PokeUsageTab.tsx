@@ -353,7 +353,16 @@ export function PokeUsageTab({
   defaultAlerts,
 }: PokeUsageTabProps) {
   if (!hasMetronomeBillingUsage) {
-    return <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />;
+    // Non-credit-based workspaces (no Metronome contract) have no credit
+    // diagnostics, but fair-use AWU limits still apply to them (free/trial), so
+    // the members table — which surfaces per-user fair-use usage — is shown
+    // alongside the activity chart.
+    return (
+      <div className="flex flex-col gap-4">
+        <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />
+        <PokeMembersUsageTable owner={owner} />
+      </div>
+    );
   }
 
   const billingCycleStartDay = stripeSubscription?.current_period_start
