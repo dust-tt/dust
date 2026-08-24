@@ -4,7 +4,7 @@ import {
   ElasticsearchError,
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { getTmpWorkloadsBucket } from "@app/lib/file_storage";
 import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/consumption-export-ready";
 import {
   buildConsumptionExportBucketPartsGcsPrefix,
@@ -339,7 +339,7 @@ describe("finalizeConsumptionExportActivity", () => {
       .map((call) => call.filePath);
     expect(writtenTmpPaths.length).toBeGreaterThan(0); // sanity: parts were written
     for (const path of writtenTmpPaths) {
-      const [content] = await getPrivateUploadBucket().file(path).download();
+      const [content] = await getTmpWorkloadsBucket().file(path).download();
       expect(content.toString()).toBe("");
     }
   });

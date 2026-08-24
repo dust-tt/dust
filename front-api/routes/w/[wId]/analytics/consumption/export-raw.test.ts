@@ -1,3 +1,4 @@
+import { buildConsumptionExportGcsPrefix } from "@app/temporal/analytics_queue/activities/consumption_export";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -82,7 +83,7 @@ describe("POST /api/w/:wId/analytics/consumption/export-raw/status", () => {
 
   it("lists past exports for the workspace, newest first", async () => {
     const { workspace } = await setupTest();
-    const prefix = `w/${workspace.sId}/consumption_exports/`;
+    const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
     fileStorageMock.setFilesByPrefix((requestedPrefix) => {
       if (requestedPrefix !== prefix) {
         return null;

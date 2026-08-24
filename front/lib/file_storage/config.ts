@@ -13,6 +13,9 @@ const config = {
   getGcsUpsertQueueBucket: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_UPSERT_QUEUE_BUCKET");
   },
+  getGcsTmpWorkloadsBucket: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_TMP_WORKLOADS_BUCKET");
+  },
   getDustDataSourcesBucket: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_DATA_SOURCES_BUCKET");
   },
