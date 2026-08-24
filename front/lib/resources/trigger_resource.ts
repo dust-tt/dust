@@ -726,6 +726,100 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
+  /**
+   * Transfers editorship of every trigger owned by `fromUser` to `toUser`, in
+   * the current workspace. Used by the user identity merge: without this the
+   * triggers stay on the merged-away identity, become unmanageable by the
+   * surviving one, and are deleted outright if the secondary user is revoked
+   * (see `revokeAndTrackMembership`).
+   *
+   * Schedule triggers bake the editor's sId into the Temporal schedule's
+   * workflow args, so the schedule is re-upserted with the new editor's auth;
+   * webhook triggers resolve their editor at fire time and need nothing extra.
+   */
+  static async transferEditor(
+    auth: Authenticator,
+    {
+      fromUser,
+      toUser,
+    }: {
+      fromUser: UserResource;
+      toUser: UserResource;
+    }
+  ): Promise<Result<undefined, Error>> {
+    assert(
+      auth.isAdmin(),
+      "Trigger editorship can only be transferred by admins."
+    );
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    const [, updatedRows] = await this.model.update(
+      { editor: toUser.id },
+      {
+        where: {
+          workspaceId: workspace.id,
+          editor: fromUser.id,
+        },
+        returning: true,
+      }
+    );
+    if (updatedRows.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const transferred = updatedRows.map(
+      (row) => new this(this.model, row.get())
+    );
+
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        fromUserId: fromUser.sId,
+        toUserId: toUser.sId,
+        triggerIds: transferred.map((trigger) => trigger.sId),
+      },
+      "Transferred trigger editorship between users"
+    );
+
+    const toUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      toUser.sId,
+      workspace.sId
+    );
+
+    // Only enabled triggers have a live schedule; disabling removes it, so re-upserting a
+    // disabled one would resurrect it.
+    const enabled = transferred.filter(
+      (trigger) => trigger.status === "enabled"
+    );
+    const results = await concurrentExecutor(
+      enabled,
+      async (trigger) => ({
+        sId: trigger.sId,
+        result: await trigger.upsertTemporalWorkflow(toUserAuth),
+      }),
+      { concurrency: 4 }
+    );
+
+    // The rows already point at the new editor, so a retry of the transfer finds nothing to do
+    // and will not fix these schedules: they keep firing as the old editor until someone pauses
+    // and unpauses them (`enable` re-upserts with the current editor's auth).
+    const staleTriggerIds = results
+      .filter(({ result }) => result.isErr())
+      .map(({ sId }) => sId);
+    if (staleTriggerIds.length > 0) {
+      return new Err(
+        new Error(
+          `Trigger editorship moved to ${toUser.sId}, but ${staleTriggerIds.length} schedule(s) ` +
+            `still run as ${fromUser.sId} and must be paused then unpaused to be re-registered: ` +
+            staleTriggerIds.join(", ")
+        )
+      );
+    }
+
+    return new Ok(undefined);
+  }
+
   static async deleteAllForUser(
     auth: Authenticator,
     user: UserResource | UserType
