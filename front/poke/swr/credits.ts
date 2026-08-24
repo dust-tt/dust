@@ -6,6 +6,7 @@ import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
+import type { GetApiKeysUsageResponseBody } from "@app/lib/api/credits/api_keys_usage";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
@@ -250,5 +251,28 @@ export function usePokeMembersUsage({
     isMembersUsageError: error,
     isMembersUsageValidating: isValidating,
     mutateMembersUsage: mutate,
+  };
+}
+
+export function usePokeApiKeysUsage({
+  disabled,
+  owner,
+}: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetApiKeysUsageResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/poke/workspaces/${owner.sId}/credits/api-keys-usage`,
+    fetcherFn,
+    { revalidateOnFocus: false }
+  );
+
+  return {
+    apiKeys: data?.keys ?? emptyArray(),
+    isApiKeysUsageLoading: !error && !data && !disabled,
+    isApiKeysUsageError: error,
+    mutateApiKeysUsage: mutate,
   };
 }

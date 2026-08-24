@@ -27,6 +27,7 @@ export function AutomationsOverview({
 
   const { automationCredits, workspaceTotalCredits, triggers } = overview;
   const disabledCount = triggers.total - triggers.enabled;
+  const memberPoolCount = triggers.total - triggers.workspacePool;
 
   return (
     <div className="flex items-stretch gap-6">
@@ -43,6 +44,11 @@ export function AutomationsOverview({
         label="Triggers enabled"
         value={`${triggers.enabled.toLocaleString()} / ${triggers.total.toLocaleString()}`}
         hint={disabledCount > 0 ? `${disabledCount} disabled` : null}
+      />
+      <SummaryCard
+        label="Workspace pool"
+        value={`${triggers.workspacePool.toLocaleString()} / ${triggers.total.toLocaleString()}`}
+        hint={memberPoolCount > 0 ? `${memberPoolCount} on member pool` : null}
       />
     </div>
   );

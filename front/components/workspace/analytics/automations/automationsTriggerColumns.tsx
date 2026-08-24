@@ -83,6 +83,7 @@ export function nameColumn<T extends TriggerRowData>(): ColumnDef<T> {
     id: "name",
     accessorKey: "name",
     header: "Name",
+    enableSorting: false,
     meta: { className: "truncate", headerAlign: "left" },
     cell: (info) => (
       <DataTable.CellContent className="w-full justify-start text-left">
@@ -156,7 +157,7 @@ export function typeColumn<T extends TriggerRowData>(): ColumnDef<T> {
     id: "type",
     header: "Type",
     enableSorting: false,
-    meta: { className: "w-8" },
+    meta: { className: "w-8", headerAlign: "center" },
     cell: (info) => (
       <DataTable.CellContent className="w-full justify-center">
         <TypeCell trigger={info.row.original} />
