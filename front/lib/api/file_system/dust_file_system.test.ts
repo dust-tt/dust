@@ -863,7 +863,6 @@ describe("DustFileSystem.forAgentLoop", () => {
       await MembershipFactory.associate(workspace, regularUser, {
         role: "user",
       });
-      const userSessionAuth = await sessionAuthForUser(regularUser, workspace);
 
       const openProjectRes = await createSpaceAndGroup(adminAuth, {
         name: `open pod ${Date.now()}`,
@@ -882,6 +881,9 @@ describe("DustFileSystem.forAgentLoop", () => {
         user.sId,
         workspace.sId
       );
+      // Built after the pod exists: an open pod confers read through the global group's `reader`
+      // grant, and an Authenticator resolves its grants once, at construction.
+      const userSessionAuth = await sessionAuthForUser(regularUser, workspace);
 
       const openProject = await SpaceResource.fetchById(
         refreshedAdminAuth,
