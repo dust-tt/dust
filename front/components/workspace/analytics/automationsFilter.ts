@@ -7,12 +7,17 @@ import {
   getFilterSummaries,
 } from "@app/components/workspace/analytics/filterPanel/filterState";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
-import type { TriggerKind } from "@app/types/assistant/triggers";
+import type {
+  TriggerExecutionMode,
+  TriggerKind,
+} from "@app/types/assistant/triggers";
+import { isTriggerExecutionMode } from "@app/types/assistant/triggers";
 
 export const AUTOMATIONS_FILTER_CATEGORIES = [
   "agent",
   "member",
   "type",
+  "pool",
 ] as const;
 
 export type AutomationsFilterCategory =
@@ -31,6 +36,7 @@ export const AUTOMATIONS_FILTER_CATEGORY_LABEL: Record<
   agent: "Agents",
   member: "Members",
   type: "Type",
+  pool: "Pool",
 };
 
 export const AUTOMATIONS_FILTER_CATEGORY_SINGULAR_LABEL: Record<
@@ -40,6 +46,7 @@ export const AUTOMATIONS_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   agent: "Agent",
   member: "Member",
   type: "Type",
+  pool: "Pool",
 };
 
 export interface AutomationsFilterOption extends FilterOptionBase {
@@ -74,10 +81,12 @@ export type AutomationsTriggersFilter = {
   agentIds?: string[];
   editorIds?: string[];
   kinds?: TriggerKind[];
+  executionModes?: TriggerExecutionMode[];
 };
 
-// Availability counts ignore the type filter: trigger kinds are not a
-// consumption dimension, so they cannot be expressed as a scope filter.
+// Availability counts ignore the type and pool filters: trigger kinds and
+// execution modes are not consumption dimensions, so they cannot be expressed
+// as a scope filter.
 export function toAutomationsScopeFilter(
   filter: AutomationsFilter
 ): ConsumptionScopeFilter {
@@ -106,11 +115,15 @@ export function toAutomationsTriggersFilter(
   const agentIds = filter.agent?.map((option) => option.id);
   const editorIds = filter.member?.map((option) => option.id);
   const kinds = filter.type?.map((option) => option.id).filter(isTriggerKind);
+  const executionModes = filter.pool
+    ?.map((option) => option.id)
+    .filter(isTriggerExecutionMode);
 
   return {
     ...(agentIds && agentIds.length > 0 ? { agentIds } : {}),
     ...(editorIds && editorIds.length > 0 ? { editorIds } : {}),
     ...(kinds && kinds.length > 0 ? { kinds } : {}),
+    ...(executionModes && executionModes.length > 0 ? { executionModes } : {}),
   };
 }
 

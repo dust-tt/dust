@@ -350,12 +350,20 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return { enabled, total: triggers.length, workspacePool };
   }
 
-  static listByWorkspaceAndKinds(
+  static listByWorkspaceAndKindsAndExecutionModes(
     auth: Authenticator,
-    kinds: TriggerKind[]
+    {
+      kinds,
+      executionModes,
+    }: { kinds?: TriggerKind[]; executionModes?: TriggerExecutionMode[] }
   ): Promise<TriggerResource[]> {
     return this.baseFetch(auth, {
-      where: { kind: { [Op.in]: kinds } },
+      where: {
+        ...(kinds?.length ? { kind: { [Op.in]: kinds } } : {}),
+        ...(executionModes?.length
+          ? { executionMode: { [Op.in]: executionModes } }
+          : {}),
+      },
     });
   }
 
