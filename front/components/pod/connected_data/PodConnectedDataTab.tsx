@@ -196,63 +196,65 @@ export function PodConnectedDataTab({ owner, pod }: PodConnectedDataTabProps) {
   const activeDataSourceView = showContentList ? dataSourceView : undefined;
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-auto px-6 py-8">
-      <SpaceSearchInput
-        category="managed"
-        canReadInSpace={pod.canRead}
-        canWriteInSpace={pod.canWrite}
-        owner={owner}
-        space={pod}
-        dataSourceView={activeDataSourceView}
-        parentId={selectedParentId}
-        useBackendSearch
-        header={
-          <div className="pt-2">
-            <PodConnectedDataBreadcrumbs
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col py-8">
+        <SpaceSearchInput
+          category="managed"
+          canReadInSpace={pod.canRead}
+          canWriteInSpace={pod.canWrite}
+          owner={owner}
+          space={pod}
+          dataSourceView={activeDataSourceView}
+          parentId={selectedParentId}
+          useBackendSearch
+          header={
+            <div className="pt-2">
+              <PodConnectedDataBreadcrumbs
+                owner={owner}
+                pod={pod}
+                dataSourceView={activeDataSourceView}
+                parentId={selectedParentId}
+              />
+            </div>
+          }
+          onNavigateToSearchResult={handleNavigateToSearchResult}
+        >
+          {showContentList && dataSourceView ? (
+            <SpaceDataSourceViewContentList
+              key={`${dataSourceView.sId}:${selectedParentId ?? ""}`}
               owner={owner}
-              pod={pod}
-              dataSourceView={activeDataSourceView}
+              space={pod}
+              plan={plan}
+              canWriteInSpace={pod.canWrite}
+              canReadInSpace={pod.canRead}
               parentId={selectedParentId}
+              dataSourceView={dataSourceView}
+              onSelect={(nextParentId) => {
+                navigateToDataSourceView(dataSourceView.sId, nextParentId);
+              }}
+              isAdmin={isAdmin}
+              systemSpace={systemSpace}
+              connector={connector}
             />
-          </div>
-        }
-        onNavigateToSearchResult={handleNavigateToSearchResult}
-      >
-        {showContentList && dataSourceView ? (
-          <SpaceDataSourceViewContentList
-            key={`${dataSourceView.sId}:${selectedParentId ?? ""}`}
-            owner={owner}
-            space={pod}
-            plan={plan}
-            canWriteInSpace={pod.canWrite}
-            canReadInSpace={pod.canRead}
-            parentId={selectedParentId}
-            dataSourceView={dataSourceView}
-            onSelect={(nextParentId) => {
-              navigateToDataSourceView(dataSourceView.sId, nextParentId);
-            }}
-            isAdmin={isAdmin}
-            systemSpace={systemSpace}
-            connector={connector}
-          />
-        ) : (
-          <SpaceResourcesList
-            owner={owner}
-            user={user}
-            plan={plan}
-            space={pod}
-            systemSpace={systemSpace}
-            isAdmin={isAdmin}
-            canWriteInSpace={pod.canWrite}
-            category="managed"
-            integrations={[]}
-            activeSeats={seatsCount}
-            onSelect={(sId) => {
-              navigateToDataSourceView(sId);
-            }}
-          />
-        )}
-      </SpaceSearchInput>
+          ) : (
+            <SpaceResourcesList
+              owner={owner}
+              user={user}
+              plan={plan}
+              space={pod}
+              systemSpace={systemSpace}
+              isAdmin={isAdmin}
+              canWriteInSpace={pod.canWrite}
+              category="managed"
+              integrations={[]}
+              activeSeats={seatsCount}
+              onSelect={(sId) => {
+                navigateToDataSourceView(sId);
+              }}
+            />
+          )}
+        </SpaceSearchInput>
+      </div>
     </div>
   );
 }
