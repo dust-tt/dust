@@ -187,7 +187,7 @@ export function finishReasonToErrorEvent(
       return null;
     case FinishReason.MAX_TOKENS:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "stop_error",
         message: "The maximum response length was reached.",
@@ -201,7 +201,7 @@ export function finishReasonToErrorEvent(
     case FinishReason.IMAGE_SAFETY:
     case FinishReason.LANGUAGE:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "refusal_error",
         message:
@@ -210,7 +210,7 @@ export function finishReasonToErrorEvent(
     case FinishReason.MALFORMED_FUNCTION_CALL:
     case FinishReason.UNEXPECTED_TOOL_CALL:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "unknown",
         metadata,
         type: "model_output_error",
         message: `Model generated an invalid tool call for ${metadata.model}.`,

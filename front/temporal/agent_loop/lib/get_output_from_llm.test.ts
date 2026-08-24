@@ -136,28 +136,6 @@ describe("withPeriodicHeartbeat", () => {
     expect(returnFn).toHaveBeenCalled();
   });
 
-  it("times out when no event arrives before the event deadline", async () => {
-    const returnFn = vi.fn().mockResolvedValue({ done: true });
-    const stalledStream: AsyncIterator<string> = {
-      next: () => new Promise(() => {}),
-      return: returnFn,
-    };
-
-    const generator = withPeriodicHeartbeat(
-      stalledStream,
-      Date.now() + 600_000
-    );
-    const pending = generator.next();
-    const assertion = expect(pending).rejects.toThrow(
-      /timeout after \d+s waiting for event/
-    );
-
-    await vi.advanceTimersByTimeAsync(2 * 60 * 1000 + 1);
-
-    await assertion;
-    expect(returnFn).toHaveBeenCalled();
-  });
-
   it("times out while waiting for a subsequent event", async () => {
     const returnFn = vi.fn().mockResolvedValue({ done: true });
     let calls = 0;

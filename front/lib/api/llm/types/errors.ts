@@ -34,7 +34,7 @@ export interface LLMErrorInfo {
   message: string;
   isRetryable: boolean;
   originalError?: unknown;
-  errorSource?: ErrorSource;
+  errorSource: ErrorSource;
 }
 
 export function handleGenericError(

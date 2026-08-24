@@ -388,14 +388,14 @@ export function stopReasonToErrorEvent(
   switch (stopReason) {
     case "max_tokens":
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "stop_error",
         message: "The maximum response length was reached.",
       });
     case "refusal":
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "refusal_error",
         message:
@@ -538,7 +538,7 @@ export function streamErrorToErrorEvent(
     // re-samples instead of treating it as a terminal invalid_request_error.
     case "invalid_tool_json":
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "unknown",
         metadata,
         type: "model_output_error",
         message: `Model generated invalid tool call JSON for ${metadata.model}.`,

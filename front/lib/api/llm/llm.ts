@@ -14,7 +14,6 @@ import {
   emitLLMTimeToFirstTokenMs,
   llmAttemptLogFields,
   requestedReasoningEffortTag,
-  resolveErrorSource,
 } from "@app/lib/api/llm/telemetry";
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
@@ -284,7 +283,6 @@ export abstract class LLM<
           apiKeyId: this.authenticator.key()!.id,
         }),
         authMethod: this.authenticator.authMethod() ?? "unknown",
-        requestedReasoningEffort: this.reasoningEffort ?? "none",
         // Include all context fields (except userId and workspaceId).
         ...pickBy(
           this.context,
@@ -315,11 +313,6 @@ export abstract class LLM<
 
     const metricTags = this.getTelemetryTags({ surface: "stream" });
 
-    // An interaction is one provider attempt. Temporal retries construct a new
-    // LLM instance and therefore increment a separate interaction count. This
-    // series is the denominator for error-rate monitors: emit it when the
-    // attempt starts, not when it terminates. Watchdog timeouts and consumer
-    // cancel therefore increment this without a matching success or error.
     getStatsDClient().increment("llm_interaction.count", 1, metricTags);
 
     let currentEvent: LLMEvent | null = null;
@@ -385,10 +378,7 @@ export abstract class LLM<
 
         if (currentEvent.type === "error") {
           const errorType = currentEvent.content.type;
-          const errorSource = resolveErrorSource({
-            errorSource: currentEvent.content.errorSource,
-            errorType,
-          });
+          const errorSource = currentEvent.content.errorSource;
 
           this.emitStreamAttemptTelemetry({
             outcome: "error",
@@ -517,10 +507,7 @@ export abstract class LLM<
             metadata: {
               errorType: buffer.error.content.type,
               errorMessage: buffer.error.message,
-              errorSource: resolveErrorSource({
-                errorSource: buffer.error.content.errorSource,
-                errorType: buffer.error.content.type,
-              }),
+              errorSource: buffer.error.content.errorSource,
             },
           });
         }
@@ -759,7 +746,6 @@ export abstract class LLM<
             apiKeyId: this.authenticator.key()!.id,
           }),
           authMethod: this.authenticator.authMethod() ?? "unknown",
-          requestedReasoningEffort: this.reasoningEffort ?? "none",
           ...pickBy(
             this.context!,
             (value, key) =>
@@ -782,10 +768,7 @@ export abstract class LLM<
         if (event.type === "error") {
           hasError = true;
           const errorType = event.content.type;
-          const errorSource = resolveErrorSource({
-            errorSource: event.content.errorSource,
-            errorType,
-          });
+          const errorSource = event.content.errorSource;
           getStatsDClient().increment("llm_error.count", 1, [
             ...metricTags,
             `error_type:${errorType}`,
@@ -859,10 +842,7 @@ export abstract class LLM<
           metadata: {
             errorType: buffer.error.content.type,
             errorMessage: buffer.error.message,
-            errorSource: resolveErrorSource({
-              errorSource: buffer.error.content.errorSource,
-              errorType: buffer.error.content.type,
-            }),
+            errorSource: buffer.error.content.errorSource,
           },
         });
       }

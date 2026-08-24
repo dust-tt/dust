@@ -140,7 +140,11 @@ function makeStubConverters(): OutputEventConverters {
     stopReasonToErrorEvent: vi.fn(() => null),
     streamErrorToErrorEvent: vi.fn(() => ({
       type: "error" as const,
-      content: { type: "unknown_error" as const, message: "stub-error" },
+      content: {
+        type: "unknown_error" as const,
+        message: "stub-error",
+        errorSource: "unknown" as const,
+      },
       metadata,
     })),
   };
@@ -503,6 +507,7 @@ describe("streamErrorToErrorEvent", () => {
   it("maps invalid tool JSON to a retryable model_output_error", () => {
     const result = streamErrorToErrorEvent(metadata, apiInvalidToolJsonError());
     expect(result.content.type).toBe("model_output_error");
+    expect(result.content.errorSource).toBe("unknown");
   });
 
   it("maps APIConnectionError to network_error", () => {

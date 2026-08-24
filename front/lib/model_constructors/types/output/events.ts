@@ -145,7 +145,7 @@ export type ErrorContent = {
   type: ErrorType;
   message: string;
   originalError?: unknown;
-  errorSource?: ErrorSource;
+  errorSource: ErrorSource;
 };
 export interface ErrorEvent {
   type: "error";

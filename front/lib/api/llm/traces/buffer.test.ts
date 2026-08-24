@@ -83,6 +83,7 @@ class LLMEventFactory {
         type: "maximum_length",
         isRetryable: false,
         message: "Maximum length reached",
+        errorSource: "unknown",
       },
       {
         clientId: "openai",

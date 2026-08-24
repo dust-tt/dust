@@ -24,32 +24,6 @@ export type LLMAttemptOutcomeTelemetry =
       outcome: Exclude<LLMAttemptOutcome, "error">;
     };
 
-export const PROVIDER_OUTAGE_ERROR_TYPES = [
-  "overloaded_error",
-  "server_error",
-  "network_error",
-  "timeout_error",
-  "stream_error",
-  "terminated_error",
-] as const satisfies readonly LLMErrorType[];
-
-const PROVIDER_OUTAGE_ERROR_TYPE_SET: ReadonlySet<string> = new Set(
-  PROVIDER_OUTAGE_ERROR_TYPES
-);
-
-export function resolveErrorSource({
-  errorSource,
-  errorType,
-}: {
-  errorSource?: ErrorSource;
-  errorType: LLMErrorType;
-}): ErrorSource {
-  if (errorSource) {
-    return errorSource;
-  }
-  return PROVIDER_OUTAGE_ERROR_TYPE_SET.has(errorType) ? "provider" : "unknown";
-}
-
 export function requestedReasoningEffortTag(
   requestedReasoningEffort: ReasoningEffort | null
 ): string {

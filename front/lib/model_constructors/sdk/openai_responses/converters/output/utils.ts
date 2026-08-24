@@ -411,7 +411,7 @@ export function outputItemToEvents(
           case "refusal":
             return [
               buildErrorEvent({
-                errorSource: "provider",
+                errorSource: "dust",
                 metadata,
                 type: "refusal_error",
                 message: part.refusal,
@@ -564,7 +564,7 @@ export async function* rawOutputToEvents(
         return;
       case "response.incomplete":
         yield buildErrorEvent({
-          errorSource: "provider",
+          errorSource: "dust",
           metadata,
           type: "stop_error",
           message:
@@ -684,7 +684,7 @@ export function responseToEvents(
   if (response.status === "incomplete") {
     return [
       buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "stop_error",
         message:
