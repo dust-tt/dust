@@ -1,4 +1,5 @@
 import { AutomationsFilterOptionIcon } from "@app/components/workspace/analytics/automations/AutomationsFilterOptionIcon";
+import { POOL_OPTIONS } from "@app/components/workspace/analytics/automations/trigger_pool_options";
 import type {
   AutomationsFilter,
   AutomationsFilterCategory,
@@ -41,6 +42,15 @@ const TYPE_OPTIONS: AutomationsFilterOption[] = [
   { id: "schedule", name: "Schedule", disabled: false, category: "type" },
   { id: "webhook", name: "Webhook", disabled: false, category: "type" },
 ];
+
+const POOL_FILTER_OPTIONS: AutomationsFilterOption[] = POOL_OPTIONS.map(
+  ({ value, label }) => ({
+    id: value,
+    name: label,
+    disabled: false,
+    category: "pool",
+  })
+);
 
 interface AutomationsFilterPanelProps {
   owner: LightWorkspaceType;
@@ -120,11 +130,13 @@ export function AutomationsFilterPanel({
         category: "member",
       })),
       type: TYPE_OPTIONS,
+      pool: POOL_FILTER_OPTIONS,
     }),
     [agentOptions, facetOptions]
   );
 
-  const isFacetBackedCategory = activeCategory !== "type";
+  const isFacetBackedCategory =
+    activeCategory !== "type" && activeCategory !== "pool";
   const isOptionsLoading = isFacetBackedCategory && isFacetsLoading;
 
   const activeOptions = categoryOptions[activeCategory];
