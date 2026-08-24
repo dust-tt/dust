@@ -355,6 +355,10 @@ export type BaseAgentMessageType = {
   completionDurationMs: number | null;
   reactions: MessageReactionType[];
   prunedContext?: boolean;
+  // Persisted: true while the agent loop is paused after crossing the workflow alert threshold,
+  // mirroring how a blocked tool action leaves the message unresolved. Survives a page refresh.
+  // Cleared once the user continues or declines.
+  pausedAtWorkflowAlertThreshold?: boolean;
   costCredits: number | null;
   // Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned
   // (recursively) by this message, separate from `costCredits` (this message's own
