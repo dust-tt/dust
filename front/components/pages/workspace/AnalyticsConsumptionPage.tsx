@@ -22,7 +22,7 @@ import {
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
-import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -33,7 +33,7 @@ import {
   safeLazy,
 } from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType } from "react";
 import { useMemo, useState } from "react";
 
 const canReload = () => !isNavigationLocked();
@@ -111,27 +111,7 @@ function ChartFallback({ controlsInCard = false }: ChartFallbackProps) {
 
 export function AnalyticsConsumptionPage() {
   const owner = useWorkspace();
-  const { hasFeature } = useFeatureFlags();
-  const isEnabled = hasFeature("enable_analytics_consumption");
   const state = useAnalyticsConsumptionState();
-
-  if (!isEnabled) {
-    return (
-      <Page.Vertical align="stretch" gap="xl">
-        <Page.Header title={<Page.H variant="h3">Analytics</Page.H>} />
-        <div
-          className={cn(
-            "flex flex-col gap-2 rounded-xl border p-6",
-            "border-border bg-muted"
-          )}
-        >
-          <p className="text-sm text-muted-foreground">
-            This page is not enabled for this workspace.
-          </p>
-        </div>
-      </Page.Vertical>
-    );
-  }
 
   return <AnalyticsConsumptionContent owner={owner} state={state} />;
 }
@@ -139,7 +119,6 @@ export function AnalyticsConsumptionPage() {
 interface AnalyticsConsumptionContentProps {
   components?: AnalyticsConsumptionComponents;
   embedded?: boolean;
-  headerBadge?: ReactNode;
   owner: LightWorkspaceType;
   showExport?: boolean;
   showMemberGroupFilter?: boolean;
@@ -153,7 +132,6 @@ interface AnalyticsConsumptionContentProps {
 export function AnalyticsConsumptionContent({
   components = WORKSPACE_CONSUMPTION_COMPONENTS,
   embedded = false,
-  headerBadge,
   owner,
   showExport = true,
   showMemberGroupFilter = true,
@@ -184,7 +162,6 @@ export function AnalyticsConsumptionContent({
   const header = embedded ? (
     <div className="flex w-full flex-col gap-4 sm:flex-row sm:justify-between">
       <div className="flex flex-row flex-wrap items-center gap-2">
-        {headerBadge}
         <OverviewComponent
           workspaceId={owner.sId}
           period={period}
