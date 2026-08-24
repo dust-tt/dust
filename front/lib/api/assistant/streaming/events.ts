@@ -110,6 +110,7 @@ function isMessageEventParams(
   switch (eventType) {
     case "agent_action_success":
     case "agent_context_pruned":
+    case "agent_workflow_alert_threshold_crossed":
     case "agent_error":
     case "agent_generation_cancelled":
     case "agent_message_success":

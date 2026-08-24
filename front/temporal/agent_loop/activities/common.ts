@@ -1,5 +1,6 @@
 import { renderAgentMessageContentView } from "@app/lib/api/assistant/activity_steps";
 import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
+import { generateSmoothShutdownSummary } from "@app/lib/api/assistant/conversation/smooth_shutdown_summary";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
@@ -23,6 +24,7 @@ import type {
   LightAgentConfigurationType,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
+import type { AgentTextContentType } from "@app/types/assistant/agent_message_content";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
   getAgentLoopRuntimeData,
@@ -66,6 +68,7 @@ export async function updateAgentMessageDBAndMemory(
           | {
               type: "status";
               status: AgentMessageStatusUpdate;
+              stoppedBySmoothShutdown?: boolean;
             }
           | {
               type: "error";
@@ -118,6 +121,7 @@ export async function updateAgentMessageDBAndMemory(
           conversation,
           agentMessage,
           status: update.status,
+          stoppedBySmoothShutdown: update.stoppedBySmoothShutdown,
         });
         agentMessage.status = result.status;
         agentMessage.completedTs = result.completedTs;
@@ -338,6 +342,7 @@ export async function processEventForDatabase(
             event.type === "agent_message_gracefully_stopped"
               ? "gracefully_stopped"
               : "succeeded",
+          stoppedBySmoothShutdown: agentMessage.stoppedBySmoothShutdown,
         },
       });
 
@@ -845,6 +850,98 @@ export async function finalizeGracefulStop(
       conversationId: conversation.sId,
     },
     "Agent generation gracefully stopped"
+  );
+}
+
+/**
+ * Same cooperative stop as `finalizeGracefulStop`, triggered when the user declines to continue
+ * past a workflow alert credit threshold. Additionally generates a short summary of progress so
+ * far (a one-shot LLM call, see `generateSmoothShutdownSummary`) and persists it as one more text
+ * step on the message before publishing the terminal event, so it reads as the agent's final
+ * reply. Falls back to a plain graceful stop (no summary) if summary generation fails.
+ */
+export async function finalizeSmoothShutdown(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs
+): Promise<void> {
+  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  if (runAgentDataRes.isErr()) {
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      logger.info(
+        {
+          conversationId: agentLoopArgs.conversationId,
+          agentMessageId: agentLoopArgs.agentMessageId,
+        },
+        "Message or conversation was deleted, exiting"
+      );
+      return;
+    }
+    throw new Error(
+      `Failed to get run agent data: ${runAgentDataRes.error.message}`
+    );
+  }
+  const { auth, agentConfiguration, agentMessage, conversation } =
+    runAgentDataRes.value;
+
+  const step = maxBy(agentMessage.contents, "step")?.step ?? 0;
+  const summaryStep = step + 1;
+
+  const summaryRes = await generateSmoothShutdownSummary(auth, conversation);
+
+  let messageToPublish = agentMessage;
+  if (summaryRes.isOk()) {
+    const summaryContent: AgentTextContentType = {
+      type: "text_content",
+      value: summaryRes.value,
+    };
+    await AgentStepContentResource.createNewVersion({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      agentMessageId: agentMessage.agentMessageId,
+      step: summaryStep,
+      index: 0,
+      type: "text_content",
+      value: summaryContent,
+    });
+    messageToPublish = {
+      ...agentMessage,
+      stoppedBySmoothShutdown: true,
+      contents: [
+        ...agentMessage.contents,
+        { step: summaryStep, content: summaryContent },
+      ],
+    };
+  } else {
+    messageToPublish = { ...agentMessage, stoppedBySmoothShutdown: true };
+    logger.warn(
+      {
+        agentMessageId: agentMessage.sId,
+        conversationId: conversation.sId,
+        error: summaryRes.error,
+      },
+      "[SmoothShutdown] Failed to generate progress summary; stopping without one"
+    );
+  }
+
+  await updateResourceAndPublishEvent(auth, {
+    event: {
+      type: "agent_message_gracefully_stopped",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: messageToPublish.sId,
+      message: messageToPublish,
+      runIds: [],
+    },
+    agentMessage: messageToPublish,
+    conversation,
+    step: summaryStep,
+  });
+  logger.info(
+    {
+      agentMessageId: agentMessage.sId,
+      conversationId: conversation.sId,
+      hasSummary: summaryRes.isOk(),
+    },
+    "Agent generation stopped via smooth shutdown"
   );
 }
 

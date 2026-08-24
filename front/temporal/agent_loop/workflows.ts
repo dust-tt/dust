@@ -140,6 +140,15 @@ const { checkCreditsActivity } = proxyActivities<typeof creditCheckActivities>({
   },
 });
 
+const { checkWorkflowAlertThresholdActivity } = proxyActivities<
+  typeof creditCheckActivities
+>({
+  startToCloseTimeout: "2 minutes",
+  retry: {
+    maximumAttempts: 3,
+  },
+});
+
 const { metrics } = proxySinks<AgentLoopInstrumentationSinks>();
 
 const { ensureConversationTitleActivity } = proxyActivities<
@@ -270,6 +279,11 @@ export async function agentLoopWorkflow({
   // Credit stop: the per-step gate found the workspace pool exhausted.
   let creditStopRequested = false;
 
+  // Workflow alert: the per-step gate found the user's spend past the workflow alert
+  // threshold. Pauses the loop the same way a blocked tool action does: the workflow exits and
+  // the user must confirm continuing (relaunching a fresh workflow from this step) or decline.
+  let thresholdPauseRequested = false;
+
   const runIds: string[] = [];
 
   try {
@@ -362,6 +376,27 @@ export async function agentLoopWorkflow({
           creditStopRequested = true;
           break;
         }
+
+        try {
+          const workflowAlertResult = await checkWorkflowAlertThresholdActivity(
+            authType,
+            {
+              agentLoopArgs: {
+                ...agentLoopArgs,
+                initialStartTime,
+              },
+            }
+          );
+          if (workflowAlertResult.crossed) {
+            thresholdPauseRequested = true;
+          }
+        } catch {
+          // Non-critical: fails open, must never fail the agent loop.
+        }
+
+        if (thresholdPauseRequested) {
+          break;
+        }
       }
 
       const stepsCompleted = currentStep - startStep;
@@ -397,6 +432,10 @@ export async function agentLoopWorkflow({
             argsWithRunIds
           );
         } else {
+          // Also covers thresholdPauseRequested: the pause was already persisted durably by
+          // checkWorkflowAlertThresholdActivity, the same way a blocked tool action's status is
+          // set when it's first created — so this exit just falls through to the ordinary
+          // success path, exactly like a blocked-action `needsApproval` exit does today.
           await finalizeSuccessfulAgentLoopActivity(authType, argsWithRunIds);
         }
       });

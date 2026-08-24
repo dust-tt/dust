@@ -14,6 +14,7 @@ import type {
   AgentMessageGracefullyStoppedEvent,
   AgentMessageSuccessEvent,
   AgentToolCallStartedEvent,
+  AgentWorkflowAlertThresholdCrossedEvent,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
 import type {
@@ -38,6 +39,7 @@ export type AgentMessageEvents =
   | AgentMessageGracefullyStoppedEvent
   | AgentMessageSuccessEvent
   | AgentToolCallStartedEvent
+  | AgentWorkflowAlertThresholdCrossedEvent
   | GenerationTokensEvent
   | ToolErrorEvent
   | AgentLoopToolAskUserQuestionEvent

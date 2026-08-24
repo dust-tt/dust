@@ -1,10 +1,13 @@
+import config from "@app/lib/api/config";
 import {
   isApiBlocked,
   isProgrammaticApiBlocked,
   isUserBlocked,
 } from "@app/lib/api/credits/access_control";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
+import { isSpendCapCounterReached } from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
+import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
 
@@ -52,4 +55,41 @@ export async function checkPoolCreditGate(
   }
 
   return DO_NOT_STOP;
+}
+
+export type WorkflowAlertThresholdCheckResult =
+  | { crossed: false }
+  | { crossed: true; thresholdAwuCredits: number };
+
+const DO_NOT_NOTIFY: WorkflowAlertThresholdCheckResult = { crossed: false };
+
+/**
+ * Determines whether the user's current spend has crossed the workflow alert threshold (a
+ * single fixed value for every user/workspace, see `config.getWorkflowAlertThresholdAwuCredits`).
+ * Unlike `checkPoolCreditGate`, this pauses the agent loop rather than stopping it outright: the
+ * caller persists the pause and the user can resume by confirming they want to keep going. Fails
+ * open (does not pause) when no billing cycle can be resolved or the counter read fails.
+ */
+export async function checkWorkflowAlertThresholdGate(
+  auth: Authenticator
+): Promise<WorkflowAlertThresholdCheckResult> {
+  const user = auth.user();
+  if (!user) {
+    return DO_NOT_NOTIFY;
+  }
+  const workspace = auth.getNonNullableWorkspace();
+  const thresholdAwuCredits = config.getWorkflowAlertThresholdAwuCredits();
+
+  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  if (!bounds) {
+    return DO_NOT_NOTIFY;
+  }
+
+  const reached = await isSpendCapCounterReached(auth, {
+    user,
+    thresholdAwuCredits,
+    bounds,
+  });
+
+  return reached ? { crossed: true, thresholdAwuCredits } : DO_NOT_NOTIFY;
 }

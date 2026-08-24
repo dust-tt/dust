@@ -169,6 +169,7 @@ function childAgentStreamReducer(
     case "end-of-stream":
     case "tool_notification":
     case "agent_context_pruned":
+    case "agent_workflow_alert_threshold_crossed":
     case "tool_approve_execution":
     case "tool_personal_auth_required":
     case "tool_file_auth_required":

@@ -11,7 +11,10 @@ import {
   compactionActivity,
   compactionCleanupActivity,
 } from "@app/temporal/agent_loop/activities/compaction";
-import { checkCreditsActivity } from "@app/temporal/agent_loop/activities/credit_check";
+import {
+  checkCreditsActivity,
+  checkWorkflowAlertThresholdActivity,
+} from "@app/temporal/agent_loop/activities/credit_check";
 import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import {
   finalizeCancelledAgentLoopActivity,
@@ -19,6 +22,7 @@ import {
   finalizeErroredAgentLoopActivity,
   finalizeGracefullyStoppedAgentLoopActivity,
   finalizeInterruptedAgentLoopActivity,
+  finalizeSmoothShutdownAgentLoopActivity,
   finalizeSuccessfulAgentLoopActivity,
 } from "@app/temporal/agent_loop/activities/finalize";
 import { finalizeErroredSandboxChildToolActivity } from "@app/temporal/agent_loop/activities/finalize_sandbox_child_tool";
@@ -109,12 +113,14 @@ async function runAgentLoopWorkerForQueue({
       ensureConversationTitleActivity,
       finalizeSuccessfulAgentLoopActivity,
       finalizeGracefullyStoppedAgentLoopActivity,
+      finalizeSmoothShutdownAgentLoopActivity,
       finalizeCreditStoppedAgentLoopActivity,
       finalizeCancelledAgentLoopActivity,
       finalizeInterruptedAgentLoopActivity,
       finalizeErroredAgentLoopActivity,
       finalizeErroredSandboxChildToolActivity,
       checkCreditsActivity,
+      checkWorkflowAlertThresholdActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,

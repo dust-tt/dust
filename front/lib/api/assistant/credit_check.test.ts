@@ -1,4 +1,7 @@
-import { checkPoolCreditGate } from "@app/lib/api/assistant/credit_check";
+import {
+  checkPoolCreditGate,
+  checkWorkflowAlertThresholdGate,
+} from "@app/lib/api/assistant/credit_check";
 import type { Authenticator } from "@app/lib/auth";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,11 +11,17 @@ const {
   mockIsApiBlocked,
   mockIsProgrammaticApiBlocked,
   mockIsProgrammaticUsage,
+  mockGetWorkflowAlertThresholdAwuCredits,
+  mockResolveSpendLimitCycleBounds,
+  mockIsSpendCapCounterReached,
 } = vi.hoisted(() => ({
   mockIsUserBlocked: vi.fn(),
   mockIsApiBlocked: vi.fn(),
   mockIsProgrammaticApiBlocked: vi.fn(),
   mockIsProgrammaticUsage: vi.fn(),
+  mockGetWorkflowAlertThresholdAwuCredits: vi.fn(),
+  mockResolveSpendLimitCycleBounds: vi.fn(),
+  mockIsSpendCapCounterReached: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/credits/access_control", () => ({
@@ -28,6 +37,21 @@ vi.mock("@app/lib/api/programmatic_usage/tracking", () => ({
 vi.mock("@app/types/plan", () => ({
   isCreditPricedPlan: (plan: { code: string }) =>
     plan.code.startsWith("ENT_NEW"),
+}));
+
+vi.mock("@app/lib/api/config", () => ({
+  default: {
+    getWorkflowAlertThresholdAwuCredits:
+      mockGetWorkflowAlertThresholdAwuCredits,
+  },
+}));
+
+vi.mock("@app/lib/spend_limits/cycle", () => ({
+  resolveSpendLimitCycleBounds: mockResolveSpendLimitCycleBounds,
+}));
+
+vi.mock("@app/lib/api/users/spend_limit", () => ({
+  isSpendCapCounterReached: mockIsSpendCapCounterReached,
 }));
 
 // Minimal stand-in for the Authenticator class exposing only the members the gate reads. A class
@@ -49,7 +73,7 @@ function makeAuth({
   return {
     getNonNullableWorkspace: () => ({ sId: "ws_test", metronomeCustomerId }),
     subscription: () => ({ plan }),
-    user: () => (hasUser ? { sId: "user_test" } : null),
+    user: () => (hasUser ? { id: 42, sId: "user_test" } : null),
   } as unknown as Authenticator;
 }
 
@@ -153,5 +177,50 @@ describe("checkPoolCreditGate", () => {
     mockIsUserBlocked.mockRejectedValue(new Error("redis unavailable"));
     const auth = makeAuth();
     await expect(callGate(auth)).rejects.toThrow("redis unavailable");
+  });
+});
+
+describe("checkWorkflowAlertThresholdGate", () => {
+  const FAKE_BOUNDS = { startMs: 0, endMs: 1 } as never;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetWorkflowAlertThresholdAwuCredits.mockReturnValue(1000);
+    mockResolveSpendLimitCycleBounds.mockResolvedValue(FAKE_BOUNDS);
+    mockIsSpendCapCounterReached.mockResolvedValue(false);
+  });
+
+  it("does not notify when there is no user", async () => {
+    const auth = makeAuth({ hasUser: false });
+    const result = await checkWorkflowAlertThresholdGate(auth);
+    expect(result).toEqual({ crossed: false });
+    expect(mockResolveSpendLimitCycleBounds).not.toHaveBeenCalled();
+  });
+
+  it("does not notify when the billing cycle can't be resolved", async () => {
+    mockResolveSpendLimitCycleBounds.mockResolvedValue(null);
+    const auth = makeAuth({ hasUser: true });
+    const result = await checkWorkflowAlertThresholdGate(auth);
+    expect(result).toEqual({ crossed: false });
+    expect(mockIsSpendCapCounterReached).not.toHaveBeenCalled();
+  });
+
+  it("does not notify when the counter has not reached the threshold", async () => {
+    mockIsSpendCapCounterReached.mockResolvedValue(false);
+    const auth = makeAuth({ hasUser: true });
+    const result = await checkWorkflowAlertThresholdGate(auth);
+    expect(result).toEqual({ crossed: false });
+  });
+
+  it("notifies with the fixed threshold once the counter crosses it", async () => {
+    mockIsSpendCapCounterReached.mockResolvedValue(true);
+    const auth = makeAuth({ hasUser: true });
+    const result = await checkWorkflowAlertThresholdGate(auth);
+    expect(result).toEqual({ crossed: true, thresholdAwuCredits: 1000 });
+    expect(mockIsSpendCapCounterReached).toHaveBeenCalledWith(auth, {
+      user: { id: 42, sId: "user_test" },
+      thresholdAwuCredits: 1000,
+      bounds: FAKE_BOUNDS,
+    });
   });
 });

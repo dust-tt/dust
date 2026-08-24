@@ -401,3 +401,15 @@ export type AgentContextPrunedEvent = {
   configurationId: string;
   messageId: string;
 };
+
+// Fired the first time the current user's spend crosses the fixed workflow alert threshold
+// (see config.getWorkflowAlertThresholdAwuCredits). The agent loop pauses right after this event
+// and the client offers the user a choice to continue (relaunches the loop) or decline (stops it
+// with a smooth-shutdown summary), via POST .../messages/:mId/workflow-alert-threshold.
+export type AgentWorkflowAlertThresholdCrossedEvent = {
+  type: "agent_workflow_alert_threshold_crossed";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  thresholdAwuCredits: number;
+};
