@@ -1,4 +1,3 @@
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   TriggerExecutionModeForbiddenError,
   TriggerResource,
@@ -26,17 +25,6 @@ app.patch(
     const auth = ctx.get("auth");
     const { tId } = ctx.req.valid("param");
     const { executionMode } = ctx.req.valid("json");
-
-    const featureFlags = await getFeatureFlags(auth);
-    if (!featureFlags.includes("trigger_pool_choice")) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "feature_flag_not_found",
-          message: "The trigger pool choice feature is not enabled.",
-        },
-      });
-    }
 
     const trigger = await TriggerResource.fetchById(auth, tId);
     if (!trigger) {

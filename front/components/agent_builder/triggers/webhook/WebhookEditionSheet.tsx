@@ -5,7 +5,9 @@ import { TriggerPoolSelector } from "@app/components/agent_builder/triggers/Trig
 import { TriggerStatusToggle } from "@app/components/agent_builder/triggers/TriggerStatusToggle";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { isCreditPricedPlan } from "@app/types/plan";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import type {
@@ -14,7 +16,6 @@ import type {
 } from "@app/types/triggers/webhooks_source_preset";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  AlertCircle,
   Button,
   Checkbox,
   ContentMessage,
@@ -60,6 +61,34 @@ function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
   );
 }
 
+function getQuotaDescription({
+  isCreditPooled,
+  executionMode,
+}: {
+  isCreditPooled: boolean;
+  executionMode: "user_pool" | "workspace_pool";
+}) {
+  if (isCreditPooled) {
+    switch (executionMode) {
+      case "user_pool":
+        return "personal credit pool.";
+      case "workspace_pool":
+        return "workspace's credit pool.";
+      default:
+        return assertNever(executionMode);
+    }
+  } else {
+    switch (executionMode) {
+      case "user_pool":
+        return "personal fair use limits.";
+      case "workspace_pool":
+        return "workspace's programmatic usage.";
+      default:
+        return assertNever(executionMode);
+    }
+  }
+}
+
 interface WebhookEditionExecutionLimitProps {
   isEditor: boolean;
 }
@@ -68,7 +97,7 @@ function WebhookEditionExecutionLimit({
   isEditor,
 }: WebhookEditionExecutionLimitProps) {
   const { control } = useFormContext<TriggerViewsSheetFormValues>();
-  const { hasFeature } = useFeatureFlags();
+  const { subscription } = useAuth();
   const {
     field: limitField,
     fieldState: { error },
@@ -80,47 +109,19 @@ function WebhookEditionExecutionLimit({
     field: { value: executionMode },
   } = useController({ control, name: "webhook.executionMode" });
 
-  const quotaName =
-    executionMode === "user_pool" ? "fair use" : "programmatic usage";
-
-  if (!hasFeature("trigger_pool_choice")) {
-    return (
-      <div className="flex flex-col space-y-1">
-        <Label htmlFor="execution-limit">Rate limits</Label>
-        <p>Limits are set on a 24-hour window. </p>
-        <ContentMessage
-          variant="info"
-          size="lg"
-          icon={AlertCircle}
-          title={`Up to ${limitField.value} requests per day`}
-        >
-          This trigger can send a limited number of messages per day. This
-          prevents a single trigger from using up your workspace's message fair
-          use quota. This trigger is currently running on your workspace's{" "}
-          {quotaName} quota.
-          <br /> (
-          <LinkWrapper
-            href="https://docs.dust.tt/docs/rate-limiting#/"
-            target="_blank"
-            rel="noreferrer"
-            className="underline"
-          >
-            Learn more
-          </LinkWrapper>
-          )
-        </ContentMessage>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col space-y-1">
       <Label htmlFor="execution-limit">Rate limits</Label>
       <p className="text-sm text-muted-foreground">
-        Maximum number of runs over a 24-hour window, on top of your workspace's{" "}
-        {quotaName} quota. (
+        Maximum number of runs over a 24-hour window. This will count towards
+        your{" "}
+        {getQuotaDescription({
+          isCreditPooled: isCreditPricedPlan(subscription.plan),
+          executionMode,
+        })}{" "}
+        (
         <LinkWrapper
-          href="https://docs.dust.tt/docs/rate-limiting#/"
+          href="https://docs.dust.tt/docs/user-documentation/agents/triggers/credits-usage"
           target="_blank"
           rel="noreferrer"
           className="underline"
