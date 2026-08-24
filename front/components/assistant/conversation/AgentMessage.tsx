@@ -1552,7 +1552,7 @@ function AgentMessageContent({
           <div className="text-sm text-faint">Generation stopped.</div>
         )}
         {agentMessage.status === "gracefully_stopped" &&
-          agentMessage.stoppedBySmoothShutdown && (
+          agentMessage.gracefullyStoppedReason === "smooth_shutdown" && (
             <div className="text-sm text-faint">Stopped by user.</div>
           )}
         {agentMessage.status === "interrupted" && (

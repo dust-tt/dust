@@ -758,9 +758,6 @@ export function useAgentMessageStream({
 
         case "agent_credit_spend_checkpoint_reached": {
           const thresholdData = eventPayload.data;
-          if (thresholdData.type !== "agent_credit_spend_checkpoint_reached") {
-            break;
-          }
           mapMessagesWithAutoScroll((m) =>
             isAgentMessageWithStreaming(m) && m.sId === sId
               ? {
