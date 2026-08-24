@@ -11,11 +11,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
@@ -35,7 +31,6 @@ import { useSWRConfig } from "swr";
 interface APIKeysPageContentProps {
   owner: WorkspaceType;
   period: ConsumptionPeriodSelection;
-  isAnalyticsConsumptionEnabled: boolean;
 }
 
 const MAX_API_KEY_CONSUMPTION_ROWS = 100;
@@ -123,7 +118,6 @@ function APIKeysOverview({
 export function APIKeysPageContent({
   owner,
   period,
-  isAnalyticsConsumptionEnabled,
 }: APIKeysPageContentProps) {
   const { mutate } = useSWRConfig();
   const { subscription } = useAuth();
@@ -304,7 +298,7 @@ export function APIKeysPageContent({
             showLegacyUsdMonthlyCap={showLegacyUsdMonthlyCap}
           />
         </Page.Horizontal>
-        {isAnalyticsConsumptionEnabled && !isKeysError && (
+        {!isKeysError && (
           <APIKeysOverview
             keys={keys}
             workspaceId={owner.sId}
@@ -319,7 +313,7 @@ export function APIKeysPageContent({
           groupsById={groupsById}
           isLoading={isDataLoading}
           isError={isDataError}
-          showAnalyticsConsumption={isAnalyticsConsumptionEnabled}
+          showAnalyticsConsumption
           isRevoking={isRevoking}
           isGenerating={isGenerating}
           onRevoke={handleRevoke}
@@ -352,10 +346,6 @@ export function APIKeysPageContent({
 
 export function APIKeysPage() {
   const owner = useWorkspace();
-  const { hasFeature } = useFeatureFlags();
-  const isAnalyticsConsumptionEnabled = hasFeature(
-    "enable_analytics_consumption"
-  );
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
   );
@@ -364,35 +354,22 @@ export function APIKeysPage() {
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
         title={
-          isAnalyticsConsumptionEnabled ? (
-            <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
-              <div className="flex max-w-2xl flex-col gap-1">
-                <Page.H variant="h3">API Keys</Page.H>
-                <Page.P variant="secondary">
-                  Create and manage API keys, track what they consume, and
-                  control their monthly spend.
-                </Page.P>
-              </div>
-              <ConsumptionPeriodSelector
-                period={period}
-                onPeriodChange={setPeriod}
-              />
+          <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
+            <div className="flex max-w-2xl flex-col gap-1">
+              <Page.H variant="h3">API Keys</Page.H>
+              <Page.P variant="secondary">
+                Create and manage API keys, track what they consume, and
+                control their monthly spend.
+              </Page.P>
             </div>
-          ) : (
-            "API Keys"
-          )
-        }
-        description={
-          isAnalyticsConsumptionEnabled
-            ? undefined
-            : "API Keys allow you to securely connect to Dust from other applications and work with your data programmatically."
+            <ConsumptionPeriodSelector
+              period={period}
+              onPeriodChange={setPeriod}
+            />
+          </div>
         }
       />
-      <APIKeysPageContent
-        owner={owner}
-        period={period}
-        isAnalyticsConsumptionEnabled={isAnalyticsConsumptionEnabled}
-      />
+      <APIKeysPageContent owner={owner} period={period} />
     </Page.Vertical>
   );
 }
