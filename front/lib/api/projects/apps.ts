@@ -29,6 +29,7 @@ import type {
   FileSystemFileEntry,
 } from "@app/types/api/file_system/types";
 import {
+  POD_APP_DEFAULT_UI_ENTRY_POINT,
   POD_APP_MANIFEST_DB_FILE_SUFFIX,
   POD_APP_MANIFEST_FILE,
   parsePodAppManifest,
@@ -175,8 +176,8 @@ function collectAppFolders(
     // Positional heuristic, applied to every folder: a Frame at the top of the app folder is taken
     // to be the app's own Frame, while anything deeper is assumed to be a detail of how the app is
     // laid out (e.g. an imported .tsx helper module). For manifest-less folders this is the only
-    // signal; for manifest-bearing folders it is the base case that manifest-declared frames (which
-    // may live at any depth) are UNIONED with later, from the manifest read (see
+    // signal; for manifest-bearing folders it is the base case that the manifest's declared UI
+    // entry point (which may live at any depth) is UNIONED with later, from the manifest read (see
     // `withDeclaredFrameEntries`).
     if (segments.length === 2 && isInteractiveContentType(entry.contentType)) {
       folder.frameEntries.push(entry);
@@ -336,8 +337,13 @@ type AppManifestReadResult =
       manifest: {
         name: string;
         description: string;
-        /** Folder-relative paths the manifest declares as frames, at any depth. */
-        framePaths: string[];
+        /**
+         * Folder-relative path to the app's UI entry point, resolved from the manifest: the
+         * explicit `uiEntryPoint`, or `POD_APP_DEFAULT_UI_ENTRY_POINT` when omitted. Listing is
+         * tolerant of this file not existing — unlike publish, that is not an error here, it just
+         * means `withDeclaredFrameEntries` has nothing to add for this folder.
+         */
+        entryPointPath: string;
       };
       error: null;
     }
@@ -374,7 +380,8 @@ async function readAppManifests(
       manifest: {
         name: parseResult.value.name,
         description: parseResult.value.description,
-        framePaths: parseResult.value.frames.map((frame) => frame.path),
+        entryPointPath:
+          parseResult.value.uiEntryPoint ?? POD_APP_DEFAULT_UI_ENTRY_POINT,
       },
       error: null,
     });
@@ -383,11 +390,12 @@ async function readAppManifests(
 }
 
 /**
- * Augment each valid-manifest folder's Frame entries with the file entries matching its
- * manifest's declared frame paths, at any depth. The manifest declaration is authoritative
- * regardless of the entry's storage content type (see `publishPodApp`'s auto-create path for why
- * that MIME type is untrusted). Entries already present (matched by path — the legacy top-level
- * heuristic can find the same file) are not duplicated.
+ * Augment each valid-manifest folder's Frame entries with the file entry matching its manifest's
+ * resolved UI entry point (at any depth). The manifest declaration is authoritative regardless of
+ * the entry's storage content type (see `publishPodApp`'s auto-create path for why that MIME type
+ * is untrusted). An entry already present (matched by path — the legacy top-level heuristic can
+ * find the same file) is not duplicated. A defaulted entry point that has no matching file is
+ * normal here — listing reflects reality; only publish enforces that every app has a frame.
  *
  * Returns a new array rather than mutating `folders`, whose `frameEntries` are otherwise only
  * ever appended to inside `collectAppFolders`.
@@ -406,19 +414,16 @@ function withDeclaredFrameEntries(
     const existingPaths = new Set(
       folder.frameEntries.map((entry) => entry.path)
     );
-    const declaredEntries = manifestRead.manifest.framePaths.flatMap(
-      (framePath) => {
-        const entry = fileEntryByPath.get(`${folder.path}/${framePath}`);
-        return entry && !existingPaths.has(entry.path) ? [entry] : [];
-      }
+    const entry = fileEntryByPath.get(
+      `${folder.path}/${manifestRead.manifest.entryPointPath}`
     );
-    if (declaredEntries.length === 0) {
+    if (!entry || existingPaths.has(entry.path)) {
       return folder;
     }
 
     return {
       ...folder,
-      frameEntries: [...folder.frameEntries, ...declaredEntries],
+      frameEntries: [...folder.frameEntries, entry],
     };
   });
 }

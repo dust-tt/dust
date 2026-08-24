@@ -135,7 +135,7 @@ describe("listPodApps with manifests", () => {
     const { auth, projectId } = await setupProjectConversation();
     const pod = await SpaceResource.fetchById(auth, projectId);
     assert(pod);
-    const manifest = { ...MANIFEST, frames: [{ path: "ui/Dashboard.tsx" }] };
+    const manifest = { ...MANIFEST, uiEntryPoint: "ui/Dashboard.tsx" };
     // The entry's storage content type is "text/plain", not a Frame MIME type, to prove that a
     // manifest-declared frame is listed regardless of the storage object's guessed content type.
     fileStorageMock.setFilesByPrefix((prefix) => [
@@ -171,7 +171,7 @@ describe("listPodApps with manifests", () => {
     const { auth, projectId } = await setupProjectConversation();
     const pod = await SpaceResource.fetchById(auth, projectId);
     assert(pod);
-    const manifest = { ...MANIFEST, frames: [] };
+    const manifest = { ...MANIFEST };
     fileStorageMock.setFilesByPrefix((prefix) => [
       {
         name: `${prefix}Board/manifest.json`,
@@ -196,6 +196,42 @@ describe("listPodApps with manifests", () => {
     expect(result.value).toHaveLength(1);
     expect(result.value[0].frames.map((f) => f.fileName)).toContain(
       "Board.tsx"
+    );
+  });
+
+  it("lists the defaulted index.tsx entry point when uiEntryPoint is omitted", async () => {
+    const { auth, projectId } = await setupProjectConversation();
+    const pod = await SpaceResource.fetchById(auth, projectId);
+    assert(pod);
+    // No uiEntryPoint declared, but an index.tsx sits at the folder root: it resolves to the
+    // default entry point and must be listed, even though its storage MIME type is not a Frame's
+    // (the manifest-declared path is authoritative, same as an explicit uiEntryPoint).
+    fileStorageMock.setFilesByPrefix((prefix) => [
+      {
+        name: `${prefix}Dashboard/manifest.json`,
+        metadata: { contentType: "text/plain", size: "10" },
+      },
+      {
+        name: `${prefix}Dashboard/index.tsx`,
+        metadata: { contentType: "text/plain", size: "10" },
+      },
+      {
+        name: `${prefix}Dashboard/src/add.ts`,
+        metadata: { contentType: "text/plain", size: "10" },
+      },
+    ]);
+    fileStorageMock.setFileContent((filePath) =>
+      filePath.endsWith("Dashboard/manifest.json")
+        ? JSON.stringify(MANIFEST)
+        : null
+    );
+
+    const result = await listPodApps(auth, pod);
+
+    assert(result.isOk(), result.isErr() ? result.error.message : "");
+    expect(result.value).toHaveLength(1);
+    expect(result.value[0].frames.map((f) => f.fileName)).toContain(
+      "index.tsx"
     );
   });
 });
