@@ -18,10 +18,17 @@ const { recordUsageActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
 
+// Retries are safe: the mutation phase (credit consumption, redis counters) is
+// guarded by a per-execution idempotency marker (see trackProgrammaticCost), so
+// a retry after a partial failure or a timed-out zombie attempt never consumes
+// the same runs twice. Retries mostly cover transient DB pool exhaustion.
 const { trackProgrammaticUsageActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
   retry: {
-    maximumAttempts: 1,
+    initialInterval: "10s",
+    backoffCoefficient: 2,
+    maximumInterval: "2 minutes",
+    maximumAttempts: 5,
   },
 });
 

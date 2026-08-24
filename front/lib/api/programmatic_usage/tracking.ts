@@ -10,7 +10,9 @@ import {
   hasKeyReachedUsageCap,
   incrementRedisKeyUsageMicroUsd,
 } from "@app/lib/api/programmatic_usage/key_cap";
+import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { computeRunKey } from "@app/lib/credits/agent_message_billing";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -22,8 +24,50 @@ import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
+
+// TTL on the per-execution idempotency marker guarding credit consumption.
+// Activity retries span minutes; 24 hours comfortably covers late zombie
+// attempts without accumulating keys forever.
+const CONSUMED_RUNS_GUARD_TTL_SECONDS = 24 * 60 * 60;
+
+const TRACKING_REDIS_ORIGIN = "programmatic_usage_tracking" as const;
+
+/**
+ * Marks the given agent-loop execution (identified by its runKey) as consumed.
+ * Returns false when another attempt already consumed it — the caller must then
+ * skip the mutation phase so activity retries and timed-out zombie attempts
+ * never consume the same runs twice. The marker is set before the mutations and
+ * deliberately never released: a crash inside the mutation window leaves it
+ * held, so the retry drops that execution instead of risking double
+ * consumption. Do not delete the marker on failure. Fails open on Redis errors:
+ * tracking must not be blocked by a Redis outage.
+ */
+async function tryMarkRunsConsumed(
+  auth: Authenticator,
+  dustRunIds: string[],
+  localLogger: Logger
+): Promise<boolean> {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const guardKey = `programmatic_usage_consumed:${workspaceId}:${computeRunKey(dustRunIds)}`;
+  try {
+    const res = await runOnRedis({ origin: TRACKING_REDIS_ORIGIN }, (redis) =>
+      redis.set(guardKey, "1", {
+        NX: true,
+        EX: CONSUMED_RUNS_GUARD_TTL_SECONDS,
+      })
+    );
+    return res === "OK";
+  } catch (err) {
+    localLogger.warn(
+      { guardKey, err: normalizeError(err) },
+      "[Programmatic Usage Tracking] Failed to set idempotency guard, proceeding without."
+    );
+    return true;
+  }
+}
 
 type ProgrammaticUsageLimitErrorType = "credits_exhausted" | "rate_limit_error";
 
@@ -323,6 +367,23 @@ export async function trackProgrammaticCost(
   const costWithMarkupMicroUsd = Math.ceil(
     runsCostMicroUsd * (1 + DUST_MARKUP_PERCENT / 100)
   );
+
+  // Everything above is read-only and safe to retry; everything below mutates
+  // (credit ledger, redis counters). Guard the mutation phase so an activity
+  // retry after a partial failure never consumes the same runs twice.
+  const isFirstConsumption = await tryMarkRunsConsumed(
+    auth,
+    dustRunIds,
+    localLogger
+  );
+  if (!isFirstConsumption) {
+    localLogger.warn(
+      { dustRunIds },
+      "[Programmatic Usage Tracking] Runs already consumed by a previous attempt. Skipping."
+    );
+    return;
+  }
+
   const { totalConsumedMicroUsd, totalInitialMicroUsd, activeCredits } =
     await decreaseProgrammaticCredits(
       auth,

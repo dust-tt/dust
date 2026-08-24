@@ -7,6 +7,7 @@ import {
   isProgrammaticUsage,
   trackProgrammaticCost,
 } from "@app/lib/api/programmatic_usage/tracking";
+import { runOnRedis } from "@app/lib/api/redis";
 import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
@@ -15,7 +16,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type MockCreditForConsumption = Pick<CreditResource, "type" | "expirationDate">;
 
@@ -607,6 +608,27 @@ describe("trackProgrammaticCost", () => {
     });
 
     expect(result).toEqual({ runsCostMicroUsd: 0 });
+  });
+
+  it("skips consumption when the same runs were already tracked (activity retry)", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await makeAuth(workspace);
+
+    const first = await trackProgrammaticCost(auth, {
+      dustRunIds: ["run-1", "run-2"],
+      userMessageOrigin: "api",
+    });
+    expect(first).toEqual({ runsCostMicroUsd: 0 });
+
+    // The global redis mock does not enforce NX, so simulate the guard key
+    // already being held by the first attempt (what real redis returns).
+    vi.mocked(runOnRedis).mockResolvedValueOnce(null);
+
+    const second = await trackProgrammaticCost(auth, {
+      dustRunIds: ["run-1", "run-2"],
+      userMessageOrigin: "api",
+    });
+    expect(second).toBeUndefined();
   });
 });
 
