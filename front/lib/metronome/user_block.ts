@@ -22,12 +22,13 @@
 //
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { runOnRedis } from "@app/lib/api/redis";
+import { microCreditsToCredits } from "@app/lib/credits/units";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
-  getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
+  getWeightedRateLimiterCount,
 } from "@app/lib/utils/rate_limiter";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -253,7 +254,7 @@ export async function getFairUseAwuCreditsStatus({
     };
   }
 
-  const result = await getRateLimiterCount({
+  const result = await getWeightedRateLimiterCount({
     key: makeFairUseAwuCreditsRateLimitKeyForUser(workspace, user, timeframe),
     timeframeSeconds: getTimeframeSecondsFromLiteral(timeframe),
   });
@@ -275,10 +276,12 @@ export async function getFairUseAwuCreditsStatus({
     };
   }
 
+  // The counter stores microCredits; the status stays credit-denominated (with
+  // decimals), so convert before capping against the credit limit.
   return {
     limit,
     timeframe,
-    count: Math.min(result.value, limit),
+    count: Math.min(microCreditsToCredits(result.value), limit),
   };
 }
 

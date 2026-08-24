@@ -83,6 +83,7 @@ import {
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import { isApiKeyCapped } from "@app/lib/metronome/api_key_block";
@@ -124,8 +125,8 @@ import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
-  getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
+  getWeightedRateLimiterCount,
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -3099,7 +3100,7 @@ async function isMessagesLimitReached(
 
   const user = auth.user();
   if (user && maxAwuCredits !== -1) {
-    const result = await getRateLimiterCount({
+    const result = await getWeightedRateLimiterCount({
       key: makeFairUseAwuCreditsRateLimitKeyForUser(
         owner,
         user.toJSON(),
@@ -3108,7 +3109,12 @@ async function isMessagesLimitReached(
       timeframeSeconds: getTimeframeSecondsFromLiteral(maxAwuCreditsTimeframe),
     });
 
-    if (result.isOk() && result.value >= maxAwuCredits) {
+    // The counter stores microCredits; scale the credit-denominated limit the
+    // same way before comparing.
+    if (
+      result.isOk() &&
+      result.value >= roundCreditsToMicroCredits(maxAwuCredits)
+    ) {
       return {
         isLimitReached: true,
         limitType: "plan_message_limit_exceeded",

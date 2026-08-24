@@ -82,7 +82,11 @@ export const makeFairUseAwuCreditsRateLimitKeyForUser = (
   user: UserType,
   maxAwuCreditsTimeframe: MaxAwuCreditsTimeframeType
 ) => {
-  return `workspace:${owner.id}:user:${user.id}:fair_use_awu_credit_count:${maxAwuCreditsTimeframe}`;
+  // `:v2_microcredits` marks the switch to weighted amount-carrying entries
+  // (`<microCredits>:<uuid>`, summed on read). Bumping the key prevents summing
+  // the new entries together with legacy plain-uuid rows; the short rolling
+  // window makes the pre-existing key expire quickly after cutover.
+  return `workspace:${owner.id}:user:${user.id}:fair_use_awu_credit_count:${maxAwuCreditsTimeframe}:v2_microcredits`;
 };
 
 export const PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK = 25;
