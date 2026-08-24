@@ -6,15 +6,15 @@ import {
 } from "@app/lib/api/assistant/inactivity/fetch_inactive_agents";
 import type { AgentInactivityPolicyError } from "@app/lib/api/assistant/inactivity/policy";
 import { computeInactivityCutoffAt } from "@app/lib/api/assistant/inactivity/policy";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import { heartbeat } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * Archives a workspace's inactive agents. Both the manual endpoints and the nightly Temporal
- * activity enter here, so the rules cannot drift between them; the population still differs, since
- * every read is permission-filtered.
+ * activity enter here, on the same rules over the same population.
  */
 
 export interface InactiveAgentsArchivalInput {
@@ -55,16 +55,29 @@ export async function archiveInactiveWorkspaceAgents(
   }
   const cutoffAt = cutoffRes.value;
 
-  const { eligible, skipped: refused } = await fetchArchivableAgents(auth, {
-    cutoffAt,
-  });
+  if (!auth.isAdmin()) {
+    throw new Error("Only a workspace admin can archive inactive agents.");
+  }
+
+  const everySpaceAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId,
+    { dangerouslyRequestAllGroups: true }
+  );
+
+  const { eligible, skipped: refused } = await fetchArchivableAgents(
+    everySpaceAuth,
+    { cutoffAt }
+  );
 
   const archivedAgentIds: string[] = [];
   const skipped = [...refused];
 
   for (const { agentId, lastMentionedAt } of eligible) {
+    // Temporal heartbeat to avoid activity timeout
+    await heartbeat();
+
     // Not a compare-and-set: an agent restored since the read is archived anyway. Reversible.
-    const archived = await archiveAgentConfiguration(auth, agentId);
+    const archived = await archiveAgentConfiguration(everySpaceAuth, agentId);
     if (!archived) {
       skipped.push({ agentId, reason: "archive_raced" });
       continue;

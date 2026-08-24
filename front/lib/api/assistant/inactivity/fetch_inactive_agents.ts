@@ -14,15 +14,11 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { AgentConfigurationStatus } from "@app/types/assistant/agent";
 
 /**
- * Loads one page of a workspace's agents that the rules clear for archival.
+ * A workspace's agents the rules clear for archival: candidates from the mentions query, rules
+ * from `policy.ts`.
  *
- * The candidates come from the mentions query, the rules from `policy.ts`; this is where the two
- * meet. Every read is permission-filtered, so two actors can legitimately get different answers for
- * the same workspace.
- *
- * A workspace is the unit of work: the nightly run starts one activity per workspace, so there is
- * nothing to page through here. Splitting the agents into batches would re-run the mentions query
- * once per batch, and the cursor would have to survive between them, for no gain.
+ * One activity per workspace, no paging: batching agents would re-run the mentions query per
+ * batch for no gain.
  */
 
 /** One logical agent the rules cleared. */
@@ -66,17 +62,17 @@ export function countSkipsByReason(
   return counts;
 }
 
-/** The facts the rules read about an agent, as they stand when the page is evaluated. */
-interface AgentArchivalFacts {
+/** The status and triggers the rules read about an agent, as they stand when it is evaluated. */
+interface AgentStatusAndTriggers {
   status: AgentConfigurationStatus;
   triggers: AgentTriggerSnapshot[];
 }
 
 /** A missing agent is one this actor cannot read. */
-async function fetchArchivalFacts(
+async function fetchStatusAndTriggers(
   auth: Authenticator,
   agentIds: string[]
-): Promise<Map<string, AgentArchivalFacts>> {
+): Promise<Map<string, AgentStatusAndTriggers>> {
   if (agentIds.length === 0) {
     return new Map();
   }
@@ -119,24 +115,26 @@ export async function fetchArchivableAgents(
     auth,
     agentIds
   );
-  const factsByAgentId = await fetchArchivalFacts(auth, agentIds);
+  const statusAndTriggersByAgentId = await fetchStatusAndTriggers(
+    auth,
+    agentIds
+  );
 
   const eligible: ArchivableAgent[] = [];
-  // Skips are the common case, so callers count them in the run summary rather than log each one.
   const skipped: AgentArchivalSkip[] = [];
 
   for (const { agentId, lastMentionedAt } of idleAgents) {
     const createdAt = createdAtByAgentId.get(agentId);
-    const facts = factsByAgentId.get(agentId);
+    const statusAndTriggers = statusAndTriggersByAgentId.get(agentId);
     // No first version either means the agent is unreadable, or that we could not establish the
     // date the age rule needs. Both are reasons not to archive it.
-    if (!createdAt || !facts) {
+    if (!createdAt || !statusAndTriggers) {
       skipped.push({ agentId, reason: "agent_not_found" });
       continue;
     }
 
     const eligibility = evaluateAgentArchivalEligibility({
-      agent: { agentId, createdAt, lastMentionedAt, ...facts },
+      agent: { agentId, createdAt, lastMentionedAt, ...statusAndTriggers },
       cutoffAt,
     });
 

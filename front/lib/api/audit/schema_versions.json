@@ -120,6 +120,7 @@
   "workspace.extension_mcp_tools_updated": 1,
   "workspace.governance_permission_updated": 1,
   "workspace.inactive_agent_archival_updated": 1,
+  "workspace.inactive_agents_archived": 1,
   "workspace.interactive_content_sharing_updated": 1,
   "workspace.manual_project_knowledge_management_updated": 1,
   "workspace.model_provider_settings_updated": 1,

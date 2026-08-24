@@ -5,7 +5,7 @@ import {
 } from "@app/lib/api/assistant/inactivity/fetch_inactive_agents";
 import type { AgentInactivityPolicyError } from "@app/lib/api/assistant/inactivity/policy";
 import { computeInactivityCutoffAt } from "@app/lib/api/assistant/inactivity/policy";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -56,7 +56,16 @@ export async function previewInactiveAgents(
   }
   const cutoffAt = cutoffRes.value;
 
-  const { eligible, skipped } = await fetchArchivableAgents(auth, {
+  if (!auth.isAdmin()) {
+    throw new Error("Only a workspace admin can preview inactive agents.");
+  }
+
+  const everySpaceAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId,
+    { dangerouslyRequestAllGroups: true }
+  );
+
+  const { eligible, skipped } = await fetchArchivableAgents(everySpaceAuth, {
     cutoffAt,
   });
 

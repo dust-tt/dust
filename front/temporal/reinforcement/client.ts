@@ -65,6 +65,7 @@ async function getReinforcementWorkspaceIds(): Promise<string[]> {
 // ---------------------------------------------------------------------------
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+const ACTIVATION_WORKDAY_START_HOUR = 3;
 
 /**
  * Launch a schedule for a single workspace.
@@ -93,7 +94,7 @@ export async function startReinforcementWorkspaceSchedule({
         overlap: ScheduleOverlapPolicy.SKIP,
       },
       spec: {
-        calendars: [{ hour: 0, minute: 0 }],
+        calendars: [{ hour: ACTIVATION_WORKDAY_START_HOUR, minute: 0 }],
         timezone,
         jitter: TWO_HOURS_MS,
       },
