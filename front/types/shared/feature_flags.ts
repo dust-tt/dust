@@ -164,11 +164,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
     stage: "on_demand",
   },
-  enable_analytics_consumption: {
-    description:
-      "Access to the new consumption-based Analytics dashboard, built alongside the current one while it is brought to parity.",
-    stage: "dust_only",
-  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",

@@ -473,8 +473,7 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
 
-  const isAnalyticsConsumptionEnabled =
-    isWorkspaceAdmin && hasFeature("enable_analytics_consumption");
+  const showConsumptionAnalytics = isWorkspaceAdmin;
 
   const {
     overview: consumptionOverview,
@@ -483,7 +482,7 @@ export function UsagePage() {
   } = useConsumptionOverview({
     workspaceId: owner.sId,
     period: DEFAULT_CONSUMPTION_PERIOD,
-    disabled: !canViewUsage || !isAnalyticsConsumptionEnabled,
+    disabled: !canViewUsage || !showConsumptionAnalytics,
   });
 
   const { awuPurchaseInfo, isAwuPurchaseInfoLoading, isAwuPurchaseInfoError } =
@@ -889,7 +888,7 @@ export function UsagePage() {
     creditUsage &&
     (creditUsage.status.target === "on_target" ? "on_target" : "off_target");
 
-  const totalConsumedCredits = isAnalyticsConsumptionEnabled
+  const totalConsumedCredits = showConsumptionAnalytics
     ? (consumptionOverview?.totalCredits ??
       (isReadOnly ? periodSpendCredits : poolConsumedCredits))
     : poolConsumedCredits;
@@ -1103,12 +1102,12 @@ export function UsagePage() {
 
       <div
         className={
-          isAnalyticsConsumptionEnabled
+          showConsumptionAnalytics
             ? "flex flex-col items-stretch gap-8 pb-20"
             : "flex flex-col items-stretch gap-10 pb-20"
         }
       >
-        {isAnalyticsConsumptionEnabled ? (
+        {showConsumptionAnalytics ? (
           <Page.Header
             title={
               <div className="flex w-full items-center justify-between gap-4">
@@ -1152,7 +1151,7 @@ export function UsagePage() {
           />
         )}
 
-        {isAnalyticsConsumptionEnabled ? (
+        {showConsumptionAnalytics ? (
           <Page.Vertical gap="none" align="stretch">
             <h2 className="heading-sm text-foreground">Credit Pool</h2>
             <div className="flex flex-col gap-2 pt-4">
@@ -1261,7 +1260,7 @@ export function UsagePage() {
           </Page.Vertical>
         ) : null}
 
-        {!isAnalyticsConsumptionEnabled &&
+        {!showConsumptionAnalytics &&
         !isAwuPoolSummaryLoading &&
         (isAwuPoolSummaryError || hasPool || isReadOnly) ? (
           <Page.Vertical gap="xs" align="stretch">

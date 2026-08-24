@@ -27,7 +27,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { SeedContext } from "./types";
 
 /**
- * Seeds the consumption index the "Analytics (new)" page reads, with the
+ * Seeds the consumption index the "Analytics" page reads, with the
  * documents the attribution pipeline would have produced for billed LLM steps
  * and tool calls.
  *
