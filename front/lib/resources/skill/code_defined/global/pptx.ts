@@ -72,6 +72,8 @@ def set_text(paragraph, text):
 
 \`.text\` only for a placeholder \`--slide\` reports empty. Keep the extra runs only for deliberate mixed styling mid-line.
 
+**An exemplar's pictures belong to its story too.** A case-study slide carries that customer's logo, their screenshot, a chart of their numbers. Cloned for its layout, all three ship inside your deck saying someone else's name. Delete or replace them; only the template's own furniture and decoration stay.
+
 **Rewrite or delete every shape you cloned.** An exemplar carries the template's own scaffolding: a stage name, \`01\`..\`06\`, \`HOW\`, filler paragraphs. Anything you leave renders as content next to your copy. \`--slide\` lists every shape on the slide: account for all of them, columns 2 and 3 included. Filler rarely says "Lorem ipsum" - the second and third paragraphs start "Ut enim ad minim veniam" and "Duis aute irure dolor", and they look like copy until you read them.
 
 **Content slots, not spacers.** \`--slide\` prints the skeleton \`p[0]\`, \`p[1]\`, ... incl \`(empty)\` spacers. Write the slots the template fills (often \`p[2]\`, \`p[4]\`, \`p[6]\`): a spacer inherits other styling and strands the markers pinned beside the real rows. Fewer items than slots: clear the surplus, delete its markers. More items: clone a denser exemplar.
@@ -105,7 +107,7 @@ _, rId = pic.part.get_or_add_image_part("/files/conversation/logo.png")
 pic._element.blipFill.blip.set(qn("r:embed"), rId)
 \`\`\`
 
-A replacement with a different native aspect ratio needs the box resized on both axes (or cropped), or it renders stretched. Never retype a brand name for a logo. Never text over a background image that already carries text: delete that picture or clone another exemplar.
+A replacement with a different native aspect ratio needs the box resized on both axes (or cropped), or it renders stretched. Never retype a brand name for a logo. Never text over a background image that already carries text or artwork: the title slide's background usually has the template's own headline and logo baked into the pixels, and your title lands on top of it. Delete that picture, or clone an exemplar built to hold text. Writing no title at all is not the fix either: the deck then presents the template's headline as its own.
 
 **Adapt, don't gut.** Resize, move, remove template shapes so your content fits; scale images on both axes or crop, never one. Deleting an exemplar's photo or its second column leaves a title over an empty canvas, which reads worse than a plain slide: put content in that space or clone a sparser exemplar. Deleting most of an exemplar's shapes = wrong exemplar. Keep every box inside the slide: a box that starts at a negative coordinate or runs past the right edge is clipped, not "bleeding".
 
