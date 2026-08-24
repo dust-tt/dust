@@ -229,8 +229,8 @@ function buildColumns({
       enableSorting: false,
       meta: {
         className: showAnalyticsConsumption
-          ? "hidden h-16 w-24 px-1 @md-table:table-cell"
-          : "hidden h-16 w-26 @lg-table:table-cell",
+          ? "hidden h-16 w-20 px-1 @md-table:table-cell"
+          : "hidden h-16 w-20 @lg-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => (
