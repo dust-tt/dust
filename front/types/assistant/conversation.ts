@@ -355,10 +355,6 @@ export type BaseAgentMessageType = {
   completionDurationMs: number | null;
   reactions: MessageReactionType[];
   prunedContext?: boolean;
-  // Persisted: set only for "gracefully_stopped" messages, to distinguish among the possible
-  // graceful-stop causes (queued-message preemption, orphan cleanup, message deletion, the user
-  // confirming the smooth-shutdown workflow-alert-threshold popup) from one another.
-  gracefullyStoppedReason?: "smooth_shutdown";
   costCredits: number | null;
   // Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned
   // (recursively) by this message, separate from `costCredits` (this message's own
