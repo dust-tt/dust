@@ -246,7 +246,7 @@ function buildColumns({
       enableSorting: false,
       meta: {
         className: showAnalyticsConsumption
-          ? "hidden h-16 w-24 @xl-table:table-cell"
+          ? "hidden h-16 w-24 @lg-table:table-cell"
           : "hidden h-16 w-28 @lg-table:table-cell",
         headerAlign: "left",
       },
@@ -355,7 +355,9 @@ function buildColumns({
       header: "Last used",
       enableSorting: true,
       meta: {
-        className: "hidden h-16 w-32 @sm-table:table-cell",
+        className: showAnalyticsConsumption
+          ? "hidden h-16 w-28 @sm-table:table-cell"
+          : "hidden h-16 w-32 @sm-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => (
@@ -376,7 +378,10 @@ function buildColumns({
       accessorKey: "status",
       header: "Status",
       enableSorting: false,
-      meta: { className: "h-16 w-20", headerAlign: "left" },
+      meta: {
+        className: showAnalyticsConsumption ? "h-16 w-18 px-1" : "h-16 w-20",
+        headerAlign: "left",
+      },
       cell: (info) => {
         const status = info.row.original.status;
         return (
@@ -402,7 +407,7 @@ function buildColumns({
       enableSorting: false,
       meta: {
         className: showAnalyticsConsumption
-          ? "hidden h-16 w-24 @xs-table:table-cell"
+          ? "hidden h-16 w-20 px-1 @xs-table:table-cell"
           : "hidden h-16 w-20 @xs-table:table-cell",
         headerAlign: "right",
       },
