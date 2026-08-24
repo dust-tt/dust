@@ -229,8 +229,8 @@ function buildColumns({
       enableSorting: false,
       meta: {
         className: showAnalyticsConsumption
-          ? "hidden h-16 w-26 px-1 @md-table:table-cell"
-          : "hidden h-16 w-28 @lg-table:table-cell",
+          ? "hidden h-16 w-24 px-1 @md-table:table-cell"
+          : "hidden h-16 w-26 @lg-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => (
@@ -250,8 +250,8 @@ function buildColumns({
       enableSorting: false,
       meta: {
         className: showAnalyticsConsumption
-          ? "hidden h-16 w-24 @lg-table:table-cell"
-          : "hidden h-16 w-28 @lg-table:table-cell",
+          ? "hidden h-16 w-26 @lg-table:table-cell"
+          : "hidden h-16 w-30 @lg-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => {
@@ -273,8 +273,8 @@ function buildColumns({
       enableSorting: false,
       meta: {
         className: showAnalyticsConsumption
-          ? "hidden h-16 w-16 @lg-table:table-cell"
-          : "hidden h-16 w-16 @md-table:table-cell",
+          ? "hidden h-16 w-14 @lg-table:table-cell"
+          : "hidden h-16 w-14 @md-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => {
@@ -285,25 +285,27 @@ function buildColumns({
           : Building04;
 
         return (
-          <Tooltip
-            label={
-              <div className="flex flex-col">
-                {spaceLabels.map((space, index) => (
-                  <span key={`${space}-${index}`}>{space}</span>
-                ))}
-              </div>
-            }
-            tooltipTriggerAsChild
-            trigger={
-              <span
-                className="inline-flex shrink-0 rounded outline-hidden focus-visible:ring-2 focus-visible:ring-highlight-300"
-                tabIndex={0}
-                aria-label={`Spaces: ${spaceLabels.join(", ")}`}
-              >
-                <Icon visual={spaceIcon} size="sm" />
-              </span>
-            }
-          />
+          <DataTable.CellContent className="w-full justify-center">
+            <Tooltip
+              label={
+                <div className="flex flex-col">
+                  {spaceLabels.map((space, index) => (
+                    <span key={`${space}-${index}`}>{space}</span>
+                  ))}
+                </div>
+              }
+              tooltipTriggerAsChild
+              trigger={
+                <span
+                  className="inline-flex shrink-0 rounded outline-hidden focus-visible:ring-2 focus-visible:ring-highlight-300"
+                  tabIndex={0}
+                  aria-label={`Spaces: ${spaceLabels.join(", ")}`}
+                >
+                  <Icon visual={spaceIcon} size="sm" />
+                </span>
+              }
+            />
+          </DataTable.CellContent>
         );
       },
     },
