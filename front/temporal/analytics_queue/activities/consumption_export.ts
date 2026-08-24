@@ -18,8 +18,6 @@ import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/c
 import logger from "@app/logger/logger";
 import { createHash } from "crypto";
 
-// Written to the shared tmp-workloads bucket rather than private-uploads, reusing its
-// existing 7-day TTL instead of adding a new one.
 export function buildConsumptionExportGcsPrefix(workspaceId: string): string {
   return `w/${workspaceId}/consumption_exports/`;
 }
