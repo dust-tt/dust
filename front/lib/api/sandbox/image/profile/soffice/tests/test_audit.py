@@ -113,6 +113,21 @@ def test_repeated_text_needs_a_real_sentence():
     assert A.REPEATED_TEXT_SLIDES >= 3
 
 
+def test_padding_thresholds_leave_a_reused_accent_alone():
+    """Three slides sharing an accent is design; the padding move is one picture
+    carrying most of the deck."""
+    assert A.REPEATED_IMAGE_SLIDES >= 4
+
+
+def test_imagery_min_area_excludes_a_footer_logo_and_keeps_an_icon():
+    inch = 914400
+    slide_area = int(10 * inch) * int(5.625 * inch)
+    logo = (int(0.3 * inch)) ** 2
+    icon = (int(0.8 * inch)) ** 2
+    assert logo < slide_area * A.IMAGERY_MIN_AREA
+    assert icon > slide_area * A.IMAGERY_MIN_AREA
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]

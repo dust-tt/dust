@@ -82,6 +82,7 @@ from pptx_audit import (
     _is_leftover_suspect,
     _leftover_copy_audit,
     untouched_slides,
+    _repeated_image_audit,
     _repeated_text_audit,
     _listed_slide_count,
     _package_names,
@@ -1143,19 +1144,31 @@ def print_compare(file_path: str, source_path: str) -> str:
     repeated = _repeated_text_audit(file_path)
     if repeated:
         lines.append(
-            f"  repeats: [!] {len(repeated)} block(s) of copy appear on several "
-            "slides"
+            f"  repeats: [!] {len(repeated)} block(s) of copy appear more than "
+            "once"
         )
         for text, slides in repeated[:LEFTOVER_LISTED]:
             blockers += 1
             where = ",".join(str(n) for n in slides)
             lines.append(
-                f"    [!] slides {where}: {ellipsize(text, 60)!r}"
+                f"    [!] on slide(s) {where}: {ellipsize(text, 60)!r}"
             )
         if len(repeated) > LEFTOVER_LISTED:
             blockers += len(repeated) - LEFTOVER_LISTED
             lines.append(
                 f"    [!] ... and {len(repeated) - LEFTOVER_LISTED} more"
+            )
+
+    # One picture doing duty as the imagery of many slides.
+    padded = _repeated_image_audit(file_path, source_path)
+    if padded:
+        for _key, slides in padded[:LEFTOVER_LISTED]:
+            blockers += 1
+            where = ",".join(str(n) for n in slides)
+            lines.append(
+                f"  padding: [!] one picture is the content image of slides "
+                f"{where}. Give a slide the template's own image for what it "
+                "says, or leave it text-only."
             )
 
     # Cloned slides that came out mostly empty canvas. The shape-retention
@@ -1314,8 +1327,9 @@ def _autofit_off(shape: BaseShape) -> bool:
 
 def _text_shape_entries(slide: Slide):
     """Per top-level text-bearing shape: (id, declared_box_emu, token_set, label,
-    autofit_off). Feeds the cross-shape overprint detector (id, box, tokens) and
-    the digest wording (label, autofit)."""
+    autofit_off, declared_word_count). Feeds the cross-shape overprint detector
+    (id, box, tokens), the digest wording (label, autofit) and the clipped-text
+    check (declared_word_count)."""
     out = []
     for sh in slide.shapes:
         if None in (sh.left, sh.top, sh.width, sh.height):
@@ -1324,7 +1338,11 @@ def _text_shape_entries(slide: Slide):
         if not tokens:
             continue
         box = (sh.left, sh.top, sh.left + sh.width, sh.top + sh.height)
-        out.append((sh.shape_id, box, tokens, _shape_text_label(sh), _autofit_off(sh)))
+        declared = sum(len(text.split()) for text in _shape_text_iter(sh))
+        out.append((
+            sh.shape_id, box, tokens, _shape_text_label(sh), _autofit_off(sh),
+            declared,
+        ))
     return out
 
 
@@ -1440,6 +1458,17 @@ def _slide_findings_lines(
         # A shape whose own rendered words fall outside its own box: the box
         # doesn't contain its text, but the overflow lands in empty space (a
         # neighbour hit is a [!] collision above, so those shapes are skipped).
+        for f in pdf_text.clipped_shapes(
+            words, shapes, {e[0]: e[5] for e in entries}, page_has_text=True
+        ):
+            n_severe += 1
+            severe.append(
+                f"  [!] {q(f['sid'])} - text clipped: {f['rendered']} of "
+                f"{f['declared']} words rendered. The box cuts its copy off "
+                "instead of overflowing, so nothing looks wrong in the "
+                "geometry. Shorten the copy or grow the box."
+            )
+
         for f in pdf_text.self_overflows(words, shapes):
             if f["sid"] in confirmed_sids:
                 continue
