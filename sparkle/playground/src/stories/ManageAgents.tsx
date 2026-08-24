@@ -1,6 +1,5 @@
 import {
   Button,
-  Chip,
   CpuChip01,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -29,6 +28,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import type { FleetFilterOption } from "../components/manage/FleetFilterBar";
 import {
   FleetFilterChips,
   FleetFilterMenu,
@@ -69,181 +69,7 @@ const AGENT_MANAGER_TABS = [
 
 type AssistantManagerTabsType = (typeof AGENT_MANAGER_TABS)[number]["id"];
 
-type AgentModelFilterType = { modelId: string; displayName: string };
-
-const tagsSorter = (a: AgentTag, b: AgentTag) => {
-  if (a.kind !== b.kind) {
-    return a.kind.localeCompare(b.kind);
-  }
-  return a.name.localeCompare(b.name);
-};
-
-const getAgentSearchString = (agent: ManagedAgent) =>
-  agent.name.toLowerCase() +
-  " " +
-  agent.editors
-    .map((editor) => editor.fullName)
-    .join(" ")
-    .toLowerCase();
-
 // ── Filter menus ──────────────────────────────────────────────────────────────
-
-interface ModelsFilterMenuProps {
-  models: AgentModelFilterType[];
-  selectedModels: AgentModelFilterType[];
-  setSelectedModels: (models: AgentModelFilterType[]) => void;
-}
-
-function ModelsFilterMenu({
-  models,
-  selectedModels,
-  setSelectedModels,
-}: ModelsFilterMenuProps) {
-  const [isDropdownOpen, setDropdownOpen] = useState(false);
-  const [modelSearch, setModelSearch] = useState("");
-
-  const selectedModelIds = new Set(selectedModels.map((m) => m.modelId));
-
-  const searchLower = modelSearch.toLowerCase();
-  const filteredModels = models
-    .filter((m) => subFilter(searchLower, m.displayName.toLowerCase()))
-    .sort((a, b) => {
-      if (modelSearch) {
-        return compareForFuzzySort(searchLower, a.displayName, b.displayName);
-      }
-      return a.displayName.localeCompare(b.displayName);
-    });
-
-  return (
-    <DropdownMenu
-      open={isDropdownOpen}
-      onOpenChange={(open) => {
-        setDropdownOpen(open);
-        if (!open) {
-          setModelSearch("");
-        }
-      }}
-    >
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          icon={CpuChip01}
-          label="Models"
-          counterValue={selectedModels.length.toString()}
-          isCounter={selectedModels.length > 0}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="w-96"
-        dropdownHeaders={
-          <DropdownMenuSearchbar
-            name="modelSearch"
-            placeholder="Search models"
-            value={modelSearch}
-            onChange={setModelSearch}
-          />
-        }
-      >
-        {filteredModels.length === 0 && (
-          <div className="flex items-center justify-center py-4 text-sm">
-            No models found
-          </div>
-        )}
-        {filteredModels.map((model) => (
-          <DropdownMenuCheckboxItem
-            key={model.modelId}
-            label={model.displayName}
-            icon={getModelLogoByModelId(model.modelId)}
-            truncateText
-            checked={selectedModelIds.has(model.modelId)}
-            onCheckedChange={() => {
-              setSelectedModels(
-                selectedModelIds.has(model.modelId)
-                  ? selectedModels.filter((m) => m.modelId !== model.modelId)
-                  : [...selectedModels, model]
-              );
-            }}
-            // Keep the menu open so several models can be toggled in a row.
-            onSelect={(event) => event.preventDefault()}
-          />
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-interface TagsFilterMenuProps {
-  tags: AgentTag[];
-  selectedTags: AgentTag[];
-  setSelectedTags: (tags: AgentTag[]) => void;
-}
-
-function TagsFilterMenu({
-  tags,
-  selectedTags,
-  setSelectedTags,
-}: TagsFilterMenuProps) {
-  const [isDropdownOpen, setDropdownOpen] = useState(false);
-  const [tagSearch, setTagSearch] = useState("");
-
-  const filteredTags = tags
-    .filter((t) => subFilter(tagSearch, t.name.toLowerCase()))
-    .sort((a, b) => {
-      if (tagSearch) {
-        return compareForFuzzySort(
-          tagSearch,
-          a.name.toLowerCase(),
-          b.name.toLowerCase()
-        );
-      }
-      return tagsSorter(a, b);
-    });
-
-  return (
-    <DropdownMenu open={isDropdownOpen} onOpenChange={setDropdownOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          icon={Tag01}
-          label="Tags"
-          counterValue={selectedTags.length.toString()}
-          isCounter={selectedTags.length > 0}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="w-96"
-        dropdownHeaders={
-          <DropdownMenuSearchbar
-            name="tagSearch"
-            placeholder="Search tags"
-            value={tagSearch}
-            onChange={setTagSearch}
-            button={<Button variant="primary" label="Manage tags" />}
-          />
-        }
-      >
-        {filteredTags.length === 0 && (
-          <div className="flex items-center justify-center py-4 text-sm">
-            No tags found
-          </div>
-        )}
-        <DropdownMenuTagList>
-          {filteredTags
-            .filter((tag) => !selectedTags.includes(tag))
-            .map((tag) => (
-              <DropdownMenuTagItem
-                key={tag.sId}
-                label={tag.name}
-                color="info"
-                className="m-0.5"
-                onClick={() => setSelectedTags([...selectedTags, tag])}
-              />
-            ))}
-        </DropdownMenuTagList>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
 
 function CreateDropdown() {
   return (
@@ -269,6 +95,14 @@ function CreateDropdown() {
     </DropdownMenu>
   );
 }
+
+// Protected tags sort after standard ones, as in the product.
+const tagsSorter = (a: AgentTag, b: AgentTag) => {
+  if (a.kind !== b.kind) {
+    return a.kind.localeCompare(b.kind);
+  }
+  return a.name.localeCompare(b.name);
+};
 
 // ── Batch edit bar ────────────────────────────────────────────────────────────
 
@@ -421,26 +255,6 @@ export default function ManageAgents() {
   const assistantSearch = filters.search;
   const setAssistantSearch = (search: string) => updateFilters({ search });
 
-  const selectedTags = useMemo(
-    () => AGENT_TAGS.filter((tag) => filters.tags.includes(tag.sId)),
-    [filters.tags]
-  );
-  const selectedModels = useMemo<AgentModelFilterType[]>(
-    () =>
-      filters.models.map((modelId) => ({
-        modelId,
-        displayName: AGENT_MODELS_BY_ID.get(modelId)?.displayName ?? modelId,
-      })),
-    [filters.models]
-  );
-
-  // The two pre-existing menus keep their own shapes; they just write into the
-  // shared filter state so every dimension composes.
-  const setSelectedTags = (tags: AgentTag[]) =>
-    updateFilters({ tags: tags.map((tag) => tag.sId) });
-  const setSelectedModels = (models: AgentModelFilterType[]) =>
-    updateFilters({ models: models.map((model) => model.modelId) });
-
   const isSearchActive = assistantSearch.trim() !== "";
   const isFilterActive =
     isSearchActive ||
@@ -482,15 +296,21 @@ export default function ManageAgents() {
     );
   }, [agents]);
 
-  const uniqueModels = useMemo(() => {
-    const models = agents.map((a) => ({
-      modelId: a.modelId,
-      displayName: AGENT_MODELS_BY_ID.get(a.modelId)?.displayName ?? a.modelId,
+  const modelOptions = useMemo<FleetFilterOption[]>(() => {
+    const options = agents.map((a) => ({
+      value: a.modelId,
+      label: AGENT_MODELS_BY_ID.get(a.modelId)?.displayName ?? a.modelId,
+      icon: getModelLogoByModelId(a.modelId),
     }));
     return Array.from(
-      new Map(models.map((model) => [model.modelId, model])).values()
-    ).sort((a, b) => a.displayName.localeCompare(b.displayName));
+      new Map(options.map((option) => [option.value, option])).values()
+    ).sort((a, b) => a.label.localeCompare(b.label));
   }, [agents]);
+
+  const tagOptions = useMemo<FleetFilterOption[]>(
+    () => uniqueTags.map((tag) => ({ value: tag.sId, label: tag.name })),
+    [uniqueTags]
+  );
 
   // Everyone who edits something in the fleet — the option list for the
   // Editors and Last editor filters.
@@ -586,21 +406,13 @@ export default function ManageAgents() {
               onChange={setAssistantSearch}
             />
             <div className="flex gap-2">
-              <ModelsFilterMenu
-                models={uniqueModels}
-                selectedModels={selectedModels}
-                setSelectedModels={setSelectedModels}
-              />
-              <TagsFilterMenu
-                tags={uniqueTags}
-                selectedTags={selectedTags}
-                setSelectedTags={setSelectedTags}
-              />
               <FleetFilterMenu
                 filters={filters}
                 statusOptions={AGENT_STATUS_OPTIONS}
                 people={people}
                 showVisibility
+                models={modelOptions}
+                tags={tagOptions}
                 onToggle={toggleValue}
                 onUpdate={updateFilters}
               />
@@ -613,40 +425,8 @@ export default function ManageAgents() {
             peopleById={peopleById}
             onRemove={updateFilters}
             onClear={clearFilters}
-            hasLeadingChips={
-              selectedModels.length > 0 || selectedTags.length > 0
-            }
-            leadingChips={
-              <>
-                {selectedModels.map((model) => (
-                  <Chip
-                    key={model.modelId}
-                    label={model.displayName}
-                    size="xs"
-                    color="primary"
-                    icon={getModelLogoByModelId(model.modelId)}
-                    onRemove={() =>
-                      setSelectedModels(
-                        selectedModels.filter(
-                          (m) => m.modelId !== model.modelId
-                        )
-                      )
-                    }
-                  />
-                ))}
-                {selectedTags.map((tag) => (
-                  <Chip
-                    key={tag.sId}
-                    label={tag.name}
-                    size="xs"
-                    color="info"
-                    onRemove={() =>
-                      setSelectedTags(selectedTags.filter((t) => t !== tag))
-                    }
-                  />
-                ))}
-              </>
-            }
+            models={modelOptions}
+            tags={tagOptions}
           />
           {isFilterActive && (
             <div className="text-sm text-muted-foreground">

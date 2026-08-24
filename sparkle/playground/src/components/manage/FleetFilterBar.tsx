@@ -2,6 +2,7 @@ import {
   Button,
   Chip,
   ClockRewind,
+  CpuChip01,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -17,9 +18,11 @@ import {
   Eye,
   FilterFunnel01,
   Lock01,
+  Tag01,
   UserCircle,
   Users01,
 } from "@dust-tt/sparkle";
+import type { ComponentType } from "react";
 import { useState } from "react";
 
 import { FLEET_TOOLS, getToolLabel } from "../../data/fleetTools";
@@ -38,6 +41,22 @@ export interface FleetPerson {
   fullName: string;
 }
 
+/** A filter option; `icon` lets callers supply e.g. a model maker logo. */
+export interface FleetFilterOption {
+  value: string;
+  label: string;
+  icon?: ComponentType<{ className?: string }>;
+}
+
+type FleetFilterListKey =
+  | "editors"
+  | "lastEditors"
+  | "tools"
+  | "status"
+  | "visibility"
+  | "models"
+  | "tags";
+
 interface FleetFilterMenuProps {
   filters: FleetFilters;
   statusOptions: { value: StatusFilterValue; label: string }[];
@@ -45,11 +64,61 @@ interface FleetFilterMenuProps {
   // Agents are scoped to a workspace / space / person; skills use their own
   // availability control, which stays where it already is.
   showVisibility: boolean;
-  onToggle: (
-    key: "editors" | "lastEditors" | "tools" | "status" | "visibility",
-    value: string
-  ) => void;
+  // Agents only. Empty on skills, which have neither.
+  models?: FleetFilterOption[];
+  tags?: FleetFilterOption[];
+  onToggle: (key: FleetFilterListKey, value: string) => void;
   onUpdate: (update: Partial<FleetFilters>) => void;
+}
+
+/** Searchable multi-select submenu shared by the option-list dimensions. */
+function OptionsSubMenu({
+  options,
+  selected,
+  onToggle,
+  placeholder,
+  emptyLabel,
+}: {
+  options: FleetFilterOption[];
+  selected: string[];
+  onToggle: (value: string) => void;
+  placeholder: string;
+  emptyLabel: string;
+}) {
+  const [search, setSearch] = useState("");
+  const searchLower = search.toLowerCase();
+  const selectedIds = new Set(selected);
+  const filtered = options.filter((option) =>
+    subFilter(searchLower, option.label.toLowerCase())
+  );
+
+  return (
+    <DropdownMenuSubContent className="w-72">
+      <DropdownMenuSearchbar
+        name="optionSearch"
+        placeholder={placeholder}
+        value={search}
+        onChange={setSearch}
+      />
+      <DropdownMenuSeparator />
+      {filtered.length === 0 && (
+        <div className="flex items-center justify-center py-4 text-sm">
+          {emptyLabel}
+        </div>
+      )}
+      {filtered.map((option) => (
+        <DropdownMenuCheckboxItem
+          key={option.value}
+          label={option.label}
+          icon={option.icon}
+          truncateText
+          checked={selectedIds.has(option.value)}
+          onCheckedChange={() => onToggle(option.value)}
+          onSelect={(event) => event.preventDefault()}
+        />
+      ))}
+    </DropdownMenuSubContent>
+  );
 }
 
 function ToolsSubMenu({
@@ -169,6 +238,8 @@ export function FleetFilterMenu({
   statusOptions,
   people,
   showVisibility,
+  models,
+  tags,
   onToggle,
   onUpdate,
 }: FleetFilterMenuProps) {
@@ -223,6 +294,32 @@ export function FleetFilterMenu({
                 />
               ))}
             </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        )}
+
+        {models && models.length > 0 && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger label="Model" icon={CpuChip01} />
+            <OptionsSubMenu
+              options={models}
+              selected={filters.models}
+              onToggle={(value) => onToggle("models", value)}
+              placeholder="Search models"
+              emptyLabel="No models found"
+            />
+          </DropdownMenuSub>
+        )}
+
+        {tags && tags.length > 0 && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger label="Tags" icon={Tag01} />
+            <OptionsSubMenu
+              options={tags}
+              selected={filters.tags}
+              onToggle={(value) => onToggle("tags", value)}
+              placeholder="Search tags"
+              emptyLabel="No tags found"
+            />
           </DropdownMenuSub>
         )}
 
@@ -302,10 +399,9 @@ interface FleetFilterChipsProps {
   peopleById: Map<string, string>;
   onRemove: (update: Partial<FleetFilters>) => void;
   onClear: () => void;
-  // Screen-specific chips (models, tags) rendered before the shared ones so
-  // the existing rows keep their order.
-  leadingChips?: React.ReactNode;
-  hasLeadingChips?: boolean;
+  // Agents only; used to resolve ids to labels and icons.
+  models?: FleetFilterOption[];
+  tags?: FleetFilterOption[];
 }
 
 /**
@@ -318,14 +414,51 @@ export function FleetFilterChips({
   peopleById,
   onRemove,
   onClear,
-  leadingChips,
-  hasLeadingChips = false,
+  models,
+  tags,
 }: FleetFilterChipsProps) {
   const statusLabels = new Map(
     statusOptions.map((option) => [option.value, option.label])
   );
 
+  const modelsByValue = new Map(
+    (models ?? []).map((option) => [option.value, option])
+  );
+  const tagsByValue = new Map(
+    (tags ?? []).map((option) => [option.value, option])
+  );
+
   const chips: React.ReactNode[] = [];
+
+  for (const modelId of filters.models) {
+    const option = modelsByValue.get(modelId);
+    chips.push(
+      <Chip
+        key={`model-${modelId}`}
+        size="xs"
+        color="primary"
+        icon={option?.icon}
+        label={option?.label ?? modelId}
+        onRemove={() =>
+          onRemove({ models: filters.models.filter((m) => m !== modelId) })
+        }
+      />
+    );
+  }
+
+  for (const tagId of filters.tags) {
+    chips.push(
+      <Chip
+        key={`tag-${tagId}`}
+        size="xs"
+        color="info"
+        label={tagsByValue.get(tagId)?.label ?? tagId}
+        onRemove={() =>
+          onRemove({ tags: filters.tags.filter((t) => t !== tagId) })
+        }
+      />
+    );
+  }
 
   for (const status of filters.status) {
     chips.push(
@@ -440,13 +573,12 @@ export function FleetFilterChips({
     );
   }
 
-  if (chips.length === 0 && !hasLeadingChips) {
+  if (chips.length === 0) {
     return null;
   }
 
   return (
     <div className="flex flex-row flex-wrap items-center gap-2">
-      {leadingChips}
       {chips}
       {chips.length > 1 && (
         <Button variant="ghost" size="xs" label="Clear all" onClick={onClear} />

@@ -169,8 +169,8 @@ function matchesNotUsedFor(
 }
 
 /**
- * Counts what the Filters button badges. Models, tags and availability are
- * excluded: they have their own buttons and their own chips.
+ * Counts what the Filters button badges — every dimension the menu owns.
+ * Availability is excluded: it keeps its own control next to the tabs.
  */
 export function countActiveFleetFilters(filters: FleetFilters): number {
   return (
@@ -179,6 +179,8 @@ export function countActiveFleetFilters(filters: FleetFilters): number {
     filters.tools.length +
     filters.status.length +
     filters.visibility.length +
+    filters.models.length +
+    filters.tags.length +
     (filters.editedWithin ? 1 : 0) +
     (filters.notUsedFor ? 1 : 0)
   );
