@@ -68,7 +68,7 @@ export async function updateAgentMessageDBAndMemory(
           | {
               type: "status";
               status: AgentMessageStatusUpdate;
-              stoppedBySmoothShutdown?: boolean;
+              gracefullyStoppedReason?: "smooth_shutdown";
             }
           | {
               type: "error";
@@ -121,7 +121,7 @@ export async function updateAgentMessageDBAndMemory(
           conversation,
           agentMessage,
           status: update.status,
-          stoppedBySmoothShutdown: update.stoppedBySmoothShutdown,
+          gracefullyStoppedReason: update.gracefullyStoppedReason,
         });
         agentMessage.status = result.status;
         agentMessage.completedTs = result.completedTs;
@@ -342,7 +342,7 @@ export async function processEventForDatabase(
             event.type === "agent_message_gracefully_stopped"
               ? "gracefully_stopped"
               : "succeeded",
-          stoppedBySmoothShutdown: agentMessage.stoppedBySmoothShutdown,
+          gracefullyStoppedReason: agentMessage.gracefullyStoppedReason,
         },
       });
 
@@ -904,14 +904,17 @@ export async function finalizeSmoothShutdown(
     });
     messageToPublish = {
       ...agentMessage,
-      stoppedBySmoothShutdown: true,
+      gracefullyStoppedReason: "smooth_shutdown",
       contents: [
         ...agentMessage.contents,
         { step: summaryStep, content: summaryContent },
       ],
     };
   } else {
-    messageToPublish = { ...agentMessage, stoppedBySmoothShutdown: true };
+    messageToPublish = {
+      ...agentMessage,
+      gracefullyStoppedReason: "smooth_shutdown",
+    };
     logger.warn(
       {
         agentMessageId: agentMessage.sId,

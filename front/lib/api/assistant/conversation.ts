@@ -3204,16 +3204,14 @@ export async function updateAgentMessageWithFinalStatus(
     agentMessage,
     status,
     error,
-    stoppedBySmoothShutdown,
+    gracefullyStoppedReason,
     dangerouslyBypassSameStepCheck = false,
   }: {
     conversation: ConversationWithoutContentType;
     agentMessage: AgentMessageType;
     status: Exclude<AgentMessageStatus, "created">;
     error?: ToolErrorEvent["error"];
-    // True only for the smooth-shutdown flavor of "gracefully_stopped" (user confirmed the
-    // workflow-alert-threshold popup), as opposed to the other graceful-stop reasons.
-    stoppedBySmoothShutdown?: boolean;
+    gracefullyStoppedReason?: "smooth_shutdown";
     // Force finalization even if the message is in an anomalous state (e.g. blocked actions
     // spanning multiple steps). Used by the unstick-conversation poke plugin to rescue genuinely
     // stuck conversations. Leave false everywhere else so invariant violations surface as errors.
@@ -3267,7 +3265,7 @@ export async function updateAgentMessageWithFinalStatus(
               errorMetadata: error.metadata,
             }
           : {}),
-        ...(stoppedBySmoothShutdown ? { stoppedBySmoothShutdown: true } : {}),
+        ...(gracefullyStoppedReason ? { gracefullyStoppedReason } : {}),
       },
       {
         where: {
