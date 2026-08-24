@@ -1,6 +1,9 @@
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
+import {
+  DEFAULT_RIGHT_PANEL_SIZE,
+  getDefaultRightPanelSize,
+} from "@app/components/assistant/conversation/constant";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useLockDocumentScroll } from "@app/hooks/useLockDocumentScroll";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -51,7 +54,12 @@ export default function ConversationSidePanelContainer({
       return;
     }
 
-    panelRef.current?.expand(DEFAULT_RIGHT_PANEL_SIZE);
+    const defaultSize = getDefaultRightPanelSize(currentPanel);
+    if (panelRef.current.isCollapsed()) {
+      panelRef.current.expand(defaultSize);
+    } else {
+      panelRef.current.resize(defaultSize);
+    }
   }, [currentPanel, isMobile]);
 
   if (isMobile) {

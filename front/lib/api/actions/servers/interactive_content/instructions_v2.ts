@@ -1,7 +1,7 @@
 export const INTERACTIVE_CONTENT_AUTHORING_PROSE_V2 = `\
 ### Rendering Context
 
-Frames render inside a resizable iframe in the conversation side panel. The default panel is often about 40% of the browser width, and inline frames are capped at 600px high before the user expands them. Make the top 600px useful: clear title, primary visual or metric, and the first meaningful controls or status.
+Frames render inside a resizable iframe in the conversation side panel. The default panel is two-thirds of the browser width, and inline frames are capped at 600px high before the user expands them. Make the top 600px useful: clear title, primary visual or metric, and the first meaningful controls or status.
 
 Before declaring a frame done, mentally check both the default panel width and fullscreen. Look for clipped content, collapsed charts, colorless bulk surfaces, stale template data, and whether the top 600px is useful.
 
