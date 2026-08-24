@@ -1,3 +1,4 @@
+import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -130,5 +131,66 @@ describe("getAgentConfigurationsForView, 'analytics' view", () => {
     expect(await listAgentIdsForAnalytics(memberAuth)).toEqual(
       listedForMember.map((agent) => agent.sId)
     );
+  });
+});
+
+describe("getAgentConfigurationsForView, 'archived' view", () => {
+  async function listAgentIdsForArchived(auth: Authenticator) {
+    const agents = await getAgentConfigurationsForView({
+      auth,
+      agentsGetView: "archived",
+      variant: "light",
+    });
+    return agents.map((agent) => agent.sId);
+  }
+
+  it("lets an admin find an archived agent built on a space they are not a member of", async () => {
+    const { workspace, authenticator: editorAuth } = await createResourceTest({
+      role: "user",
+    });
+    const space = await SpaceFactory.regular(
+      editorAuth.getNonNullableWorkspace()
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(editorAuth, {
+      name: "Restricted archived agent",
+      scope: "visible",
+      requestedSpaceIds: [space.id],
+    });
+    // Archiving reads the agent first: an actor scoped to editorAuth's own groups cannot see an
+    // agent on a space it never joined, so the archive itself needs every-space visibility.
+    const everySpaceAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId,
+      { dangerouslyRequestAllGroups: true }
+    );
+    expect(await archiveAgentConfiguration(everySpaceAuth, agent.sId)).toBe(
+      true
+    );
+
+    const adminAuth = await authenticatorForNewMember(workspace, "admin");
+
+    expect(await listAgentIdsForArchived(adminAuth)).toContain(agent.sId);
+  });
+
+  it("still hides an archived agent on an unreadable space from a plain member", async () => {
+    const { workspace, authenticator: editorAuth } = await createResourceTest({
+      role: "user",
+    });
+    const space = await SpaceFactory.regular(
+      editorAuth.getNonNullableWorkspace()
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(editorAuth, {
+      name: "Restricted archived agent",
+      scope: "visible",
+      requestedSpaceIds: [space.id],
+    });
+    const everySpaceAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId,
+      { dangerouslyRequestAllGroups: true }
+    );
+    await archiveAgentConfiguration(everySpaceAuth, agent.sId);
+
+    const memberAuth = await authenticatorForNewMember(workspace, "user");
+
+    expect(await listAgentIdsForArchived(memberAuth)).not.toContain(agent.sId);
   });
 });
