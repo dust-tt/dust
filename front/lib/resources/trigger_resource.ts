@@ -331,15 +331,23 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   ): Promise<{ enabled: number; total: number; workspacePool: number }> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const [enabled, total, workspacePool] = await Promise.all([
-      this.model.count({ where: { workspaceId, status: "enabled" } }),
-      this.model.count({ where: { workspaceId } }),
-      this.model.count({
-        where: { workspaceId, executionMode: "workspace_pool" },
-      }),
-    ]);
+    const triggers = await this.model.findAll({
+      attributes: ["status", "executionMode"],
+      where: { workspaceId },
+    });
 
-    return { enabled, total, workspacePool };
+    let enabled = 0;
+    let workspacePool = 0;
+    for (const trigger of triggers) {
+      if (trigger.status === "enabled") {
+        enabled++;
+      }
+      if (trigger.executionMode === "workspace_pool") {
+        workspacePool++;
+      }
+    }
+
+    return { enabled, total: triggers.length, workspacePool };
   }
 
   static listByWorkspaceAndKinds(
