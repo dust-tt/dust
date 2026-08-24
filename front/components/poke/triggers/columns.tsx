@@ -247,8 +247,9 @@ export function makeColumnsForAutomationTriggers(
     },
     {
       accessorKey: "credits",
-      header: "Consumption",
-      enableSorting: false,
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Consumption" />
+      ),
       cell: ({ row }) => <ConsumptionCell trigger={row.original} />,
     },
     {

@@ -157,6 +157,7 @@ export function TriggerDataTable({ owner, agentId }: TriggerDataTableProps) {
             isLoading={isTriggersLoading}
             isValidating={isTriggersValidating}
             serverSideRowCount={totalCount}
+            sortCurrentPage
             pagination={pagination}
             onPaginationChange={setPagination}
             search={search}

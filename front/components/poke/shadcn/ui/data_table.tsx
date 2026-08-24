@@ -50,10 +50,11 @@ interface DataTableProps<TData, TValue> {
   facets?: Facet[];
   pageSize?: number;
   // Server-side (manual) mode. When `serverSideRowCount` is provided,
-  // pagination and sorting are controlled by the caller and applied
-  // server-side (the `data` prop is the current page only). Otherwise the
-  // table paginates/sorts/filters the full `data` set client-side as before.
+  // pagination is controlled by the caller and applied server-side (the
+  // `data` prop is the current page only). Sorting is server-side by default.
   serverSideRowCount?: number;
+  // Keep pagination server-side while sorting the current page locally.
+  sortCurrentPage?: boolean;
   pagination?: PaginationState;
   onPaginationChange?: (pagination: PaginationState) => void;
   sorting?: SortingState;
@@ -91,6 +92,7 @@ export function PokeDataTable<TData, TValue>({
   isValidating,
   pageSize = 10,
   serverSideRowCount,
+  sortCurrentPage = false,
   pagination,
   onPaginationChange,
   sorting,
@@ -104,13 +106,14 @@ export function PokeDataTable<TData, TValue>({
   getRowClassName,
 }: DataTableProps<TData, TValue>) {
   const isServerSide = serverSideRowCount !== undefined;
+  const isSortingLocally = !isServerSide || sortCurrentPage;
   const isServerSearch = onSearchChange !== undefined;
 
   const [internalSorting, setInternalSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-  const resolvedSorting = isServerSide ? (sorting ?? []) : internalSorting;
+  const resolvedSorting = isSortingLocally ? internalSorting : (sorting ?? []);
 
   const selectionColumn: ColumnDef<TData, TValue> = {
     id: "select",
@@ -156,17 +159,16 @@ export function PokeDataTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     globalFilterFn: "includesString", // built-in filter function
     manualPagination: isServerSide,
-    manualSorting: isServerSide,
-    ...(isServerSide
-      ? { rowCount: serverSideRowCount }
-      : { getSortedRowModel: getSortedRowModel() }),
-    onSortingChange: isServerSide
-      ? (updater: Updater<SortingState>) => {
+    manualSorting: !isSortingLocally,
+    ...(isServerSide ? { rowCount: serverSideRowCount } : {}),
+    ...(isSortingLocally ? { getSortedRowModel: getSortedRowModel() } : {}),
+    onSortingChange: isSortingLocally
+      ? setInternalSorting
+      : (updater: Updater<SortingState>) => {
           const next =
             typeof updater === "function" ? updater(resolvedSorting) : updater;
           onSortingChange?.(next);
-        }
-      : setInternalSorting,
+        },
     ...(isServerSide
       ? {
           onPaginationChange: (updater: Updater<PaginationState>) => {
