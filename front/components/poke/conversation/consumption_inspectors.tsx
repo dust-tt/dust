@@ -19,6 +19,7 @@ export function PokeConversationConsumptionInspector({
   workspaceId,
 }: PokeConversationConsumptionInspectorProps) {
   const [isOpen, setIsOpen] = useState(false);
+
   const { consumption, isConsumptionError, isConsumptionLoading } =
     usePokeConversationConsumption({
       conversationId,
@@ -32,9 +33,9 @@ export function PokeConversationConsumptionInspector({
       onOpenChange={setIsOpen}
       className="overflow-hidden rounded-xl border border-border bg-background"
     >
-      <CollapsibleTrigger className="min-h-11 w-full justify-between gap-3 px-4 py-3 text-left focus-visible:ring-2 focus-visible:ring-ring">
+      <CollapsibleTrigger className="min-h-11 w-full justify-between gap-3 p-4 text-left">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center">
             <span className="text-sm font-semibold text-foreground">
               Conversation consumption
             </span>
@@ -43,13 +44,11 @@ export function PokeConversationConsumptionInspector({
             Includes completed messages and recursively spawned sub-agents.
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {isConsumptionLoading && <Spinner size="xs" />}
-        </div>
+        {isConsumptionLoading && <Spinner size="xs" />}
       </CollapsibleTrigger>
-      <CollapsibleContent animated={false} className="border-t border-border">
+      <CollapsibleContent className="border-t border-border">
         {isConsumptionError ? (
-          <p role="alert" className="px-4 py-6 text-sm text-warning">
+          <p role="alert" className="p-4 text-sm text-warning">
             Conversation consumption could not be loaded.
           </p>
         ) : isConsumptionLoading && !consumption ? (
@@ -57,7 +56,7 @@ export function PokeConversationConsumptionInspector({
             <Spinner />
           </div>
         ) : !consumption || consumption.billedCredits <= 0 ? (
-          <div className="px-4 py-6">
+          <div className="p-4">
             <p className="text-sm font-medium text-foreground">
               No completed billed usage
             </p>
@@ -71,10 +70,10 @@ export function PokeConversationConsumptionInspector({
             details={consumption.details}
           />
         ) : (
-          <div className="space-y-2 px-4 py-6">
+          <div className="gap-2 p-4">
             <div className="flex items-baseline justify-between gap-4">
               <span className="text-sm text-muted-foreground">Total used</span>
-              <span className="text-lg font-semibold tabular-nums text-foreground">
+              <span className="text-lg font-semibold text-foreground">
                 {formatCreditValue(consumption.billedCredits)}
               </span>
             </div>
