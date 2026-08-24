@@ -694,6 +694,7 @@ export function APIKeysTable({
       {isLoading ? (
         <>
           <DataTableLoadingSkeleton
+            className="pt-4"
             showSelectionColumn={false}
             showTrailingCell
           />
