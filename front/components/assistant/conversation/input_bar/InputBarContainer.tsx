@@ -1753,7 +1753,7 @@ const InputBarContainer = ({
             )}
           </BubbleMenu>
           <div
-            className={cn("mt-auto flex w-full flex-col", "pt-2 pb-3")}
+            className={cn("mt-auto flex w-full flex-col", "pt-2 pb-2")}
             style={{
               transition: `padding ${COLLAPSE_TRANSITION}`,
             }}
