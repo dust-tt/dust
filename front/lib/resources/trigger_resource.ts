@@ -328,15 +328,18 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
   static async countForWorkspace(
     auth: Authenticator
-  ): Promise<{ enabled: number; total: number }> {
+  ): Promise<{ enabled: number; total: number; workspacePool: number }> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const [enabled, total] = await Promise.all([
+    const [enabled, total, workspacePool] = await Promise.all([
       this.model.count({ where: { workspaceId, status: "enabled" } }),
       this.model.count({ where: { workspaceId } }),
+      this.model.count({
+        where: { workspaceId, executionMode: "workspace_pool" },
+      }),
     ]);
 
-    return { enabled, total };
+    return { enabled, total, workspacePool };
   }
 
   static listByWorkspaceAndKinds(

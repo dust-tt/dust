@@ -21,6 +21,7 @@ export type AutomationsOverview = {
   triggers: {
     enabled: number;
     total: number;
+    workspacePool: number;
   };
 };
 

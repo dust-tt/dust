@@ -182,7 +182,9 @@ export function AutomationsTriggersRowsTable<T extends TriggerRowData>({
                   className={cn(
                     "flex items-center space-x-1 whitespace-nowrap",
                     header.column.columnDef.meta?.headerAlign === "right" &&
-                      "justify-end"
+                      "justify-end",
+                    header.column.columnDef.meta?.headerAlign === "center" &&
+                      "justify-center"
                   )}
                 >
                   {flexRender(
