@@ -1,4 +1,5 @@
 import { getRedisStreamClient } from "@app/lib/api/redis";
+import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type {
   MaxAwuCreditsTimeframeType,
@@ -135,12 +136,15 @@ export async function rateLimiter({
 }
 
 /**
- * Unconditionally records `incrementBy` consumption units against `key`, with no limit guard.
+ * Unconditionally records `incrementBy` AWU credits against `key`, with no limit guard.
  *
- * Unlike `rateLimiter`, which drops the write entirely when count + incrementBy would exceed the
- * limit, this always persists the entries. Use this for post-hoc recording of a cost that already
- * happened (e.g. AWU credits for a message that already ran) — enforcement must happen beforehand
- * via `getRateLimiterCount` + a limit check, not by relying on this function to gatekeep.
+ * `incrementBy` is a (possibly fractional) credit amount: it is converted to integer microCredits
+ * and stored as a single sorted-set entry carrying the amount (`<microCredits>:<uuid>`), summed on
+ * read by `getWeightedRateLimiterCount`. Unlike `rateLimiter`, which drops the write entirely when
+ * count + incrementBy would exceed the limit, this always persists the entry. Use this for post-hoc
+ * recording of a cost that already happened (e.g. AWU credits for a message that already ran) —
+ * enforcement must happen beforehand via `getWeightedRateLimiterCount` + a limit check, not by
+ * relying on this function to gatekeep.
  */
 export async function addRateLimiterCount({
   key,
@@ -153,11 +157,19 @@ export async function addRateLimiterCount({
   incrementBy: number;
   logger: LoggerInterface;
 }): Promise<void> {
-  if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
-    throw new Error("incrementBy must be a positive integer.");
+  // Fail open on a non-positive/non-finite amount: recording runs on the
+  // message-finalize path (including Temporal retries), so a bad increment must
+  // never throw and break finalization — skip instead.
+  if (!Number.isFinite(incrementBy) || incrementBy <= 0) {
+    return;
   }
   if (!Number.isInteger(timeframeSeconds) || timeframeSeconds <= 0) {
     throw new Error("timeframeSeconds must be a positive integer.");
+  }
+
+  const microCredits = roundCreditsToMicroCredits(incrementBy);
+  if (microCredits <= 0) {
+    return;
   }
 
   const redisKey = makeRateLimiterKey(key);
@@ -166,16 +178,16 @@ export async function addRateLimiterCount({
   const luaScript = `
     local key = KEYS[1]
     local window_ms = tonumber(ARGV[1])
-    local increment_by = tonumber(ARGV[2])
+    local member = ARGV[2]
 
     -- Use Redis server time to avoid client clock skew
     local t = redis.call('TIME') -- { seconds, microseconds }
     local now_ms = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
 
-    -- Always record unconditionally: no limit check, no dropped writes.
-    for i = 1, increment_by do
-      redis.call('ZADD', key, now_ms, ARGV[2 + i])
-    end
+    -- Always record unconditionally: no limit check, no dropped writes. A single
+    -- entry carries the amount (microCredits prefix + uuid for uniqueness); the
+    -- reader sums the prefixes via getWeightedRateLimiterCount.
+    redis.call('ZADD', key, now_ms, member)
 
     -- Keep the key around a bit longer than the window to allow trims
     redis.call('PEXPIRE', key, window_ms + 60000)
@@ -183,10 +195,10 @@ export async function addRateLimiterCount({
 
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
-    const values = Array.from({ length: incrementBy }, () => uuidv4());
+    const member = `${microCredits}:${uuidv4()}`;
     await redis.eval(luaScript, {
       keys: [redisKey],
-      arguments: [windowMs.toString(), incrementBy.toString(), ...values],
+      arguments: [windowMs.toString(), member],
     });
   } catch (e) {
     getStatsDClient().increment("ratelimiter.error.count", 1, [
@@ -234,6 +246,51 @@ export async function getRateLimiterCount({
     const count = await redis.zCount(redisKey, trimBeforeMs, "+inf");
 
     return new Ok(count);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+/**
+ * Reads the weighted total (in microCredits) of the amount-carrying entries
+ * written by `addRateLimiterCount`. Each entry is `<microCredits>:<uuid>`, so
+ * unlike `getRateLimiterCount` (which counts rows), this sums the amount prefix
+ * of every entry still inside the rolling window. Malformed members (no
+ * separator or a non-numeric prefix) are skipped.
+ */
+export async function getWeightedRateLimiterCount({
+  key,
+  timeframeSeconds,
+}: {
+  key: string;
+  timeframeSeconds: number;
+}): Promise<Result<number, Error>> {
+  if (!Number.isInteger(timeframeSeconds) || timeframeSeconds <= 0) {
+    return new Err(new Error("timeframeSeconds must be a positive integer."));
+  }
+
+  try {
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    const redisKey = makeRateLimiterKey(key);
+
+    const windowMs = timeframeSeconds * 1000;
+    const trimBeforeMs = Date.now() - windowMs;
+
+    const members = await redis.zRangeByScore(redisKey, trimBeforeMs, "+inf");
+
+    let totalMicroCredits = 0;
+    for (const member of members) {
+      const separatorIndex = member.indexOf(":");
+      if (separatorIndex === -1) {
+        continue;
+      }
+      const microCredits = parseInt(member.slice(0, separatorIndex), 10);
+      if (Number.isFinite(microCredits)) {
+        totalMicroCredits += microCredits;
+      }
+    }
+
+    return new Ok(totalMicroCredits);
   } catch (err) {
     return new Err(normalizeError(err));
   }
