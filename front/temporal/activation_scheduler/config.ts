@@ -1,3 +1,5 @@
+import sortBy from "lodash/sortBy";
+
 const QUEUE_VERSION = 1;
 export const QUEUE_NAME = `activation-scheduler-queue-v${QUEUE_VERSION}`;
 
@@ -24,22 +26,6 @@ export type ActivationNudgePerRunCapItem = {
   lastNudgedAtMs: number | null;
 };
 
-function compareByLongestWithoutNudge(
-  a: ActivationNudgePerRunCapItem,
-  b: ActivationNudgePerRunCapItem
-): number {
-  if (a.lastNudgedAtMs === b.lastNudgedAtMs) {
-    return 0;
-  }
-  if (a.lastNudgedAtMs === null) {
-    return -1;
-  }
-  if (b.lastNudgedAtMs === null) {
-    return 1;
-  }
-  return a.lastNudgedAtMs - b.lastNudgedAtMs;
-}
-
 // Keeps the pods that have gone the longest without a nudge (never-nudged
 // first, then oldest last-nudge). Poke can skip the cap via overrideChecks.
 export function applyActivationNudgePerRunCap<
@@ -48,7 +34,8 @@ export function applyActivationNudgePerRunCap<
   if (overrideChecks) {
     return [...items];
   }
-  return [...items]
-    .sort(compareByLongestWithoutNudge)
-    .slice(0, DEFAULT_ACTIVATION_NUDGE_MAX_USERS_PER_RUN);
+  return sortBy(
+    items,
+    ({ lastNudgedAtMs }) => lastNudgedAtMs ?? -Infinity
+  ).slice(0, DEFAULT_ACTIVATION_NUDGE_MAX_USERS_PER_RUN);
 }
