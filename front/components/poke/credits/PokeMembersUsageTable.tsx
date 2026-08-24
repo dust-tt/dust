@@ -226,10 +226,11 @@ function makeColumns({
       accessorKey: "consumedAwuCredits",
       // ES = Elasticsearch, RL = Redis rate-limiter counter, MT = Metronome.
       // The three should agree; divergence points at a counter/metric issue.
+      // Non-credit workspaces have no RL/MT counters, so only ES is shown.
       // Sorting is driven by the ES figure (see resolveMembersUsagePageUsers).
       header: () => (
         <SortableHeader
-          label="Consumed (ES / RL / MT)"
+          label={showCreditColumns ? "Consumed (ES / RL / MT)" : "Consumed"}
           column="consumedAwuCredits"
           activeColumn={orderColumn}
           direction={orderDirection}
@@ -243,6 +244,9 @@ function makeColumns({
           rateLimiterSpendAwuCredits,
           metronomeConsumedAwuCredits,
         } = row.original;
+        if (!showCreditColumns) {
+          return <span>{formatCreditsPrecise(consumedAwuCredits)}</span>;
+        }
         return (
           <div className="flex flex-col text-xs">
             <span>ES {formatCreditsPrecise(consumedAwuCredits)}</span>
@@ -400,12 +404,14 @@ function makeColumns({
               onGranted={onReconciled}
             />
           )}
-          <ReconcileCreditStateButton
-            owner={owner}
-            target="user"
-            userId={row.original.sId}
-            onReconciled={onReconciled}
-          />
+          {showCreditColumns && (
+            <ReconcileCreditStateButton
+              owner={owner}
+              target="user"
+              userId={row.original.sId}
+              onReconciled={onReconciled}
+            />
+          )}
         </div>
       ),
     },
