@@ -16,7 +16,7 @@ const ParamsSchema = z.object({
   tId: z.string(),
 });
 
-// Mounted at /api/w/:wId/me/automations/triggers/:tId/breakdown.
+// Mounted at /api/w/:wId/me/analytics/automations/triggers/:tId/breakdown.
 const app = workspaceApp();
 
 /** @ignoreswagger */
@@ -42,7 +42,7 @@ app.post(
 
     const period = await resolveConsumptionPeriod(
       auth,
-      toConsumptionPeriodInput(periodQuery)
+      toConsumptionPeriodInput(periodQuery),
     );
 
     const result = await fetchAutomationTriggerBreakdown(auth, {
@@ -56,7 +56,7 @@ app.post(
           triggerId: tId,
           err: result.error,
         },
-        "[AutomationsAnalytics] Failed to retrieve user trigger breakdown."
+        "[AutomationsAnalytics] Failed to retrieve user trigger breakdown.",
       );
       return apiError(ctx, {
         status_code: 500,
@@ -68,7 +68,7 @@ app.post(
     }
 
     return ctx.json(result.value);
-  }
+  },
 );
 
 export default app;

@@ -10,7 +10,7 @@ import tId from "./[tId]";
 
 export type GetUserAutomationTriggersResponse = UserAutomationTriggers;
 
-// Mounted at /api/w/:wId/me/automations/triggers.
+// Mounted at /api/w/:wId/me/analytics/automations/triggers.
 const app = workspaceApp();
 
 /** @ignoreswagger */
@@ -24,7 +24,7 @@ app.post(
 
     const period = await resolveConsumptionPeriod(
       auth,
-      toConsumptionPeriodInput(periodQuery)
+      toConsumptionPeriodInput(periodQuery),
     );
 
     const triggers = await fetchUserAutomationTriggers(auth, {
@@ -36,7 +36,7 @@ app.post(
     });
 
     return ctx.json(triggers);
-  }
+  },
 );
 
 app.route("/:tId", tId);

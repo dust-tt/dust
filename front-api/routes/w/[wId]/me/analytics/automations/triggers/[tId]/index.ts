@@ -2,7 +2,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 
 import breakdown from "./breakdown";
 
-// Mounted under /api/w/:wId/me/automations/triggers/:tId.
+// Mounted under /api/w/:wId/me/analytics/automations/triggers/:tId.
 const app = workspaceApp();
 
 app.route("/breakdown", breakdown);

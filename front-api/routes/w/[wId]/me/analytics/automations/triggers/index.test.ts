@@ -12,7 +12,7 @@ vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
 });
 
 function postTriggersRequest(wId: string, body: Record<string, unknown> = {}) {
-  return honoApp.request(`/api/w/${wId}/me/automations/triggers`, {
+  return honoApp.request(`/api/w/${wId}/me/analytics/automations/triggers`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -34,11 +34,11 @@ function mockConsumption() {
         by_trigger: { buckets: [] },
         total_count: { value: 0 },
       },
-    })
+    }),
   );
 }
 
-describe("POST /api/w/:wId/me/automations/triggers", () => {
+describe("POST /api/w/:wId/me/analytics/automations/triggers", () => {
   afterEach(() => {
     vi.mocked(searchConsumptionAnalytics).mockReset();
   });

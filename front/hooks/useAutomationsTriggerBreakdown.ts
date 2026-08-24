@@ -21,7 +21,7 @@ export function useAutomationsTriggerBreakdown({
   scope: AutomationsScope;
   disabled?: boolean;
 }) {
-  const scopePath = scope === "user" ? "me" : "analytics";
+  const scopePath = scope === "user" ? "me/analytics" : "analytics";
   const url = `/api/w/${workspaceId}/${scopePath}/automations/triggers/${triggerId}/breakdown`;
   const body: AutomationTriggerBreakdownBody = {
     period: period.kind,

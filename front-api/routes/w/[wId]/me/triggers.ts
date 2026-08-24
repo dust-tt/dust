@@ -7,7 +7,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/me/triggers.
 // Deprecated 2026-08-21: the personal automations view moved to
-// /api/w/:wId/me/automations/triggers. Delete once deployed clients have
+// /api/w/:wId/me/analytics/automations/triggers. Delete once deployed clients have
 // cycled out.
 const app = workspaceApp();
 
@@ -17,11 +17,11 @@ app.get("/", async (ctx): HandlerResult<GetUserTriggersResponseBody> => {
 
   const editorTriggers = await TriggerResource.listByUserEditor(
     auth,
-    auth.getNonNullableUser()
+    auth.getNonNullableUser(),
   );
 
   const uniqueAgentIds = Array.from(
-    new Set(editorTriggers.map((t) => t.agentConfigurationId))
+    new Set(editorTriggers.map((t) => t.agentConfigurationId)),
   );
 
   const agentConfigurations = await getAgentConfigurations(auth, {
@@ -43,7 +43,7 @@ app.get("/", async (ctx): HandlerResult<GetUserTriggersResponseBody> => {
         agentName: agent.name,
         agentPictureUrl: agent.pictureUrl,
       };
-    })
+    }),
   );
 
   return ctx.json({ triggers });
