@@ -44,6 +44,12 @@ const TRACKING_REDIS_ORIGIN = "programmatic_usage_tracking" as const;
  * consumption. Do not delete the marker on failure. Redis errors propagate
  * (fail closed): without the marker we cannot guarantee at-most-once
  * consumption, so the attempt fails and Temporal retries.
+ *
+ * Known limit: the marker is only as durable as Redis. If Redis loses it
+ * (eviction, failover) between a post-consumption crash and its retry, that
+ * one execution can be counted twice. Accepted trade-off: closing it needs a
+ * ledger-transactional marker (new table), which is not worth it for a
+ * cents-level tail risk.
  */
 async function tryMarkRunsConsumed(
   auth: Authenticator,
