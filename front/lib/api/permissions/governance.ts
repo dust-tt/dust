@@ -31,6 +31,7 @@ const MANAGER_CAPABILITIES: CapabilitySpec[] = [
   ...GOVERNANCE_CAPABILITIES.agent,
   ...GOVERNANCE_CAPABILITIES.skill,
   ...GOVERNANCE_CAPABILITIES.frame,
+  ...GOVERNANCE_CAPABILITIES.trigger,
 ];
 
 // Capabilities every admin can manage.
@@ -45,16 +46,12 @@ function capabilitiesForRole(
   auth: Authenticator,
   featureFlags: WhitelistableFeature[]
 ): CapabilitySpec[] {
-  const flagged = featureFlags.includes("trigger_pool_choice")
-    ? GOVERNANCE_CAPABILITIES.trigger
-    : [];
-
   const role = auth.role();
   switch (role) {
     case "admin":
-      return [...ADMIN_CAPABILITIES, ...flagged];
+      return ADMIN_CAPABILITIES;
     case "manager":
-      return [...MANAGER_CAPABILITIES, ...flagged];
+      return MANAGER_CAPABILITIES;
     case "builder":
     case "user":
     case "none":

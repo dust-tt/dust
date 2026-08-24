@@ -2,7 +2,6 @@ import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
@@ -481,7 +480,6 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
     const body = scheduleTriggerBody(null);
@@ -506,7 +504,6 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
     const body = scheduleTriggerBody(null);
@@ -550,7 +547,6 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const trigger = await createScheduleTrigger(workspace, agent.sId, null);
 
@@ -579,7 +575,6 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const trigger = await createScheduleTrigger(workspace, agent.sId, null);
 
@@ -608,7 +603,6 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const trigger = await TriggerFactory.schedule(auth, {
       agentConfigurationId: agent.sId,

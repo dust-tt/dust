@@ -1,5 +1,4 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getFeatureFlags } from "@app/lib/auth";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import {
   resolveTriggerSpaceId,
@@ -9,9 +8,7 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { GetTriggersResponseBody } from "@app/types/api/assistant/configuration/triggers";
-import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
 import { TriggerSchema } from "@app/types/assistant/triggers";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -35,17 +32,6 @@ const PatchTriggersRequestBodySchema = z.object({
 const PostTriggersRequestBodySchema = z.object({
   triggers: z.array(TriggerSchema),
 });
-
-function requestedExecutionMode(
-  trigger: z.infer<typeof TriggerSchema>,
-  featureFlags: WhitelistableFeature[]
-): TriggerExecutionMode | undefined {
-  if (!featureFlags.includes("trigger_pool_choice")) {
-    return undefined;
-  }
-
-  return trigger.executionMode;
-}
 
 function isWebhookTriggerData(trigger: {
   kind: string;
@@ -213,7 +199,6 @@ app.patch(
 
     const { triggers } = ctx.req.valid("json");
     const workspace = auth.getNonNullableWorkspace();
-    const featureFlags = await getFeatureFlags(auth);
 
     for (const triggerData of triggers) {
       const triggerToUpdate = userTriggers.find(
@@ -270,10 +255,7 @@ app.patch(
         ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
         : null;
 
-      const executionMode = requestedExecutionMode(
-        validatedTrigger,
-        featureFlags
-      );
+      const executionMode = validatedTrigger.executionMode;
       const spaceIdRes = await resolveTriggerSpaceId(
         auth,
         validatedTrigger.spaceId
@@ -387,7 +369,6 @@ app.post(
 
     const { triggers } = ctx.req.valid("json");
     const workspace = auth.getNonNullableWorkspace();
-    const featureFlags = await getFeatureFlags(auth);
 
     for (const triggerData of triggers) {
       const triggerValidation = TriggerSchema.safeParse({
@@ -412,8 +393,7 @@ app.post(
         ? validatedTrigger.executionPerDayLimitOverride
         : null;
 
-      const executionMode =
-        requestedExecutionMode(validatedTrigger, featureFlags) ?? "user_pool";
+      const executionMode = validatedTrigger.executionMode ?? "user_pool";
 
       const spaceIdRes = await resolveTriggerSpaceId(
         auth,

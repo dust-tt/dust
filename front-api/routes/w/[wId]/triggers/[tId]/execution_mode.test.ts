@@ -2,7 +2,6 @@ import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
@@ -52,7 +51,6 @@ describe("PATCH /api/w/:wId/triggers/:tId/execution_mode", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const trigger = await TriggerFactory.webhook(auth, {
       agentConfigurationId: agent.sId,
@@ -76,7 +74,6 @@ describe("PATCH /api/w/:wId/triggers/:tId/execution_mode", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
     await grantWorkspacePoolToEverybody(workspace);
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const trigger = await TriggerFactory.webhook(auth, {
@@ -102,7 +99,6 @@ describe("PATCH /api/w/:wId/triggers/:tId/execution_mode", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const trigger = await TriggerFactory.webhook(auth, {
       agentConfigurationId: agent.sId,
@@ -118,15 +114,10 @@ describe("PATCH /api/w/:wId/triggers/:tId/execution_mode", () => {
   });
 
   it("rejects a member who is neither manager nor editor", async () => {
-    const { workspace, user } = await createPrivateApiMockRequest({
+    const { workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "user",
     });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
     await grantWorkspacePoolToEverybody(workspace);
     const editorAuth = await createOtherEditorAuth(workspace);
     const agent = await AgentConfigurationFactory.createTestAgent(editorAuth);
@@ -166,16 +157,10 @@ describe("PATCH /api/w/:wId/triggers/:tId/execution_mode", () => {
   });
 
   it("returns 404 for an unknown trigger", async () => {
-    const { workspace, user } = await createPrivateApiMockRequest({
+    const { workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
     });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
-
     const response = await patchExecutionMode(workspace, "unknown", {
       executionMode: "workspace_pool",
     });
@@ -192,7 +177,6 @@ describe("PATCH /api/w/:wId/triggers/:tId/execution_mode", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const trigger = await TriggerFactory.webhook(auth, {
       agentConfigurationId: agent.sId,

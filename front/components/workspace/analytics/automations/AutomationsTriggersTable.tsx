@@ -28,7 +28,6 @@ import type {
 } from "@app/lib/api/analytics/automations/schema";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import type { BulkTriggerSelection } from "@app/lib/api/triggers/bulk_selection";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   useBulkUpdateTriggerExecutionMode,
   useUpdateTriggerExecutionMode,
@@ -194,11 +193,9 @@ function rowSelectionColumn(): ColumnDef<TriggerRowData> {
 
 function buildColumns({
   expandedRowId,
-  showPoolColumn,
   showSelectionColumn,
 }: {
   expandedRowId: string | null;
-  showPoolColumn: boolean;
   showSelectionColumn: boolean;
 }): ColumnDef<TriggerRowData>[] {
   return [
@@ -218,21 +215,17 @@ function buildColumns({
     agentColumn(),
     typeColumn(),
     creditsColumn(),
-    ...(showPoolColumn
-      ? [
-          {
-            id: "pool",
-            header: "Pool",
-            enableSorting: false,
-            meta: { className: "w-28" },
-            cell: (info) => (
-              <DataTable.CellContent className="w-full justify-start">
-                <PoolCell row={info.row.original} />
-              </DataTable.CellContent>
-            ),
-          } satisfies ColumnDef<TriggerRowData>,
-        ]
-      : []),
+    {
+      id: "pool",
+      header: "Pool",
+      enableSorting: false,
+      meta: { className: "w-28" },
+      cell: (info) => (
+        <DataTable.CellContent className="w-full justify-start">
+          <PoolCell row={info.row.original} />
+        </DataTable.CellContent>
+      ),
+    },
     {
       id: "status",
       header: "Enabled",
@@ -314,11 +307,8 @@ export function AutomationsTriggersTable({
     workspaceId,
   });
 
-  const { hasFeature } = useFeatureFlags();
-  const showPoolColumn = hasFeature("trigger_pool_choice");
   const { hasPermission } = useWorkspacePermissions();
-  const canBulkSetPool =
-    showPoolColumn && hasPermission("use_workspace_pool", "trigger");
+  const canBulkSetPool = hasPermission("use_workspace_pool", "trigger");
 
   const triggersQuery: AutomationTriggersQuery = useMemo(
     () => ({
@@ -595,7 +585,6 @@ export function AutomationsTriggersTable({
         workspaceId={workspaceId}
         period={period}
         expandedRowId={expandedRowId}
-        showPoolColumn={showPoolColumn}
         showSelectionColumn={canBulkSetPool}
         rowSelection={selection.rowSelection}
         onRowSelectionChange={selection.onRowSelectionChange}
@@ -623,7 +612,6 @@ interface TriggersTableBodyProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   expandedRowId: string | null;
-  showPoolColumn: boolean;
   showSelectionColumn: boolean;
   rowSelection: RowSelectionState;
   onRowSelectionChange: (selection: RowSelectionState) => void;
@@ -642,14 +630,13 @@ function TriggersTableBody({
   workspaceId,
   period,
   expandedRowId,
-  showPoolColumn,
   showSelectionColumn,
   rowSelection,
   onRowSelectionChange,
 }: TriggersTableBodyProps) {
   const columns = useMemo(
-    () => buildColumns({ expandedRowId, showPoolColumn, showSelectionColumn }),
-    [expandedRowId, showPoolColumn, showSelectionColumn]
+    () => buildColumns({ expandedRowId, showSelectionColumn }),
+    [expandedRowId, showSelectionColumn]
   );
 
   const firstRowIndex = pagination.pageIndex * pagination.pageSize;

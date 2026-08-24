@@ -371,11 +371,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow editing tool inputs before approving a tool call in the tool validation UI.",
     stage: "dust_only",
   },
-  trigger_pool_choice: {
-    description:
-      "Let trigger editors pick the credit pool (workspace or member) a trigger runs on, and let admins govern who may pick the workspace pool.",
-    stage: "dust_only",
-  },
   skip_free_usage_rate_limit: {
     description:
       "Skip the per-user daily free-usage cost cap enforced at the LLM call site. Escape hatch to unstick legitimate workspaces that legitimately exceed the free-usage limit.",
