@@ -49,7 +49,7 @@ pptx_slides FILE --delete 14-16,20-24
 
 One slide per point in the outline: two slides with the same title and the same shape are a duplicate, not a build-up. Every add, move, delete through \`pptx_slides\`: shares image parts, deep-clones charts; hand-edited \`sldId\`s strand orphan parts. Structure first, content after: duplicating later clones your edits. Never content on \`BLANK\`. Never an emoji or drawn rectangle in place of the template's icon or photo.
 
-**Clone slides, not layouts.** \`add_slide(layout)\` gives an empty frame: the template's photos and icons live on its slides, not its layouts, so a layout-built deck comes out image-free and fails §5. The overview's pic/chart/table counts say which slides carry them: duplicate those.
+**Clone slides, not layouts.** \`add_slide(layout)\` gives an empty frame: the template's photos and icons live on its slides, not its layouts, so a layout-built deck comes out image-free and fails §5. The overview's pic/chart/table counts say which slides carry them: duplicate those. Clone for the imagery a point actually needs, and never to raise a count: pasting the same picture onto ten text slides, or repeating one sentence across them, is worse than the sparse deck it was meant to fix. Skip the template's reference pages (brand palette, type specimen, sample chart) - they are documentation, not building blocks.
 
 Mode C: state audience, purpose, one palette, one title font, one body font, the outline; hold constant. Brand assets the user names: use them. Titles 36-44pt, body 14-16pt left-aligned.
 
@@ -133,6 +133,7 @@ The defect list is mechanical and reliable. Clear every \`[!]\` before you look 
 |---|---|
 | \`unreadable - #INK on #BG (1.3:1)\` | set \`font.color.rgb\` on every run of that shape, taking the colour from a \`--layouts\` placeholder on the same background |
 | \`still holds template filler\` | you cloned a shape and never rewrote it; write your copy or delete the shape |
+| \`slides 2,3,4...: '<same sentence>'\` | one line is repeated across slides; write each slide its own copy |
 | \`zero-size box\` | you wrote a 0 width or height; restore the exemplar's box |
 | \`extends past slide edge\` | move or shrink it back inside the slide |
 | \`image distorted\` | resize the box to the image's native ratio, or crop |
@@ -156,7 +157,7 @@ A box you cannot read back is a real defect, not a render artifact. Fix, re-run 
 
 \`pptx_inspect /tmp/deck.pptx --compare /files/conversation/template.pptx\`
 
-Design fidelity, legibility and package integrity in one pass, baselined against the template so its own faults are not reported as yours. Copy the finished deck back to \`/files/conversation/\` once it passes. Clear every \`[!]\`: fonts dropped or imagery stripped (you rebuilt instead of editing: start again from the copy - a footer logo does not count as a slide's imagery), text that renders unreadable, \`filler:\` shapes you never rewrote, \`canvas:\` slides you cloned and then emptied, shapes you pushed off the slide or stretched, layout collapse, density, and under \`Package:\` anything that stops PowerPoint opening the file. Package faults mean you edited the zip by hand: redo those edits through \`pptx_slides\` and python-pptx. \`leftover: [i]\` lists shapes still carrying the template's copy: replace or delete the ones you cloned. No template: \`--validate\` runs the package half alone. Deliver on \`[QA: PASS]\`, every slide read back clean.
+Design fidelity, legibility and package integrity in one pass, baselined against the template so its own faults are not reported as yours. Copy the finished deck back to \`/files/conversation/\` once it passes. Clear every \`[!]\`: fonts dropped or imagery stripped (you rebuilt instead of editing: start again from the copy - a footer logo does not count as a slide's imagery), text that renders unreadable, \`filler:\` shapes you never rewrote, \`cloned:\` slides that are still the template's slide under a new title, \`repeats:\` one sentence spread across slides, \`canvas:\` slides you cloned and then emptied, shapes you pushed off the slide or stretched, layout collapse, density, and under \`Package:\` anything that stops PowerPoint opening the file. Package faults mean you edited the zip by hand: redo those edits through \`pptx_slides\` and python-pptx. \`leftover: [i]\` lists shapes still carrying the template's copy: replace or delete the ones you cloned. No template: \`--validate\` runs the package half alone. Deliver on \`[QA: PASS]\`, every slide read back clean.
 
 ## Defaults
 

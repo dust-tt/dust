@@ -741,7 +741,24 @@ def _drop_audit(
 
 # Text repeated on this many output slides is the template's furniture (footer,
 # confidentiality stamp, brand line), kept on purpose - never a leftover.
-FURNITURE_SLIDES = 3
+# Real furniture - a footer, a page number, a confidentiality stamp - is defined
+# by WHERE it sits, not by how often it repeats: it comes from the master or the
+# layout, or it is a small box hugging a slide edge. Counting repetitions instead
+# was wrong in both directions: it excused filler that repeated because nobody
+# rewrote it, and it excused a template's own body paragraph left on ten slides.
+FURNITURE_EDGE_BAND_IN = 0.8
+FURNITURE_MAX_AREA = 0.06
+# A cloned slide with at least this many unchanged text shapes, making up at
+# least this share of its text, was never authored - it is the template's slide
+# with a new title on it (a style-guide page, a sample chart page). Individually
+# each survivor is a judgment call; the whole slide is not.
+UNTOUCHED_MIN_SHAPES = 3
+UNTOUCHED_SHARE = 0.7
+# Body copy repeated on this many slides is a broken deck whatever its origin.
+REPEATED_TEXT_SLIDES = 3
+# Short lines legitimately recur (a stage label, a column header); a sentence
+# this long appearing verbatim on three slides does not.
+REPEATED_TEXT_MIN_WORDS = 6
 # How many leftover shapes to name before summarising the rest.
 LEFTOVER_LISTED = 8
 
@@ -770,6 +787,80 @@ def _shape_texts(slide: Slide) -> Dict[int, str]:
     }
 
 
+def _chrome_text(prs: PresentationType) -> set:
+    """Every text string the deck's layouts and masters carry. Genuine furniture
+    is authored there, which is what separates it from a slide's own copy."""
+    out: set = set()
+    for master in prs.slide_masters:
+        for holder in [master] + list(master.slide_layouts):
+            for shape in holder.shapes:
+                units = list(_shape_text_iter(shape))
+                joined = flatten_text(" ".join(units)).strip()
+                if joined:
+                    out.add(joined)
+                for raw in units:
+                    text = flatten_text(raw).strip()
+                    if text:
+                        out.add(text)
+    return out
+
+
+def _is_furniture(shape: BaseShape, slide_w: int, slide_h: int) -> bool:
+    """A small box hugging a slide edge: a footer, a page number, a stamp."""
+    left, top, width, height = shape.left, shape.top, shape.width, shape.height
+    if None in (left, top, width, height) or width <= 0 or height <= 0:
+        return False
+    if not slide_w or not slide_h:
+        return False
+    if width * height > slide_w * slide_h * FURNITURE_MAX_AREA:
+        return False
+    band = int(EMU_PER_INCH * FURNITURE_EDGE_BAND_IN)
+    return (
+        top <= band
+        or left <= band
+        or slide_h - (top + height) <= band
+        or slide_w - (left + width) <= band
+    )
+
+
+def _repeated_text_audit(file_path: str) -> List[Tuple[str, List[int]]]:
+    """Paragraphs that appear verbatim on several slides: (text, slide numbers).
+
+    Per PARAGRAPH, not per shape: the failure this catches is a template
+    paragraph surviving inside a box whose other paragraphs were rewritten, so
+    every slide's shape text is unique while one line inside it repeats ten
+    times. Ten slides carrying the same sentence is a broken deck whether it came
+    from the template or from padding a deck to satisfy a gate.
+    """
+    try:
+        prs = Presentation(file_path)
+    except Exception:  # noqa: BLE001 - degrade visibly in the caller
+        return []
+    slide_w, slide_h = prs.slide_width or 0, prs.slide_height or 0
+    chrome = set()
+    for text in _chrome_text(prs):
+        chrome.add(text)
+    where: Dict[str, List[int]] = {}
+    for slide_no, slide in enumerate(prs.slides, start=1):
+        for shape in slide.shapes:
+            if _is_furniture(shape, slide_w, slide_h):
+                continue
+            for raw in _shape_text_iter(shape):
+                text = flatten_text(raw).strip()
+                if len(text.split()) < REPEATED_TEXT_MIN_WORDS:
+                    continue
+                if text in chrome:
+                    continue
+                slides = where.setdefault(text, [])
+                if slide_no not in slides:
+                    slides.append(slide_no)
+    return sorted(
+        ((text, slides) for text, slides in where.items()
+         if len(slides) >= REPEATED_TEXT_SLIDES),
+        key=lambda item: -len(item[1]),
+    )
+
+
 def _leftover_copy_audit(
     file_path: str, source_path: str
 ) -> List[Tuple[int, int, str]]:
@@ -794,28 +885,61 @@ def _leftover_copy_audit(
         return []
     out_slides = list(out_prs.slides)
     src_texts = [_shape_texts(s) for s in src_prs.slides]
-    seen_on: Dict[str, int] = {}
-    for slide in out_slides:
-        for text in set(_shape_texts(slide).values()):
-            if text:
-                seen_on[text] = seen_on.get(text, 0) + 1
+    chrome = _chrome_text(out_prs)
+    slide_w, slide_h = out_prs.slide_width or 0, out_prs.slide_height or 0
 
     findings: List[Tuple[int, int, str]] = []
-    for out_no, src_no in mapping.items():
+    for out_no, src_no in sorted(mapping.items()):
         exemplar = src_texts[src_no - 1]
-        for sid, text in _shape_texts(out_slides[out_no - 1]).items():
-            if len(text) < 2:
+        slide = out_slides[out_no - 1]
+        by_id = {sh.shape_id: sh for sh in slide.shapes}
+        for sid, text in _shape_texts(slide).items():
+            if len(text) < 2 or text in chrome:
                 continue
-            if (
-                seen_on.get(text, 0) >= FURNITURE_SLIDES
-                and not _is_leftover_suspect(text)
-            ):
-                # Repeated text is the template's furniture - unless it is
-                # filler, which repeats precisely because it was never replaced.
+            shape = by_id.get(sid)
+            if shape is not None and _is_furniture(shape, slide_w, slide_h):
                 continue
             if exemplar.get(sid) == text:
                 findings.append((out_no, sid, text))
     return findings
+
+
+def untouched_slides(
+    findings: List[Tuple[int, int, str]], file_path: str
+) -> List[Tuple[int, int, int]]:
+    """Slides whose text is mostly still the exemplar's: (slide_no, kept, total).
+
+    Reads the leftover findings back against how much text the slide carries at
+    all, so "three survivors" on a dense slide stays advisory while "three of
+    three" is called what it is: a template slide that was cloned and shipped."""
+    try:
+        prs = Presentation(file_path)
+    except Exception:  # noqa: BLE001 - degrade visibly in the caller
+        return []
+    slide_w, slide_h = prs.slide_width or 0, prs.slide_height or 0
+    chrome = _chrome_text(prs)
+    per_slide: Dict[int, int] = {}
+    for slide_no, slide in enumerate(prs.slides, start=1):
+        total = 0
+        for shape in slide.shapes:
+            text = flatten_text(" ".join(_shape_text_iter(shape))).strip()
+            if not text or text in chrome:
+                continue
+            if _is_furniture(shape, slide_w, slide_h):
+                continue
+            total += 1
+        per_slide[slide_no] = total
+
+    kept: Dict[int, int] = {}
+    for slide_no, _sid, _text in findings:
+        kept[slide_no] = kept.get(slide_no, 0) + 1
+
+    out: List[Tuple[int, int, int]] = []
+    for slide_no, n in sorted(kept.items()):
+        total = per_slide.get(slide_no, 0)
+        if n >= UNTOUCHED_MIN_SHAPES and total and n >= total * UNTOUCHED_SHARE:
+            out.append((slide_no, n, total))
+    return out
 
 
 # A cloned slide covering less than this share of its exemplar's footprint has

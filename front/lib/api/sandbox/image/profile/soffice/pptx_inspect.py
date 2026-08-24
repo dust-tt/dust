@@ -81,6 +81,8 @@ from pptx_audit import (
     _has_embedded_blip,
     _is_leftover_suspect,
     _leftover_copy_audit,
+    untouched_slides,
+    _repeated_text_audit,
     _listed_slide_count,
     _package_names,
     _shape_text_iter,
@@ -987,7 +989,10 @@ def print_compare(file_path: str, source_path: str) -> str:
             lines.append(
                 f"    [!] imagery below template - {out_fid.imagery_slides}/"
                 f"{out_fid.total} output slides carry images vs "
-                f"{src_fid.imagery_slides}/{src_fid.total} in the template"
+                f"{src_fid.imagery_slides}/{src_fid.total} in the template. "
+                "Clone the template's own image-bearing slides for the points "
+                "that need one; do not paste the same picture onto every text "
+                "slide to raise the count."
             )
 
         # Bare canvas: slides hand-drawn with no template placeholders and no
@@ -1133,6 +1138,26 @@ def print_compare(file_path: str, source_path: str) -> str:
                 f"    [!] ... and {len(filler) - LEFTOVER_LISTED} more"
             )
 
+    # The same sentence on several slides. Padding to satisfy a gate looks
+    # exactly like this, and so does a template paragraph nobody rewrote.
+    repeated = _repeated_text_audit(file_path)
+    if repeated:
+        lines.append(
+            f"  repeats: [!] {len(repeated)} block(s) of copy appear on several "
+            "slides"
+        )
+        for text, slides in repeated[:LEFTOVER_LISTED]:
+            blockers += 1
+            where = ",".join(str(n) for n in slides)
+            lines.append(
+                f"    [!] slides {where}: {ellipsize(text, 60)!r}"
+            )
+        if len(repeated) > LEFTOVER_LISTED:
+            blockers += len(repeated) - LEFTOVER_LISTED
+            lines.append(
+                f"    [!] ... and {len(repeated) - LEFTOVER_LISTED} more"
+            )
+
     # Cloned slides that came out mostly empty canvas. The shape-retention
     # advisory below counts shapes; this measures the hole, which is what the
     # reader sees - dropping one full-bleed photo keeps most of the shapes and
@@ -1155,6 +1180,18 @@ def print_compare(file_path: str, source_path: str) -> str:
     # content. Advisory: revising the user's own deck legitimately keeps most of
     # its copy, so the model judges each one.
     leftovers = _leftover_copy_audit(file_path, source_path)
+    untouched = untouched_slides(leftovers, file_path)
+    if untouched:
+        lines.append(
+            f"  cloned:  [!] {len(untouched)} slide(s) are still the template's "
+            "slide, with their copy unchanged"
+        )
+        for slide_no, kept, total in untouched[:LEFTOVER_LISTED]:
+            blockers += 1
+            lines.append(
+                f"    [!] slide {slide_no}: {kept} of {total} text shapes still "
+                "hold the exemplar's copy. Write this slide, or delete it."
+            )
     if leftovers:
         lines.append(
             f"  leftover: [i] {len(leftovers)} shape(s) still carry the "
