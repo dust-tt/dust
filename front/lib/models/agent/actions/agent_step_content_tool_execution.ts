@@ -75,10 +75,11 @@ AgentStepContentToolExecutionModel.init(
         concurrently: true,
         name: "agent_step_content_tool_executions_step_content_id",
       },
-      // Covering index: rendering resolves a conversation's step contents to their actions and
-      // reads nothing else off this table, so the scan stays out of the heap.
+      // In the database this index carries INCLUDE ("agentMCPActionId"), which Sequelize cannot
+      // express: rendering resolves step contents to their actions and reads nothing else off this
+      // table, so the scan stays out of the heap. Keep the INCLUDE when regenerating migrations.
       {
-        fields: ["workspaceId", "stepContentId", "agentMCPActionId"],
+        fields: ["workspaceId", "stepContentId"],
         concurrently: true,
         name: "agent_sc_te_workspace_step_content_action",
       },
