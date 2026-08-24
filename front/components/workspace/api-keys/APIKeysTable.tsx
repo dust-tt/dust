@@ -2,6 +2,7 @@ import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
+import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { GroupType } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
@@ -11,7 +12,7 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { RoleType, WorkspaceType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
-  Building07,
+  Building04,
   Button,
   ChevronLeft,
   ChevronRight,
@@ -28,9 +29,11 @@ import {
   FilterFunnel01,
   Icon,
   LoadingBlock,
+  Lock01,
   SearchInput,
   Separator,
   Tooltip,
+  Trash01,
 } from "@dust-tt/sparkle";
 import type {
   ColumnDef,
@@ -68,6 +71,7 @@ interface APIKeyRowData {
   name: string;
   creator: string;
   spaces: string[];
+  hasPrivateSpace: boolean;
   scope: string;
   secret: string;
   status: APIKeyStatus;
@@ -77,14 +81,13 @@ interface APIKeyRowData {
   menuItems: MenuItem[];
 }
 
-const getKeySpaces = (
+const getKeyGroups = (
   key: KeyType,
   groupsById: Record<ModelId, GroupType>
-): string[] => {
+): GroupType[] => {
   return key.groupIds
     .map((groupId) => groupsById[groupId])
-    .filter((group): group is GroupType => group !== undefined)
-    .map((group) => prettifyGroupName(group));
+    .filter((group): group is GroupType => group !== undefined);
 };
 
 const formatKeyScope = (role: RoleType): string => {
@@ -270,46 +273,37 @@ function buildColumns({
       enableSorting: false,
       meta: {
         className: showAnalyticsConsumption
-          ? "hidden h-16 w-40 @lg-table:table-cell"
-          : "hidden h-16 w-40 @md-table:table-cell",
+          ? "hidden h-16 w-16 @lg-table:table-cell"
+          : "hidden h-16 w-16 @md-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => {
         const spaces = info.row.original.spaces;
-        const [firstSpace, ...remainingSpaces] = spaces;
+        const spaceLabels = spaces.length > 0 ? spaces : ["No spaces"];
+        const spaceIcon = info.row.original.hasPrivateSpace
+          ? Lock01
+          : Building04;
 
         return (
-          <div className="flex min-w-0 items-center gap-2">
-            <Icon visual={Building07} size="sm" className="shrink-0" />
-            <span className="min-w-0 truncate text-sm">
-              {firstSpace ?? "No spaces"}
-            </span>
-            {remainingSpaces.length > 0 && (
-              <Tooltip
-                label={
-                  <div className="flex flex-col">
-                    {remainingSpaces.map((space, index) => (
-                      <span key={`${space}-${index}`}>{space}</span>
-                    ))}
-                  </div>
-                }
-                tooltipTriggerAsChild
-                trigger={
-                  <span
-                    className="shrink-0 rounded outline-hidden focus-visible:ring-2 focus-visible:ring-highlight-300"
-                    tabIndex={0}
-                    aria-label={`${remainingSpaces.length} more spaces`}
-                  >
-                    <Chip
-                      size="mini"
-                      color="primary"
-                      label={`+${remainingSpaces.length}`}
-                    />
-                  </span>
-                }
-              />
-            )}
-          </div>
+          <Tooltip
+            label={
+              <div className="flex flex-col">
+                {spaceLabels.map((space, index) => (
+                  <span key={`${space}-${index}`}>{space}</span>
+                ))}
+              </div>
+            }
+            tooltipTriggerAsChild
+            trigger={
+              <span
+                className="inline-flex shrink-0 rounded outline-hidden focus-visible:ring-2 focus-visible:ring-highlight-300"
+                tabIndex={0}
+                aria-label={`Spaces: ${spaceLabels.join(", ")}`}
+              >
+                <Icon visual={spaceIcon} size="sm" />
+              </span>
+            }
+          />
         );
       },
     },
@@ -408,21 +402,22 @@ function buildColumns({
       header: "",
       enableSorting: false,
       meta: {
-        className: showAnalyticsConsumption
-          ? "hidden h-16 w-20 px-1 @xs-table:table-cell"
-          : "hidden h-16 w-20 @xs-table:table-cell",
+        className: "hidden h-16 w-12 @xs-table:table-cell",
         headerAlign: "right",
       },
       cell: (info) =>
         info.row.original.key.status === "active" ? (
           <DataTable.CellContent className="w-full justify-end">
-            <Button
-              label="Revoke"
-              size="sm"
-              variant="warning"
-              disabled={actionsDisabled}
-              onClick={() => void onRevoke(info.row.original.key)}
-            />
+            <div className="pointer-fine:opacity-0 pointer-fine:group-hover/dt-row:opacity-100 pointer-fine:focus-within:opacity-100">
+              <Button
+                icon={Trash01}
+                tooltip="Revoke API key"
+                size="sm"
+                variant="warning"
+                disabled={actionsDisabled}
+                onClick={() => void onRevoke(info.row.original.key)}
+              />
+            </div>
           </DataTable.CellContent>
         ) : null,
     },
@@ -480,6 +475,18 @@ export function APIKeysTable({
   });
   const [sorting, setSorting] = useState<SortingState>([]);
 
+  const { spaces: workspaceSpaces, isSpacesLoading } = useSpacesAsAdmin({
+    workspaceId,
+  });
+  const privateSpaceGroupIds = useMemo(
+    () =>
+      new Set(
+        workspaceSpaces
+          .filter((space) => space.isRestricted)
+          .flatMap((space) => space.groupIds)
+      ),
+    [workspaceSpaces]
+  );
   const apiKeyNames = useMemo(
     () => [...new Set(keys.map((key) => key.name))].sort(),
     [keys]
@@ -512,7 +519,8 @@ export function APIKeysTable({
   const rows = useMemo<APIKeyRowData[]>(
     () =>
       keys.map((key) => {
-        const spaces = getKeySpaces(key, groupsById);
+        const keyGroups = getKeyGroups(key, groupsById);
+        const spaces = keyGroups.map((group) => prettifyGroupName(group));
         const scope = formatKeyScope(key.role);
         const status = getKeyStatus(key);
         const creator = key.creator ?? "Unknown creator";
@@ -539,6 +547,9 @@ export function APIKeysTable({
           name: key.name || "Unnamed",
           creator,
           spaces,
+          hasPrivateSpace: keyGroups.some((group) =>
+            privateSpaceGroupIds.has(group.sId)
+          ),
           scope,
           secret: key.secret,
           status,
@@ -559,6 +570,7 @@ export function APIKeysTable({
       hasMoreConsumptionRows,
       keys,
       onEditCap,
+      privateSpaceGroupIds,
       showAnalyticsConsumption,
       showCreditMonthlyCap,
       showLegacyUsdMonthlyCap,
@@ -634,7 +646,7 @@ export function APIKeysTable({
   return (
     <div
       className="flex flex-col gap-4 rounded-xl border border-border bg-panel-background p-4"
-      aria-busy={isLoading}
+      aria-busy={isLoading || isSpacesLoading}
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <SearchInput
@@ -692,7 +704,7 @@ export function APIKeysTable({
         </DropdownMenu>
       </div>
 
-      {isLoading ? (
+      {isLoading || isSpacesLoading ? (
         <>
           <DataTableLoadingSkeleton
             className="pt-4"
