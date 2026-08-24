@@ -1,3 +1,4 @@
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import { formatCredits } from "@app/lib/client/credits";
 import { clientFetch } from "@app/lib/egress/client";
@@ -74,8 +75,9 @@ export function makeColumnsForAutomationTriggers(
     },
     {
       accessorKey: "credits",
-      header: "Consumption",
-      enableSorting: false,
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Consumption" />
+      ),
       cell: ({ row }) => <ConsumptionCell trigger={row.original} />,
     },
     {
