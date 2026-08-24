@@ -13,8 +13,8 @@ import { fromError } from "zod-validation-error";
 
 /**
  * A Pod app's own manifest: `manifest.json` at the root of the app folder, declaring the app's
- * display name, description, and what publishing it means — its frames, functions, and databases,
- * each pointing at a folder-relative source path.
+ * display name, description, and what publishing it means — its UI entry point, functions, and
+ * databases, each pointing at a folder-relative source path.
  *
  * Distinct from the ARCHIVE manifest (`pod_app_archive.ts`), which packages files for the
  * experimental import/export zips: this one lives in the folder itself and needs no `files` array
@@ -24,10 +24,24 @@ import { fromError } from "zod-validation-error";
  * `functions/` and `databases/` remain the documented convention, but a manifest may point
  * anywhere inside the folder. The app's identity is untouched — the prefix still derives from the
  * FOLDER name, and this `name` is display-only.
+ *
+ * Every app has exactly one UI entry point, declared via `uiEntryPoint`. When omitted, it defaults
+ * to `POD_APP_DEFAULT_UI_ENTRY_POINT` ("index.tsx"). Either way the file must exist in the folder:
+ * publishing an app whose entry point (explicit or defaulted) is missing is an `invalid_manifest`
+ * error — there is no such thing as a UI-less app. A "functions-only" app still ships a minimal
+ * frame at its entry point.
  */
 
 export const POD_APP_MANIFEST_FILE = "manifest.json";
 export const POD_APP_MANIFEST_VERSION = 1;
+
+/**
+ * Default UI entry point when a manifest omits `uiEntryPoint`. Not baked into the zod schema as a
+ * `.default(...)` because the missing-file semantics differ: an explicit entry point that doesn't
+ * exist names the declared path in the error, while a defaulted one that doesn't exist gets a more
+ * helpful "no entry point at all" message. Both are `invalid_manifest` — every app needs a frame.
+ */
+export const POD_APP_DEFAULT_UI_ENTRY_POINT = "index.tsx";
 
 /**
  * Suffix a database schema file must keep wherever it lives. apps.ts's
@@ -52,11 +66,6 @@ export function isSafePodAppRelativePath(path: string): boolean {
 const RelativePathSchema = z.string().min(1).refine(isSafePodAppRelativePath, {
   message:
     "Path must be relative to the app folder, using forward slashes and no '.', '..' or empty segments.",
-});
-
-const PodAppManifestFrameSchema = z.object({
-  /** Folder-relative path to the frame's source file. */
-  path: RelativePathSchema,
 });
 
 const PodAppManifestFunctionSchema = z.object({
@@ -88,13 +97,13 @@ export const PodAppPublishManifestSchema = z
     /** Human-facing display name; the folder name stays the app's identity. */
     name: z.string().min(1).max(MAX_POD_APP_NAME_LENGTH),
     description: z.string(),
-    frames: z.array(PodAppManifestFrameSchema).default([]),
+    /** Folder-relative path to the app's UI entry point; defaults to `index.tsx` when omitted. */
+    uiEntryPoint: RelativePathSchema.optional(),
     functions: z.array(PodAppManifestFunctionSchema).default([]),
     databases: z.array(PodAppManifestDatabaseSchema).default([]),
   })
   .superRefine((manifest, ctx) => {
     const dimensions = [
-      ["frame path", manifest.frames.map((frame) => frame.path)],
       ["function name", manifest.functions.map((fn) => fn.name)],
       ["database name", manifest.databases.map((db) => db.name)],
     ] as const;
@@ -148,8 +157,11 @@ export type PodAppPublishSummary = {
   displayName: string;
   reconciledDatabaseNames: string[];
   publishedFunctionSlugs: string[];
-  /** Folder-relative paths of the frames published. */
-  publishedFrameNames: string[];
+  /**
+   * Folder-relative path of the frame published. Every app has one to publish; this is `null`
+   * only when publishing it failed and the failure was recorded as a warning instead.
+   */
+  publishedFrameName: string | null;
   /** Functions carrying this app's prefix that the manifest no longer declares. */
   unpublishedFunctionSlugs: string[];
   /** Steps that were attempted and failed non-fatally, plus orphan-database notices. */

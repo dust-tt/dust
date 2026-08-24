@@ -8,7 +8,7 @@ const FULL_MANIFEST = {
   version: 1,
   name: "Task List",
   description: "Track and manage team tasks.",
-  frames: [{ path: "TaskList.tsx" }],
+  uiEntryPoint: "TaskList.tsx",
   functions: [
     {
       name: "add-task",
@@ -22,12 +22,15 @@ const FULL_MANIFEST = {
 };
 
 describe("PodAppPublishManifestSchema", () => {
-  it("parses a full manifest", () => {
+  it("parses a full manifest with an explicit uiEntryPoint", () => {
     const parsed = PodAppPublishManifestSchema.safeParse(FULL_MANIFEST);
     expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.uiEntryPoint).toEqual("TaskList.tsx");
+    }
   });
 
-  it("treats omitted sections as empty arrays", () => {
+  it("treats an omitted uiEntryPoint and sections as empty/undefined", () => {
     const parsed = PodAppPublishManifestSchema.safeParse({
       version: 1,
       name: "Fns Only",
@@ -43,7 +46,7 @@ describe("PodAppPublishManifestSchema", () => {
     });
     expect(parsed.success).toBe(true);
     if (parsed.success) {
-      expect(parsed.data.frames).toEqual([]);
+      expect(parsed.data.uiEntryPoint).toBeUndefined();
       expect(parsed.data.databases).toEqual([]);
       expect(parsed.data.functions[0].defaultStake).toBeUndefined();
     }
@@ -69,16 +72,19 @@ describe("PodAppPublishManifestSchema", () => {
     ["missing name", { ...FULL_MANIFEST, name: undefined }],
     ["missing description", { ...FULL_MANIFEST, description: undefined }],
     [
-      "path escaping the folder",
+      "uiEntryPoint escaping the folder",
       {
         ...FULL_MANIFEST,
-        frames: [{ path: "../Other/App.tsx" }],
+        uiEntryPoint: "../Other/App.tsx",
       },
     ],
-    ["absolute path", { ...FULL_MANIFEST, frames: [{ path: "/etc/passwd" }] }],
     [
-      "backslash path",
-      { ...FULL_MANIFEST, frames: [{ path: "sub\\App.tsx" }] },
+      "absolute uiEntryPoint path",
+      { ...FULL_MANIFEST, uiEntryPoint: "/etc/passwd" },
+    ],
+    [
+      "backslash uiEntryPoint path",
+      { ...FULL_MANIFEST, uiEntryPoint: "sub\\App.tsx" },
     ],
     [
       "uppercase function name",
