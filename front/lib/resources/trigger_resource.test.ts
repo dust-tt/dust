@@ -451,6 +451,7 @@ describe("TriggerResource", () => {
       expect(await TriggerResource.countForWorkspace(authenticator)).toEqual({
         enabled: 2,
         total: 4,
+        workspacePool: 0,
       });
 
       mockCreateOrUpdateWorkflow.mockRestore();
@@ -462,6 +463,7 @@ describe("TriggerResource", () => {
       expect(await TriggerResource.countForWorkspace(authenticator)).toEqual({
         enabled: 0,
         total: 0,
+        workspacePool: 0,
       });
     });
   });
