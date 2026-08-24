@@ -460,6 +460,9 @@ async function _getTypedChannelsUncached(
   let nextCursor: string | undefined = undefined;
   let nbCalls = 0;
   do {
+    // Throttled pagination can run long; heartbeat so a cancelled or timed-out
+    // activity stops instead of keeping consuming the rate-limit budget.
+    await heartbeat();
     reportSlackUsage({
       connectorId,
       method: "conversations.list",

@@ -41,6 +41,7 @@ function getSlackActivities() {
   // throttled to respect Slack rate limits.
   const { getChannelsToGarbageCollect } = proxyActivities<typeof activities>({
     startToCloseTimeout: "30 minutes",
+    heartbeatTimeout: "10 minutes",
     retry: {
       maximumAttempts: 25,
     },
