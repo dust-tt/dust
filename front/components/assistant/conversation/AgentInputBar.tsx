@@ -48,18 +48,31 @@ import {
   useVirtuosoLocation,
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
-import type { Transition } from "framer-motion";
+import type { MotionProps, Transition } from "framer-motion";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 const DOUBLE_ESC_WINDOW_MS = 300;
 
-const INPUT_BAR_SWAP_TRANSFORMS = {
-  initial: "translateY(calc(var(--spacing) * 2))",
-  idle: "translateY(calc(var(--spacing) * 0))",
-  exit: "translateY(calc(var(--spacing) * -1))",
+// Offsets in px
+const INPUT_BAR_SWAP_OFFSETS_PX = {
+  initial: 8,
+  idle: 0,
+  exit: -4,
 } as const;
+
+// Framer keeps the animated transform in the style attribute once the animation
+// settles. A transform other than `none` makes this element a containing block
+// for `position: fixed` descendants, so the input bar's fixed dropdown anchor
+// would resolve its viewport coordinates against this box instead — misplacing
+// it and adding its box to the conversation scroller's scrollable overflow
+// (which un-pins the sticky input bar). Collapse the resting identity transform
+// back to `none`.
+const collapseRestingTransform: MotionProps["transformTemplate"] = (
+  { y },
+  generated
+) => (y ? generated : "none");
 
 const INPUT_BAR_SWAP_TRANSITION = {
   duration: MOTION_DURATIONS.enter,
@@ -657,22 +670,23 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
             initial={
               shouldReduceMotion
                 ? false
-                : { opacity: 0, transform: INPUT_BAR_SWAP_TRANSFORMS.initial }
+                : { opacity: 0, y: INPUT_BAR_SWAP_OFFSETS_PX.initial }
             }
             animate={{
               opacity: 1,
-              transform: INPUT_BAR_SWAP_TRANSFORMS.idle,
+              y: INPUT_BAR_SWAP_OFFSETS_PX.idle,
             }}
             exit={
               shouldReduceMotion
                 ? undefined
                 : {
                     opacity: 0,
-                    transform: INPUT_BAR_SWAP_TRANSFORMS.exit,
+                    y: INPUT_BAR_SWAP_OFFSETS_PX.exit,
                     transition: INPUT_BAR_SWAP_EXIT_TRANSITION,
                   }
             }
             transition={INPUT_BAR_SWAP_TRANSITION}
+            transformTemplate={collapseRestingTransform}
             className={classNames(
               "w-full",
               effectiveIsCompact && !userAnswerRequiredItem && "min-w-0 flex-1"
