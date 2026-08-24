@@ -327,6 +327,11 @@ export type CachedResourceStore<
  * The cached snapshot shape follows the model implicitly: whenever the model gains, loses, or
  * retypes an attribute, bump `cache.version`. Entries have no TTL, so stale-shaped snapshots
  * otherwise live until the row is next invalidated.
+ *
+ * Only global models (no workspaceId column) may use this store. Workspace-scoped resources need
+ * a variant that takes an Authenticator and scopes every where clause to the workspace id, and
+ * that re-checks ownership on the blob after a cache read, since a cache hit skips the SQL
+ * scoping entirely.
  */
 export function defineCachedResourceStore<
   M extends Model,
