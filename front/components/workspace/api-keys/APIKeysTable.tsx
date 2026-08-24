@@ -1,14 +1,18 @@
+import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
+import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { GroupType } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import type { RoleType } from "@app/types/user";
+import type { RoleType, WorkspaceType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
-  Building07,
+  Building04,
   Button,
   ChevronLeft,
   ChevronRight,
@@ -25,9 +29,11 @@ import {
   FilterFunnel01,
   Icon,
   LoadingBlock,
+  Lock01,
   SearchInput,
   Separator,
   Tooltip,
+  Trash01,
 } from "@dust-tt/sparkle";
 import type {
   ColumnDef,
@@ -35,18 +41,23 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import capitalize from "lodash/capitalize";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { prettifyGroupName } from "./utils";
 
 const API_KEYS_PAGE_SIZE = 10;
+const MAX_API_KEY_CONSUMPTION_ROWS = 100;
 
 type APIKeyStatus = "active" | "capped" | "revoked";
 
-interface APIKeysListProps {
+interface APIKeysTableProps {
   keys: KeyType[];
+  workspaceId: WorkspaceType["sId"];
+  period: ConsumptionPeriodSelection;
   groupsById: Record<ModelId, GroupType>;
   isLoading: boolean;
   isError: boolean;
+  showAnalyticsConsumption: boolean;
   isRevoking: boolean;
   isGenerating: boolean;
   onRevoke: (key: KeyType) => Promise<void>;
@@ -60,22 +71,23 @@ interface APIKeyRowData {
   name: string;
   creator: string;
   spaces: string[];
+  hasPrivateSpace: boolean;
   scope: string;
   secret: string;
   status: APIKeyStatus;
+  credits: number | null;
   monthlyCap: string;
   lastUsedAt: number | null;
   menuItems: MenuItem[];
 }
 
-const getKeySpaces = (
+const getKeyGroups = (
   key: KeyType,
   groupsById: Record<ModelId, GroupType>
-): string[] => {
+): GroupType[] => {
   return key.groupIds
     .map((groupId) => groupsById[groupId])
-    .filter((group): group is GroupType => group !== undefined)
-    .map((group) => prettifyGroupName(group));
+    .filter((group): group is GroupType => group !== undefined);
 };
 
 const formatKeyScope = (role: RoleType): string => {
@@ -150,22 +162,55 @@ function matchesAPIKeySearch(row: APIKeyRowData, search: string): boolean {
   ].some((value) => value.toLowerCase().includes(normalizedSearch));
 }
 
+interface ConsumptionCellProps {
+  isLoading: boolean;
+  children: ReactNode;
+  align?: "left" | "right";
+}
+
+function ConsumptionCell({
+  isLoading,
+  children,
+  align = "right",
+}: ConsumptionCellProps) {
+  if (isLoading) {
+    return (
+      <DataTable.CellContent
+        className={
+          align === "right" ? "w-full justify-end" : "w-full justify-start"
+        }
+      >
+        <LoadingBlock className="h-3 w-16" />
+      </DataTable.CellContent>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 function buildColumns({
   actionsDisabled,
   capLabel,
+  isConsumptionLoading,
   onRevoke,
+  showAnalyticsConsumption,
 }: {
   actionsDisabled: boolean;
   capLabel: string;
+  isConsumptionLoading: boolean;
   onRevoke: (key: KeyType) => Promise<void>;
+  showAnalyticsConsumption: boolean;
 }): ColumnDef<APIKeyRowData>[] {
-  return [
+  const columns: ColumnDef<APIKeyRowData>[] = [
     {
       id: "name",
       accessorFn: (row) => row.name,
       header: "Name",
       enableSorting: true,
-      meta: { className: "h-16 w-40", headerAlign: "left" },
+      meta: {
+        className: showAnalyticsConsumption ? "h-16 w-40" : "h-16 w-44",
+        headerAlign: "left",
+      },
       cell: (info) => (
         <div className="flex flex-col justify-center">
           <span className="truncate text-sm font-medium text-foreground">
@@ -183,7 +228,9 @@ function buildColumns({
       header: "Scope",
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-28 @lg-table:table-cell",
+        className: showAnalyticsConsumption
+          ? "hidden h-16 w-20 px-1 @md-table:table-cell"
+          : "hidden h-16 w-20 @lg-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => (
@@ -202,7 +249,9 @@ function buildColumns({
       header: "Key",
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-28 @lg-table:table-cell",
+        className: showAnalyticsConsumption
+          ? "hidden h-16 w-28 @lg-table:table-cell"
+          : "hidden h-16 w-32 @lg-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => {
@@ -223,45 +272,60 @@ function buildColumns({
       header: "Spaces",
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-40 @md-table:table-cell",
+        className: showAnalyticsConsumption
+          ? "hidden h-16 w-12 @lg-table:table-cell"
+          : "hidden h-16 w-12 @md-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => {
         const spaces = info.row.original.spaces;
-        const [firstSpace, ...remainingSpaces] = spaces;
+        const spaceLabels = spaces.length > 0 ? spaces : ["No spaces"];
+        const spaceIcon = info.row.original.hasPrivateSpace
+          ? Lock01
+          : Building04;
 
         return (
-          <div className="flex min-w-0 items-center gap-2">
-            <Icon visual={Building07} size="sm" className="shrink-0" />
-            <span className="min-w-0 truncate text-sm">
-              {firstSpace ?? "No spaces"}
-            </span>
-            {remainingSpaces.length > 0 && (
-              <Tooltip
-                label={
-                  <div className="flex flex-col">
-                    {remainingSpaces.map((space, index) => (
-                      <span key={`${space}-${index}`}>{space}</span>
-                    ))}
-                  </div>
-                }
-                tooltipTriggerAsChild
-                trigger={
-                  <span
-                    className="shrink-0 rounded outline-hidden focus-visible:ring-2 focus-visible:ring-highlight-300"
-                    tabIndex={0}
-                    aria-label={`${remainingSpaces.length} more spaces`}
-                  >
-                    <Chip
-                      size="mini"
-                      color="primary"
-                      label={`+${remainingSpaces.length}`}
-                    />
-                  </span>
-                }
-              />
-            )}
-          </div>
+          <DataTable.CellContent className="w-full justify-center">
+            <Tooltip
+              label={
+                <div className="flex flex-col">
+                  {spaceLabels.map((space, index) => (
+                    <span key={`${space}-${index}`}>{space}</span>
+                  ))}
+                </div>
+              }
+              tooltipTriggerAsChild
+              trigger={
+                <span
+                  className="inline-flex shrink-0 rounded outline-hidden focus-visible:ring-2 focus-visible:ring-highlight-300"
+                  tabIndex={0}
+                  aria-label={`Spaces: ${spaceLabels.join(", ")}`}
+                >
+                  <Icon visual={spaceIcon} size="sm" />
+                </span>
+              }
+            />
+          </DataTable.CellContent>
+        );
+      },
+    },
+    {
+      id: "credits",
+      accessorKey: "credits",
+      header: "Credits",
+      enableSorting: false,
+      meta: { className: "h-16 w-32", headerAlign: "left" },
+      cell: (info) => {
+        const { credits, monthlyCap } = info.row.original;
+        return (
+          <ConsumptionCell isLoading={isConsumptionLoading} align="left">
+            <DataTable.BasicCellContent
+              className="justify-start text-left tabular-nums"
+              label={`${
+                credits === null ? "—" : formatCredits(credits)
+              }/${monthlyCap === "Unlimited" ? "unlimited" : monthlyCap}`}
+            />
+          </ConsumptionCell>
         );
       },
     },
@@ -271,7 +335,9 @@ function buildColumns({
       header: capLabel,
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-28 @md-table:table-cell",
+        className: showAnalyticsConsumption
+          ? "hidden h-16 w-24 @md-table:table-cell"
+          : "hidden h-16 w-28 @md-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => (
@@ -287,7 +353,9 @@ function buildColumns({
       header: "Last used",
       enableSorting: true,
       meta: {
-        className: "hidden h-16 w-32 @sm-table:table-cell",
+        className: showAnalyticsConsumption
+          ? "hidden h-16 w-24 px-1 @sm-table:table-cell"
+          : "hidden h-16 w-30 @sm-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => (
@@ -308,7 +376,10 @@ function buildColumns({
       accessorKey: "status",
       header: "Status",
       enableSorting: false,
-      meta: { className: "h-16 w-20", headerAlign: "left" },
+      meta: {
+        className: showAnalyticsConsumption ? "h-16 w-16 px-1" : "h-16 w-18",
+        headerAlign: "left",
+      },
       cell: (info) => {
         const status = info.row.original.status;
         return (
@@ -333,19 +404,22 @@ function buildColumns({
       header: "",
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-20 @xs-table:table-cell",
+        className: "hidden h-16 w-10 px-1 @xs-table:table-cell",
         headerAlign: "right",
       },
       cell: (info) =>
         info.row.original.key.status === "active" ? (
           <DataTable.CellContent className="w-full justify-end">
-            <Button
-              label="Revoke"
-              size="sm"
-              variant="warning"
-              disabled={actionsDisabled}
-              onClick={() => void onRevoke(info.row.original.key)}
-            />
+            <div className="transition-opacity duration-150 ease-out motion-reduce:transition-none pointer-fine:opacity-0 pointer-fine:group-hover/dt-row:opacity-100 pointer-fine:focus-within:opacity-100">
+              <Button
+                icon={Trash01}
+                tooltip="Revoke API key"
+                size="sm"
+                variant="warning"
+                disabled={actionsDisabled}
+                onClick={() => void onRevoke(info.row.original.key)}
+              />
+            </div>
           </DataTable.CellContent>
         ) : null,
     },
@@ -353,7 +427,9 @@ function buildColumns({
       id: "actions",
       header: "",
       enableSorting: false,
-      meta: { className: "h-16 w-10" },
+      meta: {
+        className: showAnalyticsConsumption ? "h-16 w-12" : "h-16 w-10",
+      },
       cell: (info) =>
         info.row.original.menuItems.length > 0 ? (
           <DataTable.CellContent className="w-full justify-end">
@@ -365,20 +441,29 @@ function buildColumns({
         ) : null,
     },
   ];
+
+  if (showAnalyticsConsumption) {
+    return columns.filter((column) => column.id !== "monthlyCap");
+  }
+
+  return columns.filter((column) => column.id !== "credits");
 }
 
-export function APIKeysList({
+export function APIKeysTable({
   keys,
+  workspaceId,
+  period,
   groupsById,
   isLoading,
   isError,
+  showAnalyticsConsumption,
   isRevoking,
   isGenerating,
   onRevoke,
   onEditCap,
   showLegacyUsdMonthlyCap,
   showCreditMonthlyCap,
-}: APIKeysListProps) {
+}: APIKeysTableProps) {
   const [search, setSearch] = useState("");
   const [statusFilters, setStatusFilters] = useState<ReadonlySet<APIKeyStatus>>(
     new Set()
@@ -392,14 +477,61 @@ export function APIKeysList({
   });
   const [sorting, setSorting] = useState<SortingState>([]);
 
+  const { spaces: workspaceSpaces, isSpacesLoading } = useSpacesAsAdmin({
+    workspaceId,
+  });
+  const privateSpaceGroupIds = useMemo(
+    () =>
+      new Set(
+        workspaceSpaces
+          .filter((space) => space.isRestricted)
+          .flatMap((space) => space.groupIds)
+      ),
+    [workspaceSpaces]
+  );
+  const apiKeyNames = useMemo(
+    () => [...new Set(keys.map((key) => key.name))].sort(),
+    [keys]
+  );
+  const consumptionFilter = useMemo<ConsumptionScopeFilter | undefined>(
+    () => (apiKeyNames.length > 0 ? { api_keys: apiKeyNames } : undefined),
+    [apiKeyNames]
+  );
+  const {
+    rows: consumptionRows,
+    hasMore: hasMoreConsumptionRows,
+    isTopLoading: isConsumptionLoading,
+    isTopError: consumptionError,
+  } = useConsumptionTop({
+    workspaceId,
+    dimension: "api_key",
+    period,
+    limit: Math.max(
+      1,
+      Math.min(apiKeyNames.length, MAX_API_KEY_CONSUMPTION_ROWS)
+    ),
+    filter: consumptionFilter,
+    disabled: !showAnalyticsConsumption || apiKeyNames.length === 0,
+  });
+  const consumptionByName = useMemo(
+    () => new Map(consumptionRows.map((row) => [row.name, row])),
+    [consumptionRows]
+  );
   const actionsDisabled = isRevoking || isGenerating;
   const rows = useMemo<APIKeyRowData[]>(
     () =>
       keys.map((key) => {
-        const spaces = getKeySpaces(key, groupsById);
+        const keyGroups = getKeyGroups(key, groupsById);
+        const spaces = keyGroups.map((group) => prettifyGroupName(group));
         const scope = formatKeyScope(key.role);
         const status = getKeyStatus(key);
         const creator = key.creator ?? "Unknown creator";
+        const consumption = consumptionByName.get(key.name);
+        const isConsumptionKnown =
+          showAnalyticsConsumption &&
+          (consumption !== undefined ||
+            (!hasMoreConsumptionRows && !consumptionError));
+        const credits = consumption?.credits ?? (isConsumptionKnown ? 0 : null);
         const menuItems: MenuItem[] =
           key.status === "active"
             ? [
@@ -417,9 +549,13 @@ export function APIKeysList({
           name: key.name || "Unnamed",
           creator,
           spaces,
+          hasPrivateSpace: keyGroups.some((group) =>
+            privateSpaceGroupIds.has(group.sId)
+          ),
           scope,
           secret: key.secret,
           status,
+          credits,
           monthlyCap: formatMonthlyCap({
             key,
             showLegacyUsdMonthlyCap,
@@ -429,7 +565,18 @@ export function APIKeysList({
           menuItems,
         };
       }),
-    [groupsById, keys, onEditCap, showCreditMonthlyCap, showLegacyUsdMonthlyCap]
+    [
+      consumptionByName,
+      consumptionError,
+      groupsById,
+      hasMoreConsumptionRows,
+      keys,
+      onEditCap,
+      privateSpaceGroupIds,
+      showAnalyticsConsumption,
+      showCreditMonthlyCap,
+      showLegacyUsdMonthlyCap,
+    ]
   );
 
   const scopeOptions = useMemo(
@@ -441,9 +588,17 @@ export function APIKeysList({
       buildColumns({
         actionsDisabled,
         capLabel: showCreditMonthlyCap ? "Credits cap" : "Monthly cap",
+        isConsumptionLoading,
         onRevoke,
+        showAnalyticsConsumption,
       }),
-    [actionsDisabled, onRevoke, showCreditMonthlyCap]
+    [
+      actionsDisabled,
+      isConsumptionLoading,
+      onRevoke,
+      showAnalyticsConsumption,
+      showCreditMonthlyCap,
+    ]
   );
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
@@ -493,7 +648,7 @@ export function APIKeysList({
   return (
     <div
       className="flex flex-col gap-4 rounded-xl border border-border bg-panel-background p-4"
-      aria-busy={isLoading}
+      aria-busy={isLoading || isSpacesLoading}
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <SearchInput
@@ -551,9 +706,10 @@ export function APIKeysList({
         </DropdownMenu>
       </div>
 
-      {isLoading ? (
+      {isLoading || isSpacesLoading ? (
         <>
           <DataTableLoadingSkeleton
+            className="pt-4"
             showSelectionColumn={false}
             showTrailingCell
           />
@@ -597,8 +753,6 @@ export function APIKeysList({
               />
             </div>
           )}
-
-          <Separator />
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-foreground">
               {filteredRows.length.toLocaleString()} API key
