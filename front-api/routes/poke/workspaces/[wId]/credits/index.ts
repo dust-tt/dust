@@ -4,6 +4,7 @@ import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import awuPoolSummary from "./awu-pool-summary";
+import consumptionExport from "./consumption-export";
 import membersUsage from "./members-usage";
 import topUps from "./top-ups";
 
@@ -35,6 +36,7 @@ app.get("/", async (ctx): HandlerResult<PokeListCreditsResponseBody> => {
 });
 
 app.route("/awu-pool-summary", awuPoolSummary);
+app.route("/consumption-export", consumptionExport);
 app.route("/members-usage", membersUsage);
 app.route("/top-ups", topUps);
 

@@ -1,6 +1,7 @@
 import { AlertChip } from "@app/components/poke/credits/AlertChip";
 import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLogsLink";
 import { GrantFreeCreditsButton } from "@app/components/poke/credits/GrantFreeCreditsButton";
+import { MemberConsumptionExportButton } from "@app/components/poke/credits/MemberConsumptionExportButton";
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
@@ -243,25 +244,29 @@ function makeColumns({
           consumedAwuCredits,
           rateLimiterSpendAwuCredits,
           metronomeConsumedAwuCredits,
+          sId,
         } = row.original;
         if (!showCreditColumns) {
           return <span>{formatCreditsPrecise(consumedAwuCredits)}</span>;
         }
         return (
-          <div className="flex flex-col text-xs">
-            <span>ES {formatCreditsPrecise(consumedAwuCredits)}</span>
-            <span className="text-muted-foreground">
-              RL{" "}
-              {rateLimiterSpendAwuCredits !== null
-                ? formatCreditsPrecise(rateLimiterSpendAwuCredits)
-                : "-"}
-            </span>
-            <span className="text-muted-foreground">
-              MT{" "}
-              {metronomeConsumedAwuCredits !== null
-                ? formatCreditsPrecise(metronomeConsumedAwuCredits)
-                : "-"}
-            </span>
+          <div className="flex items-center gap-1">
+            <div className="flex flex-col text-xs">
+              <span>ES {formatCreditsPrecise(consumedAwuCredits)}</span>
+              <span className="text-muted-foreground">
+                RL{" "}
+                {rateLimiterSpendAwuCredits !== null
+                  ? formatCreditsPrecise(rateLimiterSpendAwuCredits)
+                  : "-"}
+              </span>
+              <span className="text-muted-foreground">
+                MT{" "}
+                {metronomeConsumedAwuCredits !== null
+                  ? formatCreditsPrecise(metronomeConsumedAwuCredits)
+                  : "-"}
+              </span>
+            </div>
+            <MemberConsumptionExportButton owner={owner} userId={sId} />
           </div>
         );
       },
