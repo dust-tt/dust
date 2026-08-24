@@ -1,23 +1,13 @@
+import { fetchTriggersRanking } from "@app/lib/api/analytics/automations/triggers";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import {
   ConsumptionPeriodSchema,
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
-import {
-  buildConsumptionScopeQuery,
-  CONVERSATION_ID_FIELD,
-  CREDIT_MICRO_FIELD,
-  TRIGGER_ID_FIELD,
-} from "@app/lib/api/analytics/consumption/scope";
+import { CARDINALITY_PRECISION_THRESHOLD } from "@app/lib/api/analytics/consumption/scope";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
-import {
-  bucketsToArray,
-  searchConsumptionAnalytics,
-} from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import { microCreditsToCredits } from "@app/lib/credits/units";
 import type { TriggerWithProviderAndEditor } from "@app/lib/triggers/admin/list_with_metadata";
 import { listTriggersWithProviderAndEditor } from "@app/lib/triggers/admin/list_with_metadata";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
@@ -29,13 +19,10 @@ import type {
   TriggerStatus,
   TriggerType,
 } from "@app/types/assistant/triggers";
-import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
 import type { UserType } from "@app/types/user";
-import type { estypes } from "@elastic/elasticsearch";
 import { z } from "zod";
 
 export type TriggerWithProviderType = TriggerWithProviderAndEditor;
@@ -108,134 +95,7 @@ export type PokeTriggerSearchResponse = {
   triggers: PokeTriggerSearchRow[];
 };
 
-const CREDIT_AGG = "credit_micro";
-const RUNS_AGG = "runs";
-
-type TriggerBucket = {
-  key: string;
-  [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
-  [RUNS_AGG]?: estypes.AggregationsCardinalityAggregate;
-};
-
-type TriggerAggs = {
-  by_trigger?: estypes.AggregationsMultiBucketAggregateBase<TriggerBucket>;
-};
-
 type PokeTriggerMetadataRow = Omit<PokeTriggerSearchRow, "consumption">;
-
-async function fetchPokeTriggerCredits(
-  auth: Authenticator,
-  {
-    period,
-    triggerIds,
-  }: {
-    period: ConsumptionPeriod;
-    triggerIds: string[];
-  }
-): Promise<Result<Map<string, number>, ElasticsearchError>> {
-  if (triggerIds.length === 0) {
-    return new Ok(new Map());
-  }
-
-  const query = buildConsumptionScopeQuery({
-    auth,
-    startDate: period.startDate,
-    endDate: period.endDate,
-    extraFilters: [{ terms: { [TRIGGER_ID_FIELD]: triggerIds } }],
-  });
-
-  const result = await searchConsumptionAnalytics<never, TriggerAggs>(query, {
-    aggregations: {
-      by_trigger: {
-        terms: {
-          field: TRIGGER_ID_FIELD,
-          size: triggerIds.length,
-        },
-        aggs: {
-          [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
-        },
-      },
-    },
-    size: 0,
-  });
-  if (result.isErr()) {
-    return result;
-  }
-
-  const creditsByTriggerId = new Map<string, number>();
-  for (const bucket of bucketsToArray<TriggerBucket>(
-    result.value.aggregations?.by_trigger?.buckets
-  )) {
-    creditsByTriggerId.set(
-      String(bucket.key),
-      microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0)
-    );
-  }
-
-  return new Ok(creditsByTriggerId);
-}
-
-async function fetchPokeTriggerConsumptionStats(
-  auth: Authenticator,
-  {
-    period,
-    triggerIds,
-  }: {
-    period: ConsumptionPeriod;
-    triggerIds: string[];
-  }
-): Promise<
-  Result<Map<string, PokeTriggerConsumptionStats>, ElasticsearchError>
-> {
-  if (triggerIds.length === 0) {
-    return new Ok(new Map());
-  }
-
-  const query = buildConsumptionScopeQuery({
-    auth,
-    startDate: period.startDate,
-    endDate: period.endDate,
-    extraFilters: [{ terms: { [TRIGGER_ID_FIELD]: triggerIds } }],
-  });
-
-  const result = await searchConsumptionAnalytics<never, TriggerAggs>(query, {
-    aggregations: {
-      by_trigger: {
-        terms: {
-          field: TRIGGER_ID_FIELD,
-          size: triggerIds.length,
-        },
-        aggs: {
-          [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
-          [RUNS_AGG]: {
-            cardinality: { field: CONVERSATION_ID_FIELD },
-          },
-        },
-      },
-    },
-    size: 0,
-  });
-  if (result.isErr()) {
-    return result;
-  }
-
-  const statsByTriggerId = new Map<string, PokeTriggerConsumptionStats>();
-  for (const bucket of bucketsToArray<TriggerBucket>(
-    result.value.aggregations?.by_trigger?.buckets
-  )) {
-    const estimatedRunCount = Math.round(bucket[RUNS_AGG]?.value ?? 0);
-    const credits = microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0);
-
-    statsByTriggerId.set(String(bucket.key), {
-      credits,
-      estimatedRunCount,
-      estimatedCreditsPerRun:
-        estimatedRunCount > 0 ? credits / estimatedRunCount : null,
-    });
-  }
-
-  return new Ok(statsByTriggerId);
-}
 
 function getProviderFilterValue(
   trigger: Pick<PokeTriggerMetadataRow, "kind" | "provider">
@@ -266,7 +126,7 @@ function matchesSearch(trigger: PokeTriggerMetadataRow, search: string) {
 function getSortValue(
   trigger: PokeTriggerMetadataRow,
   orderColumn: PokeTriggerOrderColumn,
-  creditsByTriggerId: Map<string, number>
+  statsByTriggerId: Map<string, PokeTriggerConsumptionStats>
 ): number | string {
   switch (orderColumn) {
     case "sId":
@@ -282,7 +142,7 @@ function getSortValue(
     case "provider":
       return getProviderFilterValue(trigger) ?? "";
     case "consumption":
-      return creditsByTriggerId.get(trigger.sId) ?? 0;
+      return statsByTriggerId.get(trigger.sId)?.credits ?? 0;
     case "status":
       return trigger.status;
     case "editorEmail":
@@ -307,17 +167,17 @@ function compareTriggerRows(
   {
     orderColumn,
     orderDirection,
-    creditsByTriggerId,
+    statsByTriggerId,
   }: {
     orderColumn: PokeTriggerOrderColumn;
     orderDirection: "asc" | "desc";
-    creditsByTriggerId: Map<string, number>;
+    statsByTriggerId: Map<string, PokeTriggerConsumptionStats>;
   }
 ) {
   const direction = orderDirection === "asc" ? 1 : -1;
   const primaryComparison = compareSortValues(
-    getSortValue(left, orderColumn, creditsByTriggerId),
-    getSortValue(right, orderColumn, creditsByTriggerId)
+    getSortValue(left, orderColumn, statsByTriggerId),
+    getSortValue(right, orderColumn, statsByTriggerId)
   );
   if (primaryComparison !== 0) {
     return primaryComparison * direction;
@@ -335,10 +195,6 @@ type PokeTriggerConsumptionData =
       kind: "full";
       statsByTriggerId: Map<string, PokeTriggerConsumptionStats>;
     }
-  | {
-      kind: "credits";
-      creditsByTriggerId: Map<string, number>;
-    }
   | { kind: "unavailable" };
 
 function getConsumptionForRow(
@@ -354,12 +210,6 @@ function getConsumptionForRow(
           estimatedCreditsPerRun: null,
         }
       );
-    case "credits":
-      return {
-        credits: consumptionData.creditsByTriggerId.get(triggerId) ?? 0,
-        estimatedRunCount: null,
-        estimatedCreditsPerRun: null,
-      };
     case "unavailable":
       return null;
     default:
@@ -462,64 +312,63 @@ export async function searchPokeTriggers(
 
   let appliedOrderColumn: PokeTriggerOrderColumn = orderColumn;
   let appliedOrderDirection: "asc" | "desc" = orderDirection;
-  let creditsByTriggerId = new Map<string, number>();
+  let statsByTriggerId = new Map<string, PokeTriggerConsumptionStats>();
   let consumptionData: PokeTriggerConsumptionData = { kind: "unavailable" };
-  let shouldFetchPageStats = true;
 
-  if (orderColumn === "consumption") {
-    const creditsResult = await fetchPokeTriggerCredits(auth, {
-      period,
-      triggerIds: matchingTriggers.map((trigger) => trigger.sId),
-    });
-    if (creditsResult.isErr()) {
+  // Reuse the analytics reader's 40k ranking boundary. A successful ranking
+  // omits zero-consumption triggers; they are restored as zeroes when live
+  // metadata is merged below, while an actual reader error stays unavailable.
+  const rankingResult = await fetchTriggersRanking(auth, {
+    period,
+    limit: CARDINALITY_PRECISION_THRESHOLD,
+    offset: 0,
+  });
+  if (rankingResult.isErr()) {
+    if (orderColumn === "consumption") {
       appliedOrderColumn = "createdAt";
       appliedOrderDirection = "desc";
-      shouldFetchPageStats = false;
-      logger.warn(
-        {
-          err: creditsResult.error,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-        },
-        "[PokeTriggerSearch] Failed to order triggers by consumption. Falling back to creation date."
-      );
-    } else {
-      creditsByTriggerId = creditsResult.value;
     }
+    logger.warn(
+      {
+        err: rankingResult.error,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      orderColumn === "consumption"
+        ? "[PokeTriggerSearch] Failed to order triggers by consumption. Falling back to creation date."
+        : "[PokeTriggerSearch] Failed to retrieve trigger consumption."
+    );
+  } else {
+    statsByTriggerId = new Map(
+      rankingResult.value.ranking.map(
+        ({
+          triggerId,
+          runCount,
+          credits,
+        }): [string, PokeTriggerConsumptionStats] => {
+          const estimatedRunCount = Math.round(runCount);
+          return [
+            triggerId,
+            {
+              credits,
+              estimatedRunCount,
+              estimatedCreditsPerRun:
+                estimatedRunCount > 0 ? credits / estimatedRunCount : null,
+            },
+          ];
+        }
+      )
+    );
+    consumptionData = { kind: "full", statsByTriggerId };
   }
 
   const sortedTriggers = [...matchingTriggers].sort((left, right) =>
     compareTriggerRows(left, right, {
       orderColumn: appliedOrderColumn,
       orderDirection: appliedOrderDirection,
-      creditsByTriggerId,
+      statsByTriggerId,
     })
   );
   const page = sortedTriggers.slice(offset, offset + limit);
-
-  if (shouldFetchPageStats) {
-    const statsResult = await fetchPokeTriggerConsumptionStats(auth, {
-      period,
-      triggerIds: page.map((trigger) => trigger.sId),
-    });
-    if (statsResult.isErr()) {
-      consumptionData =
-        orderColumn === "consumption"
-          ? { kind: "credits", creditsByTriggerId }
-          : { kind: "unavailable" };
-      logger.warn(
-        {
-          err: statsResult.error,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-        },
-        "[PokeTriggerSearch] Failed to retrieve page consumption stats."
-      );
-    } else {
-      consumptionData = {
-        kind: "full",
-        statsByTriggerId: statsResult.value,
-      };
-    }
-  }
 
   return {
     period,
