@@ -48,7 +48,7 @@ export function UserAnalyticsPopover({
   const shouldReduceMotion = useReducedMotion();
 
   return (
-    <div className="flex h-full flex-col gap-1 overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       <DialogHeader hideButton className="p-5 sm:p-6">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-4 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
           <div className="flex min-w-0 flex-col gap-1 overflow-hidden">
@@ -78,7 +78,7 @@ export function UserAnalyticsPopover({
         </div>
       </DialogHeader>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 sm:px-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-1 sm:px-6">
         <Page.Vertical align="stretch" gap="xl">
           <ConsumptionSummary
             workspaceId={owner.sId}
