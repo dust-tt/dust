@@ -221,8 +221,8 @@ describe("activationManagementPlugin.execute", () => {
     expect(mockStartActivationWorkspaceWorkflow).not.toHaveBeenCalled();
   });
 
-  it("provisions a fresh Goal Pod and bootstraps its first recommendation", async () => {
-    const { adminAuth, editor } = await makeWorkspaceWithEditor();
+  it("provisions a fresh Goal Pod and queues it into Temporal", async () => {
+    const { workspace, adminAuth, editor } = await makeWorkspaceWithEditor();
     const goal = "Beat the quarterly revenue plan";
 
     const result = await activationManagementPlugin.execute(adminAuth, null, {
@@ -241,16 +241,21 @@ describe("activationManagementPlugin.execute", () => {
       expect.objectContaining({ kind: "goal" })
     );
     expect(ActivationWorkAreaResource.makeNew).not.toHaveBeenCalled();
-    expect(mockStartActivationWorkspaceWorkflow).not.toHaveBeenCalled();
-
-    const nudgeArgs = mockPostActivationNudge.mock.calls[0]?.[1];
-    expect(nudgeArgs?.context.workAreas).toBe(goal);
-    expect(nudgeArgs?.context.sessionGoal).toContain("job contract");
-    expect(nudgeArgs?.context.activationPlaybook).toContain("Decide ownership");
+    expect(mockPostActivationNudge).not.toHaveBeenCalled();
+    expect(mockStartActivationWorkspaceWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: workspace.sId,
+        userIds: [editor.sId],
+        context: expect.objectContaining({
+          workAreas: goal,
+          sessionGoal: expect.stringContaining("job contract"),
+        }),
+      })
+    );
   });
 
-  it("reuses an existing Goal Pod and nudges it when Force recreate is off", async () => {
-    const { adminAuth, editor } = await makeWorkspaceWithEditor();
+  it("reuses an existing Goal Pod and queues it when Force recreate is off", async () => {
+    const { workspace, adminAuth, editor } = await makeWorkspaceWithEditor();
     const existingPod = await SpaceFactory.project(
       adminAuth.getNonNullableWorkspace(),
       editor.id,
@@ -276,11 +281,11 @@ describe("activationManagementPlugin.execute", () => {
 
     expect(result.isOk()).toBe(true);
     expect(ActivationPodResource.makeNew).not.toHaveBeenCalled();
-    expect(mockStartActivationWorkspaceWorkflow).not.toHaveBeenCalled();
-    expect(mockPostActivationNudge).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(mockPostActivationNudge).not.toHaveBeenCalled();
+    expect(mockStartActivationWorkspaceWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
-        pod: existingPod,
+        workspaceId: workspace.sId,
+        userIds: [editor.sId],
         context: expect.objectContaining({
           workAreas: goalPluginArgs.goal,
         }),

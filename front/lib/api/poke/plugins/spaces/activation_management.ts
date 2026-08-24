@@ -3,7 +3,6 @@ import type {
   ActivationNudgeContext,
   ActivationNudgePushedResourceType,
 } from "@app/lib/api/activation/nudge";
-import { postActivationNudge } from "@app/lib/api/activation/nudge";
 import { listActivationPodsByUser } from "@app/lib/api/activation/pods";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
@@ -273,7 +272,7 @@ async function provisionTrainingPod(
 type TargetOutcome = {
   name: string;
   userId: string;
-  status: "provisioned" | "recreated" | "queued" | "nudged" | "failed";
+  status: "provisioned" | "recreated" | "queued" | "failed";
   podLink?: string;
   message?: string;
 };
@@ -682,35 +681,8 @@ export const activationManagementPlugin = createPlugin({
       const existing = existingPodsByUser.get(user.id);
 
       // Reuse path: the user already has a Pod of this kind and we're not
-      // recreating it. Learning Spaces are queued into the shared Temporal
-      // workflow. Goal Pods are nudged immediately — they skip the Learning
-      // eligibility gates.
+      // recreating it — queue them for the shared Temporal workflow.
       if (existing && !forceRecreate) {
-        if (isGoalPod) {
-          const nudgeResult = await postActivationNudge(adminAuth, {
-            pod: existing.pod,
-            activationPod: existing.activationPod,
-            context,
-          });
-          if (nudgeResult.isErr()) {
-            outcomes.push({
-              name,
-              userId: user.sId,
-              status: "failed",
-              message: `reused existing Goal Pod but failed to nudge: ${nudgeResult.error.message}`,
-              podLink: podLink(existing.pod),
-            });
-            continue;
-          }
-          outcomes.push({
-            name,
-            userId: user.sId,
-            status: "nudged",
-            podLink: podLink(existing.pod),
-          });
-          continue;
-        }
-
         outcomes.push({
           name,
           userId: user.sId,
@@ -758,24 +730,7 @@ export const activationManagementPlugin = createPlugin({
         continue;
       }
 
-      const { pod, activationPod } = provisionResult.value;
-      if (isGoalPod) {
-        const nudgeResult = await postActivationNudge(adminAuth, {
-          pod,
-          activationPod,
-          context,
-        });
-        if (nudgeResult.isErr()) {
-          outcomes.push({
-            name,
-            userId: user.sId,
-            status: "failed",
-            message: `${recreated ? "recreated" : "provisioned"} but failed to nudge: ${nudgeResult.error.message}`,
-            podLink: podLink(pod),
-          });
-          continue;
-        }
-      }
+      const { pod } = provisionResult.value;
 
       outcomes.push({
         name,
@@ -788,13 +743,8 @@ export const activationManagementPlugin = createPlugin({
     const provisioned = outcomes.filter((o) => o.status === "provisioned");
     const recreated = outcomes.filter((o) => o.status === "recreated");
     const queued = outcomes.filter((o) => o.status === "queued");
-    const nudged = outcomes.filter((o) => o.status === "nudged");
     const failed = outcomes.filter((o) => o.status === "failed");
-    // Goal Pods are nudged inline above. Learning Spaces go through Temporal
-    // so the same eligibility gates as the daily scheduler apply.
-    const toNudge = isGoalPod
-      ? []
-      : outcomes.filter((o) => o.status !== "failed");
+    const toNudge = outcomes.filter((o) => o.status !== "failed");
 
     let workflowId: string | null = null;
     if (toNudge.length > 0) {
@@ -823,7 +773,6 @@ export const activationManagementPlugin = createPlugin({
         provisionedCount: provisioned.length,
         recreatedCount: recreated.length,
         queuedCount: queued.length,
-        nudgedCount: nudged.length,
         failedCount: failed.length,
         forceRecreate: Boolean(forceRecreate),
         overrideChecks: Boolean(overrideChecks),
