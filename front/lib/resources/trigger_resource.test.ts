@@ -544,4 +544,109 @@ describe("TriggerResource", () => {
       expect(reloaded?.executionMode).toBe("workspace_pool");
     });
   });
+
+  describe("transferEditor", () => {
+    it("moves the triggers and re-registers enabled schedules for the new editor", async () => {
+      const mockCreateOrUpdateWorkflow = vi
+        .spyOn(temporalClient, "createOrUpdateAgentSchedule")
+        .mockResolvedValue(new Ok("workflow-id"));
+
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Test Agent" }
+      );
+
+      const primaryUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, primaryUser, {
+        role: "user",
+      });
+      const secondaryUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, secondaryUser, {
+        role: "user",
+      });
+      const secondaryAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        secondaryUser.sId,
+        workspace.sId
+      );
+
+      const enabledTrigger = await TriggerFactory.schedule(secondaryAuth, {
+        agentConfigurationId: agentConfig.sId,
+        status: "enabled",
+        configuration: { cron: "0 9 * * 1", timezone: "UTC" },
+      });
+      const disabledTrigger = await TriggerFactory.schedule(secondaryAuth, {
+        agentConfigurationId: agentConfig.sId,
+        configuration: { cron: "0 10 * * 1", timezone: "UTC" },
+      });
+      mockCreateOrUpdateWorkflow.mockClear();
+
+      const result = await TriggerResource.transferEditor(authenticator, {
+        fromUser: secondaryUser,
+        toUser: primaryUser,
+      });
+
+      expect(result.isOk()).toBe(true);
+      for (const trigger of [enabledTrigger, disabledTrigger]) {
+        const reloaded = await TriggerResource.fetchById(
+          authenticator,
+          trigger.sId
+        );
+        expect(reloaded?.editor).toBe(primaryUser.id);
+      }
+
+      // Only the enabled schedule has a live Temporal schedule to re-point, and it must be
+      // re-registered as the new editor: the schedule bakes the editor's sId into its args.
+      expect(mockCreateOrUpdateWorkflow).toHaveBeenCalledTimes(1);
+      const [{ auth: scheduleAuth, trigger: scheduledTrigger }] =
+        mockCreateOrUpdateWorkflow.mock.calls[0];
+      expect(scheduleAuth.getNonNullableUser().id).toBe(primaryUser.id);
+      expect(scheduledTrigger.sId).toBe(enabledTrigger.sId);
+      // The resource must carry the new editor too: `createOrUpdateAgentSchedule` silently skips
+      // triggers whose `editor` does not match the caller.
+      expect(scheduledTrigger.editor).toBe(primaryUser.id);
+    });
+
+    it("leaves the other members' triggers untouched", async () => {
+      vi.spyOn(temporalClient, "createOrUpdateAgentSchedule").mockResolvedValue(
+        new Ok("workflow-id")
+      );
+
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Test Agent" }
+      );
+
+      const adminTrigger = await TriggerFactory.schedule(authenticator, {
+        agentConfigurationId: agentConfig.sId,
+        configuration: { cron: "0 11 * * 1", timezone: "UTC" },
+      });
+
+      const primaryUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, primaryUser, {
+        role: "user",
+      });
+      const secondaryUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, secondaryUser, {
+        role: "user",
+      });
+
+      const result = await TriggerResource.transferEditor(authenticator, {
+        fromUser: secondaryUser,
+        toUser: primaryUser,
+      });
+
+      expect(result.isOk()).toBe(true);
+      const reloaded = await TriggerResource.fetchById(
+        authenticator,
+        adminTrigger.sId
+      );
+      expect(reloaded?.editor).toBe(authenticator.getNonNullableUser().id);
+    });
+  });
 });

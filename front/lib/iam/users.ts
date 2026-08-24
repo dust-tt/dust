@@ -15,6 +15,7 @@ import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 import logger from "@app/logger/logger";
@@ -354,6 +355,16 @@ export async function mergeUserIdentities({
 
   // Migrate authorship of keys from the secondary user to the primary user.
   await KeyModel.update(userIdValues, userIdOptions);
+
+  // Migrate trigger editorship from the secondary user to the primary user. Must run before the
+  // revocation below, which deletes every trigger still owned by the secondary user.
+  const triggerTransferResult = await TriggerResource.transferEditor(auth, {
+    fromUser: secondaryUser,
+    toUser: primaryUser,
+  });
+  if (triggerTransferResult.isErr()) {
+    return new Err(triggerTransferResult.error);
+  }
 
   if (
     primaryUser.email === secondaryUser.email &&
