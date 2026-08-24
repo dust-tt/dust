@@ -41,20 +41,44 @@ const MAX_API_KEY_CONSUMPTION_ROWS = 100;
 
 interface APIKeysOverviewProps {
   keys: KeyType[];
-  totalCredits: number;
-  consumingKeyCount: number;
-  isConsumptionLoading: boolean;
-  isConsumptionError: boolean;
+  workspaceId: WorkspaceType["sId"];
+  period: ConsumptionPeriodSelection;
+  isKeysLoading: boolean;
 }
 
 function APIKeysOverview({
   keys,
-  totalCredits,
-  consumingKeyCount,
-  isConsumptionLoading,
-  isConsumptionError,
+  workspaceId,
+  period,
+  isKeysLoading,
 }: APIKeysOverviewProps) {
-  if (isConsumptionLoading) {
+  const apiKeyNames = useMemo(
+    () => [...new Set(keys.map((key) => key.name))].sort(),
+    [keys]
+  );
+  const consumptionFilter = useMemo<ConsumptionScopeFilter | undefined>(
+    () => (apiKeyNames.length > 0 ? { api_keys: apiKeyNames } : undefined),
+    [apiKeyNames]
+  );
+  const {
+    totalCredits,
+    totalCount: consumingKeyCount,
+    isTopLoading: isConsumptionLoading,
+    isTopError: consumptionError,
+  } = useConsumptionTop({
+    workspaceId,
+    dimension: "api_key",
+    period,
+    limit: Math.max(
+      1,
+      Math.min(apiKeyNames.length, MAX_API_KEY_CONSUMPTION_ROWS)
+    ),
+    filter: consumptionFilter,
+    disabled: apiKeyNames.length === 0,
+  });
+  const isConsumptionError = Boolean(consumptionError);
+
+  if (isKeysLoading || isConsumptionLoading) {
     return (
       <div className="grid gap-4 sm:grid-cols-2">
         <LoadingBlock className="h-24 rounded-xl" />
@@ -115,36 +139,6 @@ export function APIKeys({
   const { groups, isGroupsError, isGroupsLoading } = useGroups({ owner });
   const isDataLoading = isKeysLoading || isGroupsLoading;
   const isDataError = Boolean(isKeysError || isGroupsError);
-
-  const apiKeyNames = useMemo(
-    () => [...new Set(keys.map((key) => key.name))].sort(),
-    [keys]
-  );
-  const consumptionFilter = useMemo<ConsumptionScopeFilter | undefined>(
-    () => (apiKeyNames.length > 0 ? { api_keys: apiKeyNames } : undefined),
-    [apiKeyNames]
-  );
-  const {
-    rows: consumptionRows,
-    totalCredits,
-    totalCount: consumingKeyCount,
-    hasMore: hasMoreConsumptionRows,
-    isTopLoading: isConsumptionLoading,
-    isTopError: consumptionError,
-  } = useConsumptionTop({
-    workspaceId: owner.sId,
-    dimension: "api_key",
-    period,
-    limit: Math.max(
-      1,
-      Math.min(apiKeyNames.length, MAX_API_KEY_CONSUMPTION_ROWS)
-    ),
-    filter: consumptionFilter,
-    disabled:
-      !isAnalyticsConsumptionEnabled ||
-      isKeysLoading ||
-      apiKeyNames.length === 0,
-  });
 
   const groupsById = useMemo(() => {
     return groups.reduce<Record<ModelId, GroupType>>((acc, group) => {
@@ -316,21 +310,18 @@ export function APIKeys({
         {isAnalyticsConsumptionEnabled && !isKeysError && (
           <APIKeysOverview
             keys={keys}
-            totalCredits={totalCredits}
-            consumingKeyCount={consumingKeyCount}
-            isConsumptionLoading={isKeysLoading || isConsumptionLoading}
-            isConsumptionError={Boolean(consumptionError)}
+            workspaceId={owner.sId}
+            period={period}
+            isKeysLoading={isKeysLoading}
           />
         )}
         <APIKeysList
           keys={keys}
+          workspaceId={owner.sId}
+          period={period}
           groupsById={groupsById}
           isLoading={isDataLoading}
           isError={isDataError}
-          consumptionRows={consumptionRows}
-          isConsumptionLoading={isConsumptionLoading}
-          isConsumptionError={Boolean(consumptionError)}
-          hasMoreConsumptionRows={hasMoreConsumptionRows}
           showAnalyticsConsumption={isAnalyticsConsumptionEnabled}
           isRevoking={isRevoking}
           isGenerating={isGenerating}

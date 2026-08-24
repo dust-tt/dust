@@ -1,4 +1,6 @@
-import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
+import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { GroupType } from "@app/types/groups";
@@ -6,7 +8,7 @@ import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import type { RoleType } from "@app/types/user";
+import type { RoleType, WorkspaceType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Building07,
@@ -41,18 +43,17 @@ import { useMemo, useState } from "react";
 import { prettifyGroupName } from "./utils";
 
 const API_KEYS_PAGE_SIZE = 10;
+const MAX_API_KEY_CONSUMPTION_ROWS = 100;
 
 type APIKeyStatus = "active" | "capped" | "revoked";
 
 interface APIKeysListProps {
   keys: KeyType[];
+  workspaceId: WorkspaceType["sId"];
+  period: ConsumptionPeriodSelection;
   groupsById: Record<ModelId, GroupType>;
   isLoading: boolean;
   isError: boolean;
-  consumptionRows: ConsumptionTopRow[];
-  isConsumptionLoading: boolean;
-  isConsumptionError: boolean;
-  hasMoreConsumptionRows: boolean;
   showAnalyticsConsumption: boolean;
   isRevoking: boolean;
   isGenerating: boolean;
@@ -452,13 +453,11 @@ function buildColumns({
 
 export function APIKeysList({
   keys,
+  workspaceId,
+  period,
   groupsById,
   isLoading,
   isError,
-  consumptionRows,
-  isConsumptionLoading,
-  isConsumptionError,
-  hasMoreConsumptionRows,
   showAnalyticsConsumption,
   isRevoking,
   isGenerating,
@@ -479,6 +478,32 @@ export function APIKeysList({
     pageSize: API_KEYS_PAGE_SIZE,
   });
   const [sorting, setSorting] = useState<SortingState>([]);
+
+  const apiKeyNames = useMemo(
+    () => [...new Set(keys.map((key) => key.name))].sort(),
+    [keys]
+  );
+  const consumptionFilter = useMemo<ConsumptionScopeFilter | undefined>(
+    () => (apiKeyNames.length > 0 ? { api_keys: apiKeyNames } : undefined),
+    [apiKeyNames]
+  );
+  const {
+    rows: consumptionRows,
+    hasMore: hasMoreConsumptionRows,
+    isTopLoading: isConsumptionLoading,
+    isTopError: consumptionError,
+  } = useConsumptionTop({
+    workspaceId,
+    dimension: "api_key",
+    period,
+    limit: Math.max(
+      1,
+      Math.min(apiKeyNames.length, MAX_API_KEY_CONSUMPTION_ROWS)
+    ),
+    filter: consumptionFilter,
+    disabled: !showAnalyticsConsumption || apiKeyNames.length === 0,
+  });
+  const isConsumptionError = Boolean(consumptionError);
 
   const consumptionByName = useMemo(
     () => new Map(consumptionRows.map((row) => [row.name, row])),
