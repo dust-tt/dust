@@ -14,7 +14,6 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { ReactNode } from "react";
 import { useState } from "react";
 
 const TRIGGER_PROVIDER_FACETS = [
@@ -34,18 +33,17 @@ const TRIGGER_PROVIDER_FACETS = [
 interface TriggerDataTableProps {
   owner: LightWorkspaceType;
   agentId?: string;
-  consumptionPeriod?: ConsumptionPeriodSelection;
-  globalActions?: ReactNode;
   loadOnInit?: boolean;
 }
 
 export function TriggerDataTable({
   owner,
   agentId,
-  consumptionPeriod,
-  globalActions,
   loadOnInit,
 }: TriggerDataTableProps) {
+  const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
+    DEFAULT_CONSUMPTION_PERIOD
+  );
   const { data: agentConfigurations } = usePokeAgentConfigurations({
     owner,
     disabled: false,
@@ -55,7 +53,14 @@ export function TriggerDataTable({
     <PokeDataTableConditionalFetch
       header="Triggers"
       owner={owner}
-      globalActions={globalActions}
+      globalActions={
+        agentId === undefined ? (
+          <ConsumptionPeriodSelector
+            period={period}
+            onPeriodChange={setPeriod}
+          />
+        ) : undefined
+      }
       loadOnInit={loadOnInit}
       useSWRHook={usePokeTriggers}
     >
@@ -69,13 +74,13 @@ export function TriggerDataTable({
           await mutateTriggers();
         };
 
-        if (consumptionPeriod) {
+        if (agentId === undefined) {
           return (
             <TriggerConsumptionTable
               agentConfigurations={agentConfigurations}
               onTriggerDeleted={onTriggerDeleted}
               owner={owner}
-              period={consumptionPeriod}
+              period={period}
               triggers={filteredTriggers}
             />
           );
@@ -94,29 +99,6 @@ export function TriggerDataTable({
         );
       }}
     </PokeDataTableConditionalFetch>
-  );
-}
-
-interface WorkspaceTriggerDataTableProps {
-  owner: LightWorkspaceType;
-}
-
-export function WorkspaceTriggerDataTable({
-  owner,
-}: WorkspaceTriggerDataTableProps) {
-  const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
-    DEFAULT_CONSUMPTION_PERIOD
-  );
-
-  return (
-    <TriggerDataTable
-      owner={owner}
-      consumptionPeriod={period}
-      globalActions={
-        <ConsumptionPeriodSelector period={period} onPeriodChange={setPeriod} />
-      }
-      loadOnInit
-    />
   );
 }
 

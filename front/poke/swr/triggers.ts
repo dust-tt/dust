@@ -53,6 +53,7 @@ export function usePokeTriggerConsumption({
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
     triggerIds,
   };
+  const isDisabled = Boolean(disabled) || triggerIds.length === 0;
 
   const { data, error, isLoading, isValidating } = useConsumptionQuery<
     typeof body,
@@ -60,12 +61,12 @@ export function usePokeTriggerConsumption({
   >({
     url,
     body,
-    disabled: disabled || triggerIds.length === 0,
+    disabled: isDisabled,
   });
 
   return {
     statsByTriggerId: data?.statsByTriggerId ?? EMPTY_TRIGGER_CONSUMPTION_STATS,
-    isConsumptionLoading: !error && (isLoading || isValidating),
+    isConsumptionLoading: !isDisabled && !error && (isLoading || isValidating),
     isConsumptionError: error,
   };
 }
