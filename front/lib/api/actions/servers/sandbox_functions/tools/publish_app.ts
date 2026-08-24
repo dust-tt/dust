@@ -41,8 +41,8 @@ export async function publishAppHandler(
       `Functions published: ${summary.publishedFunctionSlugs.join(", ")}.`
     );
   }
-  if (summary.publishedFrameNames.length > 0) {
-    lines.push(`Frames published: ${summary.publishedFrameNames.join(", ")}.`);
+  if (summary.publishedFrameName !== null) {
+    lines.push(`Frame published: ${summary.publishedFrameName}.`);
   }
   if (summary.unpublishedFunctionSlugs.length > 0) {
     lines.push(

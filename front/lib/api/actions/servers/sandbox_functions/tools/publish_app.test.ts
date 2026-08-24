@@ -72,31 +72,6 @@ beforeEach(() => {
 
 describe("publishAppHandler", () => {
   it("publishes the app and reports the summary", async () => {
-    const { auth, conversation } = await setupProjectConversation();
-    seedAppFolder({
-      folder: "TaskList",
-      relPaths: ["manifest.json", "src/add.ts", "databases/tasks.db.ts"],
-      manifest: { ...MANIFEST, frames: [] },
-    });
-
-    const result = await publishAppHandler(
-      { folder: "TaskList" },
-      makeExtra(auth, conversation)
-    );
-
-    if (result.isErr()) {
-      throw result.error;
-    }
-    const [block] = result.value;
-    if (block?.type !== "text") {
-      throw new Error("Expected a text block.");
-    }
-    expect(block.text).toContain('Published app "TaskList" (prefix: tasklist)');
-    expect(block.text).toContain("tasklist__add-task");
-    expect(block.text).toContain("tasklist__tasks");
-  });
-
-  it("publishes a manifest-declared frame that has a real FileResource", async () => {
     const { auth, conversation, projectId } = await setupProjectConversation();
     seedAppFolder({
       folder: "TaskList",
@@ -108,6 +83,9 @@ describe("publishAppHandler", () => {
       ],
       manifest: MANIFEST,
     });
+    // Pre-register the frame's FileResource so publishAppHandler doesn't have to auto-create it
+    // through the real (unmocked here) createPodFrameFile, which times out under the GCS storage
+    // mock — see the dedicated auto-create coverage in publish_app.test.ts.
     const workspaceId = auth.getNonNullableWorkspace().sId;
     await FileFactory.create(auth, auth.user(), {
       contentType: "application/vnd.dust.frame",
@@ -131,7 +109,10 @@ describe("publishAppHandler", () => {
     if (block?.type !== "text") {
       throw new Error("Expected a text block.");
     }
-    expect(block.text).toContain("Frames published: TaskList.tsx");
+    expect(block.text).toContain('Published app "TaskList" (prefix: tasklist)');
+    expect(block.text).toContain("tasklist__add-task");
+    expect(block.text).toContain("tasklist__tasks");
+    expect(block.text).toContain("Frame published: TaskList.tsx");
   });
 
   it("tells the model to write a manifest when the folder has none", async () => {
