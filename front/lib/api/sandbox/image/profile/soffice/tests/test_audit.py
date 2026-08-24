@@ -90,6 +90,28 @@ def test_filler_detector_leaves_real_copy_alone():
     ):
         assert not A._is_leftover_suspect(line), line
 
+def test_furniture_is_a_small_box_at_a_slide_edge_not_repeated_text():
+    """Repetition used to define furniture, which excused a template body
+    paragraph left on ten slides. Position defines it instead."""
+    class Box:
+        def __init__(self, left, top, width, height):
+            self.left, self.top = left, top
+            self.width, self.height = width, height
+
+    inch = 914400
+    slide_w, slide_h = int(13.33 * inch), int(7.5 * inch)
+    footer = Box(int(0.5 * inch), int(7.0 * inch), int(3 * inch), int(0.3 * inch))
+    body = Box(int(0.29 * inch), int(1.32 * inch), int(8.98 * inch), int(0.95 * inch))
+    assert A._is_furniture(footer, slide_w, slide_h)
+    assert not A._is_furniture(body, slide_w, slide_h)
+
+
+def test_repeated_text_needs_a_real_sentence():
+    assert A.REPEATED_TEXT_MIN_WORDS >= 6, (
+        "short recurring labels (a stage name, a column header) are legitimate"
+    )
+    assert A.REPEATED_TEXT_SLIDES >= 3
+
 
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
