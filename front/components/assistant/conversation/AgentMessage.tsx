@@ -1551,10 +1551,6 @@ function AgentMessageContent({
         {agentMessage.status === "cancelled" && (
           <div className="text-sm text-faint">Generation stopped.</div>
         )}
-        {agentMessage.status === "gracefully_stopped" &&
-          agentMessage.gracefullyStoppedReason === "smooth_shutdown" && (
-            <div className="text-sm text-faint">Stopped by user.</div>
-          )}
         {agentMessage.status === "interrupted" && (
           <div className="flex flex-col gap-2">
             <div className="text-sm text-faint">
