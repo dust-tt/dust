@@ -22,8 +22,11 @@ const { recordUsageActivity } = proxyActivities<typeof activities>({
 // guarded by a per-execution idempotency marker (see trackProgrammaticCost), so
 // a retry after a partial failure or a timed-out zombie attempt never consumes
 // the same runs twice. Retries mostly cover transient DB pool exhaustion.
+// scheduleToCloseTimeout bounds the whole retry lifetime well under the
+// marker's 24h TTL, so a stale retry can never run after the marker expired.
 const { trackProgrammaticUsageActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
+  scheduleToCloseTimeout: "1 hour",
   retry: {
     initialInterval: "10s",
     backoffCoefficient: 2,

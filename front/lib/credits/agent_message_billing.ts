@@ -106,14 +106,20 @@ export function isFreeOrigin(origin: UserMessageOrigin | null): boolean {
   return origin !== null && FREE_ORIGINS.has(origin);
 }
 
+// Full-length fingerprint of one agent-loop execution, for callers that need
+// collision resistance (e.g. idempotency keys): the truncated run key below
+// only has 32 bits of entropy.
+export function computeRunFingerprint(dustRunIds: string[]): string {
+  return createHash("sha256")
+    .update([...dustRunIds].sort().join(","))
+    .digest("hex");
+}
+
 // A run key identifies one agent-loop execution. Retries with the same run IDs
 // deduplicate in Metronome, while interrupt/resume executions receive distinct
 // keys and are consequently rounded and billed independently.
 export function computeRunKey(dustRunIds: string[]): string {
-  return createHash("sha256")
-    .update([...dustRunIds].sort().join(","))
-    .digest("hex")
-    .slice(0, 8);
+  return computeRunFingerprint(dustRunIds).slice(0, 8);
 }
 
 // Convert provider cost in micro-USD to credits, rounding up exactly as the

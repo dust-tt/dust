@@ -13,6 +13,7 @@ import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { RunFactory } from "@app/tests/utils/RunFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
@@ -610,25 +611,64 @@ describe("trackProgrammaticCost", () => {
     expect(result).toEqual({ runsCostMicroUsd: 0 });
   });
 
-  it("skips consumption when the same runs were already tracked (activity retry)", async () => {
+  it("consumes credits once across a retry of the same runs", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await makeAuth(workspace);
 
+    const credit = await CreditResource.makeNew(auth, {
+      type: "payg",
+      initialAmountMicroUsd: 10_000_000,
+      consumedAmountMicroUsd: 0,
+    });
+    await credit.start(auth, {
+      startDate: new Date(Date.now() - 1000),
+      expirationDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
+    const { run } = await RunFactory.createWithUsage(auth);
+
     const first = await trackProgrammaticCost(auth, {
-      dustRunIds: ["run-1", "run-2"],
+      dustRunIds: [run.dustRunId],
       userMessageOrigin: "api",
     });
-    expect(first).toEqual({ runsCostMicroUsd: 0 });
+    expect(first?.runsCostMicroUsd).toBeGreaterThan(0);
 
-    // The global redis mock does not enforce NX, so simulate the guard key
-    // already being held by the first attempt (what real redis returns).
+    const afterFirst = await CreditResource.fetchById(
+      auth,
+      credit.id.toString()
+    );
+    expect(afterFirst?.consumedAmountMicroUsd).toBeGreaterThan(0);
+
+    // Simulate the retry hitting the already-held marker (the global redis
+    // mock does not enforce NX; real redis returns null here).
     vi.mocked(runOnRedis).mockResolvedValueOnce(null);
 
     const second = await trackProgrammaticCost(auth, {
-      dustRunIds: ["run-1", "run-2"],
+      dustRunIds: [run.dustRunId],
       userMessageOrigin: "api",
     });
     expect(second).toBeUndefined();
+
+    const afterSecond = await CreditResource.fetchById(
+      auth,
+      credit.id.toString()
+    );
+    expect(afterSecond?.consumedAmountMicroUsd).toBe(
+      afterFirst?.consumedAmountMicroUsd
+    );
+  });
+
+  it("fails closed when the idempotency guard cannot be written", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await makeAuth(workspace);
+
+    vi.mocked(runOnRedis).mockRejectedValueOnce(new Error("redis down"));
+
+    await expect(
+      trackProgrammaticCost(auth, {
+        dustRunIds: ["run-1"],
+        userMessageOrigin: "api",
+      })
+    ).rejects.toThrow("redis down");
   });
 });
 
