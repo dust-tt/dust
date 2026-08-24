@@ -229,9 +229,9 @@ function PeopleSubMenu({
 }
 
 /**
- * All the new filter dimensions behind one button. The toolbar already carries
- * Search / Batch edit / Models / Tags / Create, so each dimension gets a
- * submenu here rather than its own button.
+ * Every filter dimension behind one button, each as a submenu. Keeps the
+ * toolbar down to Search / Filters / Create on both screens; availability is
+ * the one exception, it keeps its own control next to the tabs.
  */
 export function FleetFilterMenu({
   filters,
