@@ -208,7 +208,7 @@ function buildColumns({
       header: "Name",
       enableSorting: true,
       meta: {
-        className: showAnalyticsConsumption ? "h-16 w-36" : "h-16 w-40",
+        className: showAnalyticsConsumption ? "h-16 w-40" : "h-16 w-44",
         headerAlign: "left",
       },
       cell: (info) => (
@@ -250,8 +250,8 @@ function buildColumns({
       enableSorting: false,
       meta: {
         className: showAnalyticsConsumption
-          ? "hidden h-16 w-26 @lg-table:table-cell"
-          : "hidden h-16 w-30 @lg-table:table-cell",
+          ? "hidden h-16 w-28 @lg-table:table-cell"
+          : "hidden h-16 w-32 @lg-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => {
@@ -354,8 +354,8 @@ function buildColumns({
       enableSorting: true,
       meta: {
         className: showAnalyticsConsumption
-          ? "hidden h-16 w-26 px-1 @sm-table:table-cell"
-          : "hidden h-16 w-32 @sm-table:table-cell",
+          ? "hidden h-16 w-24 px-1 @sm-table:table-cell"
+          : "hidden h-16 w-30 @sm-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => (
@@ -377,7 +377,7 @@ function buildColumns({
       header: "Status",
       enableSorting: false,
       meta: {
-        className: showAnalyticsConsumption ? "h-16 w-18 px-1" : "h-16 w-20",
+        className: showAnalyticsConsumption ? "h-16 w-16 px-1" : "h-16 w-18",
         headerAlign: "left",
       },
       cell: (info) => {
@@ -404,7 +404,7 @@ function buildColumns({
       header: "",
       enableSorting: false,
       meta: {
-        className: "hidden h-16 w-12 @xs-table:table-cell",
+        className: "hidden h-16 w-10 px-1 @xs-table:table-cell",
         headerAlign: "right",
       },
       cell: (info) =>
