@@ -135,11 +135,6 @@ export function PokeConversationConsumptionInspector({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {isConsumptionLoading && <Spinner size="xs" />}
-          {consumption && (
-            <span className="text-sm tabular-nums text-muted-foreground">
-              {formatCreditValue(consumption.billedCredits)}
-            </span>
-          )}
         </div>
       </CollapsibleTrigger>
       <CollapsibleContent animated={false} className="border-t border-border">
