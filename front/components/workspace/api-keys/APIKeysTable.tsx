@@ -319,18 +319,19 @@ function buildColumns({
       header: "Credits",
       enableSorting: false,
       meta: { className: "h-16 w-32", headerAlign: "left" },
-      cell: (info) => (
-        <ConsumptionCell isLoading={isConsumptionLoading} align="left">
-          <DataTable.BasicCellContent
-            className="justify-start text-left tabular-nums"
-            label={`${
-              info.row.original.credits === null
-                ? "—"
-                : formatCredits(info.row.original.credits)
-            }/${info.row.original.monthlyCap}`}
-          />
-        </ConsumptionCell>
-      ),
+      cell: (info) => {
+        const { credits, monthlyCap } = info.row.original;
+        return (
+          <ConsumptionCell isLoading={isConsumptionLoading} align="left">
+            <DataTable.BasicCellContent
+              className="justify-start text-left tabular-nums"
+              label={`${
+                credits === null ? "—" : formatCredits(credits)
+              }/${monthlyCap === "Unlimited" ? "unlimited" : monthlyCap}`}
+            />
+          </ConsumptionCell>
+        );
+      },
     },
     {
       id: "monthlyCap",
