@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/assistant/email/email_reply";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import {
   launchAgentMessageAnalytics,
   launchAgentMessageConsumptionAttribution,
@@ -175,6 +176,20 @@ export async function finalizeErroredAgentLoopActivity(
   agentLoopArgs: AgentLoopArgs,
   error: { message: string; name: string }
 ): Promise<void> {
+  // Keep the failure cause queryable in Datadog: swallowed infrastructure timeouts no longer
+  // emit a "Workflow failed" log, and this activity is the only remaining place that sees why
+  // the run errored.
+  logger.warn(
+    {
+      conversationId: agentLoopArgs.conversationId,
+      agentMessageId: agentLoopArgs.agentMessageId,
+      workspaceId: authType.workspaceId,
+      workflowErrorName: error.name,
+      workflowErrorMessage: error.message,
+    },
+    "Agent loop finalized as errored"
+  );
+
   await notifyWorkflowError(authType, agentLoopArgs, error);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);

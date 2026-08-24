@@ -128,7 +128,6 @@ async function _runToolActivity(
     runIds?: string[];
   }
 ): Promise<ToolExecutionResult> {
-
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
   const { auth, runAgentDataRes, action } = await withPeriodicHeartbeat(
