@@ -1,7 +1,7 @@
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
-import { APIKeysList } from "@app/components/workspace/api-keys/APIKeysList";
+import { APIKeysTable } from "@app/components/workspace/api-keys/APIKeysTable";
 import { EditKeyCapDialog } from "@app/components/workspace/api-keys/EditKeyCapDialog";
 import { EditKeyCreditCapDialog } from "@app/components/workspace/api-keys/EditKeyCreditCapDialog";
 import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
@@ -31,7 +31,7 @@ import get from "lodash/get";
 import { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
-interface APIKeysProps {
+interface APIKeysPageContentProps {
   owner: WorkspaceType;
   period: ConsumptionPeriodSelection;
   isAnalyticsConsumptionEnabled: boolean;
@@ -123,11 +123,11 @@ function APIKeysOverview({
   );
 }
 
-export function APIKeys({
+export function APIKeysPageContent({
   owner,
   period,
   isAnalyticsConsumptionEnabled,
-}: APIKeysProps) {
+}: APIKeysPageContentProps) {
   const { mutate } = useSWRConfig();
   const { subscription } = useAuth();
   const showLegacyUsdMonthlyCap = !isCreditPricedPlan(subscription.plan);
@@ -315,7 +315,7 @@ export function APIKeys({
             isKeysLoading={isKeysLoading}
           />
         )}
-        <APIKeysList
+        <APIKeysTable
           keys={keys}
           workspaceId={owner.sId}
           period={period}
@@ -391,7 +391,7 @@ export function APIKeysPage() {
             : "API Keys allow you to securely connect to Dust from other applications and work with your data programmatically."
         }
       />
-      <APIKeys
+      <APIKeysPageContent
         owner={owner}
         period={period}
         isAnalyticsConsumptionEnabled={isAnalyticsConsumptionEnabled}

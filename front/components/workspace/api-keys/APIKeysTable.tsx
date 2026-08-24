@@ -47,7 +47,7 @@ const MAX_API_KEY_CONSUMPTION_ROWS = 100;
 
 type APIKeyStatus = "active" | "capped" | "revoked";
 
-interface APIKeysListProps {
+interface APIKeysTableProps {
   keys: KeyType[];
   workspaceId: WorkspaceType["sId"];
   period: ConsumptionPeriodSelection;
@@ -451,7 +451,7 @@ function buildColumns({
   return columns.filter((column) => column.id !== "credits");
 }
 
-export function APIKeysList({
+export function APIKeysTable({
   keys,
   workspaceId,
   period,
@@ -465,7 +465,7 @@ export function APIKeysList({
   onEditCap,
   showLegacyUsdMonthlyCap,
   showCreditMonthlyCap,
-}: APIKeysListProps) {
+}: APIKeysTableProps) {
   const [search, setSearch] = useState("");
   const [statusFilters, setStatusFilters] = useState<ReadonlySet<APIKeyStatus>>(
     new Set()
