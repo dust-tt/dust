@@ -193,7 +193,7 @@ describe("publishPodApp", () => {
     expect(result.value.publishedFunctionSlugs).toEqual(["tasklist__add-task"]);
   });
 
-  it("warns instead of auto-creating a frame declared in a subfolder", async () => {
+  it("auto-creates a declared frame in a subfolder", async () => {
     const { auth, projectId } = await setupProjectConversation();
     const pod = await podFor(projectId, auth);
     seedAppFolder({
@@ -210,11 +210,20 @@ describe("publishPodApp", () => {
     const result = await publishPodApp(auth, pod, { folderName: "TaskList" });
 
     assert(result.isOk(), result.isErr() ? result.error.message : "");
-    expect(result.value.publishedFrameNames).toEqual([]);
-    expect(result.value.warnings.join(" ")).toContain("sub/Frame.tsx");
-    expect(result.value.warnings.join(" ")).toContain("subfolder");
-    expect(vi.mocked(createPodFrameFile)).not.toHaveBeenCalled();
-    expect(vi.mocked(publishFrame)).not.toHaveBeenCalled();
+    expect(result.value.publishedFrameNames).toEqual(["sub/Frame.tsx"]);
+    expect(result.value.warnings).toEqual([]);
+    expect(vi.mocked(createPodFrameFile)).toHaveBeenCalledWith(
+      auth,
+      expect.objectContaining({
+        folderName: "TaskList",
+        fileName: "sub/Frame.tsx",
+        contentType: frameContentType,
+      })
+    );
+    expect(vi.mocked(publishFrame)).toHaveBeenCalledWith(
+      auth,
+      expect.objectContaining({ entryRelPath: "sub/Frame.tsx" })
+    );
     // The rest of the publish still went through.
     expect(result.value.reconciledDatabaseNames).toEqual(["tasklist__tasks"]);
     expect(result.value.publishedFunctionSlugs).toEqual(["tasklist__add-task"]);

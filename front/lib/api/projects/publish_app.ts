@@ -265,7 +265,8 @@ export async function publishPodApp(
       // No FileResource: the manifest declares a frame that exists only as a bare storage
       // object (e.g. copied into the pod, or written directly inside the sandbox, both of which
       // lose the FileResource). Recreate it in place the same way `importPodApp` does, so the
-      // manifest-first flow self-heals.
+      // manifest-first flow self-heals. Works at any depth: the manifest's declared frame path is
+      // authoritative for entry points regardless of nesting.
       //
       // The manifest declaring the path as a frame is trusted over the listing's storage MIME
       // type: files written inside the sandbox get their GCS Content-Type guessed from the
@@ -275,16 +276,6 @@ export async function publishPodApp(
       // bundler performs the real validation (TS/JSX parse etc.) and rejects non-frame sources
       // with a meaningful error.
       if (!file) {
-        // A Frame recreated deeper than the app folder's top level would be invisible to listing,
-        // delete, export and clone: `collectAppFolders` in apps.ts only recognizes a Frame at the
-        // TOP of the app folder (`segments.length === 2`) as the app's own Frame.
-        if (frame.relPath.includes("/")) {
-          warnings.push(
-            `Frame ${frame.relPath}: cannot auto-create a Frame in a subfolder; create it ` +
-              "as interactive content, then retry."
-          );
-          continue;
-        }
         const sourceResult = await dustFs.readBuffer(frame.scopedPath);
         if (sourceResult.isErr() || sourceResult.value === null) {
           warnings.push(`Frame ${frame.relPath}: could not read its source.`);
