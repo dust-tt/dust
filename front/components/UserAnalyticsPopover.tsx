@@ -78,7 +78,7 @@ export function UserAnalyticsPopover({
         </div>
       </DialogHeader>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-1 sm:px-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8 pt-1 sm:px-6">
         <Page.Vertical align="stretch" gap="xl">
           <ConsumptionSummary
             workspaceId={owner.sId}
