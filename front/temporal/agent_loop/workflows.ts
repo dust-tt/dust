@@ -281,15 +281,10 @@ export async function agentLoopWorkflow({
   // Credit stop: the per-step gate found the workspace pool exhausted.
   let creditStopRequested = false;
 
-  // Workflow alert: the per-step gate found the user's spend past the workflow alert
-  // threshold. Pauses the loop the same way a blocked tool action does: the workflow exits and
-  // the user must confirm continuing (relaunching a fresh workflow from this step) or decline.
-  let thresholdPauseRequested = false;
+  let workflowAlertCreditThresholdPauseRequested = false;
 
-  // Once the activity reports the durable "acknowledged" flag, it can't become false again for
-  // the rest of this execution (see checkWorkflowAlertThresholdActivity), so the check — and its
-  // DB read — is skipped entirely afterward instead of repeating every step.
-  let workflowAlertThresholdAcknowledged = false;
+  // Cached per execution: acknowledgment can't flip back to false once observed true (see checkWorkflowAlertThresholdActivity).
+  let workflowAlertCreditThresholdAcknowledged = false;
 
   const runIds: string[] = [];
 
@@ -384,7 +379,7 @@ export async function agentLoopWorkflow({
           break;
         }
 
-        if (!workflowAlertThresholdAcknowledged) {
+        if (!workflowAlertCreditThresholdAcknowledged) {
           try {
             const workflowAlertResult =
               await checkWorkflowAlertThresholdActivity(authType, {
@@ -394,16 +389,16 @@ export async function agentLoopWorkflow({
                 },
               });
             if (workflowAlertResult.acknowledged) {
-              workflowAlertThresholdAcknowledged = true;
+              workflowAlertCreditThresholdAcknowledged = true;
             } else if (workflowAlertResult.crossed) {
-              thresholdPauseRequested = true;
+              workflowAlertCreditThresholdPauseRequested = true;
             }
           } catch {
             // Non-critical: fails open, must never fail the agent loop.
           }
         }
 
-        if (thresholdPauseRequested) {
+        if (workflowAlertCreditThresholdPauseRequested) {
           break;
         }
       }
@@ -441,10 +436,6 @@ export async function agentLoopWorkflow({
             argsWithRunIds
           );
         } else {
-          // Also covers thresholdPauseRequested: the pause was already persisted durably by
-          // checkWorkflowAlertThresholdActivity, the same way a blocked tool action's status is
-          // set when it's first created — so this exit just falls through to the ordinary
-          // success path, exactly like a blocked-action `needsApproval` exit does today.
           await finalizeSuccessfulAgentLoopActivity(authType, argsWithRunIds);
         }
       });
