@@ -28,6 +28,7 @@ import {
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import { useAutoOpenSidePanel } from "@app/components/assistant/conversation/useAutoOpenSidePanel";
+import { WorkflowAlertThresholdPausedCard } from "@app/components/assistant/conversation/WorkflowAlertThresholdPausedCard";
 import { ConfirmContext } from "@app/components/Confirm";
 import { getActionCardPlugin } from "@app/components/markdown/ActionCardDirective";
 import {
@@ -69,6 +70,7 @@ import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
 import { LinkWrapper } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { useResolveWorkflowAlertThresholdPause } from "@app/lib/swr/workflow_alert_threshold";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -1251,6 +1253,46 @@ function AgentMessageContent({
 
   const blockedAction = getFirstBlockedActionForMessage(sId);
 
+  // The persisted flag survives a refresh; the streamed one is only there for instant feedback
+  // right when the pause happens, ahead of the persisted flag catching up.
+  const [workflowAlertThresholdResolved, setWorkflowAlertThresholdResolved] =
+    useState(false);
+  const showWorkflowAlertThresholdPausedCard =
+    !workflowAlertThresholdResolved &&
+    (agentMessage.pausedAtWorkflowAlertThreshold ||
+      !!agentMessage.workflowAlertThresholdCrossed) &&
+    agentMessage.status === "created";
+
+  const { resolve: resolveWorkflowAlertThreshold, submittingDecision } =
+    useResolveWorkflowAlertThresholdPause({
+      owner,
+      conversationId,
+      messageId: sId,
+    });
+
+  const handleResolveWorkflowAlertThreshold = useCallback(
+    async (decision: "continue" | "decline") => {
+      const { success } = await resolveWorkflowAlertThreshold(decision);
+      if (success) {
+        setWorkflowAlertThresholdResolved(true);
+      }
+    },
+    [resolveWorkflowAlertThreshold]
+  );
+
+  const workflowAlertThresholdPausedElement =
+    showWorkflowAlertThresholdPausedCard ? (
+      <WorkflowAlertThresholdPausedCard
+        thresholdAwuCredits={
+          agentMessage.workflowAlertThresholdCrossed?.thresholdAwuCredits ??
+          null
+        }
+        submittingDecision={submittingDecision}
+        onContinue={() => void handleResolveWorkflowAlertThreshold("continue")}
+        onDecline={() => void handleResolveWorkflowAlertThreshold("decline")}
+      />
+    ) : null;
+
   const retryHandlerWithResetState = useCallback(
     // Conversation and message might be different than the current ones in case of subagents.
     async (conversationAndMessage: {
@@ -1466,6 +1508,7 @@ function AgentMessageContent({
           isLastMessage={isLastMessage}
         />
         {blockedActionElement}
+        {workflowAlertThresholdPausedElement}
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
           collapsible={uiView === "compact"}
@@ -1508,6 +1551,10 @@ function AgentMessageContent({
         {agentMessage.status === "cancelled" && (
           <div className="text-sm text-faint">Generation stopped.</div>
         )}
+        {agentMessage.status === "gracefully_stopped" &&
+          agentMessage.stoppedBySmoothShutdown && (
+            <div className="text-sm text-faint">Stopped by user.</div>
+          )}
         {agentMessage.status === "interrupted" && (
           <div className="flex flex-col gap-2">
             <div className="text-sm text-faint">
