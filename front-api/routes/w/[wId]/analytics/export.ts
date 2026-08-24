@@ -2,11 +2,7 @@ import {
   exportTable,
   stringifyExportTableAsCsv,
 } from "@app/lib/api/analytics/export_tables";
-import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
-} from "@app/lib/api/audit/workos_audit";
+import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
@@ -79,13 +75,15 @@ app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
     });
   }
 
-  void emitAuditLogEvent({
-    auth,
-    action: "analytics.export_downloaded",
-    targets: [buildAuditLogTarget("workspace", owner)],
-    context: getAuditLogContext(auth),
-    metadata: { table, period: `${startDate}:${endDate}` },
-  });
+  logger.info(
+    {
+      workspaceId: owner.sId,
+      table,
+      period: `${startDate}:${endDate}`,
+      format: format ?? "csv",
+    },
+    "Analytics export downloaded"
+  );
 
   if (format === "json") {
     return ctx.json(result.value.rows);
