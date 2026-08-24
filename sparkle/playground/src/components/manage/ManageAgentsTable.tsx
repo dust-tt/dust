@@ -127,11 +127,15 @@ const getTableColumns = ({
   isBatchEdit,
   onTagsChange,
   nowMs,
+  showSelection,
 }: {
   tags: AgentTag[];
   isBatchEdit: boolean;
   onTagsChange: (agentId: string, tags: AgentTag[]) => void;
   nowMs: number;
+  // Omitted on tabs where nothing is selectable (Default, Archived), so those
+  // lists don't carry a column of permanently disabled checkboxes.
+  showSelection: boolean;
 }) => {
   /**
    * Columns order:
@@ -148,7 +152,7 @@ const getTableColumns = ({
    */
 
   return [
-    ...(isBatchEdit
+    ...(showSelection
       ? [
           {
             header: (info: HeaderContext<RowData, boolean>) => {
@@ -199,6 +203,13 @@ const getTableColumns = ({
                 <Checkbox
                   checked={info.row.getIsSelected()}
                   disabled={!info.row.getCanSelect()}
+                  // Ticking a row must not also open the details sheet.
+                  onClick={(e) => e.stopPropagation()}
+                  onCheckedChange={(state) => {
+                    if (state !== "indeterminate") {
+                      info.row.toggleSelected(state);
+                    }
+                  }}
                 />
               </DataTable.CellContent>
             ),
@@ -497,6 +508,7 @@ interface ManageAgentsTableProps {
   agents: ManagedAgent[];
   tags: AgentTag[];
   nowMs: number;
+  showSelection: boolean;
   setDetailedAgentId: (sId: string) => void;
   onToggleAgentStatus: (agent: ManagedAgent) => void;
   onTagsChange: (agentId: string, tags: AgentTag[]) => void;
@@ -510,6 +522,7 @@ export function ManageAgentsTable({
   agents,
   tags,
   nowMs,
+  showSelection,
   setDetailedAgentId,
   onToggleAgentStatus,
   onTagsChange,
@@ -526,8 +539,15 @@ export function ManageAgentsTable({
     useState<string | null>(null);
 
   const columns = useMemo(
-    () => getTableColumns({ tags, isBatchEdit, onTagsChange, nowMs }),
-    [tags, isBatchEdit, onTagsChange, nowMs]
+    () =>
+      getTableColumns({
+        tags,
+        isBatchEdit,
+        onTagsChange,
+        nowMs,
+        showSelection,
+      }),
+    [tags, isBatchEdit, onTagsChange, nowMs, showSelection]
   );
 
   // The selection lives in the table state (and not in the rows) so that
@@ -656,8 +676,9 @@ export function ManageAgentsTable({
         setPagination={setPagination}
         getRowId={(row) => row.sId}
         enableRowSelection={
-          isBatchEdit ? (row) => row.original.canArchive : false
+          showSelection ? (row) => row.original.canArchive : false
         }
+        disableRowClickSelection={!isBatchEdit}
         rowSelection={rowSelection}
         setRowSelection={(newRowSelection) => {
           setSelection(

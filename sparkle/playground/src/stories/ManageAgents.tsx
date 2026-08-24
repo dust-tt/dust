@@ -15,7 +15,6 @@ import {
   EmptyCTA,
   File02,
   FolderOpen,
-  ListSelect,
   MagicWand02,
   Page,
   Plus,
@@ -404,8 +403,9 @@ export default function ManageAgents() {
   const [archivedAgents] = useState<ManagedAgent[]>(mockArchivedAgents);
   const [selectedTab, setSelectedTab] =
     useState<AssistantManagerTabsType>("all_custom");
-  const [isBatchEdit, setIsBatchEdit] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
+  // Rows always carry a checkbox; ticking one is what opens batch mode.
+  const isBatchEdit = selection.length > 0;
   const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -565,6 +565,11 @@ export default function ManageAgents() {
   };
 
   const activeAgents = agentsByTab[selectedTab];
+  // Default agents and archived ones can't be batch-edited, so those tabs get
+  // no checkbox column at all.
+  const showSelection = activeAgents.some(
+    (agent) => agent.status !== "archived" && agent.scope !== "global"
+  );
 
   return (
     <ManagePageLayout>
@@ -580,35 +585,27 @@ export default function ManageAgents() {
               value={assistantSearch}
               onChange={setAssistantSearch}
             />
-            {!isBatchEdit && (
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  icon={ListSelect}
-                  label="Batch edit"
-                  onClick={() => setIsBatchEdit(true)}
-                />
-                <ModelsFilterMenu
-                  models={uniqueModels}
-                  selectedModels={selectedModels}
-                  setSelectedModels={setSelectedModels}
-                />
-                <TagsFilterMenu
-                  tags={uniqueTags}
-                  selectedTags={selectedTags}
-                  setSelectedTags={setSelectedTags}
-                />
-                <FleetFilterMenu
-                  filters={filters}
-                  statusOptions={AGENT_STATUS_OPTIONS}
-                  people={people}
-                  showVisibility
-                  onToggle={toggleValue}
-                  onUpdate={updateFilters}
-                />
-                <CreateDropdown />
-              </div>
-            )}
+            <div className="flex gap-2">
+              <ModelsFilterMenu
+                models={uniqueModels}
+                selectedModels={selectedModels}
+                setSelectedModels={setSelectedModels}
+              />
+              <TagsFilterMenu
+                tags={uniqueTags}
+                selectedTags={selectedTags}
+                setSelectedTags={setSelectedTags}
+              />
+              <FleetFilterMenu
+                filters={filters}
+                statusOptions={AGENT_STATUS_OPTIONS}
+                people={people}
+                showVisibility
+                onToggle={toggleValue}
+                onUpdate={updateFilters}
+              />
+              <CreateDropdown />
+            </div>
           </div>
           <FleetFilterChips
             filters={filters}
@@ -661,10 +658,7 @@ export default function ManageAgents() {
           <div className="flex flex-col pt-3">
             {isBatchEdit ? (
               <AgentEditBar
-                onClose={() => {
-                  setIsBatchEdit(false);
-                  setSelection([]);
-                }}
+                onClose={() => setSelection([])}
                 selectedAgents={selectedAgents}
                 tags={AGENT_TAGS}
                 onToggleTag={handleBatchToggleTag}
@@ -705,6 +699,7 @@ export default function ManageAgents() {
                 agents={activeAgents}
                 tags={AGENT_TAGS}
                 nowMs={NOW_MS}
+                showSelection={showSelection}
                 setDetailedAgentId={setDetailedAgentId}
                 onToggleAgentStatus={handleToggleAgentStatus}
                 onTagsChange={(agentId, tags) => updateAgent(agentId, { tags })}

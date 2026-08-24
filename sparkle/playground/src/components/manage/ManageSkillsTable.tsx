@@ -1,7 +1,7 @@
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
+  Checkbox,
   Chip,
-  createSelectionColumn,
   DataTable,
   DustLogoSquare,
   Edit04,
@@ -66,6 +66,65 @@ export const SKILL_AVAILABILITY_DISPLAY: Record<
     tooltip: "Available to all members and agents with Discover Skills",
   },
 };
+
+/**
+ * Local replacement for sparkle's `createSelectionColumn`: identical, but the
+ * checkbox stops the click from bubbling to the row. Sparkle's version lets it
+ * through, which used to be harmless (checkboxes only existed in batch mode,
+ * where the row click was a no-op) but now opens the details sheet on every
+ * tick. Worth pushing upstream if this graduates out of the playground.
+ */
+function createFleetSelectionColumn(): ColumnDef<RowData> {
+  return {
+    id: "select",
+    enableSorting: false,
+    enableHiding: false,
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected()
+            ? true
+            : table.getIsSomeRowsSelected()
+              ? "partial"
+              : false
+        }
+        tooltip={
+          table.getIsAllPageRowsSelected()
+            ? "Clear selection"
+            : "Select all on page"
+        }
+        onClick={(e) => e.stopPropagation()}
+        onCheckedChange={(state) => {
+          if (state === "indeterminate") {
+            return;
+          }
+          if (state) {
+            table.toggleAllPageRowsSelected(true);
+          } else {
+            table.resetRowSelection();
+          }
+        }}
+      />
+    ),
+    cell: ({ row }) => (
+      <div className="flex h-full w-full items-center">
+        <Checkbox
+          checked={row.getIsSelected()}
+          disabled={!row.getCanSelect()}
+          onClick={(e) => e.stopPropagation()}
+          onCheckedChange={(state) => {
+            if (state !== "indeterminate") {
+              row.toggleSelected(state);
+            }
+          }}
+        />
+      </div>
+    ),
+    meta: {
+      className: "w-10",
+    },
+  };
+}
 
 const nameColumn = {
   header: "Name",
@@ -234,7 +293,7 @@ const getTableColumns = ({
    */
 
   return [
-    ...(enableRowSelection ? [createSelectionColumn<RowData>()] : []),
+    ...(enableRowSelection ? [createFleetSelectionColumn()] : []),
     nameColumn,
     availabilityColumn,
     usedByColumn(onAgentClick, onUsedBySkillClick),
@@ -274,6 +333,10 @@ export function ManageSkillsTable({
   });
 
   const isSelectionEnabled = rowSelection !== undefined;
+  // Batch mode is entered by ticking a row, not by a button.
+  const isBatchMode =
+    rowSelection !== undefined &&
+    Object.values(rowSelection).some((selected) => selected);
 
   // Stable columns identity: rebuilding them on every selection change makes the
   // table re-render all rows.
@@ -303,9 +366,9 @@ export function ManageSkillsTable({
         updatedAt: skill.updatedAt,
         createdAt: skill.createdAt,
         onClick: () => {
-          // During batch edition the DataTable itself toggles the row selection
-          // on click; don't open the details panel on top of it.
-          if (isSelectionEnabled) {
+          // Once a row is ticked the DataTable toggles selection on row click;
+          // don't open the details panel on top of it.
+          if (isBatchMode) {
             return;
           }
           onSkillClick(skill);
@@ -343,7 +406,7 @@ export function ManageSkillsTable({
               ].filter((item) => !item.disabled)
             : [],
       })),
-    [skills, onSkillClick, onArchiveSkill, isSelectionEnabled]
+    [skills, onSkillClick, onArchiveSkill, isBatchMode]
   );
 
   if (rows.length === 0) {
@@ -365,6 +428,7 @@ export function ManageSkillsTable({
               row.original.editedBy !== null &&
               (canMakeSkillAutoDiscoverable ||
                 row.original.availability !== "users_and_agents"),
+            disableRowClickSelection: !isBatchMode,
             getRowId: (row: RowData) => row.sId,
           }
         : {})}

@@ -17,7 +17,6 @@ import {
   EmptyCTAButton,
   FolderOpen,
   InfoCircle,
-  ListSelect,
   Page,
   Plus,
   PuzzlePiece01,
@@ -360,7 +359,6 @@ export default function ManageSkills() {
 
   const [selectedTab, setSelectedTab] = useState<SkillManagerTabType>("active");
   const [bypassEditorVisibility, setBypassEditorVisibility] = useState(false);
-  const [isBatchEditing, setIsBatchEditing] = useState(false);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pendingBatchAction, setPendingBatchAction] =
     useState<BatchAvailabilityAction | null>(null);
@@ -485,7 +483,6 @@ export default function ManageSkills() {
   );
 
   const closeBatchEdition = () => {
-    setIsBatchEditing(false);
     setRowSelection({});
   };
 
@@ -541,7 +538,9 @@ export default function ManageSkills() {
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, []);
 
+  // Archived skills have nothing to batch-edit, so they keep no checkboxes.
   const isBatchEditionAvailable = selectedTab !== "archived";
+  const isBatchEditing = selectedSkillIds.length > 0;
   const isActiveTabEmpty = skillsByTab[selectedTab].length === 0;
 
   const renderEmptyTabState = () => {
@@ -619,14 +618,6 @@ export default function ManageSkills() {
               value={skillSearch}
               onChange={setSkillSearch}
             />
-            {isBatchEditionAvailable && !isBatchEditing && (
-              <Button
-                variant="outline"
-                label="Batch edit"
-                icon={ListSelect}
-                onClick={() => setIsBatchEditing(true)}
-              />
-            )}
             <FleetFilterMenu
               filters={filters}
               statusOptions={SKILL_STATUS_OPTIONS}
@@ -757,7 +748,7 @@ export default function ManageSkills() {
                     onUsedBySkillClick={handleUsedBySkillClick}
                     onArchiveSkill={handleArchiveSkill}
                     canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
-                    {...(isBatchEditionAvailable && isBatchEditing
+                    {...(isBatchEditionAvailable
                       ? { rowSelection, setRowSelection }
                       : {})}
                   />
