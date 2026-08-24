@@ -20,7 +20,7 @@ const specifications: AgentActionSpecification[] = [
         summary: {
           type: "string",
           description:
-            "A short summary (2-4 sentences), addressed directly to the user, of what has " +
+            "A short summary, addressed directly to the user, of what has " +
             "been accomplished so far and a note that the process was stopped early to " +
             "conserve credits.",
         },
