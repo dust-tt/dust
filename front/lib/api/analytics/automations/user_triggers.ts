@@ -10,12 +10,20 @@ import {
 } from "@app/lib/api/analytics/automations/triggers";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { CARDINALITY_PRECISION_THRESHOLD } from "@app/lib/api/analytics/consumption/scope";
+import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import type { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 
 type TriggerConsumption = { runCount: number; credits: number };
 
+export type UserAutomationAgent = {
+  agentId: string;
+  name: string;
+  pictureUrl: string | null;
+};
+
 export type UserAutomationTriggers = AutomationTriggers & {
+  agents: UserAutomationAgent[];
   isConsumptionAvailable: boolean;
 };
 
@@ -65,6 +73,20 @@ export async function fetchUserAutomationTriggers(
     auth,
     auth.getNonNullableUser()
   );
+  const agentIds = [
+    ...new Set(editorTriggers.map((trigger) => trigger.agentConfigurationId)),
+  ];
+  const agentLabels = await resolveAnalyticsAgentLabels(auth, agentIds);
+  const agents = agentIds
+    .map((agentId) => {
+      const agent = agentLabels.get(agentId);
+      return {
+        agentId,
+        name: agent?.name ?? agentId,
+        pictureUrl: agent?.pictureUrl ?? null,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const searchTerm = search?.toLowerCase();
 
@@ -116,6 +138,7 @@ export async function fetchUserAutomationTriggers(
     period,
     totalCount: ranked.length,
     triggers: rows,
+    agents,
     medianRunCount: median(active.map(({ runCount }) => runCount)),
     medianCostPerRun: median(
       active.map(({ credits, runCount }) => credits / runCount)

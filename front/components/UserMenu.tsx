@@ -2,7 +2,8 @@ import type { CreditUsageState } from "@app/components/app/CreditUsage";
 import { CreditUsage } from "@app/components/app/CreditUsage";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
-import { UserToolsAndTriggersDialog } from "@app/components/me/UserToolsAndTriggersDialog";
+import { UserAutomationsDialog } from "@app/components/me/UserAutomationsDialog";
+import { UserToolsDialog } from "@app/components/me/UserToolsDialog";
 import { UserSettingsPopover } from "@app/components/UserSettingsPopover";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
@@ -35,6 +36,7 @@ import {
   BookOpen01,
   ChevronDown,
   ChromeLogo,
+  Clock,
   cn,
   DropdownMenu,
   DropdownMenuContent,
@@ -80,7 +82,8 @@ export function UserMenu({
   const router = useAppRouter();
   const { featureFlags } = useFeatureFlags();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toolsAndTriggersOpen, setToolsAndTriggersOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [automationsOpen, setAutomationsOpen] = useState(false);
 
   const sendNotification = useSendNotification();
   const devMode = useDevMode();
@@ -238,9 +241,14 @@ export function UserMenu({
         onOpenChange={setSettingsOpen}
         owner={owner}
       />
-      <UserToolsAndTriggersDialog
-        open={toolsAndTriggersOpen}
-        onOpenChange={setToolsAndTriggersOpen}
+      <UserToolsDialog
+        open={toolsOpen}
+        onOpenChange={setToolsOpen}
+        owner={owner}
+      />
+      <UserAutomationsDialog
+        open={automationsOpen}
+        onOpenChange={setAutomationsOpen}
         owner={owner}
       />
       <DropdownMenu>
@@ -396,9 +404,14 @@ export function UserMenu({
                 onSelect={() => setSettingsOpen(true)}
               />
               <DropdownMenuItem
-                label="Tools and Triggers"
+                label="Tools"
                 icon={ShapesPlus}
-                onSelect={() => setToolsAndTriggersOpen(true)}
+                onSelect={() => setToolsOpen(true)}
+              />
+              <DropdownMenuItem
+                label="Automations"
+                icon={Clock}
+                onSelect={() => setAutomationsOpen(true)}
               />
             </>
           )}

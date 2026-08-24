@@ -48,6 +48,7 @@ interface AutomationsFilterPanelProps {
   filter: AutomationsFilter;
   onFilterChange: (next: AutomationsFilter) => void;
   categories?: readonly AutomationsFilterCategory[];
+  agentOptions?: { agentId: string; name: string; pictureUrl: string | null }[];
 }
 
 export function AutomationsFilterPanel({
@@ -56,6 +57,7 @@ export function AutomationsFilterPanel({
   filter,
   onFilterChange,
   categories = AUTOMATIONS_FILTER_CATEGORIES,
+  agentOptions,
 }: AutomationsFilterPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const {
@@ -88,20 +90,28 @@ export function AutomationsFilterPanel({
     filter: draftScopeFilter,
     scope: "automations",
     dimensions: AUTOMATIONS_FACET_DIMENSIONS,
-    disabled: !isOpen,
+    disabled: !isOpen || agentOptions !== undefined,
   });
 
   const categoryOptions = useMemo<
     Record<AutomationsFilterCategory, AutomationsFilterOption[]>
   >(
     () => ({
-      agent: facetOptions.agent.map((option) => ({
-        id: option.id,
-        name: option.name,
-        disabled: option.disabled,
-        image: option.image,
-        category: "agent",
-      })),
+      agent: agentOptions
+        ? agentOptions.map((option) => ({
+            id: option.agentId,
+            name: option.name,
+            disabled: false,
+            image: option.pictureUrl,
+            category: "agent",
+          }))
+        : facetOptions.agent.map((option) => ({
+            id: option.id,
+            name: option.name,
+            disabled: option.disabled,
+            image: option.image,
+            category: "agent",
+          })),
       member: facetOptions.member.map((option) => ({
         id: option.id,
         name: option.name,
@@ -111,7 +121,7 @@ export function AutomationsFilterPanel({
       })),
       type: TYPE_OPTIONS,
     }),
-    [facetOptions]
+    [agentOptions, facetOptions]
   );
 
   const isFacetBackedCategory = activeCategory !== "type";

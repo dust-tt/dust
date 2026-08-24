@@ -95,6 +95,13 @@ describe("fetchUserAutomationTriggers", () => {
     ]);
     expect(triggers[0]).toMatchObject({ runCount: 4, credits: 8 });
     expect(triggers[1]).toMatchObject({ runCount: 0, credits: 0 });
+    expect(result.agents).toEqual([
+      {
+        agentId: agent.sId,
+        name: agent.name,
+        pictureUrl: agent.pictureUrl,
+      },
+    ]);
   });
 
   it("leaves out the triggers of other members", async () => {
