@@ -262,6 +262,15 @@ type SerializedBlob<M extends Model> = {
   [K in keyof Attributes<M>]: SerializedBlobValue<Attributes<M>[K]>;
 };
 
+// Models carrying a workspaceId are workspace-scoped and cannot use this store: they need a
+// variant that takes an Authenticator, scopes every where clause to the workspace id, and
+// re-checks blob ownership after cache reads (a cache hit skips the SQL scoping). Global models
+// such as workspace and user are the exception this store serves.
+type GlobalModelOnly<M extends Model> =
+  "workspaceId" extends keyof Attributes<M>
+    ? "this model is workspace-scoped: it requires the Authenticator-scoped store variant"
+    : unknown;
+
 // Attributes eligible as a cache key: string or number valued columns.
 type CacheKeyAttribute<M extends Model> = {
   [K in keyof Attributes<M>]: Attributes<M>[K] extends string | number
@@ -328,24 +337,17 @@ export type CachedResourceStore<
  * retypes an attribute, bump `cache.version`. Entries have no TTL, so stale-shaped snapshots
  * otherwise live until the row is next invalidated.
  *
- * Only global models (no workspaceId column) may use this store. Workspace-scoped resources need
- * a variant that takes an Authenticator and scopes every where clause to the workspace id, and
- * that re-checks ownership on the blob after a cache read, since a cache hit skips the SQL
- * scoping entirely.
+ * Only global models may use this store: passing a model with a workspaceId column is a type
+ * error (see GlobalModelOnly).
  */
 export function defineCachedResourceStore<
   M extends Model,
   K extends CacheKeyAttribute<M>,
   Resource,
->({
-  model,
-  materialize,
-  cache,
-}: CachedResourceStoreDefinition<M, K, Resource>): CachedResourceStore<
-  M,
-  K,
-  Resource
-> {
+>(
+  definition: CachedResourceStoreDefinition<M, K, Resource> & GlobalModelOnly<M>
+): CachedResourceStore<M, K, Resource> {
+  const { model, materialize, cache } = definition;
   const dateAttributeNames = Object.entries(model.getAttributes())
     .filter(([, attribute]) => attribute.type instanceof DataTypes.DATE)
     .map(([attributeName]) => attributeName);
