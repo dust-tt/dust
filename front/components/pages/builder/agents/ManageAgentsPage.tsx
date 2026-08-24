@@ -387,7 +387,7 @@ export function ManageAgentsPage() {
                     counterValue={`${agentsByTab[tab.id].length}`}
                   />
                 ))}
-                {canShowHiddenAgents && (
+                {canShowHiddenAgents && activeTab === "all_custom" && (
                   <span className="ml-auto flex gap-1 self-center text-sm text-muted-foreground">
                     <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
                       <Checkbox
