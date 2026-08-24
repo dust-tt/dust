@@ -65,6 +65,9 @@ export const CONSUMPTION_DIMENSION_UNIT: Record<
   source: "message",
 };
 
+// Bounds the `terms` clause each selected dimension turns into.
+export const CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION = 500;
+
 export const CONSUMPTION_SCOPE_FILTER_KEYS = [
   "agents",
   "users",
