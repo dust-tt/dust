@@ -9,23 +9,6 @@ export type ActivationPodWithSpace = {
   activationPod: ActivationPodResource;
 };
 
-export async function canAdministrateActivationPod(
-  auth: Authenticator,
-  activationPodModelId: ModelId
-): Promise<boolean> {
-  const [activationPod] = await ActivationPodResource.fetchByModelIds(auth, [
-    activationPodModelId,
-  ]);
-  if (!activationPod) {
-    return false;
-  }
-
-  const [pod] = await SpaceResource.fetchByModelIds(auth, [
-    activationPod.spaceId,
-  ]);
-  return pod?.canAdministrate(auth) ?? false;
-}
-
 // Maps each user to one Activation Pod of the given kind. Defaults to the
 // Learning Space, matching GET /activation-pod with no podId.
 export async function listActivationPodsByUser(

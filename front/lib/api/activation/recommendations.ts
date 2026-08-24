@@ -1,4 +1,3 @@
-import { canAdministrateActivationPod } from "@app/lib/api/activation/pods";
 import type { Authenticator } from "@app/lib/auth";
 import type { ActivationPodKind } from "@app/lib/models/activation/activation_pod";
 import type { ActivationRecommendationStatus } from "@app/lib/models/activation/activation_recommendation";
@@ -133,10 +132,16 @@ export async function updateActivationRecommendationForUser(
   if (!rec) {
     return "not_found";
   }
-  const canUpdate =
-    rec.activationPodId !== null
-      ? await canAdministrateActivationPod(auth, rec.activationPodId)
-      : rec.userId === auth.getNonNullableUser().id;
+
+  const [activationPod] = rec.activationPodId
+    ? await ActivationPodResource.fetchByModelIds(auth, [rec.activationPodId])
+    : [];
+  const [space] = activationPod
+    ? await SpaceResource.fetchByModelIds(auth, [activationPod.spaceId])
+    : [];
+  const canUpdate = rec.activationPodId
+    ? Boolean(space?.canAdministrate(auth))
+    : rec.userId === auth.getNonNullableUser().id;
   if (!canUpdate) {
     return "not_found";
   }
