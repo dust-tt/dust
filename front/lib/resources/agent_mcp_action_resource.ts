@@ -662,58 +662,88 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       stepContents: AgentStepContentResource[];
     }
   ): Promise<AgentMCPActionResource[]> {
-    if (stepContents.length === 0) {
+    const functionCallStepContents = stepContents.filter(
+      (
+        content
+      ): content is AgentStepContentResource & {
+        value: AgentFunctionCallContentType;
+      } => content.isFunctionCallContent()
+    );
+    if (functionCallStepContents.length === 0) {
       return [];
     }
 
     const workspaceId = auth.getNonNullableWorkspace().id;
+    const agentMessageIds = [
+      ...new Set(
+        functionCallStepContents.map((content) => content.agentMessageId)
+      ),
+    ];
 
-    const agentStepContentToolExecutions =
-      await AgentStepContentToolExecutionModel.findAll({
-        where: {
-          workspaceId,
-          stepContentId: { [Op.in]: stepContents.map((content) => content.id) },
-        },
-        include: [
-          {
-            model: AgentMCPActionModel,
-            as: "agentMCPAction",
-            required: true,
-          },
-        ],
-      });
-
-    const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
-
-    // Sandbox-child actions share their parent's stepContent and must not
-    // surface as separate executions in the conversation timeline.
-    const visibleExecutions = agentStepContentToolExecutions.filter(
-      (row) =>
-        !isSandboxChildActionInfo(
-          row.agentMCPAction.stepContext.sandboxChildActionInfo
-        )
-    );
-
-    return visibleExecutions.map((row) => {
-      const a = row.agentMCPAction;
-      const stepContent = stepContentsMap.get(row.stepContentId);
-
-      // Each action must have a function call step content.
-      assert(stepContent, "Step content not found.");
-      assert(
-        stepContent.isFunctionCallContent(),
-        "Step content is not a function call."
-      );
-
-      const internalMCPServerName = a.toolConfiguration.toolServerId
-        ? getInternalMCPServerNameFromSId(a.toolConfiguration.toolServerId)
-        : null;
-
-      return new this(this.model, a.get(), stepContent, {
-        internalMCPServerName,
-        mcpServerId: a.toolConfiguration.toolServerId,
-      });
+    const toolExecutions = await AgentStepContentToolExecutionModel.findAll({
+      attributes: ["agentMCPActionId", "stepContentId"],
+      where: {
+        workspaceId,
+        agentMessageId: { [Op.in]: agentMessageIds },
+      },
     });
+
+    const stepContentsMap = new Map(
+      functionCallStepContents.map((content) => [content.id, content])
+    );
+    const actionIdsByStepContentId = new Map<ModelId, ModelId[]>();
+    for (const toolExecution of toolExecutions) {
+      if (!stepContentsMap.has(toolExecution.stepContentId)) {
+        continue;
+      }
+      const actionIds =
+        actionIdsByStepContentId.get(toolExecution.stepContentId) ?? [];
+      actionIds.push(toolExecution.agentMCPActionId);
+      actionIdsByStepContentId.set(toolExecution.stepContentId, actionIds);
+    }
+    if (actionIdsByStepContentId.size === 0) {
+      return [];
+    }
+
+    const actions = await AgentMCPActionModel.findAll({
+      where: {
+        workspaceId,
+        agentMessageId: { [Op.in]: agentMessageIds },
+      },
+    });
+    const actionsById = new Map(actions.map((action) => [action.id, action]));
+
+    const resources: AgentMCPActionResource[] = [];
+    for (const stepContent of functionCallStepContents) {
+      const actionIds = actionIdsByStepContentId.get(stepContent.id) ?? [];
+      for (const actionId of actionIds) {
+        const action = actionsById.get(actionId);
+        assert(action, "Action not found.");
+
+        // Sandbox-child actions share their parent's stepContent and must not
+        // surface as separate executions in the conversation timeline.
+        if (
+          isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
+        ) {
+          continue;
+        }
+
+        const internalMCPServerName = action.toolConfiguration.toolServerId
+          ? getInternalMCPServerNameFromSId(
+              action.toolConfiguration.toolServerId
+            )
+          : null;
+
+        resources.push(
+          new this(this.model, action.get(), stepContent, {
+            internalMCPServerName,
+            mcpServerId: action.toolConfiguration.toolServerId,
+          })
+        );
+      }
+    }
+
+    return resources;
   }
 
   static async listModelIdsByAgentMessageIds(
