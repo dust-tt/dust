@@ -40,8 +40,8 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
 
 /**
  * Launch a schedule for a single workspace.
- * Fires at the start of the regional workday with a 1-hour jitter to spread
- * load.
+ * Fires at the start of the regional workday (Mon-Fri) with a 1-hour jitter
+ * to spread load.
  */
 export async function startActivationWorkspaceSchedule({
   workspaceId,
@@ -79,7 +79,13 @@ export async function startActivationWorkspaceSchedule({
         overlap: ScheduleOverlapPolicy.SKIP,
       },
       spec: {
-        calendars: [{ hour: ACTIVATION_WORKDAY_START_HOUR, minute: 0 }],
+        calendars: [
+          {
+            hour: ACTIVATION_WORKDAY_START_HOUR,
+            minute: 0,
+            dayOfWeek: ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
+          },
+        ],
         timezone,
         jitter: ONE_HOUR_MS,
       },
