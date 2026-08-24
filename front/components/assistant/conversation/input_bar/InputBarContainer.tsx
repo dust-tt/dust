@@ -2020,7 +2020,6 @@ const InputBarContainer = ({
                       size={buttonSize}
                       showStopLabel={!isWidthConstrained}
                       disabled={disableInput}
-                      buttonProps={{ isRounded: true }}
                     />
                   )}
                   {showSendButton && (

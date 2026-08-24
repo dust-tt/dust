@@ -195,7 +195,6 @@ export function InputBarPlusMenu({
         icon={Plus}
         size={buttonSize}
         disabled={disabled}
-        isRounded
         tooltip="More"
         onMouseEnter={() => setHasHovered(true)}
         onFocus={() => setHasHovered(true)}
