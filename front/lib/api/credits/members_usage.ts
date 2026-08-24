@@ -39,7 +39,10 @@ import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_t
 import type { SeatData } from "@app/lib/metronome/seats";
 import { getCachedSeatDataByUserId } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
-import { isUserAwuWarned } from "@app/lib/metronome/user_block";
+import {
+  getFairUseAwuCreditsStatus,
+  isUserAwuWarned,
+} from "@app/lib/metronome/user_block";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -72,6 +75,7 @@ import {
   toBaseSeatType,
   USER_CREDIT_STATES,
 } from "@app/types/memberships";
+import type { MaxAwuCreditsTimeframeType } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -152,6 +156,17 @@ export type MemberUsageType = {
   // Whether the user has consumed ≥ 80% of their effective limit. Driven by
   // the nearLimit Redis flag (see user_block.ts). Poke-only.
   nearLimit: boolean;
+  // Per-user fair-use AWU credit usage (credits, with decimals) backed by the
+  // microCredit rate-limit counter. Applies to non-credit-based plans
+  // (free/trial) where a fair-use limit is set. Null when the plan carries no
+  // fair-use limit (limit === -1) or when not requested. Poke-only.
+  fairUse?: MemberFairUseUsage | null;
+};
+
+export type MemberFairUseUsage = {
+  usedCredits: number;
+  limitCredits: number;
+  timeframe: MaxAwuCreditsTimeframeType;
 };
 
 export type GetMembersUsageResponseBody = {
@@ -1627,6 +1642,7 @@ async function resolveMembersUsagePageUsers({
         workspace,
         userIds: allUsers.map((u) => u.sId),
         freeSeatUserIds,
+        cycle: spendLimitCycleOverrideForAuth(auth),
       });
       for (const u of allUsers) {
         sortKeyByUserId.set(u.sId, creditsByUserId.get(u.sId) ?? 0);
@@ -1774,6 +1790,10 @@ export async function getMembersUsage({
       workspace,
       userIds: users.map((u) => u.sId),
       freeSeatUserIds,
+      // Non-credit workspaces have no Metronome billing period to anchor the
+      // window on; fall back to the UTC calendar month (same window the spend
+      // caps use) so consumed (ES) reflects real usage instead of 0.
+      cycle: spendLimitCycleOverrideForAuth(auth),
     }),
     fetchSeatDataForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,
@@ -1910,6 +1930,41 @@ export async function getMembersUsage({
       const metronomeUserId =
         membership?.seatType === "free" ? toFreeMetronomeUserId(u.sId) : u.sId;
       metronomeConsumedByUserId.set(u.sId, usage.get(metronomeUserId) ?? 0);
+    }
+  }
+
+  // Bulk-fetch each user's fair-use AWU credit usage (poke-only). This is a
+  // bounded page (≤ 150) of Redis reads, so batch with `concurrentExecutor`.
+  // Fair-use limits apply to non-credit-based plans (free/trial), so this is
+  // resolved regardless of the workspace's credit-based status. Null when the
+  // plan carries no fair-use limit.
+  const fairUseByUserId = new Map<string, MemberFairUseUsage | null>();
+  if (includeAlertLinks) {
+    const plan = auth.plan();
+    const entries = await concurrentExecutor(
+      users,
+      async (u) =>
+        [
+          u.sId,
+          await getFairUseAwuCreditsStatus({
+            workspace,
+            user: u.toJSON(),
+            plan,
+          }),
+        ] as const,
+      { concurrency: 8 }
+    );
+    for (const [sId, status] of entries) {
+      fairUseByUserId.set(
+        sId,
+        status.limit === -1
+          ? null
+          : {
+              usedCredits: status.count,
+              limitCredits: status.limit,
+              timeframe: status.timeframe,
+            }
+      );
     }
   }
 
@@ -2059,6 +2114,7 @@ export async function getMembersUsage({
         freeCreditEmptyAlert: freeCreditAlerts?.empty ?? null,
         creditState: membership.creditState,
         nearLimit: nearLimitByUserId.get(userId) ?? false,
+        fairUse: fairUseByUserId.get(userId) ?? null,
       },
     ];
   });
