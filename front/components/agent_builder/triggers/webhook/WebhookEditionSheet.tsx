@@ -7,6 +7,7 @@ import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/
 import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isCreditPricedPlan } from "@app/types/plan";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import type {
@@ -73,6 +74,8 @@ function getQuotaDescription({
         return "personal credit pool.";
       case "workspace_pool":
         return "workspace's credit pool.";
+      default:
+        return assertNever(executionMode);
     }
   } else {
     switch (executionMode) {
@@ -80,6 +83,8 @@ function getQuotaDescription({
         return "personal fair use limits.";
       case "workspace_pool":
         return "workspace's programmatic usage.";
+      default:
+        return assertNever(executionMode);
     }
   }
 }

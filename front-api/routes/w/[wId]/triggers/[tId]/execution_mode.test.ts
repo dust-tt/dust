@@ -135,27 +135,6 @@ describe("PATCH /api/w/:wId/triggers/:tId/execution_mode", () => {
     expect(updated?.executionMode).toBe("workspace_pool");
   });
 
-  it("returns 404 when the feature flag is off", async () => {
-    const { workspace, user } = await createPrivateApiMockRequest({
-      method: "PATCH",
-      role: "admin",
-    });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    const trigger = await TriggerFactory.webhook(auth, {
-      agentConfigurationId: agent.sId,
-    });
-
-    const response = await patchExecutionMode(workspace, trigger.sId, {
-      executionMode: "workspace_pool",
-    });
-
-    expect(response.status).toBe(404);
-  });
-
   it("returns 404 for an unknown trigger", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "PATCH",

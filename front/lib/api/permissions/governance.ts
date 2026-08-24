@@ -4,7 +4,6 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { CapabilityState } from "@app/lib/resources/group_permission_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -20,7 +19,6 @@ import {
   GOVERNANCE_CAPABILITIES,
 } from "@app/types/group_permissions";
 import { isManageableGroupKind } from "@app/types/groups";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -42,10 +40,7 @@ const ADMIN_CAPABILITIES: CapabilitySpec[] = [
 
 // The capabilities the caller's role is allowed to see and manage. Admins get everything; business
 // admins get every domain except billing/identity; no other role manages any governance capability.
-function capabilitiesForRole(
-  auth: Authenticator,
-  featureFlags: WhitelistableFeature[]
-): CapabilitySpec[] {
+function capabilitiesForRole(auth: Authenticator): CapabilitySpec[] {
   const role = auth.role();
   switch (role) {
     case "admin":
@@ -81,7 +76,7 @@ function toConfiguration(
 export async function getWorkspaceGovernancePermissions(
   auth: Authenticator
 ): Promise<GovernancePermissionsByKey> {
-  const capabilities = capabilitiesForRole(auth, await getFeatureFlags(auth));
+  const capabilities = capabilitiesForRole(auth);
 
   const stateByKey = await GroupPermissionResource.getCapabilitiesState(
     auth,
@@ -117,7 +112,7 @@ export async function setWorkspaceGovernancePermission(
 > {
   const capability: CapabilitySpec = { grantType, resourceType };
 
-  const canManage = capabilitiesForRole(auth, await getFeatureFlags(auth)).some(
+  const canManage = capabilitiesForRole(auth).some(
     (c) => c.grantType === grantType && c.resourceType === resourceType
   );
   if (!canManage) {

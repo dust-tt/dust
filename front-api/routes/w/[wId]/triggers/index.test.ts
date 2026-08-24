@@ -514,30 +514,6 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
     expect(response.status).toBe(403);
   });
 
-  it("ignores the requested pool when the feature flag is off", async () => {
-    const { workspace, user } = await createPrivateApiMockRequest({
-      method: "POST",
-      role: "admin",
-    });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
-
-    const body = scheduleTriggerBody(null);
-    const response = await postTriggers(workspace, agent.sId, {
-      triggers: [{ ...body.triggers[0], executionMode: "workspace_pool" }],
-    });
-
-    expect(response.status).toBe(204);
-    const triggers = await TriggerResource.listByAgentConfigurationId(
-      auth,
-      agent.sId
-    );
-    expect(triggers[0].executionMode).toBe("user_pool");
-  });
-
   it("moves an existing trigger to the workspace pool on update", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "PATCH",
