@@ -1,4 +1,5 @@
 import { queryTracker } from "@app/lib/api/query_tracker";
+import { getTemporalActivityContext } from "@app/lib/temporal_activity_context";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
 import { getRequestContext } from "@app/types/shared/utils/request_context";
@@ -281,6 +282,11 @@ export class SequelizeWithComments<
       }
 
       const comments: Record<string, string> = {};
+
+      const activityName = getTemporalActivityContext()?.activityName;
+      if (activityName) {
+        comments.activity = activityName;
+      }
 
       const route = getRequestContext()?.route;
       if (route) {

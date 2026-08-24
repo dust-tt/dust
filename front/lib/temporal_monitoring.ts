@@ -1,4 +1,5 @@
 import { queryTracker } from "@app/lib/api/query_tracker";
+import { runWithTemporalActivityContext } from "@app/lib/temporal_activity_context";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type logger from "@app/logger/logger";
 import type { Logger } from "@app/logger/logger";
@@ -63,27 +64,31 @@ export class ActivityInboundLogInterceptor
 
     try {
       this.logger.info("Activity started.");
-      return await queryTracker.run(queryTrackerStore, () =>
-        tracer.trace(
-          `${this.context.info.workflowType}-${this.context.info.activityType}`,
-          {
-            resource: this.context.info.activityType,
-            type: "temporal-activity",
-          },
-          async (span) => {
-            span?.setTag("attempt", this.context.info.attempt);
-            span?.setTag(
-              "workflow_id",
-              this.context.info.workflowExecution.workflowId
-            );
-            span?.setTag(
-              "workflow_run_id",
-              this.context.info.workflowExecution.runId
-            );
+      return await runWithTemporalActivityContext(
+        this.context.info.activityType,
+        () =>
+          queryTracker.run(queryTrackerStore, () =>
+            tracer.trace(
+              `${this.context.info.workflowType}-${this.context.info.activityType}`,
+              {
+                resource: this.context.info.activityType,
+                type: "temporal-activity",
+              },
+              async (span) => {
+                span?.setTag("attempt", this.context.info.attempt);
+                span?.setTag(
+                  "workflow_id",
+                  this.context.info.workflowExecution.workflowId
+                );
+                span?.setTag(
+                  "workflow_run_id",
+                  this.context.info.workflowExecution.runId
+                );
 
-            return next(input);
-          }
-        )
+                return next(input);
+              }
+            )
+          )
       );
     } catch (err: unknown) {
       error = err;
