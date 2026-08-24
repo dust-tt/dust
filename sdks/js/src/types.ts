@@ -806,7 +806,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "collapsible_messages"
   | "conversation_consumption_details"
   | "use_dust_keys"
-  | "browser_extension_mcp_tools"
   | "sensitivity_labels"
   | "use_vertex_for_supported_models"
   | "live_speech_to_text"
