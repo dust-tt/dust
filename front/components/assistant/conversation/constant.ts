@@ -7,7 +7,10 @@ export const DEFAULT_FRAME_PANEL_SIZE = (2 / 3) * 100;
 export function getDefaultRightPanelSize(
   panelType: ConversationSidePanelType
 ): number {
-  return panelType === INTERACTIVE_CONTENT_SIDE_PANEL_TYPE
-    ? DEFAULT_FRAME_PANEL_SIZE
-    : DEFAULT_RIGHT_PANEL_SIZE;
+  switch (panelType) {
+    case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
+      return DEFAULT_FRAME_PANEL_SIZE;
+    default:
+      return DEFAULT_RIGHT_PANEL_SIZE;
+  }
 }
