@@ -17,7 +17,6 @@ import {
   finalizeCreditStop,
   finalizeGracefulStop,
   finalizeInterruption,
-  finalizeSmoothShutdown,
   notifyWorkflowError,
 } from "@app/temporal/agent_loop/activities/common";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
@@ -83,27 +82,6 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   await finalizeGracefulStop(authType, agentLoopArgs);
-
-  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
-
-  await Promise.all([
-    launchAgentMessageAnalytics(auth, agentLoopArgs),
-    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
-      auth,
-      agentLoopArgs
-    ),
-    launchTrackProgrammaticUsage(auth, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    conversationUnreadNotification(auth, agentLoopArgs),
-    handleMentions(auth, agentLoopArgs),
-  ]);
-}
-
-export async function finalizeSmoothShutdownAgentLoopActivity(
-  authType: AuthenticatorType,
-  agentLoopArgs: AgentLoopArgs
-): Promise<void> {
-  await finalizeSmoothShutdown(authType, agentLoopArgs);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
