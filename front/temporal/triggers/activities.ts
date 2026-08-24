@@ -192,10 +192,18 @@ export async function runTriggeredAgentsActivity({
   // Expected terminal states (workspace, user, trigger or agent gone by the
   // time the schedule or webhook fires): there is nothing left to run, so the
   // activity logs and returns instead of failing the workflow.
-  if (!auth.workspace() || !auth.user() || !auth.isUser()) {
+  if (!auth.workspace() || !auth.user()) {
     logger.info(
       { triggerId, userId, workspaceId },
-      "Skipping trigger run: workspace or user no longer available."
+      "Invalid authentication. Missing workspaceId or userId."
+    );
+    return;
+  }
+
+  if (!auth.isUser()) {
+    logger.info(
+      { triggerId, userId, workspaceId },
+      "Invalid authentication. Missing user permissions."
     );
     return;
   }
@@ -204,7 +212,7 @@ export async function runTriggeredAgentsActivity({
   if (!triggerResource) {
     logger.info(
       { triggerId, workspaceId },
-      "Skipping trigger run: trigger not found."
+      `Trigger with ID ${triggerId} not found.`
     );
     return;
   }
