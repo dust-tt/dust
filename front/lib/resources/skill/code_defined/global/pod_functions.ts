@@ -74,8 +74,8 @@ Pod file system rather than splitting it between the conversation and the Pod ro
 \`\`\`
 /files/pod-<podId>/
   MyApp/
-    manifest.json      declares the app: name, description, frames, functions, databases
-    MyApp.tsx          the Frame's source; its directory is the Frame's bundling root
+    manifest.json      declares the app: name, description, functions, databases
+    index.tsx          the Frame's source; its directory is the Frame's bundling root
     functions/
       list-notes.ts    one file per function, named after the function; the app folder
                        above becomes the published slug's prefix (myapp__list-notes)
@@ -86,7 +86,10 @@ Pod file system rather than splitting it between the conversation and the Pod ro
       notes.db.ts      one shared drizzle schema file per database
 \`\`\`
 
-Write the \`manifest.json\` declaring the app's \`name\`, \`description\`, and the \`frames\` /
+Every app has exactly one UI entry point: \`index.tsx\` at the folder root by default, or a
+different folder-relative path set explicitly with the manifest's \`uiEntryPoint\`. A
+"functions-only" app still ships a minimal Frame at its entry point — there is no such thing as an
+app with no UI. Write the \`manifest.json\` declaring the app's \`name\`, \`description\`, and the
 \`functions\` / \`databases\` it publishes, each entry pointing at a folder-relative \`path\` — the
 \`functions/\` and \`databases/\` folders above are convention, not a requirement, so what matters is
 the manifest's paths, not where a source happens to sit. Publish the whole app in one call with
@@ -99,7 +102,6 @@ invoking" below for what that call does and when to re-run it.
   "version": 1,
   "name": "MyApp",
   "description": "A shared notes app.",
-  "frames": [{ "path": "MyApp.tsx" }],
   "functions": [
     {
       "name": "list-notes",
@@ -124,7 +126,8 @@ it publishes. If the app's Frame does not exist yet, or still sits in the conver
 skill covers creating it and moving it into the app folder with \`${FILES_MOVE_TOOL}\` before
 \`${PUBLISH_FRAME_TOOL}\`; \`${CREATE_FRAME_TOOL}\` always creates it in the conversation first.
 
-Functions that no Frame calls still get an app folder, named after what they do together.
+Functions that no Frame calls still get an app folder, named after what they do together, and
+still need a minimal Frame at \`index.tsx\` — every app has one.
 
 **Copying an app folder still needs a publish of its own.** The manifest.json, databases and
 published slugs all follow the new folder, but nothing is live until you publish the copy — see

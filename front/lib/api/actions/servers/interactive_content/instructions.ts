@@ -167,7 +167,7 @@ ${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
 
 From then on, edit the source at its Pod path and publish it again. Anything the Frame imports relatively must live under its folder, which is the bundling root.
 
-If the app has a \`manifest.json\` declaring this Frame among its \`frames\`, \`${PUBLISH_APP_TOOL}\` publishes it there along with the app's functions and databases in one call; use \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` directly, as above, when publishing just this one Frame.
+If the app has a \`manifest.json\`, this Frame is the app's UI entry point (its \`uiEntryPoint\`, or \`index.tsx\` by default when the manifest omits it), so \`${PUBLISH_APP_TOOL}\` publishes it there along with the app's functions and databases in one call; use \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` directly, as above, when publishing just this one Frame.
 
 #### Changing An Existing Pod Frame
 
