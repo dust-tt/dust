@@ -6,7 +6,6 @@ import { useContext } from "react";
 
 type InputBarModelPickerProps = Omit<
   ModelPickerProps,
-  | "buttonIsRounded"
   | "buttonVariant"
   | "showLabel"
   | "setStickyModelOverride"
@@ -38,7 +37,6 @@ export function InputBarModelPicker({
         owner={owner}
         buttonVariant="ghost-secondary"
         buttonSize={buttonSize}
-        buttonIsRounded
         showLabel={false}
         side={side}
         disabled={disabled}

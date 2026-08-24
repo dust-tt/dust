@@ -4,6 +4,10 @@ import {
   getSpacesPickerLabel,
   InputBarSpacesPicker,
 } from "@app/components/assistant/conversation/input_bar/InputBarSpacesPicker";
+import {
+  INPUT_BAR_PILL_HOVER_CLASSNAME,
+  INPUT_BAR_PILL_SURFACE_CLASSNAME,
+} from "@app/components/assistant/conversation/input_bar/inputBarPillStyles";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -17,6 +21,7 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Attachment01,
   Button,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -26,6 +31,11 @@ import {
   ShapesPlus,
 } from "@dust-tt/sparkle";
 import { useRef, useState } from "react";
+
+const PLUS_BUTTON_CLASSNAME = cn(
+  INPUT_BAR_PILL_SURFACE_CLASSNAME,
+  INPUT_BAR_PILL_HOVER_CLASSNAME
+);
 
 const MOBILE_PICKERS = ["capabilities", "attachments", "spaces"] as const;
 type MobilePicker = (typeof MOBILE_PICKERS)[number];
@@ -197,6 +207,7 @@ export function InputBarPlusMenu({
         disabled={disabled}
         isRounded
         tooltip="More"
+        className={PLUS_BUTTON_CLASSNAME}
         onMouseEnter={() => setHasHovered(true)}
         onFocus={() => setHasHovered(true)}
       />

@@ -6,7 +6,10 @@ import {
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import { InputBarPlusMenu } from "@app/components/assistant/conversation/input_bar/InputBarPlusMenu";
-import { INPUT_BAR_PILL_HOVER_CLASSNAME } from "@app/components/assistant/conversation/input_bar/inputBarPillStyles";
+import {
+  INPUT_BAR_PILL_HOVER_CLASSNAME,
+  INPUT_BAR_PILL_SURFACE_CLASSNAME,
+} from "@app/components/assistant/conversation/input_bar/inputBarPillStyles";
 import type useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -174,6 +177,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             className={cn(
               "inline-flex box-border items-center rounded-full heading-xs px-2 gap-1.5 text-primary-900 transition-colors duration-200",
               buttonSize === "xs" ? "h-6" : "h-8",
+              INPUT_BAR_PILL_SURFACE_CLASSNAME,
               isWidthConstrained && "pl-1",
               isInputDisabled
                 ? "opacity-50 pointer-events-none"
@@ -216,7 +220,11 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             label={!isWidthConstrained ? "Agent" : undefined}
             disabled={isInputDisabled}
             isRounded
-            className={cn(disableAgentSelector && "bg-primary-150")}
+            className={cn(
+              INPUT_BAR_PILL_SURFACE_CLASSNAME,
+              INPUT_BAR_PILL_HOVER_CLASSNAME,
+              disableAgentSelector && "bg-primary-150"
+            )}
           />
         )
       }
