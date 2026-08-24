@@ -4,6 +4,8 @@ import {
 } from "@app/lib/api/assistant/conversation/workflow_alert_threshold_pause";
 import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -43,14 +45,21 @@ app.post(
 
     const { decision } = ctx.req.valid("json");
 
-    const result =
-      decision === "continue"
-        ? await continueWorkflowAlertThresholdPause(auth, conversation, {
-            messageId: mId,
-          })
-        : await declineWorkflowAlertThresholdPause(auth, conversation, {
-            messageId: mId,
-          });
+    let result: Result<void, DustError | Error>;
+    switch (decision) {
+      case "continue":
+        result = await continueWorkflowAlertThresholdPause(auth, conversation, {
+          messageId: mId,
+        });
+        break;
+      case "decline":
+        result = await declineWorkflowAlertThresholdPause(auth, conversation, {
+          messageId: mId,
+        });
+        break;
+      default:
+        assertNever(decision);
+    }
 
     if (result.isErr()) {
       const { error } = result;
