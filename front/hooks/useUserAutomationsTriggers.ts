@@ -26,7 +26,7 @@ export function useUserAutomationsTriggers({
   filter?: UserAutomationTriggersFilter;
   disabled?: boolean;
 }) {
-  const url = `/api/w/${workspaceId}/me/automations/triggers`;
+  const url = `/api/w/${workspaceId}/me/analytics/automations/triggers`;
   const body: UserAutomationTriggersBody = {
     period: period.kind,
     days:

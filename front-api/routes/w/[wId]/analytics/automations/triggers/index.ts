@@ -14,6 +14,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import tId from "./[tId]";
 
 export type { GetAutomationTriggersResponse };
 
@@ -118,5 +119,7 @@ app.post(
     }
   }
 );
+
+app.route("/:tId", tId);
 
 export default app;

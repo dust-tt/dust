@@ -6,10 +6,11 @@ import { toConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/sch
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import tId from "./[tId]";
 
 export type GetUserAutomationTriggersResponse = UserAutomationTriggers;
 
-// Mounted at /api/w/:wId/me/automations/triggers.
+// Mounted at /api/w/:wId/me/analytics/automations/triggers.
 const app = workspaceApp();
 
 /** @ignoreswagger */
@@ -37,5 +38,7 @@ app.post(
     return ctx.json(triggers);
   }
 );
+
+app.route("/:tId", tId);
 
 export default app;

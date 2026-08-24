@@ -8,20 +8,27 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 export type { GetAutomationTriggerBreakdownResponse };
 
-// Mounted at /api/w/:wId/analytics/automations/trigger-breakdown.
+const ParamsSchema = z.object({
+  tId: z.string(),
+});
+
+// Mounted at /api/w/:wId/analytics/automations/triggers/:tId/breakdown.
 const app = workspaceApp();
 
 /** @ignoreswagger */
 app.post(
   "/",
   ensureIsManager(),
+  validate("param", ParamsSchema),
   validate("json", AutomationTriggerBreakdownBodySchema),
   async (ctx): HandlerResult<GetAutomationTriggerBreakdownResponse> => {
     const auth = ctx.get("auth");
-    const { triggerId, ...periodQuery } = ctx.req.valid("json");
+    const { tId } = ctx.req.valid("param");
+    const periodQuery = ctx.req.valid("json");
 
     const period = await resolveConsumptionPeriod(
       auth,
@@ -29,14 +36,14 @@ app.post(
     );
 
     const result = await fetchAutomationTriggerBreakdown(auth, {
-      triggerId,
+      triggerId: tId,
       period,
     });
     if (result.isErr()) {
       logger.error(
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
-          triggerId,
+          triggerId: tId,
           err: result.error,
         },
         "[AutomationsAnalytics] Failed to retrieve trigger breakdown."
