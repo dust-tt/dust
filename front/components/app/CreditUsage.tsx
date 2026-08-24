@@ -28,11 +28,7 @@ interface CreditUsageProps {
   onLearnMore?: () => void;
 }
 
-export function CreditUsage({
-  state,
-  variant,
-  onLearnMore,
-}: CreditUsageProps) {
+export function CreditUsage({ state, variant, onLearnMore }: CreditUsageProps) {
   const resetUnit = state.resetInDays === 1 ? "day" : "days";
   const companionStatusLabel =
     variant === "companion" && state.target !== "on_target"
