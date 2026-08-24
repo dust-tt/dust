@@ -504,15 +504,9 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   // smooth-shutdown workflow-alert-threshold popup
   declare stoppedBySmoothShutdown: boolean | null;
 
-  // Workflow-alert-threshold pause state, mirroring how a blocked tool action leaves the message
-  // in "created" status until resolved (the resume step itself is derived from the message's
-  // existing agentStepContents, same as every other resume path — no step number is stored here).
-  // "paused": the loop stopped after crossing the threshold and is waiting on the user; cleared
-  // once the user confirms continuing (see below) or declines, in which case the message becomes
-  // "gracefully_stopped" with stoppedBySmoothShutdown set.
-  // "acknowledged": the user confirmed continuing past the threshold, permanently for the rest of
-  // this message's lifetime — spend only grows, so without this a relaunched run would
-  // immediately cross the threshold again on its very first step and pause right back.
+  // "paused": loop stopped after crossing the threshold, waiting on the user.
+  // Declining sets the message status to "gracefully_stopped"
+  // "acknowledged": user confirmed continuing, kept for the rest of the message's lifetime.
   declare workflowAlertThresholdStatus: "paused" | "acknowledged" | null;
 
   // The concrete provider/model/effort triplet used by the message when
