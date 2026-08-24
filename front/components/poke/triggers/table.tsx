@@ -12,6 +12,8 @@ import {
   usePokeAutomationTriggers,
   usePokeTriggers,
 } from "@app/poke/swr/triggers";
+import type { TriggerKind } from "@app/types/assistant/triggers";
+import { isValidTriggerKind } from "@app/types/assistant/triggers";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -19,6 +21,11 @@ import type { PaginationState } from "@tanstack/react-table";
 import { useState } from "react";
 
 const TRIGGER_PAGE_SIZE = 25;
+
+const TRIGGER_KIND_OPTIONS = (["schedule", "webhook"] as const).map((kind) => ({
+  label: asDisplayName(kind),
+  value: kind,
+}));
 
 const TRIGGER_PROVIDER_FACETS = [
   {
@@ -48,6 +55,7 @@ export function TriggerDataTable({ owner, agentId }: TriggerDataTableProps) {
     pageSize: TRIGGER_PAGE_SIZE,
   });
   const [search, setSearch] = useState("");
+  const [selectedKinds, setSelectedKinds] = useState<TriggerKind[]>([]);
   const { data: agentConfigurations } = usePokeAgentConfigurations({
     owner,
     disabled: agentId === undefined,
@@ -63,10 +71,16 @@ export function TriggerDataTable({ owner, agentId }: TriggerDataTableProps) {
     setPagination((current) => ({ ...current, pageIndex: 0 }));
   };
 
+  const handleKindChange = (values: string[]) => {
+    setSelectedKinds(values.filter(isValidTriggerKind));
+    setPagination((current) => ({ ...current, pageIndex: 0 }));
+  };
+
   const {
     triggers,
     totalCount,
     isTriggersLoading,
+    isTriggersValidating,
     isTriggersError,
     mutateTriggers,
   } = usePokeAutomationTriggers({
@@ -75,6 +89,7 @@ export function TriggerDataTable({ owner, agentId }: TriggerDataTableProps) {
     limit: pagination.pageSize,
     offset: pagination.pageIndex * pagination.pageSize,
     search: search || undefined,
+    filter: selectedKinds.length > 0 ? { kinds: selectedKinds } : undefined,
     disabled: agentId !== undefined,
   });
 
@@ -140,11 +155,21 @@ export function TriggerDataTable({ owner, agentId }: TriggerDataTableProps) {
             data={triggers}
             getRowId={(trigger) => trigger.triggerId}
             isLoading={isTriggersLoading}
+            isValidating={isTriggersValidating}
             serverSideRowCount={totalCount}
             pagination={pagination}
             onPaginationChange={setPagination}
             search={search}
             onSearchChange={handleSearchChange}
+            facets={[
+              {
+                columnId: "kind",
+                title: "Kind",
+                options: TRIGGER_KIND_OPTIONS,
+                selectedValues: selectedKinds,
+                onSelectedValuesChange: handleKindChange,
+              },
+            ]}
           />
         )}
       </div>

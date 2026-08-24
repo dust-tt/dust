@@ -1,7 +1,10 @@
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
-import type { AutomationTriggersBody } from "@app/lib/api/analytics/automations/schema";
+import type {
+  AutomationTriggersBody,
+  AutomationTriggersFilter,
+} from "@app/lib/api/analytics/automations/schema";
 import type {
   AutomationTriggerRow,
   GetAutomationTriggersResponse,
@@ -43,6 +46,7 @@ export function usePokeAutomationTriggers({
   limit,
   offset = 0,
   search,
+  filter,
   disabled,
 }: {
   owner: LightWorkspaceType;
@@ -50,6 +54,7 @@ export function usePokeAutomationTriggers({
   limit: number;
   offset?: number;
   search?: string;
+  filter?: AutomationTriggersFilter;
   disabled?: boolean;
 }) {
   const url = `${pokeTriggersUrl(owner.sId)}/search`;
@@ -60,9 +65,10 @@ export function usePokeAutomationTriggers({
     limit,
     offset,
     search: search?.trim(),
+    filter,
   };
 
-  const { data, error, mutate, isLoading } = useConsumptionQuery<
+  const { data, error, mutate, isValidating } = useConsumptionQuery<
     Omit<AutomationTriggersBody, "format">,
     GetAutomationTriggersResponse
   >({ url, body, disabled });
@@ -70,7 +76,8 @@ export function usePokeAutomationTriggers({
   return {
     triggers: data?.triggers ?? emptyArray<AutomationTriggerRow>(),
     totalCount: data?.totalCount ?? 0,
-    isTriggersLoading: !error && isLoading,
+    isTriggersLoading: !disabled && !error && !data,
+    isTriggersValidating: !disabled && !error && isValidating,
     isTriggersError: error,
     mutateTriggers: mutate,
   };
