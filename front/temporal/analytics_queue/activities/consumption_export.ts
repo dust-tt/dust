@@ -12,14 +12,16 @@ import { Authenticator } from "@app/lib/auth";
 import type { FileStorage } from "@app/lib/file_storage";
 import {
   GCS_COMPOSE_MAX_SOURCES,
-  getPrivateUploadBucket,
+  getTmpWorkloadsBucket,
 } from "@app/lib/file_storage";
 import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/consumption-export-ready";
 import logger from "@app/logger/logger";
 import { createHash } from "crypto";
 
-// Kept as a top-level prefix (not nested under `w/{workspaceId}/`) so a single GCS
-// lifecycle matches_prefix rule can target every workspace's exports for expiry.
+// Exports live in the shared tmp-workloads bucket (not private-uploads), which already
+// deletes everything after 7 days: reusing that bucket-wide TTL instead of adding a new
+// one. Namespaced under a top-level prefix to avoid colliding with other workloads
+// (connectors, etc.) that write into the same bucket.
 export function buildConsumptionExportGcsPrefix(workspaceId: string): string {
   return `consumption_exports/${workspaceId}/`;
 }
@@ -137,7 +139,7 @@ export async function runConsumptionExportBucketActivity(
     bucketIndex
   );
 
-  await getPrivateUploadBucket()
+  await getTmpWorkloadsBucket()
     .file(gcsPath)
     .save(Buffer.from(result.value, "utf-8"), {
       contentType: "text/csv",
@@ -188,7 +190,7 @@ export async function finalizeConsumptionExportActivity(
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
   const workspaceId = auth.getNonNullableWorkspace().sId;
-  const bucket = getPrivateUploadBucket();
+  const bucket = getTmpWorkloadsBucket();
 
   const tmpPrefix = buildConsumptionExportBucketPartsGcsPrefix(
     workspaceId,

@@ -598,6 +598,9 @@ export const getPublicUploadBucket = (options?: FileStorageOptions) =>
 export const getUpsertQueueBucket = (options?: FileStorageOptions) =>
   getBucketInstance(config.getGcsUpsertQueueBucket(), options);
 
+export const getTmpWorkloadsBucket = (options?: FileStorageOptions) =>
+  getBucketInstance(config.getGcsTmpWorkloadsBucket(), options);
+
 export const getDustDataSourcesBucket = (options?: FileStorageOptions) =>
   getBucketInstance(config.getDustDataSourcesBucket(), options);
 
