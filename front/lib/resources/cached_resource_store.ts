@@ -262,48 +262,57 @@ type SerializedBlob<M extends Model> = {
   [K in keyof Attributes<M>]: SerializedBlobValue<Attributes<M>[K]>;
 };
 
-type CachedResourceStoreDefinition<Input, M extends Model, Resource> = {
+// Attributes eligible as a cache key: string or number valued columns.
+type CacheKeyAttribute<M extends Model> = {
+  [K in keyof Attributes<M>]: Attributes<M>[K] extends string | number
+    ? K
+    : never;
+}[keyof Attributes<M>] &
+  string;
+
+type CachedResourceStoreDefinition<
+  M extends Model,
+  K extends CacheKeyAttribute<M>,
+  Resource,
+> = {
   model: ModelStatic<M>;
   materialize: (blobs: Attributes<M>[]) => Promise<Resource[]>;
   cache: {
     id: string;
     version: number;
-    key: (input: Input) => string;
-    loadWhere: (input: Input) => WhereOptions<Attributes<M>>;
-    // Must read only immutable attributes: invalidation derives the key from a blob that may
-    // predate or postdate the write it invalidates for.
-    keyOfBlob: (blob: Attributes<M>) => Input;
-    migration?: CacheKeyMigrationDefinition<Input>;
+    // Column carrying the cache key. Must be unique and immutable: the Redis key, the cache-miss
+    // loader and blob invalidation are all derived from it.
+    keyAttribute: K;
+    migration?: CacheKeyMigrationDefinition<Attributes<M>[K]>;
   };
 };
 
-export type CachedResourceStore<Input, M extends Model, Resource> = {
+export type CachedResourceStore<
+  M extends Model,
+  K extends CacheKeyAttribute<M>,
+  Resource,
+> = {
   // `attributes` projections are excluded: materialize requires full rows.
   baseFetch: (
     options?: Omit<FindOptions<Attributes<M>>, "attributes">
   ) => Promise<Resource[]>;
   fetchCached: (
-    input: Input,
+    input: Attributes<M>[K],
     transaction?: Transaction
   ) => Promise<Resource | null>;
   create: (
     blob: CreationAttributes<M>,
     transaction?: Transaction
   ) => Promise<Resource>;
-  invalidate: (input: Input, transaction?: Transaction) => Promise<void>;
   invalidateBlob: (
     blob: Attributes<M>,
-    transaction?: Transaction
-  ) => Promise<void>;
-  invalidateMany: (
-    inputs: readonly Input[],
     transaction?: Transaction
   ) => Promise<void>;
   createCacheOperations: <OperationsInput>(definition: {
     label: string;
     params: CacheOperationParam[];
     inputSchema: z.ZodType<OperationsInput>;
-    toLookupInput: (input: OperationsInput) => Input;
+    toLookupInput: (input: OperationsInput) => Attributes<M>[K];
   }) => CacheOperations;
 };
 
@@ -319,13 +328,17 @@ export type CachedResourceStore<Input, M extends Model, Resource> = {
  * retypes an attribute, bump `cache.version`. Entries have no TTL, so stale-shaped snapshots
  * otherwise live until the row is next invalidated.
  */
-export function defineCachedResourceStore<Input, M extends Model, Resource>({
+export function defineCachedResourceStore<
+  M extends Model,
+  K extends CacheKeyAttribute<M>,
+  Resource,
+>({
   model,
   materialize,
   cache,
-}: CachedResourceStoreDefinition<Input, M, Resource>): CachedResourceStore<
-  Input,
+}: CachedResourceStoreDefinition<M, K, Resource>): CachedResourceStore<
   M,
+  K,
   Resource
 > {
   const dateAttributeNames = Object.entries(model.getAttributes())
@@ -333,17 +346,18 @@ export function defineCachedResourceStore<Input, M extends Model, Resource>({
     .map(([attributeName]) => attributeName);
 
   const blobLookup = defineCachedResourceLookup<
-    Input,
+    Attributes<M>[K],
     SerializedBlob<M>,
     Attributes<M>
   >({
     id: cache.id,
     version: cache.version,
-    key: cache.key,
+    key: (input) => String(input),
     migration: cache.migration,
     loadFromDatabase: async (input, transaction) => {
       const row = await model.findOne({
-        where: cache.loadWhere(input),
+        // Sequelize cannot type a computed generic key; the value is Attributes<M>[K].
+        where: { [cache.keyAttribute]: input } as WhereOptions<Attributes<M>>,
         transaction,
       });
       return row ? row.get() : null;
@@ -375,7 +389,7 @@ export function defineCachedResourceStore<Input, M extends Model, Resource>({
   const invalidateBlob = async (
     blob: Attributes<M>,
     transaction?: Transaction
-  ) => blobLookup.invalidate(cache.keyOfBlob(blob), transaction);
+  ) => blobLookup.invalidate(blob[cache.keyAttribute], transaction);
 
   return {
     baseFetch: async (options) => {
@@ -401,9 +415,7 @@ export function defineCachedResourceStore<Input, M extends Model, Resource>({
       }
       return resource;
     },
-    invalidate: blobLookup.invalidate,
     invalidateBlob,
-    invalidateMany: blobLookup.invalidateMany,
     createCacheOperations: blobLookup.createCacheOperations,
   };
 }

@@ -153,9 +153,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     cache: {
       id: "workspace_by_sid",
       version: WORKSPACE_CACHE_KEY_VERSION,
-      key: (workspaceId: string) => workspaceId,
-      loadWhere: (workspaceId) => ({ sId: workspaceId }),
-      keyOfBlob: (blob) => blob.sId,
+      keyAttribute: "sId",
       migration: {
         previousKey: {
           cacheId: "_fetchByIdUncached",
@@ -271,10 +269,6 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
           ),
         })
     );
-  }
-
-  static async invalidateCache(workspaceId: string): Promise<void> {
-    await WorkspaceResource.store.invalidate(workspaceId);
   }
 
   protected override async update(
