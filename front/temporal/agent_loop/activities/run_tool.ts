@@ -130,6 +130,8 @@ async function _runToolActivity(
 ): Promise<ToolExecutionResult> {
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
+  // The activity-lifetime wrapper above already covers liveness: this inner wrapper is kept for
+  // its log, each firing meaning the DB-bound setup phase is stalling (DB pool contention).
   const { auth, runAgentDataRes, action } = await withPeriodicHeartbeat(
     async () => {
       const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
