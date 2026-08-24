@@ -2,7 +2,10 @@ import type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
 } from "@app/lib/api/analytics/consumption/scope";
-import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
+import {
+  CONSUMPTION_DIMENSION_FILTER_KEYS,
+  CONSUMPTION_SCOPE_DIMENSIONS,
+} from "@app/lib/api/analytics/consumption/scope";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
@@ -136,6 +139,43 @@ export type UsageFilterOptionForCategory<C extends UsageFilterCategory> =
 export type UsageFilter = {
   [C in UsageFilterCategory]?: UsageFilterOptionForCategory<C>[];
 };
+
+export type UsageFilterIds = Partial<
+  Record<ConsumptionScopeDimension, string[]>
+>;
+
+// URL filters only carry ids. Keep that transport shape at the boundary and
+// use minimal options until the user replaces them from the filter panel.
+export function usageFilterFromIds(ids: UsageFilterIds): UsageFilter {
+  let filter: UsageFilter = {};
+  for (const dimension of CONSUMPTION_SCOPE_DIMENSIONS) {
+    for (const id of ids[dimension] ?? []) {
+      filter = addUsageFilterOption(
+        filter,
+        usageFilterOptionFromAttributionRow(dimension, {
+          id,
+          name: id,
+          pictureUrl: null,
+        })
+      );
+    }
+  }
+
+  return filter;
+}
+
+export function usageFilterToIds(filter: UsageFilter): UsageFilterIds {
+  return {
+    agent: filter.agent?.map(({ id }) => id),
+    user: filter.member?.map(({ id }) => id),
+    group: filter.group?.map(({ id }) => id),
+    model: filter.model?.map(({ id }) => id),
+    tool: filter.tool?.map(({ id }) => id),
+    skill: filter.skill?.map(({ id }) => id),
+    source: filter.source?.map(({ id }) => id),
+    api_key: filter.api_key?.map(({ id }) => id),
+  };
+}
 
 export interface UsageFilterSummary {
   category: UsageFilterCategory;
