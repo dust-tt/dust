@@ -295,85 +295,82 @@ export function ConversationContainerVirtuoso({
         />
       ) : (
         <>
-          <div className="flex w-full flex-col items-center md:h-panel md:shrink-0 md:gap-8">
-            <div
-              id="agent-input-header"
-              className="flex w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4 md:flex-1 md:pb-0 md:pt-0"
-              ref={startConversationRef}
-            >
-              <Page.Header
-                title={
-                  <motion.h3
-                    key={greeting}
-                    className="heading-3xl font-medium text-foreground"
-                    variants={GREETING_VARIANTS}
-                    initial={shouldReduceMotion ? false : "hidden"}
-                    animate="visible"
-                  >
-                    {greeting.split(" ").map((word, index) => (
-                      <motion.span
-                        key={`${index}-${word}`}
-                        className="inline-block whitespace-pre"
-                        variants={GREETING_WORD_VARIANTS}
-                      >
-                        {index === 0 ? word : ` ${word}`}
-                      </motion.span>
-                    ))}
-                  </motion.h3>
-                }
-              />
-            </div>
-            <div
-              className={classNames(
-                "sticky bottom-0 z-20 flex max-h-dvh w-full",
-                "pb-2",
-                // px-1 keeps a constant gutter so the card's shadow ring never
-                // clips at the scroller edge; max-w compensates so the card
-                // still measures exactly --container-conversation when wide.
-                "md:w-full md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1 md:pb-4"
-              )}
-            >
-              <InputBar
-                owner={owner}
-                user={user}
-                onSubmit={handleConversationCreation}
-                draftKey="home-new-conversation"
-                disableAutoFocus={false}
-                defaultAgentId={workspaceDefaultAgentId}
-              />
-            </div>
-
-            {suggestion && (
-              <div className="w-full max-w-conversation mt-1">
-                <Card
-                  variant="highlight"
-                  size="md"
-                  containerClassName="w-full group"
+          <div
+            id="agent-input-header"
+            className="flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4 md:min-h-[36vh]"
+            ref={startConversationRef}
+          >
+            <Page.Header
+              title={
+                <motion.h3
+                  key={greeting}
+                  className="heading-3xl font-medium text-foreground"
+                  variants={GREETING_VARIANTS}
+                  initial={shouldReduceMotion ? false : "hidden"}
+                  animate="visible"
                 >
-                  <div className="flex w-full flex-col gap-2 text-sm">
-                    <div className="flex w-full items-center gap-2 font-semibold text-highlight-600">
-                      <Lightbulb04 className="text-highlight-600 h-5 w-5" />
-                      <div className="w-full">{suggestion.title}</div>
-                      <div className="opacity-0 transition-opacity group-hover:opacity-100">
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          icon={XClose}
-                          tooltip="Dismiss"
-                          onClick={() => onDismissSuggestion?.(suggestion.id)}
-                          className="text-highlight-600"
-                        />
-                      </div>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {suggestion.description}
+                  {greeting.split(" ").map((word, index) => (
+                    <motion.span
+                      key={`${index}-${word}`}
+                      className="inline-block whitespace-pre"
+                      variants={GREETING_WORD_VARIANTS}
+                    >
+                      {index === 0 ? word : ` ${word}`}
+                    </motion.span>
+                  ))}
+                </motion.h3>
+              }
+            />
+          </div>
+          <div
+            className={classNames(
+              "sticky bottom-0 z-20 flex max-h-dvh w-full",
+              "pb-2",
+              // px-1 keeps a constant gutter so the card's shadow ring never
+              // clips at the scroller edge; max-w compensates so the card
+              // still measures exactly --container-conversation when wide.
+              "md:w-full md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1 md:pb-4"
+            )}
+          >
+            <InputBar
+              owner={owner}
+              user={user}
+              onSubmit={handleConversationCreation}
+              draftKey="home-new-conversation"
+              disableAutoFocus={false}
+              defaultAgentId={workspaceDefaultAgentId}
+            />
+          </div>
+
+          {suggestion && (
+            <div className="w-full max-w-conversation mt-1">
+              <Card
+                variant="highlight"
+                size="md"
+                containerClassName="w-full group"
+              >
+                <div className="flex w-full flex-col gap-2 text-sm">
+                  <div className="flex w-full items-center gap-2 font-semibold text-highlight-600">
+                    <Lightbulb04 className="text-highlight-600 h-5 w-5" />
+                    <div className="w-full">{suggestion.title}</div>
+                    <div className="opacity-0 transition-opacity group-hover:opacity-100">
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        icon={XClose}
+                        tooltip="Dismiss"
+                        onClick={() => onDismissSuggestion?.(suggestion.id)}
+                        className="text-highlight-600"
+                      />
                     </div>
                   </div>
-                </Card>
-              </div>
-            )}
-            <div aria-hidden className="hidden md:block md:flex-1" />
-          </div>
+                  <div className="text-sm text-muted-foreground">
+                    {suggestion.description}
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
           <AgentBrowserContainer
             onAgentConfigurationClick={(agent) => {
               setSelectedSingleAgent(toRichAgentMentionType(agent));

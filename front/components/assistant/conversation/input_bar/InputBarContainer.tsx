@@ -2020,7 +2020,7 @@ const InputBarContainer = ({
                       size={buttonSize}
                       showStopLabel={!isWidthConstrained}
                       disabled={disableInput}
-                      buttonProps={{ className: "rounded-full" }}
+                      buttonProps={{ isRounded: true }}
                     />
                   )}
                   {showSendButton && (
