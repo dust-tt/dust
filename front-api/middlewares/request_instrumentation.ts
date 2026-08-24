@@ -58,14 +58,13 @@ const routeConcurrencyStates = new Map<string, RouteConcurrencyState>();
 
 export const requestInstrumentation =
   createMiddleware<RequestInstrumentationEnv>(async (c, next) => {
-    // Mutable: `route` starts as the raw URL path and is updated to the matched
-    // route pattern in the finally block (routePath is only set after routing).
-    // Any unhandled rejection fired from the handler will see the updated value
-    // because routing completes before the handler (and any fire-and-forget
-    // promises it spawns) run.
+    // `-1` points at the leaf handler selected by Hono, which is known before
+    // `next()` runs. Store the normalized route early so queries executed by the
+    // handler can use it without tagging concrete resource IDs.
+    const matchedRoute = routePath(c, -1) || c.req.path;
     const reqCtx: RequestContext = {
       method: c.req.method,
-      route: c.req.path,
+      route: matchedRoute,
       url: c.req.path,
     };
     c.set("requestContext", reqCtx);
@@ -77,11 +76,7 @@ export const requestInstrumentation =
       return next();
     }
 
-    // `routePath(c)` defaults to the current middleware route (`/*` here).
-    // `-1` points at the leaf handler route selected by Hono, which is already
-    // known before `next()` runs.
-    const concurrencyRoute = routePath(c, -1) || c.req.path;
-    const concurrencyKey = `${c.req.method} ${concurrencyRoute}`;
+    const concurrencyKey = `${c.req.method} ${matchedRoute}`;
     const routeConcurrencyState = routeConcurrencyStates.get(
       concurrencyKey
     ) ?? {
