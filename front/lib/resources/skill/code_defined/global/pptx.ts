@@ -158,7 +158,7 @@ A box you cannot read back is a real defect, not a render artifact. Fix, re-run 
 
 ## 5. Audit, then deliver
 
-\`pptx_inspect /tmp/deck.pptx --compare /files/conversation/template.pptx\`
+\`pptx_inspect /tmp/deck.pptx --compare /files/conversation/template.pptx\` (pass timeoutMs 120000: it renders the deck to run every per-slide check)
 
 Design fidelity, legibility and package integrity in one pass, baselined against the template so its own faults are not reported as yours. Copy the finished deck back to \`/files/conversation/\` once it passes. Clear every \`[!]\`: fonts dropped or imagery stripped (you rebuilt instead of editing: start again from the copy - a footer logo does not count as a slide's imagery), text that renders unreadable, \`filler:\` shapes you never rewrote, \`cloned:\` slides that are still the template's slide under a new title, \`repeats:\` one sentence used more than once, \`padding:\` one picture standing in as the imagery of many slides, \`canvas:\` slides you cloned and then emptied, shapes you pushed off the slide or stretched, layout collapse, density, and under \`Package:\` anything that stops PowerPoint opening the file. Package faults mean you edited the zip by hand: redo those edits through \`pptx_slides\` and python-pptx. \`leftover: [i]\` lists shapes still carrying the template's copy: replace or delete the ones you cloned. No template: \`--validate\` runs the package half alone. Deliver on \`[QA: PASS]\`, every slide read back clean.
 
