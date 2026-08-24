@@ -264,17 +264,7 @@ export async function publishPodApp(
 
       // No FileResource: the manifest declares a frame that exists only as a bare storage
       // object (e.g. copied into the pod, or written directly inside the sandbox, both of which
-      // lose the FileResource). Recreate it in place the same way `importPodApp` does, so the
-      // manifest-first flow self-heals. Works at any depth: the manifest's declared frame path is
-      // authoritative for entry points regardless of nesting.
-      //
-      // The manifest declaring the path as a frame is trusted over the listing's storage MIME
-      // type: files written inside the sandbox get their GCS Content-Type guessed from the
-      // extension by gcsfuse, and `.tsx` guesses to `application/x-tiled-tsx` (a Tiled tileset),
-      // not a Frame type — so that guess can never pass an interactive-content check. The
-      // manifest is the authoritative statement that the path is a frame; `publishFrame`'s
-      // bundler performs the real validation (TS/JSX parse etc.) and rejects non-frame sources
-      // with a meaningful error.
+      // lose the FileResource). Recreate it in place so the manifest-first flow self-heals.
       if (!file) {
         const sourceResult = await dustFs.readBuffer(frame.scopedPath);
         if (sourceResult.isErr() || sourceResult.value === null) {
