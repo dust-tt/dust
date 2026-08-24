@@ -15,6 +15,7 @@ import {
   isToolCostCategory,
   TOOL_COST_CATEGORY_AWU_WEIGHTS,
 } from "@app/lib/metronome/events";
+import type { MetronomeUsageWithGroupsResponse } from "@app/lib/metronome/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -84,6 +85,31 @@ export function buildUsageQuerySegments({
     });
   }
   return segments;
+}
+
+/**
+ * The whole `[cycleStart, requestEnd)` range as a single midnight-aligned
+ * HOUR-granularity segment. Coarser day segments hide when within a day usage
+ * stopped being reported, so exports that hunt for gaps query hours throughout
+ * — at the cost of ~24x more buckets than `buildUsageQuerySegments`.
+ */
+export function buildHourlyUsageQuerySegment({
+  cycleStart,
+  requestEnd,
+}: {
+  cycleStart: Date;
+  requestEnd: Date;
+}): UsageQuerySegment[] {
+  if (requestEnd.getTime() <= cycleStart.getTime()) {
+    return [];
+  }
+  return [
+    {
+      startingOn: floorToMidnightUTC(cycleStart).toISOString(),
+      endingBefore: ceilToMidnightUTC(requestEnd).toISOString(),
+      windowSize: "HOUR",
+    },
+  ];
 }
 
 function flattenUsageResults<T>(
@@ -173,8 +199,70 @@ export async function fetchPerUserAwuUsage({
   // an unfiltered query is capped and omits users. Empty → empty result.
   userIds: string[];
 }): Promise<Result<Map<string, number>, Error>> {
+  const rowsResult = await fetchPerUserAwuUsageRows({
+    workspaceId,
+    metronomeCustomerId,
+    userIds,
+  });
+  if (rowsResult.isErr()) {
+    return rowsResult;
+  }
+
+  const perUser = new Map<string, number>();
+  for (const row of rowsResult.value) {
+    perUser.set(row.userId, (perUser.get(row.userId) ?? 0) + row.awuCredits);
+  }
+  return new Ok(perUser);
+}
+
+// One Metronome usage bucket contributing to a user's AWU consumption: a
+// (metric, time window, usage type, tool category) group and the AWU credits it
+// accounts for. Buckets that don't count towards billed AWU (free usage, or
+// windows outside the billing cycle) are never emitted, so summing `awuCredits`
+// reproduces `fetchPerUserAwuUsage` exactly.
+export type PerUserAwuUsageRow = {
+  userId: string;
+  metric: "llm_provider_cost_awu" | "tool_invocations";
+  usageType: string;
+  toolCategory: string | null;
+  startingOn: string;
+  endingBefore: string;
+  // The raw metric value: AWU spend for the AI-usage metric, an invocation
+  // count for the tool metric.
+  value: number;
+  // Price applied to `value` to get `awuCredits` (1 for AI usage, the
+  // per-category weight for tools).
+  awuWeight: number;
+  awuCredits: number;
+};
+
+/**
+ * The individual Metronome usage buckets behind `fetchPerUserAwuUsage`, kept as
+ * rows instead of a per-user total. Same query, same filtering — see that
+ * function's doc for the query shape and why free/out-of-cycle buckets are
+ * dropped in code.
+ *
+ * `hourly` forces HOUR windows over the whole period instead of the cheaper
+ * day-granularity segmentation, so gaps can be located within a day. It is the
+ * finest breakdown available per user: `agent_id`, `model_id`, `origin` and
+ * `api_key_name` are only declared as standalone group keys on the billable
+ * metrics (see `setup_new_pricing.ts`), never compounded with `user_id`, and
+ * Metronome rejects partial compound keys — so they cannot be scoped to one
+ * user.
+ */
+export async function fetchPerUserAwuUsageRows({
+  workspaceId,
+  metronomeCustomerId,
+  userIds,
+  hourly = false,
+}: {
+  workspaceId: string;
+  metronomeCustomerId: string;
+  userIds: string[];
+  hourly?: boolean;
+}): Promise<Result<PerUserAwuUsageRow[], Error>> {
   if (userIds.length === 0) {
-    return new Ok(new Map());
+    return new Ok([]);
   }
   const periodResult =
     await getCachedMetronomeCurrentBillingPeriod(workspaceId);
@@ -182,7 +270,7 @@ export async function fetchPerUserAwuUsage({
     return new Err(periodResult.error);
   }
   if (!periodResult.value) {
-    return new Ok(new Map());
+    return new Ok([]);
   }
   const { cycleStart, cycleEnd } = periodResult.value;
   const cycleEndMs = cycleEnd.getTime();
@@ -191,9 +279,11 @@ export async function fetchPerUserAwuUsage({
   // The usage endpoint requires midnight-aligned bounds; buckets outside
   // [cycleStart, cycleEnd) are trimmed below regardless of segment.
   const requestEnd = new Date(Math.min(cycleEndMs, Date.now()));
-  const segments = buildUsageQuerySegments({ cycleStart, requestEnd });
+  const segments = hourly
+    ? buildHourlyUsageQuerySegment({ cycleStart, requestEnd })
+    : buildUsageQuerySegments({ cycleStart, requestEnd });
   if (segments.length === 0) {
-    return new Ok(new Map());
+    return new Ok([]);
   }
 
   const [aiResult, toolResult] = await Promise.all([
@@ -219,21 +309,34 @@ export async function fetchPerUserAwuUsage({
     return new Err(toolResult.error);
   }
 
-  const perUser = new Map<string, number>();
+  const isBilledBucket = (entry: MetronomeUsageWithGroupsResponse): boolean => {
+    const startMs = new Date(entry.startingOn).getTime();
+    return (
+      entry.group?.[USAGE_TYPE_GROUP_KEY] !== USAGE_TYPE_FREE &&
+      startMs >= cycleStartMs &&
+      startMs < cycleEndMs
+    );
+  };
+
+  const rows: PerUserAwuUsageRow[] = [];
 
   // AI usage: the value is already AWU spend (cost_awu, priced 1:1).
   for (const entry of aiResult.value) {
     const userId = entry.group?.["user_id"];
-    if (
-      !userId ||
-      entry.value === null ||
-      entry.group?.[USAGE_TYPE_GROUP_KEY] === USAGE_TYPE_FREE ||
-      new Date(entry.startingOn).getTime() < cycleStartMs ||
-      new Date(entry.startingOn).getTime() >= cycleEndMs
-    ) {
+    if (!userId || entry.value === null || !isBilledBucket(entry)) {
       continue;
     }
-    perUser.set(userId, (perUser.get(userId) ?? 0) + entry.value);
+    rows.push({
+      userId,
+      metric: "llm_provider_cost_awu",
+      usageType: entry.group?.[USAGE_TYPE_GROUP_KEY] ?? "",
+      toolCategory: null,
+      startingOn: entry.startingOn,
+      endingBefore: entry.endingBefore,
+      value: entry.value,
+      awuWeight: 1,
+      awuCredits: entry.value,
+    });
   }
 
   // Tool usage: the value is an invocation count — weight it by the
@@ -244,19 +347,27 @@ export async function fetchPerUserAwuUsage({
     if (
       !userId ||
       entry.value === null ||
-      entry.group?.[USAGE_TYPE_GROUP_KEY] === USAGE_TYPE_FREE ||
-      new Date(entry.startingOn).getTime() < cycleStartMs ||
-      new Date(entry.startingOn).getTime() >= cycleEndMs ||
+      !isBilledBucket(entry) ||
       !category ||
       !isToolCostCategory(category)
     ) {
       continue;
     }
-    const awuSpent = entry.value * TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
-    perUser.set(userId, (perUser.get(userId) ?? 0) + awuSpent);
+    const awuWeight = TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
+    rows.push({
+      userId,
+      metric: "tool_invocations",
+      usageType: entry.group?.[USAGE_TYPE_GROUP_KEY] ?? "",
+      toolCategory: category,
+      startingOn: entry.startingOn,
+      endingBefore: entry.endingBefore,
+      value: entry.value,
+      awuWeight,
+      awuCredits: entry.value * awuWeight,
+    });
   }
 
-  return new Ok(perUser);
+  return new Ok(rows);
 }
 
 const PER_USER_AWU_USAGE_CACHE_TTL_MS = 60 * 1000;
