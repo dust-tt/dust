@@ -278,11 +278,13 @@ export class LLMTraceBuffer {
     endTimestamp,
     startTimestamp,
     timeToFirstEventMs,
+    timeToFirstTokenMs,
   }: {
     durationMs: number;
     endTimestamp: string;
     startTimestamp: string;
     timeToFirstEventMs?: number;
+    timeToFirstTokenMs?: number;
   }): LLMTrace {
     const trace: LLMTrace = {
       context: this.context,
@@ -293,6 +295,7 @@ export class LLMTraceBuffer {
         modelId: this.input?.modelId ?? this.modelId,
         startTimestamp,
         timeToFirstEventMs,
+        timeToFirstTokenMs,
       },
       traceId: this.traceId,
       workspaceId: this.workspaceId,
@@ -360,10 +363,12 @@ export class LLMTraceBuffer {
     startTime,
     durationMs,
     timeToFirstEventMs,
+    timeToFirstTokenMs,
   }: {
     startTime: number;
     durationMs: number;
     timeToFirstEventMs?: number;
+    timeToFirstTokenMs?: number;
   }): Promise<void> {
     const startTimestamp = new Date(startTime).toISOString();
     const endTimestamp = new Date(startTime + durationMs).toISOString();
@@ -374,6 +379,7 @@ export class LLMTraceBuffer {
         endTimestamp,
         startTimestamp,
         timeToFirstEventMs,
+        timeToFirstTokenMs,
       });
       const bucket = getLLMTracesBucket();
 

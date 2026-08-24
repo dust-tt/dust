@@ -135,4 +135,45 @@ describe("withPeriodicHeartbeat", () => {
     await assertion;
     expect(returnFn).toHaveBeenCalled();
   });
+
+  it("times out while waiting for a subsequent event", async () => {
+    const returnFn = vi.fn().mockResolvedValue({ done: true });
+    let calls = 0;
+    const stream: AsyncIterator<string> = {
+      next: () => {
+        calls += 1;
+        if (calls === 1) {
+          return Promise.resolve({ value: "first", done: false });
+        }
+        return new Promise(() => {});
+      },
+      return: returnFn,
+    };
+
+    const generator = withPeriodicHeartbeat(stream, Date.now() + 600_000);
+    expect((await generator.next()).value).toBe("first");
+
+    const pending = generator.next();
+    const assertion = expect(pending).rejects.toThrow(
+      /timeout after \d+s waiting for event/
+    );
+
+    await vi.advanceTimersByTimeAsync(2 * 60 * 1000 + 1);
+
+    await assertion;
+    expect(returnFn).toHaveBeenCalled();
+  });
+
+  it("times out when the activity time budget is already exhausted", async () => {
+    const returnFn = vi.fn().mockResolvedValue({ done: true });
+    const stream: AsyncIterator<string> = {
+      next: () => new Promise(() => {}),
+      return: returnFn,
+    };
+
+    const generator = withPeriodicHeartbeat(stream, Date.now() - 1);
+
+    await expect(generator.next()).rejects.toThrow(/activity time budget/);
+    expect(returnFn).toHaveBeenCalled();
+  });
 });
