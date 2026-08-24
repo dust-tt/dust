@@ -11,7 +11,7 @@ export function SummaryCard({ label, value, hint }: SummaryCardProps) {
     <div
       className={cn(
         "flex flex-1 flex-col justify-center h-24 gap-1 rounded-xl",
-        "border border-border bg-panel-background p-4"
+        "bg-panel-background p-4 ring-1 ring-inset ring-border"
       )}
     >
       <span className="text-xs font-semibold text-muted-foreground">
