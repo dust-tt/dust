@@ -22,6 +22,7 @@ from statistics import median
 from typing import Dict, List, NamedTuple, Optional, Sequence, Tuple
 
 import pdf_text
+from pptx_render_boxes import _text_row_centers
 
 # WCAG contrast ratios. Measured across our template corpus: text rendering in
 # the same colour family as its background lands at 1.1-1.6, a brand colour used
@@ -84,6 +85,73 @@ def contrast_ratio(a: Sequence[int], b: Sequence[int]) -> float:
 
 def hex_colour(rgb: Sequence[int]) -> str:
     return "#%02X%02X%02X" % (rgb[0], rgb[1], rgb[2])
+
+
+# Rows of glyphs the background picture already carries under a text box, at or
+# above which the model has printed its copy on top of somebody else's. Measured
+# across the corpus: a caption over a photograph registers at most 1 row of false
+# edges (foliage, a horizon, a face), while a title dropped onto a template's
+# baked-in headline registers 2 or 3 real ones.
+ARTWORK_TEXT_ROWS = 2
+
+
+def text_over_artwork(slide, blob_reader):
+    """Text shapes printed over a picture that carries its own text: [(sid, rows)].
+
+    The template's title slide usually bakes its headline and logo into the
+    background raster. Text dropped on top of that overprints words no check can see:
+    they are pixels, not runs, so there is no collision to confirm, no contrast
+    to measure and no overlap worth reporting. Reading the picture's OWN pixels
+    under the text box is the only place the evidence exists.
+
+    `blob_reader(shape)` returns the shape's image bytes, or None.
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        return []
+    import io
+
+    pics, texts = [], []
+    for shape in slide.shapes:
+        if None in (shape.left, shape.top, shape.width, shape.height):
+            continue
+        if shape.width <= 0 or shape.height <= 0:
+            continue
+        blob = blob_reader(shape)
+        if blob is not None:
+            pics.append((shape, blob))
+        elif getattr(shape, "has_text_frame", False) and shape.text_frame.text.strip():
+            texts.append(shape)
+
+    out = []
+    for text in texts:
+        for pic, blob in pics:
+            inside = (
+                pic.left <= text.left
+                and pic.top <= text.top
+                and pic.left + pic.width >= text.left + text.width
+                and pic.top + pic.height >= text.top + text.height
+            )
+            if not inside:
+                continue
+            try:
+                with Image.open(io.BytesIO(blob)) as raw:
+                    image = raw.convert("RGB")
+            except (OSError, ValueError):
+                continue
+            width, height = image.size
+            box = (
+                (text.left - pic.left) / pic.width * width,
+                (text.top - pic.top) / pic.height * height,
+                (text.left + text.width - pic.left) / pic.width * width,
+                (text.top + text.height - pic.top) / pic.height * height,
+            )
+            rows = _text_row_centers(image, box)
+            if len(rows) >= ARTWORK_TEXT_ROWS:
+                out.append((text.shape_id, pic.shape_id, len(rows)))
+                break
+    return out
 
 
 def _word_contrast(
@@ -234,18 +302,18 @@ def contrast_lines(
             "the colour from a template placeholder on the same background."
         )
 
+    # Review, not a blocker: a caption over a photograph measures the same as a
+    # title dropped on a baked-in headline, and the first is a design the
+    # template itself ships. `text_over_artwork` is the blocking version - it
+    # reads the picture's own pixels and only fires when there are real glyphs
+    # under the copy.
     for c in busy:
-        severe.append(
-            f"  [!] {label(c.shape_id)} sits on a picture, not on a background "
+        review.append(
+            f"  [w] {label(c.shape_id)} sits on a picture, not on a background "
             f"- what renders behind its words ranges across {c.bg_spread:.0%} "
-            "of the luminance scale."
-        )
-    if busy:
-        severe.append(
-            "      Fix: text printed over a picture that carries its own "
-            "artwork or headline reads as a mess whatever colour it is. Delete "
-            "the picture, move the text clear of it, or clone an exemplar built "
-            "to hold text."
+            "of the luminance scale. Read it in the render: over a photograph "
+            "this wants a scrim or a clear area; over the template's own "
+            "artwork it has to move."
         )
 
     for c in contrasts:
@@ -258,5 +326,4 @@ def contrast_lines(
                 "heading, hard to read at body size."
             )
 
-    blocked = {c.shape_id for c in unreadable} | {c.shape_id for c in busy}
-    return severe, review, len(blocked)
+    return severe, review, len({c.shape_id for c in unreadable})

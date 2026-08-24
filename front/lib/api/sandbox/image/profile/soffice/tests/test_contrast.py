@@ -85,24 +85,27 @@ def test_contrast_lines_hint_once_per_group():
     assert sum(1 for line in severe if line.lstrip().startswith("Fix:")) == 1
 
 
-def test_busy_background_blocks_text_printed_over_a_picture():
-    """A shape whose words each sit on a different luminance is printed over
-    artwork, not over a background - Luna's title slide measured 0.92 while
-    every clean slide in the corpus measured 0.00."""
+def test_busy_background_reviews_but_does_not_block():
+    """A caption over a photograph measures the same spread as a title dropped
+    on a baked-in headline, and the first is a design templates ship - so this
+    one asks for a look instead of failing the deck. `text_over_artwork` is the
+    blocking version, and it reads the picture's own pixels."""
     on_artwork = [C.ShapeContrast(3, 8.0, WHITE, BLACK, 6, 0.92)]
     severe, review, blockers = C.contrast_lines(on_artwork, lambda sid: f"#{sid}")
-    assert blockers == 1
-    assert not review
-    assert any("sits on a picture" in line for line in severe)
-    # A legible shape on a flat background says nothing.
+    assert blockers == 0
+    assert not severe
+    assert any("sits on a picture" in line for line in review)
+    # A legible shape on a flat background says nothing at all.
     flat = [C.ShapeContrast(3, 8.0, WHITE, BLACK, 6, 0.0)]
     assert C.contrast_lines(flat, lambda sid: f"#{sid}") == ([], [], 0)
 
 
-def test_one_shape_counts_once_even_when_both_checks_fire():
+def test_unreadable_still_blocks_when_it_also_sits_on_a_picture():
     both = [C.ShapeContrast(3, 1.2, NAVY, BLACK, 6, 0.9)]
-    _severe, _review, blockers = C.contrast_lines(both, lambda sid: f"#{sid}")
+    severe, review, blockers = C.contrast_lines(both, lambda sid: f"#{sid}")
     assert blockers == 1
+    assert any("unreadable" in line for line in severe)
+    assert any("sits on a picture" in line for line in review)
 
 
 def run():

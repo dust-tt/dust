@@ -762,8 +762,16 @@ REPEATED_TEXT_SLIDES = 3
 # Short lines legitimately recur (a stage label, a column header); a sentence
 # this long appearing verbatim on three slides does not.
 REPEATED_TEXT_MIN_WORDS = 6
-# One picture carrying this many slides is padding, not imagery.
-REPEATED_IMAGE_SLIDES = 4
+# One picture carrying this many slides is padding, not imagery. Three, because
+# the shape this takes in practice is a case-study slide's logo and its chart
+# pasted onto the three slides that followed it - and both were used ONCE in the
+# template, so the baseline below still spares an icon set the template itself
+# repeats.
+REPEATED_IMAGE_SLIDES = 3
+# ...and only when the repeated picture is big enough to be carrying the slide.
+# A small accent icon reused across three slides is design (measured at 0.5% of
+# the slide); the padding move is a logo or a chart at 3-20%.
+PADDING_MIN_AREA = 0.02
 # How many leftover shapes to name before summarising the rest.
 LEFTOVER_LISTED = 8
 
@@ -828,16 +836,23 @@ def _is_furniture(shape: BaseShape, slide_w: int, slide_h: int) -> bool:
     return top + height <= band or top >= slide_h - band
 
 
-def _imagery_assets(prs: PresentationType) -> Dict[str, List[int]]:
+def _imagery_assets(
+    prs: PresentationType, min_area: float = 0.0
+) -> Dict[str, List[int]]:
     """Content-sized image identity -> the slides it appears on. Keyed by the
     image's own bytes, so the same picture reused under different part names
-    still counts once."""
+    still counts once. `min_area` additionally requires the picture to cover
+    that share of the slide."""
     slide_area = (prs.slide_width or 0) * (prs.slide_height or 0)
     where: Dict[str, List[int]] = {}
     for slide_no, slide in enumerate(prs.slides, start=1):
         for shape in slide.shapes:
             if not _imagery_in_shape(shape, slide_area):
                 continue
+            if min_area and slide_area:
+                width, height = shape.width, shape.height
+                if None in (width, height) or width * height < slide_area * min_area:
+                    continue
             image = embedded_image(shape)
             key = getattr(image, "sha1", None)
             if not key:
@@ -864,7 +879,7 @@ def _repeated_image_audit(
         return []
     src_usage = _imagery_assets(src_prs)
     findings: List[Tuple[str, List[int]]] = []
-    for key, slides in _imagery_assets(prs).items():
+    for key, slides in _imagery_assets(prs, PADDING_MIN_AREA).items():
         if len(slides) < REPEATED_IMAGE_SLIDES:
             continue
         if len(src_usage.get(key, ())) >= REPEATED_IMAGE_SLIDES:
