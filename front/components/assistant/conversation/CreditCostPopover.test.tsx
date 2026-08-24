@@ -110,10 +110,17 @@ describe("CreditCostPopover", () => {
     mockUseAgentMessageConsumption.mockReturnValue({
       consumption: {
         billedCredits: 12,
+        totalBilledCredits: 30,
         details: {
           attributionVersion: 2,
           agentWorkCredits: 4,
           tools: [
+            makeTool("run_research", "Run Research agent", 12, {
+              internalMCPServerName: "run_agent",
+            }),
+            makeTool("run_writer", "Run Writer agent", 8, {
+              internalMCPServerName: "agent_delegation",
+            }),
             makeTool("files", "File tool", 2),
             makeTool("calendar", "Calendar tool", 7.06, { callCount: 2 }),
             makeTool("title", "Title tool", 1),
@@ -130,17 +137,19 @@ describe("CreditCostPopover", () => {
 
     expect(screen.getByText("Calendar tool")).toBeInTheDocument();
     expect(screen.getByText("7.1 credits")).toBeInTheDocument();
-    expect(screen.getByText("Search tool")).toBeInTheDocument();
-    expect(screen.getByText("Web tool")).toBeInTheDocument();
+    expect(screen.getByText("Run Research agent")).toBeInTheDocument();
+    expect(screen.getByText("Run Writer agent")).toBeInTheDocument();
+    expect(screen.queryByText("Search tool")).not.toBeInTheDocument();
+    expect(screen.queryByText("Web tool")).not.toBeInTheDocument();
     expect(screen.queryByText("File tool")).not.toBeInTheDocument();
     expect(screen.queryByText("Title tool")).not.toBeInTheDocument();
-    expect(screen.getByText("2 other tools")).toBeInTheDocument();
-    expect(screen.getAllByText("2 uses")).toHaveLength(2);
+    expect(screen.getByText("4 other tools")).toBeInTheDocument();
+    expect(screen.getByText("4 uses")).toBeInTheDocument();
     expect(screen.getByText("Message consumption")).toBeInTheDocument();
     expect(screen.getByText("Charged")).toBeInTheDocument();
-    expect(screen.getByText("15 credits")).toBeInTheDocument();
+    expect(screen.getByText("30 credits")).toBeInTheDocument();
     expect(screen.getByText("Context and reasoning")).toBeInTheDocument();
-    expect(screen.getByText("Sub-agents")).toBeInTheDocument();
+    expect(screen.queryByText("Sub-agents")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Credit usage" }));
 
@@ -173,16 +182,21 @@ describe("CreditCostPopover", () => {
     expect(screen.getByText("7 credits")).toBeInTheDocument();
   });
 
-  it("uses the authoritative sub-agent total returned by the endpoint", () => {
+  it("shows a sub-agent bill in its run-agent tool row", () => {
     mockUseAgentMessageConsumption.mockReturnValue({
       consumption: {
         billedCredits: 20,
-        subAgentBilledCredits: 282,
         totalBilledCredits: 302,
         details: {
           attributionVersion: 3,
-          agentWorkCredits: 20,
-          tools: [],
+          agentWorkCredits: 5,
+          tools: [
+            makeTool("run_dust", "Run dust", 295, {
+              internalMCPServerName: "run_agent",
+              callCount: 4,
+            }),
+            makeTool("publish", "Publish Frame", 2),
+          ],
         },
       },
       isConsumptionLoading: false,
@@ -192,7 +206,10 @@ describe("CreditCostPopover", () => {
     render(<CreditCostPopover {...defaultProps} subAgentCredits={0} />);
 
     expect(screen.getByText("302 credits")).toBeInTheDocument();
-    expect(screen.getByText("282 credits")).toBeInTheDocument();
+    expect(screen.getByText("Run dust")).toBeInTheDocument();
+    expect(screen.getByText("295 credits")).toBeInTheDocument();
+    expect(screen.getByText("4 uses")).toBeInTheDocument();
+    expect(screen.queryByText("Sub-agents")).not.toBeInTheDocument();
   });
 
   it("hides the credit usage button when the credits panel is open", () => {
