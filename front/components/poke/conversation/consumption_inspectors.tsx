@@ -69,7 +69,7 @@ export function PokeMessageConsumptionInspector({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {isConsumptionLoading && <Spinner size="xs" />}
-          <span className="font-mono text-sm tabular-nums text-muted-foreground">
+          <span className="text-sm tabular-nums text-muted-foreground">
             {formatCreditValue(totalCredits)}
           </span>
         </div>
@@ -128,7 +128,6 @@ export function PokeConversationConsumptionInspector({
             <span className="text-sm font-semibold text-foreground">
               Conversation consumption
             </span>
-            <Chip label="customer calculation" size="mini" color="info" />
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Includes completed messages and recursively spawned sub-agents.
@@ -137,7 +136,7 @@ export function PokeConversationConsumptionInspector({
         <div className="flex shrink-0 items-center gap-2">
           {isConsumptionLoading && <Spinner size="xs" />}
           {consumption && (
-            <span className="font-mono text-sm tabular-nums text-muted-foreground">
+            <span className="text-sm tabular-nums text-muted-foreground">
               {formatCreditValue(consumption.billedCredits)}
             </span>
           )}
