@@ -220,8 +220,8 @@ export async function continueWorkflowAlertThresholdPause(
 /**
  * The user declined to continue past the workflow alert threshold. The paused workflow already
  * exited, so there is nothing left to signal — finalize directly with the same smooth-shutdown
- * logic (progress summary) the workflow itself would have run had it
- * been signaled while still active.
+ * logic (progress summary) the workflow itself would have run had it been signaled while still
+ * active.
  */
 export async function declineWorkflowAlertThresholdPause(
   auth: Authenticator,
