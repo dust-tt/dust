@@ -115,10 +115,7 @@ function APIKeysOverview({
   );
 }
 
-export function APIKeysPageContent({
-  owner,
-  period,
-}: APIKeysPageContentProps) {
+export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
   const { mutate } = useSWRConfig();
   const { subscription } = useAuth();
   const showLegacyUsdMonthlyCap = !isCreditPricedPlan(subscription.plan);
@@ -358,8 +355,8 @@ export function APIKeysPage() {
             <div className="flex max-w-2xl flex-col gap-1">
               <Page.H variant="h3">API Keys</Page.H>
               <Page.P variant="secondary">
-                Create and manage API keys, track what they consume, and
-                control their monthly spend.
+                Create and manage API keys, track what they consume, and control
+                their monthly spend.
               </Page.P>
             </div>
             <ConsumptionPeriodSelector
