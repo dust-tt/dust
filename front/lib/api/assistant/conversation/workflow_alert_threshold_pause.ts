@@ -78,9 +78,6 @@ async function findPausedAgentMessage(
     );
   }
 
-  // Like every other resume path, the step to relaunch from is derived from the message's own
-  // step content rather than stored on the message: the loop was fully stopped (not mid-tool), so
-  // no new step content can have been written since the pause.
   const lastStepContent = await AgentStepContentModel.findOne({
     where: {
       agentMessageId: message.agentMessage.id,
@@ -138,11 +135,6 @@ async function findPausedAgentMessage(
   });
 }
 
-// CAS-clear the pause flag: a double click, or a race between continuing and declining, is a
-// safe no-op for whichever call loses (mirrors `AgentMCPActionResource.updateStatusFromExpected`).
-// `acknowledge` permanently marks the message so the per-step gate never re-pauses it again —
-// only set on the continue path, since spend only grows and would otherwise cross the same fixed
-// threshold again on the very next step of the relaunched run.
 async function clearWorkflowAlertThresholdPause(
   auth: Authenticator,
   {
@@ -166,11 +158,6 @@ async function clearWorkflowAlertThresholdPause(
   return { applied: updatedCount > 0 };
 }
 
-/**
- * The user confirmed they want to keep going past the workflow alert threshold: relaunch the
- * agent loop from the step it paused at, exactly like `validateAction` relaunches after a tool
- * approval.
- */
 export async function continueWorkflowAlertThresholdPause(
   auth: Authenticator,
   conversation: ConversationResource,
@@ -225,14 +212,6 @@ export async function continueWorkflowAlertThresholdPause(
   });
 }
 
-/**
- * Persists a short summary of progress so far as one more text step on the message (a one-shot
- * LLM call, see `generateSmoothShutdownSummary`), so it reads as the agent's final reply once the
- * message is finalized. Written before finalizing, not after: the terminal event's content is
- * re-read from the DB at publish time, so this has to land first for the client to see it without
- * a reload. Best-effort — logs and returns on any failure so the caller still finalizes as a
- * plain graceful stop.
- */
 async function writeSmoothShutdownRecap(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
@@ -277,11 +256,6 @@ async function writeSmoothShutdownRecap(
   });
 }
 
-/**
- * The user declined to continue past the workflow alert threshold. The paused workflow already
- * exited, so there is nothing left to signal — write the smooth-shutdown recap directly, then
- * finalize with the same activity a plain graceful stop would use.
- */
 export async function declineWorkflowAlertThresholdPause(
   auth: Authenticator,
   conversation: ConversationResource,
