@@ -113,10 +113,12 @@ def test_repeated_text_needs_a_real_sentence():
     assert A.REPEATED_TEXT_SLIDES >= 3
 
 
-def test_padding_thresholds_leave_a_reused_accent_alone():
-    """Three slides sharing an accent is design; the padding move is one picture
-    carrying most of the deck."""
-    assert A.REPEATED_IMAGE_SLIDES >= 4
+def test_padding_is_baselined_against_the_template_not_a_bare_count():
+    """Three slides sharing one picture is the padding shape we actually see (a
+    case-study logo and its chart pasted onto the next three slides), so the
+    count alone cannot be the rule - the template's own usage has to excuse an
+    icon set it repeats itself."""
+    assert A.REPEATED_IMAGE_SLIDES == 3
 
 
 def test_imagery_min_area_excludes_a_footer_logo_and_keeps_an_icon():

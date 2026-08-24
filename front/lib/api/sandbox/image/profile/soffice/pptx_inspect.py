@@ -845,6 +845,17 @@ def _collect_text(shape: BaseShape, indent: str = "  ") -> List[str]:
     return lines
 
 
+# Findings the deck-level `shapes:` line already reports, baselined against the
+# template. Naming them here keeps the roll-up to the checks that have no
+# deck-level equivalent (legibility, artwork, clipping, collisions, overset).
+_BASELINED_PHRASES = (
+    "zero-size box",
+    "extends past slide edge",
+    "image distorted",
+    "stacked with shape",
+)
+
+
 def _deck_slide_defects(file_path: str) -> Optional[List[Tuple[int, str]]]:
     """Every `[!]` the per-slide QA gate would raise, across the deck, as
     (slide_no, line). None when the deck could not be rendered.
@@ -855,6 +866,11 @@ def _deck_slide_defects(file_path: str) -> Optional[List[Tuple[int, str]]]:
     so a deck whose title slide was three headlines printed on top of each other
     still ended in [QA: PASS] if nobody ran `--qa` on slide 1.
 
+    The four structural kinds are left out: `shapes:` above already reports them
+    against the template's own, and a deck that cloned an exemplar carrying five
+    zero-size boxes should not be billed for them twice - once baselined and
+    once not.
+
     Rendered a page at a time so the soffice PDF the QA pass already wrote is
     reused: after QA this costs a rasterization per slide, not a reconversion."""
     try:
@@ -862,11 +878,13 @@ def _deck_slide_defects(file_path: str) -> Optional[List[Tuple[int, str]]]:
         out: List[Tuple[int, str]] = []
         for slide_idx in range(1, len(prs.slides) + 1):
             _image, digest = _annotate_slide(file_path, prs, slide_idx)
-            out.extend(
-                (slide_idx, line.strip())
-                for line in digest
-                if line.strip().startswith("[!]") and not line.startswith("[!]")
-            )
+            for line in digest:
+                stripped = line.strip()
+                if not stripped.startswith("[!]") or line.startswith("[!]"):
+                    continue
+                if any(phrase in stripped for phrase in _BASELINED_PHRASES):
+                    continue
+                out.append((slide_idx, stripped))
         return out
     except (ValueError, OSError, IndexError):
         return None
@@ -1594,6 +1612,16 @@ def _annotate_slide(
         file_path, prs, slide, slide_idx, raw, words
     )
     shape_blockers = _slide_shape_blockers(file_path, prs, slide, slide_idx)
+    for sid, pic_id, rows in pptx_contrast.text_over_artwork(
+        slide, lambda shape: getattr(embedded_image(shape), "blob", None)
+    ):
+        shape_blockers.append((
+            sid,
+            f"printed over picture #{pic_id}, which carries {rows} rows of its "
+            "own text there. Delete the picture, move the text clear of it, or "
+            "clone an exemplar built to hold text - and do not solve it by "
+            "writing no title, which leaves the template's headline as yours",
+        ))
     res = _annotate_boxes(
         raw, slide,
         prs.slide_width or 0, prs.slide_height or 0,
