@@ -2,6 +2,7 @@ import { EgressDomainListEditor } from "@app/components/sandbox/EgressDomainList
 import {
   useDismissPodEgressRequest,
   usePodEgressPolicy,
+  useRequestPodEgressDomain,
   useUpdatePodEgressPolicy,
 } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -32,6 +33,8 @@ export function PodNetworkSection({
     useUpdatePodEgressPolicy({ owner, podId });
   const { dismissPodEgressRequest, isDismissingRequest } =
     useDismissPodEgressRequest({ owner, podId });
+  const { requestPodEgressDomain, isRequestingPodEgressDomain } =
+    useRequestPodEgressDomain({ owner, podId });
 
   if (isPodEgressPolicyLoading) {
     return <Spinner />;
@@ -57,6 +60,9 @@ export function PodNetworkSection({
       <p className="text-sm text-muted-foreground">
         This Pod's Computer can reach these domains on top of the workspace
         allowlist. Changes apply to running Computers within about a minute.
+        {!canEdit
+          ? " You can request additional domains; a workspace admin reviews each request."
+          : ""}
       </p>
 
       <EgressDomainListEditor
@@ -71,9 +77,16 @@ export function PodNetworkSection({
         }
         onRejectRequest={(domain) => dismissPodEgressRequest(domain)}
         onSave={(allowedDomains) => updatePodEgressPolicy({ allowedDomains })}
-        isUpdating={isUpdatingPodEgressPolicy || isDismissingRequest}
+        isUpdating={
+          isUpdatingPodEgressPolicy ||
+          isDismissingRequest ||
+          isRequestingPodEgressDomain
+        }
         emptyMessage="No Pod-specific domains are currently allowed."
         readOnly={!canEdit}
+        onRequestDomain={
+          canEdit ? undefined : (domain) => requestPodEgressDomain(domain)
+        }
       />
     </div>
   );

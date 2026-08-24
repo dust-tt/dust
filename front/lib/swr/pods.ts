@@ -51,6 +51,7 @@ import type {
 } from "@app/types/api/projects/tasks";
 import type {
   GetPodEgressPolicyResponseBody,
+  PostPodEgressPolicyRequestResponseBody,
   PutPodEgressPolicyResponseBody,
 } from "@app/types/api/sandbox/egress_policy";
 import type {
@@ -1746,4 +1747,87 @@ export function useDismissPodEgressRequest({
   };
 
   return { dismissPodEgressRequest, isDismissingRequest };
+}
+
+// Lets a Pod member request a domain (recorded for admin review, never
+// granted). Available regardless of the workspace agent-request toggle.
+export function useRequestPodEgressDomain({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const [isRequestingPodEgressDomain, setIsRequesting] = useState(false);
+  const { mutatePodEgressPolicy } = usePodEgressPolicy({
+    owner,
+    podId,
+    disabled: true,
+  });
+
+  const requestPodEgressDomain = async (domain: string): Promise<boolean> => {
+    setIsRequesting(true);
+    try {
+      const response = await clientFetch(
+        `${podEgressPolicyUrl(owner.sId, podId)}/requests`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ domain }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await getErrorFromResponse(response);
+        sendNotification({
+          type: "error",
+          title: "Failed to request domain",
+          description: error.message,
+        });
+        return false;
+      }
+
+      const data: PostPodEgressPolicyRequestResponseBody =
+        await response.json();
+      await mutatePodEgressPolicy(
+        {
+          policy: data.policy,
+          requestedDomains: (data.policy.requestedDomains ?? []).map(
+            ({ domain: d, requestedAtMs }) => ({ domain: d, requestedAtMs })
+          ),
+        },
+        false
+      );
+      sendNotification({
+        type: "success",
+        title:
+          data.outcome === "already_allowed"
+            ? "Domain already allowed"
+            : data.outcome === "already_requested"
+              ? "Domain already requested"
+              : "Domain requested",
+        description:
+          data.outcome === "requested"
+            ? "A workspace admin will review your request."
+            : `${domain} is already ${
+                data.outcome === "already_allowed"
+                  ? "allowed"
+                  : "pending review"
+              } for this Pod.`,
+      });
+      return true;
+    } catch {
+      sendNotification({
+        type: "error",
+        title: "Failed to request domain",
+        description: "An unexpected error occurred. Please try again.",
+      });
+      return false;
+    } finally {
+      setIsRequesting(false);
+    }
+  };
+
+  return { requestPodEgressDomain, isRequestingPodEgressDomain };
 }

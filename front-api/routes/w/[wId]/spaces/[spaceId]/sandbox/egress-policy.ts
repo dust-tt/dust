@@ -6,10 +6,12 @@ import {
 import {
   dismissRequestedOwnerPolicyDomain,
   readOwnerPolicy,
+  requestOwnerPolicyDomain,
   writeOwnerPolicy,
 } from "@app/lib/api/sandbox/egress_policy";
 import type {
   GetPodEgressPolicyResponseBody,
+  PostPodEgressPolicyRequestResponseBody,
   PutPodEgressPolicyResponseBody,
 } from "@app/types/api/sandbox/egress_policy";
 import { parseEgressPolicy } from "@app/types/sandbox/egress_policy";
@@ -33,7 +35,7 @@ import { fromError } from "zod-validation-error";
 // activation. Mirrors the workspace egress-policy route.
 const app = workspaceApp();
 
-const DismissRequestBodySchema = z.object({
+const EgressDomainBodySchema = z.object({
   domain: z.string().min(1),
 });
 
@@ -147,6 +149,62 @@ app.put(
   }
 );
 
+// Any Pod member may request a domain — it only records a pending request for
+// an admin to approve or reject, never grants access. Deliberately not gated on
+// the workspace agent-request toggle: that governs the agent's on-the-fly
+// requests during a conversation, not an explicit, admin-reviewed ask here.
+/** @ignoreswagger */
+app.post(
+  "/requests",
+  withSpace({ requireCanReadOrAdministrate: true }),
+  async (ctx): HandlerResult<PostPodEgressPolicyRequestResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+
+    if (!space.isProject()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Pod egress policy is only available for project spaces.",
+        },
+      });
+    }
+
+    const body = await ctx.req.json().catch(() => null);
+    const parsedBody = EgressDomainBodySchema.safeParse(body);
+    if (!parsedBody.success) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: fromError(parsedBody.error).toString(),
+        },
+      });
+    }
+
+    const result = await requestOwnerPolicyDomain(auth, {
+      ownerId: space.sId,
+      domain: parsedBody.data.domain,
+    });
+    if (result.isErr()) {
+      // Invalid domain or the pending-request cap — both are caller-actionable.
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: result.error.message,
+        },
+      });
+    }
+
+    return ctx.json({
+      policy: result.value.policy,
+      outcome: result.value.outcome,
+    });
+  }
+);
+
 /** @ignoreswagger */
 app.post(
   "/requests/dismiss",
@@ -167,7 +225,7 @@ app.post(
     }
 
     const body = await ctx.req.json().catch(() => null);
-    const parsedBody = DismissRequestBodySchema.safeParse(body);
+    const parsedBody = EgressDomainBodySchema.safeParse(body);
     if (!parsedBody.success) {
       return apiError(ctx, {
         status_code: 400,

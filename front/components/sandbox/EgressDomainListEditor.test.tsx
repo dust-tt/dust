@@ -36,4 +36,25 @@ describe("EgressDomainListEditor", () => {
     // visible label text instead.
     expect(screen.getByText("Approve")).toBeInTheDocument();
   });
+
+  it("shows a request form but no admin controls in request mode", () => {
+    render(
+      <EgressDomainListEditor
+        {...baseProps}
+        readOnly
+        onRequestDomain={vi.fn(async () => true)}
+      />
+    );
+
+    // The input stays, relabelled to request, and it is the only control.
+    expect(
+      screen.getByRole("button", { name: "Request domain" })
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+
+    // Domains and pending requests still render; no approve/remove controls.
+    expect(screen.getByText("api.github.com")).toBeInTheDocument();
+    expect(screen.getByText("Pending approval")).toBeInTheDocument();
+    expect(screen.queryByText("Approve")).not.toBeInTheDocument();
+  });
 });

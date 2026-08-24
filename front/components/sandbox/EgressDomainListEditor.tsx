@@ -21,8 +21,11 @@ interface EgressDomainListEditorProps {
   onApproveRequest?: (domain: string) => void;
   onRejectRequest?: (domain: string) => void;
   // Read-only viewers (non-admin pod members) see the domains and any pending
-  // requests, but no add input and no remove/approve/reject controls.
+  // requests, but no remove/approve/reject controls.
   readOnly?: boolean;
+  // When set (only meaningful with readOnly), the add input stays but submits a
+  // domain request for admin review instead of writing the allowlist.
+  onRequestDomain?: (domain: string) => Promise<boolean>;
 }
 
 // Add/remove editor for a sandbox egress allowlist, shared by the workspace
@@ -38,8 +41,14 @@ export function EgressDomainListEditor({
   onApproveRequest,
   onRejectRequest,
   readOnly = false,
+  onRequestDomain,
 }: EgressDomainListEditorProps) {
   const [domainInput, setDomainInput] = useState("");
+
+  // Members can't edit the allowlist, but may submit a domain request when the
+  // caller provides onRequestDomain — the input stays, everything else hides.
+  const isRequestMode = readOnly && onRequestDomain !== undefined;
+  const showDomainInput = !readOnly || isRequestMode;
 
   const hasDomainInput = domainInput.trim().length > 0;
   const domainInputResult = hasDomainInput
@@ -47,16 +56,26 @@ export function EgressDomainListEditor({
     : null;
   const normalizedDomain =
     domainInputResult?.isOk() === true ? domainInputResult.value : null;
-  const isDuplicate =
+  const isAlreadyAllowed =
     normalizedDomain !== null && allowedDomains.includes(normalizedDomain);
+  const isAlreadyPending =
+    isRequestMode &&
+    normalizedDomain !== null &&
+    (pendingRequests?.some((request) => request.domain === normalizedDomain) ??
+      false);
+  const isDuplicate = isAlreadyAllowed || isAlreadyPending;
   const domainInputMessage =
     domainInputResult?.isErr() === true
       ? domainInputResult.error.message
-      : isDuplicate
+      : isAlreadyAllowed
         ? "This domain is already allowed."
-        : normalizedDomain
-          ? `Will be saved as ${normalizedDomain}.`
-          : "Use an exact domain such as api.openai.com or a wildcard such as *.mistral.ai.";
+        : isAlreadyPending
+          ? "This domain has already been requested."
+          : normalizedDomain
+            ? isRequestMode
+              ? `Will be requested as ${normalizedDomain}.`
+              : `Will be saved as ${normalizedDomain}.`
+            : "Use an exact domain such as api.openai.com or a wildcard such as *.mistral.ai.";
   const isDomainInputInvalid =
     domainInputResult?.isErr() === true || isDuplicate;
   const canAddDomain = normalizedDomain !== null && !isDuplicate && !isUpdating;
@@ -66,7 +85,9 @@ export function EgressDomainListEditor({
       return;
     }
 
-    const success = await onSave([...allowedDomains, normalizedDomain]);
+    const success = isRequestMode
+      ? await onRequestDomain(normalizedDomain)
+      : await onSave([...allowedDomains, normalizedDomain]);
     if (success) {
       setDomainInput("");
     }
@@ -78,7 +99,7 @@ export function EgressDomainListEditor({
 
   return (
     <>
-      {!readOnly && (
+      {showDomainInput && (
         <form
           className="flex flex-col gap-3 sm:flex-row sm:items-start"
           onSubmit={(event) => {
@@ -100,7 +121,7 @@ export function EgressDomainListEditor({
           </div>
           <Button
             type="submit"
-            label="Add domain"
+            label={isRequestMode ? "Request domain" : "Add domain"}
             icon={Plus}
             disabled={!canAddDomain}
             isLoading={isUpdating}

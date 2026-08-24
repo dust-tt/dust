@@ -66,6 +66,17 @@ function dismissRequest(wId: string, spaceId: string, domain: string) {
   );
 }
 
+function requestDomain(wId: string, spaceId: string, domain: string) {
+  return honoApp.request(
+    `/api/w/${wId}/spaces/${spaceId}/sandbox/egress-policy/requests`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domain }),
+    }
+  );
+}
+
 function seedPolicyFile(
   wId: string,
   spaceId: string,
@@ -187,6 +198,71 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     });
 
     expect(response.status).toBe(403);
+    expect(
+      fileStorageMock.getObject(`w/${workspace.sId}/sandboxes/${pod.sId}.json`)
+    ).toBeUndefined();
+  });
+
+  it("lets a non-admin Pod member request a domain for review", async () => {
+    const { workspace, user } = await setupTest({ role: "user" });
+    const pod = await SpaceFactory.project(workspace, user.id);
+
+    const response = await requestDomain(
+      workspace.sId,
+      pod.sId,
+      "api.stripe.com"
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.outcome).toBe("requested");
+    // The request is recorded but never granted.
+    expect(body.policy.allowedDomains).toEqual([]);
+    expect(
+      body.policy.requestedDomains.map((r: { domain: string }) => r.domain)
+    ).toContain("api.stripe.com");
+  });
+
+  it("reports already_allowed without recording a request", async () => {
+    const { workspace, user } = await setupTest({ role: "user" });
+    const pod = await SpaceFactory.project(workspace, user.id);
+    seedPolicyFile(workspace.sId, pod.sId, {
+      allowedDomains: ["api.github.com"],
+    });
+
+    const response = await requestDomain(
+      workspace.sId,
+      pod.sId,
+      "api.github.com"
+    );
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).outcome).toBe("already_allowed");
+
+    const getResponse = await getPolicy(workspace.sId, pod.sId);
+    expect((await getResponse.json()).requestedDomains).toEqual([]);
+  });
+
+  it("hides the request route from a user who cannot access the Pod", async () => {
+    const { workspace } = await setupTest({ role: "user" });
+    const pod = await SpaceFactory.project(workspace);
+
+    const response = await requestDomain(
+      workspace.sId,
+      pod.sId,
+      "api.stripe.com"
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it("rejects an invalid requested domain with a 400", async () => {
+    const { workspace, user } = await setupTest({ role: "user" });
+    const pod = await SpaceFactory.project(workspace, user.id);
+
+    const response = await requestDomain(workspace.sId, pod.sId, "127.0.0.1");
+
+    expect(response.status).toBe(400);
     expect(
       fileStorageMock.getObject(`w/${workspace.sId}/sandboxes/${pod.sId}.json`)
     ).toBeUndefined();
