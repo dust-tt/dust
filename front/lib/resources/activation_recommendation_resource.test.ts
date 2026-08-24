@@ -98,6 +98,26 @@ describe("ActivationRecommendationResource", () => {
       expect(recs.length).toBeGreaterThanOrEqual(2);
     });
 
+    it("can isolate recommendations to one activation pod", async () => {
+      const { authenticator, globalSpace, systemSpace } =
+        await createResourceTest({ role: "admin" });
+      const activationPod = await makeActivationPod(authenticator, globalSpace);
+      const goalPod = await makeActivationPod(authenticator, systemSpace);
+      const activationRec = await makeRec(authenticator, {
+        activationPodId: activationPod.id,
+      });
+      await makeRec(authenticator, {
+        activationPodId: goalPod.id,
+      });
+
+      const recs = await ActivationRecommendationResource.fetchByUser(
+        authenticator,
+        { activationPodModelId: activationPod.id }
+      );
+
+      expect(recs.map((rec) => rec.sId)).toEqual([activationRec.sId]);
+    });
+
     it("does not return recommendations from another user in the same workspace", async () => {
       const { workspace, authenticator } = await createResourceTest({
         role: "user",

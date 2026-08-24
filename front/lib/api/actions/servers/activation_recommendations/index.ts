@@ -224,8 +224,20 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
       ]);
     },
 
-    list_recommendations: async (_params, { auth }) => {
-      const recs = await ActivationRecommendationResource.fetchByUser(auth);
+    list_recommendations: async (_params, { auth, runContext }) => {
+      const podSpaceId = isAgentLoopRunContext(runContext)
+        ? runContext.conversation.spaceId
+        : null;
+      const pod = podSpaceId
+        ? await SpaceResource.fetchById(auth, podSpaceId)
+        : null;
+      const activationPod = pod
+        ? await ActivationPodResource.fetchBySpace(auth, pod)
+        : null;
+
+      const recs = await ActivationRecommendationResource.fetchByUser(auth, {
+        activationPodModelId: activationPod?.id,
+      });
 
       if (recs.length === 0) {
         return new Ok([

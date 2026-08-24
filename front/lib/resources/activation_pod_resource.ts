@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import type { ActivationPodKind } from "@app/lib/models/activation/activation_pod";
 import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -52,15 +53,18 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     {
       pod,
       user,
+      kind = "learning",
     }: {
       pod: SpaceResource;
       user: UserResource;
+      kind?: ActivationPodKind;
     }
   ): Promise<ActivationPodResource> {
     const model = await this.model.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       spaceId: pod.id,
       userId: user.id,
+      kind,
     });
 
     return new this(this.model, model.get());
@@ -169,13 +173,16 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     return activationPods.map((pod) => new this(this.model, pod.get()));
   }
 
-  // Lists every live Activation Pod in the calling workspace.
+  // Lists live Activation Pods in the calling workspace. Pass `kind` to
+  // restrict to Learning Spaces or Goal Pods.
   static async listForWorkspace(
-    auth: Authenticator
+    auth: Authenticator,
+    { kind }: { kind?: ActivationPodKind } = {}
   ): Promise<ActivationPodResource[]> {
     const activationPods = await this.model.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
+        ...(kind ? { kind } : {}),
       },
       include: this.unarchivedQuery.include,
     });

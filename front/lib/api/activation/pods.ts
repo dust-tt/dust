@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import type { ActivationPodKind } from "@app/lib/models/activation/activation_pod";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -8,14 +9,17 @@ export type ActivationPodWithSpace = {
   activationPod: ActivationPodResource;
 };
 
-// Maps each user who owns an Activation Pod to that pod. Used to decide, per
-// target user, whether to provision a fresh pod or nudge an existing one.
+// Maps each user to one Activation Pod of the given kind. Defaults to the
+// Learning Space, matching GET /activation-pod with no podId.
 export async function listActivationPodsByUser(
-  auth: Authenticator
+  auth: Authenticator,
+  { kind = "learning" }: { kind?: ActivationPodKind } = {}
 ): Promise<Map<ModelId, ActivationPodWithSpace>> {
   const byUser = new Map<ModelId, ActivationPodWithSpace>();
 
-  const activationPods = await ActivationPodResource.listForWorkspace(auth);
+  const activationPods = await ActivationPodResource.listForWorkspace(auth, {
+    kind,
+  });
   if (activationPods.length === 0) {
     return byUser;
   }
