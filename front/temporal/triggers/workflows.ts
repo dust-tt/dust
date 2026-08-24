@@ -52,9 +52,8 @@ export async function agentTriggerWorkflow({
       webhookRequestId,
     });
   } catch (error) {
-    // TriggerNonRetryableError marks expected terminal states (trigger deleted
-    // before the run, user or agent gone): there is nothing left to run, so the
-    // workflow completes instead of failing.
+    // Older workers threw TriggerNonRetryableError for expected terminal states
+    // (trigger, user or agent gone before the run); newer ones log and return.
     if (
       isActivityFailureOf(error, "runTriggeredAgentsActivity") &&
       error.retryState === RetryState.NON_RETRYABLE_FAILURE

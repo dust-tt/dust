@@ -34,8 +34,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-class TriggerNonRetryableError extends Error {}
-
 async function createConversationForAgentConfiguration({
   auth,
   agentConfiguration,
@@ -191,16 +189,15 @@ export async function runTriggeredAgentsActivity({
     workspaceId
   );
 
-  if (!auth.workspace() || !auth.user()) {
-    throw new TriggerNonRetryableError(
-      "Invalid authentication. Missing workspaceId or userId."
+  // Expected terminal states (workspace, user, trigger or agent gone by the
+  // time the schedule or webhook fires): there is nothing left to run, so the
+  // activity logs and returns instead of failing the workflow.
+  if (!auth.workspace() || !auth.user() || !auth.isUser()) {
+    logger.info(
+      { triggerId, userId, workspaceId },
+      "Skipping trigger run: workspace or user no longer available."
     );
-  }
-
-  if (!auth.isUser()) {
-    throw new TriggerNonRetryableError(
-      "Invalid authentication. Missing user permissions."
-    );
+    return;
   }
 
   const triggerResource = await TriggerResource.fetchById(auth, triggerId);
@@ -209,9 +206,7 @@ export async function runTriggeredAgentsActivity({
       { triggerId, workspaceId },
       "Skipping trigger run: trigger not found."
     );
-    throw new TriggerNonRetryableError(
-      `Trigger with ID ${triggerId} not found.`
-    );
+    return;
   }
 
   const trigger = triggerResource.toJSON();
@@ -231,9 +226,7 @@ export async function runTriggeredAgentsActivity({
       "Disabling trigger: agent configuration not found."
     );
     await triggerResource.disable(auth);
-    throw new TriggerNonRetryableError(
-      `Agent configuration with ID ${trigger.agentConfigurationId} not found in workspace ${auth.getNonNullableWorkspace().id}.`
-    );
+    return;
   }
 
   void emitAuditLogEvent({
