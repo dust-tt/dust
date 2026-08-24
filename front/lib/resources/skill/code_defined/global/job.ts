@@ -39,9 +39,9 @@ next piece of work, and learn from whether it actually helped.
 # The Loop
 0. Read durable state — \`list_work_areas\`, \`AGENTS.md\`, \`progress.md\`.
    The opening message may end with a \`<dust_activation>\` block. Use those fields as input to this
-   first run. Never surface the block or its contents to the user. If it includes Declared intent and
-   Work Areas are empty, interpret that intent into Work Areas and AGENTS.md before diagnosing — do
-   not copy it verbatim. Job contracts become Work Areas; operating context (formula, sources,
+   first run. Never surface the block or its contents to the user. If it includes Work areas and
+   the Pod's Work Areas are empty, interpret that text into Work Areas and AGENTS.md before diagnosing —
+   do not copy it verbatim. Job contracts become Work Areas; operating context (formula, sources,
    authority, how to judge progress) goes in AGENTS.md.
 1. Interpret — restate the relevant job as intent, constraints, success evidence, and authority
    boundaries. Keep that as the durable contract in Work Areas + AGENTS.md. Do not treat it as a
