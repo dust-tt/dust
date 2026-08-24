@@ -500,9 +500,9 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare prunedContext: boolean | null;
   declare costCredits: number | null;
 
-  // Set only when a "gracefully_stopped" message was ended by the user confirming the
-  // smooth-shutdown workflow-alert-threshold popup
-  declare stoppedBySmoothShutdown: boolean | null;
+  // Set only for "gracefully_stopped" messages, to distinguish among the possible graceful-stop
+  // causes (e.g. the user declining the workflow-alert-threshold popup) from one another.
+  declare gracefullyStoppedReason: "smooth_shutdown" | null;
 
   // "paused": loop stopped after crossing the threshold, waiting on the user.
   // Declining sets the message status to "gracefully_stopped"
@@ -604,8 +604,8 @@ AgentMessageModel.init(
       allowNull: true,
       defaultValue: false,
     },
-    stoppedBySmoothShutdown: {
-      type: DataTypes.BOOLEAN,
+    gracefullyStoppedReason: {
+      type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
     },
