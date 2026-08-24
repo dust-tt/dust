@@ -11,14 +11,7 @@ import {
 import { isRunModelLLMUnresponsiveFailureType } from "./run_model_errors";
 
 export const RUN_MODEL_ACTIVITY_NAME = "runModelAndCreateActionsActivity";
-
-function isRunModelActivityFailure(error: unknown): error is ActivityFailure {
-  if (!(error instanceof ActivityFailure)) {
-    return false;
-  }
-
-  return error.activityType === RUN_MODEL_ACTIVITY_NAME;
-}
+export const RUN_TOOL_ACTIVITY_NAME = "runToolActivity";
 
 function isTerminalRetryState(retryState: RetryState): boolean {
   return (
@@ -27,10 +20,14 @@ function isTerminalRetryState(retryState: RetryState): boolean {
   );
 }
 
-export function isTerminalRunModelTimeout(
-  error: unknown
+function isTerminalActivityTimeout(
+  error: unknown,
+  activityName: string
 ): error is ActivityFailure {
-  if (!isRunModelActivityFailure(error)) {
+  if (
+    !(error instanceof ActivityFailure) ||
+    error.activityType !== activityName
+  ) {
     return false;
   }
 
@@ -46,6 +43,18 @@ export function isTerminalRunModelTimeout(
     error.cause.timeoutType === TimeoutType.START_TO_CLOSE ||
     error.cause.timeoutType === TimeoutType.HEARTBEAT
   );
+}
+
+export function isTerminalRunModelTimeout(
+  error: unknown
+): error is ActivityFailure {
+  return isTerminalActivityTimeout(error, RUN_MODEL_ACTIVITY_NAME);
+}
+
+export function isTerminalRunToolTimeout(
+  error: unknown
+): error is ActivityFailure {
+  return isTerminalActivityTimeout(error, RUN_TOOL_ACTIVITY_NAME);
 }
 
 export function isRunModelLLMUnresponsiveError(error: unknown): boolean {

@@ -104,6 +104,12 @@ export const MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
 // worker's maxHeartbeatThrottleInterval.
 export const MODEL_ACTIVITY_HEARTBEAT_INTERVAL_MS = 20 * 1000;
 
+// Heartbeat cadence for the whole tool activity. Phases outside the MCP call loop (action state
+// transitions, input handling, MCP server connection, event publication) are DB/network-bound and
+// can stall past the heartbeat timeout under contention. Aligned with the worker's
+// maxHeartbeatThrottleInterval.
+export const TOOL_ACTIVITY_HEARTBEAT_INTERVAL_MS = 20 * 1000;
+
 // Heartbeat cadence while tool result processing runs (file handling can take minutes): fire
 // comfortably within the heartbeat timeout.
 const TOOL_RESULT_PROCESSING_HEARTBEAT_TIMEOUT_MARGIN_MS = 5 * 1000;

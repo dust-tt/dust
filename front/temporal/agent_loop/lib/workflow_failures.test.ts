@@ -2,6 +2,7 @@ import type { LLMErrorType } from "@app/lib/api/llm/types/errors";
 import type { ProtoFailure } from "@temporalio/common";
 import {
   ActivityFailure,
+  ApplicationFailure,
   RetryState,
   TimeoutFailure,
   TimeoutType,
@@ -12,7 +13,9 @@ import { makeRunModelLLMError } from "./run_model_errors";
 import {
   isRunModelLLMUnresponsiveError,
   isTerminalRunModelTimeout,
+  isTerminalRunToolTimeout,
   RUN_MODEL_ACTIVITY_NAME,
+  RUN_TOOL_ACTIVITY_NAME,
 } from "./workflow_failures";
 
 const LLM_TIMEOUT_MESSAGE =
@@ -62,9 +65,12 @@ function makeActivityFailure({
   );
 }
 
+// Mirrors the expression in agentLoopWorkflow's catch block.
 function shouldSwallowWorkflowFailure(error: unknown): boolean {
   return (
-    isTerminalRunModelTimeout(error) && isRunModelLLMUnresponsiveError(error)
+    (isTerminalRunModelTimeout(error) &&
+      isRunModelLLMUnresponsiveError(error)) ||
+    isTerminalRunToolTimeout(error)
   );
 }
 
@@ -115,12 +121,61 @@ describe("workflow failure predicates", () => {
       retryState: RetryState.IN_PROGRESS,
     });
     const unrelatedActivityFailure = makeActivityFailure({
-      activityType: "runToolActivity",
+      activityType: "checkCreditsActivity",
     });
 
     expect(isTerminalRunModelTimeout(nonTerminalFailure)).toBe(false);
     expect(shouldSwallowWorkflowFailure(nonTerminalFailure)).toBe(false);
     expect(isTerminalRunModelTimeout(unrelatedActivityFailure)).toBe(false);
     expect(shouldSwallowWorkflowFailure(unrelatedActivityFailure)).toBe(false);
+  });
+
+  it("matches terminal tool heartbeat timeouts, the single-attempt no_retry case included", () => {
+    // A no_retry tool activity has maximumAttempts 1: its first heartbeat timeout is terminal
+    // with MAXIMUM_ATTEMPTS_REACHED.
+    const failure = makeActivityFailure({
+      activityType: RUN_TOOL_ACTIVITY_NAME,
+      llmErrorType: null,
+      llmErrorMessage: null,
+    });
+
+    expect(isTerminalRunToolTimeout(failure)).toBe(true);
+    expect(shouldSwallowWorkflowFailure(failure)).toBe(true);
+  });
+
+  it("matches terminal tool StartToClose timeouts", () => {
+    const failure = makeActivityFailure({
+      activityType: RUN_TOOL_ACTIVITY_NAME,
+      llmErrorType: null,
+      llmErrorMessage: null,
+      retryState: RetryState.TIMEOUT,
+      timeoutType: TimeoutType.START_TO_CLOSE,
+    });
+
+    expect(isTerminalRunToolTimeout(failure)).toBe(true);
+    expect(shouldSwallowWorkflowFailure(failure)).toBe(true);
+  });
+
+  it("ignores non-terminal tool timeouts and non-timeout tool failures", () => {
+    const nonTerminalFailure = makeActivityFailure({
+      activityType: RUN_TOOL_ACTIVITY_NAME,
+      llmErrorType: null,
+      llmErrorMessage: null,
+      retryState: RetryState.IN_PROGRESS,
+    });
+    // A tool throwing an application error (not a timeout) must still fail the workflow.
+    const applicationFailure = new ActivityFailure(
+      "Activity task failed",
+      RUN_TOOL_ACTIVITY_NAME,
+      "activity-id",
+      RetryState.MAXIMUM_ATTEMPTS_REACHED,
+      "worker-id",
+      ApplicationFailure.create({ message: "tool blew up" })
+    );
+
+    expect(isTerminalRunToolTimeout(nonTerminalFailure)).toBe(false);
+    expect(shouldSwallowWorkflowFailure(nonTerminalFailure)).toBe(false);
+    expect(isTerminalRunToolTimeout(applicationFailure)).toBe(false);
+    expect(shouldSwallowWorkflowFailure(applicationFailure)).toBe(false);
   });
 });
