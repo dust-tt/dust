@@ -297,7 +297,7 @@ function apiErrorToErrorEvent(
     case 400:
     case 422:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "invalid_request_error",
         message: `Invalid request to OpenAI: ${error.message}`,
@@ -305,7 +305,7 @@ function apiErrorToErrorEvent(
       });
     case 401:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "authentication_error",
         message: `Authentication failed for OpenAI: ${error.message}`,
@@ -313,7 +313,7 @@ function apiErrorToErrorEvent(
       });
     case 403:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "permission_error",
         message: `Permission denied for OpenAI: ${error.message}`,
@@ -321,7 +321,7 @@ function apiErrorToErrorEvent(
       });
     case 404:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "not_found_error",
         message: `Resource not found for OpenAI: ${error.message}`,
@@ -329,7 +329,7 @@ function apiErrorToErrorEvent(
       });
     case 429:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "rate_limit_error",
         message: `Rate limit exceeded for OpenAI/${metadata.model}: ${error.message}`,

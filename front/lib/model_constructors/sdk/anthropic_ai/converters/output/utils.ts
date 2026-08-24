@@ -25,6 +25,7 @@ import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoin
 import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
 import type {
   ErrorEvent,
+  ErrorSource,
   ErrorType,
   ModelResponseEvent,
   NonDeltaResponseEvent,
@@ -457,7 +458,7 @@ function apiErrorToErrorEvent(
     case 400:
     case 422:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "invalid_request_error",
         message: `Invalid request to Anthropic: ${error.message}`,
@@ -465,7 +466,7 @@ function apiErrorToErrorEvent(
       });
     case 401:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "authentication_error",
         message: `Authentication failed for Anthropic: ${error.message}`,
@@ -473,7 +474,7 @@ function apiErrorToErrorEvent(
       });
     case 403:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "permission_error",
         message: `Permission denied for Anthropic: ${error.message}`,
@@ -481,7 +482,7 @@ function apiErrorToErrorEvent(
       });
     case 404:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "not_found_error",
         message: `Resource not found for Anthropic: ${error.message}`,
@@ -489,7 +490,7 @@ function apiErrorToErrorEvent(
       });
     case 429:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "rate_limit_error",
         message: `Rate limit exceeded for Anthropic/${metadata.model}: ${error.message}`,
@@ -576,9 +577,13 @@ function bareStreamErrorToErrorEvent(
   const message = normalizeError(error).message;
   const lower = message.toLowerCase();
 
-  const build = (type: ErrorType, text: string): ErrorEvent =>
+  const build = (
+    type: ErrorType,
+    text: string,
+    errorSource: ErrorSource = "provider"
+  ): ErrorEvent =>
     buildErrorEvent({
-      errorSource: "provider",
+      errorSource,
       metadata,
       type,
       message: text,
@@ -598,7 +603,8 @@ function bareStreamErrorToErrorEvent(
   ) {
     return build(
       "rate_limit_error",
-      `Rate limit exceeded for Anthropic/${metadata.model}: ${message}`
+      `Rate limit exceeded for Anthropic/${metadata.model}: ${message}`,
+      "dust"
     );
   }
   if (
@@ -616,7 +622,8 @@ function bareStreamErrorToErrorEvent(
   ) {
     return build(
       "invalid_request_error",
-      `Context length exceeded for Anthropic/${metadata.model}: ${message}`
+      `Context length exceeded for Anthropic/${metadata.model}: ${message}`,
+      "dust"
     );
   }
   if (
@@ -626,19 +633,22 @@ function bareStreamErrorToErrorEvent(
   ) {
     return build(
       "authentication_error",
-      `Authentication failed for Anthropic: ${message}`
+      `Authentication failed for Anthropic: ${message}`,
+      "dust"
     );
   }
   if (lower.includes("forbidden") || lower.includes("permission")) {
     return build(
       "permission_error",
-      `Permission denied for Anthropic: ${message}`
+      `Permission denied for Anthropic: ${message}`,
+      "dust"
     );
   }
   if (lower.includes("not found")) {
     return build(
       "not_found_error",
-      `Resource not found for Anthropic: ${message}`
+      `Resource not found for Anthropic: ${message}`,
+      "dust"
     );
   }
   if (
@@ -648,7 +658,8 @@ function bareStreamErrorToErrorEvent(
   ) {
     return build(
       "invalid_request_error",
-      `Invalid request to Anthropic: ${message}`
+      `Invalid request to Anthropic: ${message}`,
+      "dust"
     );
   }
   if (
@@ -680,7 +691,11 @@ function bareStreamErrorToErrorEvent(
     return build("server_error", `Server error from Anthropic: ${message}`);
   }
 
-  return build("unknown_error", `Unknown error from Anthropic: ${message}`);
+  return build(
+    "unknown_error",
+    `Unknown error from Anthropic: ${message}`,
+    "unknown"
+  );
 }
 
 // -- Composite state machine: depends on the leaf converters --

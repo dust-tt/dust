@@ -48,6 +48,11 @@ function providerError(info: Omit<LLMErrorInfo, "errorSource">): LLMErrorInfo {
   return { ...info, errorSource: "provider" };
 }
 
+// Generally treating any 4xx-class errors as attributed to Dust as opposed to the model provider
+function dustError(info: Omit<LLMErrorInfo, "errorSource">): LLMErrorInfo {
+  return { ...info, errorSource: "dust" };
+}
+
 /**
  * Categorizes errors from http requests to LLM providers into specific types and determines if they are
  * retryable based on their characteristics.
@@ -89,7 +94,7 @@ export function categorizeLLMError(
     errorMessage.includes("quota exceeded") ||
     errorMessage.includes("too many requests")
   ) {
-    return providerError({
+    return dustError({
       type: "rate_limit_error",
       message: `Rate limit exceeded for ${metadata.clientId}/${metadata.modelId}. ${normalized.message}`,
       isRetryable: true,
@@ -120,7 +125,7 @@ export function categorizeLLMError(
     errorMessage.includes("context window") ||
     errorMessage.includes("too large")
   ) {
-    return providerError({
+    return dustError({
       type: "context_length_exceeded",
       message: `Context length exceeded for ${metadata.clientId}/${metadata.modelId}. ${normalized.message}`,
       isRetryable: false,
@@ -134,7 +139,7 @@ export function categorizeLLMError(
     errorMessage.includes("authentication") ||
     errorMessage.includes("api key")
   ) {
-    return providerError({
+    return dustError({
       type: "authentication_error",
       message: `Authentication failed for ${metadata.clientId}. ${normalized.message}`,
       isRetryable: false,
@@ -147,7 +152,7 @@ export function categorizeLLMError(
     errorMessage.includes("forbidden") ||
     errorMessage.includes("permission")
   ) {
-    return providerError({
+    return dustError({
       type: "permission_error",
       message: `Permission denied for ${metadata.clientId}. ${normalized.message}`,
       isRetryable: false,
@@ -156,7 +161,7 @@ export function categorizeLLMError(
   }
 
   if (statusCode === 404 || errorMessage.includes("not found")) {
-    return providerError({
+    return dustError({
       type: "not_found_error",
       message: `Resource not found for ${metadata.clientId}. ${normalized.message}`,
       isRetryable: false,
@@ -170,7 +175,7 @@ export function categorizeLLMError(
     errorMessage.includes("bad request") ||
     errorMessage.includes("validation error")
   ) {
-    return providerError({
+    return dustError({
       type: "invalid_request_error",
       message: `Invalid request to ${metadata.clientId}. ${normalized.message}`,
       isRetryable: false,

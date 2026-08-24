@@ -239,7 +239,7 @@ function apiErrorToErrorEvent(
 
   if (status === 401 || (status === 400 && isAuthMessage)) {
     return buildErrorEvent({
-      errorSource: "provider",
+      errorSource: "dust",
       metadata,
       type: "authentication_error",
       message: `Authentication failed for Google: ${error.message}`,
@@ -249,7 +249,7 @@ function apiErrorToErrorEvent(
   switch (status) {
     case 400:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "invalid_request_error",
         message: `Invalid request to Google: ${error.message}`,
@@ -257,7 +257,7 @@ function apiErrorToErrorEvent(
       });
     case 403:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "permission_error",
         message: `Permission denied for Google: ${error.message}`,
@@ -265,7 +265,7 @@ function apiErrorToErrorEvent(
       });
     case 404:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "not_found_error",
         message: `Resource not found for Google: ${error.message}`,
@@ -273,7 +273,7 @@ function apiErrorToErrorEvent(
       });
     case 429:
       return buildErrorEvent({
-        errorSource: "provider",
+        errorSource: "dust",
         metadata,
         type: "rate_limit_error",
         message: `Rate limit exceeded for Google/${metadata.model}: ${error.message}`,
