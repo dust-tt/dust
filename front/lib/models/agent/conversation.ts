@@ -501,22 +501,19 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare costCredits: number | null;
 
   // Set only when a "gracefully_stopped" message was ended by the user confirming the
-  // smooth-shutdown workflow-alert-threshold popup, as opposed to the other graceful-stop
-  // reasons (queued-message preemption, orphan cleanup, message deletion).
+  // smooth-shutdown workflow-alert-threshold popup
   declare stoppedBySmoothShutdown: boolean | null;
 
-  // Set while the agent loop is paused after crossing the workflow alert threshold, mirroring
-  // how a blocked tool action leaves the message in "created" status until resolved. Cleared
-  // once the user confirms continuing or declines (in which case the message becomes
-  // "gracefully_stopped" with stoppedBySmoothShutdown set, same as today's smooth shutdown).
-  declare pausedAtWorkflowAlertThreshold: boolean | null;
-  // The step the loop was about to run when it paused, so resuming can relaunch from there.
-  declare pausedAtWorkflowAlertThresholdStep: number | null;
-  // Set permanently once the user confirms continuing past the workflow alert threshold, so the
-  // per-step gate stops re-checking for the rest of this message's lifetime — spend only grows,
-  // so without this a relaunched run would immediately cross the threshold again on its very
-  // first step and pause right back.
-  declare workflowAlertThresholdAcknowledged: boolean | null;
+  // Workflow-alert-threshold pause state, mirroring how a blocked tool action leaves the message
+  // in "created" status until resolved (the resume step itself is derived from the message's
+  // existing agentStepContents, same as every other resume path — no step number is stored here).
+  // "paused": the loop stopped after crossing the threshold and is waiting on the user; cleared
+  // once the user confirms continuing (see below) or declines, in which case the message becomes
+  // "gracefully_stopped" with stoppedBySmoothShutdown set.
+  // "acknowledged": the user confirmed continuing past the threshold, permanently for the rest of
+  // this message's lifetime — spend only grows, so without this a relaunched run would
+  // immediately cross the threshold again on its very first step and pause right back.
+  declare workflowAlertThresholdStatus: "paused" | "acknowledged" | null;
 
   // The concrete provider/model/effort triplet used by the message when
   // running the agent. Legacy: null when the message runs the agent's configured model.
@@ -618,18 +615,8 @@ AgentMessageModel.init(
       allowNull: true,
       defaultValue: null,
     },
-    pausedAtWorkflowAlertThreshold: {
-      type: DataTypes.BOOLEAN,
-      allowNull: true,
-      defaultValue: null,
-    },
-    pausedAtWorkflowAlertThresholdStep: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      defaultValue: null,
-    },
-    workflowAlertThresholdAcknowledged: {
-      type: DataTypes.BOOLEAN,
+    workflowAlertThresholdStatus: {
+      type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
     },
