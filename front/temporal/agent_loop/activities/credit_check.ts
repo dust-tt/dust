@@ -63,11 +63,16 @@ async function hasAcknowledgedWorkflowAlertThreshold(
  * workflow alert threshold? Only on the step it first crosses does this load the conversation
  * and publish a notification event — the workflow guards against calling this again for the
  * same message once it returns `crossed: true`, so the heavier fetch happens at most once.
+ *
+ * Returns `acknowledged: true` once, the first time it observes the durable "acknowledged" flag,
+ * so the workflow can stop calling this activity (and reading that flag) for the rest of the
+ * execution: acknowledgment can't change mid-execution, since the only way to set it requires a
+ * pause, which requires this execution to have already exited.
  */
 export async function checkWorkflowAlertThresholdActivity(
   authType: AuthenticatorType,
   { agentLoopArgs }: { agentLoopArgs: AgentLoopArgsWithTiming }
-): Promise<{ crossed: boolean }> {
+): Promise<{ crossed: boolean; acknowledged: boolean }> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
   if (
@@ -75,18 +80,18 @@ export async function checkWorkflowAlertThresholdActivity(
       agentMessageId: agentLoopArgs.agentMessageId,
     })
   ) {
-    return { crossed: false };
+    return { crossed: false, acknowledged: true };
   }
 
   const result = await checkWorkflowAlertThresholdGate(auth);
   if (!result.crossed) {
-    return { crossed: false };
+    return { crossed: false, acknowledged: false };
   }
 
   const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
-      return { crossed: true };
+      return { crossed: true, acknowledged: false };
     }
     throw normalizeError(runAgentDataRes.error);
   }
@@ -138,5 +143,5 @@ export async function checkWorkflowAlertThresholdActivity(
     );
   }
 
-  return { crossed: true };
+  return { crossed: true, acknowledged: false };
 }

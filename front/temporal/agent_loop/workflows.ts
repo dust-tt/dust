@@ -284,6 +284,11 @@ export async function agentLoopWorkflow({
   // the user must confirm continuing (relaunching a fresh workflow from this step) or decline.
   let thresholdPauseRequested = false;
 
+  // Once the activity reports the durable "acknowledged" flag, it can't become false again for
+  // the rest of this execution (see checkWorkflowAlertThresholdActivity), so the check — and its
+  // DB read — is skipped entirely afterward instead of repeating every step.
+  let workflowAlertThresholdAcknowledged = false;
+
   const runIds: string[] = [];
 
   try {
@@ -377,21 +382,23 @@ export async function agentLoopWorkflow({
           break;
         }
 
-        try {
-          const workflowAlertResult = await checkWorkflowAlertThresholdActivity(
-            authType,
-            {
-              agentLoopArgs: {
-                ...agentLoopArgs,
-                initialStartTime,
-              },
+        if (!workflowAlertThresholdAcknowledged) {
+          try {
+            const workflowAlertResult =
+              await checkWorkflowAlertThresholdActivity(authType, {
+                agentLoopArgs: {
+                  ...agentLoopArgs,
+                  initialStartTime,
+                },
+              });
+            if (workflowAlertResult.acknowledged) {
+              workflowAlertThresholdAcknowledged = true;
+            } else if (workflowAlertResult.crossed) {
+              thresholdPauseRequested = true;
             }
-          );
-          if (workflowAlertResult.crossed) {
-            thresholdPauseRequested = true;
+          } catch {
+            // Non-critical: fails open, must never fail the agent loop.
           }
-        } catch {
-          // Non-critical: fails open, must never fail the agent loop.
         }
 
         if (thresholdPauseRequested) {

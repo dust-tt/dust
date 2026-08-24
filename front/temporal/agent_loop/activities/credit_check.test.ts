@@ -136,7 +136,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
       agentLoopArgs: { agentMessageId: "msg_id" } as never,
     });
 
-    expect(result).toEqual({ crossed: false });
+    expect(result).toEqual({ crossed: false, acknowledged: true });
     expect(mockCheckWorkflowAlertThresholdGate).not.toHaveBeenCalled();
   });
 
@@ -147,7 +147,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
       agentLoopArgs: {} as never,
     });
 
-    expect(result).toEqual({ crossed: false });
+    expect(result).toEqual({ crossed: false, acknowledged: false });
     expect(mockGetAgentLoopData).not.toHaveBeenCalled();
     expect(mockPublishConversationRelatedEvent).not.toHaveBeenCalled();
   });
@@ -173,7 +173,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
       } as never,
     });
 
-    expect(result).toEqual({ crossed: true });
+    expect(result).toEqual({ crossed: true, acknowledged: false });
     expect(mockPublishConversationRelatedEvent).toHaveBeenCalledWith({
       conversationId: "conv_id",
       step: 2,
@@ -202,7 +202,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
       agentLoopArgs: {} as never,
     });
 
-    expect(result).toEqual({ crossed: true });
+    expect(result).toEqual({ crossed: true, acknowledged: false });
     expect(mockPublishConversationRelatedEvent).not.toHaveBeenCalled();
   });
 
@@ -251,7 +251,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
       } as never,
     });
 
-    expect(result).toEqual({ crossed: true });
+    expect(result).toEqual({ crossed: true, acknowledged: false });
     expect(mockAgentMessageModelUpdate).toHaveBeenCalled();
   });
 });
