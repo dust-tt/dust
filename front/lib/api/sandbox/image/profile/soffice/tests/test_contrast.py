@@ -73,8 +73,8 @@ def test_tiny_box_is_skipped():
 
 def test_contrast_lines_hint_once_per_group():
     contrasts = [
-        C.ShapeContrast(7, 1.3, NAVY, BLACK, 4),
-        C.ShapeContrast(9, 1.4, NAVY, BLACK, 2),
+        C.ShapeContrast(7, 1.3, NAVY, BLACK, 4, 0.0),
+        C.ShapeContrast(9, 1.4, NAVY, BLACK, 2, 0.0),
     ]
     severe, review, blockers = C.contrast_lines(contrasts, lambda sid: f"#{sid}")
     assert blockers == 2
@@ -83,6 +83,26 @@ def test_contrast_lines_hint_once_per_group():
     # the findings under boilerplate.
     assert sum(1 for line in severe if line.lstrip().startswith("[!]")) == 2
     assert sum(1 for line in severe if line.lstrip().startswith("Fix:")) == 1
+
+
+def test_busy_background_blocks_text_printed_over_a_picture():
+    """A shape whose words each sit on a different luminance is printed over
+    artwork, not over a background - Luna's title slide measured 0.92 while
+    every clean slide in the corpus measured 0.00."""
+    on_artwork = [C.ShapeContrast(3, 8.0, WHITE, BLACK, 6, 0.92)]
+    severe, review, blockers = C.contrast_lines(on_artwork, lambda sid: f"#{sid}")
+    assert blockers == 1
+    assert not review
+    assert any("sits on a picture" in line for line in severe)
+    # A legible shape on a flat background says nothing.
+    flat = [C.ShapeContrast(3, 8.0, WHITE, BLACK, 6, 0.0)]
+    assert C.contrast_lines(flat, lambda sid: f"#{sid}") == ([], [], 0)
+
+
+def test_one_shape_counts_once_even_when_both_checks_fire():
+    both = [C.ShapeContrast(3, 1.2, NAVY, BLACK, 6, 0.9)]
+    _severe, _review, blockers = C.contrast_lines(both, lambda sid: f"#{sid}")
+    assert blockers == 1
 
 
 def run():

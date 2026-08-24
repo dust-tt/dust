@@ -845,40 +845,31 @@ def _collect_text(shape: BaseShape, indent: str = "  ") -> List[str]:
     return lines
 
 
-def _deck_contrast_findings(
-    file_path: str,
-) -> Optional[List[Tuple[int, int, pptx_contrast.ShapeContrast, str]]]:
-    """Every text shape in the deck whose rendered copy is below the readable
-    contrast threshold, as (slide_no, shape_id, measurement, label).
+def _deck_slide_defects(file_path: str) -> Optional[List[Tuple[int, str]]]:
+    """Every `[!]` the per-slide QA gate would raise, across the deck, as
+    (slide_no, line). None when the deck could not be rendered.
 
-    Rendered one page at a time so the soffice PDF written by the QA pass is
-    reused: after QA this costs a rasterization per slide, not a reconversion.
-    None when the deck could not be rendered at all."""
-    findings: List[Tuple[int, int, pptx_contrast.ShapeContrast, str]] = []
+    Runs the SAME code path as `--qa` rather than a deck-level approximation, so
+    the final audit can never pass a slide the per-slide gate would fail. It used
+    to: collisions, clipping and the shape markers were computed only in `--qa`,
+    so a deck whose title slide was three headlines printed on top of each other
+    still ended in [QA: PASS] if nobody ran `--qa` on slide 1.
+
+    Rendered a page at a time so the soffice PDF the QA pass already wrote is
+    reused: after QA this costs a rasterization per slide, not a reconversion."""
     try:
         prs = Presentation(file_path)
-        for slide_idx, slide in enumerate(prs.slides, start=1):
-            out_dir, rendered = render.render_via_soffice(
-                file_path,
-                out_root=Path("/tmp/pptx_render"),
-                item_name="slide",
-                item_idx=slide_idx,
+        out: List[Tuple[int, str]] = []
+        for slide_idx in range(1, len(prs.slides) + 1):
+            _image, digest = _annotate_slide(file_path, prs, slide_idx)
+            out.extend(
+                (slide_idx, line.strip())
+                for line in digest
+                if line.strip().startswith("[!]") and not line.startswith("[!]")
             )
-            words = pdf_text.page_word_boxes(
-                out_dir / f"{out_dir.name}.pdf", slide_idx
-            )
-            entries = _text_shape_entries(slide)
-            label = {e[0]: e[3] for e in entries}
-            for c in _slide_contrasts(
-                file_path, prs, slide, slide_idx, rendered[0], words
-            ):
-                if c.ratio < pptx_contrast.CONTRAST_BLOCK:
-                    findings.append(
-                        (slide_idx, c.shape_id, c, label.get(c.shape_id, ""))
-                    )
+        return out
     except (ValueError, OSError, IndexError):
         return None
-    return findings
 
 
 def print_compare(file_path: str, source_path: str) -> str:
@@ -1094,32 +1085,27 @@ def print_compare(file_path: str, source_path: str) -> str:
     # the slide looks like - and it is the most common way an edited deck ships
     # slides nobody can read.
     if out_fid is not None:
-        contrast_findings = _deck_contrast_findings(file_path)
-        if contrast_findings is None:
+        defects = _deck_slide_defects(file_path)
+        if defects is None:
             lines.append(
-                "  legible: [i] could not render the deck; text contrast not "
-                "checked"
+                "  defects: [i] could not render the deck; the per-slide checks "
+                "(legibility, collisions, clipping) did not run"
             )
-        elif contrast_findings:
+        elif defects:
             lines.append(
-                f"  legible: [!] {len(contrast_findings)} text shape(s) render "
-                "unreadable on their background"
+                f"  defects: [!] {len(defects)} per-slide defect(s) - the same "
+                "ones --qa raises"
             )
-            blockers += len(contrast_findings)
-            for slide_no, sid, c, label_text in contrast_findings[:LEFTOVER_LISTED]:
-                named = f'#{sid} "{ellipsize(label_text, 30)}"' if label_text else f"#{sid}"
+            blockers += len(defects)
+            for slide_no, line in defects[:LEFTOVER_LISTED]:
+                lines.append(f"    [!] slide {slide_no}: {line[len('[!] '):]}")
+            if len(defects) > LEFTOVER_LISTED:
                 lines.append(
-                    f"    [!] slide {slide_no} {named}: "
-                    f"{pptx_contrast.hex_colour(c.ink)} on {pptx_contrast.hex_colour(c.bg)}, "
-                    f"contrast {c.ratio:.1f}:1"
-                )
-            if len(contrast_findings) > LEFTOVER_LISTED:
-                lines.append(
-                    f"    [!] ... and {len(contrast_findings) - LEFTOVER_LISTED} "
-                    "more; --qa on each slide lists its own"
+                    f"    [!] ... and {len(defects) - LEFTOVER_LISTED} more; run "
+                    "--qa on each slide for its own list"
                 )
         else:
-            lines.append("  legible: every text shape reads on its background")
+            lines.append("  defects: every slide passes the per-slide checks")
 
     # Template filler still in the deck. No template needed and no judgment
     # call: lorem or a bracketed prompt in a delivered deck is always a defect.

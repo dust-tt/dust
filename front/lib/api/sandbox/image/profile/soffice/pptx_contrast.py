@@ -44,12 +44,23 @@ _QUANT = 3
 _INK_PERCENTILE = 0.03
 
 
+# How far a shape's per-word background luminance may range before the copy is
+# sitting on a picture rather than on a background. Measured across the corpus:
+# text on a flat fill or a brand gradient ranges 0.00-0.01, text printed over a
+# background image that carries its own headline ranges 0.5-0.9. Nothing lands
+# in between, on any deck we have.
+BUSY_BG_SPREAD = 0.25
+# Below this many rendered words the range is noise, not a background.
+BUSY_BG_MIN_WORDS = 3
+
+
 class ShapeContrast(NamedTuple):
     shape_id: int
     ratio: float
     bg: Tuple[int, int, int]
     ink: Tuple[int, int, int]
     words: int
+    bg_spread: float
 
 
 def _channel(value: int) -> float:
@@ -183,8 +194,17 @@ def shape_contrasts(
         # Report the colours of the sample closest to the median so the pair the
         # model is told to fix is one that actually rendered.
         representative = min(samples, key=lambda s: abs(s[0] - mid))
+        backgrounds = sorted(relative_luminance(s[1]) for s in samples)
+        spread = (
+            backgrounds[-1] - backgrounds[0]
+            if len(backgrounds) >= BUSY_BG_MIN_WORDS
+            else 0.0
+        )
         out.append(
-            ShapeContrast(sid, mid, representative[1], representative[2], len(samples))
+            ShapeContrast(
+                sid, mid, representative[1], representative[2], len(samples),
+                spread,
+            )
         )
     return sorted(out, key=lambda c: c.ratio)
 
@@ -196,19 +216,15 @@ def contrast_lines(
     `label` renders a shape id as `#id "text"` for the message."""
     severe: List[str] = []
     review: List[str] = []
-    for c in contrasts:
-        if c.ratio < CONTRAST_BLOCK:
-            severe.append(
-                f"  [!] {label(c.shape_id)} unreadable - {hex_colour(c.ink)} on "
-                f"{hex_colour(c.bg)} ({c.ratio:.1f}:1, needs {CONTRAST_WARN:.0f}:1)."
-            )
-        elif c.ratio < CONTRAST_WARN:
-            review.append(
-                f"  [w] {label(c.shape_id)} thin - {hex_colour(c.ink)} on "
-                f"{hex_colour(c.bg)} ({c.ratio:.1f}:1). Fine for a large "
-                "heading, hard to read at body size."
-            )
-    if severe:
+    unreadable = [c for c in contrasts if c.ratio < CONTRAST_BLOCK]
+    busy = [c for c in contrasts if c.bg_spread >= BUSY_BG_SPREAD]
+
+    for c in unreadable:
+        severe.append(
+            f"  [!] {label(c.shape_id)} unreadable - {hex_colour(c.ink)} on "
+            f"{hex_colour(c.bg)} ({c.ratio:.1f}:1, needs {CONTRAST_WARN:.0f}:1)."
+        )
+    if unreadable:
         # One hint for the group: the cause is always the same and repeating it
         # per finding buries the findings.
         severe.append(
@@ -217,6 +233,30 @@ def contrast_lines(
             "default (near-black), whatever the slide's background is - copy "
             "the colour from a template placeholder on the same background."
         )
-    return severe, review, sum(
-        1 for c in contrasts if c.ratio < CONTRAST_BLOCK
-    )
+
+    for c in busy:
+        severe.append(
+            f"  [!] {label(c.shape_id)} sits on a picture, not on a background "
+            f"- what renders behind its words ranges across {c.bg_spread:.0%} "
+            "of the luminance scale."
+        )
+    if busy:
+        severe.append(
+            "      Fix: text printed over a picture that carries its own "
+            "artwork or headline reads as a mess whatever colour it is. Delete "
+            "the picture, move the text clear of it, or clone an exemplar built "
+            "to hold text."
+        )
+
+    for c in contrasts:
+        if c.ratio < CONTRAST_BLOCK or c.bg_spread >= BUSY_BG_SPREAD:
+            continue
+        if c.ratio < CONTRAST_WARN:
+            review.append(
+                f"  [w] {label(c.shape_id)} thin - {hex_colour(c.ink)} on "
+                f"{hex_colour(c.bg)} ({c.ratio:.1f}:1). Fine for a large "
+                "heading, hard to read at body size."
+            )
+
+    blocked = {c.shape_id for c in unreadable} | {c.shape_id for c in busy}
+    return severe, review, len(blocked)
