@@ -77,8 +77,6 @@ function APIKeysOverview({
     filter: consumptionFilter,
     disabled: apiKeyNames.length === 0,
   });
-  const isConsumptionError = Boolean(consumptionError);
-
   if (isKeysLoading || isConsumptionLoading) {
     return (
       <div className="grid gap-4 sm:grid-cols-2">
@@ -98,9 +96,9 @@ function APIKeysOverview({
     <div className="grid gap-4 sm:grid-cols-2">
       <SummaryCard
         label="Credits"
-        value={isConsumptionError ? "—" : formatCredits(totalCredits)}
+        value={consumptionError ? "—" : formatCredits(totalCredits)}
         hint={
-          isConsumptionError
+          consumptionError
             ? "Credit consumption is temporarily unavailable"
             : consumingKeyCount > 0
               ? `${consumingKeyCount.toLocaleString()} API key${pluralize(consumingKeyCount)} used this period`
@@ -137,7 +135,7 @@ export function APIKeysPageContent({
   const { isKeysError, isKeysLoading, keys } = useKeys(owner);
   const { groups, isGroupsError, isGroupsLoading } = useGroups({ owner });
   const isDataLoading = isKeysLoading || isGroupsLoading;
-  const isDataError = Boolean(isKeysError || isGroupsError);
+  const isDataError = !!isKeysError || isGroupsError;
 
   const groupsById = useMemo(() => {
     return groups.reduce<Record<ModelId, GroupType>>((acc, group) => {
@@ -299,7 +297,7 @@ export function APIKeysPageContent({
           />
           <NewAPIKeyDialog
             groups={groups}
-            disabled={isGroupsLoading || Boolean(isGroupsError)}
+            disabled={isGroupsLoading || isGroupsError}
             isGenerating={isGenerating}
             isRevoking={isRevoking}
             onCreate={handleGenerate}

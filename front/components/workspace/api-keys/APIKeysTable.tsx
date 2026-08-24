@@ -503,8 +503,6 @@ export function APIKeysTable({
     filter: consumptionFilter,
     disabled: !showAnalyticsConsumption || apiKeyNames.length === 0,
   });
-  const isConsumptionError = Boolean(consumptionError);
-
   const consumptionByName = useMemo(
     () => new Map(consumptionRows.map((row) => [row.name, row])),
     [consumptionRows]
@@ -520,8 +518,8 @@ export function APIKeysTable({
         const consumption = consumptionByName.get(key.name);
         const isConsumptionKnown =
           showAnalyticsConsumption &&
-          (Boolean(consumption) ||
-            (!hasMoreConsumptionRows && !isConsumptionError));
+          (consumption !== undefined ||
+            (!hasMoreConsumptionRows && !consumptionError));
         const credits = consumption?.credits ?? (isConsumptionKnown ? 0 : null);
         const menuItems: MenuItem[] =
           key.status === "active"
@@ -555,9 +553,9 @@ export function APIKeysTable({
       }),
     [
       consumptionByName,
+      consumptionError,
       groupsById,
       hasMoreConsumptionRows,
-      isConsumptionError,
       keys,
       onEditCap,
       showAnalyticsConsumption,
