@@ -178,6 +178,8 @@ export const AUDIT_ACTIONS = [
   // Audit Logs.
   "audit_log.viewed",
   "audit_log.export_configured",
+  // Analytics.
+  "analytics.export_downloaded",
   // Billing & Subscriptions.
   "subscription.changed",
   // Coupons.

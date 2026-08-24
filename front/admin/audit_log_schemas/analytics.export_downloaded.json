@@ -1,0 +1,12 @@
+{
+  "action": "analytics.export_downloaded",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {
+    "table": "string",
+    "period": "string"
+  }
+}

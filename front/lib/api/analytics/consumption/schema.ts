@@ -96,6 +96,16 @@ export const ConsumptionExportBodySchema = ConsumptionBodySchema;
 
 export type ConsumptionExportBody = z.infer<typeof ConsumptionExportBodySchema>;
 
+// The "Export data" panel's per-table CSV export: same period/filter as the
+// `top-*` endpoints, scoped to a single dimension the user picked.
+export const ConsumptionTableExportBodySchema = ConsumptionBodySchema.extend({
+  dimension: z.enum(CONSUMPTION_SCOPE_DIMENSIONS),
+});
+
+export type ConsumptionTableExportBody = z.infer<
+  typeof ConsumptionTableExportBodySchema
+>;
+
 export function toConsumptionPeriodInput({
   period,
   days,

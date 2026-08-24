@@ -2,6 +2,7 @@ import { CHART_HEIGHT } from "@app/components/charts/constants";
 import type { ConsumptionAttributionTableProps } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import type { ConsumptionChartProps } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
+import { ConsumptionExportDataPanel } from "@app/components/workspace/analytics/consumption/ConsumptionExportDataPanel";
 import type { ConsumptionOverviewProps } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
@@ -251,6 +252,14 @@ export function AnalyticsConsumptionContent({
         }}
         showExport={showExport}
       />
+
+      {showExport && (
+        <ConsumptionExportDataPanel
+          workspaceId={owner.sId}
+          period={period}
+          filter={scopeFilter}
+        />
+      )}
     </Page.Vertical>
   );
 }
