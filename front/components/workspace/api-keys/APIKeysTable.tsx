@@ -408,7 +408,7 @@ function buildColumns({
       cell: (info) =>
         info.row.original.key.status === "active" ? (
           <DataTable.CellContent className="w-full justify-end">
-            <div className="pointer-fine:opacity-0 pointer-fine:group-hover/dt-row:opacity-100 pointer-fine:focus-within:opacity-100">
+            <div className="transition-opacity duration-150 ease-out motion-reduce:transition-none pointer-fine:opacity-0 pointer-fine:group-hover/dt-row:opacity-100 pointer-fine:focus-within:opacity-100">
               <Button
                 icon={Trash01}
                 tooltip="Revoke API key"
