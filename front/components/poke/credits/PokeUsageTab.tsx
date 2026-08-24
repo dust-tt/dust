@@ -10,7 +10,7 @@ import type {
   PokeProgrammaticAlerts,
   PokeStripeSubscriptionWire,
 } from "@app/lib/api/poke/workspace_info";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCredits, formatCreditsPrecise } from "@app/lib/client/credits";
 import type { DefaultMetronomeAlerts } from "@app/lib/metronome/alerts/default_alerts";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { usePokeAwuPoolSummary } from "@app/poke/swr/credits";
@@ -54,7 +54,7 @@ interface SpendCountersInlineProps {
 }
 
 const formatCreditsOrDash = (value: number | null): string =>
-  value !== null ? formatCredits(value) : "—";
+  value !== null ? formatCreditsPrecise(value) : "—";
 
 // The three spend figures for a cap dimension shown together to spot
 // divergence: ES = Elasticsearch-derived, RL = Redis rate-limiter counter (the
