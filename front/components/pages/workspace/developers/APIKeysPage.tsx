@@ -25,6 +25,7 @@ import type { GroupType } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { BookOpen01, Button, LoadingBlock, Page } from "@dust-tt/sparkle";
 import get from "lodash/get";
@@ -102,9 +103,7 @@ function APIKeysOverview({
           isConsumptionError
             ? "Credit consumption is temporarily unavailable"
             : consumingKeyCount > 0
-              ? `${consumingKeyCount.toLocaleString()} API ${
-                  consumingKeyCount === 1 ? "key" : "keys"
-                } used this period`
+              ? `${consumingKeyCount.toLocaleString()} API key${pluralize(consumingKeyCount)} used this period`
               : "No API key consumption this period"
         }
       />
