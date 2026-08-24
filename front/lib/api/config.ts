@@ -4,6 +4,10 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 const PRODUCTION_DUST_API = "https://dust.tt";
 
+// Same for every user/workspace: how much a user can spend in a billing cycle before the agent
+// loop pauses and asks them to confirm they want to keep going.
+const DEFAULT_WORKFLOW_ALERT_THRESHOLD_AWU_CREDITS = 1;
+
 // Pluggable base URL resolver (e.g. RegionContext in the SPA).
 let baseUrlResolver: (() => string) | null = null;
 
@@ -56,6 +60,27 @@ const config = {
     }
 
     return durationSeconds * 1_000;
+  },
+
+  getWorkflowAlertThresholdAwuCredits: (): number => {
+    const value = EnvironmentConfig.getOptionalEnvVariable(
+      "WORKFLOW_ALERT_THRESHOLD_AWU_CREDITS"
+    );
+    if (!value) {
+      return DEFAULT_WORKFLOW_ALERT_THRESHOLD_AWU_CREDITS;
+    }
+
+    const thresholdAwuCredits = Number(value);
+    if (
+      !Number.isSafeInteger(thresholdAwuCredits) ||
+      thresholdAwuCredits <= 0
+    ) {
+      throw new Error(
+        "WORKFLOW_ALERT_THRESHOLD_AWU_CREDITS must be a positive integer"
+      );
+    }
+
+    return thresholdAwuCredits;
   },
 
   // Dynamic API base URL: uses a custom resolver when set (SPA region switching),
