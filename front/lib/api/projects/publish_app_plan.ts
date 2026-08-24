@@ -7,6 +7,7 @@ import {
   sandboxFunctionNameFromSlug,
 } from "@app/lib/api/sandbox_functions/slug";
 import type { PodAppPublishManifest } from "@app/types/api/pod_app_manifest";
+import { POD_APP_DEFAULT_UI_ENTRY_POINT } from "@app/types/api/pod_app_manifest";
 import type {
   SandboxFunctionExecutionMode,
   SandboxFunctionStake,
@@ -23,7 +24,7 @@ export type PodAppPublishPlan = {
     executionMode: SandboxFunctionExecutionMode;
     defaultStake?: SandboxFunctionStake;
   }[];
-  framesToPublish: { relPath: string; scopedPath: string }[];
+  frameToPublish: { relPath: string; scopedPath: string };
   functionSlugsToUnpublish: string[];
   warnings: string[];
 };
@@ -35,8 +36,14 @@ export type PodAppPublishPlan = {
  * without a sandbox. The manifest is the source of truth for FUNCTIONS — a published function
  * carrying this app's prefix that the manifest no longer declares is planned for unpublish.
  * Databases are conservative: an on-disk database with this app's prefix that the manifest does not
- * declare only produces a warning, never a deletion. Frames are publish-only (there is no
- * unpublish-frame operation), so nothing is planned for a frame the manifest dropped.
+ * declare only produces a warning, never a deletion. The frame is publish-only (there is no
+ * unpublish-frame operation).
+ *
+ * Every app has exactly one UI entry point, so `frameToPublish` is always populated: an explicit
+ * `uiEntryPoint` must exist in the folder (else it's added to the missing-files error below); an
+ * omitted one defaults to `POD_APP_DEFAULT_UI_ENTRY_POINT`, and if that default file is absent too
+ * this returns a dedicated, more helpful error rather than the generic missing-files one — there is
+ * no such thing as a UI-less app.
  */
 export function buildPodAppPublishPlan({
   manifest,
@@ -53,8 +60,23 @@ export function buildPodAppPublishPlan({
   publishedFunctionSlugs: string[];
   databaseOnDiskNames: string[];
 }): Result<PodAppPublishPlan, Error> {
+  // Every app needs a frame. An omitted `uiEntryPoint` defaults to
+  // `POD_APP_DEFAULT_UI_ENTRY_POINT`; if that default file is also absent, there is no declared
+  // path to name, so this gets its own message rather than folding into the missing-files list
+  // below.
+  const uiEntryPoint = manifest.uiEntryPoint ?? POD_APP_DEFAULT_UI_ENTRY_POINT;
+  if (!manifest.uiEntryPoint && !folderRelPaths.has(uiEntryPoint)) {
+    return new Err(
+      new Error(
+        `No uiEntryPoint declared and no ${POD_APP_DEFAULT_UI_ENTRY_POINT} in the folder — ` +
+          "every app needs a UI entry point."
+      )
+    );
+  }
+
+  // An explicit `uiEntryPoint` must exist in the folder, like any other declared path.
   const missing = [
-    ...manifest.frames.map((frame) => frame.path),
+    ...(manifest.uiEntryPoint ? [manifest.uiEntryPoint] : []),
     ...manifest.functions.map((fn) => fn.path),
     ...manifest.databases.map((db) => db.path),
   ].filter((path) => !folderRelPaths.has(path));
@@ -101,10 +123,13 @@ export function buildPodAppPublishPlan({
       executionMode: fn.executionMode,
       ...(fn.defaultStake ? { defaultStake: fn.defaultStake } : {}),
     })),
-    framesToPublish: manifest.frames.map((frame) => ({
-      relPath: frame.path,
-      scopedPath: `${folderPath}/${frame.path}`,
-    })),
+    // Guaranteed to exist in the folder at this point: the checks above returned early otherwise,
+    // whether `uiEntryPoint` was explicit (covered by the missing-files check) or defaulted
+    // (covered by the dedicated check above it).
+    frameToPublish: {
+      relPath: uiEntryPoint,
+      scopedPath: `${folderPath}/${uiEntryPoint}`,
+    },
     functionSlugsToUnpublish,
     warnings,
   });

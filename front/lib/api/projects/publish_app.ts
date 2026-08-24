@@ -47,17 +47,19 @@ export class PodAppPublishError extends Error {
 
 /**
  * Publish a Pod app from the `manifest.json` at the root of its folder: reconcile its databases,
- * publish its functions, publish its frames, then unpublish the functions the manifest no longer
- * declares.
+ * publish its functions, publish its UI entry point as a frame, then unpublish the functions the
+ * manifest no longer declares. Every app has exactly one frame to publish (an explicit
+ * `uiEntryPoint` or the defaulted `index.tsx`) — an app with no UI entry point at all fails
+ * upstream in `buildPodAppPublishPlan` with `invalid_manifest`.
  *
- * **The step order is the design.** Databases go first so functions can rely on them; frames go
- * last because `publishFrame` validates their function references against what was just published;
- * cleanup runs after everything the manifest wants exists, so a rename (drop `old`, add `new`)
- * never leaves a window where neither is callable.
+ * **The step order is the design.** Databases go first so functions can rely on them; the frame
+ * goes last because `publishFrame` validates its function references against what was just
+ * published; cleanup runs after everything the manifest wants exists, so a rename (drop `old`, add
+ * `new`) never leaves a window where neither is callable.
  *
  * The manifest is the source of truth for functions (declarative), conservative for databases
  * (never dropped — an undeclared database with this app's prefix is only warned about), and
- * publish-only for frames (no unpublish-frame operation exists).
+ * publish-only for the frame (no unpublish-frame operation exists).
  *
  * Failure model mirrors `importPodApp`: per-item failures land in `warnings` rather than aborting —
  * a partially published app is visible and fixable. Only an invalid manifest, a prefix collision,
@@ -229,48 +231,32 @@ export async function publishPodApp(
     publishedFunctionSlugs.push(result.value.sandboxFunction.slug);
   }
 
-  // 3. Frames last: publishFrame validates their function references against what step 2 just
-  // published. Resolved in one batched query rather than per frame.
-  const publishedFrameNames: string[] = [];
-  if (plan.framesToPublish.length > 0) {
-    const mountPathByRelPath = new Map<string, string>();
-    for (const frame of plan.framesToPublish) {
-      const mountPath = dustFs.toMountFilePath(frame.scopedPath);
-      if (mountPath) {
-        mountPathByRelPath.set(frame.relPath, mountPath);
-      }
-    }
-    const files = await FileResource.fetchByMountFilePaths(
-      auth,
-      Array.from(mountPathByRelPath.values())
+  // 3. The frame last: publishFrame validates its function references against what step 2 just
+  // published. Resolved through the same batched-fetch API, with a one-element array. Every app
+  // has a frame to publish (buildPodAppPublishPlan guarantees `frameToPublish`); a failure here
+  // still only becomes a warning, leaving `publishedFrameName` null.
+  let publishedFrameName: string | null = null;
+  const frame = plan.frameToPublish;
+  const mountPath = dustFs.toMountFilePath(frame.scopedPath);
+  const files = mountPath
+    ? await FileResource.fetchByMountFilePaths(auth, [mountPath])
+    : [];
+  let file = files[0];
+
+  if (file && !isInteractiveContentType(file.contentType)) {
+    warnings.push(
+      `Frame ${frame.relPath}: its FileResource content type is '${file.contentType}', ` +
+        "not a Frame. Create it as interactive content, then retry."
     );
-    const fileByMountPath = new Map(
-      files.flatMap((file) =>
-        file.mountFilePath ? [[file.mountFilePath, file] as const] : []
-      )
-    );
-
-    for (const frame of plan.framesToPublish) {
-      const mountPath = mountPathByRelPath.get(frame.relPath);
-      let file = mountPath ? fileByMountPath.get(mountPath) : undefined;
-
-      if (file && !isInteractiveContentType(file.contentType)) {
-        warnings.push(
-          `Frame ${frame.relPath}: its FileResource content type is '${file.contentType}', ` +
-            "not a Frame. Create it as interactive content, then retry."
-        );
-        continue;
-      }
-
-      // No FileResource: the manifest declares a frame that exists only as a bare storage
-      // object (e.g. copied into the pod, or written directly inside the sandbox, both of which
-      // lose the FileResource). Recreate it in place so the manifest-first flow self-heals.
-      if (!file) {
-        const sourceResult = await dustFs.readBuffer(frame.scopedPath);
-        if (sourceResult.isErr() || sourceResult.value === null) {
-          warnings.push(`Frame ${frame.relPath}: could not read its source.`);
-          continue;
-        }
+  } else {
+    // No FileResource: the manifest declares a frame that exists only as a bare storage
+    // object (e.g. copied into the pod, or written directly inside the sandbox, both of which
+    // lose the FileResource). Recreate it in place so the manifest-first flow self-heals.
+    if (!file) {
+      const sourceResult = await dustFs.readBuffer(frame.scopedPath);
+      if (sourceResult.isErr() || sourceResult.value === null) {
+        warnings.push(`Frame ${frame.relPath}: could not read its source.`);
+      } else {
         const createResult = await createPodFrameFile(auth, {
           space: pod,
           folderName: trimmed,
@@ -282,11 +268,13 @@ export async function publishPodApp(
           warnings.push(
             `Frame ${frame.relPath}: ${createResult.error.message}`
           );
-          continue;
+        } else {
+          file = createResult.value;
         }
-        file = createResult.value;
       }
+    }
 
+    if (file) {
       const result = await publishFrame(auth, {
         file,
         reader: createMountFrameSourceReader(dustFs, folderPath),
@@ -295,9 +283,9 @@ export async function publishPodApp(
       });
       if (result.isErr()) {
         warnings.push(`Frame ${frame.relPath}: ${result.error.message}`);
-        continue;
+      } else {
+        publishedFrameName = frame.relPath;
       }
-      publishedFrameNames.push(frame.relPath);
     }
   }
 
@@ -320,7 +308,7 @@ export async function publishPodApp(
     displayName: manifest.name,
     reconciledDatabaseNames,
     publishedFunctionSlugs,
-    publishedFrameNames,
+    publishedFrameName,
     unpublishedFunctionSlugs,
     warnings,
   });

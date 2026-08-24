@@ -107,7 +107,7 @@ beforeEach(() => {
 });
 
 describe("publishPodApp", () => {
-  it("publishes databases, functions and frames from the manifest, in that order", async () => {
+  it("publishes databases, functions and the frame from the manifest, in that order", async () => {
     const { auth, projectId } = await setupProjectConversation();
     const pod = await podFor(projectId, auth);
     seedAppFolder({
@@ -132,7 +132,7 @@ describe("publishPodApp", () => {
     expect(result.value.displayName).toBe("Task List");
     expect(result.value.reconciledDatabaseNames).toEqual(["tasklist__tasks"]);
     expect(result.value.publishedFunctionSlugs).toEqual(["tasklist__add-task"]);
-    expect(result.value.publishedFrameNames).toEqual(["TaskList.tsx"]);
+    expect(result.value.publishedFrameName).toBe("TaskList.tsx");
     expect(vi.mocked(createPodFrameFile)).toHaveBeenCalledWith(
       auth,
       expect.objectContaining({
@@ -171,13 +171,13 @@ describe("publishPodApp", () => {
         "src/add.ts",
         "databases/tasks.db.ts",
       ],
-      manifest: { ...MANIFEST, frames: [{ path: "Notes.txt" }] },
+      manifest: { ...MANIFEST, uiEntryPoint: "Notes.txt" },
     });
 
     const result = await publishPodApp(auth, pod, { folderName: "TaskList" });
 
     assert(result.isOk(), result.isErr() ? result.error.message : "");
-    expect(result.value.publishedFrameNames).toEqual(["Notes.txt"]);
+    expect(result.value.publishedFrameName).toBe("Notes.txt");
     expect(result.value.warnings).toEqual([]);
     expect(vi.mocked(createPodFrameFile)).toHaveBeenCalledWith(
       auth,
@@ -204,13 +204,13 @@ describe("publishPodApp", () => {
         "src/add.ts",
         "databases/tasks.db.ts",
       ],
-      manifest: { ...MANIFEST, frames: [{ path: "sub/Frame.tsx" }] },
+      manifest: { ...MANIFEST, uiEntryPoint: "sub/Frame.tsx" },
     });
 
     const result = await publishPodApp(auth, pod, { folderName: "TaskList" });
 
     assert(result.isOk(), result.isErr() ? result.error.message : "");
-    expect(result.value.publishedFrameNames).toEqual(["sub/Frame.tsx"]);
+    expect(result.value.publishedFrameName).toBe("sub/Frame.tsx");
     expect(result.value.warnings).toEqual([]);
     expect(vi.mocked(createPodFrameFile)).toHaveBeenCalledWith(
       auth,
@@ -229,7 +229,42 @@ describe("publishPodApp", () => {
     expect(result.value.publishedFunctionSlugs).toEqual(["tasklist__add-task"]);
   });
 
-  it("publishes a frame-less, database-less app", async () => {
+  it("publishes a database-less app, defaulting its frame to index.tsx", async () => {
+    const { auth, projectId } = await setupProjectConversation();
+    const pod = await podFor(projectId, auth);
+    seedAppFolder({
+      folder: "FnsOnly",
+      relPaths: ["manifest.json", "index.tsx", "greet.ts"],
+      manifest: {
+        version: 1,
+        name: "Fns Only",
+        description: "",
+        functions: [
+          {
+            name: "greet",
+            path: "greet.ts",
+            description: "Greet.",
+            executionMode: "fast",
+          },
+        ],
+      },
+    });
+
+    const result = await publishPodApp(auth, pod, { folderName: "FnsOnly" });
+
+    assert(result.isOk(), result.isErr() ? result.error.message : "");
+    expect(result.value.publishedFunctionSlugs).toEqual(["fnsonly__greet"]);
+    expect(result.value.publishedFrameName).toBe("index.tsx");
+    expect(result.value.warnings).toEqual([]);
+    expect(result.value.reconciledDatabaseNames).toEqual([]);
+    expect(vi.mocked(reconcileDatabaseFromPodPath)).not.toHaveBeenCalled();
+    expect(vi.mocked(publishFrame)).toHaveBeenCalledWith(
+      auth,
+      expect.objectContaining({ entryRelPath: "index.tsx" })
+    );
+  });
+
+  it("fails with invalid_manifest for a functions-only app whose folder has no index.tsx", async () => {
     const { auth, projectId } = await setupProjectConversation();
     const pod = await podFor(projectId, auth);
     seedAppFolder({
@@ -252,12 +287,11 @@ describe("publishPodApp", () => {
 
     const result = await publishPodApp(auth, pod, { folderName: "FnsOnly" });
 
-    assert(result.isOk(), result.isErr() ? result.error.message : "");
-    expect(result.value.publishedFunctionSlugs).toEqual(["fnsonly__greet"]);
-    expect(result.value.publishedFrameNames).toEqual([]);
-    expect(result.value.reconciledDatabaseNames).toEqual([]);
-    expect(vi.mocked(reconcileDatabaseFromPodPath)).not.toHaveBeenCalled();
-    expect(vi.mocked(publishFrame)).not.toHaveBeenCalled();
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("invalid_manifest");
+      expect(result.error.message).toContain("index.tsx");
+    }
   });
 
   it("unpublishes a function the manifest no longer declares", async () => {
@@ -265,8 +299,8 @@ describe("publishPodApp", () => {
     const pod = await podFor(projectId, auth);
     seedAppFolder({
       folder: "TaskList",
-      relPaths: ["manifest.json", "src/add.ts"],
-      manifest: { ...MANIFEST, frames: [], databases: [] },
+      relPaths: ["manifest.json", "index.tsx", "src/add.ts"],
+      manifest: { ...MANIFEST, uiEntryPoint: undefined, databases: [] },
     });
     // Pre-publish a function the manifest does not declare.
     const { publishSandboxFunction } = await import(
@@ -298,8 +332,8 @@ describe("publishPodApp", () => {
     const pod = await podFor(projectId, auth);
     seedAppFolder({
       folder: "TaskList",
-      relPaths: ["manifest.json", "src/add.ts"],
-      manifest: { ...MANIFEST, frames: [], databases: [] },
+      relPaths: ["manifest.json", "index.tsx", "src/add.ts"],
+      manifest: { ...MANIFEST, uiEntryPoint: undefined, databases: [] },
     });
     fileStorageMock.setSubdirectoryNames(() => ["tasklist__legacy.db"]);
 
@@ -358,8 +392,8 @@ describe("publishPodApp", () => {
 
     seedAppFolder({
       folder: "TaskList",
-      relPaths: ["manifest.json"],
-      manifest: { ...MANIFEST, frames: [], databases: [] },
+      relPaths: ["manifest.json", "index.tsx"],
+      manifest: { ...MANIFEST, uiEntryPoint: undefined, databases: [] },
     });
     const missing = await publishPodApp(auth, pod, { folderName: "TaskList" });
     expect(missing.isErr() && missing.error.code === "invalid_manifest").toBe(
@@ -367,6 +401,24 @@ describe("publishPodApp", () => {
     );
     if (missing.isErr()) {
       expect(missing.error.message).toContain("src/add.ts");
+    }
+  });
+
+  it("fails with invalid_manifest when the explicit uiEntryPoint file is missing", async () => {
+    const { auth, projectId } = await setupProjectConversation();
+    const pod = await podFor(projectId, auth);
+    seedAppFolder({
+      folder: "TaskList",
+      relPaths: ["manifest.json", "src/add.ts", "databases/tasks.db.ts"],
+      manifest: { ...MANIFEST, uiEntryPoint: "Missing.tsx" },
+    });
+
+    const result = await publishPodApp(auth, pod, { folderName: "TaskList" });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("invalid_manifest");
+      expect(result.error.message).toContain("Missing.tsx");
     }
   });
 
@@ -394,8 +446,13 @@ describe("publishPodApp", () => {
     const pod = await podFor(projectId, auth);
     seedAppFolder({
       folder: "TaskList",
-      relPaths: ["manifest.json", "src/add.ts", "databases/tasks.db.ts"],
-      manifest: { ...MANIFEST, frames: [] },
+      relPaths: [
+        "manifest.json",
+        "index.tsx",
+        "src/add.ts",
+        "databases/tasks.db.ts",
+      ],
+      manifest: { ...MANIFEST, uiEntryPoint: undefined },
     });
     vi.mocked(reconcileDatabaseFromPodPath).mockResolvedValue(
       new Err(new SandboxFunctionError("sandbox_unavailable", "Asleep."))
@@ -414,10 +471,10 @@ describe("publishPodApp", () => {
     const pod = await podFor(projectId, auth);
     seedAppFolder({
       folder: "TaskList",
-      relPaths: ["manifest.json", "src/add.ts", "src/other.ts"],
+      relPaths: ["manifest.json", "index.tsx", "src/add.ts", "src/other.ts"],
       manifest: {
         ...MANIFEST,
-        frames: [],
+        uiEntryPoint: undefined,
         databases: [],
         functions: [
           ...MANIFEST.functions,

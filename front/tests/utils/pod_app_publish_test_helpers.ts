@@ -14,7 +14,7 @@ export const MANIFEST = {
   version: 1,
   name: "Task List",
   description: "Tasks.",
-  frames: [{ path: "TaskList.tsx" }],
+  uiEntryPoint: "TaskList.tsx",
   functions: [
     {
       name: "add-task",

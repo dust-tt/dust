@@ -8,7 +8,7 @@ const MANIFEST: PodAppPublishManifest = {
   version: 1,
   name: "Task List",
   description: "Tasks.",
-  frames: [{ path: "TaskList.tsx" }],
+  uiEntryPoint: "TaskList.tsx",
   functions: [
     {
       name: "add-task",
@@ -54,11 +54,88 @@ describe("buildPodAppPublishPlan", () => {
     expect(result.value.databasesToReconcile).toEqual([
       { name: "tasks", scopedPath: `${FOLDER_PATH}/databases/tasks.db.ts` },
     ]);
-    expect(result.value.framesToPublish).toEqual([
-      { relPath: "TaskList.tsx", scopedPath: `${FOLDER_PATH}/TaskList.tsx` },
-    ]);
+    expect(result.value.frameToPublish).toEqual({
+      relPath: "TaskList.tsx",
+      scopedPath: `${FOLDER_PATH}/TaskList.tsx`,
+    });
     expect(result.value.functionSlugsToUnpublish).toEqual([]);
     expect(result.value.warnings).toEqual([]);
+  });
+
+  it("defaults the frame to index.tsx when uiEntryPoint is omitted and it exists", () => {
+    const manifest: PodAppPublishManifest = {
+      ...MANIFEST,
+      uiEntryPoint: undefined,
+    };
+    const result = buildPodAppPublishPlan({
+      manifest,
+      folderPath: FOLDER_PATH,
+      folderRelPaths: new Set([
+        "manifest.json",
+        "index.tsx",
+        "src/add.ts",
+        "databases/tasks.db.ts",
+      ]),
+      prefix: "tasklist",
+      publishedFunctionSlugs: [],
+      databaseOnDiskNames: [],
+    });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.frameToPublish).toEqual({
+        relPath: "index.tsx",
+        scopedPath: `${FOLDER_PATH}/index.tsx`,
+      });
+    }
+  });
+
+  it("rejects a manifest with no uiEntryPoint and no index.tsx in the folder", () => {
+    const manifest: PodAppPublishManifest = {
+      ...MANIFEST,
+      uiEntryPoint: undefined,
+    };
+    const result = buildPodAppPublishPlan({
+      manifest,
+      folderPath: FOLDER_PATH,
+      folderRelPaths: new Set([
+        "manifest.json",
+        "src/add.ts",
+        "databases/tasks.db.ts",
+      ]),
+      prefix: "tasklist",
+      publishedFunctionSlugs: [],
+      databaseOnDiskNames: [],
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("index.tsx");
+      expect(result.error.message).toContain(
+        "every app needs a UI entry point"
+      );
+    }
+  });
+
+  it("rejects an explicit uiEntryPoint that is absent from the folder", () => {
+    const manifest: PodAppPublishManifest = {
+      ...MANIFEST,
+      uiEntryPoint: "Missing.tsx",
+    };
+    const result = buildPodAppPublishPlan({
+      manifest,
+      folderPath: FOLDER_PATH,
+      folderRelPaths: new Set([
+        "manifest.json",
+        "src/add.ts",
+        "databases/tasks.db.ts",
+      ]),
+      prefix: "tasklist",
+      publishedFunctionSlugs: [],
+      databaseOnDiskNames: [],
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("Missing.tsx");
+    }
   });
 
   it("rejects a manifest referencing files absent from the folder", () => {
