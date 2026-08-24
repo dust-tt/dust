@@ -11,7 +11,9 @@ import { describe, expect, it } from "vitest";
 
 import { makeRunModelLLMError } from "./run_model_errors";
 import {
+  getWorkflowFailureDetails,
   isRunModelLLMUnresponsiveError,
+  isSwallowableWorkflowFailure,
   isTerminalRunModelTimeout,
   isTerminalRunToolTimeout,
   RUN_MODEL_ACTIVITY_NAME,
@@ -65,13 +67,9 @@ function makeActivityFailure({
   );
 }
 
-// Mirrors the expression in agentLoopWorkflow's catch block.
+// The production decision, with the tool-timeout patch active as it is for new executions.
 function shouldSwallowWorkflowFailure(error: unknown): boolean {
-  return (
-    (isTerminalRunModelTimeout(error) &&
-      isRunModelLLMUnresponsiveError(error)) ||
-    isTerminalRunToolTimeout(error)
-  );
+  return isSwallowableWorkflowFailure(error, { swallowToolTimeouts: true });
 }
 
 describe("workflow failure predicates", () => {
@@ -177,5 +175,43 @@ describe("workflow failure predicates", () => {
     expect(shouldSwallowWorkflowFailure(nonTerminalFailure)).toBe(false);
     expect(isTerminalRunToolTimeout(applicationFailure)).toBe(false);
     expect(shouldSwallowWorkflowFailure(applicationFailure)).toBe(false);
+  });
+
+  it("keeps the legacy throw for tool timeouts when the patch is inactive", () => {
+    // Replays of histories that predate the "swallow-terminal-tool-timeouts" patch.
+    const toolTimeout = makeActivityFailure({
+      activityType: RUN_TOOL_ACTIVITY_NAME,
+      llmErrorType: null,
+      llmErrorMessage: null,
+    });
+    const modelTimeout = makeActivityFailure();
+
+    expect(
+      isSwallowableWorkflowFailure(toolTimeout, { swallowToolTimeouts: false })
+    ).toBe(false);
+    // The model swallow predates the patch and is not affected by it.
+    expect(
+      isSwallowableWorkflowFailure(modelTimeout, { swallowToolTimeouts: false })
+    ).toBe(true);
+  });
+});
+
+describe("getWorkflowFailureDetails", () => {
+  it("extracts the activity type, retry state and timeout type", () => {
+    const failure = makeActivityFailure({
+      activityType: RUN_TOOL_ACTIVITY_NAME,
+      llmErrorType: null,
+      llmErrorMessage: null,
+    });
+
+    expect(getWorkflowFailureDetails(failure)).toEqual({
+      activityType: RUN_TOOL_ACTIVITY_NAME,
+      retryState: "MAXIMUM_ATTEMPTS_REACHED",
+      timeoutType: "HEARTBEAT",
+    });
+  });
+
+  it("returns no details for non-activity failures", () => {
+    expect(getWorkflowFailureDetails(new Error("boom"))).toEqual({});
   });
 });

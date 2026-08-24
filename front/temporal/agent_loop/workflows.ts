@@ -20,8 +20,8 @@ import {
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { waitForAllPromises } from "@app/temporal/agent_loop/lib/wait_for_all_promises";
 import {
-  isRunModelLLMUnresponsiveError,
-  isTerminalRunModelTimeout,
+  getWorkflowFailureDetails,
+  isSwallowableWorkflowFailure,
   isTerminalRunToolTimeout,
 } from "@app/temporal/agent_loop/lib/workflow_failures";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
@@ -407,15 +407,16 @@ export async function agentLoopWorkflow({
     });
   } catch (err) {
     const workflowError = err instanceof Error ? err : new Error(String(err));
-    // The activity publishes user-facing model errors when our code regains control. We swallow
-    // terminal Temporal timeouts in two cases, the message being finalized as errored below
-    // either way: model timeouts whose failure chain proves the blocked work was an LLM provider
-    // timeout, and tool activity timeouts, which are infrastructure failures (pod killed without
-    // drain, heartbeat starvation), not tool errors: tools report their own failures as events.
-    // Other failures still surface as workflow failures.
-    const shouldSwallowWorkflowFailure =
-      (isTerminalRunModelTimeout(err) && isRunModelLLMUnresponsiveError(err)) ||
-      isTerminalRunToolTimeout(err);
+    // The message is finalized as errored below either way: swallowing only removes the FAILED
+    // workflow status (see isSwallowableWorkflowFailure). Swallowing a tool timeout turns the
+    // terminal command from fail into complete, so it is gated on a patch marker: replays of
+    // histories that predate the patch keep the legacy throw. The patch is only consulted (and
+    // its marker only recorded) when the error actually is a terminal tool timeout.
+    const shouldSwallowWorkflowFailure = isSwallowableWorkflowFailure(err, {
+      swallowToolTimeouts:
+        isTerminalRunToolTimeout(err) &&
+        patched("swallow-terminal-tool-timeouts"),
+    });
 
     // Notify error in a non-cancellable scope to ensure it runs even if the workflow is canceled.
     // Pass this execution's runIds and startStep to finalize so tracking
@@ -446,6 +447,8 @@ export async function agentLoopWorkflow({
         // before passing to the activity.
         message: workflowError.message,
         name: workflowError.name,
+        swallowed: shouldSwallowWorkflowFailure,
+        ...getWorkflowFailureDetails(err),
       })
     );
 
@@ -537,8 +540,13 @@ async function executeStepIteration({
           runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
         })
   );
-  const toolResults: ToolExecutionResult[] =
-    await waitForAllPromises(toolActivityPromises);
+  const toolResults: ToolExecutionResult[] = await waitForAllPromises(
+    toolActivityPromises,
+    {
+      // A swallowable infrastructure timeout must not mask a sibling tool's real failure.
+      preferRejection: (reason) => !isTerminalRunToolTimeout(reason),
+    }
+  );
 
   // Collect all deferred events from tool executions.
   const allDeferredEvents = toolResults.flatMap(

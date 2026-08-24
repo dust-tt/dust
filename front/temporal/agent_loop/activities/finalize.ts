@@ -174,21 +174,35 @@ export async function finalizeCreditStoppedAgentLoopActivity(
 export async function finalizeErroredAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs,
-  error: { message: string; name: string }
+  error: {
+    message: string;
+    name: string;
+    // The fields below are absent for workflows started before they were added.
+    swallowed?: boolean;
+    activityType?: string;
+    retryState?: string;
+    timeoutType?: string;
+  }
 ): Promise<void> {
-  // Keep the failure cause queryable in Datadog: swallowed infrastructure timeouts no longer
-  // emit a "Workflow failed" log, and this activity is the only remaining place that sees why
-  // the run errored.
-  logger.warn(
-    {
-      conversationId: agentLoopArgs.conversationId,
-      agentMessageId: agentLoopArgs.agentMessageId,
-      workspaceId: authType.workspaceId,
-      workflowErrorName: error.name,
-      workflowErrorMessage: error.message,
-    },
-    "Agent loop finalized as errored"
-  );
+  // Keep the failure cause queryable in Datadog: swallowed infrastructure timeouts do not emit
+  // a "Workflow failed" log, and this activity is the only remaining place that sees why the
+  // run errored. Rethrown failures keep the SDK's "Workflow failed" log, so they are not logged
+  // twice here.
+  if (error.swallowed) {
+    logger.warn(
+      {
+        conversationId: agentLoopArgs.conversationId,
+        agentMessageId: agentLoopArgs.agentMessageId,
+        workspaceId: authType.workspaceId,
+        workflowErrorName: error.name,
+        workflowErrorMessage: error.message,
+        activityType: error.activityType,
+        retryState: error.retryState,
+        timeoutType: error.timeoutType,
+      },
+      "Agent loop finalized as errored"
+    );
+  }
 
   await notifyWorkflowError(authType, agentLoopArgs, error);
 
