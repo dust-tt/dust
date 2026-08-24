@@ -473,7 +473,8 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
 
-  const showConsumptionAnalytics = isWorkspaceAdmin;
+  // TODO(2026-08-24): add back logic to show consumption here.
+  const showConsumptionAnalytics = false;
 
   const {
     overview: consumptionOverview,
