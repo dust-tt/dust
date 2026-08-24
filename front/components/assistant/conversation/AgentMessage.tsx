@@ -472,7 +472,7 @@ export function AgentMessage({
           case "tool_notification":
           case "tool_params":
           case "agent_context_pruned":
-          case "agent_workflow_alert_threshold_crossed":
+          case "agent_credit_alert_threshold_crossed":
             break;
           default:
             assertNeverAndIgnore(eventPayload.data);

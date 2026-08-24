@@ -125,7 +125,7 @@ export async function checkWorkflowAlertThresholdActivity(
     conversationId: conversation.sId,
     step,
     event: {
-      type: "agent_workflow_alert_threshold_crossed",
+      type: "agent_credit_alert_threshold_crossed",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,

@@ -7,6 +7,7 @@ import type {
 import type {
   AgentActionSuccessEvent,
   AgentContextPrunedEvent,
+  AgentCreditAlertThresholdCrossedEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageConsumptionUpdatedEvent,
@@ -14,7 +15,6 @@ import type {
   AgentMessageGracefullyStoppedEvent,
   AgentMessageSuccessEvent,
   AgentToolCallStartedEvent,
-  AgentWorkflowAlertThresholdCrossedEvent,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
 import type {
@@ -39,7 +39,7 @@ export type AgentMessageEvents =
   | AgentMessageGracefullyStoppedEvent
   | AgentMessageSuccessEvent
   | AgentToolCallStartedEvent
-  | AgentWorkflowAlertThresholdCrossedEvent
+  | AgentCreditAlertThresholdCrossedEvent
   | GenerationTokensEvent
   | ToolErrorEvent
   | AgentLoopToolAskUserQuestionEvent

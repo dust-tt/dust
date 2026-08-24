@@ -756,7 +756,7 @@ export function useAgentMessageStream({
           );
           break;
 
-        case "agent_workflow_alert_threshold_crossed":
+        case "agent_credit_alert_threshold_crossed":
           break;
 
         case "agent_generation_cancelled": {

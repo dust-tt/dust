@@ -178,7 +178,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
       conversationId: "conv_id",
       step: 2,
       event: {
-        type: "agent_workflow_alert_threshold_crossed",
+        type: "agent_credit_alert_threshold_crossed",
         created: expect.any(Number),
         configurationId: "agent_config_id",
         messageId: "msg_id",
