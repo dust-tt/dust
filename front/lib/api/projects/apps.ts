@@ -172,8 +172,12 @@ function collectAppFolders(
       folder.hasAppShapedSubfolder = true;
     }
 
-    // Only a Frame at the top of the app folder is the app's own Frame; anything deeper is a detail
-    // of how the app is laid out.
+    // Positional heuristic, applied to every folder: a Frame at the top of the app folder is taken
+    // to be the app's own Frame, while anything deeper is assumed to be a detail of how the app is
+    // laid out (e.g. an imported .tsx helper module). For manifest-less folders this is the only
+    // signal; for manifest-bearing folders it is the base case that manifest-declared frames (which
+    // may live at any depth) are UNIONED with later, from the manifest read (see
+    // `withDeclaredFrameEntries`).
     if (segments.length === 2 && isInteractiveContentType(entry.contentType)) {
       folder.frameEntries.push(entry);
     }
@@ -328,7 +332,15 @@ function groupFunctionsByAppPrefix(
 }
 
 type AppManifestReadResult =
-  | { manifest: { name: string; description: string }; error: null }
+  | {
+      manifest: {
+        name: string;
+        description: string;
+        /** Folder-relative paths the manifest declares as frames, at any depth. */
+        framePaths: string[];
+      };
+      error: null;
+    }
   | { manifest: null; error: string };
 
 /**
@@ -362,11 +374,53 @@ async function readAppManifests(
       manifest: {
         name: parseResult.value.name,
         description: parseResult.value.description,
+        framePaths: parseResult.value.frames.map((frame) => frame.path),
       },
       error: null,
     });
   }
   return results;
+}
+
+/**
+ * Augment each valid-manifest folder's Frame entries with the file entries matching its
+ * manifest's declared frame paths, at any depth. The manifest declaration is authoritative
+ * regardless of the entry's storage content type (see `publishPodApp`'s auto-create path for why
+ * that MIME type is untrusted). Entries already present (matched by path — the legacy top-level
+ * heuristic can find the same file) are not duplicated.
+ *
+ * Returns a new array rather than mutating `folders`, whose `frameEntries` are otherwise only
+ * ever appended to inside `collectAppFolders`.
+ */
+function withDeclaredFrameEntries(
+  folders: AppFolder[],
+  manifestsByFolderName: Map<string, AppManifestReadResult>,
+  fileEntryByPath: Map<string, FileSystemFileEntry>
+): AppFolder[] {
+  return folders.map((folder) => {
+    const manifestRead = manifestsByFolderName.get(folder.name);
+    if (!manifestRead?.manifest) {
+      return folder;
+    }
+
+    const existingPaths = new Set(
+      folder.frameEntries.map((entry) => entry.path)
+    );
+    const declaredEntries = manifestRead.manifest.framePaths.flatMap(
+      (framePath) => {
+        const entry = fileEntryByPath.get(`${folder.path}/${framePath}`);
+        return entry && !existingPaths.has(entry.path) ? [entry] : [];
+      }
+    );
+    if (declaredEntries.length === 0) {
+      return folder;
+    }
+
+    return {
+      ...folder,
+      frameEntries: [...folder.frameEntries, ...declaredEntries],
+    };
+  });
 }
 
 /**
@@ -419,10 +473,27 @@ export async function listPodApps(
   const folders = Array.from(
     collectAppFolders(listResult.value, podRoot).values()
   );
-  const [framesByFolderName, manifestsByFolderName] = await Promise.all([
-    resolveFramesByFolderName(auth, dustFs, folders, pinnedFramePaths),
-    readAppManifests(dustFs, folders),
-  ]);
+
+  // Sequential, not Promise.all: frame resolution depends on the manifest read below, since a
+  // manifest's declared frame paths augment each folder's frameEntries before they are resolved
+  // to FileResources.
+  const manifestsByFolderName = await readAppManifests(dustFs, folders);
+  const fileEntryByPath = new Map(
+    listResult.value.flatMap((entry) =>
+      entry.isDirectory ? [] : [[entry.path, entry] as const]
+    )
+  );
+  const foldersWithDeclaredFrames = withDeclaredFrameEntries(
+    folders,
+    manifestsByFolderName,
+    fileEntryByPath
+  );
+  const framesByFolderName = await resolveFramesByFolderName(
+    auth,
+    dustFs,
+    foldersWithDeclaredFrames,
+    pinnedFramePaths
+  );
 
   // Several folder names can normalize onto one prefix (`Task List` and `Task-List` both give
   // `task-list`), and such folders genuinely share published slugs and databases. Group by prefix so

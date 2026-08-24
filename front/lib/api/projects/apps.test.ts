@@ -130,4 +130,72 @@ describe("listPodApps with manifests", () => {
     expect(result.value[0].displayName).toBeNull();
     expect(result.value[0].manifestError).toBeNull();
   });
+
+  it("lists a manifest-declared frame nested in a subfolder", async () => {
+    const { auth, projectId } = await setupProjectConversation();
+    const pod = await SpaceResource.fetchById(auth, projectId);
+    assert(pod);
+    const manifest = { ...MANIFEST, frames: [{ path: "ui/Dashboard.tsx" }] };
+    // The entry's storage content type is "text/plain", not a Frame MIME type, to prove that a
+    // manifest-declared frame is listed regardless of the storage object's guessed content type.
+    fileStorageMock.setFilesByPrefix((prefix) => [
+      {
+        name: `${prefix}Dash/manifest.json`,
+        metadata: { contentType: "text/plain", size: "10" },
+      },
+      {
+        name: `${prefix}Dash/ui/Dashboard.tsx`,
+        metadata: { contentType: "text/plain", size: "10" },
+      },
+      {
+        name: `${prefix}Dash/src/add.ts`,
+        metadata: { contentType: "text/plain", size: "10" },
+      },
+    ]);
+    fileStorageMock.setFileContent((filePath) =>
+      filePath.endsWith("Dash/manifest.json") ? JSON.stringify(manifest) : null
+    );
+
+    const result = await listPodApps(auth, pod);
+
+    assert(result.isOk(), result.isErr() ? result.error.message : "");
+    expect(result.value).toHaveLength(1);
+    const frame = result.value[0].frames.find((f) =>
+      f.path.endsWith("ui/Dashboard.tsx")
+    );
+    expect(frame).toBeDefined();
+    expect(frame?.fileName).toBe("Dashboard.tsx");
+  });
+
+  it("still lists a top-level frame the manifest does not declare (union semantics)", async () => {
+    const { auth, projectId } = await setupProjectConversation();
+    const pod = await SpaceResource.fetchById(auth, projectId);
+    assert(pod);
+    const manifest = { ...MANIFEST, frames: [] };
+    fileStorageMock.setFilesByPrefix((prefix) => [
+      {
+        name: `${prefix}Board/manifest.json`,
+        metadata: { contentType: "text/plain", size: "10" },
+      },
+      {
+        name: `${prefix}Board/Board.tsx`,
+        metadata: { contentType: "application/vnd.dust.frame", size: "10" },
+      },
+      {
+        name: `${prefix}Board/src/add.ts`,
+        metadata: { contentType: "text/plain", size: "10" },
+      },
+    ]);
+    fileStorageMock.setFileContent((filePath) =>
+      filePath.endsWith("Board/manifest.json") ? JSON.stringify(manifest) : null
+    );
+
+    const result = await listPodApps(auth, pod);
+
+    assert(result.isOk(), result.isErr() ? result.error.message : "");
+    expect(result.value).toHaveLength(1);
+    expect(result.value[0].frames.map((f) => f.fileName)).toContain(
+      "Board.tsx"
+    );
+  });
 });
