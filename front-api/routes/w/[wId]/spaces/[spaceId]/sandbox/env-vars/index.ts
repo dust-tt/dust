@@ -26,12 +26,9 @@ const PostPodSandboxEnvVarBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/spaces/:spaceId/sandbox/env-vars. Pods are project
-// spaces: non-project spaces have no pod-scoped env vars and 404.
-//
-// Pod env vars stay workspace-admin only (read and write): unlike the
-// egress-policy leaf, they are not opened to Pod members. The parent sandbox
-// sub-app no longer applies the admin gate, so it is re-applied here for every
-// route, including the mounted /:id sub-app.
+// spaces: non-project spaces have no pod-scoped env vars and 404. Admin-only
+// (read and write): the parent no longer gates admin, so re-apply it here — it
+// also covers the mounted /:id.
 const app = workspaceApp();
 
 app.use("*", ensureIsAdmin());

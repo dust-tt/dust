@@ -63,10 +63,9 @@ describe("PATCH/DELETE /api/w/:wId/spaces/:spaceId/sandbox/env-vars/:id", () => 
     vi.clearAllMocks();
   });
 
-  // The parent sandbox router no longer applies ensureIsAdmin; env-vars/index.ts
-  // re-applies it for the whole leaf. These two guard that the admin gate still
-  // covers the nested /:id routes for a Pod member (who can read the Pod but is
-  // not a workspace admin).
+  // Guard that the admin gate still covers the nested /:id routes for a Pod
+  // member (can read the Pod, not a workspace admin) after the gate moved to
+  // the env-vars leaf.
   it("rejects a non-admin DELETE", async () => {
     const { workspace, pod } = await setupTest({ role: "user" });
 

@@ -22,11 +22,10 @@ import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-// Mounted at /api/w/:wId/spaces/:spaceId/sandbox/egress-policy. The parent
-// sandbox sub-app applies the `sandbox_functions` gate; reads (GET) are open to
-// anyone who can read the Pod so members see it read-only, while writes (PUT,
-// requests/dismiss) additionally require a workspace admin. Each handler also
-// validates that the space is a Pod (project space).
+// Mounted at /api/w/:wId/spaces/:spaceId/sandbox/egress-policy. GET (and the
+// member request POST) are open to Pod readers; the admin writes (PUT,
+// requests/dismiss) add `ensureIsAdmin`. Each handler validates the space is a
+// Pod.
 //
 // A Pod's allowlist is its owner policy file
 // (`w/{wId}/sandboxes/{spaceSId}.json`) — the same slot conversation
@@ -149,10 +148,8 @@ app.put(
   }
 );
 
-// Any Pod member may request a domain — it only records a pending request for
-// an admin to approve or reject, never grants access. Deliberately not gated on
-// the workspace agent-request toggle: that governs the agent's on-the-fly
-// requests during a conversation, not an explicit, admin-reviewed ask here.
+// Any Pod member may request a domain; it records a pending request for admin
+// review and never grants access.
 /** @ignoreswagger */
 app.post(
   "/requests",
@@ -188,11 +185,7 @@ app.post(
       domain: parsedBody.data.domain,
     });
     if (result.isErr()) {
-      // The reachable failures are caller-actionable — an invalid domain or a
-      // full pending-request cap — so 400. requestOwnerPolicyDomain returns a
-      // flat Error, so a rare GCS write failure also lands here rather than
-      // 500; that is accepted because mapping the path to 500 would instead
-      // mislabel the common, user-actionable cap case.
+      // Caller-actionable: an invalid domain or a full pending-request cap.
       return apiError(ctx, {
         status_code: 400,
         api_error: {

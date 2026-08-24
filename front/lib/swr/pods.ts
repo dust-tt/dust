@@ -1750,7 +1750,7 @@ export function useDismissPodEgressRequest({
 }
 
 // Lets a Pod member request a domain (recorded for admin review, never
-// granted). Available regardless of the workspace agent-request toggle.
+// granted).
 export function useRequestPodEgressDomain({
   owner,
   podId,
