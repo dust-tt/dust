@@ -18,12 +18,10 @@ import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/c
 import logger from "@app/logger/logger";
 import { createHash } from "crypto";
 
-// Exports live in the shared tmp-workloads bucket (not private-uploads), which already
-// deletes everything after 7 days: reusing that bucket-wide TTL instead of adding a new
-// one. Namespaced under a top-level prefix to avoid colliding with other workloads
-// (connectors, etc.) that write into the same bucket.
+// Written to the shared tmp-workloads bucket rather than private-uploads, reusing its
+// existing 7-day TTL instead of adding a new one.
 export function buildConsumptionExportGcsPrefix(workspaceId: string): string {
-  return `consumption_exports/${workspaceId}/`;
+  return `w/${workspaceId}/consumption_exports/`;
 }
 
 export function buildConsumptionExportGcsPath(
@@ -39,7 +37,7 @@ export function buildConsumptionExportBucketPartsGcsPrefix(
   workspaceId: string,
   exportId: string
 ): string {
-  return `consumption_exports_tmp/${workspaceId}/${exportId}/`;
+  return `w/${workspaceId}/consumption_exports_tmp/${exportId}/`;
 }
 
 function buildConsumptionExportBucketPartGcsPath(
