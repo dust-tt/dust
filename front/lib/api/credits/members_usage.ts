@@ -439,9 +439,10 @@ type ApiKeyConsumedCreditsAggs = {
  * Elasticsearch-derived AWU consumption for the current billing cycle, summed
  * per `api_key_name` — the same dimension the Metronome per-API-key cap alert
  * aggregates spend on. Used to lazily seed / resync the per-API-key spend-cap
- * counter. Returns an empty map on no usage or an analytics read failure.
+ * counter, and to populate the poke API-keys usage table. Returns an empty map
+ * on no usage or an analytics read failure.
  */
-async function fetchConsumedAwuCreditsByApiKeyName({
+export async function fetchConsumedAwuCreditsByApiKeyName({
   workspace,
   apiKeyNames,
   cycle,

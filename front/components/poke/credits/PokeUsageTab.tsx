@@ -1,6 +1,7 @@
 import { PokeWorkspaceUsageChart } from "@app/components/poke/analytics/PokeWorkspaceUsageChart";
 import { AlertChip } from "@app/components/poke/credits/AlertChip";
 import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLogsLink";
+import { PokeApiKeysUsageTable } from "@app/components/poke/credits/PokeApiKeysUsageTable";
 import { PokeAwuUsageFromAnalyticsChart } from "@app/components/poke/credits/PokeAwuUsageFromAnalyticsChart";
 import { PokeMembersUsageTable } from "@app/components/poke/credits/PokeMembersUsageTable";
 import { PokeTopUpsHistoryTable } from "@app/components/poke/credits/PokeTopUpsHistoryTable";
@@ -402,6 +403,7 @@ export function PokeUsageTab({
         owner={owner}
         isCreditBased={hasMetronomeBillingUsage}
       />
+      <PokeApiKeysUsageTable owner={owner} />
       {billingCycleStartDay && (
         <PokeAwuUsageFromAnalyticsChart
           owner={owner}
