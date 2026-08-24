@@ -1,35 +1,21 @@
+import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
+import type { AutomationTriggersBody } from "@app/lib/api/analytics/automations/schema";
 import type {
-  PokeListTriggers,
-  PokeTriggerOrderColumn,
-  PokeTriggerProviderFilter,
-  PokeTriggerSearchBody,
-  PokeTriggerSearchResponse,
-  PokeTriggerSearchRow,
-} from "@app/lib/api/poke/triggers";
+  AutomationTriggerRow,
+  GetAutomationTriggersResponse,
+} from "@app/lib/api/analytics/automations/triggers";
+import type { PokeListTriggers } from "@app/lib/api/poke/triggers";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { PokeGetWebhookRequestsResponseBody } from "@app/types/api/poke/triggers";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
-import { mutate as globalMutate } from "swr";
 
 const pokeTriggersUrl = (workspaceId: string) =>
   `/api/poke/workspaces/${workspaceId}/triggers`;
-
-export async function clearPokeTriggerCaches(owner: LightWorkspaceType) {
-  const triggersUrl = pokeTriggersUrl(owner.sId);
-  const searchUrl = `${triggersUrl}/search`;
-
-  await globalMutate(
-    (key) =>
-      key === triggersUrl || (Array.isArray(key) && key[0] === searchUrl),
-    undefined,
-    { revalidate: false }
-  );
-}
 
 export function usePokeTriggers({
   disabled,
@@ -51,57 +37,40 @@ export function usePokeTriggers({
   };
 }
 
-export function usePokeTriggerSearch({
+export function usePokeAutomationTriggers({
   owner,
   period,
   limit,
-  offset,
+  offset = 0,
   search,
-  providers,
-  orderColumn,
-  orderDirection,
   disabled,
 }: {
   owner: LightWorkspaceType;
   period: ConsumptionPeriodSelection;
   limit: number;
-  offset: number;
+  offset?: number;
   search?: string;
-  providers?: PokeTriggerProviderFilter[];
-  orderColumn: PokeTriggerOrderColumn;
-  orderDirection: "asc" | "desc";
   disabled?: boolean;
 }) {
-  const { fetcherWithBody } = useFetcher();
   const url = `${pokeTriggersUrl(owner.sId)}/search`;
-  const body: PokeTriggerSearchBody = {
+  const body: Omit<AutomationTriggersBody, "format"> = {
     period: period.kind,
     days:
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
     limit,
     offset,
-    search: search?.trim() || undefined,
-    providers,
-    orderColumn,
-    orderDirection,
+    search: search?.trim(),
   };
 
-  const { data, error, isValidating, mutate } = useSWRWithDefaults<
-    [string, PokeTriggerSearchBody, string],
-    PokeTriggerSearchResponse
-  >([url, body, "POST"], fetcherWithBody, {
-    disabled,
-    keepPreviousData: true,
-    revalidateOnFocus: false,
-  });
+  const { data, error, mutate, isLoading } = useConsumptionQuery<
+    Omit<AutomationTriggersBody, "format">,
+    GetAutomationTriggersResponse
+  >({ url, body, disabled });
 
   return {
-    triggers: data?.triggers ?? emptyArray<PokeTriggerSearchRow>(),
-    totalTriggers: data?.total ?? 0,
-    appliedOrderColumn: data?.appliedOrderColumn,
-    appliedOrderDirection: data?.appliedOrderDirection,
-    isTriggersLoading: !disabled && !error && !data,
-    isTriggersValidating: !disabled && !error && isValidating,
+    triggers: data?.triggers ?? emptyArray<AutomationTriggerRow>(),
+    totalCount: data?.totalCount ?? 0,
+    isTriggersLoading: !error && isLoading,
     isTriggersError: error,
     mutateTriggers: mutate,
   };

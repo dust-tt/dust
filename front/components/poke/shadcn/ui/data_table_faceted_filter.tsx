@@ -27,35 +27,15 @@ interface PokeDataTableFacetedFilterProps<TData, TValue> {
     value: string;
     icon?: React.ComponentType<{ className?: string }>;
   }[];
-  selectedValues?: string[];
-  onSelectedValuesChange?: (selectedValues: string[]) => void;
 }
 
 export function PokeDataTableFacetedFilter<TData, TValue>({
   column,
   title,
   options,
-  selectedValues,
-  onSelectedValuesChange,
 }: PokeDataTableFacetedFilterProps<TData, TValue>) {
-  const columnFilterValue = column?.getFilterValue();
-  const columnSelectedValues = Array.isArray(columnFilterValue)
-    ? columnFilterValue.filter(
-        (value): value is string => typeof value === "string"
-      )
-    : [];
-  const selectedValueSet = new Set(selectedValues ?? columnSelectedValues);
-  const facets = onSelectedValuesChange
-    ? undefined
-    : column?.getFacetedUniqueValues();
-
-  const setSelectedValues = (values: string[]) => {
-    if (onSelectedValuesChange) {
-      onSelectedValuesChange(values);
-    } else {
-      column?.setFilterValue(values.length > 0 ? values : undefined);
-    }
-  };
+  const facets = column?.getFacetedUniqueValues();
+  const selectedValues = new Set(column?.getFilterValue() as string[]);
 
   return (
     <PopoverRoot>
@@ -63,26 +43,26 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
         <PokeButton variant="outline" size="sm" className="h-8 border-dashed">
           <PlusCircle className="mr-2 h-4 w-4" />
           {title}
-          {selectedValueSet.size > 0 && (
+          {selectedValues?.size > 0 && (
             <>
               <Separator className="mx-2 h-4" />
               <PokeBadge
                 variant="secondary"
                 className="rounded-sm px-1 font-normal lg:hidden"
               >
-                {selectedValueSet.size}
+                {selectedValues.size}
               </PokeBadge>
               <div className="hidden space-x-1 lg:flex">
-                {selectedValueSet.size > 2 ? (
+                {selectedValues.size > 2 ? (
                   <PokeBadge
                     variant="secondary"
                     className="rounded-sm px-1 font-normal"
                   >
-                    {selectedValueSet.size} selected
+                    {selectedValues.size} selected
                   </PokeBadge>
                 ) : (
                   options
-                    .filter((option) => selectedValueSet.has(option.value))
+                    .filter((option) => selectedValues.has(option.value))
                     .map((option) => (
                       <PokeBadge
                         variant="secondary"
@@ -103,19 +83,22 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
           <PokeCommandList>
             <PokeCommandGroup>
               {options.map((option) => {
-                const isSelected = selectedValueSet.has(option.value);
+                const isSelected = selectedValues.has(option.value);
 
                 return (
                   <PokeCommandItem
                     key={option.value}
                     onSelect={() => {
-                      const nextSelectedValues = new Set(selectedValueSet);
                       if (isSelected) {
-                        nextSelectedValues.delete(option.value);
+                        selectedValues.delete(option.value);
                       } else {
-                        nextSelectedValues.add(option.value);
+                        selectedValues.add(option.value);
                       }
-                      setSelectedValues(Array.from(nextSelectedValues));
+                      const filterValues = Array.from(selectedValues);
+
+                      column?.setFilterValue(
+                        filterValues.length ? filterValues : undefined
+                      );
                     }}
                   >
                     <div
@@ -141,12 +124,12 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
                 );
               })}
             </PokeCommandGroup>
-            {selectedValueSet.size > 0 && (
+            {selectedValues.size > 0 && (
               <>
                 <PokeCommandSeparator />
                 <PokeCommandGroup>
                   <PokeCommandItem
-                    onSelect={() => setSelectedValues([])}
+                    onSelect={() => column?.setFilterValue(undefined)}
                     className="justify-center text-center"
                   >
                     Clear filters

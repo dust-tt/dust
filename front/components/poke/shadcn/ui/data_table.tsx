@@ -37,8 +37,6 @@ interface Facet {
     value: string;
     icon?: React.ComponentType<{ className?: string }>;
   }[];
-  selectedValues?: string[];
-  onSelectedValuesChange?: (selectedValues: string[]) => void;
 }
 
 interface DataTableProps<TData, TValue> {
@@ -46,7 +44,6 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
   defaultFilterColumn?: string;
   isLoading?: boolean;
-  isValidating?: boolean;
   facets?: Facet[];
   pageSize?: number;
   // Server-side (manual) mode. When `serverSideRowCount` is provided,
@@ -88,7 +85,6 @@ export function PokeDataTable<TData, TValue>({
   defaultFilterColumn,
   facets,
   isLoading,
-  isValidating,
   pageSize = 10,
   serverSideRowCount,
   pagination,
@@ -194,12 +190,11 @@ export function PokeDataTable<TData, TValue>({
   }
 
   return (
-    <div className="w-full space-y-2" aria-busy={isValidating || undefined}>
+    <div className="w-full space-y-2">
       <div className="flex items-center gap-4">
         {isServerSearch ? (
           <Input
             name="search"
-            aria-label="Search table"
             placeholder="Search ..."
             value={search ?? ""}
             onChange={(e) => onSearchChange?.(e.target.value)}
@@ -208,7 +203,6 @@ export function PokeDataTable<TData, TValue>({
         ) : (
           <Input
             name="filter"
-            aria-label="Filter table"
             placeholder="Filter ..."
             value={
               defaultFilterColumn
@@ -234,18 +228,8 @@ export function PokeDataTable<TData, TValue>({
               column={table.getColumn(facet.columnId)}
               title={facet.title}
               options={facet.options}
-              selectedValues={facet.selectedValues}
-              onSelectedValuesChange={facet.onSelectedValuesChange}
             />
           ))}
-        {isValidating !== undefined && (
-          <div
-            className="ml-auto flex h-8 min-w-16 items-center justify-end text-xs text-muted-foreground"
-            role="status"
-          >
-            {isValidating ? "Updating…" : null}
-          </div>
-        )}
       </div>
       {renderBulkActions &&
         (() => {
@@ -327,7 +311,7 @@ export function PokeDataTable<TData, TValue>({
             )}
           </PokeTableBody>
         </PokeTable>
-        <PokeDataTablePagination table={table} />
+        {table.getPageCount() > 0 && <PokeDataTablePagination table={table} />}
       </div>
     </div>
   );
