@@ -7,6 +7,7 @@ import { getEsConsumedProgrammaticAwuCredits } from "@app/lib/api/credits/member
 import { reconcileProgrammatic } from "@app/lib/api/metronome/reconcile_credit_state";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
+import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import {
   clearMetronomeProgrammaticCapAlerts,
   upsertMetronomeProgrammaticCapAlerts,
@@ -157,7 +158,18 @@ async function readProgrammaticSpendLimitCountWithLazySeed(
     key: redisKey,
     bounds,
     logger,
-    fetchSeedValue: () => getEsConsumedProgrammaticAwuCredits(auth, {}),
+    // The counter stores microCredits; convert the ES credit value before
+    // seeding. Preserve the null contract (ES read failed → skip seed, do not
+    // seed as 0).
+    fetchSeedValue: async () => {
+      const consumedAwuCredits = await getEsConsumedProgrammaticAwuCredits(
+        auth,
+        {}
+      );
+      return consumedAwuCredits === null
+        ? null
+        : roundCreditsToMicroCredits(consumedAwuCredits);
+    },
   });
 }
 
@@ -203,7 +215,9 @@ export async function isProgrammaticSpendLimitRateCapReached(
     return false;
   }
 
-  return count >= threshold;
+  // The counter stores microCredits; scale the credit threshold up so the
+  // comparison stays integer-on-integer.
+  return count >= roundCreditsToMicroCredits(threshold);
 }
 
 /**
@@ -217,22 +231,10 @@ export async function recordProgrammaticSpendLimitUsage(
   auth: Authenticator,
   { incrementBy }: { incrementBy: number }
 ): Promise<void> {
-  // Only whole positive credits are recordable (the counter is an integer
-  // INCRBY); skip anything else rather than letting it reach the counter. A
-  // non-integer should never happen (credits are integer end-to-end), so log
-  // it loudly; a non-positive delta is a normal no-op (e.g. a retry with no
-  // new usage) and stays silent.
-  if (!Number.isInteger(incrementBy)) {
-    logger.error(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        incrementBy,
-      },
-      "[ProgrammaticSpendLimitRateCap] Non-integer credit delta; skipping counter update."
-    );
-    return;
-  }
-  if (incrementBy <= 0) {
+  // Credits may be fractional; the counter stores microCredits (integer
+  // INCRBY), so convert before recording. A non-positive or non-finite delta is
+  // a normal no-op (e.g. a retry with no new usage) and stays silent.
+  if (!Number.isFinite(incrementBy) || incrementBy <= 0) {
     return;
   }
 
@@ -243,12 +245,14 @@ export async function recordProgrammaticSpendLimitUsage(
     return;
   }
 
+  const incrementByMicroCredits = roundCreditsToMicroCredits(incrementBy);
+
   await addFixedWindowCount({
     key: makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace(
       workspace
     ),
     bounds,
-    incrementBy,
+    incrementBy: incrementByMicroCredits,
     logger,
   });
 }
