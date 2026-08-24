@@ -255,8 +255,10 @@ export async function getRateLimiterCount({
  * Reads the weighted total (in microCredits) of the amount-carrying entries
  * written by `addRateLimiterCount`. Each entry is `<microCredits>:<uuid>`, so
  * unlike `getRateLimiterCount` (which counts rows), this sums the amount prefix
- * of every entry still inside the rolling window. Malformed members (no
- * separator or a non-numeric prefix) are skipped.
+ * of every entry still inside the rolling window. The scan + sum runs
+ * server-side in Lua so only the total crosses the wire (not every member), and
+ * the window is derived from Redis server time to match the writer. Malformed
+ * members (no separator or a non-numeric prefix) are skipped.
  */
 export async function getWeightedRateLimiterCount({
   key,
@@ -269,26 +271,40 @@ export async function getWeightedRateLimiterCount({
     return new Err(new Error("timeframeSeconds must be a positive integer."));
   }
 
+  const redisKey = makeRateLimiterKey(key);
+  const windowMs = timeframeSeconds * 1000;
+
+  const luaScript = `
+    local key = KEYS[1]
+    local window_ms = tonumber(ARGV[1])
+
+    -- Use Redis server time to avoid client clock skew (matches the writer).
+    local t = redis.call('TIME') -- { seconds, microseconds }
+    local now_ms = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
+    local trim_before = now_ms - window_ms
+
+    -- Sum the '<microCredits>:<uuid>' amount prefixes of the entries still
+    -- inside the window, server-side, so only the total crosses the wire.
+    local members = redis.call('ZRANGEBYSCORE', key, trim_before, '+inf')
+    local total = 0
+    for i = 1, #members do
+      local sep = string.find(members[i], ':', 1, true)
+      if sep then
+        local amount = tonumber(string.sub(members[i], 1, sep - 1))
+        if amount then
+          total = total + amount
+        end
+      end
+    end
+    return total
+  `;
+
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
-    const redisKey = makeRateLimiterKey(key);
-
-    const windowMs = timeframeSeconds * 1000;
-    const trimBeforeMs = Date.now() - windowMs;
-
-    const members = await redis.zRangeByScore(redisKey, trimBeforeMs, "+inf");
-
-    let totalMicroCredits = 0;
-    for (const member of members) {
-      const separatorIndex = member.indexOf(":");
-      if (separatorIndex === -1) {
-        continue;
-      }
-      const microCredits = parseInt(member.slice(0, separatorIndex), 10);
-      if (Number.isFinite(microCredits)) {
-        totalMicroCredits += microCredits;
-      }
-    }
+    const totalMicroCredits = (await redis.eval(luaScript, {
+      keys: [redisKey],
+      arguments: [windowMs.toString()],
+    })) as number;
 
     return new Ok(totalMicroCredits);
   } catch (err) {
