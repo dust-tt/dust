@@ -17,9 +17,6 @@ interface WorkflowAlertThresholdPausedCardProps {
   onDecline: () => void;
 }
 
-// Rendered inline in the message flow, in the same spot a blocked tool action would render
-// (see ToolValidationCard), rather than as a modal: the agent loop is genuinely paused and
-// waiting on this decision, so the card stays visible until it is resolved.
 export function WorkflowAlertThresholdPausedCard({
   thresholdAwuCredits,
   submittingDecision,

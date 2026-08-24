@@ -356,9 +356,6 @@ export type BaseAgentMessageType = {
   reactions: MessageReactionType[];
   prunedContext?: boolean;
   pausedAtCreditSpendCheckpoint?: boolean;
-  // Set client-side (streaming only) the first time this message's generation crosses the
-  // user's spend checkpoint. Drives the paused-at-threshold card immediately, ahead of
-  // the persisted flag above catching up.
   creditSpendCheckpointCrossed?: { thresholdAwuCredits: number };
   costCredits: number | null;
   // Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned
