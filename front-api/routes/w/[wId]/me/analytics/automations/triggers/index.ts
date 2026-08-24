@@ -24,7 +24,7 @@ app.post(
 
     const period = await resolveConsumptionPeriod(
       auth,
-      toConsumptionPeriodInput(periodQuery),
+      toConsumptionPeriodInput(periodQuery)
     );
 
     const triggers = await fetchUserAutomationTriggers(auth, {
@@ -36,7 +36,7 @@ app.post(
     });
 
     return ctx.json(triggers);
-  },
+  }
 );
 
 app.route("/:tId", tId);

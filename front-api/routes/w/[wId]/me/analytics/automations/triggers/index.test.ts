@@ -34,7 +34,7 @@ function mockConsumption() {
         by_trigger: { buckets: [] },
         total_count: { value: 0 },
       },
-    }),
+    })
   );
 }
 

@@ -15,7 +15,7 @@ vi.mock(
   async (orig) => {
     const mod = await orig();
     return { ...mod, fetchAutomationTriggerBreakdown: vi.fn() };
-  },
+  }
 );
 
 const BREAKDOWN: GetAutomationTriggerBreakdownResponse = {
@@ -40,13 +40,13 @@ function postBreakdownRequest(wId: string, tId: string) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
-    },
+    }
   );
 }
 
 async function scheduleTrigger(
   auth: Authenticator,
-  agentConfigurationId: string,
+  agentConfigurationId: string
 ) {
   return TriggerFactory.schedule(auth, {
     agentConfigurationId,
@@ -58,7 +58,7 @@ async function scheduleTrigger(
 describe("POST /api/w/:wId/me/analytics/automations/triggers/:tId/breakdown", () => {
   it("returns the breakdown of a trigger the caller edits", async () => {
     vi.mocked(fetchAutomationTriggerBreakdown).mockResolvedValue(
-      new Ok(BREAKDOWN),
+      new Ok(BREAKDOWN)
     );
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "user",
@@ -82,13 +82,13 @@ describe("POST /api/w/:wId/me/analytics/automations/triggers/:tId/breakdown", ()
     await MembershipFactory.associate(workspace, otherUser, { role: "user" });
     const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
       otherUser.sId,
-      workspace.sId,
+      workspace.sId
     );
     const theirTrigger = await scheduleTrigger(otherAuth, agent.sId);
 
     const response = await postBreakdownRequest(
       workspace.sId,
-      theirTrigger.sId,
+      theirTrigger.sId
     );
 
     expect(response.status).toBe(404);
@@ -100,7 +100,7 @@ describe("POST /api/w/:wId/me/analytics/automations/triggers/:tId/breakdown", ()
 
     const response = await postBreakdownRequest(
       workspace.sId,
-      "trg_does_not_exist",
+      "trg_does_not_exist"
     );
 
     expect(response.status).toBe(404);
