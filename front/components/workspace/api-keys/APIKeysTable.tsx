@@ -273,8 +273,8 @@ function buildColumns({
       enableSorting: false,
       meta: {
         className: showAnalyticsConsumption
-          ? "hidden h-16 w-14 @lg-table:table-cell"
-          : "hidden h-16 w-14 @md-table:table-cell",
+          ? "hidden h-16 w-12 @lg-table:table-cell"
+          : "hidden h-16 w-12 @md-table:table-cell",
         headerAlign: "left",
       },
       cell: (info) => {
