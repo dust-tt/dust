@@ -942,4 +942,79 @@ describe("MCPServerViewResource", () => {
       expect(json.toolsMetadata).toEqual([]);
     });
   });
+
+  describe("feature-flag enforcement", () => {
+    it("drops views for restricted internal servers unless includeRestricted is set", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceFactory.defaults(adminAuth);
+      const globalSpace =
+        await SpaceResource.fetchWorkspaceGlobalSpace(adminAuth);
+
+      // Gate primitive_types_debugger behind a flag, and grant it so the server
+      // and its views can be created — simulating a workspace that had the flag.
+      const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
+      Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+        value: {
+          ...originalConfig,
+          availability: "auto",
+          isRestricted: ({
+            featureFlags,
+          }: {
+            plan: PlanType;
+            featureFlags: WhitelistableFeature[];
+          }) => !featureFlags.includes("dev_mcp_actions"),
+        },
+        writable: true,
+        configurable: true,
+      });
+      await FeatureFlagFactory.basic(adminAuth, "dev_mcp_actions");
+
+      const internalServer = await InternalMCPServerInMemoryResource.makeNew(
+        adminAuth,
+        { name: "primitive_types_debugger", useCase: null }
+      );
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        internalServer.id,
+        globalSpace
+      );
+
+      // The flag is turned off: the view now resolves to a restricted server.
+      Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+        value: {
+          ...originalConfig,
+          availability: "auto",
+          isRestricted: () => true,
+        },
+        writable: true,
+        configurable: true,
+      });
+
+      // Default: the restricted view is not resolved into a runnable tool.
+      expect(
+        await MCPServerViewResource.fetchById(adminAuth, view.sId)
+      ).toBeNull();
+      expect(
+        await MCPServerViewResource.fetchByIds(adminAuth, [view.sId])
+      ).toEqual([]);
+
+      // Opt-in: admin surfaces can still surface it for management.
+      const surfaced = await MCPServerViewResource.fetchById(
+        adminAuth,
+        view.sId,
+        { includeRestricted: true }
+      );
+      expect(surfaced).not.toBeNull();
+      expect(surfaced!.sId).toBe(view.sId);
+
+      Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+        value: originalConfig,
+        writable: true,
+        configurable: true,
+      });
+    });
+  });
 });
