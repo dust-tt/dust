@@ -3099,7 +3099,13 @@ async function isMessagesLimitReached(
   } = plan.limits.assistant;
 
   const user = auth.user();
-  if (user && maxAwuCredits !== -1) {
+  const featureFlags = await getFeatureFlags(auth);
+  // Escape hatch: the per-user fair-use AWU cap can be disabled per workspace.
+  if (
+    user &&
+    maxAwuCredits !== -1 &&
+    !featureFlags.includes("disable_fair_use_awu_limit")
+  ) {
     const result = await getWeightedRateLimiterCount({
       key: makeFairUseAwuCreditsRateLimitKeyForUser(
         owner,
