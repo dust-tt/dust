@@ -33,12 +33,15 @@ const BREAKDOWN: GetAutomationTriggerBreakdownResponse = {
   },
 };
 
-function postBreakdownRequest(wId: string, body: Record<string, unknown>) {
-  return honoApp.request(`/api/w/${wId}/me/automations/trigger-breakdown`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+function postBreakdownRequest(wId: string, tId: string) {
+  return honoApp.request(
+    `/api/w/${wId}/me/automations/triggers/${tId}/breakdown`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    }
+  );
 }
 
 async function scheduleTrigger(
@@ -52,7 +55,7 @@ async function scheduleTrigger(
   });
 }
 
-describe("POST /api/w/:wId/me/automations/trigger-breakdown", () => {
+describe("POST /api/w/:wId/me/automations/triggers/:tId/breakdown", () => {
   it("returns the breakdown of a trigger the caller edits", async () => {
     vi.mocked(fetchAutomationTriggerBreakdown).mockResolvedValue(
       new Ok(BREAKDOWN)
@@ -63,9 +66,7 @@ describe("POST /api/w/:wId/me/automations/trigger-breakdown", () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const trigger = await scheduleTrigger(auth, agent.sId);
 
-    const response = await postBreakdownRequest(workspace.sId, {
-      triggerId: trigger.sId,
-    });
+    const response = await postBreakdownRequest(workspace.sId, trigger.sId);
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(BREAKDOWN);
@@ -85,9 +86,10 @@ describe("POST /api/w/:wId/me/automations/trigger-breakdown", () => {
     );
     const theirTrigger = await scheduleTrigger(otherAuth, agent.sId);
 
-    const response = await postBreakdownRequest(workspace.sId, {
-      triggerId: theirTrigger.sId,
-    });
+    const response = await postBreakdownRequest(
+      workspace.sId,
+      theirTrigger.sId
+    );
 
     expect(response.status).toBe(404);
     expect(vi.mocked(fetchAutomationTriggerBreakdown)).not.toHaveBeenCalled();
@@ -96,9 +98,10 @@ describe("POST /api/w/:wId/me/automations/trigger-breakdown", () => {
   it("returns 404 for an unknown trigger", async () => {
     const { workspace } = await createPrivateApiMockRequest({ role: "user" });
 
-    const response = await postBreakdownRequest(workspace.sId, {
-      triggerId: "trg_does_not_exist",
-    });
+    const response = await postBreakdownRequest(
+      workspace.sId,
+      "trg_does_not_exist"
+    );
 
     expect(response.status).toBe(404);
     expect(vi.mocked(fetchAutomationTriggerBreakdown)).not.toHaveBeenCalled();

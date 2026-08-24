@@ -71,10 +71,7 @@ export type UserAutomationTriggersBody = z.infer<
   typeof UserAutomationTriggersBodySchema
 >;
 
-export const AutomationTriggerBreakdownBodySchema =
-  ConsumptionPeriodSchema.extend({
-    triggerId: z.string().min(1),
-  });
+export const AutomationTriggerBreakdownBodySchema = ConsumptionPeriodSchema;
 
 export type AutomationTriggerBreakdownBody = z.infer<
   typeof AutomationTriggerBreakdownBodySchema

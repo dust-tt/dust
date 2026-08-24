@@ -41,24 +41,22 @@ async function setupTest({
   return createPrivateApiMockRequest({ role });
 }
 
-function postBreakdownRequest(wId: string, body: Record<string, unknown>) {
+function postBreakdownRequest(wId: string, tId: string) {
   return honoApp.request(
-    `/api/w/${wId}/analytics/automations/trigger-breakdown`,
+    `/api/w/${wId}/analytics/automations/triggers/${tId}/breakdown`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({}),
     }
   );
 }
 
-describe("POST /api/w/:wId/analytics/automations/trigger-breakdown", () => {
+describe("POST /api/w/:wId/analytics/automations/triggers/:tId/breakdown", () => {
   it("returns 403 for regular users", async () => {
     const { workspace } = await setupTest({ role: "user" });
 
-    const response = await postBreakdownRequest(workspace.sId, {
-      triggerId: "trg1",
-    });
+    const response = await postBreakdownRequest(workspace.sId, "trg1");
 
     expect(response.status).toBe(403);
     expect(vi.mocked(fetchAutomationTriggerBreakdown)).not.toHaveBeenCalled();
@@ -70,9 +68,7 @@ describe("POST /api/w/:wId/analytics/automations/trigger-breakdown", () => {
     );
     const { workspace } = await setupTest({ role: "manager" });
 
-    const response = await postBreakdownRequest(workspace.sId, {
-      triggerId: "trg1",
-    });
+    const response = await postBreakdownRequest(workspace.sId, "trg1");
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(BREAKDOWN);
@@ -84,9 +80,7 @@ describe("POST /api/w/:wId/analytics/automations/trigger-breakdown", () => {
     );
     const { workspace } = await setupTest();
 
-    const response = await postBreakdownRequest(workspace.sId, {
-      triggerId: "trg1",
-    });
+    const response = await postBreakdownRequest(workspace.sId, "trg1");
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(BREAKDOWN);
@@ -96,27 +90,13 @@ describe("POST /api/w/:wId/analytics/automations/trigger-breakdown", () => {
     );
   });
 
-  it("returns 400 when triggerId is missing", async () => {
-    const { workspace } = await setupTest();
-
-    const response = await postBreakdownRequest(workspace.sId, {});
-
-    expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({
-      error: { type: "invalid_request_error" },
-    });
-    expect(vi.mocked(fetchAutomationTriggerBreakdown)).not.toHaveBeenCalled();
-  });
-
   it("returns 500 when the search fails", async () => {
     vi.mocked(fetchAutomationTriggerBreakdown).mockResolvedValue(
       new Err(new ElasticsearchError("query_error", "boom"))
     );
     const { workspace } = await setupTest();
 
-    const response = await postBreakdownRequest(workspace.sId, {
-      triggerId: "trg1",
-    });
+    const response = await postBreakdownRequest(workspace.sId, "trg1");
 
     expect(response.status).toBe(500);
     expect(await response.json()).toMatchObject({
