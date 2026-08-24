@@ -67,9 +67,15 @@ function toTriggerOrderColumn(columnId: string | undefined) {
 
 interface TriggerDataTableProps {
   owner: LightWorkspaceType;
+  agentId?: string;
+  loadOnInit?: boolean;
 }
 
-export function TriggerDataTable({ owner }: TriggerDataTableProps) {
+export function TriggerDataTable({
+  owner,
+  agentId,
+  loadOnInit,
+}: TriggerDataTableProps) {
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
   );
@@ -85,6 +91,10 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
     "",
     { delay: 300 }
   );
+  const { data: agentConfigurations } = usePokeAgentConfigurations({
+    owner,
+    disabled: agentId === undefined,
+  });
 
   const resetPage = () => {
     setPagination((current) =>
@@ -133,6 +143,7 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
     providers: providers.length > 0 ? providers : undefined,
     orderColumn,
     orderDirection,
+    disabled: agentId !== undefined,
   });
   const isUpdating = isDebouncing || isTriggersValidating;
 
@@ -141,6 +152,7 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
   // and keep the controlled page within the returned result set.
   useEffect(() => {
     if (
+      agentId !== undefined ||
       isDebouncing ||
       isTriggersLoading ||
       isTriggersValidating ||
@@ -171,6 +183,7 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
         : [{ id: appliedOrderColumn, desc: appliedDesc }];
     });
   }, [
+    agentId,
     appliedOrderColumn,
     appliedOrderDirection,
     isDebouncing,
@@ -180,6 +193,39 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
     pagination.pageSize,
     totalTriggers,
   ]);
+
+  if (agentId !== undefined) {
+    return (
+      <PokeDataTableConditionalFetch
+        header="Triggers"
+        owner={owner}
+        loadOnInit={loadOnInit}
+        useSWRHook={usePokeTriggers}
+      >
+        {(agentTriggers, mutateAgentTriggers) => {
+          const filteredTriggers = agentTriggers.filter(
+            (trigger) => trigger.agentConfigurationId === agentId
+          );
+          const onAgentTriggerDeleted = async () => {
+            await clearPokeTriggerCaches(owner);
+            await mutateAgentTriggers();
+          };
+
+          return (
+            <PokeDataTable
+              columns={makeColumnsForTriggers(
+                owner,
+                agentConfigurations,
+                onAgentTriggerDeleted
+              )}
+              data={filteredTriggers}
+              facets={TRIGGER_PROVIDER_FACETS}
+            />
+          );
+        }}
+      </PokeDataTableConditionalFetch>
+    );
+  }
 
   const onTriggerDeleted = async () => {
     await clearPokeTriggerCaches(owner);
@@ -239,53 +285,5 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
         )}
       </div>
     </div>
-  );
-}
-
-interface AgentTriggerDataTableProps {
-  owner: LightWorkspaceType;
-  agentId: string;
-  loadOnInit?: boolean;
-}
-
-export function AgentTriggerDataTable({
-  owner,
-  agentId,
-  loadOnInit,
-}: AgentTriggerDataTableProps) {
-  const { data: agentConfigurations } = usePokeAgentConfigurations({
-    owner,
-    disabled: false,
-  });
-
-  return (
-    <PokeDataTableConditionalFetch
-      header="Triggers"
-      owner={owner}
-      loadOnInit={loadOnInit}
-      useSWRHook={usePokeTriggers}
-    >
-      {(triggers, mutateTriggers) => {
-        const filteredTriggers = triggers.filter(
-          (trigger) => trigger.agentConfigurationId === agentId
-        );
-        const onTriggerDeleted = async () => {
-          await clearPokeTriggerCaches(owner);
-          await mutateTriggers();
-        };
-
-        return (
-          <PokeDataTable
-            columns={makeColumnsForTriggers(
-              owner,
-              agentConfigurations,
-              onTriggerDeleted
-            )}
-            data={filteredTriggers}
-            facets={TRIGGER_PROVIDER_FACETS}
-          />
-        );
-      }}
-    </PokeDataTableConditionalFetch>
   );
 }
