@@ -17,6 +17,7 @@ import {
   getAgentLoopData,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import maxBy from "lodash/maxBy";
 
 export async function checkCreditsActivity(
@@ -87,15 +88,7 @@ export async function checkWorkflowAlertThresholdActivity(
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       return { crossed: true };
     }
-    logger.error(
-      {
-        conversationId: agentLoopArgs.conversationId,
-        agentMessageId: agentLoopArgs.agentMessageId,
-        error: runAgentDataRes.error,
-      },
-      "[WorkflowAlertThreshold] Failed to load agent loop data; skipping notification"
-    );
-    return { crossed: true };
+    throw normalizeError(runAgentDataRes.error);
   }
   const { agentConfiguration, agentMessage, conversation } =
     runAgentDataRes.value;
@@ -119,19 +112,31 @@ export async function checkWorkflowAlertThresholdActivity(
       },
     }
   );
-  await ConversationResource.markAsActionRequired(auth, { conversation });
 
-  await publishConversationRelatedEvent({
-    conversationId: conversation.sId,
-    step,
-    event: {
-      type: "agent_credit_alert_threshold_crossed",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      thresholdAwuCredits: result.thresholdAwuCredits,
-    },
-  });
+  try {
+    await ConversationResource.markAsActionRequired(auth, { conversation });
+
+    await publishConversationRelatedEvent({
+      conversationId: conversation.sId,
+      step,
+      event: {
+        type: "agent_credit_alert_threshold_crossed",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        thresholdAwuCredits: result.thresholdAwuCredits,
+      },
+    });
+  } catch (err) {
+    logger.error(
+      {
+        conversationId: agentLoopArgs.conversationId,
+        agentMessageId: agentLoopArgs.agentMessageId,
+        error: normalizeError(err),
+      },
+      "[WorkflowAlertThreshold] Failed to notify after persisting pause"
+    );
+  }
 
   return { crossed: true };
 }

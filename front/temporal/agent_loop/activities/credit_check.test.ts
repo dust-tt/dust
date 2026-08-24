@@ -205,4 +205,53 @@ describe("checkWorkflowAlertThresholdActivity", () => {
     expect(result).toEqual({ crossed: true });
     expect(mockPublishConversationRelatedEvent).not.toHaveBeenCalled();
   });
+
+  it("throws (instead of pausing) on a non-deletion failure to load agent loop data", async () => {
+    mockCheckWorkflowAlertThresholdGate.mockResolvedValue({
+      crossed: true,
+      thresholdAwuCredits: 1500,
+    });
+    mockGetAgentLoopData.mockResolvedValue({
+      isErr: () => true,
+      error: new Error("transient_db_error"),
+    });
+    mockIsAgentLoopDataSoftDeleteError.mockReturnValue(false);
+
+    await expect(
+      checkWorkflowAlertThresholdActivity({} as never, {
+        agentLoopArgs: {} as never,
+      })
+    ).rejects.toThrow("transient_db_error");
+
+    expect(mockAgentMessageModelUpdate).not.toHaveBeenCalled();
+    expect(mockPublishConversationRelatedEvent).not.toHaveBeenCalled();
+  });
+
+  it("still reports crossed when the pause is persisted but the notification fails", async () => {
+    mockCheckWorkflowAlertThresholdGate.mockResolvedValue({
+      crossed: true,
+      thresholdAwuCredits: 1500,
+    });
+    mockGetAgentLoopData.mockResolvedValue({
+      isErr: () => false,
+      value: {
+        agentConfiguration: { sId: "agent_config_id" },
+        agentMessage: { sId: "msg_id", contents: [{ step: 2 }] },
+        conversation: { sId: "conv_id" },
+      },
+    });
+    mockPublishConversationRelatedEvent.mockRejectedValue(
+      new Error("redis_publish_failed")
+    );
+
+    const result = await checkWorkflowAlertThresholdActivity({} as never, {
+      agentLoopArgs: {
+        conversationId: "conv_id",
+        agentMessageId: "msg_id",
+      } as never,
+    });
+
+    expect(result).toEqual({ crossed: true });
+    expect(mockAgentMessageModelUpdate).toHaveBeenCalled();
+  });
 });
