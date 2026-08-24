@@ -129,7 +129,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
 
   it("returns crossed: false without checking the gate once acknowledged", async () => {
     mockMessageModelFindOne.mockResolvedValue({
-      agentMessage: { workflowAlertThresholdAcknowledged: true },
+      agentMessage: { workflowAlertThresholdStatus: "acknowledged" },
     });
 
     const result = await checkWorkflowAlertThresholdActivity({} as never, {

@@ -49,12 +49,12 @@ async function hasAcknowledgedWorkflowAlertThreshold(
         model: AgentMessageModel,
         as: "agentMessage",
         required: true,
-        attributes: ["workflowAlertThresholdAcknowledged"],
+        attributes: ["workflowAlertThresholdStatus"],
       },
     ],
   });
 
-  return message?.agentMessage?.workflowAlertThresholdAcknowledged ?? false;
+  return message?.agentMessage?.workflowAlertThresholdStatus === "acknowledged";
 }
 
 /**
@@ -106,10 +106,11 @@ export async function checkWorkflowAlertThresholdActivity(
   // workflow just falls through to the ordinary success finalize path when it breaks the loop,
   // exactly like a blocked tool action's `needsApproval` exit — the durable "paused" marker is
   // this activity's job, the same way a blocked action's status is set when it's first created.
+  // The step to resume at is not stored here: like every other resume path, it's derived from the
+  // message's own agentStepContents rows when the pause is resolved.
   await AgentMessageModel.update(
     {
-      pausedAtWorkflowAlertThreshold: true,
-      pausedAtWorkflowAlertThresholdStep: step + 1,
+      workflowAlertThresholdStatus: "paused",
     },
     {
       where: {
