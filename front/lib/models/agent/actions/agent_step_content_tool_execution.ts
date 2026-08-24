@@ -70,12 +70,17 @@ AgentStepContentToolExecutionModel.init(
         concurrently: true,
         name: "agent_step_content_tool_executions_agent_mcp_action_id",
       },
+      {
+        fields: ["stepContentId"],
+        concurrently: true,
+        name: "agent_step_content_tool_executions_step_content_id",
+      },
       // Covering index: rendering resolves a conversation's step contents to their actions and
       // reads nothing else off this table, so the scan stays out of the heap.
       {
-        fields: ["stepContentId", "workspaceId", "agentMCPActionId"],
+        fields: ["workspaceId", "stepContentId", "agentMCPActionId"],
         concurrently: true,
-        name: "agent_sc_te_step_content_workspace_action",
+        name: "agent_sc_te_workspace_step_content_action",
       },
       {
         fields: ["workspaceId", "conversationId", "agentMessageId"],
