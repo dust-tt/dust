@@ -1,8 +1,8 @@
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import type { KillSwitchType } from "@app/lib/poke/types";
-import { KILL_SWITCH_TYPES } from "@app/lib/poke/types";
+import type { StaticKillSwitchType } from "@app/lib/poke/types";
+import { STATIC_KILL_SWITCH_TYPES } from "@app/lib/poke/types";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeKillSwitches } from "@app/poke/swr/kill";
 import {
@@ -35,7 +35,10 @@ interface KillSwitchDefinition {
   icon: ComponentType<{ className?: string }>;
 }
 
-const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
+const KILL_SWITCH_DEFINITIONS: Record<
+  StaticKillSwitchType,
+  KillSwitchDefinition
+> = {
   save_agent_configurations: {
     title: "Agent Configurations",
     description: "Disable saving of agent configurations.",
@@ -109,7 +112,7 @@ export function KillPage() {
   const { killSwitches, isKillSwitchesLoading, mutateKillSwitches } =
     usePokeKillSwitches();
   const [updatingKillSwitch, setUpdatingKillSwitch] =
-    useState<KillSwitchType | null>(null);
+    useState<StaticKillSwitchType | null>(null);
   const sendNotification = useSendNotification();
   const enabledKillSwitches = new Set(killSwitches);
 
@@ -119,7 +122,7 @@ export function KillPage() {
     useState<SandboxKillRequestKey | null>(null);
 
   async function updateKillSwitch(
-    killSwitch: KillSwitchType,
+    killSwitch: StaticKillSwitchType,
     enabled: boolean
   ): Promise<void> {
     if (updatingKillSwitch) {
@@ -216,7 +219,7 @@ export function KillPage() {
           </div>
         ) : (
           <div className={PANEL_SECTION_CLASSES}>
-            {KILL_SWITCH_TYPES.map((type, index) => {
+            {STATIC_KILL_SWITCH_TYPES.map((type, index) => {
               const {
                 title,
                 description,

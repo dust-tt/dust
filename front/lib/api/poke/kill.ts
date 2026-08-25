@@ -9,3 +9,7 @@ export const KillSwitchTypeSchema = z.object({
   enabled: z.boolean(),
   type: z.string(),
 });
+
+export const KilledModelsSchema = z.object({
+  killedModelIds: z.array(z.string()),
+});
