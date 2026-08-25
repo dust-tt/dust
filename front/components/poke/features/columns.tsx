@@ -1,11 +1,10 @@
+import { FeatureFlagStageChip } from "@app/components/poke/features/stage_chip";
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import type {
   FeatureFlagStage,
   WhitelistableFeature,
 } from "@app/types/shared/feature_flags";
-import { FEATURE_FLAG_STAGE_LABELS } from "@app/types/shared/feature_flags";
 import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
-import { Chip } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 type FeatureFlagsDisplayType = {
@@ -29,19 +28,7 @@ export function makeColumnsForFeatureFlags(): ColumnDef<FeatureFlagsDisplayType>
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Stage" />
       ),
-      cell: ({ row }) => {
-        const { stage } = row.original;
-        const warningStages: FeatureFlagStage[] = ["dust_only", "rolling_out"];
-
-        return (
-          <Chip
-            color={warningStages.includes(stage) ? "warning" : "highlight"}
-            size="xs"
-          >
-            {FEATURE_FLAG_STAGE_LABELS[stage]}
-          </Chip>
-        );
-      },
+      cell: ({ row }) => <FeatureFlagStageChip stage={row.original.stage} />,
     },
     {
       accessorKey: "description",

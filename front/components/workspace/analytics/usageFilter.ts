@@ -1,12 +1,12 @@
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
-} from "@app/lib/api/analytics/consumption/scope";
+} from "@app/types/api/analytics/consumption";
 import {
   CONSUMPTION_DIMENSION_FILTER_KEYS,
   CONSUMPTION_SCOPE_DIMENSIONS,
-} from "@app/lib/api/analytics/consumption/scope";
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
+} from "@app/types/api/analytics/consumption";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
@@ -26,6 +26,19 @@ export const USAGE_FILTER_CATEGORIES = [
 ] as const;
 
 export type UsageFilterCategory = (typeof USAGE_FILTER_CATEGORIES)[number];
+
+const PERSONAL_USAGE_FILTER_CATEGORIES: UsageFilterCategory[] =
+  USAGE_FILTER_CATEGORIES.filter(
+    (category) => category !== "member" && category !== "group"
+  );
+
+export function getUsageFilterCategories({
+  personal,
+}: {
+  personal?: boolean;
+}): readonly UsageFilterCategory[] {
+  return personal ? PERSONAL_USAGE_FILTER_CATEGORIES : USAGE_FILTER_CATEGORIES;
+}
 
 export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
   {

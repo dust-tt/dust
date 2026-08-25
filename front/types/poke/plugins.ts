@@ -151,7 +151,9 @@ interface PluginResourceScope {
 
 interface PluginWorkspaceResource extends PluginResourceScope {
   resourceId: string;
-  workspace: LightWorkspaceType;
+  // Only the sId is ever read, so pages that list workspaces they do not fully hydrate (e.g. the
+  // feature flag detail page) can target a plugin without shipping ModelIds to the client.
+  workspace: Pick<LightWorkspaceType, "sId">;
 }
 
 export type PluginResourceTarget =

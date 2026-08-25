@@ -4,6 +4,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { UserAutomationsDialog } from "@app/components/me/UserAutomationsDialog";
 import { UserToolsDialog } from "@app/components/me/UserToolsDialog";
+import { UserAnalyticsPopover } from "@app/components/UserAnalyticsPopover";
 import { UserSettingsPopover } from "@app/components/UserSettingsPopover";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
@@ -32,12 +33,15 @@ import { isOnlyAdmin, isOnlyManager, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
+  BarChart01,
   Beaker02,
   BookOpen01,
   ChevronDown,
   ChromeLogo,
   Clock,
   cn,
+  Dialog,
+  DialogContent,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -84,6 +88,8 @@ export function UserMenu({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [automationsOpen, setAutomationsOpen] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const sendNotification = useSendNotification();
   const devMode = useDevMode();
@@ -251,7 +257,16 @@ export function UserMenu({
         onOpenChange={setAutomationsOpen}
         owner={owner}
       />
-      <DropdownMenu>
+      <Dialog open={analyticsOpen} onOpenChange={setAnalyticsOpen}>
+        <DialogContent size="2xl" height="xl" className="focus:outline-none">
+          <UserAnalyticsPopover
+            key={owner.sId}
+            open={analyticsOpen}
+            owner={owner}
+          />
+        </DialogContent>
+      </Dialog>
+      <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
         <DropdownMenuTrigger className="hover:bg-hover data-[state=open]:bg-selected rounded-xl p-2 m-2">
           <div className="group flex cursor-pointer items-center justify-between gap-2">
             <span className="sr-only">Open user menu</span>
@@ -298,7 +313,14 @@ export function UserMenu({
         >
           {creditUsageState && (
             <>
-              <CreditUsage state={creditUsageState} variant="profile_menu" />
+              <CreditUsage
+                state={creditUsageState}
+                variant="profile_menu"
+                onLearnMore={() => {
+                  setUserMenuOpen(false);
+                  setAnalyticsOpen(true);
+                }}
+              />
               <Separator className="my-1" />
             </>
           )}
@@ -412,6 +434,11 @@ export function UserMenu({
                 label="Automations"
                 icon={Clock}
                 onSelect={() => setAutomationsOpen(true)}
+              />
+              <DropdownMenuItem
+                label="Analytics"
+                icon={BarChart01}
+                onSelect={() => setAnalyticsOpen(true)}
               />
             </>
           )}

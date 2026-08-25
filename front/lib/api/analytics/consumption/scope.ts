@@ -1,6 +1,30 @@
 import type { Authenticator } from "@app/lib/auth";
 import { MICRO_CREDITS_PER_CREDIT } from "@app/lib/credits/units";
+import type {
+  ConsumptionScopeDimension,
+  ConsumptionScopeFilter,
+} from "@app/types/api/analytics/consumption";
+import {
+  CONSUMPTION_DIMENSION_FILTER_KEYS,
+  CONSUMPTION_SCOPE_DIMENSIONS,
+} from "@app/types/api/analytics/consumption";
 import type { estypes } from "@elastic/elasticsearch";
+
+export type {
+  ConsumptionFacetScope,
+  ConsumptionScopeDimension,
+  ConsumptionScopeFilter,
+  ConsumptionScopeFilterKey,
+  ConsumptionTopSortOrder,
+} from "@app/types/api/analytics/consumption";
+export {
+  CONSUMPTION_DIMENSION_FILTER_KEYS,
+  CONSUMPTION_FACET_SCOPES,
+  CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION,
+  CONSUMPTION_SCOPE_DIMENSIONS,
+  CONSUMPTION_SCOPE_FILTER_KEYS,
+  CONSUMPTION_TOP_SORT_ORDER,
+} from "@app/types/api/analytics/consumption";
 
 export const COMPLETED_AT_FIELD = "completed_at";
 
@@ -10,28 +34,7 @@ export const CONVERSATION_ID_FIELD = "conversation_id";
 
 export const TRIGGER_ID_FIELD = "trigger_id";
 
-export const CONSUMPTION_FACET_SCOPES = ["all", "automations"] as const;
-
-// Restricts which consumption documents facets are computed over. The
-// automations page filters the same index down to trigger-originated runs, so
-// its facets must count only those documents.
-export type ConsumptionFacetScope = (typeof CONSUMPTION_FACET_SCOPES)[number];
-
 export const CARDINALITY_PRECISION_THRESHOLD = 40_000;
-
-export const CONSUMPTION_SCOPE_DIMENSIONS = [
-  "agent",
-  "user",
-  "api_key",
-  "group",
-  "model",
-  "tool",
-  "skill",
-  "source",
-] as const;
-
-export type ConsumptionScopeDimension =
-  (typeof CONSUMPTION_SCOPE_DIMENSIONS)[number];
 
 export const CONSUMPTION_DIMENSION_FIELDS: Record<
   ConsumptionScopeDimension,
@@ -64,46 +67,6 @@ export const CONSUMPTION_DIMENSION_UNIT: Record<
   skill: "invocation",
   source: "message",
 };
-
-// Bounds the `terms` clause each selected dimension turns into.
-export const CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION = 500;
-
-export const CONSUMPTION_SCOPE_FILTER_KEYS = [
-  "agents",
-  "users",
-  "api_keys",
-  "groups",
-  "models",
-  "tools",
-  "skills",
-  "sources",
-] as const;
-
-export type ConsumptionScopeFilterKey =
-  (typeof CONSUMPTION_SCOPE_FILTER_KEYS)[number];
-
-export type ConsumptionScopeFilter = Partial<
-  Record<ConsumptionScopeFilterKey, string[]>
->;
-
-export const CONSUMPTION_DIMENSION_FILTER_KEYS: Record<
-  ConsumptionScopeDimension,
-  ConsumptionScopeFilterKey
-> = {
-  agent: "agents",
-  user: "users",
-  api_key: "api_keys",
-  group: "groups",
-  model: "models",
-  tool: "tools",
-  skill: "skills",
-  source: "sources",
-};
-
-export const CONSUMPTION_TOP_SORT_ORDER = ["asc", "desc"] as const;
-
-export type ConsumptionTopSortOrder =
-  (typeof CONSUMPTION_TOP_SORT_ORDER)[number];
 
 export const CONSUMPTION_METRICS = ["credit_micro"] as const;
 

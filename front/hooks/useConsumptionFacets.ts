@@ -10,7 +10,10 @@ import type {
   UsageFilterSourceOption,
   UsageFilterToolOption,
 } from "@app/components/workspace/analytics/usageFilter";
-import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
+import {
+  getConsumptionAnalyticsUrl,
+  useConsumptionQuery,
+} from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import {
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
@@ -22,7 +25,7 @@ import type {
   ConsumptionFacetScope,
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
-} from "@app/lib/api/analytics/consumption/scope";
+} from "@app/types/api/analytics/consumption";
 import { isConnectorProvider } from "@app/types/data_source";
 import { useMemo } from "react";
 
@@ -47,6 +50,7 @@ export interface UseConsumptionFacetsParams {
   filter?: ConsumptionScopeFilter;
   scope?: ConsumptionFacetScope;
   dimensions?: ConsumptionScopeDimension[];
+  personal?: boolean;
   disabled?: boolean;
 }
 
@@ -117,9 +121,14 @@ export function useConsumptionFacets({
   filter,
   scope = "all",
   dimensions,
+  personal,
   disabled,
 }: UseConsumptionFacetsParams) {
-  const url = `/api/w/${workspaceId}/analytics/consumption/facets`;
+  const url = getConsumptionAnalyticsUrl({
+    workspaceId,
+    personal,
+    endpoint: "facets",
+  });
   const body: ConsumptionFacetsBody = {
     period: period.kind,
     days:

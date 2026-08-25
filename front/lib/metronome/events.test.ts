@@ -84,6 +84,7 @@ describe("Metronome billing event adapters", () => {
           internalMCPServerName: "web_search_&_browse",
           status: "succeeded",
           executionDurationMs: 10,
+          shouldEmit: true,
         },
         {
           toolName: "websearch",
@@ -91,6 +92,7 @@ describe("Metronome billing event adapters", () => {
           internalMCPServerName: "web_search_&_browse",
           status: "succeeded",
           executionDurationMs: 20,
+          shouldEmit: true,
         },
       ],
     });
@@ -114,10 +116,66 @@ describe("Metronome billing event adapters", () => {
           internalMCPServerName: null,
           status: "denied",
           executionDurationMs: null,
+          shouldEmit: true,
         },
       ],
     });
 
     expect(events).toEqual([]);
+  });
+
+  it("splits paid and post-cap calls to the same tool", () => {
+    const events = buildToolUseEvents({
+      ...commonEventInput,
+      actions: Array.from({ length: 8 }, () => ({
+        toolName: "custom_tool",
+        mcpServerId: "mcp_server",
+        internalMCPServerName: null,
+        status: "succeeded" as const,
+        executionDurationMs: 10,
+        shouldEmit: true,
+      })),
+    });
+
+    expect(events).toHaveLength(2);
+    expect(events.map(({ properties }) => properties)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ count: 7, usage_type: "user" }),
+        expect.objectContaining({ count: 1, usage_type: "free" }),
+      ])
+    );
+    expect(
+      new Set(events.map(({ transaction_id }) => transaction_id)).size
+    ).toBe(2);
+  });
+
+  it("applies prior execution spend without re-emitting prior actions", () => {
+    const events = buildToolUseEvents({
+      ...commonEventInput,
+      actions: [
+        ...Array.from({ length: 7 }, () => ({
+          toolName: "custom_tool",
+          mcpServerId: "mcp_server",
+          internalMCPServerName: null,
+          status: "succeeded" as const,
+          executionDurationMs: 10,
+          shouldEmit: false,
+        })),
+        {
+          toolName: "custom_tool",
+          mcpServerId: "mcp_server",
+          internalMCPServerName: null,
+          status: "succeeded",
+          executionDurationMs: 10,
+          shouldEmit: true,
+        },
+      ],
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.properties).toMatchObject({
+      count: 1,
+      usage_type: "free",
+    });
   });
 });

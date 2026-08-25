@@ -386,6 +386,12 @@ export const FEATURE_FLAG_STAGE_LABELS: Record<FeatureFlagStage, string> = {
   on_demand: "On demand",
 };
 
+export const FEATURE_FLAG_STAGES = [
+  "dust_only",
+  "rolling_out",
+  "on_demand",
+] as const satisfies readonly FeatureFlagStage[];
+
 export type FeatureFlag = {
   description: string;
   stage: FeatureFlagStage;

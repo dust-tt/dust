@@ -9,15 +9,24 @@ export interface ConsumptionOverviewProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   showError?: boolean;
+  personal?: boolean;
+  disabled?: boolean;
 }
 
 export function ConsumptionOverview({
   workspaceId,
   period: periodSelection,
   showError = false,
+  personal,
+  disabled,
 }: ConsumptionOverviewProps) {
   const { overview, isOverviewLoading, isOverviewError } =
-    useConsumptionOverview({ workspaceId, period: periodSelection });
+    useConsumptionOverview({
+      workspaceId,
+      period: periodSelection,
+      personal,
+      disabled,
+    });
 
   return (
     <ConsumptionOverviewView
@@ -25,6 +34,7 @@ export function ConsumptionOverview({
       isOverviewLoading={isOverviewLoading}
       isOverviewError={Boolean(isOverviewError)}
       showError={showError}
+      personal={personal}
     />
   );
 }
@@ -35,6 +45,7 @@ interface ConsumptionOverviewViewProps {
   isOverviewError: boolean;
   showError?: boolean;
   showIndexingDetails?: boolean;
+  personal?: boolean;
 }
 
 export function ConsumptionOverviewView({
@@ -43,6 +54,7 @@ export function ConsumptionOverviewView({
   isOverviewError,
   showError = false,
   showIndexingDetails = false,
+  personal,
 }: ConsumptionOverviewViewProps) {
   if (isOverviewLoading) {
     return <LoadingBlock className="h-5 w-80" />;
@@ -60,7 +72,11 @@ export function ConsumptionOverviewView({
 
   const header = [
     `${formatConsumptionDate(period.startDate)} to ${formatConsumptionDate(period.endDate)}`,
-    `${members.active.toLocaleString()} of ${members.total.toLocaleString()} members active`,
+    ...(personal
+      ? []
+      : [
+          `${members.active.toLocaleString()} of ${members.total.toLocaleString()} members active`,
+        ]),
     ...(lastRecordAt
       ? [
           showIndexingDetails

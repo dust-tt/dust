@@ -1,6 +1,6 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
-import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
+import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/types/api/analytics/consumption";
 
 export const CONSUMPTION_PERIOD_DAY_OPTIONS = [7, 30, 90] as const;
 

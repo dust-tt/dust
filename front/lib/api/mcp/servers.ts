@@ -280,6 +280,15 @@ export async function createInternalMCPServer(
     return new Err(new Error("Invalid internal MCP server name"));
   }
 
+  const isRestricted =
+    await InternalMCPServerInMemoryResource.isRestrictedForWorkspace(
+      auth,
+      name
+    );
+  if (isRestricted) {
+    return new Err(new Error("This tool is not available for this workspace."));
+  }
+
   if (viewName !== undefined) {
     const trimmed = viewName.trim();
     if (trimmed.length === 0 || trimmed.length > MAX_NAME_LENGTH) {

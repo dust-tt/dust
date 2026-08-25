@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import type { CreditUsageState } from "./CreditUsage";
 import { CreditUsage } from "./CreditUsage";
 
@@ -20,6 +20,22 @@ describe("CreditUsage", () => {
     expect(
       screen.getByRole("progressbar", { name: "Credits used" })
     ).toHaveAttribute("aria-valuenow", "80");
+  });
+
+  it("renders the profile menu learn more action", () => {
+    const onLearnMore = vi.fn();
+
+    render(
+      <CreditUsage
+        state={ON_TARGET_STATE}
+        variant="profile_menu"
+        onLearnMore={onLearnMore}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Learn more" }));
+
+    expect(onLearnMore).toHaveBeenCalledOnce();
   });
 
   it("renders the companion presentation and clamps displayed usage", () => {

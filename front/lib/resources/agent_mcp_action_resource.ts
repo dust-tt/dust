@@ -757,6 +757,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<AgentMCPActionResource[]> {
     return this.baseFetch(auth, {
       where: { agentMessageId: { [Op.in]: agentMessageIds } },
+      // Billing policies are applied chronologically. Model ids preserve action
+      // creation order and provide a deterministic tie-break for parallel calls.
+      order: [["id", "ASC"]],
     });
   }
 

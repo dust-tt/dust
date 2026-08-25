@@ -1,5 +1,8 @@
 import { ConsumptionPeriodSchema } from "@app/lib/api/analytics/consumption/schema";
-import { TRIGGER_EXECUTION_MODES } from "@app/types/assistant/triggers";
+import {
+  TRIGGER_EXECUTION_MODES,
+  TRIGGER_KINDS,
+} from "@app/types/assistant/triggers";
 import { z } from "zod";
 
 export const DEFAULT_AUTOMATION_TRIGGERS_LIMIT = 25;
@@ -13,7 +16,7 @@ export type AutomationsOverviewBody = z.infer<
 export const AutomationTriggersFilterSchema = z.object({
   agentIds: z.array(z.string()).optional(),
   editorIds: z.array(z.string()).optional(),
-  kinds: z.array(z.enum(["schedule", "webhook"])).optional(),
+  kinds: z.array(z.enum(TRIGGER_KINDS)).optional(),
   executionModes: z.array(z.enum(TRIGGER_EXECUTION_MODES)).optional(),
 });
 
@@ -50,7 +53,7 @@ export type AutomationTriggersBody = z.infer<
 
 export const UserAutomationTriggersFilterSchema = z.object({
   agentIds: z.array(z.string()).optional(),
-  kinds: z.array(z.enum(["schedule", "webhook"])).optional(),
+  kinds: z.array(z.enum(TRIGGER_KINDS)).optional(),
   executionModes: z.array(z.enum(TRIGGER_EXECUTION_MODES)).optional(),
 });
 

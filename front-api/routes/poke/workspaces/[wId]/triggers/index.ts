@@ -1,12 +1,11 @@
-import type { PokeListTriggers } from "@app/lib/api/poke/triggers";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import { listTriggersWithProviderAndEditor } from "@app/lib/triggers/admin/list_with_metadata";
 import { pokeApp } from "@front-api/middlewares/ctx";
-import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import tId from "./[tId]";
+import search from "./search";
 
 const DeleteTriggerQuerySchema = z.object({
   tId: z.string(),
@@ -16,14 +15,6 @@ const DeleteTriggerQuerySchema = z.object({
 const app = pokeApp();
 
 /** @ignoreswagger */
-app.get("/", async (ctx): HandlerResult<PokeListTriggers> => {
-  const auth = ctx.get("auth");
-
-  const triggers = await listTriggersWithProviderAndEditor(auth);
-
-  return ctx.json({ triggers });
-});
-
 app.delete("/", validate("query", DeleteTriggerQuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { tId } = ctx.req.valid("query");
@@ -53,6 +44,7 @@ app.delete("/", validate("query", DeleteTriggerQuerySchema), async (ctx) => {
   return ctx.body(null, 204);
 });
 
+app.route("/search", search);
 app.route("/:tId", tId);
 
 export default app;

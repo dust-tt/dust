@@ -6,7 +6,7 @@ import {
   filterSelectionCount,
   getFilterSummaries,
 } from "@app/components/workspace/analytics/filterPanel/filterState";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import type {
   TriggerExecutionMode,
   TriggerKind,

@@ -1,28 +1,60 @@
-import type { PokeListTriggers } from "@app/lib/api/poke/triggers";
-import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
+import type {
+  AutomationTriggerRow,
+  GetAutomationTriggersResponse,
+} from "@app/lib/api/analytics/automations/triggers";
+import type { PokeTriggersSearchBody } from "@app/lib/api/poke/triggers";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetWebhookRequestsResponseBody } from "@app/types/api/poke/triggers";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 
 export function usePokeTriggers({
-  disabled,
   owner,
-}: PokeConditionalFetchProps) {
-  const { fetcher } = useFetcher();
-  const triggersFetcher: Fetcher<PokeListTriggers> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/triggers`,
-    triggersFetcher,
-    { disabled }
-  );
+  period,
+  limit,
+  offset = 0,
+  search,
+  filter,
+  sortOrder,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  period: ConsumptionPeriodSelection;
+  limit: number;
+  offset?: number;
+  search?: string;
+  filter?: PokeTriggersSearchBody["filter"];
+  sortOrder: PokeTriggersSearchBody["sortOrder"];
+  disabled?: boolean;
+}) {
+  const url = `/api/poke/workspaces/${owner.sId}/triggers/search`;
+  const body: PokeTriggersSearchBody = {
+    period: period.kind,
+    days:
+      period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
+    limit,
+    offset,
+    search: search?.trim(),
+    filter,
+    sortOrder,
+  };
+
+  const { data, error, mutate, isValidating } = useConsumptionQuery<
+    PokeTriggersSearchBody,
+    GetAutomationTriggersResponse
+  >({ url, body, disabled });
 
   return {
-    data: data?.triggers ?? [],
-    isLoading: !error && !data,
-    isError: error,
-    mutate,
+    triggers: data?.triggers ?? emptyArray<AutomationTriggerRow>(),
+    totalCount: data?.totalCount ?? 0,
+    isTriggersLoading: !disabled && !error && !data,
+    isTriggersValidating: !disabled && !error && isValidating,
+    isTriggersError: error,
+    mutateTriggers: mutate,
   };
 }
 
