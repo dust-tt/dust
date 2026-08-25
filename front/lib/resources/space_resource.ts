@@ -5,6 +5,7 @@ import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/pr
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConcreteGrantType } from "@app/lib/resources/group_permission_registry";
+import { grantTypesForVerb } from "@app/lib/resources/group_permission_registry";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
@@ -108,6 +109,20 @@ class SpaceGroupReference {
 //   project's editor (`admin`) and member (`member`) groups, so it is what marks an actual member.
 const REGULAR_SPACE_MEMBERSHIP_VERB: GrantVerb = "read";
 const POD_SPACE_MEMBERSHIP_VERB: GrantVerb = "write";
+
+// The instance-level space grant types that confer each kind's membership verb, resolved once from
+// the registry (the single source of truth). Used by the batch membership check so it mirrors
+// `isMember` — a member is whoever holds the space's membership verb — instead of reasoning about
+// grant types (reader/member/...) by hand.
+const REGULAR_MEMBERSHIP_GRANT_TYPES: ReadonlySet<GrantType> = new Set(
+  grantTypesForVerb("space", REGULAR_SPACE_MEMBERSHIP_VERB, "instance")
+);
+const POD_MEMBERSHIP_GRANT_TYPES: ReadonlySet<GrantType> = new Set(
+  grantTypesForVerb("space", POD_SPACE_MEMBERSHIP_VERB, "instance")
+);
+
+// The "no memberships" fallback used by batch membership resolution.
+const EMPTY_GROUP_MODEL_IDS: ReadonlySet<ModelId> = new Set();
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SpaceResource extends BaseResource<SpaceModel> {
@@ -1821,7 +1836,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   isMember(auth: Authenticator): boolean {
     // Read membership from the caller's resolved space grants rather than raw group membership; the
-    // grants `spaceGroupRoles` writes mirror `isMemberByGroupPredicate` per kind (see the
+    // grants `spaceGroupRoles` writes mirror `isMemberFromGrants` per kind (see the
     // `*_SPACE_MEMBERSHIP_VERB` constants for why the verb differs between regular and project).
     switch (this.kind) {
       // The workspace-wide space: every member belongs to it.
@@ -1846,42 +1861,116 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   /**
-   * Same membership rule as {@link SpaceResource.isMember}, evaluated against a
-   * precomputed set of group model ids instead of an `Authenticator`. Lets
-   * callers check many users at once without building one `Authenticator` per
-   * user.
+   * For each of `userModelIds`, the subset of `spaces` they are a member of. Batches the spaces'
+   * grants and the users' group memberships into two queries, then applies the same per-kind rule
+   * as {@link SpaceResource.isMember}. Lets callers check many users and spaces at once without
+   * building one `Authenticator` per user.
    */
-  isMemberByGroupModelIds(groupModelIds: ReadonlySet<ModelId>): boolean {
-    return this.isMemberByGroupPredicate((groupModelId) =>
-      groupModelIds.has(groupModelId)
-    );
+  static async listMemberSpaceModelIdsByUser(
+    auth: Authenticator,
+    {
+      spaces,
+      userModelIds,
+    }: { spaces: SpaceResource[]; userModelIds: ModelId[] }
+  ): Promise<Map<ModelId, Set<ModelId>>> {
+    const memberSpaceModelIdsByUser = new Map<ModelId, Set<ModelId>>();
+    if (spaces.length === 0 || userModelIds.length === 0) {
+      return memberSpaceModelIdsByUser;
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    // group_permissions is the source of truth for space access: read every space's grants in one
+    // query rather than through the per-instance `this.groups`.
+    const grants = await GroupPermissionModel.findAll({
+      attributes: ["resourceId", "workspaceId", "groupId", "grantType"],
+      where: {
+        workspaceId: workspace.id,
+        resourceType: "space",
+        resourceId: spaces.map((space) => space.id),
+      },
+    });
+
+    const grantsBySpaceModelId = new Map<ModelId, SpaceGroupReference[]>();
+    for (const grant of grants) {
+      const ref = SpaceGroupReference.fromGrant(grant);
+      const refs = grantsBySpaceModelId.get(grant.resourceId);
+      if (refs) {
+        refs.push(ref);
+      } else {
+        grantsBySpaceModelId.set(grant.resourceId, [ref]);
+      }
+    }
+
+    // For each user, the groups they are an active member of among the spaces' grant groups. One
+    // query, whatever the number of users and spaces.
+    const groupModelIdsByUser =
+      await GroupResource.listGroupModelIdsByUserModelIdInWorkspace({
+        workspace,
+        userModelIds,
+        groupModelIds: [...new Set(grants.map((grant) => grant.groupId))],
+      });
+
+    // O(users × spaces) membership resolution over already-fetched data (no DB calls in the loop).
+    // Both arrays are small in practice: `spaces` is a caller-held set or a single workspace's
+    // spaces (tens, well under a few hundred) and `userModelIds` is a bounded set of users (skill
+    // editors, mentioned users, or an access-check request — tens to low hundreds). The inner
+    // `isMemberFromGrants` scan is bounded by a space's group count (typically < 10).
+    for (const userModelId of userModelIds) {
+      const userGroupModelIds =
+        groupModelIdsByUser.get(userModelId) ?? EMPTY_GROUP_MODEL_IDS;
+      const memberSpaceModelIds = new Set<ModelId>();
+      for (const space of spaces) {
+        if (
+          space.isMemberFromGrants(
+            grantsBySpaceModelId.get(space.id) ?? [],
+            userGroupModelIds
+          )
+        ) {
+          memberSpaceModelIds.add(space.id);
+        }
+      }
+      if (memberSpaceModelIds.size > 0) {
+        memberSpaceModelIdsByUser.set(userModelId, memberSpaceModelIds);
+      }
+    }
+
+    return memberSpaceModelIdsByUser;
   }
 
-  private isMemberByGroupPredicate(
-    hasGroup: (groupModelId: ModelId) => boolean
+  // Batched equivalent of `isMember`: a member is whoever holds the space's membership verb. Given a
+  // space's grant references and a precomputed set of the user's group model ids, the user is a
+  // member iff they belong to a group whose grant confers that verb (resolved through the registry,
+  // like `isMember`). Kept private and fed by `listMemberSpaceModelIdsByUser` so it needs neither an
+  // `Authenticator` nor `this.groups`.
+  private isMemberFromGrants(
+    grants: SpaceGroupReference[],
+    userGroupModelIds: ReadonlySet<ModelId>
   ): boolean {
-    // TODO(projects): update this method to check groups whose group_vaults relationship is
-    // to remove the complexity of checking the global group based on the space type.
-
-    const groups = this.groups;
-
     switch (this.kind) {
-      case "regular":
-        // An open regular space grants membership to every workspace member.
-        return this.isOpen() || groups.some((group) => hasGroup(group.groupId));
-      case "project":
-        // The global group is attached to open projects as a public viewer (a reader grant), which
-        // makes the project visible but does not make you a member; membership comes from the other
-        // groups.
-        return groups.some(
-          (group) => !group.isReader() && hasGroup(group.groupId)
-        );
+      // The workspace-wide space: every member belongs to it.
       case "global":
         return true;
+      // Not membership spaces (see `isMember`).
       case "conversations":
       case "system":
         return false;
-
+      // Regular spaces check `read`, projects check `write` (see the `*_SPACE_MEMBERSHIP_VERB`
+      // constants). Open spaces need no special-casing: their global-group `reader` grant confers
+      // `read`, so every workspace member is a member of an open regular space, while on projects
+      // that same `reader` grant does not confer `write` and therefore is not membership.
+      case "regular":
+      case "project": {
+        const membershipGrantTypes =
+          this.kind === "project"
+            ? POD_MEMBERSHIP_GRANT_TYPES
+            : REGULAR_MEMBERSHIP_GRANT_TYPES;
+        return grants.some(
+          (grant) =>
+            userGroupModelIds.has(grant.groupId) &&
+            membershipGrantTypes.has(grant.grantType)
+        );
+      }
       default:
         assertNever(this.kind);
     }
