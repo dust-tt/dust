@@ -1,10 +1,12 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import type { CachedAgentStepContent } from "@app/lib/resources/agent_step_content/cache";
 import {
+  evictAgentStepContentCacheFields,
   tryHydrateAgentStepContentsFromCache,
   warmAgentStepContentCacheMany,
 } from "@app/lib/resources/agent_step_content/cache";
@@ -513,9 +515,16 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
    * Bulk-insert step contents with correct per-(step, index) versioning
    * (one version lookup + one INSERT). Prefer this over looping
    * `createNewVersion` when persisting multiple contents for a step.
+   *
+   * `replacesStep` marks a write that carries the *whole* output of a step (as opposed to appending
+   * a single content to it, like the error content published on failure). Versioning is per
+   * `(step, index)`, so a re-run of a step that emits fewer contents than the previous attempt
+   * would leave the previous attempt's trailing indexes behind as the latest version of their own
+   * index, mixing two runs into one message. Passing `replacesStep` drops those trailing rows.
    */
   static async createNewVersions(
-    blobs: Omit<CreationAttributes<AgentStepContentModel>, "version">[]
+    blobs: Omit<CreationAttributes<AgentStepContentModel>, "version">[],
+    { replacesStep = false }: { replacesStep?: boolean } = {}
   ): Promise<AgentStepContentResource[]> {
     if (blobs.length === 0) {
       return [];
@@ -532,15 +541,16 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       "createNewVersions requires all blobs to share the same workspaceId, agentMessageId, and step"
     );
 
-    const indexes = [...new Set(blobs.map((blob) => blob.index))];
+    // Scoped to the whole step rather than to the indexes being written: the unique
+    // (workspaceId, agentMessageId, step, index, version) index covers this prefix, so it costs the
+    // same and it is what lets us detect trailing rows from a previous attempt below.
     const existingContent = await this.model.findAll({
       where: {
         workspaceId,
         agentMessageId,
         step,
-        index: { [Op.in]: indexes },
       },
-      attributes: ["index", "version"],
+      attributes: ["id", "index", "version"],
     });
 
     const maxVersionByIndex = new Map<number, number>();
@@ -570,7 +580,93 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
     await warmAgentStepContentCacheMany(resources.map((r) => r.toCachedJSON()));
 
+    if (replacesStep) {
+      // Read the ids off a persisted row: on the creation blobs they are creation attributes and
+      // therefore optional, while `bulkCreate` guarantees them here.
+      const [created] = resources;
+      await this.dropTrailingStepContents({
+        workspaceId: created.workspaceId,
+        agentMessageId: created.agentMessageId,
+        step: created.step,
+        existingContent,
+        lastWrittenIndex: Math.max(...blobs.map((blob) => blob.index)),
+      });
+    }
+
     return resources;
+  }
+
+  /**
+   * Drops the rows of a step sitting past `lastWrittenIndex`, i.e. contents of a previous attempt
+   * that the attempt we just persisted did not supersede. Rows referenced by a tool execution are
+   * left alone: the FK is `RESTRICT` and a referenced content means that attempt's tools actually
+   * ran, which is not ours to unwind.
+   */
+  private static async dropTrailingStepContents({
+    workspaceId,
+    agentMessageId,
+    step,
+    existingContent,
+    lastWrittenIndex,
+  }: {
+    workspaceId: ModelId;
+    agentMessageId: ModelId;
+    step: number;
+    existingContent:
+      | Attributes<AgentStepContentModel>[]
+      | AgentStepContentModel[];
+    lastWrittenIndex: number;
+  }): Promise<void> {
+    const trailing = existingContent.filter(
+      (row) => row.index > lastWrittenIndex
+    );
+    if (trailing.length === 0) {
+      return;
+    }
+
+    const trailingIds = trailing.map((row) => row.id);
+    const toolExecutions = await AgentStepContentToolExecutionModel.findAll({
+      where: {
+        workspaceId,
+        stepContentId: { [Op.in]: trailingIds },
+      },
+      attributes: ["stepContentId"],
+    });
+    const referencedIds = new Set(
+      toolExecutions.map((execution) => execution.stepContentId)
+    );
+
+    const droppable = trailing.filter((row) => !referencedIds.has(row.id));
+    if (droppable.length === 0) {
+      logger.warn(
+        { agentMessageId, step, trailingCount: trailing.length },
+        "Trailing step contents are all referenced by a tool execution, keeping them"
+      );
+      return;
+    }
+
+    await this.model.destroy({
+      where: {
+        workspaceId,
+        id: { [Op.in]: droppable.map((row) => row.id) },
+      },
+    });
+
+    await evictAgentStepContentCacheFields({
+      workspaceId,
+      agentMessageId,
+      fields: droppable.map((row) => ({ step, index: row.index })),
+    });
+
+    logger.info(
+      {
+        agentMessageId,
+        step,
+        droppedCount: droppable.length,
+        keptReferencedCount: trailing.length - droppable.length,
+      },
+      "Dropped trailing step contents from a superseded step attempt"
+    );
   }
 
   get sId(): string {

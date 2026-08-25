@@ -379,8 +379,11 @@ export function useAgentMessageStream({
   // thinking (chain_of_thought) and writing (tokens), flushing completed
   // segments as activity steps on each switch.
   const lastClassification = useRef<"tokens" | "chain_of_thought" | null>(null);
-  // Tracks the traceId of the last CoT event to detect Temporal retry boundaries.
-  const lastCoTTraceId = useRef<string | null>(null);
+  // Tracks the traceId of the last generation event to detect Temporal retry
+  // boundaries. Any classification counts: a retry that emits no chain of thought
+  // (a `none`-effort model, e.g. after an auto-stream failover) must reset the
+  // accumulators too, otherwise its answer is appended to the dead call's text.
+  const lastTraceId = useRef<string | null>(null);
   // Tracks the agent-loop step of the last generation event. Combined with a
   // traceId change, an unchanged step number means the SAME step was re-run
   // (Temporal activity retry) rather than the loop advancing to a new step. It is
@@ -448,7 +451,7 @@ export function useAgentMessageStream({
           ) {
             content.current = "";
             chainOfThought.current = "";
-            lastCoTTraceId.current = null;
+            lastTraceId.current = null;
             retryCoTBuffer.current = null;
             currentStep.current = null;
             mapMessagesWithAutoScroll((m) => {
@@ -473,45 +476,56 @@ export function useAgentMessageStream({
             classification === "tokens" ||
             classification === "chain_of_thought"
           ) {
-            // When a CoT event arrives with a new traceId, the Temporal activity
-            // was retried. Reset content.current (prevents stale tokens from
-            // being flushed at the transition boundary) and enter shadow-buffer
-            // mode: new CoT tokens are compared against what's already shown
-            // rather than appended, so an identical retry is invisible to the
-            // user.
-            if (classification === "chain_of_thought") {
-              const newTraceId = generationTokens.traceId;
-              if (
-                newTraceId &&
-                lastCoTTraceId.current !== null &&
-                newTraceId !== lastCoTTraceId.current
-              ) {
-                content.current = "";
+            // A new traceId means these tokens come from a different LLM call than
+            // the previous ones: the Temporal activity was retried, possibly on
+            // another model (auto-stream failover). Reset the accumulators so the
+            // new call's output replaces the dead call's partial output instead of
+            // being appended to it, and drop the inline steps already committed for
+            // this step.
+            const newTraceId = generationTokens.traceId;
+            if (
+              newTraceId &&
+              lastTraceId.current !== null &&
+              newTraceId !== lastTraceId.current
+            ) {
+              content.current = "";
+
+              if (classification === "chain_of_thought") {
+                // Enter shadow-buffer mode: new CoT tokens are compared against
+                // what's already shown rather than appended, so a same-model retry
+                // re-emitting the same CoT prefix stays invisible to the user.
                 retryCoTBuffer.current = "";
-                if (
-                  currentStep.current !== null &&
-                  eventStep === currentStep.current
-                ) {
-                  mapMessagesWithAutoScroll((m) => {
-                    if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
-                      return m;
-                    }
-                    return {
-                      ...m,
-                      streaming: {
-                        ...m.streaming,
-                        inlineActivitySteps:
-                          m.streaming.inlineActivitySteps.filter(
-                            (s) => s.step !== eventStep
-                          ),
-                      },
-                    };
-                  });
-                }
+              } else {
+                // Plain text with nothing to diff against: drop the dead call's
+                // unflushed CoT so the classification transition below does not
+                // commit it as a thinking step.
+                chainOfThought.current = "";
+                retryCoTBuffer.current = null;
               }
-              if (newTraceId) {
-                lastCoTTraceId.current = newTraceId;
+
+              if (
+                currentStep.current !== null &&
+                eventStep === currentStep.current
+              ) {
+                mapMessagesWithAutoScroll((m) => {
+                  if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
+                    return m;
+                  }
+                  return {
+                    ...m,
+                    streaming: {
+                      ...m.streaming,
+                      inlineActivitySteps:
+                        m.streaming.inlineActivitySteps.filter(
+                          (s) => s.step !== eventStep
+                        ),
+                    },
+                  };
+                });
               }
+            }
+            if (newTraceId) {
+              lastTraceId.current = newTraceId;
             }
 
             currentStep.current = eventStep;

@@ -1049,7 +1049,10 @@ export async function runModel(
       // Same run id appended to AgentMessage.runIds below. Lets consumption attribution join a
       // RunUsage (RunModel.dustRunId) to the contents this run emitted.
       dustRunId,
-    }))
+    })),
+    // Carries the whole output of this step: any trailing content left by a previous attempt of the
+    // same step (a Temporal retry) must not survive alongside it.
+    { replacesStep: true }
   );
 
   for (const [i, content] of output.contents.entries()) {

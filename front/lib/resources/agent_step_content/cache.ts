@@ -142,6 +142,45 @@ export async function warmAgentStepContentCacheMany(
   }
 }
 
+/**
+ * Evicts specific `(step, index)` fields of an agent message's cache hash. Used when step contents
+ * are dropped rather than superseded (see `createNewVersions` step truncation). Best-effort:
+ * failures are logged and ignored, a stale field is re-read from PG on the next miss anyway.
+ */
+export async function evictAgentStepContentCacheFields({
+  workspaceId,
+  agentMessageId,
+  fields,
+}: {
+  workspaceId: ModelId;
+  agentMessageId: ModelId;
+  fields: { step: number; index: number }[];
+}): Promise<void> {
+  if (fields.length === 0) {
+    return;
+  }
+
+  try {
+    const redis = await getRedisCacheClient({
+      origin: "agent_step_content_cache",
+    });
+
+    await redis.hDel(
+      agentStepContentCacheKey({ workspaceId, agentMessageId }),
+      fields.map((field) => agentStepContentHashField(field))
+    );
+  } catch (err) {
+    logger.warn(
+      {
+        err: normalizeError(err),
+        agentMessageId,
+        count: fields.length,
+      },
+      "Failed to evict agent step content cache fields"
+    );
+  }
+}
+
 function isCachedAgentStepContent(
   value: unknown
 ): value is CachedAgentStepContent {

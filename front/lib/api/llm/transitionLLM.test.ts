@@ -119,7 +119,7 @@ describe("toBaseMessages", () => {
       ],
     };
 
-    expect(toBaseMessages(message)).toEqual([
+    expect(toBaseMessages(message, { targetProviderId: "anthropic" })).toEqual([
       { role: "assistant", type: "text", content: { value: "hi" } },
       {
         role: "assistant",
@@ -146,7 +146,7 @@ describe("toBaseMessages", () => {
       ],
     };
 
-    expect(toBaseMessages(message)).toEqual([
+    expect(toBaseMessages(message, { targetProviderId: "openai" })).toEqual([
       {
         role: "assistant",
         type: "tool_call_request",
@@ -241,7 +241,9 @@ describe("withMessageCacheBreakpoints", () => {
     ];
 
     const result = withMessageCacheBreakpoints(
-      conversation.flatMap(toBaseMessages),
+      conversation.flatMap((message) =>
+        toBaseMessages(message, { targetProviderId: "anthropic" })
+      ),
       conversation[0],
       { explicitTailBreakpoint: true }
     );
@@ -308,7 +310,8 @@ describe("toBaseMessages — reasoning signatures", () => {
       reasoningMessage({
         provider: "anthropic",
         metadata: JSON.stringify({ encrypted_content: "anthropic-sig" }),
-      })
+      }),
+      { targetProviderId: "anthropic" }
     );
     expect(result).toEqual([
       {
@@ -325,7 +328,8 @@ describe("toBaseMessages — reasoning signatures", () => {
       reasoningMessage({
         provider: "google_ai_studio",
         metadata: JSON.stringify({ encrypted_content: "gemini-thought-sig" }),
-      })
+      }),
+      { targetProviderId: "google_ai_studio" }
     );
     expect(result).toEqual([
       {
@@ -345,7 +349,8 @@ describe("toBaseMessages — reasoning signatures", () => {
           id: "rs_123",
           encrypted_content: "gAAAA-encrypted-blob",
         }),
-      })
+      }),
+      { targetProviderId: "openai" }
     );
     expect(result).toEqual([
       {
@@ -363,7 +368,8 @@ describe("toBaseMessages — reasoning signatures", () => {
       reasoningMessage({
         provider: "fireworks",
         metadata: JSON.stringify({ id: "rs_fireworks_123" }),
-      })
+      }),
+      { targetProviderId: "fireworks" }
     );
     expect(result).toEqual([
       {
@@ -385,7 +391,8 @@ describe("OpenAI reasoning round-trip — persisted metadata to Responses input"
           id: "rs_123",
           encrypted_content: "gAAAA-encrypted-blob",
         }),
-      })
+      }),
+      { targetProviderId: "openai" }
     );
     if (baseMessage.type !== "reasoning") {
       throw new Error("Expected a reasoning BaseMessage.");
@@ -408,7 +415,8 @@ describe("Fireworks reasoning round-trip — persisted metadata to Responses inp
         provider: "fireworks",
         metadata: JSON.stringify({ id: "rs_fireworks_empty" }),
         reasoning: "",
-      })
+      }),
+      { targetProviderId: "fireworks" }
     );
     if (baseMessage.type !== "reasoning") {
       throw new Error("Expected a reasoning BaseMessage.");
@@ -465,7 +473,7 @@ describe("Fireworks reasoning round-trip — persisted metadata to Responses inp
       ],
     };
 
-    expect(toBaseMessages(message)).toEqual([
+    expect(toBaseMessages(message, { targetProviderId: "fireworks" })).toEqual([
       {
         role: "assistant",
         type: "reasoning",

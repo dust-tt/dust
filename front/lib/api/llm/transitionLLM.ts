@@ -176,9 +176,17 @@ function labToPassthroughProvider(
 
 /**
  * Converts an old-system message to new BaseMessage(s).
+ *
+ * `targetProviderId` is the provider the payload is about to be sent to. Reasoning is
+ * provider-scoped replay state — an Anthropic thinking signature or an OpenAI reasoning item id —
+ * so reasoning produced by another provider is dropped rather than replayed under a signature the
+ * target provider will reject. This matters whenever the provider changes mid-message, which is
+ * what an auto-stream model failover does. Text and tool calls are provider-agnostic and always
+ * kept. Passthrough blocks carry their own provider and are dropped by each provider's converter.
  */
 export function toBaseMessages(
-  message: ModelMessageTypeMultiActionsWithoutContentFragment
+  message: ModelMessageTypeMultiActionsWithoutContentFragment,
+  { targetProviderId }: { targetProviderId: ModelProviderIdType }
 ): BaseMessage[] {
   switch (message.role) {
     case "user":
@@ -238,6 +246,11 @@ export function toBaseMessages(
                 },
               ];
             case "reasoning": {
+              // Reasoning from another provider cannot be replayed: its signature is only valid
+              // for the provider that produced it.
+              if (c.value.provider && c.value.provider !== targetProviderId) {
+                return [];
+              }
               const reasoning = c.value.reasoning ?? "";
               const { id, encryptedContent } = parseReasoningMetadata(
                 c.value.metadata
@@ -714,7 +727,11 @@ abstract class BaseTransition extends LLM {
     const { conversation, prompt } = streamParameters;
 
     const baseMessages = withMessageCacheBreakpoints(
-      conversation.messages.flatMap(toBaseMessages),
+      conversation.messages.flatMap((message) =>
+        toBaseMessages(message, {
+          targetProviderId: this.metadata.clientId,
+        })
+      ),
       conversation.messages[0],
       { explicitTailBreakpoint }
     );
