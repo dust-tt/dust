@@ -32,8 +32,21 @@ export interface GetActivationPodResponseBody {
 }
 
 export async function getActivationPodInfo(
-  auth: Authenticator
+  auth: Authenticator,
+  { podId }: { podId?: string } = {}
 ): Promise<GetActivationPodResponseBody> {
+  if (podId) {
+    const space = await SpaceResource.fetchById(auth, podId);
+    if (!space) {
+      return { podId: null, kind: null };
+    }
+    const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
+    return {
+      podId: activationPod ? space.sId : null,
+      kind: activationPod?.kind ?? null,
+    };
+  }
+
   const allPods = await ActivationPodResource.listByUser(auth);
   const learningPod = allPods.find((p) => p.kind === "learning") ?? null;
   if (!learningPod) {
@@ -63,12 +76,18 @@ export async function listActivationRecommendationsForUser(
   }: { podId?: string; status?: ActivationRecommendationStatus } = {}
 ): Promise<ActivationRecommendationForUserType[]> {
   let spaceModelId: number | undefined;
+  let activationPodModelId: number | undefined;
   if (podId !== undefined) {
     const space = await SpaceResource.fetchById(auth, podId);
     if (!space) {
       return [];
     }
     spaceModelId = space.id;
+    const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
+    if (!activationPod) {
+      return [];
+    }
+    activationPodModelId = activationPod.id;
   }
 
   const recs = await ActivationRecommendationResource.listByUserAndStatus(
@@ -78,6 +97,7 @@ export async function listActivationRecommendationsForUser(
       limit: status === "executed" ? EXECUTED_LIMIT : SUGGESTED_LIMIT,
       sinceDaysAgo: NEXT_STEPS_WINDOW_DAYS,
       spaceModelId,
+      activationPodModelId,
     }
   );
 
@@ -109,11 +129,20 @@ export async function updateActivationRecommendationForUser(
     auth,
     recommendationId
   );
-  // fetchById only scopes to the workspace, so also enforce ownership: a
-  // recommendation may only be updated by the user it belongs to. Return
-  // "not_found" rather than a distinct error so we don't leak the existence of
-  // another user's recommendation.
-  if (!rec || rec.userId !== auth.getNonNullableUser().id) {
+  if (!rec) {
+    return "not_found";
+  }
+
+  const [activationPod] = rec.activationPodId
+    ? await ActivationPodResource.fetchByModelIds(auth, [rec.activationPodId])
+    : [];
+  const [space] = activationPod
+    ? await SpaceResource.fetchByModelIds(auth, [activationPod.spaceId])
+    : [];
+  const canUpdate = rec.activationPodId
+    ? Boolean(space?.canAdministrate(auth))
+    : rec.userId === auth.getNonNullableUser().id;
+  if (!canUpdate) {
     return "not_found";
   }
 
