@@ -15,7 +15,7 @@ import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers"
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 
-export function usePokeAutomationTriggers({
+export function usePokeTriggers({
   owner,
   period,
   limit,

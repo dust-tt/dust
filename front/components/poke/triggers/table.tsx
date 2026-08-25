@@ -3,7 +3,7 @@ import { makeColumnsForAutomationTriggers } from "@app/components/poke/triggers/
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
-import { usePokeAutomationTriggers } from "@app/poke/swr/triggers";
+import { usePokeTriggers } from "@app/poke/swr/triggers";
 import type { TriggerKind } from "@app/types/assistant/triggers";
 import { isValidTriggerKind } from "@app/types/assistant/triggers";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
@@ -55,7 +55,7 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
     isTriggersValidating,
     isTriggersError,
     mutateTriggers,
-  } = usePokeAutomationTriggers({
+  } = usePokeTriggers({
     owner,
     period,
     limit: pagination.pageSize,
