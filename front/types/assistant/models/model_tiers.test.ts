@@ -1,15 +1,15 @@
 import {
+  CLAUDE_FABLE_5_MODEL_ID,
+  CLAUDE_OPUS_4_8_MODEL_ID,
+  CLAUDE_SONNET_5_MODEL_ID,
+} from "@app/types/assistant/models/anthropic";
+import {
   getTierForModel,
   getTierForSelection,
   MODELS_TIERS,
   STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
   STATIC_MODEL_TIERS,
 } from "@app/types/assistant/models/model_tiers";
-import {
-  CLAUDE_FABLE_5_MODEL_ID,
-  CLAUDE_OPUS_4_8_MODEL_ID,
-  CLAUDE_SONNET_5_MODEL_ID,
-} from "@app/types/assistant/models/anthropic";
 import {
   isStaticModelId,
   STATIC_MODEL_IDS,
