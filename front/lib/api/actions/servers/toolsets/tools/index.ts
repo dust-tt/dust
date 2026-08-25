@@ -76,15 +76,9 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
   enable: async ({ toolsetId }, { auth, runContext }) => {
     assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
 
-    const conversationId = runContext.conversation.sId;
-
-    if (!auth.user()) {
-      return new Err(new MCPError("User not found", { tracked: false }));
-    }
-
     const conversation = await ConversationResource.fetchById(
       auth,
-      conversationId
+      runContext.conversation.sId
     );
     const mcpServerView = await MCPServerViewResource.fetchById(
       auth,
