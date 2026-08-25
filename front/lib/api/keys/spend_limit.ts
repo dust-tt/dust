@@ -345,21 +345,29 @@ export async function backfillApiKeyCreditCapsForWorkspace(
 async function readApiKeySpendLimitCountWithLazySeed(
   auth: Authenticator,
   {
-    apiKeyName,
+    keyModelId,
     redisKey,
     bounds,
-  }: { apiKeyName: string; redisKey: string; bounds: FixedWindowBounds }
+  }: { keyModelId: number; redisKey: string; bounds: FixedWindowBounds }
 ): Promise<number | null> {
   return readFixedWindowCountWithLazySeed({
     key: redisKey,
     bounds,
     logger,
-    // The counter stores microCredits; convert the ES credit value before
-    // seeding. Preserve the null contract (ES read failed → skip seed, do not
-    // seed as 0).
+    // The ES query is keyed by the api-key name; resolve it here (only invoked
+    // on a seed miss, so no per-record fetch). The counter stores microCredits;
+    // convert the ES credit value. Preserve the null contract (ES read failed
+    // or key gone → skip seed, do not seed as 0).
     fetchSeedValue: async () => {
+      const key = await KeyResource.fetchByWorkspaceAndId({
+        workspace: auth.getNonNullableWorkspace(),
+        id: keyModelId,
+      });
+      if (!key) {
+        return null;
+      }
       const consumedAwuCredits = await getEsConsumedAwuCreditsForApiKey(auth, {
-        apiKeyName,
+        apiKeyName: key.name,
       });
       return consumedAwuCredits === null
         ? null
@@ -398,7 +406,7 @@ export async function isApiKeySpendLimitRateCapReached(
   }
 
   const count = await readApiKeySpendLimitCountWithLazySeed(auth, {
-    apiKeyName: key.name,
+    keyModelId: key.id,
     redisKey: makeApiKeySpendLimitAwuCreditsRateLimitKey(key.id),
     bounds,
   });
@@ -441,10 +449,21 @@ export async function recordApiKeySpendLimitUsage(
     return;
   }
 
+  const redisKey = makeApiKeySpendLimitAwuCreditsRateLimitKey(keyModelId);
+
+  // Seed from ES on the counter's first touch of the cycle (SET-if-absent), so
+  // it reflects cycle-to-date consumption even when the enforcement reader
+  // never runs for this key (e.g. a key with no cap set). No-ops once live.
+  await readApiKeySpendLimitCountWithLazySeed(auth, {
+    keyModelId,
+    redisKey,
+    bounds,
+  });
+
   const incrementByMicroCredits = roundCreditsToMicroCredits(incrementBy);
 
   await addFixedWindowCount({
-    key: makeApiKeySpendLimitAwuCreditsRateLimitKey(keyModelId),
+    key: redisKey,
     bounds,
     incrementBy: incrementByMicroCredits,
     logger,
