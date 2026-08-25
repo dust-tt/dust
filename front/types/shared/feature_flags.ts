@@ -212,10 +212,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Shopify MCP tool",
     stage: "on_demand",
   },
-  workday_mcp: {
-    description: "Workday MCP tool",
-    stage: "on_demand",
-  },
   sandbox_functions: {
     description: "Enable Pod Function invocation endpoints",
     stage: "dust_only",
