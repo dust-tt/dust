@@ -23,6 +23,7 @@ app.post(
   async (ctx): HandlerResult<GetConsumptionTopAgentsResponse> => {
     const auth = ctx.get("auth");
     const userId = ctx.get("consumptionUserId");
+    const agentId = ctx.get("consumptionAgentId");
     const { limit, offset, search, filter, sortOrder, ...periodQuery } =
       ctx.req.valid("json");
 
@@ -36,7 +37,11 @@ app.post(
       limit,
       offset,
       search,
-      filter: userId ? { ...filter, users: [userId] } : filter,
+      filter: {
+        ...filter,
+        ...(userId ? { users: [userId] } : {}),
+        ...(agentId ? { agents: [agentId] } : {}),
+      },
       sortOrder,
     });
     if (result.isErr()) {

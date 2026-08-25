@@ -1,5 +1,6 @@
 import type { GetConsumptionTimeseriesResponse } from "@app/lib/api/analytics/consumption/timeseries";
 import { fetchConsumptionTimeseries } from "@app/lib/api/analytics/consumption/timeseries";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -34,6 +35,21 @@ function postTimeseriesRequest(
   const analyticsPath = personal ? "me/analytics" : "analytics";
   return honoApp.request(
     `/api/w/${workspaceId}/${analyticsPath}/consumption/timeseries`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+}
+
+function postAgentTimeseriesRequest(
+  workspaceId: string,
+  agentId: string,
+  body: Record<string, unknown> = {}
+) {
+  return honoApp.request(
+    `/api/w/${workspaceId}/assistant/agent_configurations/${agentId}/analytics/consumption/timeseries`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -84,6 +100,46 @@ describe("POST /api/w/:wId/analytics/consumption/timeseries", () => {
       workspace.sId,
       { breakdownBy },
       true
+    );
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect(vi.mocked(fetchConsumptionTimeseries)).not.toHaveBeenCalled();
+  });
+
+  it("lets editors read only the selected agent's timeseries", async () => {
+    vi.mocked(fetchConsumptionTimeseries).mockResolvedValue(new Ok(TIMESERIES));
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const response = await postAgentTimeseriesRequest(
+      workspace.sId,
+      agent.sId,
+      { filter: { agents: ["another-agent"], models: ["model-1"] } }
+    );
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionTimeseries)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        filter: { agents: [agent.sId], models: ["model-1"] },
+      })
+    );
+  });
+
+  it("rejects the agent breakdown when the route already fixes the agent", async () => {
+    vi.mocked(fetchConsumptionTimeseries).mockClear();
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const response = await postAgentTimeseriesRequest(
+      workspace.sId,
+      agent.sId,
+      { breakdownBy: "agent" }
     );
 
     expect(response.status).toBe(400);

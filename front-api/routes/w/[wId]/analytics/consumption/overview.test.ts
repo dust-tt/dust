@@ -1,7 +1,9 @@
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import { fetchConsumptionOverview } from "@app/lib/api/analytics/consumption/overview";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -58,6 +60,21 @@ function postOverviewRequest(
   );
 }
 
+function postAgentOverviewRequest(
+  workspaceId: string,
+  agentId: string,
+  body: Record<string, unknown> = {}
+) {
+  return honoApp.request(
+    `/api/w/${workspaceId}/assistant/agent_configurations/${agentId}/analytics/consumption/overview`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+}
+
 describe("POST /api/w/:wId/analytics/consumption/overview", () => {
   it("returns 403 for non-manager users", async () => {
     const { workspace } = await setupTest({ role: "user" });
@@ -88,6 +105,53 @@ describe("POST /api/w/:wId/analytics/consumption/overview", () => {
     );
   });
 
+  it("lets editors read only the selected agent's consumption", async () => {
+    vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
+    const { auth, workspace } = await setupTest({ role: "user" });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const response = await postAgentOverviewRequest(workspace.sId, agent.sId, {
+      filter: { agents: ["another-agent"], sources: ["slack"] },
+    });
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionOverview)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        filter: { agents: [agent.sId], sources: ["slack"] },
+        includeWorkspaceContext: false,
+      })
+    );
+  });
+
+  it("refuses agent analytics to publishers who cannot edit the agent", async () => {
+    const ownerRequest = await setupTest({ role: "user" });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      ownerRequest.auth
+    );
+    const publisherRequest = await createPrivateApiMockRequest({
+      role: "user",
+      workspace: ownerRequest.workspace,
+    });
+    await grantWorkspacePermission(
+      ownerRequest.workspace,
+      publisherRequest.user,
+      {
+        grantType: "publish",
+        resourceType: "agent",
+      }
+    );
+    vi.mocked(fetchConsumptionOverview).mockClear();
+
+    const response = await postAgentOverviewRequest(
+      ownerRequest.workspace.sId,
+      agent.sId
+    );
+
+    expect(response.status).toBe(403);
+    expect(vi.mocked(fetchConsumptionOverview)).not.toHaveBeenCalled();
+  });
+
   it("returns the overview for managers, defaulting to the current cycle", async () => {
     vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
     const { workspace } = await setupTest({ role: "admin" });
@@ -100,7 +164,7 @@ describe("POST /api/w/:wId/analytics/consumption/overview", () => {
       expect.anything(),
       expect.objectContaining({
         periodInput: { kind: "cycle" },
-        filter: undefined,
+        filter: {},
       })
     );
   });

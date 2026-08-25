@@ -11,6 +11,7 @@ import { consumptionAnalyticsApp } from "./context";
 
 // Mounted at /api/w/:wId/analytics/consumption/overview.
 // Also mounted at /api/w/:wId/me/analytics/consumption/overview.
+// Also mounted at /api/w/:wId/assistant/agent_configurations/:aId/analytics/consumption/overview.
 const app = consumptionAnalyticsApp();
 
 /** @ignoreswagger */
@@ -20,12 +21,17 @@ app.post(
   async (ctx): HandlerResult<GetConsumptionOverviewResponse> => {
     const auth = ctx.get("auth");
     const userId = ctx.get("consumptionUserId");
+    const agentId = ctx.get("consumptionAgentId");
     const body = ctx.req.valid("json");
 
     const result = await fetchConsumptionOverview(auth, {
       periodInput: toConsumptionPeriodInput(body),
-      filter: userId ? { ...body.filter, users: [userId] } : body.filter,
-      includeWorkspaceContext: userId === undefined,
+      filter: {
+        ...body.filter,
+        ...(userId ? { users: [userId] } : {}),
+        ...(agentId ? { agents: [agentId] } : {}),
+      },
+      includeWorkspaceContext: userId === undefined && agentId === undefined,
     });
     if (result.isErr()) {
       logger.error(

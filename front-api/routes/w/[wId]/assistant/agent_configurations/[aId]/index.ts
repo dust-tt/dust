@@ -13,6 +13,7 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+import analytics from "./analytics";
 import editors from "./editors";
 import exportRoutes from "./export";
 import feedbacks from "./feedbacks";
@@ -194,6 +195,7 @@ app.delete(
   }
 );
 
+app.route("/analytics", analytics);
 app.route("/editors", editors);
 app.route("/export", exportRoutes);
 app.route("/feedbacks", feedbacks);

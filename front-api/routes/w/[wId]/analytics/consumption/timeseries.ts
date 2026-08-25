@@ -14,6 +14,7 @@ export type { GetConsumptionTimeseriesResponse };
 
 // Mounted at /api/w/:wId/analytics/consumption/timeseries.
 // Also mounted at /api/w/:wId/me/analytics/consumption/timeseries.
+// Also mounted at /api/w/:wId/assistant/agent_configurations/:aId/analytics/consumption/timeseries.
 const app = consumptionAnalyticsApp();
 
 /** @ignoreswagger */
@@ -23,6 +24,7 @@ app.post(
   async (ctx): HandlerResult<GetConsumptionTimeseriesResponse> => {
     const auth = ctx.get("auth");
     const userId = ctx.get("consumptionUserId");
+    const agentId = ctx.get("consumptionAgentId");
     const {
       granularity,
       mode,
@@ -44,6 +46,17 @@ app.post(
       });
     }
 
+    if (agentId && breakdownBy === "agent") {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Agent consumption analytics do not support agent breakdowns.",
+        },
+      });
+    }
+
     const period = await resolveConsumptionPeriod(
       auth,
       toConsumptionPeriodInput(periodQuery)
@@ -56,7 +69,11 @@ app.post(
       metric,
       breakdownBy,
       breakdownCount,
-      filter: userId ? { ...filter, users: [userId] } : filter,
+      filter: {
+        ...filter,
+        ...(userId ? { users: [userId] } : {}),
+        ...(agentId ? { agents: [agentId] } : {}),
+      },
     });
     if (result.isErr()) {
       logger.error(
