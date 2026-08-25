@@ -74,8 +74,8 @@ export function createAgentConsumptionRoutes() {
   app.use("*", validate("param", AgentParamsSchema));
   app.use(async (ctx, next) => {
     const auth = ctx.get("auth");
-    const aId = ctx.req.param("aId");
-    if (!aId) {
+    const agentId = ctx.req.param("aId");
+    if (!agentId) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -85,7 +85,7 @@ export function createAgentConsumptionRoutes() {
       });
     }
     const agent = await getAgentConfiguration(auth, {
-      agentId: aId,
+      agentId,
       variant: "light",
     });
 
