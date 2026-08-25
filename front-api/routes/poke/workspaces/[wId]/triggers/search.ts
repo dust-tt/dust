@@ -1,8 +1,8 @@
 import { AutomationTriggersBodySchema } from "@app/lib/api/analytics/automations/schema";
 import type { GetAutomationTriggersResponse } from "@app/lib/api/analytics/automations/triggers";
-import { fetchAutomationTriggers } from "@app/lib/api/analytics/automations/triggers";
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { toConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/schema";
+import { fetchPokeTriggers } from "@app/lib/api/poke/triggers";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -26,7 +26,7 @@ app.post(
       toConsumptionPeriodInput(periodQuery)
     );
 
-    const result = await fetchAutomationTriggers(auth, {
+    const result = await fetchPokeTriggers(auth, {
       period,
       limit,
       offset,
