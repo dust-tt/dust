@@ -76,9 +76,9 @@ export function getUsageType(
 
 function getToolUsageType(
   baseUsageType: UsageType,
-  isFreeTool: boolean
+  isFreeUsage: boolean
 ): UsageType {
-  return isFreeTool ? USAGE_TYPE_FREE : baseUsageType;
+  return isFreeUsage ? USAGE_TYPE_FREE : baseUsageType;
 }
 
 // Intelligence (AI compute) credits for a *single execution's* run usages.
@@ -257,12 +257,16 @@ interface ToolAction {
   internalMCPServerName: InternalMCPServerNameType | null;
   status: ToolExecutionStatus;
   executionDurationMs: number | null;
+  // The billing plan needs every chronological action in the message to apply
+  // the per-server cap, while each execution emits only its own actions.
+  shouldEmit: boolean;
 }
 
 /**
  * Build aggregated Metronome tool_use events for an agent message.
- * Actions are grouped by (toolName, internalMCPServerName, mcpServerId, status)
- * — one event per group with `count` and `total_execution_duration_ms`.
+ * Actions are grouped by (toolName, internalMCPServerName, mcpServerId, status,
+ * billingDisposition). Each group produces one event with `count` and
+ * `total_execution_duration_ms`.
  *
  * transaction_id pattern: tool-{workspaceId}-{conversationId}-{agentMessageId}-{runKey}-{toolHash}
  * toolHash is a 12-char SHA-256 of toolName|mcpServerId|status to keep under 128 chars.
@@ -310,7 +314,9 @@ export function buildToolUseEvents({
     runUsages: [],
   });
 
-  // Group actions by (toolName, internalMCPServerName, mcpServerId, status).
+  // Group actions by (toolName, internalMCPServerName, mcpServerId, status,
+  // billingDisposition). The disposition split is required when one execution
+  // contains both paid and post-cap calls to the same tool.
   const groups = new Map<
     string,
     {
@@ -320,13 +326,16 @@ export function buildToolUseEvents({
     }
   >();
   for (const billingLine of billingPlan.tools) {
+    if (!billingLine.action.shouldEmit) {
+      continue;
+    }
     // Metronome prices every emitted tool event. Actions that never reached the
     // tool must therefore be omitted rather than represented as zero-cost.
     if (billingLine.billingDisposition === "unbillable_status") {
       continue;
     }
     const { action } = billingLine;
-    const key = `${action.toolName}|${action.internalMCPServerName ?? ""}|${action.mcpServerId ?? ""}|${action.status}`;
+    const key = `${action.toolName}|${action.internalMCPServerName ?? ""}|${action.mcpServerId ?? ""}|${action.status}|${billingLine.billingDisposition}`;
     const existing = groups.get(key);
     if (existing) {
       existing.count++;
@@ -344,11 +353,15 @@ export function buildToolUseEvents({
     const { action, billingDisposition, toolCostCategory } = billingLine;
     const effectiveUsageType = getToolUsageType(
       usageType,
-      billingDisposition === "free_tool"
+      billingDisposition !== "billed"
     );
+    const transactionIdDispositionSuffix =
+      billingDisposition === "free_mcp_server_cap"
+        ? `-${billingDisposition}`
+        : "";
     return {
       transaction_id: truncateTransactionId(
-        `tool3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`
+        `tool3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}${transactionIdDispositionSuffix}`
       ),
       customer_id: getMetronomeIngestAlias(workspaceId),
       event_type: "tool_use_v3",
