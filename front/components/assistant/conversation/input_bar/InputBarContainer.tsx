@@ -2028,12 +2028,15 @@ const InputBarContainer = ({
                       {!conversation && (
                         // Subtle glow behind the send button on the home
                         // (empty-conversation) input bar only, to draw the
-                        // eye toward the primary action.
+                        // eye toward the primary action. Uses the raw
+                        // blue-400 primitive (not highlight-400, which
+                        // inverts to a different shade in dark mode) so the
+                        // glow's color stays constant across themes.
                         <div
                           aria-hidden
                           className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center"
                         >
-                          <div className="h-[84px] w-[84px] rounded-full bg-[#4BABFF] opacity-40 blur-[28px]" />
+                          <div className="h-[84px] w-[84px] rounded-full bg-blue-400 opacity-40 blur-[28px]" />
                         </div>
                       )}
                       <TooltipProvider>

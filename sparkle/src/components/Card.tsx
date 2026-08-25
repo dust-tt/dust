@@ -24,10 +24,15 @@ export type CardVariantType = (typeof CARD_VARIANTS)[number];
 export const CARD_SIZES = ["xs", "sm", "md", "lg"] as const;
 export type CardSizeType = (typeof CARD_SIZES)[number];
 
-/** Elevated-surface shadow (drop + inner highlight) shared by Card's elevated variants. */
+/**
+ * Elevated-surface shadow (drop + inner highlight) shared by Card's elevated
+ * variants. The dark variant swaps to a heavier drop shadow with a thin top
+ * highlight instead of the light-mode ambient shadow, which barely reads
+ * against a dark background — same treatment as Notification's card shadow.
+ */
 export const CARD_SHADOW = cn(
   "shadow-[0px_0.5px_1px_0px_rgba(0,0,0,0.04),inset_2px_-2px_7px_0px_rgba(0,0,0,0.01),inset_0px_4px_4px_0px_rgba(255,255,255,0.08)]",
-  "dark:shadow-none"
+  "dark:shadow-[0px_2px_8px_0px_rgba(0,0,0,0.45),inset_0px_-1px_0px_0px_rgba(255,255,255,0.08)]"
 );
 
 const interactiveClasses = cn(
