@@ -371,15 +371,13 @@ export function ConversationContainerVirtuoso({
               </Card>
             </div>
           )}
-          <div className="mt-16 w-full md:mt-24">
-            <AgentBrowserContainer
-              onAgentConfigurationClick={(agent) => {
-                setSelectedSingleAgent(toRichAgentMentionType(agent));
-              }}
-              owner={owner}
-              user={user}
-            />
-          </div>
+          <AgentBrowserContainer
+            onAgentConfigurationClick={(agent) => {
+              setSelectedSingleAgent(toRichAgentMentionType(agent));
+            }}
+            owner={owner}
+            user={user}
+          />
         </>
       )}
       <ReachedLimitPopup
