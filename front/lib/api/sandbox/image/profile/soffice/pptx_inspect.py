@@ -1639,9 +1639,11 @@ def _annotate_slide(
         shape_blockers.append((
             sid,
             f"printed over picture #{pic_id}, which carries {rows} rows of its "
-            "own text there. Delete the picture, move the text clear of it, or "
-            "clone an exemplar built to hold text - and do not solve it by "
-            "writing no title, which leaves the template's headline as yours",
+            f"own text there. Clone a slide the template built to hold a title "
+            "and put your copy on that, or delete this picture. Do NOT paint "
+            "over the artwork or swap in a doctored copy of it - a patch shows "
+            "as a flat block - and do not solve it by writing no title, which "
+            "leaves the template's headline as yours",
         ))
     res = _annotate_boxes(
         raw, slide,
