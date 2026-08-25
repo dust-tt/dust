@@ -1,3 +1,4 @@
+import { PersonalUsageCard } from "@app/components/credits/PersonalUsageCard";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionChart } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
@@ -31,11 +32,13 @@ import { useMemo, useState } from "react";
 interface UserAnalyticsPopoverProps {
   open: boolean;
   owner: WorkspaceType;
+  onClose: () => void;
 }
 
 export function UserAnalyticsPopover({
   open,
   owner,
+  onClose,
 }: UserAnalyticsPopoverProps) {
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
@@ -80,6 +83,12 @@ export function UserAnalyticsPopover({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8 pt-1 sm:px-6">
         <Page.Vertical align="stretch" gap="xl">
+          <PersonalUsageCard
+            owner={owner}
+            visible={open}
+            onManagerNavigate={onClose}
+          />
+
           <ConsumptionSummary
             workspaceId={owner.sId}
             period={period}
@@ -128,6 +137,7 @@ export function UserAnalyticsPopover({
             filter={scopeFilter}
             personal
             disabled={!open}
+            onConversationNavigate={onClose}
             onAddFilter={(selectedRow) => {
               setFilter((current) =>
                 addUsageFilterFromAttributionRow(

@@ -5,6 +5,7 @@ import {
   isInternalAllowedIcon,
 } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { ConsumptionConversationAttribution } from "@app/components/workspace/analytics/consumption/ConsumptionConversationAttribution";
 import { ConsumptionExportPanel } from "@app/components/workspace/analytics/consumption/ConsumptionExportPanel";
 import {
   AvatarNameCell,
@@ -72,13 +73,17 @@ import type {
   ConsumptionAttributionRowsTableProps,
 } from "./ConsumptionAttributionRowsTable";
 import { ConsumptionAttributionRowsTable } from "./ConsumptionAttributionRowsTable";
-import type { ConsumptionDimension } from "./consumptionDimensions";
+import type {
+  ConsumptionAttributionDimension,
+  ConsumptionDimension,
+} from "./consumptionDimensions";
 import {
+  CONSUMPTION_ATTRIBUTION_DIMENSIONS,
   CONSUMPTION_DIMENSION_CONFIG,
-  CONSUMPTION_DIMENSIONS,
+  consumptionAttributionDimensionLabel,
   DEFAULT_CONSUMPTION_DIMENSION,
   getConsumptionAttributionDimensions,
-  isConsumptionDimension,
+  isConsumptionAttributionDimension,
 } from "./consumptionDimensions";
 
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
@@ -96,7 +101,7 @@ const ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS = new Set([
 type AttributionTransitionDirection = -1 | 0 | 1;
 
 interface AttributionTransition {
-  target: ConsumptionDimension | null;
+  target: ConsumptionAttributionDimension | null;
   direction: AttributionTransitionDirection;
 }
 
@@ -124,11 +129,12 @@ const ATTRIBUTION_BODY_VARIANTS: Variants = {
 };
 
 function getAttributionTransitionDirection(
-  currentDimension: ConsumptionDimension,
-  nextDimension: ConsumptionDimension
+  currentDimension: ConsumptionAttributionDimension,
+  nextDimension: ConsumptionAttributionDimension
 ): AttributionTransitionDirection {
-  const currentIndex = CONSUMPTION_DIMENSIONS.indexOf(currentDimension);
-  const nextIndex = CONSUMPTION_DIMENSIONS.indexOf(nextDimension);
+  const currentIndex =
+    CONSUMPTION_ATTRIBUTION_DIMENSIONS.indexOf(currentDimension);
+  const nextIndex = CONSUMPTION_ATTRIBUTION_DIMENSIONS.indexOf(nextDimension);
 
   if (currentIndex === nextIndex) {
     return 0;
@@ -744,6 +750,7 @@ export interface ConsumptionAttributionTableProps {
     selectedRow: ConsumptionTopRow
   ) => void;
   showExport?: boolean;
+  onConversationNavigate?: () => void;
 }
 
 interface ConsumptionAttributionTableViewProps
@@ -763,23 +770,28 @@ export function ConsumptionAttributionTableView({
   onDimensionChange,
   onViewAll,
   showExport = true,
+  onConversationNavigate,
   AttributionRowsComponent,
 }: ConsumptionAttributionTableViewProps) {
   const { inputValue, debouncedValue, setValue } = useDebounce("", {
     delay: SEARCH_DEBOUNCE_DELAY_MS,
   });
-  const pendingPointerDimension = useRef<ConsumptionDimension | null>(null);
-  const [transition, setTransition] = useState<AttributionTransition>({
-    target: null,
-    direction: 0,
-  });
+  const [isConversationSelected, setIsConversationSelected] = useState(false);
   const activeDimension =
     personal && (dimension === "user" || dimension === "group")
       ? DEFAULT_CONSUMPTION_DIMENSION
       : dimension;
+  const attributionDimension: ConsumptionAttributionDimension =
+    personal && isConversationSelected ? "conversation" : activeDimension;
+  const pendingPointerDimension =
+    useRef<ConsumptionAttributionDimension | null>(null);
+  const [transition, setTransition] = useState<AttributionTransition>({
+    target: null,
+    direction: 0,
+  });
   const shouldReduceMotion = useReducedMotion();
   const effectiveTransitionDirection =
-    shouldReduceMotion || transition.target !== activeDimension
+    shouldReduceMotion || transition.target !== attributionDimension
       ? 0
       : transition.direction;
   const visibleDimensions = getConsumptionAttributionDimensions({ personal });
@@ -805,21 +817,26 @@ export function ConsumptionAttributionTableView({
       <div className="rounded-lg border border-border bg-panel-background p-4">
         <div className="flex flex-col gap-3">
           <Tabs
-            value={activeDimension}
+            value={attributionDimension}
             onValueChange={(value) => {
-              if (isConsumptionDimension(value)) {
+              if (isConsumptionAttributionDimension(value)) {
                 setTransition({
                   target: value,
                   direction:
                     pendingPointerDimension.current === value
                       ? getAttributionTransitionDirection(
-                          activeDimension,
+                          attributionDimension,
                           value
                         )
                       : 0,
                 });
                 pendingPointerDimension.current = null;
-                onDimensionChange(value);
+                if (value === "conversation") {
+                  setIsConversationSelected(true);
+                } else {
+                  setIsConversationSelected(false);
+                  onDimensionChange(value);
+                }
               }
             }}
           >
@@ -828,7 +845,10 @@ export function ConsumptionAttributionTableView({
                 <TabsTrigger
                   key={tabDimension}
                   value={tabDimension}
-                  label={CONSUMPTION_DIMENSION_CONFIG[tabDimension].label}
+                  label={consumptionAttributionDimensionLabel(tabDimension)}
+                  className={
+                    tabDimension === "conversation" ? "ml-auto" : undefined
+                  }
                   onPointerDown={() => {
                     pendingPointerDimension.current = tabDimension;
                   }}
@@ -842,13 +862,15 @@ export function ConsumptionAttributionTableView({
               ))}
             </TabsList>
           </Tabs>
-          <SearchInput
-            name="consumption-attribution-search"
-            placeholder="Search…"
-            value={inputValue}
-            onChange={setValue}
-            className="w-full"
-          />
+          {attributionDimension !== "conversation" && (
+            <SearchInput
+              name="consumption-attribution-search"
+              placeholder="Search…"
+              value={inputValue}
+              onChange={setValue}
+              className="w-full"
+            />
+          )}
           <LazyMotion features={domMax}>
             <div className="relative overflow-hidden">
               <AnimatePresence
@@ -857,31 +879,40 @@ export function ConsumptionAttributionTableView({
                 custom={effectiveTransitionDirection}
               >
                 <m.div
-                  key={activeDimension}
+                  key={attributionDimension}
                   custom={effectiveTransitionDirection}
                   variants={ATTRIBUTION_BODY_VARIANTS}
                   initial="initial"
                   animate="animate"
                   exit="exit"
                 >
-                  {/* Reset table state whenever its dataset or local search changes. */}
-                  <AttributionRowsComponent
-                    key={JSON.stringify({
-                      period,
-                      filter,
-                      search: debouncedValue,
-                    })}
-                    workspaceId={workspaceId}
-                    dimension={activeDimension}
-                    period={period}
-                    filter={filter}
-                    personal={personal}
-                    disabled={disabled}
-                    onAddFilter={onAddFilter}
-                    onRemoveFilter={onRemoveFilter}
-                    search={debouncedValue}
-                    onViewAll={onViewAll}
-                  />
+                  {attributionDimension === "conversation" ? (
+                    <ConsumptionConversationAttribution
+                      workspaceId={workspaceId}
+                      period={period}
+                      filter={filter}
+                      disabled={disabled}
+                      onNavigate={onConversationNavigate}
+                    />
+                  ) : (
+                    <AttributionRowsComponent
+                      key={JSON.stringify({
+                        period,
+                        filter,
+                        search: debouncedValue,
+                      })}
+                      workspaceId={workspaceId}
+                      dimension={attributionDimension}
+                      period={period}
+                      filter={filter}
+                      personal={personal}
+                      disabled={disabled}
+                      onAddFilter={onAddFilter}
+                      onRemoveFilter={onRemoveFilter}
+                      search={debouncedValue}
+                      onViewAll={onViewAll}
+                    />
+                  )}
                 </m.div>
               </AnimatePresence>
             </div>
