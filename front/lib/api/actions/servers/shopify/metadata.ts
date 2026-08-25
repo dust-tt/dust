@@ -19,7 +19,7 @@ export const SHOPIFY_TOOLS_METADATA = [
       "Export the Shopify product catalog with title, status, vendor, type, inventory, and price range.",
     schema: {
       status: z
-        .enum(["ACTIVE", "DRAFT", "ARCHIVED"])
+        .enum(["ACTIVE", "DRAFT", "ARCHIVED", "UNLISTED"])
         .optional()
         .describe("Filter by product status."),
       vendor: z.string().optional().describe("Filter by exact vendor name."),
@@ -136,12 +136,13 @@ export const SHOPIFY_SERVER = {
     version: "1.0.0",
     description:
       "Export product catalog, customer lifetime value, and sales data from a Shopify store.",
-    // Pilot (phase 1) uses a merchant-provided token injected via authInfo; no
-    // Dust OAuth provider yet. Phase 2 will set
-    // `authorization: { provider: "shopify", supported_use_cases: [...] }`.
-    authorization: null,
+    authorization: {
+      provider: "shopify" as const,
+      supported_use_cases: ["platform_actions"] as const,
+    },
     icon: "ActionTableIcon",
-    documentationUrl: null,
+    documentationUrl:
+      "https://shopify.dev/docs/api/admin-graphql/latest/queries/products",
   },
   tools: SHOPIFY_TOOLS_METADATA,
 } as const satisfies ServerMetadata;
