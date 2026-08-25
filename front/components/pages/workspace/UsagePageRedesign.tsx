@@ -82,6 +82,7 @@ import {
 import { useUsageSettings } from "@app/lib/swr/usage_settings";
 import {
   useAwuUsageFromAnalytics,
+  useMetronomeContract,
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
@@ -470,6 +471,10 @@ export function UsagePageRedesign() {
     isAwuPoolSummaryError,
     mutateAwuPoolSummary,
   } = useAwuPoolSummary({
+    workspaceId: owner.sId,
+  });
+
+  const { contract: metronomeContract } = useMetronomeContract({
     workspaceId: owner.sId,
   });
 
@@ -1123,18 +1128,20 @@ export function UsagePageRedesign() {
             description="Control credit consumption across your workspace."
           />
         ) : (
-          <div className="flex items-center justify-between">
-            <Page.Header title="Usage" />
-            {!isReadOnly && usageSettings.topUpEnabled && isWorkspaceAdmin && (
-              <Button
-                label="Top up"
-                icon={ArrowUp}
-                size="sm"
-                variant="outline"
-                onClick={() => setShowBuyCreditDialog(true)}
-              />
-            )}
-          </div>
+          <Page.Header
+            title={
+              <div className="flex w-full items-center justify-between gap-4">
+                <Page.H variant="h3">Usage</Page.H>
+                <Button
+                  label="Breakdown in analytics"
+                  iconRight={LinkExternal01}
+                  size="xs"
+                  variant="highlight-ghost"
+                  href={`/w/${owner.sId}/analytics/consumption`}
+                />
+              </div>
+            }
+          />
         )}
 
         {!isReadOnly && isCreditPricedFreePlan(subscription.plan.code) && (
@@ -1299,26 +1306,50 @@ export function UsagePageRedesign() {
                     />
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  {isReadOnly ? (
+                {hasPool && (
+                  <div className="flex items-center justify-between gap-4">
                     <span className="copy-sm text-muted-foreground">
-                      {formatCredits(periodSpendCredits)} credits spent this
-                      period
+                      {usedPercentage}% used
                     </span>
-                  ) : (
-                    <>
-                      {overageCredits !== null && overageCredits > 0 && (
-                        <span className="copy-sm text-muted-foreground">
-                          {formatCredits(overageCredits)} overage credits
-                        </span>
-                      )}
-                      {isEnterprise && (
-                        <span className="copy-sm text-muted-foreground">
-                          Contact your Dust sales representative to buy credits
-                        </span>
-                      )}
-                    </>
-                  )}
+                    {metronomeContract?.contractEndingAtMs && (
+                      <span className="copy-sm text-muted-foreground">
+                        End of contract{" "}
+                        {formatConsumptionDate(
+                          metronomeContract.contractEndingAtMs
+                        )}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    {isReadOnly ? (
+                      <span className="copy-sm text-muted-foreground">
+                        {formatCredits(periodSpendCredits)} credits spent this
+                        period
+                      </span>
+                    ) : (
+                      <>
+                        {overageCredits !== null && overageCredits > 0 && (
+                          <span className="copy-sm text-muted-foreground">
+                            {formatCredits(overageCredits)} overage credits
+                          </span>
+                        )}
+                        {isEnterprise && (
+                          <span className="copy-sm text-muted-foreground">
+                            Contact your Dust sales representative to buy
+                            credits
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="pt-2">
+                  <Page.Separator />
+                </div>
+                <div className="flex items-center justify-end pt-2">
+                  {topUpButton}
                 </div>
               </>
             )}
