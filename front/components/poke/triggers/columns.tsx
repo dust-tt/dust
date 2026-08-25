@@ -1,54 +1,78 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
-import { TriggerStatusChip } from "@app/components/triggers/TriggerStatusChip";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import { formatCredits } from "@app/lib/client/credits";
+import type { TriggerStatus } from "@app/types/assistant/triggers";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, LinkWrapper } from "@dust-tt/sparkle";
+import { LinkWrapper, SliderToggle, Tooltip } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
 
-interface DisableTriggerButtonProps {
-  triggerId: string;
-  triggerName: string;
-  onDisable: (triggerId: string) => Promise<void>;
+export interface PokeTriggerTableRow extends AutomationTriggerRow {
+  displayStatus: TriggerStatus;
+  isStatusPending: boolean;
+  onToggleStatus: () => void;
 }
 
-function DisableTriggerButton({
-  triggerId,
-  triggerName,
-  onDisable,
-}: DisableTriggerButtonProps) {
-  const [isDisabling, setIsDisabling] = useState(false);
+interface LockedStatusToggleProps {
+  label: string;
+}
 
-  const handleDisable = async () => {
-    if (
-      !window.confirm(
-        `Disable trigger "${triggerName}"? It will stop running but remain available for a manager or admin to re-enable.`
-      )
-    ) {
-      return;
-    }
-
-    setIsDisabling(true);
-    try {
-      await onDisable(triggerId);
-    } finally {
-      setIsDisabling(false);
-    }
-  };
-
+function LockedStatusToggle({ label }: LockedStatusToggleProps) {
   return (
-    <Button
-      label="Disable"
-      size="xs"
-      variant="outline"
-      isLoading={isDisabling}
-      onClick={handleDisable}
+    <Tooltip
+      label={label}
+      trigger={
+        // A disabled SliderToggle needs a wrapper to be a valid Tooltip
+        // trigger.
+        <div>
+          <SliderToggle selected={false} disabled />
+        </div>
+      }
     />
   );
 }
 
-function ConsumptionCell({ trigger }: { trigger: AutomationTriggerRow }) {
+interface TriggerStatusControlProps {
+  row: PokeTriggerTableRow;
+}
+
+function TriggerStatusControl({ row }: TriggerStatusControlProps) {
+  switch (row.displayStatus) {
+    case "enabled":
+    case "disabled":
+    case "disabled_by_manager":
+      return (
+        <SliderToggle
+          selected={row.displayStatus === "enabled"}
+          disabled={row.isStatusPending}
+          onClick={row.onToggleStatus}
+        />
+      );
+    case "relocating":
+      return (
+        <LockedStatusToggle label="Disabled while the workspace is being relocated." />
+      );
+    case "downgraded":
+      return (
+        <LockedStatusToggle label="Disabled following a plan downgrade." />
+      );
+    default:
+      assertNeverAndIgnore(row.displayStatus);
+      return (
+        <SliderToggle
+          selected={row.displayStatus === "enabled"}
+          disabled={row.isStatusPending}
+          onClick={row.onToggleStatus}
+        />
+      );
+  }
+}
+
+interface ConsumptionCellProps {
+  trigger: AutomationTriggerRow;
+}
+
+function ConsumptionCell({ trigger }: ConsumptionCellProps) {
   const { credits, runCount } = trigger;
   const creditsLabel = `${formatCredits(credits)} credits`;
   const runUnit = runCount === 1 ? "run" : "runs";
@@ -75,9 +99,8 @@ function ConsumptionCell({ trigger }: { trigger: AutomationTriggerRow }) {
 }
 
 export function makeColumnsForAutomationTriggers(
-  owner: LightWorkspaceType,
-  onTriggerDisable: (triggerId: string) => Promise<void>
-): ColumnDef<AutomationTriggerRow>[] {
+  owner: LightWorkspaceType
+): ColumnDef<PokeTriggerTableRow>[] {
   return [
     {
       accessorKey: "triggerId",
@@ -123,34 +146,19 @@ export function makeColumnsForAutomationTriggers(
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: "Enabled",
       enableSorting: false,
-      cell: ({ row }) => <TriggerStatusChip status={row.original.status} />,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <TriggerStatusControl row={row.original} />
+        </div>
+      ),
     },
     {
       id: "editor",
       header: "Editor",
       enableSorting: false,
       accessorFn: (trigger) => trigger.editor.email ?? trigger.editor.name,
-    },
-    {
-      id: "actions",
-      header: "",
-      enableSorting: false,
-      cell: ({ row }) => {
-        const trigger = row.original;
-        if (trigger.status !== "enabled") {
-          return null;
-        }
-
-        return (
-          <DisableTriggerButton
-            triggerId={trigger.triggerId}
-            triggerName={trigger.name}
-            onDisable={onTriggerDisable}
-          />
-        );
-      },
     },
   ];
 }

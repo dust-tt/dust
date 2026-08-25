@@ -14,11 +14,17 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { PatchTriggerStatusRequestBody } from "@app/types/api/assistant/configuration/triggers";
 import type { PokeGetWebhookRequestsResponseBody } from "@app/types/api/poke/triggers";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
+
+interface UpdatePokeTriggerStatusArgs {
+  triggerId: string;
+  status: PatchTriggerStatusRequestBody["status"];
+}
 
 export function usePokeTriggers({
   owner,
@@ -52,44 +58,55 @@ export function usePokeTriggers({
     sortOrder,
   };
 
-  const { data, error, mutate, isValidating } = useConsumptionQuery<
+  const { data, error, isValidating } = useConsumptionQuery<
     PokeTriggersSearchBody,
     GetAutomationTriggersResponse
   >({ url, body, disabled });
 
-  const disableTrigger = useCallback(
-    async (triggerId: string): Promise<void> => {
+  const updateTriggerStatus = useCallback(
+    async ({
+      triggerId,
+      status,
+    }: UpdatePokeTriggerStatusArgs): Promise<boolean> => {
       try {
         const response = await clientFetch(
-          `/api/poke/workspaces/${owner.sId}/triggers?tId=${encodeURIComponent(triggerId)}`,
-          { method: "DELETE" }
+          `/api/poke/workspaces/${owner.sId}/triggers/${triggerId}/status`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status }),
+          }
         );
 
         if (!response.ok) {
           const errorData = await getErrorFromResponse(response);
           sendNotification({
             type: "error",
-            title: "Failed to disable trigger",
-            description: errorData.message,
+            title: "Failed to update trigger",
+            description: `Error: ${errorData.message}`,
           });
-          return;
+          return false;
         }
 
-        await mutate();
         sendNotification({
           type: "success",
-          title: "Trigger disabled",
-          description: "The trigger is no longer running.",
+          title: status === "enabled" ? "Trigger enabled" : "Trigger disabled",
+          description:
+            status === "enabled"
+              ? "The trigger is now running."
+              : "The trigger is no longer running.",
         });
+        return true;
       } catch {
         sendNotification({
           type: "error",
-          title: "Failed to disable trigger",
+          title: "Failed to update trigger",
           description: "An unexpected error occurred. Please try again.",
         });
+        return false;
       }
     },
-    [mutate, owner.sId, sendNotification]
+    [owner.sId, sendNotification]
   );
 
   return {
@@ -98,7 +115,7 @@ export function usePokeTriggers({
     isTriggersLoading: !disabled && !error && !data,
     isTriggersValidating: !disabled && !error && isValidating,
     isTriggersError: error,
-    disableTrigger,
+    updateTriggerStatus,
   };
 }
 

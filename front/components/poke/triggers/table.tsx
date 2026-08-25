@@ -1,18 +1,22 @@
+import { ConfirmContext } from "@app/components/Confirm";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import type { PokeTriggerTableRow } from "@app/components/poke/triggers/columns";
 import { makeColumnsForAutomationTriggers } from "@app/components/poke/triggers/columns";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
+import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import { usePokeTriggers } from "@app/poke/swr/triggers";
-import type { TriggerKind } from "@app/types/assistant/triggers";
+import type { TriggerKind, TriggerStatus } from "@app/types/assistant/triggers";
 import {
+  getTriggerStatusOwner,
   isValidTriggerKind,
   TRIGGER_KINDS,
 } from "@app/types/assistant/triggers";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
-import { useState } from "react";
+import { useContext, useState } from "react";
 
 const TRIGGER_PAGE_SIZE = 25;
 
@@ -38,6 +42,12 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "credits", desc: true },
   ]);
+  const [pendingTriggerIds, setPendingTriggerIds] = useState<
+    ReadonlySet<string>
+  >(new Set());
+  const [statusOverrides, setStatusOverrides] = useState<
+    Record<string, TriggerStatus>
+  >({});
 
   const handlePeriodChange = (nextPeriod: ConsumptionPeriodSelection) => {
     setPeriod(nextPeriod);
@@ -65,7 +75,7 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
     isTriggersLoading,
     isTriggersValidating,
     isTriggersError,
-    disableTrigger,
+    updateTriggerStatus,
   } = usePokeTriggers({
     owner,
     period,
@@ -74,6 +84,71 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
     search: search || undefined,
     filter: selectedKinds.length > 0 ? { kinds: selectedKinds } : undefined,
     sortOrder: sorting[0]?.desc === false ? "asc" : "desc",
+  });
+
+  // The table data comes from an expensive Elasticsearch query, so instead of
+  // revalidating after a toggle we track the new statuses locally. Refetched
+  // rows already carry any status we wrote, so reset overrides during render.
+  const [previousTriggers, setPreviousTriggers] = useState(triggers);
+  if (previousTriggers !== triggers) {
+    setPreviousTriggers(triggers);
+    setStatusOverrides({});
+  }
+
+  const confirm = useContext(ConfirmContext);
+
+  const handleToggleStatus = async (
+    trigger: AutomationTriggerRow,
+    currentStatus: TriggerStatus
+  ) => {
+    if (getTriggerStatusOwner(currentStatus) === "system") {
+      return;
+    }
+
+    const nextStatus = currentStatus === "enabled" ? "disabled" : "enabled";
+    if (nextStatus === "disabled") {
+      const confirmed = await confirm({
+        title: "Disable this automation?",
+        message: `"${trigger.name}" will stop running for ${trigger.editor.name}. A manager or admin will be able to re-enable it.`,
+        validateVariant: "warning",
+        validateLabel: "Disable",
+        cancelLabel: "Cancel",
+      });
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setPendingTriggerIds((ids) => new Set([...ids, trigger.triggerId]));
+    try {
+      const success = await updateTriggerStatus({
+        triggerId: trigger.triggerId,
+        status: nextStatus,
+      });
+      if (success) {
+        setStatusOverrides((overrides) => ({
+          ...overrides,
+          [trigger.triggerId]:
+            nextStatus === "disabled" ? "disabled_by_manager" : "enabled",
+        }));
+      }
+    } finally {
+      setPendingTriggerIds((ids) => {
+        const nextIds = new Set(ids);
+        nextIds.delete(trigger.triggerId);
+        return nextIds;
+      });
+    }
+  };
+
+  const rows: PokeTriggerTableRow[] = triggers.map((trigger) => {
+    const displayStatus = statusOverrides[trigger.triggerId] ?? trigger.status;
+    return {
+      ...trigger,
+      displayStatus,
+      isStatusPending: pendingTriggerIds.has(trigger.triggerId),
+      onToggleStatus: () => void handleToggleStatus(trigger, displayStatus),
+    };
   });
 
   return (
@@ -92,8 +167,8 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
           </div>
         ) : (
           <PokeDataTable
-            columns={makeColumnsForAutomationTriggers(owner, disableTrigger)}
-            data={triggers}
+            columns={makeColumnsForAutomationTriggers(owner)}
+            data={rows}
             getRowId={(trigger) => trigger.triggerId}
             isLoading={isTriggersLoading}
             isValidating={isTriggersValidating}
