@@ -41,14 +41,17 @@ import {
 import { useMemo, useState } from "react";
 
 const DEFAULT_MODEL_TIER: ModelsTierName = "balanced";
+const NO_HIDDEN_USAGE_FILTER_CATEGORIES: readonly UsageFilterCategory[] = [];
 
 export interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
   period: ConsumptionPeriodSelection;
   filter: UsageFilter;
   personal?: boolean;
+  agentId?: string;
   onFilterChange: (next: UsageFilter) => void;
   showMemberGroupFilter?: boolean;
+  hiddenCategories?: readonly UsageFilterCategory[];
 }
 
 export function UsageFilterPanel({
@@ -56,13 +59,23 @@ export function UsageFilterPanel({
   period,
   filter,
   personal,
+  agentId,
   onFilterChange,
   showMemberGroupFilter = true,
+  hiddenCategories = NO_HIDDEN_USAGE_FILTER_CATEGORIES,
 }: UsageFilterPanelProps) {
+  const categories = useMemo(
+    () =>
+      USAGE_FILTER_CATEGORIES.filter(
+        (category) => !hiddenCategories.includes(category)
+      ),
+    [hiddenCategories]
+  );
   const state = useUsageFilterPanelState({
     owner,
     filter,
     showMemberGroupFilter,
+    categories,
   });
   const {
     options: categoryOptions,
@@ -74,6 +87,7 @@ export function UsageFilterPanel({
     period,
     filter: state.draftScopeFilter,
     personal,
+    agentId,
     disabled: !state.isOpen,
   });
 
@@ -82,6 +96,7 @@ export function UsageFilterPanel({
       filter={filter}
       onFilterChange={onFilterChange}
       showMemberGroupFilter={showMemberGroupFilter}
+      categories={categories}
       state={state}
       categoryOptions={categoryOptions}
       isFacetsLoading={isFacetsLoading}
@@ -95,12 +110,14 @@ interface UseUsageFilterPanelStateParams {
   owner: LightWorkspaceType;
   filter: UsageFilter;
   showMemberGroupFilter: boolean;
+  categories?: readonly UsageFilterCategory[];
 }
 
 export function useUsageFilterPanelState({
   owner,
   filter,
   showMemberGroupFilter,
+  categories = USAGE_FILTER_CATEGORIES,
 }: UseUsageFilterPanelStateParams) {
   const [isOpen, setIsOpen] = useState(false);
   // Selections are staged while the panel is open and only propagated when
@@ -114,8 +131,9 @@ export function useUsageFilterPanelState({
     removeOption,
     selectAllFiltered,
   } = useUsageFilter(filter);
-  const [activeCategory, setActiveCategory] =
-    useState<UsageFilterCategory>("agent");
+  const [activeCategory, setActiveCategory] = useState<UsageFilterCategory>(
+    categories[0] ?? "agent"
+  );
   const [activeScope, setActiveScope] = useState<UsageFilterAgentScope>("all");
   const [activeTier, setActiveTier] =
     useState<ModelsTierName>(DEFAULT_MODEL_TIER);
@@ -176,6 +194,7 @@ interface UsageFilterPanelViewProps {
   filter: UsageFilter;
   onFilterChange: (next: UsageFilter) => void;
   showMemberGroupFilter: boolean;
+  categories?: readonly UsageFilterCategory[];
   state: ReturnType<typeof useUsageFilterPanelState>;
   categoryOptions: ConsumptionFacetOptions;
   isFacetsLoading: boolean;
@@ -187,6 +206,7 @@ export function UsageFilterPanelView({
   filter,
   onFilterChange,
   showMemberGroupFilter,
+  categories = USAGE_FILTER_CATEGORIES,
   state,
   categoryOptions,
   isFacetsLoading,
@@ -266,18 +286,16 @@ export function UsageFilterPanelView({
   const appliedSelectionCount = usageFilterSelectionCount(filter);
   const categoriesWithSelection = useMemo(
     () =>
-      USAGE_FILTER_CATEGORIES.filter(
-        (category) => (draftFilter[category]?.length ?? 0) > 0
-      ),
-    [draftFilter]
+      categories.filter((category) => (draftFilter[category]?.length ?? 0) > 0),
+    [categories, draftFilter]
   );
   const categorySelectionCounts = useMemo(() => {
     const counts: Partial<Record<UsageFilterCategory, number>> = {};
-    for (const category of USAGE_FILTER_CATEGORIES) {
+    for (const category of categories) {
       counts[category] = draftFilter[category]?.length ?? 0;
     }
     return counts;
-  }, [draftFilter]);
+  }, [categories, draftFilter]);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -322,7 +340,7 @@ export function UsageFilterPanelView({
       <PopoverContent fullWidth align="end" className="w-auto rounded-2xl p-0">
         <div className="flex h-96 flex-row divide-x divide-border">
           <FilterCategoryNav
-            categories={USAGE_FILTER_CATEGORIES}
+            categories={categories}
             categoryLabels={USAGE_FILTER_CATEGORY_LABEL}
             selectionCounts={categorySelectionCounts}
             activeCategory={activeCategory}

@@ -33,6 +33,7 @@ export interface ConsumptionSummaryProps {
   usageHref?: string;
   usageLinkLabel?: string;
   personal?: boolean;
+  agentId?: string;
   disabled?: boolean;
 }
 
@@ -42,6 +43,7 @@ export function ConsumptionSummary({
   usageHref = `/w/${workspaceId}/usage`,
   usageLinkLabel = "Manage in Usage",
   personal,
+  agentId,
   disabled,
 }: ConsumptionSummaryProps) {
   const { overview, isOverviewLoading, isOverviewError } =
@@ -49,6 +51,7 @@ export function ConsumptionSummary({
       workspaceId,
       period: periodSelection,
       personal,
+      agentId,
       disabled,
     });
 
@@ -59,7 +62,7 @@ export function ConsumptionSummary({
       isOverviewError={Boolean(isOverviewError)}
       usageHref={usageHref}
       usageLinkLabel={usageLinkLabel}
-      personal={personal}
+      personal={personal || agentId !== undefined}
     />
   );
 }

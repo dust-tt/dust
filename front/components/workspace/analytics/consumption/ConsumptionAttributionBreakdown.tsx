@@ -53,6 +53,7 @@ export interface ConsumptionAttributionBreakdownColumnProps {
   period: ConsumptionPeriodSelection;
   filter: ConsumptionScopeFilter;
   personal?: boolean;
+  agentId?: string;
   disabled?: boolean;
   selectedRowName: string;
   onViewAll: () => void;
@@ -133,6 +134,7 @@ function WorkspaceConsumptionAttributionBreakdownColumn({
   period,
   filter,
   personal,
+  agentId,
   disabled,
   selectedRowName,
   onViewAll,
@@ -144,6 +146,7 @@ function WorkspaceConsumptionAttributionBreakdownColumn({
     limit: CONSUMPTION_ATTRIBUTION_BREAKDOWN_LIMIT,
     filter,
     personal,
+    agentId,
     disabled,
   });
 
@@ -167,6 +170,7 @@ export interface ConsumptionAttributionBreakdownProps {
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
   personal?: boolean;
+  agentId?: string;
   disabled?: boolean;
   onViewAll: (
     dimension: ConsumptionDimension,
@@ -186,6 +190,7 @@ export function ConsumptionAttributionBreakdownView({
   period,
   filter,
   personal,
+  agentId,
   disabled,
   onViewAll,
   BreakdownColumnComponent,
@@ -215,6 +220,7 @@ export function ConsumptionAttributionBreakdownView({
           period={period}
           filter={selectedFilter}
           personal={personal}
+          agentId={agentId}
           disabled={disabled}
           selectedRowName={selectedRow.name}
           onViewAll={() => onViewAll(dimension, selectedRow)}
