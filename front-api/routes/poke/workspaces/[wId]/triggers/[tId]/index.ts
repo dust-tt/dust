@@ -1,14 +1,12 @@
 import { pokeApp } from "@front-api/middlewares/ctx";
 
 import details from "./details";
-import disable from "./disable";
 import executionStats from "./execution_stats";
 import webhookRequests from "./webhook_requests";
 
 const app = pokeApp();
 
 app.route("/details", details);
-app.route("/disable", disable);
 app.route("/execution_stats", executionStats);
 app.route("/webhook_requests", webhookRequests);
 

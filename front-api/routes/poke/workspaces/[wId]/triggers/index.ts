@@ -7,7 +7,7 @@ import { z } from "zod";
 import tId from "./[tId]";
 import search from "./search";
 
-const DeleteTriggerQuerySchema = z.object({
+const DisableTriggerQuerySchema = z.object({
   tId: z.string(),
 });
 
@@ -15,7 +15,7 @@ const DeleteTriggerQuerySchema = z.object({
 const app = pokeApp();
 
 /** @ignoreswagger */
-app.delete("/", validate("query", DeleteTriggerQuerySchema), async (ctx) => {
+app.delete("/", validate("query", DisableTriggerQuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { tId } = ctx.req.valid("query");
 
@@ -30,15 +30,32 @@ app.delete("/", validate("query", DeleteTriggerQuerySchema), async (ctx) => {
     });
   }
 
-  const deleteResult = await trigger.delete(auth);
-  if (deleteResult.isErr()) {
+  if (
+    trigger.status !== "enabled" &&
+    trigger.status !== "disabled_by_manager"
+  ) {
     return apiError(ctx, {
-      status_code: 500,
+      status_code: 400,
       api_error: {
-        type: "internal_server_error",
-        message: "Failed to delete trigger.",
+        type: "invalid_request_error",
+        message: "This trigger cannot be disabled from its current status.",
       },
     });
+  }
+
+  const result = await trigger.disable(auth, "disabled_by_manager");
+  if (result.isErr()) {
+    return apiError(
+      ctx,
+      {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to disable the trigger.",
+        },
+      },
+      result.error
+    );
   }
 
   return ctx.body(null, 204);

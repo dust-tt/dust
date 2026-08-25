@@ -61,8 +61,8 @@ export function usePokeTriggers({
     async (triggerId: string): Promise<void> => {
       try {
         const response = await clientFetch(
-          `/api/poke/workspaces/${owner.sId}/triggers/${triggerId}/disable`,
-          { method: "POST" }
+          `/api/poke/workspaces/${owner.sId}/triggers?tId=${encodeURIComponent(triggerId)}`,
+          { method: "DELETE" }
         );
 
         if (!response.ok) {
