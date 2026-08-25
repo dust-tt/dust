@@ -43,6 +43,7 @@ export const TRACKING_AREAS = {
   SETTINGS: "settings",
 
   // Features
+  ANALYTICS: "analytics",
   ACADEMY: "academy",
   BUILDER: "builder",
   SPACES: "spaces",
@@ -72,6 +73,7 @@ export const TRACKING_ACTIONS = {
   SELECT: "select",
   OPEN: "open",
   CLOSE: "close",
+  VIEW: "view",
 } as const;
 
 export type TrackingAction =

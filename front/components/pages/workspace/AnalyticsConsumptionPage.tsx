@@ -27,6 +27,11 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   cn,
@@ -37,7 +42,7 @@ import {
 } from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
 import type { ComponentType } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const canReload = () => !isNavigationLocked();
 
@@ -120,6 +125,15 @@ export function AnalyticsConsumptionPage() {
     period: state.period,
     filter: state.filter,
   });
+
+  useEffect(() => {
+    trackEvent({
+      area: TRACKING_AREAS.ANALYTICS,
+      object: "consumption_page",
+      action: TRACKING_ACTIONS.VIEW,
+      extra: { workspace_id: owner.sId },
+    });
+  }, [owner.sId]);
 
   return (
     <AnalyticsConsumptionContent owner={owner} state={{ ...state, filter }} />

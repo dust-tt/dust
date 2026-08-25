@@ -5,8 +5,13 @@ import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/c
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
 import { Page } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function AnalyticsAutomationsPage() {
   const owner = useWorkspace();
@@ -14,6 +19,15 @@ export function AnalyticsAutomationsPage() {
     DEFAULT_CONSUMPTION_PERIOD
   );
   const [filter, setFilter] = useState<AutomationsFilter>({});
+
+  useEffect(() => {
+    trackEvent({
+      area: TRACKING_AREAS.ANALYTICS,
+      object: "automations_page",
+      action: TRACKING_ACTIONS.VIEW,
+      extra: { workspace_id: owner.sId },
+    });
+  }, [owner.sId]);
 
   return (
     <Page.Vertical align="stretch" gap="xl">
