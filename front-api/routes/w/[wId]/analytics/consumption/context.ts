@@ -4,6 +4,7 @@ import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 type ConsumptionAnalyticsCtx = WorkspaceAwareCtx & {
   Variables: {
     consumptionUserId?: string;
+    consumptionAgentId?: string;
   };
 };
 

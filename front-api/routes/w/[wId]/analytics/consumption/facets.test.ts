@@ -1,6 +1,7 @@
 import type { GetConsumptionFacetsResponse } from "@app/lib/api/analytics/consumption/facets";
 import { fetchConsumptionFacets } from "@app/lib/api/analytics/consumption/facets";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -95,6 +96,36 @@ describe("POST /api/w/:wId/analytics/consumption/facets", () => {
         filter: { users: [user.sId], sources: ["slack"] },
         dimensions: ["agent"],
         userId: user.sId,
+      })
+    );
+  });
+
+  it("lets editors list only facets from the selected agent", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    vi.mocked(fetchConsumptionFacets).mockResolvedValue(new Ok(RESPONSE));
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/assistant/agent_configurations/${agent.sId}/analytics/consumption/facets`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filter: { agents: ["another-agent"], sources: ["slack"] },
+          dimensions: ["agent", "user", "model"],
+        }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchConsumptionFacets).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        filter: { agents: [agent.sId], sources: ["slack"] },
+        dimensions: ["user", "model"],
+        agentId: agent.sId,
       })
     );
   });
