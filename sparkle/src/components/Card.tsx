@@ -24,11 +24,17 @@ export type CardVariantType = (typeof CARD_VARIANTS)[number];
 export const CARD_SIZES = ["xs", "sm", "md", "lg"] as const;
 export type CardSizeType = (typeof CARD_SIZES)[number];
 
+/** Elevated-surface shadow (drop + inner highlight) shared by Card's elevated variants. */
+export const CARD_SHADOW = cn(
+  "shadow-[0px_0.5px_1px_0px_rgba(0,0,0,0.04),inset_2px_-2px_7px_0px_rgba(0,0,0,0.01),inset_0px_4px_4px_0px_rgba(255,255,255,0.08)]",
+  "dark:shadow-none"
+);
+
 const interactiveClasses = cn(
   "cursor-pointer",
-  "transition duration-200",
-  "hover:bg-primary-100",
-  "active:bg-primary-150",
+  "transition-[background-color] duration-100 ease-out motion-reduce:transition-none",
+  "hover:bg-primary-100 hover:shadow-none",
+  "active:bg-primary-150 active:shadow-none",
   "disabled:text-primary-muted",
   "disabled:border-border",
   "disabled:pointer-events-none"
@@ -43,16 +49,16 @@ const cardVariants = cva(
   {
     variants: {
       variant: {
-        primary: cn("bg-muted-background", "border-transparent"),
-        active: cn("bg-muted-background", "border-border"),
-        highlight: cn("bg-highlight-50", "border-transparent"),
-        warning: cn("bg-warning-50", "border-transparent"),
-        secondary: cn("bg-background", "border-border"),
+        primary: cn("bg-muted-background", "border-border", CARD_SHADOW),
+        active: cn("bg-primary-100", "border-border"),
+        highlight: cn("bg-highlight-50", "border-transparent", CARD_SHADOW),
+        warning: cn("bg-warning-50", "border-transparent", CARD_SHADOW),
+        secondary: cn("bg-background", "border-border", CARD_SHADOW),
         tertiary: cn("bg-background", "border-transparent"),
       },
       size: {
         xs: "px-2 py-1.5 rounded-lg",
-        sm: "p-3 rounded-xl",
+        sm: "p-3 rounded-2xl",
         md: "p-4 rounded-2xl",
         lg: "p-5 rounded-3xl",
       },
