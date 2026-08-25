@@ -1,6 +1,29 @@
 import { describe, expect, it } from "vitest";
 
-import { isValidSnowflakeAccount } from "./lib";
+import {
+  isValidShopifyShopDomain,
+  isValidSnowflakeAccount,
+  normalizeShopifyShopDomain,
+} from "./lib";
+
+describe("Shopify shop domain", () => {
+  it("accepts and normalizes permanent myshopify.com domains", () => {
+    expect(isValidShopifyShopDomain("my-store.myshopify.com")).toBe(true);
+    expect(normalizeShopifyShopDomain(" MY-STORE.MYSHOPIFY.COM ")).toBe(
+      "my-store.myshopify.com"
+    );
+  });
+
+  it("rejects custom domains and invalid hostnames", () => {
+    expect(isValidShopifyShopDomain("shop.example.com")).toBe(false);
+    expect(isValidShopifyShopDomain("evil.myshopify.com.example.com")).toBe(
+      false
+    );
+    expect(isValidShopifyShopDomain("https://my-store.myshopify.com")).toBe(
+      false
+    );
+  });
+});
 
 describe("isValidSnowflakeAccount", () => {
   it("should accept valid account identifiers", () => {

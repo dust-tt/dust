@@ -45,6 +45,7 @@ export const OAUTH_PROVIDERS = [
   "monday",
   "notion",
   "productboard",
+  "shopify",
   "slack",
   "slack_tools",
   "gong",
@@ -77,6 +78,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   monday: "Monday",
   notion: "Notion",
   productboard: "Productboard",
+  shopify: "Shopify",
   slack: "Slack",
   slack_tools: "Slack Tools",
   gong: "Gong",
@@ -107,6 +109,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "freshservice_domain",
   "freshworks_org_url",
   "zendesk_subdomain",
+  "shopify_shop",
   "databricks_workspace_url",
   "servicenow_instance_url",
   "snowflake_account",
@@ -256,6 +259,19 @@ export function getProviderRequiredOAuthCredentialInputs({
           },
         };
         return result;
+      }
+      return null;
+    case "shopify":
+      if (useCase === "platform_actions") {
+        return {
+          shopify_shop: {
+            label: "Shopify store domain",
+            value: undefined,
+            helpMessage:
+              "Your store's permanent myshopify.com domain (for example, my-store.myshopify.com).",
+            validator: isValidShopifyShopDomain,
+          },
+        };
       }
       return null;
     case "databricks":
@@ -547,6 +563,22 @@ export function isValidZendeskSubdomain(s: unknown): s is string {
   return (
     typeof s === "string" && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(s)
   );
+}
+
+const SHOPIFY_SHOP_DOMAIN_REGEX =
+  /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.myshopify\.com$/;
+
+export function normalizeShopifyShopDomain(s: unknown): string | null {
+  if (typeof s !== "string") {
+    return null;
+  }
+
+  const domain = s.trim().toLowerCase();
+  return SHOPIFY_SHOP_DOMAIN_REGEX.test(domain) ? domain : null;
+}
+
+export function isValidShopifyShopDomain(s: unknown): s is string {
+  return normalizeShopifyShopDomain(s) !== null;
 }
 
 const ATLASSIAN_CLOUD_URL_REGEX =
