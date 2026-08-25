@@ -43,8 +43,7 @@ makeScript(
       async (workspace) => {
         const workspaceId = workspace.sId;
 
-        const auth =
-          await Authenticator.internalUserForWorkspace(workspaceId);
+        const auth = await Authenticator.internalUserForWorkspace(workspaceId);
 
         logger.info(
           { workspaceId, execute },
