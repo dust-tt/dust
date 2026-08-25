@@ -2075,10 +2075,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       }));
     }
 
-    // Provisioned groups do not carry grants on manually-managed spaces.
+    // A manually-managed space draws its access from its own auto-created groups, plus the
+    // workspace global group when it is open. The groups a user can pick in group mode —
+    // provisioned and manual alike — keep their `group_vaults` rows when the space switches back to
+    // manual, so they are filtered out here rather than granting in a mode that never selected them.
     const groups =
       this.managementMode === "manual"
-        ? associatedGroups.filter((group) => !group.isProvisioned())
+        ? associatedGroups.filter((group) => !isManageableGroupKind(group.kind))
         : associatedGroups;
 
     // A space is open when the workspace global group is one of its groups.
