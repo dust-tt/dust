@@ -1,5 +1,6 @@
 import {
   CheckpointedConversationWindowState,
+  ConversationWindowStateSnapshotSchema,
   MINIMUM_PRUNING_BATCH_TOKENS,
 } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import type { InteractionWithTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
@@ -8,7 +9,7 @@ import { describe, expect, it } from "vitest";
 
 function withTokens<T extends ModelMessageTypeMultiActions>(
   message: T,
-  tokenCount: number
+  tokenCount: number,
 ): T & { tokenCount: number } {
   return { ...message, tokenCount };
 }
@@ -20,7 +21,7 @@ function userMessage(name: string, tokenCount: number) {
       name: "user",
       content: [{ type: "text" as const, text: name }],
     },
-    tokenCount
+    tokenCount,
   );
 }
 
@@ -32,7 +33,7 @@ function assistantMessage(name: string, tokenCount = 10) {
       content: name,
       contents: [{ type: "text_content" as const, value: name }],
     },
-    tokenCount
+    tokenCount,
   );
 }
 
@@ -44,12 +45,12 @@ function functionMessage(name: string, tokenCount: number) {
       function_call_id: `${name}_call`,
       content: `${name}_result`,
     },
-    tokenCount
+    tokenCount,
   );
 }
 
 function interaction(
-  messages: InteractionWithTokens["messages"]
+  messages: InteractionWithTokens["messages"],
 ): InteractionWithTokens {
   return { messages };
 }
@@ -112,7 +113,7 @@ describe("CheckpointedConversationWindowState", () => {
         .renderedInteractions()
         .flatMap((item) => item.messages)
         .filter((message) => message.role === "user")
-        .map((message) => message.content[0])
+        .map((message) => message.content[0]),
     ).toEqual([
       { type: "text", text: "first" },
       { type: "text", text: "second" },
@@ -159,7 +160,7 @@ describe("CheckpointedConversationWindowState", () => {
     expect(
       input.messages
         .filter((message) => message.role === "function")
-        .map((message) => message.content)
+        .map((message) => message.content),
     ).toEqual([
       "first_result",
       "second_result",
@@ -187,12 +188,12 @@ describe("CheckpointedConversationWindowState", () => {
         functionMessage("second", 11_000),
         assistantMessage("call_third"),
         functionMessage("third", 11_000),
-      ])
+      ]),
     );
     state.append(interaction([userMessage("follow_up", 10)]));
 
     expect(
-      toolResults(state).some((message) => isPruned(message.content))
+      toolResults(state).some((message) => isPruned(message.content)),
     ).toBe(true);
     const result = state.fit();
     expect(result.isOk()).toBe(true);
@@ -212,18 +213,18 @@ describe("CheckpointedConversationWindowState", () => {
         functionMessage("first", 10_100),
         assistantMessage("call_second"),
         functionMessage("second", 10_100),
-      ])
+      ]),
     );
 
     expect(
-      toolResults(state).every((message) => !isPruned(message.content))
+      toolResults(state).every((message) => !isPruned(message.content)),
     ).toBe(true);
 
     state.append(
       interaction([
         assistantMessage("call_third"),
         functionMessage("third", 1_000),
-      ])
+      ]),
     );
 
     const results = toolResults(state);
@@ -245,7 +246,7 @@ describe("CheckpointedConversationWindowState", () => {
         // Pruning retains a 24-token placeholder, so this yields exactly the minimum savings.
         functionMessage("result", MINIMUM_PRUNING_BATCH_TOKENS + 24),
         assistantMessage("answer"),
-      ])
+      ]),
     );
     state.append(interaction([userMessage("follow_up", 10)]));
 
@@ -264,7 +265,7 @@ describe("CheckpointedConversationWindowState", () => {
         assistantMessage("call_tool"),
         functionMessage("result", MINIMUM_PRUNING_BATCH_TOKENS + 24 - 1),
         assistantMessage("answer"),
-      ])
+      ]),
     );
     state.append(interaction([userMessage("follow_up", 10)]));
 
@@ -283,7 +284,7 @@ describe("CheckpointedConversationWindowState", () => {
         assistantMessage("call_tool"),
         functionMessage("result", MINIMUM_PRUNING_BATCH_TOKENS + 1_000 + 24),
         assistantMessage("answer"),
-      ])
+      ]),
     );
     state.append(interaction([userMessage("follow_up", 10)]));
 
@@ -309,7 +310,7 @@ describe("CheckpointedConversationWindowState", () => {
       interaction([
         assistantMessage("call_fourth"),
         functionMessage("fourth", 1_000),
-      ])
+      ]),
     );
 
     const prefixResults = toolResults(prefixState);
@@ -320,7 +321,83 @@ describe("CheckpointedConversationWindowState", () => {
       false,
     ]);
     expect(
-      extendedResults.slice(0, 3).map((message) => isPruned(message.content))
+      extendedResults.slice(0, 3).map((message) => isPruned(message.content)),
     ).toEqual([true, true, false]);
+  });
+
+  it("restores and continues an interaction like uninterrupted rendering", () => {
+    const prefix = [
+      userMessage("question", 10),
+      assistantMessage("call_first"),
+      functionMessage("first", 10_100),
+    ];
+    const continuation = [
+      assistantMessage("call_second"),
+      functionMessage("second", 10_100),
+      assistantMessage("call_third"),
+      functionMessage("third", 1_000),
+    ];
+
+    const uninterrupted = makeState({ pruningBudget: 15_000 });
+    uninterrupted.append(interaction([...prefix, ...continuation]));
+
+    const checkpointed = makeState({ pruningBudget: 15_000 });
+    checkpointed.append(interaction(prefix));
+    const serializedSnapshot: unknown = JSON.parse(
+      JSON.stringify(checkpointed.snapshot()),
+    );
+    const parsedSnapshot =
+      ConversationWindowStateSnapshotSchema.safeParse(serializedSnapshot);
+    expect(parsedSnapshot.success).toBe(true);
+    if (!parsedSnapshot.success) {
+      return;
+    }
+
+    const restored = CheckpointedConversationWindowState.restore(
+      parsedSnapshot.data,
+      {
+        pruningBudget: 15_000,
+        budgetForInteractions: 100_000,
+        logDetails: {},
+      },
+    );
+    restored.appendToLatestInteraction(interaction(continuation));
+
+    expect(restored.snapshot()).toEqual(uninterrupted.snapshot());
+    expect(restored.fit()).toEqual(uninterrupted.fit());
+    expect(checkpointed.renderedInteractions()).toHaveLength(1);
+    expect(isPruned(toolResults(checkpointed)[0].content)).toBe(false);
+  });
+
+  it("rejects an inconsistent persisted tool-result phase", () => {
+    const snapshot = {
+      version: 1,
+      interactions: [
+        {
+          messages: [
+            {
+              kind: "tool_result",
+              message: {
+                role: "function",
+                name: "tool",
+                function_call_id: "call_1",
+                content: "result",
+                tokenCount: 100,
+              },
+              tokenSavings: 50,
+              pruned: true,
+              phase: "eligible",
+            },
+          ],
+        },
+      ],
+      retainedTokens: 100,
+      totalTokensBefore: 150,
+      prunedTokens: 50,
+    };
+
+    expect(
+      ConversationWindowStateSnapshotSchema.safeParse(snapshot).success,
+    ).toBe(false);
   });
 });
