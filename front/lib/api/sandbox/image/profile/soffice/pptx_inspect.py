@@ -91,6 +91,7 @@ from pptx_audit import (
     _shape_text_iter,
     embedded_image,
     _shape_warning_markers,
+    _split_sentence_markers,
     _void_markers,
     _slot_audit,
     slide_word_count,
@@ -1649,6 +1650,15 @@ def _annotate_slide(
         file_path, prs, slide, slide_idx, raw, words
     )
     shape_blockers = _slide_shape_blockers(file_path, prs, slide, slide_idx)
+    for sid, text in _split_sentence_markers(slide):
+        shape_blockers.append((
+            sid,
+            f"starts mid-sentence with {ellipsize(text, 40)!r}. One sentence is "
+            "split across two boxes, so each reads as a fragment. Give every box "
+            "a whole thought: a heading is a phrase of its own, a body is a "
+            "sentence of its own",
+        ))
+
     for sid, gap, fill in _void_markers(
         slide, _resolve_layout_chain(file_path, slide), prs.slide_height or 0
     ):

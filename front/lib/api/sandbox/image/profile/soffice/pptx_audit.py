@@ -247,6 +247,31 @@ def _void_markers(
     return [(worst[0], gap, worst[1])]
 
 
+def _split_sentence_markers(slide: Slide) -> List[Tuple[int, str]]:
+    """Boxes holding the tail of a sentence that starts in another box.
+
+    Asked to fill a heading band above short copy, a model will cut one sentence
+    in half and put the halves in the two boxes - "70+ connectors" over "and MCP
+    servers." Each box then reads as a fragment, and no fit, overlap or contrast
+    check sees anything wrong because every box contains exactly what it should.
+    A box whose copy opens with a lowercase word is the tell; real headings and
+    real sentences do not.
+    """
+    out: List[Tuple[int, str]] = []
+    for shape in slide.shapes:
+        if not getattr(shape, "has_text_frame", False):
+            continue
+        text = flatten_text(" ".join(_shape_text_iter(shape))).strip()
+        if len(text.split()) < 2:
+            continue
+        first = text.split()[0]
+        # Skip anything that is lowercase for its own reasons: a url, a handle,
+        # an identifier, a number.
+        if text[0].islower() and first.isalpha() and "." not in first:
+            out.append((shape.shape_id, text))
+    return out
+
+
 def embedded_image(shape: BaseShape):
     """A shape's image part, or None. python-pptx RAISES on `.image` for a
     picture placeholder with no picture in it, which `getattr(..., None)` does
