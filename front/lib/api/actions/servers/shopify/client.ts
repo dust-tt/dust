@@ -225,7 +225,7 @@ export function createShopifyClient(
     return new Err(new MCPError("No Shopify access token found."));
   }
 
-  const shop = normalizeShopifyShopDomain(authInfo.extra?.shopify_shop);
+  const shop = normalizeShopifyShopDomain(authInfo.extra?.store_domain);
   if (!shop) {
     return new Err(
       new MCPError(

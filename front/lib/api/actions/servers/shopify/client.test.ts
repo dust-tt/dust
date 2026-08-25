@@ -132,7 +132,7 @@ describe("createShopifyClient", () => {
         token: "access-token",
         clientId: "",
         scopes: [],
-        extra: { shopify_shop: "not-shopify.example.com" },
+        extra: { store_domain: "not-shopify.example.com" },
       }).isErr()
     ).toBe(true);
     expect(
@@ -140,7 +140,7 @@ describe("createShopifyClient", () => {
         token: "access-token",
         clientId: "",
         scopes: [],
-        extra: { shopify_shop: "my-store.myshopify.com" },
+        extra: { store_domain: "my-store.myshopify.com" },
       }).isOk()
     ).toBe(true);
   });
