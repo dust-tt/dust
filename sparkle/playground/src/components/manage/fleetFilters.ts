@@ -8,34 +8,32 @@ import { compareForFuzzySort, subFilter } from "./utils";
 // query string parsed server-side; here the same shape drives an in-memory
 // predicate so the port stays mechanical.
 
-export type StatusFilterValue =
-  | "published"
-  | "unpublished"
-  | "active"
-  | "archived";
+// Publication state — "which ones are validated". Archived is deliberately not
+// a value here: the Archived tab already is that filter, and offering both
+// produced contradictory states (status=archived returned nothing on every
+// tab, including Archived).
+export type PublicationFilterValue = "published" | "unpublished";
 
-export type VisibilityFilterValue = "workspace" | "space" | "personal";
+export type EditedWithinValue = "7d" | "30d" | "stale_180d";
 
-export type EditedWithinValue =
-  | "7d"
-  | "30d"
-  | "90d"
-  | "stale_180d"
-  | "stale_365d";
+export type NotUsedForValue = "30d" | "90d" | "never";
 
-export type NotUsedForValue = "30d" | "60d" | "90d" | "never";
-
+/**
+ * One dimension per question the fleet brief says an admin must be able to
+ * answer: who owns it (editors), what it depends on (tools), which ones are
+ * validated (publication, availability), what changed (editedWithin), where
+ * it is used (notUsedFor). Model and tags are agent-specific additions the
+ * brief calls for explicitly.
+ */
 export interface FleetFilters {
   search: string;
   editors: string[];
-  lastEditors: string[];
   tools: string[];
-  status: StatusFilterValue[];
-  visibility: VisibilityFilterValue[];
+  // Agents only; skills express the same idea through availability.
+  publication: PublicationFilterValue[];
   models: string[];
   tags: string[];
-  // Skills only: mirrors the availability dropdown that already sits next to
-  // the tabs. Kept out of `visibility` because the two vocabularies differ.
+  // Skills only: mirrors the availability dropdown next to the tabs.
   availability: string[];
   editedWithin: EditedWithinValue | null;
   notUsedFor: NotUsedForValue | null;
@@ -44,10 +42,8 @@ export interface FleetFilters {
 export const EMPTY_FLEET_FILTERS: FleetFilters = {
   search: "",
   editors: [],
-  lastEditors: [],
   tools: [],
-  status: [],
-  visibility: [],
+  publication: [],
   models: [],
   tags: [],
   availability: [],
@@ -55,15 +51,15 @@ export const EMPTY_FLEET_FILTERS: FleetFilters = {
   notUsedFor: null,
 };
 
+// Two directions only: recently touched, or gone stale. Intermediate windows
+// added options without adding answers.
 export const EDITED_WITHIN_OPTIONS: {
   value: EditedWithinValue;
   label: string;
 }[] = [
   { value: "7d", label: "Edited in the last 7 days" },
   { value: "30d", label: "Edited in the last 30 days" },
-  { value: "90d", label: "Edited in the last 90 days" },
   { value: "stale_180d", label: "Not edited in 6 months" },
-  { value: "stale_365d", label: "Not edited in a year" },
 ];
 
 export const NOT_USED_FOR_OPTIONS: {
@@ -71,35 +67,16 @@ export const NOT_USED_FOR_OPTIONS: {
   label: string;
 }[] = [
   { value: "30d", label: "No human use in 30 days" },
-  { value: "60d", label: "No human use in 60 days" },
   { value: "90d", label: "No human use in 90 days" },
   { value: "never", label: "Never used, any origin" },
 ];
 
-export const VISIBILITY_OPTIONS: {
-  value: VisibilityFilterValue;
-  label: string;
-}[] = [
-  { value: "workspace", label: "Workspace" },
-  { value: "space", label: "Space" },
-  { value: "personal", label: "Personal" },
-];
-
-export const AGENT_STATUS_OPTIONS: {
-  value: StatusFilterValue;
+export const PUBLICATION_OPTIONS: {
+  value: PublicationFilterValue;
   label: string;
 }[] = [
   { value: "published", label: "Published" },
   { value: "unpublished", label: "Not published" },
-  { value: "archived", label: "Archived" },
-];
-
-export const SKILL_STATUS_OPTIONS: {
-  value: StatusFilterValue;
-  label: string;
-}[] = [
-  { value: "active", label: "Active" },
-  { value: "archived", label: "Archived" },
 ];
 
 // ── Predicate ─────────────────────────────────────────────────────────────────
@@ -111,10 +88,9 @@ export interface FleetItemFields {
   name: string;
   editorIds: string[];
   editorNames: string[];
-  lastEditorId: string | null;
   tools: string[];
-  status: StatusFilterValue;
-  visibility: VisibilityFilterValue | null;
+  // null on skills, which use availability instead.
+  publication: PublicationFilterValue | null;
   modelId: string | null;
   tagIds: string[];
   updatedAt: number;
@@ -136,12 +112,8 @@ function matchesEditedWithin(
       return ageMs <= 7 * DAY_MS;
     case "30d":
       return ageMs <= 30 * DAY_MS;
-    case "90d":
-      return ageMs <= 90 * DAY_MS;
     case "stale_180d":
       return ageMs > 180 * DAY_MS;
-    case "stale_365d":
-      return ageMs > 365 * DAY_MS;
   }
 }
 
@@ -157,7 +129,7 @@ function matchesNotUsedFor(
   if (value === "never") {
     return totalUsage(usage) === 0 && usage.lastUsedAt === null;
   }
-  const days = value === "30d" ? 30 : value === "60d" ? 60 : 90;
+  const days = value === "30d" ? 30 : 90;
   // Deliberately reads `lastHumanUsedAt`, not `lastUsedAt`: an agent kept warm
   // only by an API integration is still one nobody talks to. The programmatic
   // and agent-to-agent indicators stay visible on the row so the dependency is
@@ -175,10 +147,8 @@ function matchesNotUsedFor(
 export function countActiveFleetFilters(filters: FleetFilters): number {
   return (
     filters.editors.length +
-    filters.lastEditors.length +
     filters.tools.length +
-    filters.status.length +
-    filters.visibility.length +
+    filters.publication.length +
     filters.models.length +
     filters.tags.length +
     (filters.editedWithin ? 1 : 0) +
@@ -198,10 +168,8 @@ export function filterFleet<T>(
   nowMs: number
 ): T[] {
   const editorIds = new Set(filters.editors);
-  const lastEditorIds = new Set(filters.lastEditors);
   const toolIds = new Set(filters.tools);
-  const statuses = new Set(filters.status);
-  const visibilities = new Set(filters.visibility);
+  const publications = new Set(filters.publication);
   const modelIds = new Set(filters.models);
   const tagIds = new Set(filters.tags);
 
@@ -217,21 +185,12 @@ export function filterFleet<T>(
     ) {
       return false;
     }
-    if (
-      lastEditorIds.size > 0 &&
-      (fields.lastEditorId === null || !lastEditorIds.has(fields.lastEditorId))
-    ) {
-      return false;
-    }
     if (toolIds.size > 0 && !fields.tools.some((tool) => toolIds.has(tool))) {
       return false;
     }
-    if (statuses.size > 0 && !statuses.has(fields.status)) {
-      return false;
-    }
     if (
-      visibilities.size > 0 &&
-      (fields.visibility === null || !visibilities.has(fields.visibility))
+      publications.size > 0 &&
+      (fields.publication === null || !publications.has(fields.publication))
     ) {
       return false;
     }
@@ -279,10 +238,8 @@ export function filterFleet<T>(
 
 const LIST_KEYS = [
   "editors",
-  "lastEditors",
   "tools",
-  "status",
-  "visibility",
+  "publication",
   "models",
   "tags",
   "availability",
@@ -330,10 +287,8 @@ export function fleetFiltersFromSearchParams(
   return {
     search: params.get("q") ?? "",
     editors: parseList(params, "editors"),
-    lastEditors: parseList(params, "lastEditors"),
     tools: parseList(params, "tools"),
-    status: parseList(params, "status") as StatusFilterValue[],
-    visibility: parseList(params, "visibility") as VisibilityFilterValue[],
+    publication: parseList(params, "publication") as PublicationFilterValue[],
     models: parseList(params, "models"),
     tags: parseList(params, "tags"),
     availability: parseList(params, "availability"),

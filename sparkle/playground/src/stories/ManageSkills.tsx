@@ -39,7 +39,6 @@ import {
 import type { FleetItemFields } from "../components/manage/fleetFilters";
 import {
   filterFleet,
-  SKILL_STATUS_OPTIONS,
   useFleetFilters,
 } from "../components/manage/fleetFilters";
 import { ManagePageLayout } from "../components/manage/ManagePageLayout";
@@ -336,12 +335,10 @@ function skillFilterFields(skill: ManagedSkill): FleetItemFields {
     editorNames: (skill.relations.editors ?? []).map(
       (editor) => editor.fullName
     ),
-    lastEditorId: skill.lastEditedBy?.sId ?? null,
     tools: skill.tools,
-    status: skill.status === "archived" ? "archived" : "active",
-    // Skills express their scope through availability, which keeps its own
-    // control next to the tabs.
-    visibility: null,
+    // Skills express publication through availability, which keeps its own
+    // control next to the tabs; status is already the Archived tab.
+    publication: null,
     modelId: null,
     tagIds: [],
     updatedAt: skill.updatedAt,
@@ -390,9 +387,7 @@ export default function ManageSkills() {
     isSearchActive ||
     availabilityFilter !== "all" ||
     filters.tools.length > 0 ||
-    filters.status.length > 0 ||
     filters.editors.length > 0 ||
-    filters.lastEditors.length > 0 ||
     filters.editedWithin !== null ||
     filters.notUsedFor !== null;
 
@@ -609,36 +604,38 @@ export default function ManageSkills() {
           noTopPadding
         />
         <Page.Vertical gap="md" align="stretch">
-          <div className="flex flex-row gap-2">
+          <div className="flex flex-row items-center gap-2">
+            {/* Bounded, not full-width: a fleet is filtered far more often than
+                it is keyword-searched, so the input should not dominate. */}
             <SearchInput
               ref={searchBarRef}
-              className="flex-grow"
+              className="w-full max-w-md"
               name="search"
               placeholder="Search (Name, Editors)"
               value={skillSearch}
               onChange={setSkillSearch}
             />
-            <FleetFilterMenu
-              filters={filters}
-              statusOptions={SKILL_STATUS_OPTIONS}
-              people={people}
-              showVisibility={false}
-              onToggle={toggleValue}
-              onUpdate={updateFilters}
-            />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button label="Create skill" icon={Plus} isSelect />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem label="From scratch" icon={PuzzlePiece01} />
-                <DropdownMenuItem label="From existing" icon={FolderOpen} />
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="ml-auto flex gap-2">
+              <FleetFilterMenu
+                filters={filters}
+                people={people}
+                showPublication={false}
+                onToggle={toggleValue}
+                onUpdate={updateFilters}
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button label="Create skill" icon={Plus} isSelect />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem label="From scratch" icon={PuzzlePiece01} />
+                  <DropdownMenuItem label="From existing" icon={FolderOpen} />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
           <FleetFilterChips
             filters={filters}
-            statusOptions={SKILL_STATUS_OPTIONS}
             peopleById={peopleById}
             onRemove={updateFilters}
             onClear={clearFilters}

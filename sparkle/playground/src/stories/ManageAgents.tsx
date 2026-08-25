@@ -35,7 +35,6 @@ import {
 } from "../components/manage/FleetFilterBar";
 import type { FleetItemFields } from "../components/manage/fleetFilters";
 import {
-  AGENT_STATUS_OPTIONS,
   filterFleet,
   useFleetFilters,
 } from "../components/manage/fleetFilters";
@@ -216,15 +215,10 @@ function agentFilterFields(agent: ManagedAgent): FleetItemFields {
     name: agent.name,
     editorIds: agent.editors.map((editor) => editor.sId),
     editorNames: agent.editors.map((editor) => editor.fullName),
-    lastEditorId: agent.lastEditedBy?.sId ?? null,
     tools: agent.tools,
-    status:
-      agent.status === "archived"
-        ? "archived"
-        : agent.scope === "hidden"
-          ? "unpublished"
-          : "published",
-    visibility: agent.visibility,
+    // Independent of archived-ness: the Archived tab owns that dimension, so
+    // an archived agent still has a publication state to filter on.
+    publication: agent.scope === "hidden" ? "unpublished" : "published",
     modelId: agent.modelId,
     tagIds: agent.tags.map((tag) => tag.sId),
     updatedAt: agent.lastUpdate,
@@ -261,10 +255,8 @@ export default function ManageAgents() {
     filters.tags.length > 0 ||
     filters.models.length > 0 ||
     filters.tools.length > 0 ||
-    filters.status.length > 0 ||
-    filters.visibility.length > 0 ||
+    filters.publication.length > 0 ||
     filters.editors.length > 0 ||
-    filters.lastEditors.length > 0 ||
     filters.editedWithin !== null ||
     filters.notUsedFor !== null;
 
@@ -396,21 +388,22 @@ export default function ManageAgents() {
       <div className="flex w-full flex-col gap-8 pb-4">
         <Page.Header title="Manage Agents" noTopPadding />
         <Page.Vertical gap="md" align="stretch">
-          <div className="flex flex-row gap-2">
+          <div className="flex flex-row items-center gap-2">
+            {/* Bounded, not full-width: a fleet is filtered far more often than
+                it is keyword-searched, so the input should not dominate. */}
             <SearchInput
               ref={searchBarRef}
-              className="flex-grow"
+              className="w-full max-w-md"
               name="search"
               placeholder="Search (Name, Editors)"
               value={assistantSearch}
               onChange={setAssistantSearch}
             />
-            <div className="flex gap-2">
+            <div className="ml-auto flex gap-2">
               <FleetFilterMenu
                 filters={filters}
-                statusOptions={AGENT_STATUS_OPTIONS}
                 people={people}
-                showVisibility
+                showPublication
                 models={modelOptions}
                 tags={tagOptions}
                 onToggle={toggleValue}
@@ -421,7 +414,6 @@ export default function ManageAgents() {
           </div>
           <FleetFilterChips
             filters={filters}
-            statusOptions={AGENT_STATUS_OPTIONS}
             peopleById={peopleById}
             onRemove={updateFilters}
             onClear={clearFilters}

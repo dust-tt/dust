@@ -61,7 +61,6 @@ export interface ManagedSkill {
   messageUsage: FleetUsage | null;
   // MCP server view ids, see `fleetTools.ts`.
   tools: string[];
-  lastEditedBy: SkillEditor | null;
   updatedAt: number;
   createdAt: number;
   relations: {
@@ -687,7 +686,6 @@ function buildActiveSkills(): ManagedSkill[] {
               dependencyBias: (curated.agents ?? 0) > 0 ? 0.4 : 0,
             }),
       tools,
-      lastEditedBy: editors?.[0] ?? null,
       updatedAt: new Date(`${curated.updatedAt}T14:32:00Z`).getTime(),
       createdAt: new Date(`${curated.updatedAt}T14:32:00Z`).getTime() - 6e9,
       relations: {
@@ -743,7 +741,6 @@ function buildActiveSkills(): ManagedSkill[] {
         dependencyBias: agentCount > 0 ? 0.4 : 0,
       }),
       tools,
-      lastEditedBy: editors[0],
       updatedAt,
       createdAt: updatedAt - Math.floor(random() * 1e10),
       relations: {
@@ -797,7 +794,6 @@ function buildArchivedSkills(): ManagedSkill[] {
         nowMs: NOW_MS,
       }),
       tools: pickTools(random),
-      lastEditedBy: editors[0],
       updatedAt,
       createdAt: updatedAt - 5e9,
       relations: {
@@ -851,7 +847,6 @@ function buildSuggestedSkills(): ManagedSkill[] {
       canAdministrate: true,
       messageUsage: EMPTY_FLEET_USAGE,
       tools: pickTools(random),
-      lastEditedBy: null,
       updatedAt: NOW_MS - Math.floor(random() * 1e9),
       createdAt: NOW_MS - Math.floor(random() * 1e10),
       relations: {

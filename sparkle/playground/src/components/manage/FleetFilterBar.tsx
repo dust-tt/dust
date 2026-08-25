@@ -17,21 +17,20 @@ import {
   DropdownMenuTrigger,
   Eye,
   FilterFunnel01,
-  Lock01,
   Tag01,
-  UserCircle,
   Users01,
+  Tool01,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { useState } from "react";
 
 import { FLEET_TOOLS, getToolLabel } from "../../data/fleetTools";
-import type { FleetFilters, StatusFilterValue } from "./fleetFilters";
+import type { FleetFilters } from "./fleetFilters";
 import {
   countActiveFleetFilters,
   EDITED_WITHIN_OPTIONS,
   NOT_USED_FOR_OPTIONS,
-  VISIBILITY_OPTIONS,
+  PUBLICATION_OPTIONS,
 } from "./fleetFilters";
 import { getToolIcon } from "./toolIcons";
 import { subFilter } from "./utils";
@@ -50,21 +49,17 @@ export interface FleetFilterOption {
 
 type FleetFilterListKey =
   | "editors"
-  | "lastEditors"
   | "tools"
-  | "status"
-  | "visibility"
+  | "publication"
   | "models"
   | "tags";
 
 interface FleetFilterMenuProps {
   filters: FleetFilters;
-  statusOptions: { value: StatusFilterValue; label: string }[];
   people: FleetPerson[];
-  // Agents are scoped to a workspace / space / person; skills use their own
-  // availability control, which stays where it already is.
-  showVisibility: boolean;
-  // Agents only. Empty on skills, which have neither.
+  // Agents only; skills express publication through availability, and have
+  // neither models nor tags.
+  showPublication: boolean;
   models?: FleetFilterOption[];
   tags?: FleetFilterOption[];
   onToggle: (key: FleetFilterListKey, value: string) => void;
@@ -235,17 +230,15 @@ function PeopleSubMenu({
  */
 export function FleetFilterMenu({
   filters,
-  statusOptions,
   people,
-  showVisibility,
+  showPublication,
   models,
   tags,
   onToggle,
   onUpdate,
 }: FleetFilterMenuProps) {
   const activeCount = countActiveFleetFilters(filters);
-  const selectedStatus = new Set(filters.status);
-  const selectedVisibility = new Set(filters.visibility);
+  const selectedPublication = new Set(filters.publication);
 
   return (
     <DropdownMenu>
@@ -259,44 +252,26 @@ export function FleetFilterMenu({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-60" align="end">
-        <DropdownMenuLabel label="Status" />
-        {statusOptions.map((option) => (
-          <DropdownMenuCheckboxItem
-            key={option.value}
-            label={option.label}
-            checked={selectedStatus.has(option.value)}
-            onCheckedChange={() => onToggle("status", option.value)}
-            onSelect={(event) => event.preventDefault()}
+        <DropdownMenuLabel label="Ownership" />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger label="Editors" icon={Users01} />
+          <PeopleSubMenu
+            people={people}
+            selected={filters.editors}
+            onToggle={(value) => onToggle("editors", value)}
+            placeholder="Search editors"
           />
-        ))}
+        </DropdownMenuSub>
 
         <DropdownMenuSeparator />
-
+        <DropdownMenuLabel label="Dependencies" />
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger label="Tools" icon={FilterFunnel01} />
+          <DropdownMenuSubTrigger label="Tools" icon={Tool01} />
           <ToolsSubMenu
             selected={filters.tools}
             onToggle={(value) => onToggle("tools", value)}
           />
         </DropdownMenuSub>
-
-        {showVisibility && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger label="Scope" icon={Lock01} />
-            <DropdownMenuSubContent className="w-52">
-              {VISIBILITY_OPTIONS.map((option) => (
-                <DropdownMenuCheckboxItem
-                  key={option.value}
-                  label={option.label}
-                  checked={selectedVisibility.has(option.value)}
-                  onCheckedChange={() => onToggle("visibility", option.value)}
-                  onSelect={(event) => event.preventDefault()}
-                />
-              ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-        )}
-
         {models && models.length > 0 && (
           <DropdownMenuSub>
             <DropdownMenuSubTrigger label="Model" icon={CpuChip01} />
@@ -310,39 +285,18 @@ export function FleetFilterMenu({
           </DropdownMenuSub>
         )}
 
-        {tags && tags.length > 0 && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger label="Tags" icon={Tag01} />
-            <OptionsSubMenu
-              options={tags}
-              selected={filters.tags}
-              onToggle={(value) => onToggle("tags", value)}
-              placeholder="Search tags"
-              emptyLabel="No tags found"
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel label="Lifecycle" />
+        {showPublication &&
+          PUBLICATION_OPTIONS.map((option) => (
+            <DropdownMenuCheckboxItem
+              key={option.value}
+              label={option.label}
+              checked={selectedPublication.has(option.value)}
+              onCheckedChange={() => onToggle("publication", option.value)}
+              onSelect={(event) => event.preventDefault()}
             />
-          </DropdownMenuSub>
-        )}
-
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger label="Editors" icon={Users01} />
-          <PeopleSubMenu
-            people={people}
-            selected={filters.editors}
-            onToggle={(value) => onToggle("editors", value)}
-            placeholder="Search editors"
-          />
-        </DropdownMenuSub>
-
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger label="Last editor" icon={UserCircle} />
-          <PeopleSubMenu
-            people={people}
-            selected={filters.lastEditors}
-            onToggle={(value) => onToggle("lastEditors", value)}
-            placeholder="Search members"
-          />
-        </DropdownMenuSub>
-
+          ))}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger label="Last edited" icon={ClockRewind} />
           <DropdownMenuSubContent className="w-60">
@@ -365,9 +319,8 @@ export function FleetFilterMenu({
             </DropdownMenuRadioGroup>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
-
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger label="Usage" icon={Eye} />
+          <DropdownMenuSubTrigger label="Human usage" icon={Eye} />
           <DropdownMenuSubContent className="w-64">
             <DropdownMenuRadioGroup value={filters.notUsedFor ?? ""}>
               {NOT_USED_FOR_OPTIONS.map((option) => (
@@ -388,6 +341,22 @@ export function FleetFilterMenu({
             </DropdownMenuRadioGroup>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+
+        {tags && tags.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger label="Tags" icon={Tag01} />
+              <OptionsSubMenu
+                options={tags}
+                selected={filters.tags}
+                onToggle={(value) => onToggle("tags", value)}
+                placeholder="Search tags"
+                emptyLabel="No tags found"
+              />
+            </DropdownMenuSub>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -395,7 +364,6 @@ export function FleetFilterMenu({
 
 interface FleetFilterChipsProps {
   filters: FleetFilters;
-  statusOptions: { value: StatusFilterValue; label: string }[];
   peopleById: Map<string, string>;
   onRemove: (update: Partial<FleetFilters>) => void;
   onClear: () => void;
@@ -410,17 +378,12 @@ interface FleetFilterChipsProps {
  */
 export function FleetFilterChips({
   filters,
-  statusOptions,
   peopleById,
   onRemove,
   onClear,
   models,
   tags,
 }: FleetFilterChipsProps) {
-  const statusLabels = new Map(
-    statusOptions.map((option) => [option.value, option.label])
-  );
-
   const modelsByValue = new Map(
     (models ?? []).map((option) => [option.value, option])
   );
@@ -460,15 +423,20 @@ export function FleetFilterChips({
     );
   }
 
-  for (const status of filters.status) {
+  for (const publication of filters.publication) {
     chips.push(
       <Chip
-        key={`status-${status}`}
+        key={`publication-${publication}`}
         size="xs"
         color="primary"
-        label={statusLabels.get(status) ?? status}
+        label={
+          PUBLICATION_OPTIONS.find((o) => o.value === publication)?.label ??
+          publication
+        }
         onRemove={() =>
-          onRemove({ status: filters.status.filter((s) => s !== status) })
+          onRemove({
+            publication: filters.publication.filter((p) => p !== publication),
+          })
         }
       />
     );
@@ -489,26 +457,6 @@ export function FleetFilterChips({
     );
   }
 
-  for (const visibility of filters.visibility) {
-    chips.push(
-      <Chip
-        key={`visibility-${visibility}`}
-        size="xs"
-        color="primary"
-        icon={Lock01}
-        label={
-          VISIBILITY_OPTIONS.find((o) => o.value === visibility)?.label ??
-          visibility
-        }
-        onRemove={() =>
-          onRemove({
-            visibility: filters.visibility.filter((v) => v !== visibility),
-          })
-        }
-      />
-    );
-  }
-
   for (const editorId of filters.editors) {
     chips.push(
       <Chip
@@ -519,23 +467,6 @@ export function FleetFilterChips({
         label={peopleById.get(editorId) ?? editorId}
         onRemove={() =>
           onRemove({ editors: filters.editors.filter((e) => e !== editorId) })
-        }
-      />
-    );
-  }
-
-  for (const editorId of filters.lastEditors) {
-    chips.push(
-      <Chip
-        key={`last-editor-${editorId}`}
-        size="xs"
-        color="info"
-        icon={UserCircle}
-        label={`Last edited by ${peopleById.get(editorId) ?? editorId}`}
-        onRemove={() =>
-          onRemove({
-            lastEditors: filters.lastEditors.filter((e) => e !== editorId),
-          })
         }
       />
     );

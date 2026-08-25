@@ -8,11 +8,6 @@ import { mockUsers } from "./users";
 
 export type AgentScope = "global" | "visible" | "hidden";
 
-// Where the agent is reachable from. `workspace` agents are visible to
-// everyone, `space` agents are scoped to one space/pod, `personal` ones only
-// to their editors.
-export type AgentVisibility = "workspace" | "space" | "personal";
-
 export type AgentStatus =
   | "active"
   | "archived"
@@ -56,11 +51,7 @@ export interface ManagedAgent {
   status: AgentStatus;
   modelId: string;
   editors: AgentEditor[];
-  // Author of the current version — what "Last Edited" refers to.
-  lastEditedBy: AgentEditor | null;
   tags: AgentTag[];
-  visibility: AgentVisibility;
-  spaceName: string | null;
   // MCP server view ids, see `fleetTools.ts`.
   tools: string[];
   usage: FleetUsage;
@@ -70,15 +61,6 @@ export interface ManagedAgent {
 }
 
 export const AGENT_USAGE_PERIOD_SEC = 30 * 24 * 60 * 60;
-
-export const AGENT_SPACES = [
-  "Company",
-  "Engineering",
-  "GTM",
-  "Finance",
-  "People",
-  "Support",
-];
 
 // ── Models ────────────────────────────────────────────────────────────────────
 
@@ -257,8 +239,6 @@ type CuratedAgent = {
   modelId?: string;
   tags?: string[];
   tools?: string[];
-  visibility?: AgentVisibility;
-  spaceName?: string;
   usage: number;
   feedbacks?: { up: number; down: number };
   lastUpdate: string;
@@ -882,7 +862,7 @@ function pickEditors(random: () => number, count: number): AgentEditor[] {
   return editors;
 }
 
-// ── Tools & visibility ────────────────────────────────────────────────────────
+// ── Tools ─────────────────────────────────────────────────────────────────────
 
 const TOOL_IDS = FLEET_TOOLS.map((tool) => tool.id);
 const FLEET_TOOLS_IDS = new Set(TOOL_IDS);
@@ -917,14 +897,6 @@ function pickTools(random: () => number): string[] {
     }
   }
   return tools;
-}
-
-function pickVisibility(random: () => number): AgentVisibility {
-  const roll = random();
-  if (roll < 0.62) {
-    return "workspace";
-  }
-  return roll < 0.9 ? "space" : "personal";
 }
 
 const NOW_MS = new Date("2026-08-10T10:00:00Z").getTime();
@@ -1133,7 +1105,6 @@ function buildCustomAgents(): ManagedAgent[] {
   for (const [index, curated] of CURATED_AGENTS.entries()) {
     const editors = pickEditors(random, 1 + Math.floor(random() * 3));
     const tools = curated.tools ?? pickTools(random);
-    const visibility = curated.visibility ?? pickVisibility(random);
     agents.push({
       sId: `agent_curated_${index}`,
       name: curated.name,
@@ -1144,13 +1115,7 @@ function buildCustomAgents(): ManagedAgent[] {
       status: "active",
       modelId: curated.modelId ?? "claude-sonnet-4-6",
       editors,
-      lastEditedBy: editors[0],
       tags: tagsFor(curated.tags ?? []),
-      visibility,
-      spaceName:
-        visibility === "space"
-          ? (curated.spaceName ?? pick(random, AGENT_SPACES))
-          : null,
       tools,
       usage: makeFleetUsage(random, {
         human: curated.usage,
@@ -1189,7 +1154,6 @@ function buildCustomAgents(): ManagedAgent[] {
       messageCount > 50 ? Math.floor(random() * 14) : Math.floor(random() * 2);
     const editors = pickEditors(random, 1 + Math.floor(random() * 4));
     const tools = pickTools(random);
-    const visibility = pickVisibility(random);
 
     agents.push({
       sId: `agent_gen_${index}`,
@@ -1202,15 +1166,12 @@ function buildCustomAgents(): ManagedAgent[] {
       status: "active",
       modelId: pickModelId(random),
       editors,
-      lastEditedBy: pick(random, editors),
       tags:
         random() < 0.45
           ? tagsFor([pick(random, AGENT_TAGS).name]).concat(
               random() < 0.2 ? tagsFor([pick(random, AGENT_TAGS).name]) : []
             )
           : [],
-      visibility,
-      spaceName: visibility === "space" ? pick(random, AGENT_SPACES) : null,
       tools,
       usage: makeFleetUsage(random, {
         human: messageCount,
@@ -1270,10 +1231,7 @@ function buildGlobalAgents(): ManagedAgent[] {
     status: index % 9 === 5 ? "disabled_by_admin" : "active",
     modelId: globalAgent.modelId,
     editors: [],
-    lastEditedBy: null,
     tags: [],
-    visibility: "workspace",
-    spaceName: null,
     tools: [],
     usage: makeFleetUsage(random, {
       human: Math.floor(random() * 1400),
@@ -1298,10 +1256,7 @@ function buildGlobalAgents(): ManagedAgent[] {
       status: random() < 0.25 ? "disabled_missing_datasource" : "active",
       modelId: "claude-sonnet-4-6",
       editors: [],
-      lastEditedBy: null,
       tags: [],
-      visibility: "workspace",
-      spaceName: null,
       tools: [connector].filter((tool) => FLEET_TOOLS_IDS.has(tool)),
       usage: makeFleetUsage(random, {
         human: Math.floor(random() * 300),
@@ -1335,10 +1290,7 @@ function buildArchivedAgents(): ManagedAgent[] {
       status: "archived",
       modelId: pickModelId(random),
       editors,
-      lastEditedBy: editors[0],
       tags: random() < 0.3 ? tagsFor([pick(random, AGENT_TAGS).name]) : [],
-      visibility: pickVisibility(random),
-      spaceName: null,
       tools: pickTools(random),
       usage: makeFleetUsage(random, {
         human: Math.floor(random() * 40),
