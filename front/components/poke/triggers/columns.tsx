@@ -1,11 +1,52 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import { TriggerStatusChip } from "@app/components/triggers/TriggerStatusChip";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import { formatCredits } from "@app/lib/client/credits";
-import { clientFetch } from "@app/lib/egress/client";
-import type { TriggerType } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
-import { IconButton, LinkWrapper, Trash01 } from "@dust-tt/sparkle";
+import { Button, LinkWrapper } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useState } from "react";
+
+interface DisableTriggerButtonProps {
+  triggerId: string;
+  triggerName: string;
+  onDisable: (triggerId: string) => Promise<void>;
+}
+
+function DisableTriggerButton({
+  triggerId,
+  triggerName,
+  onDisable,
+}: DisableTriggerButtonProps) {
+  const [isDisabling, setIsDisabling] = useState(false);
+
+  const handleDisable = async () => {
+    if (
+      !window.confirm(
+        `Disable trigger "${triggerName}"? It will stop running but remain available for a manager or admin to re-enable.`
+      )
+    ) {
+      return;
+    }
+
+    setIsDisabling(true);
+    try {
+      await onDisable(triggerId);
+    } finally {
+      setIsDisabling(false);
+    }
+  };
+
+  return (
+    <Button
+      label="Disable"
+      size="xs"
+      variant="outline"
+      isLoading={isDisabling}
+      onClick={handleDisable}
+    />
+  );
+}
 
 function ConsumptionCell({ trigger }: { trigger: AutomationTriggerRow }) {
   const { credits, runCount } = trigger;
@@ -35,7 +76,7 @@ function ConsumptionCell({ trigger }: { trigger: AutomationTriggerRow }) {
 
 export function makeColumnsForAutomationTriggers(
   owner: LightWorkspaceType,
-  onTriggerDeleted: () => Promise<void>
+  onTriggerDisable: (triggerId: string) => Promise<void>
 ): ColumnDef<AutomationTriggerRow>[] {
   return [
     {
@@ -84,6 +125,7 @@ export function makeColumnsForAutomationTriggers(
       accessorKey: "status",
       header: "Status",
       enableSorting: false,
+      cell: ({ row }) => <TriggerStatusChip status={row.original.status} />,
     },
     {
       id: "editor",
@@ -95,54 +137,20 @@ export function makeColumnsForAutomationTriggers(
       id: "actions",
       header: "",
       enableSorting: false,
-      cell: ({ row }) => (
-        <IconButton
-          aria-label={`Delete trigger ${row.original.name}`}
-          icon={Trash01}
-          size="xs"
-          variant="outline"
-          onClick={async () => {
-            await deleteTrigger(owner, onTriggerDeleted, {
-              name: row.original.name,
-              sId: row.original.triggerId,
-            });
-          }}
-        />
-      ),
+      cell: ({ row }) => {
+        const trigger = row.original;
+        if (trigger.status !== "enabled") {
+          return null;
+        }
+
+        return (
+          <DisableTriggerButton
+            triggerId={trigger.triggerId}
+            triggerName={trigger.name}
+            onDisable={onTriggerDisable}
+          />
+        );
+      },
     },
   ];
-}
-
-async function deleteTrigger(
-  owner: LightWorkspaceType,
-  onTriggerDeleted: () => Promise<void>,
-  trigger: Pick<TriggerType, "name" | "sId">
-) {
-  if (
-    !window.confirm(
-      `Are you sure you want to delete the trigger "${trigger.name}"?`
-    )
-  ) {
-    return;
-  }
-
-  try {
-    const r = await clientFetch(
-      `/api/poke/workspaces/${owner.sId}/triggers?tId=${trigger.sId}`,
-      {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    if (!r.ok) {
-      throw new Error("Failed to delete trigger.");
-    }
-
-    await onTriggerDeleted();
-  } catch (e) {
-    console.error(e);
-    window.alert("An error occurred while deleting the trigger.");
-  }
 }

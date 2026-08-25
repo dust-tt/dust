@@ -65,7 +65,7 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
     isTriggersLoading,
     isTriggersValidating,
     isTriggersError,
-    mutateTriggers,
+    disableTrigger,
   } = usePokeTriggers({
     owner,
     period,
@@ -75,17 +75,6 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
     filter: selectedKinds.length > 0 ? { kinds: selectedKinds } : undefined,
     sortOrder: sorting[0]?.desc === false ? "asc" : "desc",
   });
-
-  const onTriggerDeleted = async () => {
-    if (triggers.length === 1 && pagination.pageIndex > 0) {
-      setPagination((current) => ({
-        ...current,
-        pageIndex: Math.max(0, current.pageIndex - 1),
-      }));
-      return;
-    }
-    await mutateTriggers();
-  };
 
   return (
     <div className="my-4 flex min-h-24 flex-col rounded-lg border bg-background">
@@ -103,7 +92,7 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
           </div>
         ) : (
           <PokeDataTable
-            columns={makeColumnsForAutomationTriggers(owner, onTriggerDeleted)}
+            columns={makeColumnsForAutomationTriggers(owner, disableTrigger)}
             data={triggers}
             getRowId={(trigger) => trigger.triggerId}
             isLoading={isTriggersLoading}
