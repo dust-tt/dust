@@ -72,12 +72,15 @@ function PluginResultHeader({
 }
 
 type ExecutePluginDialogProps = {
+  // Values to seed the form with, overriding the manifest defaults.
+  initialValues?: Record<string, unknown>;
   onClose: () => void;
   plugin: PluginListItem;
   pluginResourceTarget: PluginResourceTarget;
 };
 
 export function RunPluginDialog({
+  initialValues,
   onClose,
   plugin,
   pluginResourceTarget,
@@ -266,6 +269,7 @@ export function RunPluginDialog({
               )}
               <PluginForm
                 disabled={result !== null || isRunning}
+                initialValues={initialValues}
                 isRunning={isRunning}
                 manifest={manifest}
                 asyncArgs={asyncArgs}
