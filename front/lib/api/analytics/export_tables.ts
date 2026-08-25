@@ -45,6 +45,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
+import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 
 type AnalyticsExportTable =
@@ -211,7 +212,7 @@ export async function exportTable({
         includeHiddenAgents,
       });
     case "users":
-      return exportUsers({ startDate, endDate, timezone, owner });
+      return exportUsers({ auth, startDate, endDate, timezone, owner });
     case "skills":
       return exportSkills({ auth, startDate, endDate, timezone, owner });
     case "skill_usage":
@@ -252,6 +253,26 @@ export function stringifyExportTableAsCsv(data: ExportTableData): string {
     default:
       assertNever(data);
   }
+}
+
+// exportTable's startDate/endDate are inclusive calendar days ("YYYY-MM-DD"),
+// while the consumption index's completed_at range is half-open ([startDate,
+// endDate)); bump the upper bound to the start of the following day so the
+// whole endDate day is included.
+function buildExportConsumptionScopeQuery(
+  auth: Authenticator,
+  { startDate, endDate }: { startDate: string; endDate: string }
+): estypes.QueryDslQueryContainer {
+  const exclusiveEndDate = moment
+    .utc(endDate)
+    .add(1, "day")
+    .format("YYYY-MM-DD");
+
+  return buildConsumptionScopeQuery({
+    auth,
+    startDate,
+    endDate: exclusiveEndDate,
+  });
 }
 
 async function exportUsageMetrics({
@@ -391,19 +412,9 @@ async function exportAgents({
   endDate: string;
   includeHiddenAgents: boolean;
 }): Promise<Result<ExportTableData, Error>> {
-  // The consumption index's completed_at range is half-open ([startDate,
-  // endDate)), while startDate/endDate here are inclusive calendar days
-  // ("YYYY-MM-DD"); bump the upper bound to the start of the following day so
-  // the whole endDate day is included.
-  const exclusiveEndDate = moment
-    .utc(endDate)
-    .add(1, "day")
-    .format("YYYY-MM-DD");
-
-  const baseQuery = buildConsumptionScopeQuery({
-    auth,
+  const baseQuery = buildExportConsumptionScopeQuery(auth, {
     startDate,
-    endDate: exclusiveEndDate,
+    endDate,
   });
 
   const result = await fetchAgentExportRows(
@@ -426,18 +437,19 @@ async function exportAgents({
 }
 
 async function exportUsers({
+  auth,
   startDate,
   endDate,
   timezone,
   owner,
 }: {
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
   owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
+  const baseQuery = buildExportConsumptionScopeQuery(auth, {
     startDate,
     endDate,
   });
