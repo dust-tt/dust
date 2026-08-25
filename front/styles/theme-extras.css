@@ -111,6 +111,26 @@
     transform: translateY(0);
   }
 }
+/* Page-level entrance: the app content area fades in on every route change,
+ * key'd by pathname in AppContentLayout so it replays per navigation. A
+ * `from`-only keyframe with `backwards` fill leaves nothing behind once it
+ * settles — no lingering transform/filter on the page's own root element. */
+@keyframes page-content-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+    filter: blur(2px);
+  }
+}
+.page-content-fade-in {
+  animation: page-content-fade-in 220ms cubic-bezier(0.23, 1, 0.32, 1)
+    backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-content-fade-in {
+    animation: none;
+  }
+}
 @keyframes input-bar-compact-in {
   0% {
     opacity: 0.45;

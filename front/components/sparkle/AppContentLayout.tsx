@@ -11,6 +11,7 @@ import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { MOBILE_DOCUMENT_SCROLL_CLASSES } from "@app/lib/documentScrollLayoutClasses";
+import { useAppRouter } from "@app/lib/platform";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import { cn } from "@dust-tt/sparkle";
@@ -70,6 +71,9 @@ function AppContentInnerWrapper({
 export function AppContentLayout({ children }: AppContentLayoutProps) {
   const owner = useWorkspace();
   const isMobile = useIsMobile();
+  // Keys the content area below so it fades in fresh on every route change,
+  // without remounting the sidebar/nav chrome that sits alongside it.
+  const { pathname } = useAppRouter();
   const { featureFlags, subscription, user } = useAuth();
   const {
     contentClassName,
@@ -138,8 +142,10 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
              * Page has no title, prepend empty AppLayoutTitle. */}
             {!hasTitleBar && (
               <div
+                key={pathname}
                 className={cn(
                   "flex flex-1 flex-col",
+                  "page-content-fade-in",
                   isMobile
                     ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
                     : "min-h-0 h-panel overflow-y-auto [scrollbar-gutter:stable]"
@@ -173,8 +179,10 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
             )}
             {hasTitleBar && (
               <div
+                key={pathname}
                 className={cn(
                   "flex flex-1 flex-col",
+                  "page-content-fade-in",
                   isMobile
                     ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
                     : "min-h-0 overflow-y-auto [scrollbar-gutter:stable]"
