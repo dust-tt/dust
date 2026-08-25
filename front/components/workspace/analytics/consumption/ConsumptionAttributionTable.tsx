@@ -332,7 +332,7 @@ function buildColumns({
       accessorFn: (row) => (totalCredits > 0 ? row.credits / totalCredits : 0),
       header: "Consumption share",
       enableSorting: true,
-      meta: { sizeRatio: 20, headerAlign: "left" },
+      meta: { className: "w-36", sizeRatio: 20, headerAlign: "left" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-start">
           <CostShareCell
@@ -372,7 +372,7 @@ function buildColumns({
       id: "vsPrev",
       header: "vs prev",
       enableSorting: false,
-      meta: { sizeRatio: 18, headerAlign: "right" },
+      meta: { className: "w-16", sizeRatio: 18, headerAlign: "right" },
       cell: (info) => (
         <VsPrevCell
           credits={info.row.original.credits}
