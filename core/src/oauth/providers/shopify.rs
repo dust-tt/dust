@@ -104,9 +104,7 @@ impl Provider for ShopifyConnectionProvider {
         ];
         let req = self
             .reqwest_client()
-            .post(format!(
-                "https://{store_domain}/admin/oauth/access_token"
-            ))
+            .post(format!("https://{store_domain}/admin/oauth/access_token"))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Accept", "application/json")
             .form(&params);
@@ -147,9 +145,7 @@ impl Provider for ShopifyConnectionProvider {
         ];
         let req = self
             .reqwest_client()
-            .post(format!(
-                "https://{store_domain}/admin/oauth/access_token"
-            ))
+            .post(format!("https://{store_domain}/admin/oauth/access_token"))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Accept", "application/json")
             .form(&params);
