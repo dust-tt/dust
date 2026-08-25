@@ -75,6 +75,7 @@ from pptx_audit import (
     _deck_structural_audit,
     _leading_break_audit,
     _drop_audit,
+    _empty_table_rows_audit,
     _filler_audit,
     _hole_audit,
     _effective_font_size_pt,
@@ -1142,6 +1143,20 @@ def print_compare(file_path: str, source_path: str) -> str:
             blockers += len(filler) - LEFTOVER_LISTED
             lines.append(
                 f"    [!] ... and {len(filler) - LEFTOVER_LISTED} more"
+            )
+
+    # Blank rows left at the foot of a cloned table.
+    blank_rows = _empty_table_rows_audit(file_path)
+    if blank_rows:
+        lines.append(
+            f"  tables:  [!] {len(blank_rows)} table(s) end in empty rows"
+        )
+        for slide_no, shape_id, trailing, total in blank_rows[:LEFTOVER_LISTED]:
+            blockers += 1
+            lines.append(
+                f"    [!] slide {slide_no} #{shape_id}: the last {trailing} of "
+                f"{total} rows are empty and still draw their fill. Delete the "
+                "surplus rows instead of blanking them."
             )
 
     # A line break at the start of a paragraph.

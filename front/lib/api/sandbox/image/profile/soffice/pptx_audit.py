@@ -1131,6 +1131,33 @@ def _leading_break_audit(file_path: str) -> List[Tuple[int, int, int, str]]:
     return out
 
 
+def _empty_table_rows_audit(file_path: str) -> List[Tuple[int, int, int, int]]:
+    """Tables ending in rows with nothing in them: (slide, shape, empty, total).
+
+    A template table cloned for its styling comes with more rows than the
+    content needs, and an emptied row still draws its fill and its rules - a
+    stack of blank bands under the last real row. Deleting the surplus row is
+    the fix; blanking it is what leaves the bands."""
+    try:
+        prs = Presentation(file_path)
+    except Exception:  # noqa: BLE001 - degrade visibly in the caller
+        return []
+    out: List[Tuple[int, int, int, int]] = []
+    for slide_no, slide in enumerate(prs.slides, start=1):
+        for shape in slide.shapes:
+            if not getattr(shape, "has_table", False):
+                continue
+            rows = list(shape.table.rows)
+            trailing = 0
+            for row in reversed(rows):
+                if any(cell.text.strip() for cell in row.cells):
+                    break
+                trailing += 1
+            if trailing:
+                out.append((slide_no, shape.shape_id, trailing, len(rows)))
+    return out
+
+
 def _shape_text_iter(shape: BaseShape) -> Iterable[str]:
     kind = shape_kind(shape)
     if kind == "group":

@@ -100,7 +100,7 @@ prs.save("/tmp/deck.pptx")
 
 **Constrained shapes** (chevron, trapezoid, pill): sloped sides eat the text area. Margins >= 0.25", longest word on one line, cut the label rather than shrink the font.
 
-**Tables:** edit existing cells, never draw one over them. Fewer rows than the template: leave the extras blank; if QA shows them folding off the slide, rebuild that one table with the original's column widths, row heights, header styling, cell fills.
+**Tables:** edit existing cells, never draw one over them. Fewer rows than the template: delete the surplus rows (\`row._tr.getparent().remove(row._tr)\`), never blank them - an emptied row still draws its fill and rules, so the table ends in a stack of blank bands. If QA shows a table folding off the slide, rebuild that one with the original's column widths, row heights, header styling, cell fills.
 
 **Swap images in place**, keeping position, size and crop:
 
