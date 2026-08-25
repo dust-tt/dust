@@ -7,7 +7,7 @@ import type {
 import { ProductNodeSchema } from "@app/lib/api/actions/servers/shopify/types";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
-import { normalizeShopifyShopDomain } from "@app/types/oauth/lib";
+import { normalizeShopifyStoreDomain } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -62,7 +62,7 @@ function quoteSearchValue(value: string): string {
 export class ShopifyClient {
   constructor(
     private readonly accessToken: string,
-    private readonly shop: string
+    private readonly storeDomain: string
   ) {}
 
   private async fetchProductsPage({
@@ -83,7 +83,7 @@ export class ShopifyClient {
       MCPError
     >
   > {
-    const url = `https://${this.shop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
+    const url = `https://${this.storeDomain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
     let response: Awaited<ReturnType<typeof untrustedFetch>>;
     try {
       response = await untrustedFetch(url, {
@@ -225,8 +225,8 @@ export function createShopifyClient(
     return new Err(new MCPError("No Shopify access token found."));
   }
 
-  const shop = normalizeShopifyShopDomain(authInfo.extra?.store_domain);
-  if (!shop) {
+  const storeDomain = normalizeShopifyStoreDomain(authInfo.extra?.store_domain);
+  if (!storeDomain) {
     return new Err(
       new MCPError(
         "Shopify store domain not found. Reconnect the Shopify tool with a valid myshopify.com domain."
@@ -234,5 +234,5 @@ export function createShopifyClient(
     );
   }
 
-  return new Ok(new ShopifyClient(authInfo.token, shop));
+  return new Ok(new ShopifyClient(authInfo.token, storeDomain));
 }
