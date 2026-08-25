@@ -2722,6 +2722,47 @@ describe("SpaceResource group_permissions enforcement", () => {
     expect(withoutGroup!.canWrite(refreshedMemberAuth)).toBe(false);
   });
 
+  it("stops a group-mode group from granting once the space switches to manual", async () => {
+    const manualGroup = await GroupFactory.regularManual(workspace, "Squad");
+    await GroupFactory.withMembers(adminAuth, manualGroup, [memberUser]);
+
+    const space = await SpaceFactory.regular(workspace);
+    const groupModeRes = await space.updatePermissions(adminAuth, {
+      name: space.name,
+      isRestricted: true,
+      managementMode: "group",
+      groupIds: [manualGroup.sId],
+      editorGroupIds: [],
+    });
+    expect(groupModeRes.isOk()).toBe(true);
+
+    const inGroupMode = await SpaceResource.fetchById(adminAuth, space.sId);
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      memberUser.sId,
+      workspace.sId
+    );
+    expect(inGroupMode!.canRead(memberAuth)).toBe(true);
+
+    // Switching back to manual leaves the group_vaults row in place, so only the kind filter in
+    // `spaceGroupRoles` stops it granting in a mode that never selected it.
+    const manualModeRes = await space.updatePermissions(adminAuth, {
+      name: space.name,
+      isRestricted: true,
+      managementMode: "manual",
+      memberIds: [],
+      editorIds: [],
+    });
+    expect(manualModeRes.isOk()).toBe(true);
+
+    const refreshedMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      memberUser.sId,
+      workspace.sId
+    );
+    const inManualMode = await SpaceResource.fetchById(adminAuth, space.sId);
+    expect(inManualMode!.canRead(refreshedMemberAuth)).toBe(false);
+    expect(inManualMode!.canWrite(refreshedMemberAuth)).toBe(false);
+  });
+
   it("rejects internal groups in group management mode", async () => {
     const globalGroupRes =
       await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
