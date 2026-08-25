@@ -36,6 +36,10 @@ export const TRIGGER_ID_FIELD = "trigger_id";
 
 export const CARDINALITY_PRECISION_THRESHOLD = 40_000;
 
+export type ConsumptionTopDimension =
+  | ConsumptionScopeDimension
+  | "conversation";
+
 export const CONSUMPTION_DIMENSION_FIELDS: Record<
   ConsumptionScopeDimension,
   string
@@ -52,6 +56,14 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
   source: "normalized_origin",
 };
 
+export const CONSUMPTION_TOP_DIMENSION_FIELDS: Record<
+  ConsumptionTopDimension,
+  string
+> = {
+  ...CONSUMPTION_DIMENSION_FIELDS,
+  conversation: CONVERSATION_ID_FIELD,
+};
+
 export type ConsumptionTopUnit = "message" | "invocation";
 
 export const CONSUMPTION_DIMENSION_UNIT: Record<
@@ -66,6 +78,14 @@ export const CONSUMPTION_DIMENSION_UNIT: Record<
   tool: "invocation",
   skill: "invocation",
   source: "message",
+};
+
+export const CONSUMPTION_TOP_DIMENSION_UNIT: Record<
+  ConsumptionTopDimension,
+  ConsumptionTopUnit
+> = {
+  ...CONSUMPTION_DIMENSION_UNIT,
+  conversation: "message",
 };
 
 export const CONSUMPTION_METRICS = ["credit_micro"] as const;
