@@ -1,5 +1,6 @@
 import type { GetExtensionConfigResponseBody } from "@app/lib/resources/extension";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY } from "@app/types/extension";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
@@ -11,7 +12,7 @@ const app = workspaceApp();
  * /api/w/{wId}/extension/config:
  *   get:
  *     summary: Get extension configuration
- *     description: Returns the extension configuration for the workspace, including blacklisted domains.
+ *     description: Returns the extension configuration for the workspace, including blacklisted domains, and records Chrome extension activity.
  *     tags:
  *       - Private Extension
  *     parameters:
@@ -38,6 +39,15 @@ app.get("/", async (ctx): HandlerResult<GetExtensionConfigResponseBody> => {
   const auth = ctx.get("auth");
 
   const config = await ExtensionConfigurationResource.fetchForWorkspace(auth);
+
+  if (ctx.req.header("origin")?.startsWith("chrome-extension://")) {
+    await auth
+      .getNonNullableUser()
+      .setMetadata(
+        CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY,
+        new Date().toISOString()
+      );
+  }
 
   return ctx.json({
     blacklistedDomains: config?.blacklistedDomains ?? [],
