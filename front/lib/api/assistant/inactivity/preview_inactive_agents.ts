@@ -56,8 +56,13 @@ export async function previewInactiveAgents(
   }
   const cutoffAt = cutoffRes.value;
 
+  if (!auth.isAdmin()) {
+    throw new Error("Only a workspace admin can preview inactive agents.");
+  }
+
   const { eligible, skipped } = await fetchArchivableAgents(auth, {
     cutoffAt,
+    dangerouslySkipPermissionFiltering: true,
   });
 
   const eligibleAgentIds = eligible.map(({ agentId }) => agentId);

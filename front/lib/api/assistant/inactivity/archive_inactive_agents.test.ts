@@ -7,6 +7,7 @@ import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MentionFactory } from "@app/tests/utils/MentionFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -137,6 +138,32 @@ describe("archiveInactiveWorkspaceAgents", () => {
     expect(res.isErr()).toBe(true);
     expect(res.isErr() && res.error.type).toBe("invalid_threshold");
     expect(await statusOf(authenticator, agent.sId)).toBe("active");
+  });
+
+  it("archives an agent that requests a restricted space", async () => {
+    // The incoming auth only holds the global group, so without escalating to every space the
+    // agent's status read would come back empty and it would never be archived.
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const restrictedSpace = await SpaceFactory.regular(
+      authenticator.getNonNullableWorkspace()
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Private", requestedSpaceIds: [restrictedSpace.id] }
+    );
+    await AgentConfigurationFactory.backdate(
+      authenticator,
+      agent.sId,
+      LONG_AGO
+    );
+
+    const res = await archiveInactiveWorkspaceAgents(authenticator, {
+      thresholdDays: THRESHOLD_DAYS,
+      evaluatedAt: new Date(),
+    });
+
+    expect(res.isOk() && res.value.archivedAgentIds).toEqual([agent.sId]);
+    expect(res.isOk() && res.value.skipped).toEqual([]);
   });
 
   it("archives every eligible agent of the workspace in one call", async () => {

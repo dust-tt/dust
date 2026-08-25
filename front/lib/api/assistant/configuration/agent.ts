@@ -1071,9 +1071,14 @@ async function cancelWakeUpsForAgent(
   );
 }
 
+type ArchiveAgentConfigurationOptions = {
+  dangerouslySkipPermissionFiltering?: boolean;
+};
+
 export async function archiveAgentConfiguration(
   auth: Authenticator,
-  agentConfigurationId: string
+  agentConfigurationId: string,
+  { dangerouslySkipPermissionFiltering }: ArchiveAgentConfigurationOptions = {}
 ): Promise<boolean> {
   const owner = auth.workspace();
   if (!owner) {
@@ -1083,6 +1088,7 @@ export async function archiveAgentConfiguration(
   const agentConfig = await getAgentConfiguration(auth, {
     agentId: agentConfigurationId,
     variant: "light",
+    dangerouslySkipPermissionFiltering,
   });
 
   if (!agentConfig) {

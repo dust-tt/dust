@@ -6,6 +6,11 @@ import {
   MIN_INACTIVITY_THRESHOLD_DAYS,
 } from "@app/lib/api/assistant/inactivity/policy";
 import { previewInactiveAgents } from "@app/lib/api/assistant/inactivity/preview_inactive_agents";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import type {
   ArchiveInactiveAgentsResponseBody,
   PreviewInactiveAgentsResponseBody,
@@ -102,6 +107,24 @@ app.post(
 
     const { evaluatedAt, cutoffAt, archivedAgentIds, skipped } =
       archivalRes.value;
+
+    // The per-agent `agent.archived` events are emitted by the archival itself, as the system:
+    // This one records who asked for the run.
+    if (archivedAgentIds.length > 0) {
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.inactive_agents_archived",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          threshold_days: String(thresholdDays),
+          archived_count: String(archivedAgentIds.length),
+          skipped_count: String(skipped.length),
+        },
+      });
+    }
 
     return ctx.json({
       archival: {
