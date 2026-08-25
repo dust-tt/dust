@@ -2,13 +2,10 @@ import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
 import type {
-  AutomationTriggersBody,
-  AutomationTriggersFilter,
-} from "@app/lib/api/analytics/automations/schema";
-import type {
   AutomationTriggerRow,
   GetAutomationTriggersResponse,
 } from "@app/lib/api/analytics/automations/triggers";
+import type { PokeTriggersSearchBody } from "@app/lib/api/poke/triggers";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeGetWebhookRequestsResponseBody } from "@app/types/api/poke/triggers";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
@@ -22,6 +19,7 @@ export function usePokeTriggers({
   offset = 0,
   search,
   filter,
+  sortOrder,
   disabled,
 }: {
   owner: LightWorkspaceType;
@@ -29,11 +27,12 @@ export function usePokeTriggers({
   limit: number;
   offset?: number;
   search?: string;
-  filter?: AutomationTriggersFilter;
+  filter?: PokeTriggersSearchBody["filter"];
+  sortOrder: PokeTriggersSearchBody["sortOrder"];
   disabled?: boolean;
 }) {
   const url = `/api/poke/workspaces/${owner.sId}/triggers/search`;
-  const body: Omit<AutomationTriggersBody, "format"> = {
+  const body: PokeTriggersSearchBody = {
     period: period.kind,
     days:
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
@@ -41,10 +40,11 @@ export function usePokeTriggers({
     offset,
     search: search?.trim(),
     filter,
+    sortOrder,
   };
 
   const { data, error, mutate, isValidating } = useConsumptionQuery<
-    Omit<AutomationTriggersBody, "format">,
+    PokeTriggersSearchBody,
     GetAutomationTriggersResponse
   >({ url, body, disabled });
 

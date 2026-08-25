@@ -11,7 +11,7 @@ import {
 } from "@app/types/assistant/triggers";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { PaginationState } from "@tanstack/react-table";
+import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { useState } from "react";
 
 const TRIGGER_PAGE_SIZE = 25;
@@ -35,6 +35,9 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
   });
   const [search, setSearch] = useState("");
   const [selectedKinds, setSelectedKinds] = useState<TriggerKind[]>([]);
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "credits", desc: true },
+  ]);
 
   const handlePeriodChange = (nextPeriod: ConsumptionPeriodSelection) => {
     setPeriod(nextPeriod);
@@ -48,6 +51,11 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
 
   const handleKindChange = (values: string[]) => {
     setSelectedKinds(values.filter(isValidTriggerKind));
+    setPagination((current) => ({ ...current, pageIndex: 0 }));
+  };
+
+  const handleSortingChange = (nextSorting: SortingState) => {
+    setSorting(nextSorting);
     setPagination((current) => ({ ...current, pageIndex: 0 }));
   };
 
@@ -65,6 +73,7 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
     offset: pagination.pageIndex * pagination.pageSize,
     search: search || undefined,
     filter: selectedKinds.length > 0 ? { kinds: selectedKinds } : undefined,
+    sortOrder: sorting[0]?.desc === false ? "asc" : "desc",
   });
 
   const onTriggerDeleted = async () => {
@@ -102,6 +111,8 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
             serverSideRowCount={totalCount}
             pagination={pagination}
             onPaginationChange={setPagination}
+            sorting={sorting}
+            onSortingChange={handleSortingChange}
             search={search}
             onSearchChange={handleSearchChange}
             facets={[

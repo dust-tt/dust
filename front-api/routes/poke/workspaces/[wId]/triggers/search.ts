@@ -1,25 +1,24 @@
-import { AutomationTriggersBodySchema } from "@app/lib/api/analytics/automations/schema";
 import type { GetAutomationTriggersResponse } from "@app/lib/api/analytics/automations/triggers";
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { toConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/schema";
-import { fetchPokeTriggers } from "@app/lib/api/poke/triggers";
+import {
+  fetchPokeTriggers,
+  PokeTriggersSearchBodySchema,
+} from "@app/lib/api/poke/triggers";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
 // Mounted at /api/poke/workspaces/:wId/triggers/search.
 const app = pokeApp();
-const PokeAutomationTriggersBodySchema = AutomationTriggersBodySchema.omit({
-  format: true,
-});
 
 /** @ignoreswagger */
 app.post(
   "/",
-  validate("json", PokeAutomationTriggersBodySchema),
+  validate("json", PokeTriggersSearchBodySchema),
   async (ctx): HandlerResult<GetAutomationTriggersResponse> => {
     const auth = ctx.get("auth");
-    const { limit, offset, search, filter, ...periodQuery } =
+    const { limit, offset, search, filter, sortOrder, ...periodQuery } =
       ctx.req.valid("json");
     const period = await resolveConsumptionPeriod(
       auth,
@@ -32,6 +31,7 @@ app.post(
       offset,
       search,
       filter,
+      sortOrder,
     });
     if (result.isErr()) {
       return apiError(

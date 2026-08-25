@@ -1,4 +1,5 @@
 import type { AutomationTriggersFilter } from "@app/lib/api/analytics/automations/schema";
+import { AutomationTriggersBodySchema } from "@app/lib/api/analytics/automations/schema";
 import type {
   GetAutomationTriggersResponse,
   RankedTriggerWithResource,
@@ -8,7 +9,10 @@ import {
   fetchTriggersRanking,
 } from "@app/lib/api/analytics/automations/triggers";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import { CARDINALITY_PRECISION_THRESHOLD } from "@app/lib/api/analytics/consumption/scope";
+import {
+  CARDINALITY_PRECISION_THRESHOLD,
+  CONSUMPTION_TOP_SORT_ORDER,
+} from "@app/lib/api/analytics/consumption/scope";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -19,6 +23,17 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { UserType } from "@app/types/user";
+import { z } from "zod";
+
+export const PokeTriggersSearchBodySchema = AutomationTriggersBodySchema.omit({
+  format: true,
+}).extend({
+  sortOrder: z.enum(CONSUMPTION_TOP_SORT_ORDER).optional().default("desc"),
+});
+
+export type PokeTriggersSearchBody = z.infer<
+  typeof PokeTriggersSearchBodySchema
+>;
 
 type TriggerConsumption = { runCount: number; credits: number };
 
@@ -53,10 +68,7 @@ function matchesFilter(
   return true;
 }
 
-/**
- * Every live workspace trigger, ranked by gross credits over the period, with
- * triggers that did not consume included at the end of the ranking.
- */
+/** Every live workspace trigger, ordered by its period consumption. */
 export async function fetchPokeTriggers(
   auth: Authenticator,
   {
@@ -65,12 +77,14 @@ export async function fetchPokeTriggers(
     offset,
     search,
     filter,
+    sortOrder,
   }: {
     period: ConsumptionPeriod;
     limit: number;
     offset: number;
     search?: string;
     filter?: AutomationTriggersFilter;
+    sortOrder: PokeTriggersSearchBody["sortOrder"];
   }
 ): Promise<Result<GetAutomationTriggersResponse, ElasticsearchError>> {
   const [liveTriggers, editors, rankingResult] = await Promise.all([
@@ -101,6 +115,7 @@ export async function fetchPokeTriggers(
       { runCount, credits },
     ])
   );
+  const sortDirection = sortOrder === "asc" ? 1 : -1;
   const ranked: RankedTriggerWithResource[] = liveTriggers
     .filter((trigger) => matchesFilter(trigger, { filter, editorModelIds }))
     .map((trigger) => ({
@@ -110,8 +125,8 @@ export async function fetchPokeTriggers(
     }))
     .sort(
       (a, b) =>
-        b.credits - a.credits ||
-        b.runCount - a.runCount ||
+        sortDirection * (a.credits - b.credits) ||
+        sortDirection * (a.runCount - b.runCount) ||
         a.trigger.name.localeCompare(b.trigger.name) ||
         a.trigger.sId.localeCompare(b.trigger.sId)
     );
