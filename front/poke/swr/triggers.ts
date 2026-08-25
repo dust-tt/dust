@@ -70,7 +70,7 @@ export function usePokeTriggers({
     }: UpdatePokeTriggerStatusArgs): Promise<boolean> => {
       try {
         const response = await clientFetch(
-          `/api/poke/workspaces/${owner.sId}/triggers/${triggerId}/status`,
+          `/api/poke/workspaces/${owner.sId}/triggers/${triggerId}`,
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
