@@ -36,12 +36,12 @@ describe("consumption dimension URL state", () => {
     );
     expect(getConsumptionAttributionDimensions({ personal: true })).toEqual([
       "agent",
-      "conversation",
       "model",
       "tool",
       "skill",
       "source",
       "api_key",
+      "conversation",
     ]);
   });
 
