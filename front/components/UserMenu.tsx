@@ -22,6 +22,7 @@ import {
 import { serializeMention } from "@app/lib/mentions/format";
 import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
@@ -75,6 +76,17 @@ interface UserMenuProps {
   owner: WorkspaceType;
   subscription: SubscriptionType | null;
   creditUsageState?: CreditUsageState | null;
+}
+
+function withUserMenuItemTracking(item: string, handler?: () => unknown) {
+  return () => {
+    trackEvent({
+      area: TRACKING_AREAS.NAVIGATION,
+      object: "user_menu_item",
+      extra: { item },
+    });
+    void handler?.();
+  };
 }
 
 export function UserMenu({
@@ -317,10 +329,13 @@ export function UserMenu({
               <CreditUsage
                 state={creditUsageState}
                 variant="profile_menu"
-                onLearnMore={() => {
-                  setUserMenuOpen(false);
-                  setAnalyticsOpen(true);
-                }}
+                onLearnMore={withUserMenuItemTracking(
+                  "credit_usage_learn_more",
+                  () => {
+                    setUserMenuOpen(false);
+                    setAnalyticsOpen(true);
+                  }
+                )}
               />
               <Separator className="my-1" />
             </>
@@ -329,7 +344,11 @@ export function UserMenu({
           {hasMultipleWorkspaces && (
             <>
               <DropdownMenuLabel label="Workspace" />
-              <WorkspacePickerRadioGroup user={user} workspace={owner} />
+              <WorkspacePickerRadioGroup
+                user={user}
+                workspace={owner}
+                onItemClick={withUserMenuItemTracking("workspace")}
+              />
               <Separator className="my-1" />
             </>
           )}
@@ -344,42 +363,50 @@ export function UserMenu({
                   icon={BookOpen01}
                   href="https://docs.dust.tt"
                   target="_blank"
+                  onClick={withUserMenuItemTracking(
+                    "help_guides_documentation"
+                  )}
                 />
                 <DropdownMenuItem
                   label="Join the Slack Community"
                   icon={SlackLogo}
                   href="https://dust-community.tightknit.community/join"
                   target="_blank"
+                  onClick={withUserMenuItemTracking("help_slack_community")}
                 />
                 <DropdownMenuLabel label="Ask questions" />
                 <DropdownMenuItem
                   label="Ask @help"
                   icon={MessageChatCircle}
-                  onClick={() => void handleAskHelp()}
+                  onClick={withUserMenuItemTracking("help_ask", handleAskHelp)}
                 />
                 <DropdownMenuItem
                   label="How do I invite new users?"
                   icon={MessageTextCircle01}
-                  onClick={() =>
-                    void handleHelpSubmit("How do I invite new users?", [])
-                  }
+                  onClick={withUserMenuItemTracking(
+                    "help_invite_users_question",
+                    () => handleHelpSubmit("How do I invite new users?", [])
+                  )}
                 />
                 <DropdownMenuItem
                   label="How do I use agents in Slack workflow?"
                   icon={MessageTextCircle01}
-                  onClick={() =>
-                    void handleHelpSubmit(
-                      "How do I use agents in Slack workflow?",
-                      []
-                    )
-                  }
+                  onClick={withUserMenuItemTracking(
+                    "help_slack_workflow_question",
+                    () =>
+                      handleHelpSubmit(
+                        "How do I use agents in Slack workflow?",
+                        []
+                      )
+                  )}
                 />
                 <DropdownMenuItem
                   label="How do I manage billing?"
                   icon={MessageTextCircle01}
-                  onClick={() =>
-                    void handleHelpSubmit("How do I manage billing?", [])
-                  }
+                  onClick={withUserMenuItemTracking(
+                    "help_billing_question",
+                    () => handleHelpSubmit("How do I manage billing?", [])
+                  )}
                 />
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
@@ -389,6 +416,7 @@ export function UserMenu({
             icon={BookOpen01}
             href="https://dust.tt/academy"
             target="_blank"
+            onClick={withUserMenuItemTracking("dust_academy")}
           />
 
           {isFirefox ? (
@@ -397,6 +425,7 @@ export function UserMenu({
               icon={FirefoxLogo}
               href="https://addons.mozilla.org/firefox/addon/dust/"
               target="_blank"
+              onClick={withUserMenuItemTracking("firefox_extension")}
             />
           ) : (
             <DropdownMenuItem
@@ -404,6 +433,7 @@ export function UserMenu({
               icon={ChromeLogo}
               href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
               target="_blank"
+              onClick={withUserMenuItemTracking("chrome_extension")}
             />
           )}
 
@@ -413,6 +443,7 @@ export function UserMenu({
                 label="Exploratory features"
                 icon={Beaker02}
                 href={`/w/${owner.sId}/labs`}
+                onClick={withUserMenuItemTracking("exploratory_features")}
               />
               <Separator className="my-1" />
             </>
@@ -424,24 +455,32 @@ export function UserMenu({
               <DropdownMenuItem
                 label="Personal Settings"
                 icon={User01}
-                onSelect={() => setSettingsOpen(true)}
+                onSelect={withUserMenuItemTracking("personal_settings", () =>
+                  setSettingsOpen(true)
+                )}
               />
               <DropdownMenuItem
                 label="Tools"
                 icon={ShapesPlus}
-                onSelect={() => setToolsOpen(true)}
+                onSelect={withUserMenuItemTracking("tools", () =>
+                  setToolsOpen(true)
+                )}
               />
               <DropdownMenuItem
                 label="Automations"
                 icon={Clock}
-                onSelect={() => setAutomationsOpen(true)}
+                onSelect={withUserMenuItemTracking("automations", () =>
+                  setAutomationsOpen(true)
+                )}
               />
               {/* The credit usage card is the analytics entry point when shown; keep exactly one. */}
               {!creditUsageState && (
                 <DropdownMenuItem
                   label="Analytics"
                   icon={BarChart01}
-                  onSelect={() => setAnalyticsOpen(true)}
+                  onSelect={withUserMenuItemTracking("analytics", () =>
+                    setAnalyticsOpen(true)
+                  )}
                 />
               )}
             </>
@@ -450,7 +489,7 @@ export function UserMenu({
           <DropdownMenuItem
             label="Sign&nbsp;out"
             icon={LogOut01}
-            onClick={() => {
+            onClick={withUserMenuItemTracking("sign_out", () => {
               // Clear all conversation drafts for this user.
               clearAllDraftsFromUser();
 
@@ -459,7 +498,7 @@ export function UserMenu({
                 window.DD_RUM?.clearUser();
               });
               window.location.href = `${config.getApiBaseUrl()}/api/workos/logout`;
-            }}
+            })}
           />
 
           {showDebugTools(featureFlags) && (
@@ -475,56 +514,79 @@ export function UserMenu({
                       )) && (
                       <DropdownMenuItem
                         label="Debug conversation"
-                        onClick={() => {
-                          const regexp = new RegExp(
-                            `/w/([^/]+)/conversation/([^/]+)`
-                          );
-                          const match = window.location.href.match(regexp);
-                          if (match) {
-                            window.open(
-                              `/poke/${match[1]}/conversation/${match[2]}`,
-                              "_blank"
+                        onClick={withUserMenuItemTracking(
+                          "debug_conversation",
+                          () => {
+                            const regexp = new RegExp(
+                              `/w/([^/]+)/conversation/([^/]+)`
                             );
+                            const match = window.location.href.match(regexp);
+                            if (match) {
+                              window.open(
+                                `/poke/${match[1]}/conversation/${match[2]}`,
+                                "_blank"
+                              );
+                            }
                           }
-                        }}
+                        )}
                         icon={Shapes}
                       />
                     )}
                     {!isOnlyAdmin(owner) && (
                       <DropdownMenuItem
                         label="Become Admin"
-                        onClick={() => forceRoleUpdate("admin")}
+                        onClick={withUserMenuItemTracking("become_admin", () =>
+                          forceRoleUpdate("admin")
+                        )}
                         icon={Star01}
                       />
                     )}
                     {!isOnlyManager(owner) && (
                       <DropdownMenuItem
                         label="Become Manager"
-                        onClick={() => forceRoleUpdate("manager")}
+                        onClick={withUserMenuItemTracking(
+                          "become_manager",
+                          () => forceRoleUpdate("manager")
+                        )}
                         icon={Star01}
                       />
                     )}
                     {!isOnlyUser(owner) && (
                       <DropdownMenuItem
                         label="Become User"
-                        onClick={() => forceRoleUpdate("user")}
+                        onClick={withUserMenuItemTracking("become_user", () =>
+                          forceRoleUpdate("user")
+                        )}
                         icon={User01}
                       />
                     )}
                     <DropdownMenuItem
                       label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
-                      onClick={privacyMask.toggle}
+                      onClick={withUserMenuItemTracking(
+                        privacyMask.isEnabled
+                          ? "disable_privacy_mask"
+                          : "enable_privacy_mask",
+                        privacyMask.toggle
+                      )}
                       icon={privacyMask.isEnabled ? EyeOff : Eye}
                     />
                     <DropdownMenuItem
                       label={`${devMode.isEnabled ? "Disable" : "Enable"} Dev Console`}
-                      onClick={devMode.toggle}
+                      onClick={withUserMenuItemTracking(
+                        devMode.isEnabled
+                          ? "disable_dev_console"
+                          : "enable_dev_console",
+                        devMode.toggle
+                      )}
                       icon={Terminal}
                     />
                     {owner.role === "admin" && (
                       <DropdownMenuItem
                         label="Send onboarding conversation"
-                        onClick={handleSendOnboarding}
+                        onClick={withUserMenuItemTracking(
+                          "send_onboarding_conversation",
+                          handleSendOnboarding
+                        )}
                         icon={MessagePlusCircle}
                       />
                     )}
