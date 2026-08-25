@@ -8,6 +8,10 @@ import {
   type GetConsumptionTopApiKeysResponse,
 } from "@app/lib/api/analytics/consumption/top_api_keys";
 import {
+  fetchConsumptionTopConversations,
+  type GetConsumptionTopConversationsResponse,
+} from "@app/lib/api/analytics/consumption/top_conversations";
+import {
   fetchConsumptionTopGroups,
   type GetConsumptionTopGroupsResponse,
 } from "@app/lib/api/analytics/consumption/top_groups";
@@ -64,6 +68,13 @@ vi.mock(
   async (orig) => {
     const mod = await orig();
     return { ...mod, fetchConsumptionTopModels: vi.fn() };
+  }
+);
+vi.mock(
+  import("@app/lib/api/analytics/consumption/top_conversations"),
+  async (orig) => {
+    const mod = await orig();
+    return { ...mod, fetchConsumptionTopConversations: vi.fn() };
   }
 );
 vi.mock(
@@ -152,6 +163,17 @@ const TOP_API_KEYS: GetConsumptionTopApiKeysResponse = {
       previousCredits: null,
       messageCount: 4,
       avgCreditsPerMessage: 25,
+    },
+  ],
+};
+
+const TOP_CONVERSATIONS: GetConsumptionTopConversationsResponse = {
+  period: PERIOD,
+  conversations: [
+    {
+      conversationId: "conversation1",
+      title: "Quarterly report",
+      totalCredits: 420,
     },
   ],
 };
@@ -496,5 +518,61 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     expect(await response.json()).toMatchObject({
       error: { type: "internal_server_error" },
     });
+  });
+
+  it("returns the member's most expensive conversations", async () => {
+    vi.mocked(fetchConsumptionTopConversations).mockResolvedValue(
+      new Ok(TOP_CONVERSATIONS)
+    );
+    const { workspace, user } = await setupTest({ role: "user" });
+
+    const response = await postRankingRequest(
+      workspace.sId,
+      "top-conversations",
+      {
+        period: "days",
+        days: 7,
+        filter: { users: ["another-user"], sources: ["web"] },
+      },
+      true
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(TOP_CONVERSATIONS);
+    expect(fetchConsumptionTopConversations).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        period: { startDate: expect.any(String), endDate: expect.any(String) },
+        limit: 10,
+        filter: { users: [user.sId], sources: ["web"] },
+      }
+    );
+  });
+
+  it("does not mount top conversations on workspace analytics", async () => {
+    const { workspace } = await setupTest({ role: "admin" });
+
+    const response = await postRankingRequest(
+      workspace.sId,
+      "top-conversations"
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it("returns 500 when the conversation ranking fails", async () => {
+    vi.mocked(fetchConsumptionTopConversations).mockResolvedValue(
+      new Err(new ElasticsearchError("query_error", "boom"))
+    );
+    const { workspace } = await setupTest({ role: "user" });
+
+    const response = await postRankingRequest(
+      workspace.sId,
+      "top-conversations",
+      {},
+      true
+    );
+
+    expect(response.status).toBe(500);
   });
 });

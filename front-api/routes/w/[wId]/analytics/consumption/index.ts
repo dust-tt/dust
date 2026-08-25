@@ -9,6 +9,7 @@ import overview from "./overview";
 import timeseries from "./timeseries";
 import topAgents from "./top-agents";
 import topApiKeys from "./top-api-keys";
+import topConversations from "./top-conversations";
 import topGroups from "./top-groups";
 import topModels from "./top-models";
 import topSkills from "./top-skills";
@@ -50,6 +51,7 @@ export function createPersonalConsumptionRoutes() {
   app.route("/timeseries", timeseries);
   app.route("/top-agents", topAgents);
   app.route("/top-api-keys", topApiKeys);
+  app.route("/top-conversations", topConversations);
   app.route("/top-models", topModels);
   app.route("/top-skills", topSkills);
   app.route("/top-sources", topSources);
