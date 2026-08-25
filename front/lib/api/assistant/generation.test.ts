@@ -624,10 +624,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       "Skills are modular capabilities that extend your abilities for specific tasks."
     );
     expect(text).toContain(
-      "Enable a skill only when its specialized instructions or tools are needed for the user's request."
-    );
-    expect(text).toContain(
-      "If current capabilities are sufficient or the match is uncertain, do not enable the skill."
+      "Enable skills proactively when a user's request matches a skill's purpose."
     );
     expect(text).toContain("skill_management__enable_skill");
     expect(text).toContain(

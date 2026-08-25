@@ -16,14 +16,12 @@ export const goDeepSkill = {
     "Enable comprehensive analysis across company data, databases, and web " +
     "sources — thorough analysis that may take several minutes.",
   agentFacingDescription:
-    "Use for broad, research-intensive requests that benefit from decomposition into multiple " +
-    "independent research threads, parallel sub-agents, or context isolation. Always use when " +
-    "the user explicitly requests the Go Deep skill. Also use for explicit requests for deep " +
-    "research or a comprehensive multi-source investigation. Do not use merely because the " +
-    "response should be detailed, the task uses SQL, combines web and company data, or requires " +
-    "several routine tool calls. Handle routine and moderately complex work directly. If " +
-    "uncertain, do not enable it. Enable it midway only after the task has demonstrably expanded " +
-    "enough to benefit from parallel sub-agents or context isolation.",
+    "Use only when the user explicitly asks to use Go Deep, asks for a deep dive or deep " +
+    "research, or requests a comprehensive multi-source investigation. Do not infer that Go " +
+    "Deep is needed from task complexity alone. Do not use it merely because the response should " +
+    "be detailed, the task uses SQL, combines web and company data, requires several tool calls, " +
+    "or could be parallelized. If none of the explicit activation conditions is clearly met, " +
+    "handle the request directly. When in doubt, do not enable it.",
   fetchInstructions: async (
     auth: Authenticator,
     _params: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
