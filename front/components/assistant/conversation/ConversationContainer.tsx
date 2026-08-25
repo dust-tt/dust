@@ -55,7 +55,7 @@ const GREETING_WORD_ENTER_Y_PX = 4;
 const GREETING_WORD_ENTER_BLUR_PX = 2;
 const GREETING_WORD_DURATION_SECONDS = 0.28;
 const GREETING_WORD_STAGGER_SECONDS = 0.05;
-const GREETING_WORD_EASE = `cubic-bezier(${MOTION_EASINGS.move.join(", ")})`;
+const GREETING_WORD_EASE = `cubic-bezier(${MOTION_EASINGS.emphasized.join(", ")})`;
 
 interface GreetingWordStyle extends CSSProperties {
   "--greeting-word-y": string;
