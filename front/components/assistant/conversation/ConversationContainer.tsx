@@ -297,7 +297,7 @@ export function ConversationContainerVirtuoso({
         <>
           <div
             id="agent-input-header"
-            className="flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4 md:min-h-[52vh]"
+            className="flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4 md:min-h-[36vh]"
             ref={startConversationRef}
           >
             <Page.Header
@@ -371,13 +371,15 @@ export function ConversationContainerVirtuoso({
               </Card>
             </div>
           )}
-          <AgentBrowserContainer
-            onAgentConfigurationClick={(agent) => {
-              setSelectedSingleAgent(toRichAgentMentionType(agent));
-            }}
-            owner={owner}
-            user={user}
-          />
+          <div className="mt-16 w-full md:mt-24">
+            <AgentBrowserContainer
+              onAgentConfigurationClick={(agent) => {
+                setSelectedSingleAgent(toRichAgentMentionType(agent));
+              }}
+              owner={owner}
+              user={user}
+            />
+          </div>
         </>
       )}
       <ReachedLimitPopup
