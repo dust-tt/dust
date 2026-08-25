@@ -140,13 +140,19 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
 
   static async fetchByUser(
     auth: Authenticator,
-    { limit = 100 }: { limit?: number } = {}
+    {
+      limit = 100,
+      activationPodModelId,
+    }: { limit?: number; activationPodModelId?: number } = {}
   ): Promise<ActivationRecommendationResource[]> {
     const user = auth.getNonNullableUser();
     const recs = await this.model.findAll({
       where: {
         userId: user.id,
         workspaceId: auth.getNonNullableWorkspace().id,
+        ...(activationPodModelId
+          ? { activationPodId: activationPodModelId }
+          : {}),
       },
       order: [["createdAt", "DESC"]],
       limit,

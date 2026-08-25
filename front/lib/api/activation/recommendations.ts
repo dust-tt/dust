@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import type { ActivationPodKind } from "@app/lib/models/activation/activation_pod";
 import type { ActivationRecommendationStatus } from "@app/lib/models/activation/activation_recommendation";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
@@ -27,21 +28,26 @@ export interface GetActivationRecommendationsResponseBody {
 
 export interface GetActivationPodResponseBody {
   podId: string | null;
+  kind: ActivationPodKind | null;
 }
 
 export async function getActivationPodInfo(
   auth: Authenticator
 ): Promise<GetActivationPodResponseBody> {
-  const activationPod = await ActivationPodResource.fetchByUser(auth);
-  if (!activationPod) {
-    return { podId: null };
+  const allPods = await ActivationPodResource.listByUser(auth);
+  const learningPod = allPods.find((p) => p.kind === "learning") ?? null;
+  if (!learningPod) {
+    return { podId: null, kind: null };
   }
-
+  const [pod] = await SpaceResource.fetchByModelIds(auth, [
+    learningPod.spaceId,
+  ]);
+  if (!pod) {
+    return { podId: null, kind: null };
+  }
   return {
-    podId: SpaceResource.modelIdToSId({
-      id: activationPod.spaceId,
-      workspaceId: activationPod.workspaceId,
-    }),
+    podId: pod.sId,
+    kind: "learning",
   };
 }
 
