@@ -117,6 +117,8 @@ A replacement with a different native aspect ratio needs the box resized on both
 
 **Fill the box or resize it.** A \`vanchor=middle\` box two lines deep in a 5-inch frame floats its copy in the middle of the slide with a hole above it. Either give the slot the content it was built for, or shrink the box to the copy.
 
+**Every box holds a whole thought.** A heading is a phrase of its own, a body is a sentence of its own. Filling a heading band by cutting one sentence in half - "70+ connectors" above "and MCP servers." - leaves both boxes reading as fragments. If you have nothing to head a column with, use an exemplar without a heading band.
+
 **Parallel columns stay parallel.** Same top, same width, same size, same colour across a row: a heading at 22pt in one column and 14pt in the next reads as a bug. Each column gets its own copy: three columns repeating one paragraph is a slide with one column and two mistakes.
 
 **Drawn content** (native chart, diagram, callout): derive the safe rect first, left + width from the title placeholder, top below the title, bottom above the footer band.
