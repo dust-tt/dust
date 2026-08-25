@@ -10,7 +10,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { Op } from "sequelize";
 
-const PAGE_SIZE = 500;
+const MAX_PAGE_SIZE = 500;
 
 const GLOBAL_AGENT_IDS = Object.values(GLOBAL_AGENTS_SID);
 
@@ -42,34 +42,80 @@ interface ListGlobalAgentFeedbacksParams {
   includeEmpty: boolean;
   /** Cursor for pagination — return rows with id less than this value. */
   lastId?: number;
+  /** Only return feedbacks created at or after this date. */
+  since?: Date;
+  /** Only return feedbacks created strictly before this date. */
+  until?: Date;
+  /** Restrict to a single global agent (e.g. "dust"). */
+  agentConfigurationId?: string;
+  /** Restrict to thumbs up or thumbs down. */
+  thumbDirection?: AgentMessageFeedbackDirection;
+  /** Max rows to return. Defaults to (and is capped at) `MAX_PAGE_SIZE`. */
+  limit?: number;
 }
 
 interface ListGlobalAgentFeedbacksResult {
   feedbacks: GlobalAgentFeedbackItem[];
   hasMore: boolean;
+  /** Total rows matching the filters, ignoring the `lastId` cursor. */
+  totalCount: number;
 }
 
 export interface GetGlobalAgentFeedbacksResponseBody {
   feedbacks: GlobalAgentFeedbackItem[];
   hasMore: boolean;
+  totalCount: number;
 }
 
 /**
  * Aggregate global-agent feedback rows across all workspaces for the poke
- * super-admin review tool. Returns up to `PAGE_SIZE` rows, enriched with the
+ * super-admin review tool. Returns up to `limit` rows, enriched with the
  * workspace name, conversation sId, and message sId via batched lookups.
  */
 export async function listGlobalAgentFeedbacks({
   includeEmpty,
   lastId,
+  since,
+  until,
+  agentConfigurationId,
+  thumbDirection,
+  limit,
 }: ListGlobalAgentFeedbacksParams): Promise<ListGlobalAgentFeedbacksResult> {
+  const pageSize = Math.min(limit ?? MAX_PAGE_SIZE, MAX_PAGE_SIZE);
+
+  if (
+    agentConfigurationId !== undefined &&
+    !GLOBAL_AGENT_IDS.some((id) => id === agentConfigurationId)
+  ) {
+    return { feedbacks: [], hasMore: false, totalCount: 0 };
+  }
+
   const where: Record<string, unknown> = {
-    agentConfigurationId: { [Op.in]: GLOBAL_AGENT_IDS },
+    agentConfigurationId:
+      agentConfigurationId !== undefined
+        ? agentConfigurationId
+        : { [Op.in]: GLOBAL_AGENT_IDS },
   };
 
   if (!includeEmpty) {
     where.content = { [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: "" }] };
   }
+
+  if (thumbDirection !== undefined) {
+    where.thumbDirection = thumbDirection;
+  }
+
+  if (since !== undefined || until !== undefined) {
+    where.createdAt = {
+      ...(since !== undefined ? { [Op.gte]: since } : {}),
+      ...(until !== undefined ? { [Op.lt]: until } : {}),
+    };
+  }
+
+  // Counted across all workspaces for the poke super-admin review tool. The
+  // workspace isolation hook only guards find queries, so `count` takes no
+  // bypass flag.
+  const totalCount = await AgentMessageFeedbackModel.count({ where });
 
   if (lastId !== undefined && !isNaN(lastId)) {
     where.id = { [Op.lt]: lastId };
@@ -89,14 +135,14 @@ export async function listGlobalAgentFeedbacks({
       },
     ],
     order: [["id", "DESC"]],
-    limit: PAGE_SIZE + 1,
+    limit: pageSize + 1,
   });
 
-  const hasMore = feedbackRows.length > PAGE_SIZE;
-  const rows = feedbackRows.slice(0, PAGE_SIZE);
+  const hasMore = feedbackRows.length > pageSize;
+  const rows = feedbackRows.slice(0, pageSize);
 
   if (rows.length === 0) {
-    return { feedbacks: [], hasMore: false };
+    return { feedbacks: [], hasMore: false, totalCount };
   }
 
   // Batch-fetch workspace info.
@@ -147,5 +193,5 @@ export async function listGlobalAgentFeedbacks({
     };
   });
 
-  return { feedbacks, hasMore };
+  return { feedbacks, hasMore, totalCount };
 }
