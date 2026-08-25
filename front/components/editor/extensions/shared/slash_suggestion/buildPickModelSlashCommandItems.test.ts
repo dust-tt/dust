@@ -12,7 +12,7 @@ const Icon = () => null;
 function asSelectable(
   model: ModelConfigurationType
 ): EnabledModelConfigurationType {
-  return { ...model, isSelectable: true };
+  return { ...model, isSelectable: true, isKilled: false };
 }
 
 describe("buildPickModelSlashCommandItems", () => {
@@ -103,7 +103,7 @@ describe("buildPickModelSlashCommandItems", () => {
       lockPremiumEfforts: false,
       models: [
         asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG),
-        { ...AUTO_COMPLEX_MODEL_CONFIG, isSelectable: false },
+        { ...AUTO_COMPLEX_MODEL_CONFIG, isSelectable: false, isKilled: false },
       ],
       query: "",
       streams: null,

@@ -1,3 +1,4 @@
+import { getKilledModelIds } from "@app/lib/api/assistant/killed_models";
 import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
 import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
@@ -37,14 +38,16 @@ function isStaticModel(
 
 function restrictModelConfigToAllowedTiers(
   model: ModelConfigurationType,
-  allowedTierNamesSet: Set<ModelsTierName>
+  allowedTierNamesSet: Set<ModelsTierName>,
+  isKilled: boolean
 ): EnabledModelConfigurationType {
   if (!isStaticModel(model.modelId)) {
     // Models outside the tier table are models added dynamically (as we
     // have a type guard for all models), so it is expected that we allow them.
     return {
       ...model,
-      isSelectable: true,
+      isSelectable: !isKilled,
+      isKilled,
     };
   }
 
@@ -76,9 +79,12 @@ function restrictModelConfigToAllowedTiers(
     ...model,
     supportedReasoningEfforts,
     defaultReasoningEffort,
-    isSelectable: ORDERED_REASONING_EFFORTS.some(
-      (effort) => supportedReasoningEfforts[effort]
-    ),
+    isSelectable:
+      !isKilled &&
+      ORDERED_REASONING_EFFORTS.some(
+        (effort) => supportedReasoningEfforts[effort]
+      ),
+    isKilled,
   };
 }
 
@@ -93,12 +99,18 @@ export async function withModelSelectability(
     allowedTierNamesOverride?: ModelsTierName[] | null;
   }
 ): Promise<EnabledModelConfigurationType[]> {
+  const killedModelIds = getKilledModelIds();
+
   const allowedTierNames =
     allowedTierNamesOverride ?? (await resolveAllowedTierNames(auth)).tiers;
   const allowedTierNamesSet = new Set(allowedTierNames);
 
   return models.map((model) =>
-    restrictModelConfigToAllowedTiers(model, allowedTierNamesSet)
+    restrictModelConfigToAllowedTiers(
+      model,
+      allowedTierNamesSet,
+      killedModelIds.has(model.modelId)
+    )
   );
 }
 
@@ -143,6 +155,7 @@ export function getDefaultModelFromEnabledModels(
   return {
     ...pickPreferredLargeModel(selectableModels),
     isSelectable: true,
+    isKilled: false,
   };
 }
 
@@ -180,7 +193,7 @@ export function resolveStreamModel(
     models.filter((m) => m.isSelectable)
   );
   return {
-    model: { ...fallback, isSelectable: true },
+    model: { ...fallback, isSelectable: true, isKilled: false },
     reasoningEffort: fallback.defaultReasoningEffort,
     fromPool: false,
   };
