@@ -7,13 +7,14 @@ export function usePokeFeatureFlagUsage() {
   const { fetcher } = useFetcher();
   const featureFlagsFetcher: Fetcher<GetPokeFeatureFlagsResponseBody> = fetcher;
 
-  const { data, error } = useSWR(
+  const { data, error, mutate } = useSWR(
     "/api/poke/feature-flags",
     featureFlagsFetcher
   );
 
   return {
     featureFlags: data?.featureFlags ?? emptyArray(),
+    mutate,
     isLoading: !error && !data,
     isError: error,
   };

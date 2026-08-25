@@ -1,20 +1,36 @@
 import { FeatureFlagStageChip } from "@app/components/poke/features/stage_chip";
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { usePokeFeatureFlagUsage } from "@app/hooks/usePokeFeatureFlagUsage";
 import type { PokeFeatureFlagUsage } from "@app/lib/api/poke/feature_flags";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
+import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
+import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import {
   FEATURE_FLAG_STAGE_LABELS,
   FEATURE_FLAG_STAGES,
 } from "@app/types/shared/feature_flags";
-import { LinkWrapper } from "@dust-tt/sparkle";
+import { Button, LinkWrapper, Pencil01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 const LEGACY_STAGE_VALUE = "legacy";
 
-function makeColumns(): ColumnDef<PokeFeatureFlagUsage>[] {
+// The global plugin that sets a flag's rollout percentage, and the name of its flag argument.
+const TOGGLE_GLOBAL_FEATURE_FLAG_PLUGIN_ID = "toggle-global-feature-flag";
+const TOGGLE_GLOBAL_FEATURE_FLAG_ARG = "feature";
+
+const GLOBAL_PLUGIN_TARGET: PluginResourceTarget = { resourceType: "global" };
+
+interface MakeColumnsParams {
+  // `null` when the current user cannot run the plugin that changes the rollout percentage.
+  onEditGlobalRollout: ((flagName: string) => void) | null;
+}
+
+function makeColumns({
+  onEditGlobalRollout,
+}: MakeColumnsParams): ColumnDef<PokeFeatureFlagUsage>[] {
   return [
     {
       accessorKey: "name",
@@ -64,11 +80,27 @@ function makeColumns(): ColumnDef<PokeFeatureFlagUsage>[] {
         <PokeColumnSortableHeader column={column} label="Global rollout" />
       ),
       cell: ({ row }) => {
-        const { globalRolloutPercentage } = row.original;
-        if (globalRolloutPercentage === null) {
-          return <span className="text-muted-foreground">—</span>;
+        const { globalRolloutPercentage, name, stage } = row.original;
+        const label =
+          globalRolloutPercentage === null
+            ? "—"
+            : `${globalRolloutPercentage}%`;
+
+        // Legacy flags are not in the plugin's list of features, so there is nothing to open.
+        if (!onEditGlobalRollout || stage === null) {
+          return <span className="text-muted-foreground">{label}</span>;
         }
-        return <span className="font-medium">{globalRolloutPercentage}%</span>;
+
+        return (
+          <Button
+            variant="ghost"
+            size="xs"
+            icon={Pencil01}
+            label={label}
+            tooltip="Set the global rollout percentage"
+            onClick={() => onEditGlobalRollout(name)}
+          />
+        );
       },
     },
     {
@@ -88,9 +120,34 @@ function makeColumns(): ColumnDef<PokeFeatureFlagUsage>[] {
 export function FeatureFlagsPage() {
   usePokePageMetadata({ name: "Feature Flags" });
 
-  const { featureFlags, isLoading } = usePokeFeatureFlagUsage();
+  const { featureFlags, isLoading, mutate } = usePokeFeatureFlagUsage();
 
-  const columns = useMemo(() => makeColumns(), []);
+  const { plugins } = usePokeListPluginForResourceType({
+    pluginResourceTarget: GLOBAL_PLUGIN_TARGET,
+  });
+  const togglePlugin = plugins.find(
+    (plugin) => plugin.id === TOGGLE_GLOBAL_FEATURE_FLAG_PLUGIN_ID
+  );
+
+  const [flagBeingEdited, setFlagBeingEdited] = useState<string | null>(null);
+
+  const onEditGlobalRollout = useCallback(
+    (flagName: string) => setFlagBeingEdited(flagName),
+    []
+  );
+
+  const handlePluginDialogClose = useCallback(() => {
+    setFlagBeingEdited(null);
+    void mutate();
+  }, [mutate]);
+
+  const columns = useMemo(
+    () =>
+      makeColumns({
+        onEditGlobalRollout: togglePlugin ? onEditGlobalRollout : null,
+      }),
+    [onEditGlobalRollout, togglePlugin]
+  );
 
   // The table starts unsorted, so the most-used flags come first by default.
   const sortedFeatureFlags = useMemo(
@@ -127,6 +184,17 @@ export function FeatureFlagsPage() {
           },
         ]}
       />
+
+      {togglePlugin && flagBeingEdited && (
+        <RunPluginDialog
+          initialValues={{
+            [TOGGLE_GLOBAL_FEATURE_FLAG_ARG]: [flagBeingEdited],
+          }}
+          onClose={handlePluginDialogClose}
+          plugin={togglePlugin}
+          pluginResourceTarget={GLOBAL_PLUGIN_TARGET}
+        />
+      )}
     </div>
   );
 }
