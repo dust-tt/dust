@@ -87,19 +87,20 @@ class SpaceGroupReference {
     });
   }
 
-  // A `reader` grant is read-only (viewer) access. It is held by the workspace global group on open
-  // spaces (attached as a viewer), and additionally by the member group on open *regular* spaces
-  // (where every group only reads — write comes from the role grants). Presence of any reader grant
-  // therefore means the space is open; such groups never confer membership by themselves.
+  // A `reader` grant is read-only (viewer) access. It is held by the workspace global group, and
+  // only by it, on open spaces — regular and project alike — where it is attached as a viewer.
+  // Presence of any reader grant therefore means the space is open; such groups never confer
+  // membership by themselves.
   isReader(): boolean {
     return this.grantType === "reader";
   }
 }
 
 // Space membership resolved from the caller's governance grants (see `SpaceResource.isMember`). The
-// membership verb differs by space kind because the grants `spaceGroupRoles` writes differ:
-// - Regular spaces grant `read` to every member — open spaces via the global group's `reader`,
-//   restricted spaces via their own groups' `member` — so holding `read` marks membership.
+// membership verb differs by space kind:
+// - Regular spaces treat everyone who can read as a member: on an open space that is the whole
+//   workspace, through the global group's `reader`. Membership there is about visibility, and the
+//   member group's `write` is a capability on top of it.
 // - Project (pod) spaces attach the workspace global group as a `reader` viewer on unrestricted
 //   projects, so `read` would count every workspace member as a member. `write` is held only by a
 //   project's editor (`admin`) and member (`member`) groups, so it is what marks an actual member.
@@ -1748,9 +1749,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   // The groups that make up this space's membership: its member group and, for projects, its editor
   // group (regular_auto in manual mode, provisioned in group mode). Groups holding only a read-only
-  // (`reader`) grant are excluded — the workspace global group attached to open spaces as a viewer,
-  // and on open regular spaces the member group too, since an open space confers access to everyone
-  // rather than through a member group. Use this to list who actually belongs to the space.
+  // (`reader`) grant are excluded — that is the workspace global group attached to an open space as
+  // a viewer, which makes the space visible without making anyone a member. Use this to list who
+  // actually belongs to the space.
   async fetchMembershipGroups(
     auth: Authenticator,
     transaction?: Transaction
@@ -1967,11 +1968,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // A space is open when the workspace global group is one of its groups.
     const isOpen = associatedGroups.some((group) => group.isGlobal());
 
-    // Open regular space: every group only reads; write comes from the role grants.
+    // Open regular space: the workspace global group is attached as a viewer, so it must only read
+    // — conferring write would hand write on every open space to every workspace member. Every
+    // other group is a member group and reads and writes, exactly as on a restricted space; that is
+    // what makes a space's member list meaningful even when the space is open.
     if (this.isRegular() && isOpen) {
       return groups.map((group) => ({
         groupId: group.id,
-        grantType: "reader",
+        grantType: group.isGlobal() ? "reader" : "member",
       }));
     }
 

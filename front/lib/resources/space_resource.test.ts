@@ -2638,6 +2638,93 @@ describe("SpaceResource group_permissions enforcement", () => {
     expect(space.canWrite(memberAuth)).toBe(true);
   });
 
+  // An open regular space attaches the workspace global group as a `reader` viewer, so everyone can
+  // read it; its own member groups hold `member` and are the only source of write. These mirror the
+  // restricted case above, for both ways a space's members can be managed.
+  it("enforces the table: manual member of an open space can write, non-member can only read", async () => {
+    const space = await SpaceFactory.regular(workspace);
+    const openRes = await space.updatePermissions(adminAuth, {
+      name: space.name,
+      isRestricted: false,
+      managementMode: "manual",
+      memberIds: [memberUser.sId],
+      editorIds: [],
+    });
+    expect(openRes.isOk()).toBe(true);
+
+    const nonMemberUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, nonMemberUser, {
+      role: "user",
+    });
+
+    // Built after the grants exist so their snapshots include them.
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      memberUser.sId,
+      workspace.sId
+    );
+    const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      nonMemberUser.sId,
+      workspace.sId
+    );
+
+    // Refetched, not reused: `space` holds the grant snapshot from before the update.
+    const openSpace = await SpaceResource.fetchById(adminAuth, space.sId);
+    expect(openSpace).not.toBeNull();
+    expect(openSpace!.isOpen()).toBe(true);
+
+    // The member group confers write; the global group's `reader` grant only confers read.
+    expect(openSpace!.canRead(memberAuth)).toBe(true);
+    expect(openSpace!.canWrite(memberAuth)).toBe(true);
+
+    expect(openSpace!.canRead(nonMemberAuth)).toBe(true);
+    expect(openSpace!.canWrite(nonMemberAuth)).toBe(false);
+  });
+
+  it("enforces the table: provisioned group member of an open space can write", async () => {
+    const provisionedGroup = await GroupFactory.provisioned(
+      workspace,
+      "Provisioned Space Members"
+    );
+    await GroupFactory.withMembers(adminAuth, provisionedGroup, [memberUser]);
+
+    const space = await SpaceFactory.regular(workspace);
+    const openRes = await space.updatePermissions(adminAuth, {
+      name: space.name,
+      isRestricted: false,
+      managementMode: "group",
+      groupIds: [provisionedGroup.sId],
+      editorGroupIds: [],
+    });
+    expect(openRes.isOk()).toBe(true);
+
+    const nonMemberUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, nonMemberUser, {
+      role: "user",
+    });
+
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      memberUser.sId,
+      workspace.sId
+    );
+    const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      nonMemberUser.sId,
+      workspace.sId
+    );
+
+    // Refetched, not reused: `space` holds the grant snapshot from before the update.
+    const openSpace = await SpaceResource.fetchById(adminAuth, space.sId);
+    expect(openSpace).not.toBeNull();
+    expect(openSpace!.isOpen()).toBe(true);
+
+    // In group management mode the provisioned group is the space's member group, so it is what
+    // carries write.
+    expect(openSpace!.canRead(memberAuth)).toBe(true);
+    expect(openSpace!.canWrite(memberAuth)).toBe(true);
+
+    expect(openSpace!.canRead(nonMemberAuth)).toBe(true);
+    expect(openSpace!.canWrite(nonMemberAuth)).toBe(false);
+  });
+
   it("enforces the table: member is denied when the space has no grants", async () => {
     // Member is in the space's inline group, but with the table cleared access is served from the
     // (empty) table — denied.

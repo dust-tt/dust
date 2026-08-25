@@ -684,14 +684,6 @@ export async function createSpaceAndGroup(
       );
     }
 
-    // Trim the name to prevent issues with leading/trailing whitespace
-    if (spaceKind === "regular" && !isRestricted) {
-      assert(
-        managementMode === "manual",
-        "Unrestricted regular spaces must use manual management mode."
-      );
-    }
-
     const nameAvailable = await SpaceResource.isNameAvailable(auth, name, t);
     if (!nameAvailable) {
       return new Err(
