@@ -600,6 +600,7 @@ export const OAuthProviderSchema = FlexibleEnumSchema<
   | "ukg_ready"
   | "vanta"
   | "productboard"
+  | "shopify"
 >();
 
 export const AuthRequiredOutputResourceSchema = z.object({
