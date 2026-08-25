@@ -1070,9 +1070,7 @@ export function UsagePage() {
   const selectionBanner = (
     <MembersSelectionBanner
       selectedCount={selection.selectedCount}
-      pageCount={membersUsage.length}
       totalCount={totalMembersUsage}
-      isAllAcrossPagesSelected={selection.isAllAcrossPagesSelected}
       hasMorePagesToSelect={selection.hasMorePagesToSelect}
       onSelectAllAcrossPages={selection.selectAllAcrossPages}
       onClear={selection.clearSelection}
@@ -1389,8 +1387,8 @@ export function UsagePage() {
                 <div className="flex flex-col gap-2 pt-2">
                   {membersTab === "members" ? (
                     <>
-                      {selectionBanner}
                       {membersTable}
+                      {selectionBanner}
                     </>
                   ) : (
                     <UpgradeRequestsTable

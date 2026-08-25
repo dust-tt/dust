@@ -1,5 +1,5 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { TableSelectionBanner } from "@app/components/shared/TableSelectionBanner";
+import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
 import { AutomationsFilterPanel } from "@app/components/workspace/analytics/automations/AutomationsFilterPanel";
 import { AutomationsFilterSummary } from "@app/components/workspace/analytics/automations/AutomationsFilterSummary";
 import type { TriggerRowData as BaseTriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
@@ -44,7 +44,7 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  ContentMessageAction,
+  Button,
   createSelectionColumn,
   DataTable,
   Pagination,
@@ -484,71 +484,72 @@ export function AutomationsTriggersTable({
   );
 
   return (
-    <div className="rounded-lg border border-border bg-panel-background p-4">
-      <div className="mb-4 flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <SearchInput
-            name="automations-triggers-search"
-            placeholder="Search…"
-            value={inputValue}
-            onChange={setValue}
-            className="flex-1"
-          />
-          <AutomationsFilterPanel
-            owner={owner}
-            period={period}
+    <>
+      <div className="rounded-lg border border-border bg-panel-background p-4">
+        <div className="mb-4 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <SearchInput
+              name="automations-triggers-search"
+              placeholder="Search…"
+              value={inputValue}
+              onChange={setValue}
+              className="flex-1"
+            />
+            <AutomationsFilterPanel
+              owner={owner}
+              period={period}
+              filter={filter}
+              onFilterChange={onFilterChange}
+            />
+            <CsvDownloadButton {...csvDownload} size="sm" />
+          </div>
+          <AutomationsFilterSummary
             filter={filter}
             onFilterChange={onFilterChange}
           />
-          <CsvDownloadButton {...csvDownload} size="sm" />
         </div>
-        <AutomationsFilterSummary
-          filter={filter}
-          onFilterChange={onFilterChange}
+        <TriggersTableBody
+          isLoading={isTriggersLoading}
+          isError={!!isTriggersError}
+          search={debouncedValue}
+          rows={rows}
+          totalCount={totalCount}
+          medianRunCount={medianRunCount}
+          medianCostPerRun={medianCostPerRun}
+          pagination={pagination}
+          setPagination={setPagination}
+          workspaceId={workspaceId}
+          period={period}
+          expandedRowId={expandedRowId}
+          showSelectionColumn={canBulkSetPool}
+          rowSelection={selection.rowSelection}
+          onRowSelectionChange={selection.onRowSelectionChange}
         />
-        {canBulkSetPool && (
-          <TableSelectionBanner
-            selectedCount={selection.selectedCount}
-            pageCount={pageTriggerIds.length}
-            totalCount={totalCount}
-            itemLabel="automation"
-            isAllAcrossPagesSelected={selection.isAllAcrossPagesSelected}
-            hasMorePagesToSelect={selection.hasMorePagesToSelect}
-            onSelectAllAcrossPages={selection.selectAllAcrossPages}
-            onClear={selection.clearSelection}
-          >
-            <ContentMessageAction
-              variant="primary"
-              label="Set pool"
-              onClick={() => setIsBulkPoolOpen(true)}
-            />
-          </TableSelectionBanner>
-        )}
+        <BulkTriggerPoolModal
+          isOpen={isBulkPoolOpen}
+          onClose={() => setIsBulkPoolOpen(false)}
+          triggerCount={selection.selectedCount}
+          onValidate={handleBulkExecutionMode}
+        />
       </div>
-      <TriggersTableBody
-        isLoading={isTriggersLoading}
-        isError={!!isTriggersError}
-        search={debouncedValue}
-        rows={rows}
-        totalCount={totalCount}
-        medianRunCount={medianRunCount}
-        medianCostPerRun={medianCostPerRun}
-        pagination={pagination}
-        setPagination={setPagination}
-        workspaceId={workspaceId}
-        period={period}
-        expandedRowId={expandedRowId}
-        showSelectionColumn={canBulkSetPool}
-        rowSelection={selection.rowSelection}
-        onRowSelectionChange={selection.onRowSelectionChange}
-      />
-      <BulkTriggerPoolModal
-        isOpen={isBulkPoolOpen}
-        onClose={() => setIsBulkPoolOpen(false)}
-        triggerCount={selection.selectedCount}
-        onValidate={handleBulkExecutionMode}
-      />
-    </div>
+      {canBulkSetPool && (
+        <BulkSelectionBar
+          selectedCount={selection.selectedCount}
+          totalCount={totalCount}
+          itemLabel="automation"
+          canSelectAll={selection.hasMorePagesToSelect}
+          onSelectAll={selection.selectAllAcrossPages}
+          onClear={selection.clearSelection}
+        >
+          <Button
+            size="sm"
+            variant="primary"
+            label="Set pool"
+            onClick={() => setIsBulkPoolOpen(true)}
+          />
+        </BulkSelectionBar>
+      )}
+    </>
   );
 }
 

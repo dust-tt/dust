@@ -87,7 +87,7 @@ const ASSISTANTS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
     agentTagsAsString: "",
     canArchive: false,
     canEdit: false,
-  })
+  }),
 );
 
 function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
@@ -108,7 +108,7 @@ function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
                 <LoadingBlock
                   className={classNames(
                     "h-3 max-w-full",
-                    ["w-32", "w-40", "w-28", "w-36", "w-44"][rowIndex]
+                    ["w-32", "w-40", "w-28", "w-36", "w-44"][rowIndex],
                   )}
                 />
               </div>
@@ -116,7 +116,7 @@ function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
                 <LoadingBlock
                   className={classNames(
                     "h-3 max-w-full",
-                    ["w-56", "w-64", "w-48", "w-60", "w-52"][rowIndex]
+                    ["w-56", "w-64", "w-48", "w-60", "w-52"][rowIndex],
                   )}
                 />
               </div>
@@ -132,7 +132,7 @@ function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
             <LoadingBlock
               className={classNames(
                 "ml-2 hidden h-3 @xl:block",
-                ["w-20", "w-24", "w-16", "w-28", "w-20"][rowIndex]
+                ["w-20", "w-24", "w-16", "w-28", "w-20"][rowIndex],
               )}
             />
           </div>
@@ -144,7 +144,7 @@ function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
           <LoadingBlock
             className={classNames(
               "h-6 rounded-[9px]",
-              ["w-20", "w-24", "w-20", "w-24", "w-20"][rowIndex]
+              ["w-20", "w-24", "w-20", "w-24", "w-20"][rowIndex],
             )}
           />
         </DataTable.CellContent>
@@ -168,7 +168,7 @@ function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
           <LoadingBlock
             className={classNames(
               "h-3 max-w-full",
-              ["w-14", "w-20", "w-12", "w-24", "w-16"][rowIndex]
+              ["w-14", "w-20", "w-12", "w-24", "w-16"][rowIndex],
             )}
           />
         </DataTable.CellContent>
@@ -180,7 +180,7 @@ function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
           <LoadingBlock
             className={classNames(
               "h-3",
-              ["w-7", "w-9", "w-6", "w-8", "w-10"][rowIndex]
+              ["w-7", "w-9", "w-6", "w-8", "w-10"][rowIndex],
             )}
           />
         </DataTable.CellContent>
@@ -191,7 +191,7 @@ function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
           <LoadingBlock
             className={classNames(
               "h-3",
-              ["w-14", "w-16", "w-20", "w-16", "w-14"][rowIndex]
+              ["w-14", "w-16", "w-20", "w-16", "w-14"][rowIndex],
             )}
           />
         </DataTable.CellContent>
@@ -235,7 +235,7 @@ const getTableColumns = ({
       header: (info: HeaderContext<RowData, boolean>) => {
         const areAllPageRowsSelected = info.table.getIsAllPageRowsSelected();
         const hasSelection = Object.values(
-          info.table.getState().rowSelection
+          info.table.getState().rowSelection,
         ).some((isSelected) => isSelected);
 
         return (
@@ -528,7 +528,7 @@ type AssistantsTableProps = {
   agents: LightAgentConfigurationType[];
   setDetailedAgentId: (sId: string) => void;
   handleToggleAgentStatus: (
-    agent: LightAgentConfigurationType
+    agent: LightAgentConfigurationType,
   ) => Promise<void>;
   showDisabledFreeWorkspacePopup: string | null;
   setShowDisabledFreeWorkspacePopup: (s: string | null) => void;
@@ -560,7 +560,7 @@ export function AssistantsTable({
         tags: sortedTags,
         mutateAgentConfigurations,
       }),
-    [owner, sortedTags]
+    [owner, sortedTags],
   );
   const skeletonColumns = useMemo(
     () =>
@@ -569,7 +569,7 @@ export function AssistantsTable({
         cell: (info: CellContext<RowData, unknown>) =>
           renderAssistantsTableSkeletonCell(info.column.id, info.row.index),
       })),
-    [columns]
+    [columns],
   );
 
   const { isDark } = useTheme();
@@ -594,7 +594,7 @@ export function AssistantsTable({
   // selecting an agent does not change the rows, which would reset pagination.
   const rowSelection = useMemo(
     () => Object.fromEntries(selection.map((agentId) => [agentId, true])),
-    [selection]
+    [selection],
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -665,7 +665,7 @@ export function AssistantsTable({
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
-                        getAgentBuilderRoute(owner.sId, agentConfiguration.sId)
+                        getAgentBuilderRoute(owner.sId, agentConfiguration.sId),
                       );
                     },
                     kind: "item" as const,
@@ -678,7 +678,7 @@ export function AssistantsTable({
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void navigator.clipboard.writeText(
-                        agentConfiguration.sId
+                        agentConfiguration.sId,
                       );
                     },
                     kind: "item" as const,
@@ -705,8 +705,8 @@ export function AssistantsTable({
                         getAgentBuilderRoute(
                           owner.sId,
                           "new",
-                          `duplicate=${agentConfiguration.sId}`
-                        )
+                          `duplicate=${agentConfiguration.sId}`,
+                        ),
                       );
                     },
                     kind: "item" as const,
@@ -738,14 +738,14 @@ export function AssistantsTable({
       showDisabledFreeWorkspacePopup,
       isDark,
       canCreateAgent,
-    ]
+    ],
   );
 
   const selectionSet = useMemo(() => new Set(selection), [selection]);
 
   const selectableRowIds = useMemo(
     () => rows.filter((row) => row.canArchive).map((row) => row.sId),
-    [rows]
+    [rows],
   );
   const totalSelectableCount = selectableRowIds.length;
 
@@ -753,18 +753,7 @@ export function AssistantsTable({
   // checkbox), so no extra filtering is needed here.
   const selectedAgents = useMemo(
     () => agents.filter((a) => selectionSet.has(a.sId)),
-    [agents, selectionSet]
-  );
-
-  const pageRows = useMemo(() => {
-    const start = pagination.pageIndex * pagination.pageSize;
-    return rows.slice(start, start + pagination.pageSize);
-  }, [rows, pagination]);
-  const pageSelectedCount = useMemo(
-    () =>
-      pageRows.filter((row) => row.canArchive && selectionSet.has(row.sId))
-        .length,
-    [pageRows, selectionSet]
+    [agents, selectionSet],
   );
 
   return (
@@ -779,16 +768,6 @@ export function AssistantsTable({
             agentConfiguration,
           }));
         }}
-      />
-      <AgentEditBar
-        owner={owner}
-        selectedAgents={selectedAgents}
-        tags={sortedTags}
-        mutateAgentConfigurations={mutateAgentConfigurations}
-        pageSelectedCount={pageSelectedCount}
-        totalCount={totalSelectableCount}
-        onClear={() => setSelection([])}
-        onSelectAll={() => setSelection(selectableRowIds)}
       />
       <div
         role={isLoading ? "status" : undefined}
@@ -827,14 +806,23 @@ export function AssistantsTable({
               setRowSelection={(newRowSelection) => {
                 setSelection(
                   Object.keys(newRowSelection).filter(
-                    (agentId) => newRowSelection[agentId]
-                  )
+                    (agentId) => newRowSelection[agentId],
+                  ),
                 );
               }}
             />
           )
         )}
       </div>
+      <AgentEditBar
+        owner={owner}
+        selectedAgents={selectedAgents}
+        tags={sortedTags}
+        mutateAgentConfigurations={mutateAgentConfigurations}
+        totalCount={totalSelectableCount}
+        onClear={() => setSelection([])}
+        onSelectAll={() => setSelection(selectableRowIds)}
+      />
     </>
   );
 }

@@ -104,8 +104,6 @@ export function useTableRowsSelection({
     rowSelection,
     onRowSelectionChange,
     selectedCount,
-    isAllOnPageSelected,
-    isAllAcrossPagesSelected,
     hasMorePagesToSelect,
     selectAllAcrossPages,
     clearSelection,
