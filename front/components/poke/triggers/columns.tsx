@@ -15,7 +15,7 @@ function ConsumptionCell({ trigger }: { trigger: AutomationTriggerRow }) {
   const estimatesLabel = `Est. ${runCount.toLocaleString("en-US")} ${runUnit} · ${creditsPerRun}`;
 
   return (
-    <div className="flex min-h-10 w-52 flex-col justify-center overflow-hidden whitespace-nowrap tabular-nums">
+    <div className="flex min-h-10 w-52 flex-col justify-center overflow-hidden whitespace-nowrap">
       <span
         className="w-full truncate text-sm font-medium"
         title={creditsLabel}
