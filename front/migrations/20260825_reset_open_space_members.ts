@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -10,6 +10,7 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Op } from "sequelize";
 
 // Empties the member group of every open regular space, so open spaces start from a clean slate now
 // that their members confer write (see `spaceGroupRoles`).
@@ -32,7 +33,23 @@ async function resetWorkspaceOpenSpaceMembers(
   // workspace global group as a `reader` viewer. Soft-deleted spaces are left out (default scope).
   const spaces = await SpaceResource.listWorkspaceSpaces(auth);
   const openRegularSpaces = spaces.filter((space) => space.isRegularAndOpen());
+  // Counts for every stage, logged once at the end: a run that removes nothing has to say which
+  // stage came up empty, or a no-op is indistinguishable from a bug.
+  const counts = {
+    spaces: spaces.length,
+    openRegularSpaces: openRegularSpaces.length,
+    memberGroups: 0,
+    groupMembers: 0,
+    removed: 0,
+  };
+  const report = () =>
+    logger.info(
+      { workspaceId: workspace.sId, execute, ...counts },
+      "Open regular space member reset"
+    );
+
   if (openRegularSpaces.length === 0) {
+    report();
     return;
   }
 
@@ -51,7 +68,9 @@ async function resetWorkspaceOpenSpaceMembers(
       groupKinds: ["regular_auto"],
     }
   );
+  counts.memberGroups = memberGroups.length;
   if (memberGroups.length === 0) {
+    report();
     return;
   }
 
@@ -66,34 +85,21 @@ async function resetWorkspaceOpenSpaceMembers(
   const allUserModelIds = [
     ...new Set(Object.values(userModelIdsByGroupModelId).flat()),
   ];
+  counts.groupMembers = allUserModelIds.length;
   if (allUserModelIds.length === 0) {
+    report();
     return;
   }
+  // Resolved for the audit log only. Membership is deliberately not a precondition: a group
+  // membership outlives the workspace membership it came with, and those rows are exactly the ones
+  // worth clearing — the user regains the group, and with it write on the space, if they rejoin.
   const users = await UserResource.fetchByModelIds(allUserModelIds);
+  const usersByModelId = new Map(users.map((user) => [user.id, user]));
 
-  // `dangerouslyRemoveMembers` rejects the whole batch if any user is no longer an active member of
-  // the workspace, and a group membership outlives the workspace membership it came with. Drop
-  // those users here: without an active workspace membership their groups do not resolve, so they
-  // hold no access to strip anyway.
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    users,
-    workspace,
-  });
-  const activeUserModelIds = new Set(memberships.map((m) => m.userId));
-  const usersByModelId = new Map(
-    users
-      .filter((user) => activeUserModelIds.has(user.id))
-      .map((user) => [user.id, user])
-  );
-
-  let removed = 0;
+  const now = new Date();
   for (const group of memberGroups) {
-    const members = removeNulls(
-      (userModelIdsByGroupModelId[group.id] ?? []).map(
-        (userModelId) => usersByModelId.get(userModelId) ?? null
-      )
-    );
-    if (members.length === 0) {
+    const userModelIds = userModelIdsByGroupModelId[group.id] ?? [];
+    if (userModelIds.length === 0) {
       continue;
     }
 
@@ -102,41 +108,45 @@ async function resetWorkspaceOpenSpaceMembers(
       workspaceId: workspace.sId,
       spaceId: space?.sId,
       groupId: group.sId,
-      userIds: members.map((user) => user.sId),
+      userIds: removeNulls(
+        userModelIds.map((id) => usersByModelId.get(id)?.sId ?? null)
+      ),
     };
 
     if (!execute) {
       logger.info(context, "Dry run: would remove members of an open space");
-      removed += members.length;
+      counts.removed += userModelIds.length;
       continue;
     }
 
-    const res = await group.dangerouslyRemoveMembers(auth, {
-      users: members.map((user) => user.toJSON()),
-    });
-    if (res.isErr()) {
-      logger.error(
-        { ...context, error: res.error },
-        "Failed to remove members of an open space"
-      );
-      continue;
+    // `GroupResource.dangerouslyRemoveMembers` would refuse the whole batch as soon as one user has
+    // left the workspace, so the rows are ended here the same way it ends them, followed by the
+    // per-user group cache invalidation it would have done.
+    await GroupMembershipModel.update(
+      { endAt: now },
+      {
+        where: {
+          groupId: group.id,
+          userId: userModelIds,
+          workspaceId: workspace.id,
+          status: "active",
+          startAt: { [Op.lte]: now },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+        },
+      }
+    );
+    for (const userModelId of userModelIds) {
+      await GroupResource.invalidateGroupIdsCacheForUser({
+        user: { id: userModelId },
+        workspace: { id: workspace.id },
+      });
     }
 
     logger.info(context, "Removed members of an open space");
-    removed += members.length;
+    counts.removed += userModelIds.length;
   }
 
-  if (removed > 0) {
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        openRegularSpaces: openRegularSpaces.length,
-        removed,
-        execute,
-      },
-      "Reset open regular space members"
-    );
-  }
+  report();
 }
 
 makeScript(
