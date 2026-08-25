@@ -24,7 +24,6 @@ export type CardVariantType = (typeof CARD_VARIANTS)[number];
 export const CARD_SIZES = ["xs", "sm", "md", "lg"] as const;
 export type CardSizeType = (typeof CARD_SIZES)[number];
 
-/** Elevated-surface shadow (drop + inner highlight) shared by Card's elevated variants. */
 export const CARD_SHADOW = cn(
   "shadow-[0px_0.5px_1px_0px_rgba(0,0,0,0.04),inset_2px_-2px_7px_0px_rgba(0,0,0,0.01),inset_0px_4px_4px_0px_rgba(255,255,255,0.08)]",
   "dark:shadow-none"
