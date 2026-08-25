@@ -436,11 +436,13 @@ export function UserMenu({
                 icon={Clock}
                 onSelect={() => setAutomationsOpen(true)}
               />
-              <DropdownMenuItem
-                label="Analytics"
-                icon={BarChart01}
-                onSelect={() => setAnalyticsOpen(true)}
-              />
+              {!creditUsageState && (
+                <DropdownMenuItem
+                  label="Analytics"
+                  icon={BarChart01}
+                  onSelect={() => setAnalyticsOpen(true)}
+                />
+              )}
             </>
           )}
 

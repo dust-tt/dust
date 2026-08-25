@@ -33,7 +33,9 @@ describe("CreditUsage", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Learn more" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Understand your usage" })
+    );
 
     expect(onLearnMore).toHaveBeenCalledOnce();
   });

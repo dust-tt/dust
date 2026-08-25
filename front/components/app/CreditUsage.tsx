@@ -48,7 +48,7 @@ export function CreditUsage({ state, variant, onLearnMore }: CreditUsageProps) {
         <div className="flex flex-col gap-2">
           <span>{resetLabel}</span>
           <Button
-            label="Learn more"
+            label="Understand your usage"
             variant="outline"
             size="sm"
             className="w-full"
