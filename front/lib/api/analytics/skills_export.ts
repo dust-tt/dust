@@ -1,5 +1,9 @@
-import { fetchUsedSkills } from "@app/lib/api/assistant/observability/skill_usage";
-import { formatDateFromMillis } from "@app/lib/api/elasticsearch";
+import { CONSUMPTION_DIMENSION_FIELDS } from "@app/lib/api/analytics/consumption/scope";
+import {
+  bucketsToArray,
+  formatDateFromMillis,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
@@ -8,6 +12,51 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
+
+type UsedSkillBucket = {
+  key: string;
+  doc_count: number;
+};
+
+type UsedSkillsAggs = {
+  by_skill_id?: estypes.AggregationsMultiBucketAggregateBase<UsedSkillBucket>;
+};
+
+// Upper bound on the number of distinct skills a workspace can have used in
+// the period; large enough that no real workspace hits it.
+const MAX_USED_SKILL_IDS = 1_000;
+
+// Skill attribution is a flat, multi-valued field on the consumption index
+// (unlike the old index's nested `skills_used` array), so a plain terms
+// aggregation is enough to list which skills saw any activity in the period.
+async function fetchUsedConsumptionSkillIds(
+  baseQuery: estypes.QueryDslQueryContainer
+): Promise<Result<string[], Error>> {
+  const result = await searchConsumptionAnalytics<never, UsedSkillsAggs>(
+    baseQuery,
+    {
+      aggregations: {
+        by_skill_id: {
+          terms: {
+            field: CONSUMPTION_DIMENSION_FIELDS.skill,
+            size: MAX_USED_SKILL_IDS,
+          },
+        },
+      },
+      size: 0,
+    }
+  );
+
+  if (result.isErr()) {
+    return new Err(new Error(result.error.message));
+  }
+
+  const buckets = bucketsToArray<UsedSkillBucket>(
+    result.value.aggregations?.by_skill_id?.buckets
+  );
+
+  return new Ok(buckets.map((b) => String(b.key)));
+}
 
 export const SKILL_EXPORT_HEADERS = [
   "skillId",
@@ -36,7 +85,7 @@ export async function fetchSkillExportRows(
     withFileAttachments: false,
   });
 
-  const usedSkillsResult = await fetchUsedSkills(baseQuery);
+  const usedSkillsResult = await fetchUsedConsumptionSkillIds(baseQuery);
   if (usedSkillsResult.isErr()) {
     return new Err(usedSkillsResult.error);
   }

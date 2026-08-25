@@ -214,7 +214,7 @@ export async function exportTable({
     case "users":
       return exportUsers({ auth, startDate, endDate, timezone, owner });
     case "skills":
-      return exportSkills({ auth, startDate, endDate, timezone, owner });
+      return exportSkills({ auth, startDate, endDate, timezone });
     case "skill_usage":
       return exportSkillUsage({ startDate, endDate, timezone, owner });
     case "tool_usage":
@@ -485,16 +485,13 @@ async function exportSkills({
   startDate,
   endDate,
   timezone,
-  owner,
 }: {
   auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
-  owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
+  const baseQuery = buildExportConsumptionScopeQuery(auth, {
     startDate,
     endDate,
   });
