@@ -11,14 +11,11 @@ import { getToolNamePrefix } from "@app/lib/actions/tool_name_utils";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { TOOLSETS_TOOLS_METADATA } from "@app/lib/api/actions/servers/toolsets/metadata";
-import apiConfig from "@app/lib/api/config";
-import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
-import { getHeaderFromUserEmail } from "@app/types/user";
-import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 
 const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
@@ -30,31 +27,28 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
         .filter(isServerSideMCPServerConfiguration)
         .map((action) => action.mcpServerViewId);
 
-    const owner = auth.getNonNullableWorkspace();
-    const user = auth.user();
-    const prodCredentials = await prodAPICredentialsForOwner(owner, {
-      useLocalInDev: true,
-    });
-    const config = apiConfig.getDustAPIConfig();
-    const api = new DustAPI(
-      config,
-      {
-        ...prodCredentials,
-        extraHeaders: {
-          ...getHeaderFromUserEmail(user?.email),
-          ...getApiKeyNameHeader(auth),
-        },
-      },
-      logger,
-      config.nodeEnv === "development" ? "http://localhost:3000" : null
-    );
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    const r = await api.getMCPServerViews(globalSpace.sId, true);
-    if (r.isErr()) {
-      throw new Error(r.error.message);
-    }
-
-    const mcpServerViews = r.value
+    const mcpServerViews = (
+      await MCPServerViewResource.listBySpaceEnsuringAutoViews(
+        auth,
+        globalSpace,
+        {
+          includeHeavyAttributes: [
+            "authorization",
+            "cachedTools",
+            "customHeaders",
+            "lastError",
+            "sharedSecret",
+          ],
+        }
+      )
+    )
+      .map((mcpServerView) => mcpServerView.toJSON())
+      .filter(
+        (mcpServerView) =>
+          mcpServerView.server.availability === "manual" ||
+          mcpServerView.server.availability === "auto"
+      )
       .filter(
         (mcpServerView) =>
           !mcpServerViewIdsFromAgentConfiguration.includes(mcpServerView.sId)
@@ -84,40 +78,20 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
 
     const conversationId = runContext.conversation.sId;
 
-    const owner = auth.getNonNullableWorkspace();
-    const user = auth.user();
-    if (!user) {
+    if (!auth.user()) {
       return new Err(new MCPError("User not found", { tracked: false }));
     }
 
-    const prodCredentials = await prodAPICredentialsForOwner(owner, {
-      useLocalInDev: true,
-    });
-    const config = apiConfig.getDustAPIConfig();
-
-    const api = new DustAPI(
-      config,
-      {
-        ...prodCredentials,
-        extraHeaders: {
-          ...getHeaderFromUserEmail(user.email),
-          ...getApiKeyNameHeader(auth),
-        },
-      },
-      logger,
-      config.nodeEnv === "development" ? "http://localhost:3000" : null
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    const mcpServerView = await MCPServerViewResource.fetchById(
+      auth,
+      toolsetId
     );
 
-    const agentConfigurationId = runContext.agentConfiguration.sId;
-
-    const res = await api.postConversationTools({
-      conversationId,
-      action: "add",
-      mcpServerViewId: toolsetId,
-      agentConfigurationId,
-    });
-
-    if (res.isErr() || !res.value.success) {
+    if (!conversation || !mcpServerView || mcpServerView.isRestrictedToSkills) {
       return new Err(
         new MCPError(`Failed to enable toolset`, {
           tracked: false,
@@ -125,13 +99,25 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
       );
     }
 
-    const enabledView = await MCPServerViewResource.fetchById(auth, toolsetId);
+    const res = await ConversationResource.upsertMCPServerViews(auth, {
+      conversation,
+      mcpServerViews: [mcpServerView],
+      enabled: true,
+      source: "agent_enabled",
+      agentConfigurationId: runContext.agentConfiguration.sId,
+    });
 
-    const prefixHint = enabledView
-      ? ` Their names share the \`${getToolNamePrefix(
-          enabledView.name ?? enabledView.getServerDisplayMetadata().name
-        )}${TOOL_NAME_SEPARATOR}\` prefix.`
-      : "";
+    if (res.isErr()) {
+      return new Err(
+        new MCPError(`Failed to enable toolset`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const prefixHint = ` Their names share the \`${getToolNamePrefix(
+      mcpServerView.name ?? mcpServerView.getServerDisplayMetadata().name
+    )}${TOOL_NAME_SEPARATOR}\` prefix.`;
 
     // The newly enabled tools are not necessarily surfaced directly in the model's context (can
     // be deferred behind tool search), so nudge it to look them up instead of guessing which
