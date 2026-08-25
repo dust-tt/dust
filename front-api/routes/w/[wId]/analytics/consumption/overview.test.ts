@@ -25,7 +25,6 @@ const OVERVIEW: GetConsumptionOverviewResponse = {
   lastRecordAt: "2026-07-12T23:58:00.000Z",
   totalCredits: 7248,
   topAgent: { agentId: "agent1", name: "dust", credits: 2246 },
-  topUser: { userId: "user1", name: "Aubin", credits: 1800 },
   creditUsage: {
     capCredits: 20000,
     status: {

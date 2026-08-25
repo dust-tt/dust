@@ -32,12 +32,6 @@ export type ConsumptionOverviewTopAgent = {
   credits: number;
 };
 
-export type ConsumptionOverviewTopUser = {
-  userId: string;
-  name: string;
-  credits: number;
-};
-
 export type ConsumptionOverviewCreditUsage = {
   capCredits: number;
   status: CreditUsageStatus;
@@ -52,25 +46,23 @@ export type ConsumptionOverview = {
   lastRecordAt: string | null;
   totalCredits: number;
   topAgent: ConsumptionOverviewTopAgent | null;
-  topUser: ConsumptionOverviewTopUser | null;
   creditUsage: ConsumptionOverviewCreditUsage | null;
 };
 
 export type GetConsumptionOverviewResponse = ConsumptionOverview;
 
-const CREDIT_AGG = "credit_micro";
+const AGENT_CREDIT_AGG = "credit_micro";
 
-type TopDimensionBucket = {
+type TopAgentBucket = {
   key: string;
-  [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
+  [AGENT_CREDIT_AGG]?: estypes.AggregationsSumAggregate;
 };
 
 type OverviewAggs = {
   active_members?: estypes.AggregationsCardinalityAggregate;
   last_completed_at?: estypes.AggregationsMaxAggregate;
   total_credit_micro?: estypes.AggregationsSumAggregate;
-  top_agent?: estypes.AggregationsMultiBucketAggregateBase<TopDimensionBucket>;
-  top_user?: estypes.AggregationsMultiBucketAggregateBase<TopDimensionBucket>;
+  top_agent?: estypes.AggregationsMultiBucketAggregateBase<TopAgentBucket>;
 };
 
 function lastRecordAtFromAgg(
@@ -128,11 +120,9 @@ function buildCreditUsage({
 
 async function topAgentFromAgg(
   auth: Authenticator,
-  agg:
-    | estypes.AggregationsMultiBucketAggregateBase<TopDimensionBucket>
-    | undefined
+  agg: estypes.AggregationsMultiBucketAggregateBase<TopAgentBucket> | undefined
 ): Promise<ConsumptionOverviewTopAgent | null> {
-  const [bucket] = bucketsToArray<TopDimensionBucket>(agg?.buckets);
+  const [bucket] = bucketsToArray<TopAgentBucket>(agg?.buckets);
   if (!bucket) {
     return null;
   }
@@ -143,28 +133,7 @@ async function topAgentFromAgg(
   return {
     agentId,
     name: labels.get(agentId)?.name ?? agentId,
-    credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
-  };
-}
-
-async function topUserFromAgg(
-  auth: Authenticator,
-  agg:
-    | estypes.AggregationsMultiBucketAggregateBase<TopDimensionBucket>
-    | undefined
-): Promise<ConsumptionOverviewTopUser | null> {
-  const [bucket] = bucketsToArray<TopDimensionBucket>(agg?.buckets);
-  if (!bucket) {
-    return null;
-  }
-
-  const userId = String(bucket.key);
-  const labels = await resolveDimensionLabels(auth, "user", [userId]);
-
-  return {
-    userId,
-    name: labels.get(userId)?.name ?? userId,
-    credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
+    credits: microCreditsToCredits(bucket[AGENT_CREDIT_AGG]?.value ?? 0),
   };
 }
 
@@ -200,20 +169,10 @@ export async function fetchConsumptionOverview(
           terms: {
             field: CONSUMPTION_DIMENSION_FIELDS.agent,
             size: 1,
-            order: { [CREDIT_AGG]: "desc" },
+            order: { [AGENT_CREDIT_AGG]: "desc" },
           },
           aggs: {
-            [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
-          },
-        },
-        top_user: {
-          terms: {
-            field: CONSUMPTION_DIMENSION_FIELDS.user,
-            size: 1,
-            order: { [CREDIT_AGG]: "desc" },
-          },
-          aggs: {
-            [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
+            [AGENT_CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
           },
         },
       },
@@ -236,10 +195,6 @@ export async function fetchConsumptionOverview(
     aggregations?.total_credit_micro?.value ?? 0
   );
   const activeMembers = Math.round(aggregations?.active_members?.value ?? 0);
-  const [topAgent, topUser] = await Promise.all([
-    topAgentFromAgg(auth, aggregations?.top_agent),
-    topUserFromAgg(auth, aggregations?.top_user),
-  ]);
 
   return new Ok({
     period,
@@ -249,8 +204,7 @@ export async function fetchConsumptionOverview(
     },
     lastRecordAt: lastRecordAtFromAgg(aggregations?.last_completed_at),
     totalCredits,
-    topAgent,
-    topUser,
+    topAgent: await topAgentFromAgg(auth, aggregations?.top_agent),
     creditUsage: buildCreditUsage({
       capCredits,
       period,
