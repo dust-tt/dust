@@ -529,6 +529,19 @@ export async function* rawOutputToEvents(
           ),
         ];
         break;
+      case "response.reasoning_summary_part.added":
+        // Completed reasoning items join summary parts with a blank line. Keep
+        // the streaming deltas consistent so adjacent Markdown titles do not
+        // collapse into `****` while the response is in progress.
+        if (event.summary_index > 0) {
+          outputEvents = [
+            converters.reasoningSummaryDeltaToReasoningDeltaEvent(
+              metadata,
+              "\n\n"
+            ),
+          ];
+        }
+        break;
       case "response.output_item.added":
         if (event.item.type === "function_call") {
           outputEvents = [
@@ -599,7 +612,6 @@ export async function* rawOutputToEvents(
       case "response.file_search_call.searching":
       case "response.function_call_arguments.done":
       case "response.in_progress":
-      case "response.reasoning_summary_part.added":
       case "response.reasoning_summary_part.done":
       case "response.reasoning_summary_text.done":
       case "response.reasoning_text.delta":
