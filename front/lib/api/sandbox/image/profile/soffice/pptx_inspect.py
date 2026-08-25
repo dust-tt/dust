@@ -1404,7 +1404,7 @@ def _slide_findings_lines(
     words: Optional[List[pdf_text.WordBox]],
     contrasts: Optional[List[pptx_contrast.ShapeContrast]] = None,
     shape_blockers: Optional[List[Tuple[int, str]]] = None,
-    shape_reviews: Optional[List[str]] = None,
+    slide_blockers: Optional[List[str]] = None,
 ) -> List[str]:
     """Format one slide's QA findings as a tiered, consequence-first block.
 
@@ -1440,9 +1440,9 @@ def _slide_findings_lines(
         n_severe += 1
         severe.append(f"  [!] {q(sid)} - {marker}.")
 
-    for marker in shape_reviews or []:
-        n_review += 1
-        review.append(f"  [w] {marker}.")
+    for marker in slide_blockers or []:
+        n_severe += 1
+        severe.append(f"  [!] {marker}.")
 
     contrast_severe, contrast_review, n_contrast = pptx_contrast.contrast_lines(
         contrasts or [], q
@@ -1648,7 +1648,7 @@ def _annotate_slide(
     # The soffice PDF (cached beside the rasters) carries the renderer's exact
     # word positions; reading them lets the collision check confirm overprints
     # against where glyphs actually landed rather than estimated box geometry.
-    pdf_path = out_dir / f"{out_dir.name}.pdf"
+    pdf_path = out_dir / f"{Path(file_path).stem}.pdf"
     slide = prs.slides[slide_idx - 1]
     raw = rendered[0]
     words = pdf_text.page_word_boxes(pdf_path, slide_idx)
@@ -1688,17 +1688,18 @@ def _annotate_slide(
             "as a flat block - and do not solve it by writing no title, which "
             "leaves the template's headline as yours",
         ))
-    shape_reviews: List[str] = []
+    slide_blockers: List[str] = []
     band = rendered_void(
         slide, words, prs.slide_width or 0, prs.slide_height or 0
     )
     if band is not None:
-        shape_reviews.append(
+        slide_blockers.append(
             f"a {band:.0%} band of this slide holds nothing at all. Every box "
             "on it separately fits, because each one holds less copy than the "
-            "exemplar sized it for - so the slide ships with a hole. Either "
-            "move and resize the boxes to close the band, or clone a layout "
-            "built for the amount of copy you actually have"
+            "exemplar sized it for, so nothing else flags it - and the slide "
+            "ships with a hole. Nudging the boxes does not close it: move them "
+            "up under the title AND grow them to span the space, or clone a "
+            "layout built for the amount of copy you actually have"
         )
     res = _annotate_boxes(
         raw, slide,
@@ -1710,13 +1711,13 @@ def _annotate_slide(
         return raw, _slide_findings_lines(
             slide, slide_idx, {"overlaps": [], "markers": []}, words,
             contrasts=contrasts, shape_blockers=shape_blockers,
-            shape_reviews=shape_reviews,
+            slide_blockers=slide_blockers,
         )
     annotated, findings = res
     return annotated, _slide_findings_lines(
         slide, slide_idx, findings, words,
         contrasts=contrasts, shape_blockers=shape_blockers,
-        shape_reviews=shape_reviews,
+        slide_blockers=slide_blockers,
     )
 
 

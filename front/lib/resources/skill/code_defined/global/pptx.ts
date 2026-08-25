@@ -151,7 +151,7 @@ The defect list is mechanical and reliable. Clear every \`[!]\` before you look 
 | \`text overset\` / \`text runs ~Nin below its box\` | cut copy or grow the box, never below the template's sizes |
 | \`thin - ... (2.4:1)\` | fine for a large heading, recolour if it is body copy |
 | \`underfilled\` on a \`vanchor=middle\` box | the copy floats in the middle of a tall box: shorten the box or add the content the slot expects |
-| \`band of this slide holds nothing\` | the boxes are sized for the exemplar's copy, not yours: move and resize them to close it, or clone a sparser layout |
+| \`band of this slide holds nothing\` | the boxes are sized for the exemplar's copy, not yours: move them up under the title AND grow them to span the space, or clone a sparser layout. Nudging does not close a half-slide band |
 
 Then read the render itself, per slide, and answer all of it:
 
@@ -187,7 +187,7 @@ export const pptxSkill = {
   instructions: PPTX_SKILL_INSTRUCTIONS,
   exposeInstructions: true,
   mcpServers: [{ name: "sandbox" }],
-  version: 9,
+  version: 10,
   icon: "ActionSlideshowIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

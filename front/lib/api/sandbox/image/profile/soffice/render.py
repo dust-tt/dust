@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import subprocess
@@ -19,6 +20,19 @@ def _pdf_is_fresh(pdf_path: Path, source_path: str) -> bool:
     return pdf_path.stat().st_mtime_ns > os.stat(source_path).st_mtime_ns
 
 
+def cache_dir_name(file_path: str) -> str:
+    """Directory name holding one source file's converted PDF and rasters.
+
+    Keyed on the whole path, not just the basename: two decks called deck.pptx
+    in different folders would otherwise share a cache directory, and the mtime
+    check then hands the second one the first one's PDF - a QA pass read off the
+    wrong deck, reported as clean."""
+    digest = hashlib.sha1(
+        os.path.abspath(file_path).encode("utf-8", "replace")
+    ).hexdigest()[:8]
+    return f"{os.path.splitext(os.path.basename(file_path))[0]}-{digest}"
+
+
 def render_via_soffice(
     file_path: str,
     *,
@@ -27,7 +41,7 @@ def render_via_soffice(
     item_idx: Optional[int] = None,
 ) -> Tuple[Path, List[Path]]:
     """Convert `file_path` to PDF via soffice, then rasterize each page to
-    `<out_root>/<basename>/<item_name>-NNN.jpg` at 100 dpi (3-digit
+    `<out_root>/<basename>-<hash>/<item_name>-NNN.jpg` at 100 dpi (3-digit
     zero-padded so paths sort lexically and stay stable across runs).
 
     When `item_idx` is None, regenerate from scratch and clear any existing
@@ -37,7 +51,7 @@ def render_via_soffice(
     tail-of-stderr message on soffice or pdftoppm failure.
     """
     basename = os.path.splitext(os.path.basename(file_path))[0]
-    out_dir = out_root / basename
+    out_dir = out_root / cache_dir_name(file_path)
 
     if item_idx is None and out_dir.exists():
         shutil.rmtree(out_dir)
