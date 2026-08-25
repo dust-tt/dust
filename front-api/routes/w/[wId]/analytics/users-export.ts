@@ -1,12 +1,10 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import { buildDaysConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/period";
 import {
   fetchUserExportRows,
   USER_EXPORT_HEADERS,
 } from "@app/lib/api/analytics/users_export";
-import {
-  buildAgentAnalyticsBaseQuery,
-  daysToDateRange,
-} from "@app/lib/api/assistant/observability/utils";
+import { daysToDateRange } from "@app/lib/api/assistant/observability/utils";
 import { timezoneSchema } from "@app/lib/api/timezone";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
@@ -30,10 +28,7 @@ app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
   const { days, timezone } = ctx.req.valid("query");
   const owner = auth.getNonNullableWorkspace();
 
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
-    days,
-  });
+  const baseQuery = await buildDaysConsumptionScopeQuery(auth, days);
 
   const { startDate, endDate } = daysToDateRange(days, timezone);
 

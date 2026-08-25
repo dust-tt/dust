@@ -36,6 +36,24 @@ export const TRIGGER_ID_FIELD = "trigger_id";
 
 export const CARDINALITY_PRECISION_THRESHOLD = 40_000;
 
+// Upper bound on the number of buckets a terms aggregation over an export's
+// full dimension (every agent, every user, ...) can return. Large enough that
+// no real workspace hits it, so every value comes back in one page.
+export const MAX_EXPORT_TERMS_SIZE = 10_000;
+
+// Consumption documents are split per LLM step and per tool call, so a
+// message contributes several documents to the same bucket: dedupe by
+// agent_message_id to count distinct messages, at the same precision as the
+// rest of the consumption module's cardinality aggregations.
+export function uniqueMessagesCardinalityAgg(): estypes.AggregationsAggregationContainer {
+  return {
+    cardinality: {
+      field: AGENT_MESSAGE_ID_FIELD,
+      precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+    },
+  };
+}
+
 export type ConsumptionTopDimension =
   | ConsumptionScopeDimension
   | "conversation";

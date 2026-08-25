@@ -1,9 +1,10 @@
 import {
-  AGENT_MESSAGE_ID_FIELD,
   CARDINALITY_PRECISION_THRESHOLD,
   CONSUMPTION_DIMENSION_FIELDS,
   CONVERSATION_ID_FIELD,
   CREDIT_MICRO_FIELD,
+  MAX_EXPORT_TERMS_SIZE,
+  uniqueMessagesCardinalityAgg,
 } from "@app/lib/api/analytics/consumption/scope";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import {
@@ -105,17 +106,12 @@ export async function fetchAgentExportRows(
     {
       aggregations: {
         by_agent: {
-          terms: { field: CONSUMPTION_DIMENSION_FIELDS.agent, size: 10000 },
+          terms: {
+            field: CONSUMPTION_DIMENSION_FIELDS.agent,
+            size: MAX_EXPORT_TERMS_SIZE,
+          },
           aggs: {
-            // Consumption documents are split per LLM step and per tool call,
-            // so a message contributes several documents to the same agent
-            // bucket: dedupe by agent_message_id to count distinct messages.
-            unique_messages: {
-              cardinality: {
-                field: AGENT_MESSAGE_ID_FIELD,
-                precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
-              },
-            },
+            unique_messages: uniqueMessagesCardinalityAgg(),
             unique_users: {
               cardinality: {
                 field: CONSUMPTION_DIMENSION_FIELDS.user,

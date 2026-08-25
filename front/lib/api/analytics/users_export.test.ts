@@ -1,5 +1,5 @@
 import { fetchUserExportRows } from "@app/lib/api/analytics/users_export";
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -13,7 +13,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@app/lib/api/elasticsearch", async (importActual) => {
   const actual =
     await importActual<typeof import("@app/lib/api/elasticsearch")>();
-  return { ...actual, searchAnalytics: vi.fn() };
+  return { ...actual, searchConsumptionAnalytics: vi.fn() };
 });
 
 // The group memberships are read from the read replica; in tests there is no
@@ -28,7 +28,7 @@ vi.mock("@app/lib/resources/storage", async (importActual) => {
 });
 
 function mockEsMetrics(buckets: unknown[] = []) {
-  vi.mocked(searchAnalytics).mockResolvedValue(
+  vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
     new Ok({
       took: 1,
       timed_out: false,
@@ -60,9 +60,10 @@ describe("fetchUserExportRows", () => {
       {
         key: member.sId,
         doc_count: 2,
+        unique_messages: { value: 2 },
         last_message: { value: Date.UTC(2025, 0, 12, 8, 0, 0) },
         active_days: { buckets: [{ doc_count: 1 }, { doc_count: 1 }] },
-        credits: { value: 41.6 },
+        credit_micro: { value: 41_600_000 },
       },
     ]);
 
