@@ -245,12 +245,18 @@ export async function recordProgrammaticSpendLimitUsage(
     return;
   }
 
+  const redisKey =
+    makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace(workspace);
+
+  // Seed from ES on the counter's first touch of the cycle (SET-if-absent), so
+  // it reflects cycle-to-date consumption even when the enforcement reader
+  // never runs (e.g. no positive programmatic cap). No-ops once live.
+  await readProgrammaticSpendLimitCountWithLazySeed(auth, { redisKey, bounds });
+
   const incrementByMicroCredits = roundCreditsToMicroCredits(incrementBy);
 
   await addFixedWindowCount({
-    key: makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace(
-      workspace
-    ),
+    key: redisKey,
     bounds,
     incrementBy: incrementByMicroCredits,
     logger,

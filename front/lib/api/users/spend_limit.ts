@@ -687,10 +687,21 @@ export async function recordUserSpendLimitUsage(
     return;
   }
 
+  const key = makeSpendLimitAwuCreditsRateLimitKeyForUser(
+    workspace,
+    user.toJSON()
+  );
+
+  // Seed the counter from ES on its first touch of the cycle (SET-if-absent),
+  // so it reflects cycle-to-date consumption even when the enforcement reader —
+  // the other lazy seeder — never runs for this user (e.g. a user with no
+  // effective cap). No-ops once the counter is live.
+  await readSpendLimitCountWithLazySeed(auth, { user, key, bounds, cycle });
+
   const incrementByMicroCredits = roundCreditsToMicroCredits(incrementBy);
 
   await addFixedWindowCount({
-    key: makeSpendLimitAwuCreditsRateLimitKeyForUser(workspace, user.toJSON()),
+    key,
     bounds,
     incrementBy: incrementByMicroCredits,
     logger,
