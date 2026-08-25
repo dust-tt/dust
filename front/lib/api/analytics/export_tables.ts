@@ -203,7 +203,7 @@ export async function exportTable({
     case "active_users":
       return exportActiveUsers({ startDate, endDate, timezone, owner });
     case "source":
-      return exportSource({ startDate, endDate, timezone, owner });
+      return exportSource({ auth, startDate, endDate, timezone });
     case "agents":
       return exportAgents({
         auth,
@@ -360,18 +360,17 @@ async function exportActiveUsers({
 }
 
 async function exportSource({
+  auth,
   startDate,
   endDate,
   timezone,
-  owner,
 }: {
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
-  owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
+  const baseQuery = buildExportConsumptionScopeQuery(auth, {
     startDate,
     endDate,
   });

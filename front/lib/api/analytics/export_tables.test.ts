@@ -282,3 +282,92 @@ describe("exportTable skills", () => {
     expect(row!.name).toBe("Test Skill");
   });
 });
+
+describe("exportTable source", () => {
+  beforeEach(() => {
+    vi.mocked(searchConsumptionAnalytics).mockReset();
+  });
+
+  it("queries the consumption index with a half-open completed_at range and returns its aggregated metrics", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      new Ok({
+        took: 1,
+        timed_out: false,
+        _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+        hits: { total: { value: 0, relation: "eq" }, hits: [] },
+        aggregations: {
+          by_date: {
+            buckets: [
+              {
+                key: Date.UTC(2024, 0, 15),
+                key_as_string: "2024-01-15",
+                doc_count: 10,
+                by_origin: {
+                  buckets: [
+                    { key: "web", doc_count: 6, unique_messages: { value: 3 } },
+                    {
+                      key: "slack",
+                      doc_count: 4,
+                      unique_messages: { value: 2 },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      })
+    );
+
+    const result = await exportTable({
+      auth: authenticator,
+      table: "source",
+      startDate: "2024-01-01",
+      endDate: "2024-01-31",
+      timezone: "UTC",
+      owner: workspace,
+      includeHiddenAgents: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    if (result.value.table !== "source") {
+      throw new Error(`Expected "source" table, got "${result.value.table}"`);
+    }
+
+    // Regression: exportSource used to build its query with the legacy,
+    // timestamp-based buildAgentAnalyticsBaseQuery, which the consumption
+    // index does not have a `timestamp` field for — every source row
+    // silently came back with zero metrics. It must now query the
+    // consumption index with a half-open [startDate, endDate) `completed_at`
+    // range, bumping the inclusive `endDate` calendar day up by one day. The
+    // message count within a day must also dedupe by agent_message_id
+    // instead of using raw doc_count, since the consumption index splits a
+    // message across several documents.
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
+    const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(query).toEqual({
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          {
+            range: {
+              completed_at: { gte: "2024-01-01", lt: "2024-02-01" },
+            },
+          },
+        ],
+      },
+    });
+
+    expect(result.value.rows).toEqual([
+      { date: "2024-01-15", source: "slack", messageCount: 2 },
+      { date: "2024-01-15", source: "web", messageCount: 3 },
+    ]);
+  });
+});
