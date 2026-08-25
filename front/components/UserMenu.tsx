@@ -30,7 +30,8 @@ import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
 import {
   CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY,
-  shouldShowChromeExtensionMenu,
+  FIREFOX_EXTENSION_LAST_USED_AT_METADATA_KEY,
+  shouldShowExtensionMenu,
 } from "@app/types/extension";
 import type { SubscriptionType } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
@@ -107,15 +108,16 @@ export function UserMenu({
 
   const isFirefox =
     typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
+  const extensionLastUsedAtMetadataKey = isFirefox
+    ? FIREFOX_EXTENSION_LAST_USED_AT_METADATA_KEY
+    : CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY;
   const {
-    metadata: chromeExtensionLastUsedAt,
-    isMetadataLoading: isChromeExtensionLastUsedAtLoading,
-  } = useUserMetadata(CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY, {
-    disabled: isFirefox,
-  });
-  const showChromeExtensionMenu =
-    !isChromeExtensionLastUsedAtLoading &&
-    shouldShowChromeExtensionMenu(chromeExtensionLastUsedAt?.value);
+    metadata: extensionLastUsedAt,
+    isMetadataLoading: isExtensionLastUsedAtLoading,
+  } = useUserMetadata(extensionLastUsedAtMetadataKey);
+  const showExtensionMenu =
+    !isExtensionLastUsedAtLoading &&
+    shouldShowExtensionMenu(extensionLastUsedAt?.value);
 
   const sendNotification = useSendNotification();
   const devMode = useDevMode();
@@ -426,23 +428,24 @@ export function UserMenu({
             onClick={() => trackUserMenuEvent("dust_academy")}
           />
 
-          {isFirefox ? (
-            <DropdownMenuItem
-              label="Firefox extension"
-              icon={FirefoxLogo}
-              href="https://addons.mozilla.org/firefox/addon/dust/"
-              target="_blank"
-              onClick={() => trackUserMenuEvent("firefox_extension")}
-            />
-          ) : showChromeExtensionMenu ? (
-            <DropdownMenuItem
-              label="Chrome extension"
-              icon={ChromeLogo}
-              href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
-              target="_blank"
-              onClick={() => trackUserMenuEvent("chrome_extension")}
-            />
-          ) : null}
+          {showExtensionMenu &&
+            (isFirefox ? (
+              <DropdownMenuItem
+                label="Firefox extension"
+                icon={FirefoxLogo}
+                href="https://addons.mozilla.org/firefox/addon/dust/"
+                target="_blank"
+                onClick={() => trackUserMenuEvent("firefox_extension")}
+              />
+            ) : (
+              <DropdownMenuItem
+                label="Chrome extension"
+                icon={ChromeLogo}
+                href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
+                target="_blank"
+                onClick={() => trackUserMenuEvent("chrome_extension")}
+              />
+            ))}
 
           {subscription?.plan.limits.canUseProduct && (
             <>

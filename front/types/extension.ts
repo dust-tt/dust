@@ -2,12 +2,13 @@ import type { ModelId } from "./shared/model_id";
 
 export const CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY =
   "chromeExtensionLastUsedAt";
+export const FIREFOX_EXTENSION_LAST_USED_AT_METADATA_KEY =
+  "firefoxExtensionLastUsedAt";
 
-// Resurface the install link after three months without Chrome extension activity.
-export const CHROME_EXTENSION_MENU_REDISPLAY_THRESHOLD_MS =
-  90 * 24 * 60 * 60 * 1000;
+// Resurface the install link after three months without extension activity.
+export const EXTENSION_MENU_REDISPLAY_THRESHOLD_MS = 90 * 24 * 60 * 60 * 1000;
 
-export function shouldShowChromeExtensionMenu(
+export function shouldShowExtensionMenu(
   lastUsedAt: string | null | undefined,
   nowMs = Date.now()
 ): boolean {
@@ -20,7 +21,7 @@ export function shouldShowChromeExtensionMenu(
     return true;
   }
 
-  return lastUsedAtMs <= nowMs - CHROME_EXTENSION_MENU_REDISPLAY_THRESHOLD_MS;
+  return lastUsedAtMs <= nowMs - EXTENSION_MENU_REDISPLAY_THRESHOLD_MS;
 }
 
 export type ExtensionConfigurationType = {

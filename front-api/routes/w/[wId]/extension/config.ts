@@ -1,6 +1,9 @@
 import type { GetExtensionConfigResponseBody } from "@app/lib/resources/extension";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
-import { CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY } from "@app/types/extension";
+import {
+  CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY,
+  FIREFOX_EXTENSION_LAST_USED_AT_METADATA_KEY,
+} from "@app/types/extension";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
@@ -12,7 +15,7 @@ const app = workspaceApp();
  * /api/w/{wId}/extension/config:
  *   get:
  *     summary: Get extension configuration
- *     description: Returns the extension configuration for the workspace, including blacklisted domains, and records Chrome extension activity.
+ *     description: Returns the extension configuration for the workspace, including blacklisted domains, and records browser extension activity.
  *     tags:
  *       - Private Extension
  *     parameters:
@@ -40,11 +43,19 @@ app.get("/", async (ctx): HandlerResult<GetExtensionConfigResponseBody> => {
 
   const config = await ExtensionConfigurationResource.fetchForWorkspace(auth);
 
-  if (ctx.req.header("origin")?.startsWith("chrome-extension://")) {
+  const origin = ctx.req.header("origin");
+  if (origin?.startsWith("chrome-extension://")) {
     await auth
       .getNonNullableUser()
       .setMetadata(
         CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY,
+        new Date().toISOString()
+      );
+  } else if (origin?.startsWith("moz-extension://")) {
+    await auth
+      .getNonNullableUser()
+      .setMetadata(
+        FIREFOX_EXTENSION_LAST_USED_AT_METADATA_KEY,
         new Date().toISOString()
       );
   }
