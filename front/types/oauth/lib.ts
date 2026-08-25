@@ -109,7 +109,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "freshservice_domain",
   "freshworks_org_url",
   "zendesk_subdomain",
-  "shopify_shop",
+  "store_domain",
   "databricks_workspace_url",
   "servicenow_instance_url",
   "snowflake_account",
@@ -264,7 +264,7 @@ export function getProviderRequiredOAuthCredentialInputs({
     case "shopify":
       if (useCase === "platform_actions") {
         return {
-          shopify_shop: {
+          store_domain: {
             label: "Shopify store domain",
             value: undefined,
             helpMessage:

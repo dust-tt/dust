@@ -15,11 +15,11 @@ vi.mock("@app/lib/api/config", () => ({
   },
 }));
 
-function makeConnection(shopifyShop: string): OAuthConnectionType {
+function makeConnection(storeDomain: string): OAuthConnectionType {
   return {
     connection_id: "con_shopify",
     created: Date.now(),
-    metadata: { shopify_shop: shopifyShop },
+    metadata: { store_domain: storeDomain },
     provider: "shopify",
     status: "pending",
   };
@@ -51,19 +51,19 @@ describe("ShopifyOAuthProvider", () => {
 
     expect(
       provider.isExtraConfigValid(
-        { shopify_shop: "my-store.myshopify.com" },
+        { store_domain: "my-store.myshopify.com" },
         "platform_actions"
       )
     ).toBe(true);
     expect(
       provider.isExtraConfigValid(
-        { shopify_shop: "my-store.myshopify.com" },
+        { store_domain: "my-store.myshopify.com" },
         "personal_actions"
       )
     ).toBe(false);
     expect(
       provider.isExtraConfigValid(
-        { shopify_shop: "shop.example.com" },
+        { store_domain: "shop.example.com" },
         "platform_actions"
       )
     ).toBe(false);

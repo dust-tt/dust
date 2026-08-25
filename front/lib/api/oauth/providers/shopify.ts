@@ -55,7 +55,7 @@ export function isValidShopifyCallback(
 
 export class ShopifyOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({ connection }: { connection: OAuthConnectionType }) {
-    const shop = normalizeShopifyShopDomain(connection.metadata.shopify_shop);
+    const shop = normalizeShopifyShopDomain(connection.metadata.store_domain);
     if (!shop) {
       throw new Error("Invalid Shopify store domain");
     }
@@ -84,7 +84,7 @@ export class ShopifyOAuthProvider implements BaseOAuthStrategyProvider {
     return (
       useCase === "platform_actions" &&
       Object.keys(extraConfig).length === 1 &&
-      isValidShopifyShopDomain(extraConfig.shopify_shop)
+      isValidShopifyShopDomain(extraConfig.store_domain)
     );
   }
 
@@ -97,7 +97,7 @@ export class ShopifyOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<ExtraConfigType> {
-    const shop = normalizeShopifyShopDomain(extraConfig.shopify_shop);
-    return shop ? { shopify_shop: shop } : extraConfig;
+    const shop = normalizeShopifyShopDomain(extraConfig.store_domain);
+    return shop ? { store_domain: shop } : extraConfig;
   }
 }
