@@ -138,6 +138,14 @@ def test_leading_break_detector_matches_every_break_character():
         assert ch in A._LINE_BREAKS, ch
 
 
+def test_void_thresholds_need_both_a_gap_and_an_empty_box():
+    """The template's own slides leave the same band under the title and look
+    right, because their copy fills the boxes - so the gap alone cannot be the
+    rule. Measured: reference decks 0.44-0.58 fill, model-built ones 0.14-0.31."""
+    assert A.VOID_GAP <= 0.12
+    assert 0.18 < A.VOID_FILL < 0.44
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]
