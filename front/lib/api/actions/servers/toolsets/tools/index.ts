@@ -11,15 +11,11 @@ import { getToolNamePrefix } from "@app/lib/actions/tool_name_utils";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { TOOLSETS_TOOLS_METADATA } from "@app/lib/api/actions/servers/toolsets/metadata";
-import apiConfig from "@app/lib/api/config";
-import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
-import { getHeaderFromUserEmail } from "@app/types/user";
-import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 
 const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
@@ -31,31 +27,28 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
         .filter(isServerSideMCPServerConfiguration)
         .map((action) => action.mcpServerViewId);
 
-    const owner = auth.getNonNullableWorkspace();
-    const user = auth.user();
-    const prodCredentials = await prodAPICredentialsForOwner(owner, {
-      useLocalInDev: true,
-    });
-    const config = apiConfig.getDustAPIConfig();
-    const api = new DustAPI(
-      config,
-      {
-        ...prodCredentials,
-        extraHeaders: {
-          ...getHeaderFromUserEmail(user?.email),
-          ...getApiKeyNameHeader(auth),
-        },
-      },
-      logger,
-      config.nodeEnv === "development" ? "http://localhost:3000" : null
-    );
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    const r = await api.getMCPServerViews(globalSpace.sId, true);
-    if (r.isErr()) {
-      throw new Error(r.error.message);
-    }
-
-    const mcpServerViews = r.value
+    const mcpServerViews = (
+      await MCPServerViewResource.listBySpaceEnsuringAutoViews(
+        auth,
+        globalSpace,
+        {
+          includeHeavyAttributes: [
+            "authorization",
+            "cachedTools",
+            "customHeaders",
+            "lastError",
+            "sharedSecret",
+          ],
+        }
+      )
+    )
+      .map((mcpServerView) => mcpServerView.toJSON())
+      .filter(
+        (mcpServerView) =>
+          mcpServerView.server.availability === "manual" ||
+          mcpServerView.server.availability === "auto"
+      )
       .filter(
         (mcpServerView) =>
           !mcpServerViewIdsFromAgentConfiguration.includes(mcpServerView.sId)
