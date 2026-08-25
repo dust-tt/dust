@@ -10,11 +10,15 @@ import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/openai_respon
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import { FIREWORKS_HOST } from "@app/lib/model_constructors/types/hosts";
-import type { Payload } from "@app/lib/model_constructors/types/input/messages";
+import type {
+  Payload,
+  SystemTextMessage,
+} from "@app/lib/model_constructors/types/input/messages";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import OpenAI from "openai";
 import type {
   ResponseCreateParamsStreaming,
+  ResponseInputItem,
   ResponseStreamEvent,
 } from "openai/resources/responses/responses";
 
@@ -32,6 +36,31 @@ export abstract class FireworksResponsesStream extends WithOpenAIResponsesInputC
   static readonly host = FIREWORKS_HOST;
 
   static readonly configSchema = fireworksConfigSchema;
+
+  // Fireworks' Responses API is "OpenAI-compatible" but never documents the
+  // roles it accepts on input: https://docs.fireworks.ai/api-reference/post-responses
+  // types `input` as a string or "a list of message objects" and enumerates
+  // roles only for the response `output`, and the guide linked above shows only
+  // string input. OpenAI's own spec allows either role on an input message —
+  // "One of `user`, `assistant`, `system`, or `developer`" (`EasyInputMessage`
+  // in openai/resources/responses/responses.d.ts) — which is why the shared
+  // converter defaults to `developer`. Measured live 2026-08-25, K3 answers as
+  // if no system message existed under `developer` and reads the prompt under
+  // `system`.
+  override systemMessagesToInputItems(
+    system: SystemTextMessage[]
+  ): ResponseInputItem[] {
+    return system.map((message) => ({
+      role: "system",
+      content: [
+        {
+          type: "input_text",
+          text: message.content.value,
+          ...this.promptCacheBreakpointFor(message.cache),
+        },
+      ],
+    }));
+  }
 
   private readonly client: OpenAI;
 
