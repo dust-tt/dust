@@ -1,6 +1,17 @@
+import {
+  AGENT_MESSAGE_ID_FIELD,
+  CARDINALITY_PRECISION_THRESHOLD,
+  CONSUMPTION_DIMENSION_FIELDS,
+  CONVERSATION_ID_FIELD,
+  CREDIT_MICRO_FIELD,
+} from "@app/lib/api/analytics/consumption/scope";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import {
+  bucketsToArray,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { microCreditsToCredits } from "@app/lib/credits/units";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { Result } from "@app/types/shared/result";
@@ -11,9 +22,10 @@ import { QueryTypes } from "sequelize";
 type TopAgentExportBucket = {
   key: string;
   doc_count: number;
+  unique_messages?: estypes.AggregationsCardinalityAggregate;
   unique_users?: estypes.AggregationsCardinalityAggregate;
   unique_conversations?: estypes.AggregationsCardinalityAggregate;
-  credits?: estypes.AggregationsSumAggregate;
+  credit_micro?: estypes.AggregationsSumAggregate;
 };
 
 type TopAgentsExportAggs = {
@@ -84,7 +96,7 @@ export async function fetchAgentExportRows(
   includeHiddenAgents: boolean
 ): Promise<Result<AgentExportRow[], Error>> {
   const owner = auth.getNonNullableWorkspace();
-  const esResult = await searchAnalytics<never, TopAgentsExportAggs>(
+  const esResult = await searchConsumptionAnalytics<never, TopAgentsExportAggs>(
     {
       bool: {
         filter: [baseQuery],
@@ -93,16 +105,30 @@ export async function fetchAgentExportRows(
     {
       aggregations: {
         by_agent: {
-          terms: { field: "agent_id", size: 10000 },
+          terms: { field: CONSUMPTION_DIMENSION_FIELDS.agent, size: 10000 },
           aggs: {
-            unique_users: { cardinality: { field: "user_id" } },
-            unique_conversations: {
-              cardinality: { field: "conversation_id" },
+            // Consumption documents are split per LLM step and per tool call,
+            // so a message contributes several documents to the same agent
+            // bucket: dedupe by agent_message_id to count distinct messages.
+            unique_messages: {
+              cardinality: {
+                field: AGENT_MESSAGE_ID_FIELD,
+                precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+              },
             },
-            // Billed credits per execution via `cost.billable_awu` (0 for the
-            // non-billable errored-terminal part), so no status filter is needed;
-            // the count metrics above stay inclusive of all activity.
-            credits: { sum: { field: "cost.billable_awu" } },
+            unique_users: {
+              cardinality: {
+                field: CONSUMPTION_DIMENSION_FIELDS.user,
+                precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+              },
+            },
+            unique_conversations: {
+              cardinality: {
+                field: CONVERSATION_ID_FIELD,
+                precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+              },
+            },
+            credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
           },
         },
       },
@@ -122,10 +148,10 @@ export async function fetchAgentExportRows(
     buckets.map((b) => [
       String(b.key),
       {
-        messages: b.doc_count,
+        messages: Math.round(b.unique_messages?.value ?? 0),
         distinctUsersReached: Math.round(b.unique_users?.value ?? 0),
         distinctConversations: Math.round(b.unique_conversations?.value ?? 0),
-        credits: Math.round(b.credits?.value ?? 0),
+        credits: Math.round(microCreditsToCredits(b.credit_micro?.value ?? 0)),
       },
     ])
   );

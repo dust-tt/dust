@@ -4,6 +4,7 @@ import {
   fetchAgentExportRows,
   toAgentExportCsvRow,
 } from "@app/lib/api/analytics/agents_export";
+import { buildConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/scope";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
 import type { FeedbackExportRow } from "@app/lib/api/analytics/feedback_export";
 import {
@@ -207,7 +208,6 @@ export async function exportTable({
         auth,
         startDate,
         endDate,
-        owner,
         includeHiddenAgents,
       });
     case "users":
@@ -384,19 +384,26 @@ async function exportAgents({
   auth,
   startDate,
   endDate,
-  owner,
   includeHiddenAgents,
 }: {
   auth: Authenticator;
   startDate: string;
   endDate: string;
-  owner: WorkspaceType;
   includeHiddenAgents: boolean;
 }): Promise<Result<ExportTableData, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
+  // The consumption index's completed_at range is half-open ([startDate,
+  // endDate)), while startDate/endDate here are inclusive calendar days
+  // ("YYYY-MM-DD"); bump the upper bound to the start of the following day so
+  // the whole endDate day is included.
+  const exclusiveEndDate = moment
+    .utc(endDate)
+    .add(1, "day")
+    .format("YYYY-MM-DD");
+
+  const baseQuery = buildConsumptionScopeQuery({
+    auth,
     startDate,
-    endDate,
+    endDate: exclusiveEndDate,
   });
 
   const result = await fetchAgentExportRows(
