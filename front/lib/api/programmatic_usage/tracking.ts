@@ -10,7 +10,9 @@ import {
   hasKeyReachedUsageCap,
   incrementRedisKeyUsageMicroUsd,
 } from "@app/lib/api/programmatic_usage/key_cap";
+import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { computeRunFingerprint } from "@app/lib/credits/agent_message_billing";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -24,6 +26,45 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
+
+// TTL on the per-execution idempotency marker guarding credit consumption.
+// Activity retries span minutes; 24 hours comfortably covers late zombie
+// attempts without accumulating keys forever.
+const CONSUMED_RUNS_GUARD_TTL_SECONDS = 24 * 60 * 60;
+
+const TRACKING_REDIS_ORIGIN = "programmatic_usage_tracking" as const;
+
+/**
+ * Marks the given agent-loop execution (identified by its run fingerprint) as
+ * consumed. Returns false when another attempt already consumed it — the caller
+ * must then skip the mutation phase so activity retries and timed-out zombie
+ * attempts never consume the same runs twice. The marker is set before the
+ * mutations and deliberately never released: a crash inside the mutation window
+ * leaves it held, so the retry drops that execution instead of risking double
+ * consumption. Do not delete the marker on failure. Redis errors propagate
+ * (fail closed): without the marker we cannot guarantee at-most-once
+ * consumption, so the attempt fails and Temporal retries.
+ *
+ * Known limit: the marker is only as durable as Redis. If Redis loses it
+ * (eviction, failover) between a post-consumption crash and its retry, that
+ * one execution can be counted twice. Accepted trade-off: closing it needs a
+ * ledger-transactional marker (new table), which is not worth it for a
+ * cents-level tail risk.
+ */
+async function tryMarkRunsConsumed(
+  auth: Authenticator,
+  dustRunIds: string[]
+): Promise<boolean> {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const guardKey = `programmatic_usage_consumed:${workspaceId}:${computeRunFingerprint(dustRunIds)}`;
+  const res = await runOnRedis({ origin: TRACKING_REDIS_ORIGIN }, (redis) =>
+    redis.set(guardKey, "1", {
+      NX: true,
+      EX: CONSUMED_RUNS_GUARD_TTL_SECONDS,
+    })
+  );
+  return res === "OK";
+}
 
 type ProgrammaticUsageLimitErrorType = "credits_exhausted" | "rate_limit_error";
 
@@ -118,9 +159,13 @@ export async function decreaseProgrammaticCredits(
   {
     amountMicroUsd,
     userMessageOrigin,
+    // Callers holding the idempotency marker prefetch credits BEFORE setting
+    // it, so a read failure retries instead of dropping the execution.
+    prefetchedActiveCredits,
   }: {
     amountMicroUsd: number;
     userMessageOrigin: UserMessageOrigin;
+    prefetchedActiveCredits?: CreditResource[];
   },
   parentLogger?: Logger
 ): Promise<{
@@ -130,7 +175,8 @@ export async function decreaseProgrammaticCredits(
 }> {
   const localLogger = parentLogger ?? logger;
   const workspace = auth.getNonNullableWorkspace();
-  const activeCredits = await CreditResource.listActive(auth);
+  const activeCredits =
+    prefetchedActiveCredits ?? (await CreditResource.listActive(auth));
 
   const sortedCredits = [...activeCredits].sort(compareCreditsForConsumption);
 
@@ -323,12 +369,30 @@ export async function trackProgrammaticCost(
   const costWithMarkupMicroUsd = Math.ceil(
     runsCostMicroUsd * (1 + DUST_MARKUP_PERCENT / 100)
   );
+
+  // Prefetch the credits before setting the marker: reads are safe to retry,
+  // and once the marker is held a failure drops the execution.
+  const prefetchedActiveCredits = await CreditResource.listActive(auth);
+
+  // Everything above is read-only and safe to retry; everything below mutates
+  // (credit ledger, redis counters). Guard the mutation phase so an activity
+  // retry after a partial failure never consumes the same runs twice.
+  const isFirstConsumption = await tryMarkRunsConsumed(auth, dustRunIds);
+  if (!isFirstConsumption) {
+    localLogger.warn(
+      { dustRunIds },
+      "[Programmatic Usage Tracking] Runs already consumed by a previous attempt. Skipping."
+    );
+    return;
+  }
+
   const { totalConsumedMicroUsd, totalInitialMicroUsd, activeCredits } =
     await decreaseProgrammaticCredits(
       auth,
       {
         amountMicroUsd: costWithMarkupMicroUsd,
         userMessageOrigin,
+        prefetchedActiveCredits,
       },
       localLogger
     );
