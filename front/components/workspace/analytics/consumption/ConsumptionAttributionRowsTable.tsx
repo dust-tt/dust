@@ -1,6 +1,6 @@
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import {
   ArrowDown,
   ArrowUp,

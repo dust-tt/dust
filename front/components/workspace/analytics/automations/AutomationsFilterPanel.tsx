@@ -18,7 +18,7 @@ import { FilterSelectionSummary } from "@app/components/workspace/analytics/filt
 import { useAutomationsFilter } from "@app/components/workspace/analytics/useAutomationsFilter";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionScopeDimension } from "@app/types/api/analytics/consumption";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,

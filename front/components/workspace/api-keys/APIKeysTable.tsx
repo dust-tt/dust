@@ -1,9 +1,9 @@
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { timeAgoFrom } from "@app/lib/utils";
+import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import type { GroupType } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";

@@ -8,12 +8,12 @@ import {
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type {
   ConsumptionBreakdownDimension,
   ConsumptionTimeseriesMode,
   GetConsumptionTimeseriesResponse,
 } from "@app/lib/api/analytics/consumption/timeseries";
+import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 
 type ConsumptionTimeseriesBody = ConsumptionBody & {
   mode: ConsumptionTimeseriesMode;
