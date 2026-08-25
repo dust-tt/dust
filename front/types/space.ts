@@ -16,11 +16,10 @@ export type SpaceKind = (typeof SPACE_KINDS)[number];
 
 type UniqueSpaceKind = (typeof UNIQUE_SPACE_KINDS)[number];
 /**
- * @swaggerschema Space (swagger_schemas.ts), PrivateSpace (swagger_private_schemas.ts)
+ * @swaggerschema PrivateSpace (swagger_private_schemas.ts)
  */
 export type SpaceType = {
   createdAt: number;
-  groupIds: string[];
   isRestricted: boolean;
   kind: SpaceKind;
   managementMode: "manual" | "group";
@@ -30,9 +29,20 @@ export type SpaceType = {
 };
 
 /**
+ * A space serialized together with the sIds of the groups holding a grant on it. `groupIds` is
+ * loaded from `group_permissions` on demand by the endpoints that expose it (the public API for
+ * backward compatibility, and the space-management UI) rather than carried on every `SpaceType`.
+ *
+ * @swaggerschema Space (swagger_schemas.ts)
+ */
+export type SpaceTypeWithGroupIds = SpaceType & {
+  groupIds: string[];
+};
+
+/**
  * @swaggerschema PrivateProject (swagger_private_schemas.ts)
  */
-export type PodType = SpaceType & {
+export type PodType = SpaceTypeWithGroupIds & {
   description: string | null;
   isMember: boolean;
   isEditor: boolean;

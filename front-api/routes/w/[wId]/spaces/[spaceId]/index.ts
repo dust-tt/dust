@@ -10,6 +10,7 @@ import {
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   GetSpaceResponseBody,
@@ -95,6 +96,10 @@ const app = workspaceApp();
  *                     - $ref: '#/components/schemas/PrivateSpace'
  *                     - type: object
  *                       properties:
+ *                         groupIds:
+ *                           type: array
+ *                           items:
+ *                             type: string
  *                         categories:
  *                           type: object
  *                           additionalProperties:
@@ -307,9 +312,14 @@ app.get(
       ? await ProjectMetadataResource.fetchBySpace(auth, space)
       : undefined;
 
+    const groupIdsBySpaceModelId =
+      await SpaceResource.listGroupIdsBySpaceModelId(auth, {
+        spaces: [space],
+      });
+
     return ctx.json({
       space: {
-        ...space.toJSON(),
+        ...space.toJSONWithGroupIds(groupIdsBySpaceModelId.get(space.id) ?? []),
         categories,
         canWrite: space.canWrite(auth),
         canRead: space.canRead(auth),

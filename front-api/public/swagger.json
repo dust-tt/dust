@@ -9841,6 +9841,12 @@
                         {
                           "type": "object",
                           "properties": {
+                            "groupIds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
                             "categories": {
                               "type": "object",
                               "additionalProperties": {
@@ -12264,7 +12270,6 @@
           "sId",
           "name",
           "kind",
-          "groupIds",
           "isRestricted",
           "managementMode"
         ],
@@ -12284,12 +12289,6 @@
               "regular",
               "project"
             ]
-          },
-          "groupIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           },
           "isRestricted": {
             "type": "boolean"
@@ -12319,6 +12318,12 @@
           {
             "type": "object",
             "properties": {
+              "groupIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
               "description": {
                 "type": "string",
                 "nullable": true

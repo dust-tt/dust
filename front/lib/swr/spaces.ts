@@ -37,7 +37,12 @@ import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { SearchWarningCode } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceViewType } from "@app/types/data_source_view";
-import type { PodType, SpaceKind, SpaceType } from "@app/types/space";
+import type {
+  PodType,
+  SpaceKind,
+  SpaceType,
+  SpaceTypeWithGroupIds,
+} from "@app/types/space";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
@@ -73,7 +78,7 @@ export function useSpaces({
   const spaces = useMemo(() => {
     return (
       data?.spaces?.filter((s) => kinds === "all" || kinds.includes(s.kind)) ??
-      emptyArray<SpaceType | PodType>()
+      emptyArray<SpaceTypeWithGroupIds | PodType>()
     );
     // Serialize the kinds array to a string to avoid unnecessary re-renders
     // eslint-disable-next-line react-hooks/exhaustive-deps

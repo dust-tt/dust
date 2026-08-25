@@ -1766,7 +1766,12 @@ describe("SpaceResource", () => {
           workspaceId: workspace.id,
         }),
       ]);
-      expect(fetchedSpace?.toJSON().groupIds).toEqual([
+      // groupIds are no longer on `toJSON`; they are loaded on demand from group_permissions.
+      const groupIdsBySpaceModelId =
+        await SpaceResource.listGroupIdsBySpaceModelId(adminAuth, {
+          spaces: [regularSpace],
+        });
+      expect(groupIdsBySpaceModelId.get(regularSpace.id)).toEqual([
         groupReference.groupSId,
       ]);
 

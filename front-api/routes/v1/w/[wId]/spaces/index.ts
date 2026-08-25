@@ -1,5 +1,5 @@
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { SpaceType } from "@app/types/space";
+import type { SpaceTypeWithGroupIds } from "@app/types/space";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -8,7 +8,7 @@ import { z } from "zod";
 import spaceId from "./[spaceId]";
 
 export type GetPublicSpacesResponseBody = {
-  spaces: SpaceType[];
+  spaces: SpaceTypeWithGroupIds[];
 };
 
 // The kinds this endpoint returns when `kinds` is omitted.
@@ -88,8 +88,13 @@ app.get(
       kinds: kinds ?? [...DEFAULT_SPACE_KINDS],
     });
 
+    const groupIdsBySpaceModelId =
+      await SpaceResource.listGroupIdsBySpaceModelId(auth, { spaces });
+
     return ctx.json({
-      spaces: spaces.map((space) => space.toJSON()),
+      spaces: spaces.map((space) =>
+        space.toJSONWithGroupIds(groupIdsBySpaceModelId.get(space.id) ?? [])
+      ),
     });
   }
 );
