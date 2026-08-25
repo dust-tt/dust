@@ -93,6 +93,7 @@ from pptx_audit import (
     _shape_warning_markers,
     _split_sentence_markers,
     _void_markers,
+    occluded_words,
     rendered_void,
     _slot_audit,
     slide_word_count,
@@ -1688,6 +1689,15 @@ def _annotate_slide(
             "as a flat block - and do not solve it by writing no title, which "
             "leaves the template's headline as yours",
         ))
+    for sid, pic_id, word in occluded_words(slide, words):
+        shape_blockers.append((
+            sid,
+            f"has {word!r} buried under picture #{pic_id}, which is drawn on "
+            "top of it. The copy is all there in the file and fits its box, so "
+            "only the render shows it: move the text clear of the picture, or "
+            "move the picture",
+        ))
+
     slide_blockers: List[str] = []
     band = rendered_void(
         slide, words, prs.slide_width or 0, prs.slide_height or 0
