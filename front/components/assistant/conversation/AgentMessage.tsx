@@ -166,7 +166,7 @@ function MessageInfoChip({ children, label, title }: MessageInfoChipProps) {
         align="start"
         className="flex w-[min(24rem,calc(100vw-1.5rem))] flex-col gap-2"
       >
-        { title && <div className="font-semibold">{title}</div> }
+        {title && <div className="font-semibold">{title}</div>}
         <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground">
           {children}
         </div>
