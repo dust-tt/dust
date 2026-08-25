@@ -86,7 +86,7 @@ export const AssistantCard = React.forwardRef<
         action={action}
         variant={variant}
       >
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <Avatar visual={pictureUrl} size={iconSize} />
           <div className={cn("-mt-0.5 flex flex-col", action && "pr-8")}>
             <h3>
