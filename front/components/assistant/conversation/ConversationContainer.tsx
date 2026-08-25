@@ -85,7 +85,7 @@ function heroEntranceStyle({
 const GREETING_WORD_ENTER_Y_PX = 4;
 const GREETING_WORD_ENTER_BLUR_PX = 3;
 const GREETING_WORD_DURATION_SECONDS = 0.43;
-const GREETING_WORD_STAGGER_SECONDS = 0.05;
+const GREETING_WORD_STAGGER_SECONDS = 0.07;
 
 function greetingWordStyle(index: number): HeroEntranceStyle {
   return heroEntranceStyle({
@@ -98,7 +98,7 @@ function greetingWordStyle(index: number): HeroEntranceStyle {
 
 // Starts while the greeting is still animating in, rather than waiting for
 // it to finish, so the hero appears as one flowing wave.
-const COMPOSER_ENTER_DELAY_SECONDS = 0.12;
+const COMPOSER_ENTER_DELAY_SECONDS = 0.16;
 const composerEntranceStyle = heroEntranceStyle({
   yPx: 6,
   blurPx: 3,
@@ -106,7 +106,7 @@ const composerEntranceStyle = heroEntranceStyle({
   delaySeconds: COMPOSER_ENTER_DELAY_SECONDS,
 });
 
-const CHAT_WITH_ENTER_DELAY_SECONDS = 0.22;
+const CHAT_WITH_ENTER_DELAY_SECONDS = 0.3;
 const chatWithEntranceStyle = heroEntranceStyle({
   yPx: 8,
   blurPx: 3,
