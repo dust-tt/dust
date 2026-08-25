@@ -18,6 +18,7 @@ import type {
 } from "@app/lib/model_constructors/types/output/events";
 import type { Phase } from "@app/lib/model_constructors/types/phases";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import { buildHttpStatusErrorEvent } from "@app/lib/model_constructors/utils/classify_http_status";
 import { OPENAI_PROVIDER_ID } from "@app/types/assistant/models/providers";
 import {
   assertNever,
@@ -304,76 +305,6 @@ function classifyStreamError(error: unknown): ClassifiedStreamError {
   return { kind: "unknown" };
 }
 
-// HTTP status is a number, not a union, so the 5xx range stays an `if` in the
-// default branch.
-function apiErrorToErrorEvent(
-  metadata: EndpointMetadata,
-  error: APIError,
-  providerName: string
-): ErrorEvent {
-  const status = error.status;
-  switch (status) {
-    case 400:
-    case 422:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "invalid_request_error",
-        message: `Invalid request to ${providerName}: ${error.message}`,
-        originalError: error,
-      });
-    case 401:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "authentication_error",
-        message: `Authentication failed for ${providerName}: ${error.message}`,
-        originalError: error,
-      });
-    case 403:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "permission_error",
-        message: `Permission denied for ${providerName}: ${error.message}`,
-        originalError: error,
-      });
-    case 404:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "not_found_error",
-        message: `Resource not found for ${providerName}: ${error.message}`,
-        originalError: error,
-      });
-    case 429:
-      return buildErrorEvent({
-        errorSource: "dust",
-        metadata,
-        type: "rate_limit_error",
-        message: `Rate limit exceeded for ${providerName}/${metadata.model}: ${error.message}`,
-        originalError: error,
-      });
-    default:
-      if (status !== undefined && status >= 500 && status < 600) {
-        return buildErrorEvent({
-          errorSource: "provider",
-          metadata,
-          type: "server_error",
-          message: `Server error from ${providerName} (${status}): ${error.message}`,
-          originalError: error,
-        });
-      }
-      return buildErrorEvent({
-        errorSource: "provider",
-        metadata,
-        type: "unknown_error",
-        message: `Error from ${providerName} (${status}): ${error.message}`,
-        originalError: error,
-      });
-  }
-}
-
 // Maps any error thrown by the OpenAI SDK while streaming into a unified
 // `ErrorEvent`, so everything leaving the endpoint is an event, not an exception.
 export function makeStreamErrorToErrorEvent(
@@ -391,7 +322,13 @@ export function makeStreamErrorToErrorEvent(
           originalError: error,
         });
       case "api":
-        return apiErrorToErrorEvent(metadata, classified.error, providerName);
+        return buildHttpStatusErrorEvent({
+          metadata,
+          status: classified.error.status,
+          provider: providerName,
+          detail: classified.error.message,
+          originalError: error,
+        });
       case "unknown":
         return buildErrorEvent({
           errorSource: "provider",
