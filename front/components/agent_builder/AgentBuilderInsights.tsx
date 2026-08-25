@@ -30,10 +30,7 @@ export function AgentBuilderInsights({
 
   return (
     <section className="flex h-full flex-col overflow-y-auto p-4">
-      <AgentInsightsTab
-        owner={owner}
-        agentConfiguration={agentConfiguration}
-      />
+      <AgentInsightsTab owner={owner} agentConfiguration={agentConfiguration} />
     </section>
   );
 }
