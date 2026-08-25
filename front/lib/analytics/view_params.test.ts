@@ -13,7 +13,7 @@ import {
 import {
   CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION,
   CONSUMPTION_SCOPE_DIMENSIONS,
-} from "@app/lib/api/analytics/consumption/scope";
+} from "@app/types/api/analytics/consumption";
 import { describe, expect, it } from "vitest";
 
 const WORKSPACE_ID = "0ec9852c2f";

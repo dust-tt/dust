@@ -6,7 +6,7 @@ import {
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
-import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionScopeDimension } from "@app/types/api/analytics/consumption";
 import { describe, expect, it } from "vitest";
 
 describe("getUsageFilterCategories", () => {

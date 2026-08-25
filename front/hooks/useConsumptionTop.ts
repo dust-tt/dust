@@ -9,10 +9,6 @@ import {
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/schema";
-import type {
-  ConsumptionScopeFilter,
-  ConsumptionTopSortOrder,
-} from "@app/lib/api/analytics/consumption/scope";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
 import type { GetConsumptionTopApiKeysResponse } from "@app/lib/api/analytics/consumption/top_api_keys";
 import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
@@ -22,6 +18,10 @@ import type { GetConsumptionTopSourcesResponse } from "@app/lib/api/analytics/co
 import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/consumption/top_tools";
 import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
 import { emptyArray } from "@app/lib/swr/swr";
+import type {
+  ConsumptionScopeFilter,
+  ConsumptionTopSortOrder,
+} from "@app/types/api/analytics/consumption";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useMemo } from "react";
 

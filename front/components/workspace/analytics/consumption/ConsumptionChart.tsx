@@ -9,7 +9,6 @@ import {
   findPartialTimestamp,
   formatConsumptionDate,
 } from "@app/lib/analytics/consumption_period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type {
   ConsumptionTimeseriesGroup,
   ConsumptionTimeseriesMode,
@@ -17,6 +16,7 @@ import type {
   GetConsumptionTimeseriesResponse,
 } from "@app/lib/api/analytics/consumption/timeseries";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
+import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import { ButtonsSwitch, ButtonsSwitchList, cn } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";

@@ -9,7 +9,7 @@ import {
 } from "@app/lib/analytics/consumption_period";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 
 export interface UseConsumptionOverviewParams {
   workspaceId: string;

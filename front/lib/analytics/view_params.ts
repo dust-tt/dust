@@ -8,11 +8,11 @@ import {
   CONSUMPTION_PERIOD_DAY_OPTIONS,
   DEFAULT_CONSUMPTION_PERIOD,
 } from "@app/lib/analytics/consumption_period";
-import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionScopeDimension } from "@app/types/api/analytics/consumption";
 import {
   CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION,
   CONSUMPTION_SCOPE_DIMENSIONS,
-} from "@app/lib/api/analytics/consumption/scope";
+} from "@app/types/api/analytics/consumption";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type AnalyticsViewState = {

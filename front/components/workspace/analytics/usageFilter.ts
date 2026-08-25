@@ -1,12 +1,12 @@
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
-} from "@app/lib/api/analytics/consumption/scope";
+} from "@app/types/api/analytics/consumption";
 import {
   CONSUMPTION_DIMENSION_FILTER_KEYS,
   CONSUMPTION_SCOPE_DIMENSIONS,
-} from "@app/lib/api/analytics/consumption/scope";
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
+} from "@app/types/api/analytics/consumption";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";

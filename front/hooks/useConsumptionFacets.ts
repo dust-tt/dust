@@ -25,7 +25,7 @@ import type {
   ConsumptionFacetScope,
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
-} from "@app/lib/api/analytics/consumption/scope";
+} from "@app/types/api/analytics/consumption";
 import { isConnectorProvider } from "@app/types/data_source";
 import { useMemo } from "react";
 
