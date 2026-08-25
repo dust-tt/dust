@@ -1,8 +1,13 @@
+import {
+  COMPLETED_AT_FIELD,
+  uniqueMessagesCardinalityAgg,
+} from "@app/lib/api/analytics/consumption/scope";
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import {
   bucketsToArray,
   formatDateFromMillis,
   searchAnalytics,
+  searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -132,6 +137,7 @@ type ContextOriginDailyPoint = {
 type OriginSubBucket = {
   key: string;
   doc_count: number;
+  unique_messages?: estypes.AggregationsCardinalityAggregate;
 };
 
 type DailyOriginDateBucket = {
@@ -152,7 +158,7 @@ export async function fetchContextOriginDailyBreakdown(
   const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
     by_date: {
       date_histogram: {
-        field: "timestamp",
+        field: COMPLETED_AT_FIELD,
         calendar_interval: "day",
         time_zone: timezone,
       },
@@ -163,15 +169,21 @@ export async function fetchContextOriginDailyBreakdown(
             size: 20,
             missing: UNKNOWN_CONTEXT_ORIGIN,
           },
+          aggs: {
+            unique_messages: uniqueMessagesCardinalityAgg(),
+          },
         },
       },
     },
   };
 
-  const result = await searchAnalytics<never, DailyOriginAggs>(baseQuery, {
-    aggregations: aggs,
-    size: 0,
-  });
+  const result = await searchConsumptionAnalytics<never, DailyOriginAggs>(
+    baseQuery,
+    {
+      aggregations: aggs,
+      size: 0,
+    }
+  );
 
   if (result.isErr()) {
     return new Err(new Error(result.error.message));
@@ -193,7 +205,7 @@ export async function fetchContextOriginDailyBreakdown(
       points.push({
         date,
         origin: String(originBucket.key),
-        messageCount: originBucket.doc_count ?? 0,
+        messageCount: Math.round(originBucket.unique_messages?.value ?? 0),
       });
     }
   }
