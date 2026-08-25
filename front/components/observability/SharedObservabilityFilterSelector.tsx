@@ -4,6 +4,7 @@ import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/ve
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 import {
   Button,
+  type ButtonSizeType,
   ButtonsSwitch,
   ButtonsSwitchList,
   DropdownMenu,
@@ -83,12 +84,14 @@ interface ObservabilityPeriodSelectorProps {
   workspaceId: string;
   agentConfigurationId: string;
   isCustomAgent: boolean;
+  size?: ButtonSizeType;
 }
 
 export function ObservabilityPeriodSelector({
   workspaceId,
   agentConfigurationId,
   isCustomAgent,
+  size = "xs",
 }: ObservabilityPeriodSelectorProps) {
   const { mode, period, setPeriod, selectedVersion, setSelectedVersion } =
     useObservabilityContext();
@@ -112,7 +115,7 @@ export function ObservabilityPeriodSelector({
                   ? "Loading"
                   : "Not available"
             }
-            size="xs"
+            size={size}
             variant="outline"
             isSelect
             disabled={versionMarkers.length === 0}
@@ -137,7 +140,7 @@ export function ObservabilityPeriodSelector({
       <DropdownMenuTrigger asChild>
         <Button
           label={`Last ${period} days`}
-          size="xs"
+          size={size}
           variant="outline"
           isSelect
         />

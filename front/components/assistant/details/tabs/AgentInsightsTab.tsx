@@ -98,6 +98,7 @@ export function AgentInsightsTab({
                 workspaceId={owner.sId}
                 agentConfigurationId={agentId}
                 isCustomAgent={isCustomAgent}
+                size="sm"
               />
             )}
           </div>
