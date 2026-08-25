@@ -1,3 +1,4 @@
+import { getKilledModelIds } from "@app/lib/api/assistant/killed_models";
 import { PREFERRED_LARGE_MODEL_CONFIGS } from "@app/lib/api/assistant/model_preferences";
 import { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist";
 import { config as regionConfig } from "@app/lib/api/regions/config";
@@ -93,6 +94,7 @@ function getModelEnablementContext(
     region: regionConfig.getCurrentRegion(),
     whitelistedProviders:
       getWhitelistedProviders(auth).difference(excludeProviders),
+    killedModelIds: getKilledModelIds(),
   };
 }
 

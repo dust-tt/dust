@@ -1,3 +1,4 @@
+import { getKilledModelIds } from "@app/lib/api/assistant/killed_models";
 import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
 import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
@@ -38,14 +39,16 @@ function isStaticModel(
 
 function restrictModelConfigToAllowedTiers(
   model: ModelConfigurationType,
-  allowedTierNamesSet: Set<ModelsTierName>
+  allowedTierNamesSet: Set<ModelsTierName>,
+  isKilled: boolean
 ): EnabledModelConfigurationType {
   if (!isStaticModel(model.modelId)) {
     // Models outside the tier table are models added dynamically (as we
     // have a type guard for all models), so it is expected that we allow them.
     return {
       ...model,
-      isSelectable: true,
+      isSelectable: !isKilled,
+      isKilled,
     };
   }
 
@@ -77,9 +80,12 @@ function restrictModelConfigToAllowedTiers(
     ...model,
     supportedReasoningEfforts,
     defaultReasoningEffort,
-    isSelectable: ORDERED_REASONING_EFFORTS.some(
-      (effort) => supportedReasoningEfforts[effort]
-    ),
+    isSelectable:
+      !isKilled &&
+      ORDERED_REASONING_EFFORTS.some(
+        (effort) => supportedReasoningEfforts[effort]
+      ),
+    isKilled,
   };
 }
 
@@ -88,19 +94,25 @@ export async function withModelSelectability(
   { models }: { models: ModelConfigurationType[] }
 ): Promise<EnabledModelConfigurationType[]> {
   const featureFlags = await getFeatureFlags(auth);
+  const killedModelIds = getKilledModelIds();
 
   if (!featureFlags.includes("models_picker")) {
-    return models.map((model) => ({
-      ...model,
-      isSelectable: true,
-    }));
+    return models.map((model) => {
+      const isKilled = killedModelIds.has(model.modelId);
+
+      return { ...model, isSelectable: !isKilled, isKilled };
+    });
   }
 
   const { tiers: allowedTierNames } = await resolveAllowedTierNames(auth);
   const allowedTierNamesSet = new Set(allowedTierNames);
 
   return models.map((model) =>
-    restrictModelConfigToAllowedTiers(model, allowedTierNamesSet)
+    restrictModelConfigToAllowedTiers(
+      model,
+      allowedTierNamesSet,
+      killedModelIds.has(model.modelId)
+    )
   );
 }
 
@@ -139,6 +151,7 @@ export function getDefaultModelFromEnabledModels(
   return {
     ...pickPreferredLargeModel(selectableModels),
     isSelectable: true,
+    isKilled: false,
   };
 }
 
@@ -176,7 +189,7 @@ export function resolveStreamModel(
     models.filter((m) => m.isSelectable)
   );
   return {
-    model: { ...fallback, isSelectable: true },
+    model: { ...fallback, isSelectable: true, isKilled: false },
     reasoningEffort: fallback.defaultReasoningEffort,
     fromPool: false,
   };

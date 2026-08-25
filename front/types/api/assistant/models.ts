@@ -7,6 +7,7 @@ import type {
 
 export type EnabledModelConfigurationType = ModelConfigurationType & {
   isSelectable: boolean;
+  isKilled: boolean;
 };
 
 export type ModelStreamResolutionType = {
