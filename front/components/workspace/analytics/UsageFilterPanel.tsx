@@ -14,7 +14,6 @@ import {
   USAGE_FILTER_AGENT_SCOPES,
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
-  usageFilterSelectionCount,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
 import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls";
@@ -41,6 +40,10 @@ import {
 import { useMemo, useState } from "react";
 
 const DEFAULT_MODEL_TIER: ModelsTierName = "balanced";
+const PERSONAL_USAGE_FILTER_CATEGORIES: UsageFilterCategory[] =
+  USAGE_FILTER_CATEGORIES.filter(
+    (category) => category !== "member" && category !== "group"
+  );
 
 export interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
@@ -59,10 +62,11 @@ export function UsageFilterPanel({
   onFilterChange,
   showMemberGroupFilter = true,
 }: UsageFilterPanelProps) {
+  const shouldShowMemberGroupFilter = showMemberGroupFilter && !personal;
   const state = useUsageFilterPanelState({
     owner,
     filter,
-    showMemberGroupFilter,
+    showMemberGroupFilter: shouldShowMemberGroupFilter,
   });
   const {
     options: categoryOptions,
@@ -80,8 +84,9 @@ export function UsageFilterPanel({
   return (
     <UsageFilterPanelView
       filter={filter}
+      personal={personal}
       onFilterChange={onFilterChange}
-      showMemberGroupFilter={showMemberGroupFilter}
+      showMemberGroupFilter={shouldShowMemberGroupFilter}
       state={state}
       categoryOptions={categoryOptions}
       isFacetsLoading={isFacetsLoading}
@@ -174,6 +179,7 @@ export function useUsageFilterPanelState({
 
 interface UsageFilterPanelViewProps {
   filter: UsageFilter;
+  personal?: boolean;
   onFilterChange: (next: UsageFilter) => void;
   showMemberGroupFilter: boolean;
   state: ReturnType<typeof useUsageFilterPanelState>;
@@ -185,6 +191,7 @@ interface UsageFilterPanelViewProps {
 
 export function UsageFilterPanelView({
   filter,
+  personal,
   onFilterChange,
   showMemberGroupFilter,
   state,
@@ -203,7 +210,7 @@ export function UsageFilterPanelView({
     toggleOption,
     removeOption,
     selectAllFiltered,
-    activeCategory,
+    activeCategory: selectedCategory,
     setActiveCategory,
     activeScope,
     setActiveScope,
@@ -216,6 +223,14 @@ export function UsageFilterPanelView({
     selectedGroups,
     groups,
   } = state;
+
+  const visibleCategories: readonly UsageFilterCategory[] = personal
+    ? PERSONAL_USAGE_FILTER_CATEGORIES
+    : USAGE_FILTER_CATEGORIES;
+  const activeCategory =
+    personal && (selectedCategory === "member" || selectedCategory === "group")
+      ? "agent"
+      : selectedCategory;
 
   const activeOptions = categoryOptions[activeCategory];
   const filteredOptions = useMemo(() => {
@@ -263,21 +278,24 @@ export function UsageFilterPanelView({
     (option) => !selectedIdsForActiveCategory.has(option.id)
   );
 
-  const appliedSelectionCount = usageFilterSelectionCount(filter);
+  const appliedSelectionCount = visibleCategories.reduce(
+    (count, category) => count + (filter[category]?.length ?? 0),
+    0
+  );
   const categoriesWithSelection = useMemo(
     () =>
-      USAGE_FILTER_CATEGORIES.filter(
+      visibleCategories.filter(
         (category) => (draftFilter[category]?.length ?? 0) > 0
       ),
-    [draftFilter]
+    [draftFilter, visibleCategories]
   );
   const categorySelectionCounts = useMemo(() => {
     const counts: Partial<Record<UsageFilterCategory, number>> = {};
-    for (const category of USAGE_FILTER_CATEGORIES) {
+    for (const category of visibleCategories) {
       counts[category] = draftFilter[category]?.length ?? 0;
     }
     return counts;
-  }, [draftFilter]);
+  }, [draftFilter, visibleCategories]);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -322,7 +340,7 @@ export function UsageFilterPanelView({
       <PopoverContent fullWidth align="end" className="w-auto rounded-2xl p-0">
         <div className="flex h-96 flex-row divide-x divide-border">
           <FilterCategoryNav
-            categories={USAGE_FILTER_CATEGORIES}
+            categories={visibleCategories}
             categoryLabels={USAGE_FILTER_CATEGORY_LABEL}
             selectionCounts={categorySelectionCounts}
             activeCategory={activeCategory}

@@ -76,6 +76,7 @@ import type { ConsumptionDimension } from "./consumptionDimensions";
 import {
   CONSUMPTION_DIMENSION_CONFIG,
   CONSUMPTION_DIMENSIONS,
+  DEFAULT_CONSUMPTION_DIMENSION,
   isConsumptionDimension,
 } from "./consumptionDimensions";
 
@@ -771,9 +772,13 @@ export function ConsumptionAttributionTableView({
     target: null,
     direction: 0,
   });
+  const activeDimension =
+    personal && (dimension === "user" || dimension === "group")
+      ? DEFAULT_CONSUMPTION_DIMENSION
+      : dimension;
   const shouldReduceMotion = useReducedMotion();
   const effectiveTransitionDirection =
-    shouldReduceMotion || transition.target !== dimension
+    shouldReduceMotion || transition.target !== activeDimension
       ? 0
       : transition.direction;
   const visibleDimensions = personal
@@ -803,14 +808,17 @@ export function ConsumptionAttributionTableView({
       <div className="rounded-lg border border-border bg-panel-background p-4">
         <div className="flex flex-col gap-3">
           <Tabs
-            value={dimension}
+            value={activeDimension}
             onValueChange={(value) => {
               if (isConsumptionDimension(value)) {
                 setTransition({
                   target: value,
                   direction:
                     pendingPointerDimension.current === value
-                      ? getAttributionTransitionDirection(dimension, value)
+                      ? getAttributionTransitionDirection(
+                          activeDimension,
+                          value
+                        )
                       : 0,
                 });
                 pendingPointerDimension.current = null;
@@ -852,7 +860,7 @@ export function ConsumptionAttributionTableView({
                 custom={effectiveTransitionDirection}
               >
                 <m.div
-                  key={dimension}
+                  key={activeDimension}
                   custom={effectiveTransitionDirection}
                   variants={ATTRIBUTION_BODY_VARIANTS}
                   initial="initial"
@@ -867,7 +875,7 @@ export function ConsumptionAttributionTableView({
                       search: debouncedValue,
                     })}
                     workspaceId={workspaceId}
-                    dimension={dimension}
+                    dimension={activeDimension}
                     period={period}
                     filter={filter}
                     personal={personal}
