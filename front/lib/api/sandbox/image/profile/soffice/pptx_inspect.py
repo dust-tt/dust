@@ -73,6 +73,7 @@ from pptx_audit import (
     _cover_candidates,
     _deck_fidelity,
     _deck_structural_audit,
+    _leading_break_audit,
     _drop_audit,
     _filler_audit,
     _hole_audit,
@@ -1141,6 +1142,26 @@ def print_compare(file_path: str, source_path: str) -> str:
             blockers += len(filler) - LEFTOVER_LISTED
             lines.append(
                 f"    [!] ... and {len(filler) - LEFTOVER_LISTED} more"
+            )
+
+    # A line break at the start of a paragraph.
+    stranded = _leading_break_audit(file_path)
+    if stranded:
+        lines.append(
+            f"  breaks:  [!] {len(stranded)} paragraph(s) start with a line break"
+        )
+        for slide_no, shape_id, index, text in stranded[:LEFTOVER_LISTED]:
+            blockers += 1
+            lines.append(
+                f"    [!] slide {slide_no} #{shape_id} p[{index}]: "
+                f"{ellipsize(text, 46)!r} - starts on the second line of its "
+                "own paragraph, and a bulleted one strands its bullet above it. "
+                "Drop the leading break."
+            )
+        if len(stranded) > LEFTOVER_LISTED:
+            blockers += len(stranded) - LEFTOVER_LISTED
+            lines.append(
+                f"    [!] ... and {len(stranded) - LEFTOVER_LISTED} more"
             )
 
     # The same sentence on several slides. Padding to satisfy a gate looks

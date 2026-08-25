@@ -80,6 +80,8 @@ def set_text(paragraph, text):
 
 **Empty placeholder renders "Click to add ..."**; covering it does not suppress it. Fill (\`slide.shapes.title.text\`, \`slide.placeholders[idx].text_frame.text\`) or delete (\`sp.element.getparent().remove(sp.element)\`).
 
+**Never start a paragraph with a line break.** A leading \`\n\` in the string you write becomes a break inside the paragraph: the copy starts on its second line, and a bulleted paragraph leaves its bullet stranded alone above the text. PowerPoint shows this plainly and the QA render often does not, so it ships. Write the text with no leading whitespace and use separate paragraphs for separate lines.
+
 **The layout draws the bullets.** Body placeholders bullet by \`paragraph.level\`; typing \`•\`, \`-\` or \`*\` at the start of the line stacks your glyph on the layout's ("● • Private answers"). Write the bare text and set the level.
 
 **A new text box has no styling and no colour.** Inside a placeholder the layout supplies typeface, size and colour, so leave \`font.name\` / \`font.size\` / \`font.color\` unset. A box you add with \`shapes.add_textbox\` inherits none of that: it renders in Arial at the presentation's default colour, which is near-black on every deck including the dark ones, so your copy lands black on a black slide. Set all three explicitly on every run, copying the values from the \`--layouts\` placeholder that sits on the same background. Better still: don't add a box, edit the one the exemplar already has.
