@@ -1,7 +1,5 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
-import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
-import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
@@ -55,28 +53,15 @@ export function ConsumptionSummary({
       analyticsScope,
       disabled,
     });
-  const isAgentScoped = analyticsScope.kind === "agent";
-  const { rows: topMembers, isTopLoading: isTopMemberLoading } =
-    useConsumptionTop({
-      workspaceId,
-      dimension: "user",
-      period: periodSelection,
-      limit: 1,
-      analyticsScope,
-      disabled: disabled || !isAgentScoped,
-    });
 
   return (
     <ConsumptionSummaryView
       overview={overview}
-      isOverviewLoading={
-        isOverviewLoading || (isAgentScoped && isTopMemberLoading)
-      }
+      isOverviewLoading={isOverviewLoading}
       isOverviewError={Boolean(isOverviewError)}
       usageHref={usageHref}
       usageLinkLabel={usageLinkLabel}
       analyticsScope={analyticsScope}
-      topMember={isAgentScoped ? (topMembers[0] ?? null) : undefined}
     />
   );
 }
@@ -89,7 +74,6 @@ interface ConsumptionSummaryViewProps {
   usageLinkLabel: string;
   responsiveLayout?: boolean;
   analyticsScope?: ConsumptionAnalyticsScope;
-  topMember?: Pick<ConsumptionTopRow, "name" | "credits"> | null;
 }
 
 export function ConsumptionSummaryView({
@@ -100,7 +84,6 @@ export function ConsumptionSummaryView({
   usageLinkLabel,
   responsiveLayout = false,
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
-  topMember,
 }: ConsumptionSummaryViewProps) {
   if (isOverviewLoading) {
     return (
@@ -129,10 +112,10 @@ export function ConsumptionSummaryView({
     return null;
   }
 
-  const { topAgent, totalCredits } = overview;
+  const { topAgent, topUser, totalCredits } = overview;
   const creditUsage =
     analyticsScope.kind === "workspace" ? overview.creditUsage : null;
-  const topConsumer = analyticsScope.kind === "agent" ? topMember : topAgent;
+  const topConsumer = analyticsScope.kind === "agent" ? topUser : topAgent;
   const topConsumerLabel =
     analyticsScope.kind === "agent" ? "Top user" : "Top agent";
 
