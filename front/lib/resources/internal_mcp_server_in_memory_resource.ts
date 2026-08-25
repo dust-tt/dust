@@ -109,6 +109,17 @@ export class InternalMCPServerInMemoryResource {
     );
   }
 
+  static async isRestrictedForWorkspace(
+    auth: Authenticator,
+    name: InternalMCPServerNameType
+  ): Promise<boolean> {
+    const enabledServerNames = await this.computeEnabledServerNames(auth, [
+      name,
+    ]);
+
+    return !enabledServerNames.has(name);
+  }
+
   static async makeNew(
     auth: Authenticator,
     {
