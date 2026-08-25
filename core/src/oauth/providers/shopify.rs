@@ -29,7 +29,7 @@ impl ShopifyConnectionProvider {
     }
 
     fn store_domain<'a>(&self, connection: &'a Connection) -> Result<&'a str, ProviderError> {
-        let store_domain = connection.metadata()["store_domain"]
+        let store_domain = connection.metadata()["shopify_store_domain"]
             .as_str()
             .ok_or_else(|| {
                 ProviderError::InvalidMetadataError(

@@ -19,7 +19,7 @@ function makeConnection(storeDomain: string): OAuthConnectionType {
   return {
     connection_id: "con_shopify",
     created: Date.now(),
-    metadata: { store_domain: storeDomain },
+    metadata: { shopify_store_domain: storeDomain },
     provider: "shopify",
     status: "pending",
   };
@@ -51,19 +51,19 @@ describe("ShopifyOAuthProvider", () => {
 
     expect(
       provider.isExtraConfigValid(
-        { store_domain: "my-store.myshopify.com" },
+        { shopify_store_domain: "my-store.myshopify.com" },
         "platform_actions"
       )
     ).toBe(true);
     expect(
       provider.isExtraConfigValid(
-        { store_domain: "my-store.myshopify.com" },
+        { shopify_store_domain: "my-store.myshopify.com" },
         "personal_actions"
       )
     ).toBe(false);
     expect(
       provider.isExtraConfigValid(
-        { store_domain: "shop.example.com" },
+        { shopify_store_domain: "shop.example.com" },
         "platform_actions"
       )
     ).toBe(false);
