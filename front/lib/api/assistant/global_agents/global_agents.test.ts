@@ -124,7 +124,7 @@ describe("getGlobalAgents custom model agents", () => {
     expect(agents[0].skills).toContain("support");
   });
 
-  it("reserves Go Deep for broad, decomposable research", async () => {
+  it("reserves Go Deep for explicit deep research requests", async () => {
     const auth = await createAuthenticatorWithFlags([]);
 
     const agents = await getGlobalAgents(
@@ -135,10 +135,10 @@ describe("getGlobalAgents custom model agents", () => {
 
     expect(agents).toHaveLength(1);
     expect(agents[0].instructions).toContain(
-      "multiple independent research threads"
+      "only when the user explicitly asks to use Go Deep"
     );
     expect(agents[0].instructions).toContain(
-      "Do not enable it solely because the answer should be detailed"
+      "Do not infer that Go Deep is needed from task complexity alone"
     );
     expect(agents[0].instructions).toContain("When in doubt, do not enable it");
     expect(agents[0].instructions).not.toContain("3+ steps of tool use");

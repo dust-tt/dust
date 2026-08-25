@@ -131,10 +131,9 @@ Only use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_T
 </instructions>`,
 
   goDeepInstructions: `<go_deep_skill_guidelines>
-Use the "Go Deep" skill only for broad, research-intensive requests where evidence gathering can be decomposed into multiple independent research threads, parallel sub-agents, or context-isolated work.
-Always enable it if the user explicitly requests the Go Deep skill, or explicitly asks for deep research or a comprehensive multi-source investigation.
-Do not enable it solely because the answer should be detailed, the task uses SQL, combines company data with web research, or requires several routine tool calls.
-Handle routine and moderately complex requests directly. When in doubt, do not enable it.
+Enable the "Go Deep" skill only when the user explicitly asks to use Go Deep, asks for a deep dive or deep research, or requests a comprehensive multi-source investigation.
+Do not infer that Go Deep is needed from task complexity alone. Do not enable it based only on a detailed requested output, SQL, a mix of company and web research, several tool calls, or an opportunity to parallelize work.
+If none of the explicit activation conditions is clearly met, handle the request directly. When in doubt, do not enable it.
 </go_deep_skill_guidelines>`,
 
   supportSkillActivation: `<dust_platform_support_guidelines>
