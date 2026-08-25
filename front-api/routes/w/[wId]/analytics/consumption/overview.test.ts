@@ -3,6 +3,7 @@ import { fetchConsumptionOverview } from "@app/lib/api/analytics/consumption/ove
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -123,15 +124,23 @@ describe("POST /api/w/:wId/analytics/consumption/overview", () => {
     );
   });
 
-  it("refuses agent analytics to members who cannot edit the agent", async () => {
+  it("refuses agent analytics to publishers who cannot edit the agent", async () => {
     const ownerRequest = await setupTest({ role: "user" });
     const agent = await AgentConfigurationFactory.createTestAgent(
       ownerRequest.auth
     );
-    await createPrivateApiMockRequest({
+    const publisherRequest = await createPrivateApiMockRequest({
       role: "user",
       workspace: ownerRequest.workspace,
     });
+    await grantWorkspacePermission(
+      ownerRequest.workspace,
+      publisherRequest.user,
+      {
+        grantType: "publish",
+        resourceType: "agent",
+      }
+    );
     vi.mocked(fetchConsumptionOverview).mockClear();
 
     const response = await postAgentOverviewRequest(

@@ -99,10 +99,7 @@ export function createAgentConsumptionRoutes() {
       });
     }
 
-    if (
-      !agent.canEdit &&
-      !(await auth.hasWorkspacePermission("publish", "agent"))
-    ) {
+    if (!agent.canEdit && !auth.isAdmin()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
