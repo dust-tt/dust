@@ -142,7 +142,12 @@ export async function fetchConsumptionOverview(
   {
     periodInput,
     filter,
-  }: { periodInput: ConsumptionPeriodInput; filter?: ConsumptionScopeFilter }
+    includeWorkspaceContext = true,
+  }: {
+    periodInput: ConsumptionPeriodInput;
+    filter?: ConsumptionScopeFilter;
+    includeWorkspaceContext?: boolean;
+  }
 ): Promise<Result<ConsumptionOverview, ElasticsearchError>> {
   const workspace = auth.getNonNullableWorkspace();
   const period = await resolveConsumptionPeriod(auth, periodInput);
@@ -173,8 +178,12 @@ export async function fetchConsumptionOverview(
       },
       size: 0,
     }),
-    MembershipResource.countActiveMembersForWorkspace({ workspace }),
-    fetchPoolCapCredits(auth, periodInput),
+    includeWorkspaceContext
+      ? MembershipResource.countActiveMembersForWorkspace({ workspace })
+      : Promise.resolve(0),
+    includeWorkspaceContext
+      ? fetchPoolCapCredits(auth, periodInput)
+      : Promise.resolve(null),
   ]);
 
   if (searchResult.isErr()) {
@@ -185,12 +194,13 @@ export async function fetchConsumptionOverview(
   const totalCredits = microCreditsToCredits(
     aggregations?.total_credit_micro?.value ?? 0
   );
+  const activeMembers = Math.round(aggregations?.active_members?.value ?? 0);
 
   return new Ok({
     period,
     members: {
-      active: Math.round(aggregations?.active_members?.value ?? 0),
-      total: totalMembers,
+      active: activeMembers,
+      total: includeWorkspaceContext ? totalMembers : activeMembers,
     },
     lastRecordAt: lastRecordAtFromAgg(aggregations?.last_completed_at),
     totalCredits,

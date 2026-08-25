@@ -5,7 +5,7 @@ import agentCredits from "./agent-credits";
 import agentsExport from "./agents-export";
 import automations from "./automations";
 import awuUsageAnalytics from "./awu-usage-analytics";
-import consumption from "./consumption";
+import { createWorkspaceConsumptionRoutes } from "./consumption";
 import exportTableRoute from "./export";
 import overview from "./overview";
 import programmaticCost from "./programmatic-cost";
@@ -28,6 +28,7 @@ import usersExport from "./users-export";
 // Mounted at /api/w/:wId/analytics. workspaceAuth is applied by the parent
 // workspace sub-app.
 const app = workspaceApp();
+const consumption = createWorkspaceConsumptionRoutes();
 
 app.route("/active-users-export", activeUsersExport);
 app.route("/active-users", activeUsers);

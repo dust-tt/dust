@@ -434,6 +434,41 @@ describe("fetchConsumptionFacets", () => {
     }
   });
 
+  it("keeps the user scope on every personal facet query and skips the workspace catalog", async () => {
+    const { authenticator, user } = await createResourceTest({ role: "user" });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({ values: { buckets: [] } })
+    );
+
+    const result = await fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+      filter: { users: [user.sId], agents: ["agent_1"] },
+      userId: user.sId,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(listConsumptionFacetCatalog).not.toHaveBeenCalled();
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(8);
+
+    for (const [query] of vi.mocked(searchConsumptionAnalytics).mock.calls) {
+      expect(query.bool?.filter).toContainEqual({
+        term: { "user.id": user.sId },
+      });
+    }
+
+    const userCall = vi
+      .mocked(searchConsumptionAnalytics)
+      .mock.calls.find(
+        ([, options]) =>
+          options?.aggregations?.values?.composite?.sources?.[0]?.value?.terms
+            ?.field === "user.id"
+      );
+    expect(
+      userCall?.[1]?.aggregations?.values?.aggs?.contextual?.filter?.bool
+        ?.filter
+    ).toContainEqual({ term: { "user.id": user.sId } });
+  });
+
   it("returns the Elasticsearch failure before resolving historical labels", async () => {
     const { authenticator } = await createResourceTest({ role: "manager" });
     const error = new ElasticsearchError("query_error", "query failed");
