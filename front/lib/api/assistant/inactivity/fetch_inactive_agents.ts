@@ -42,6 +42,7 @@ export interface AgentArchivalSkip {
 
 export interface ArchivableAgentsFetchInput {
   cutoffAt: Date;
+  dangerouslySkipPermissionFiltering?: boolean;
 }
 
 export interface ArchivableAgents {
@@ -62,16 +63,15 @@ export function countSkipsByReason(
   return counts;
 }
 
-/** The status and triggers the rules read about an agent, as they stand when it is evaluated. */
 interface AgentStatusAndTriggers {
   status: AgentConfigurationStatus;
   triggers: AgentTriggerSnapshot[];
 }
 
-/** A missing agent is one this actor cannot read. */
 async function fetchStatusAndTriggers(
   auth: Authenticator,
-  agentIds: string[]
+  agentIds: string[],
+  dangerouslySkipPermissionFiltering?: boolean
 ): Promise<Map<string, AgentStatusAndTriggers>> {
   if (agentIds.length === 0) {
     return new Map();
@@ -80,6 +80,7 @@ async function fetchStatusAndTriggers(
   const configurations = await getAgentConfigurations(auth, {
     agentIds,
     variant: "light",
+    dangerouslySkipPermissionFiltering,
   });
 
   const triggers = await TriggerResource.listByAgentConfigurationIds(
@@ -104,7 +105,7 @@ async function fetchStatusAndTriggers(
 
 export async function fetchArchivableAgents(
   auth: Authenticator,
-  { cutoffAt }: ArchivableAgentsFetchInput
+  { cutoffAt, dangerouslySkipPermissionFiltering }: ArchivableAgentsFetchInput
 ): Promise<ArchivableAgents> {
   const idleAgents = await MentionResource.listAgentsNotMentionedSince(auth, {
     notMentionedSince: cutoffAt,
@@ -117,7 +118,8 @@ export async function fetchArchivableAgents(
   );
   const statusAndTriggersByAgentId = await fetchStatusAndTriggers(
     auth,
-    agentIds
+    agentIds,
+    dangerouslySkipPermissionFiltering
   );
 
   const eligible: ArchivableAgent[] = [];

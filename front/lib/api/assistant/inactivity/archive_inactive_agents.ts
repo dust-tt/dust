@@ -6,7 +6,7 @@ import {
 } from "@app/lib/api/assistant/inactivity/fetch_inactive_agents";
 import type { AgentInactivityPolicyError } from "@app/lib/api/assistant/inactivity/policy";
 import { computeInactivityCutoffAt } from "@app/lib/api/assistant/inactivity/policy";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { heartbeat } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -59,15 +59,10 @@ export async function archiveInactiveWorkspaceAgents(
     throw new Error("Only a workspace admin can archive inactive agents.");
   }
 
-  const everySpaceAuth = await Authenticator.internalAdminForWorkspace(
-    workspace.sId,
-    { dangerouslyRequestAllGroups: true }
-  );
-
-  const { eligible, skipped: refused } = await fetchArchivableAgents(
-    everySpaceAuth,
-    { cutoffAt }
-  );
+  const { eligible, skipped: refused } = await fetchArchivableAgents(auth, {
+    cutoffAt,
+    dangerouslySkipPermissionFiltering: true,
+  });
 
   const archivedAgentIds: string[] = [];
   const skipped = [...refused];
@@ -77,7 +72,9 @@ export async function archiveInactiveWorkspaceAgents(
     await heartbeat();
 
     // Not a compare-and-set: an agent restored since the read is archived anyway. Reversible.
-    const archived = await archiveAgentConfiguration(everySpaceAuth, agentId);
+    const archived = await archiveAgentConfiguration(auth, agentId, {
+      dangerouslySkipPermissionFiltering: true,
+    });
     if (!archived) {
       skipped.push({ agentId, reason: "archive_raced" });
       continue;
