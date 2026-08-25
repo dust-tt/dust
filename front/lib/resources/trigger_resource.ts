@@ -1095,54 +1095,51 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   async enable(auth: Authenticator): Promise<Result<undefined, Error>> {
-    if (this.status === "enabled") {
-      return new Ok(undefined);
-    }
-
     if (!this.canUpdateStatusTo(auth, "enabled")) {
       return new Err(
         new Error("You don't have permission to change this trigger's status")
       );
     }
 
-    const previousStatus = this.status;
+    // Even when the trigger is already enabled, reconcile its Temporal
+    // workflow below. A previous enable may have updated the status but failed
+    // before re-registering the schedule.
+    if (this.status !== "enabled") {
+      const previousStatus = this.status;
 
-    try {
       await this.update({ status: "enabled" });
-    } catch (error) {
-      return new Err(normalizeError(error));
+
+      logger.info(
+        {
+          triggerId: this.sId,
+          triggerName: this.name,
+          triggerKind: this.kind,
+          previousStatus,
+          newStatus: "enabled",
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentConfigurationId: this.agentConfigurationId,
+          editorId: this.editor,
+        },
+        "Trigger status changed: enabled"
+      );
+
+      void emitAuditLogEvent({
+        auth,
+        action: "trigger.enabled",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("trigger", {
+            sId: this.sId,
+            name: this.name,
+          }),
+        ],
+        metadata: {
+          trigger_type: this.kind,
+          agent_id: this.agentConfigurationId,
+          status: "enabled",
+        },
+      });
     }
-
-    logger.info(
-      {
-        triggerId: this.sId,
-        triggerName: this.name,
-        triggerKind: this.kind,
-        previousStatus,
-        newStatus: "enabled",
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        agentConfigurationId: this.agentConfigurationId,
-        editorId: this.editor,
-      },
-      "Trigger status changed: enabled"
-    );
-
-    void emitAuditLogEvent({
-      auth,
-      action: "trigger.enabled",
-      targets: [
-        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-        buildAuditLogTarget("trigger", {
-          sId: this.sId,
-          name: this.name,
-        }),
-      ],
-      metadata: {
-        trigger_type: this.kind,
-        agent_id: this.agentConfigurationId,
-        status: "enabled",
-      },
-    });
 
     const editor = await UserResource.fetchByModelId(this.editor);
     if (!editor) {
