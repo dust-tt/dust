@@ -41,7 +41,6 @@ import {
 import { useMemo, useState } from "react";
 
 const DEFAULT_MODEL_TIER: ModelsTierName = "balanced";
-const NO_HIDDEN_USAGE_FILTER_CATEGORIES: readonly UsageFilterCategory[] = [];
 
 export interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
@@ -51,7 +50,6 @@ export interface UsageFilterPanelProps {
   agentId?: string;
   onFilterChange: (next: UsageFilter) => void;
   showMemberGroupFilter?: boolean;
-  hiddenCategories?: readonly UsageFilterCategory[];
 }
 
 export function UsageFilterPanel({
@@ -62,15 +60,11 @@ export function UsageFilterPanel({
   agentId,
   onFilterChange,
   showMemberGroupFilter = true,
-  hiddenCategories = NO_HIDDEN_USAGE_FILTER_CATEGORIES,
 }: UsageFilterPanelProps) {
-  const categories = useMemo(
-    () =>
-      getUsageFilterCategories({ personal }).filter(
-        (category) => !hiddenCategories.includes(category)
-      ),
-    [hiddenCategories, personal]
-  );
+  const categories = getUsageFilterCategories({
+    personal,
+    agent: agentId !== undefined,
+  });
   const shouldShowMemberGroupFilter = showMemberGroupFilter && !personal;
   const state = useUsageFilterPanelState({
     owner,

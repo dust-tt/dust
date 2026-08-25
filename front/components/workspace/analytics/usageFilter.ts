@@ -32,12 +32,21 @@ const PERSONAL_USAGE_FILTER_CATEGORIES: UsageFilterCategory[] =
     (category) => category !== "member" && category !== "group"
   );
 
+const AGENT_USAGE_FILTER_CATEGORIES = USAGE_FILTER_CATEGORIES.filter(
+  (category) => category !== "agent"
+);
+
 export function getUsageFilterCategories({
   personal,
+  agent,
 }: {
   personal?: boolean;
+  agent?: boolean;
 }): readonly UsageFilterCategory[] {
-  return personal ? PERSONAL_USAGE_FILTER_CATEGORIES : USAGE_FILTER_CATEGORIES;
+  if (personal) {
+    return PERSONAL_USAGE_FILTER_CATEGORIES;
+  }
+  return agent ? AGENT_USAGE_FILTER_CATEGORIES : USAGE_FILTER_CATEGORIES;
 }
 
 export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =

@@ -29,6 +29,15 @@ describe("getUsageFilterCategories", () => {
       "source",
       "api_key",
     ]);
+    expect(getUsageFilterCategories({ agent: true })).toEqual([
+      "member",
+      "group",
+      "model",
+      "tool",
+      "skill",
+      "source",
+      "api_key",
+    ]);
   });
 });
 

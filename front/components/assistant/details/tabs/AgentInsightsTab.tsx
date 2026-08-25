@@ -12,10 +12,7 @@ import { ConsumptionSummary } from "@app/components/workspace/analytics/consumpt
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
 import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
-import type {
-  UsageFilter,
-  UsageFilterCategory,
-} from "@app/components/workspace/analytics/usageFilter";
+import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
   addUsageFilterFromAttributionRow,
   removeUsageFilterFromAttributionRow,
@@ -37,9 +34,6 @@ import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
 import { useMemo, useState } from "react";
 
 type InsightsSubTab = "analytics" | "feedback";
-
-const AGENT_ANALYTICS_HIDDEN_FILTER_CATEGORIES: readonly UsageFilterCategory[] =
-  ["agent"];
 
 interface AgentInsightsTabProps {
   owner: WorkspaceType;
@@ -133,9 +127,6 @@ export function AgentInsightsTab({
                         period={period}
                         filter={filter}
                         agentId={agentId}
-                        hiddenCategories={
-                          AGENT_ANALYTICS_HIDDEN_FILTER_CATEGORIES
-                        }
                         onFilterChange={setFilter}
                       />
                     </div>
