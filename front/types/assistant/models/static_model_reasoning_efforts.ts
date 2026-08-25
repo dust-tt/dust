@@ -2,7 +2,7 @@ import type { StaticModelIdType } from "@app/types/assistant/models/models";
 import type { ReasoningEffortSupport } from "@app/types/assistant/models/types";
 
 // Supported reasoning efforts per static model, mirroring SUPPORTED_MODEL_CONFIGS.
-// Kept in sync via tiers.test.ts; literals must stay as const for per-model tier typing.
+// Kept in sync via model_tiers.test.ts; literals must stay as const for per-model tier typing.
 export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
   "gpt-3.5-turbo": {
     none: true,

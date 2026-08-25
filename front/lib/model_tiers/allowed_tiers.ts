@@ -1,9 +1,3 @@
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
-import {
-  getTier,
-  MODELS_TIER_NAMES,
-  MODELS_TIERS,
-} from "@app/lib/api/assistant/token_pricing/tiers";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { isModelTierOverrideGroupKind } from "@app/lib/model_tiers/group_kinds";
@@ -23,6 +17,12 @@ import type {
   GroupAllowedModelTiersType,
   UserAllowedModelTiersType,
 } from "@app/types/api/model_tiers";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
+import {
+  getTier,
+  MODELS_TIER_NAMES,
+  MODELS_TIERS,
+} from "@app/types/assistant/models/model_tiers";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -32,15 +32,14 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 export type {
-  ModelsTierDefinition,
-  ModelsTierName,
-  ModelTierSelection,
-} from "@app/lib/api/assistant/token_pricing/tiers";
-
-export type {
   ModelTierResolutionSource,
   ResolvedAllowedModelTiers,
 } from "@app/lib/model_tiers/resolve_allowed";
+export type {
+  ModelsTierDefinition,
+  ModelsTierName,
+  ModelTierSelection,
+} from "@app/types/assistant/models/model_tiers";
 
 const MODELS_TIER_GRANT_TYPE = "use" as const;
 const MODELS_TIER_RESOURCE_TYPE = "models_tier" as const;

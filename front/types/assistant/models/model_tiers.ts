@@ -1,4 +1,4 @@
-import { STATIC_MODEL_SUPPORTED_REASONING_EFFORTS } from "@app/lib/api/assistant/token_pricing/static_model_reasoning_efforts";
+import { STATIC_MODEL_SUPPORTED_REASONING_EFFORTS } from "@app/types/assistant/models/static_model_reasoning_efforts";
 import type { StaticModelIdType } from "@app/types/assistant/models/models";
 import { isStaticModelId } from "@app/types/assistant/models/models";
 import type {

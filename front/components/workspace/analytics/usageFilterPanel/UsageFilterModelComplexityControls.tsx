@@ -3,11 +3,11 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { FilterAvailabilityStatus } from "@app/components/workspace/analytics/filterPanel/FilterAvailabilityStatus";
 import type { UsageFilterModelOption } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import {
   getModelsTierDisplayName,
   MODELS_TIER_NAMES,
-} from "@app/lib/api/assistant/token_pricing/tiers";
+} from "@app/types/assistant/models/model_tiers";
 import {
   getModelMakerDisplayName,
   MODEL_MAKER_IDS,

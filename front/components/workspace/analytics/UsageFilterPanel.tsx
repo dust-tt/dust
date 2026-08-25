@@ -25,8 +25,8 @@ import type { ConsumptionFacetOptions } from "@app/hooks/useConsumptionFacets";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import { useGroups } from "@app/lib/swr/groups";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {

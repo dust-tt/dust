@@ -5,7 +5,6 @@ import {
   getTierLockReason,
   isPremiumModel,
 } from "@app/components/model_picker/modelPickerUtils";
-import { getTierForModel } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import {
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
@@ -21,6 +20,7 @@ import {
   AUTO_MODEL_ID,
 } from "@app/types/assistant/models/auto";
 import { GEMINI_2_5_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import { O1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { describe, expect, it } from "vitest";
