@@ -2017,36 +2017,23 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return [{ role: "admin", permissions: ["admin", "write"] }];
     }
 
-    // Global Workspace space and Conversations space.
-    if (this.isGlobal() || this.isConversations()) {
+    // Global Workspace space, Conversations space and open regular spaces. Read is not granted by
+    // role: all three attach the workspace global group with a `reader` grant, and every workspace
+    // member belongs to that group, so `group_permissions` already confers read on everyone. Write
+    // is the only thing the role still grants here, and the only remaining difference with a
+    // restricted regular space.
+    if (this.isGlobal() || this.isConversations() || this.isRegularAndOpen()) {
       return [
-        { role: "admin", permissions: ["admin", "read", "write"] },
+        { role: "admin", permissions: ["admin", "write"] },
         // TODO(governance): remove once manager is available for everyone
-        { role: "builder", permissions: ["read", "write"] },
-        { role: "manager", permissions: ["read", "write"] },
+        { role: "builder", permissions: ["write"] },
+        { role: "manager", permissions: ["write"] },
       ];
     }
 
-    // Open space.
-    if (this.isRegularAndOpen()) {
-      return [
-        { role: "admin", permissions: ["admin", "read", "write"] },
-        // TODO(governance): remove once manager is available for everyone
-        { role: "builder", permissions: ["read", "write"] },
-        { role: "manager", permissions: ["read", "write"] },
-        { role: "user", permissions: ["read"] },
-      ];
-    }
-
-    if (this.isProject()) {
-      return [
-        { role: "admin", permissions: ["admin"] },
-        { role: "manager", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
-        { role: "user", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
-      ];
-    }
-
-    // Restricted regular space.
+    // Projects and restricted regular spaces: the role only confers administration. Read and write
+    // come from the space's grants — including on an open project, where the global group's
+    // `reader` grant makes it visible to every workspace member.
     return [{ role: "admin", permissions: ["admin"] }];
   }
 

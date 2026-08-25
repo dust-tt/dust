@@ -240,9 +240,8 @@ describe("MCP Internal Actions Server Utils", () => {
 
     it("should return core search args when data source configuration belongs to the workspace", async () => {
       const workspace = await WorkspaceFactory.basic();
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
       const space = await SpaceFactory.global(workspace);
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       const folder = await DataSourceViewFactory.folder(workspace, space);
 
       const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
@@ -297,9 +296,8 @@ describe("MCP Internal Actions Server Utils", () => {
 
     it("should carry over tagsIn filter from AgentDataSourceConfigurationModel", async () => {
       const workspace = await WorkspaceFactory.basic();
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
       const space = await SpaceFactory.global(workspace);
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       const folder = await DataSourceViewFactory.folder(workspace, space);
 
       const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
@@ -338,9 +336,8 @@ describe("MCP Internal Actions Server Utils", () => {
 
     it("should carry over tagsNotIn filter from AgentDataSourceConfigurationModel", async () => {
       const workspace = await WorkspaceFactory.basic();
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
       const space = await SpaceFactory.global(workspace);
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       const folder = await DataSourceViewFactory.folder(workspace, space);
 
       const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
@@ -378,9 +375,8 @@ describe("MCP Internal Actions Server Utils", () => {
 
     it("should carry over both tagsIn and tagsNotIn filters from AgentDataSourceConfigurationModel", async () => {
       const workspace = await WorkspaceFactory.basic();
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
       const space = await SpaceFactory.global(workspace);
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       const folder = await DataSourceViewFactory.folder(workspace, space);
 
       const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
@@ -421,9 +417,8 @@ describe("MCP Internal Actions Server Utils", () => {
 
     it("should carry over tags with auto mode from AgentDataSourceConfigurationModel", async () => {
       const workspace = await WorkspaceFactory.basic();
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
       const space = await SpaceFactory.global(workspace);
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       const folder = await DataSourceViewFactory.folder(workspace, space);
 
       const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
@@ -459,9 +454,8 @@ describe("MCP Internal Actions Server Utils", () => {
 
     it("should carry over parentsIn filter from AgentDataSourceConfigurationModel", async () => {
       const workspace = await WorkspaceFactory.basic();
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
       const space = await SpaceFactory.global(workspace);
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       const folder = await DataSourceViewFactory.folder(workspace, space);
 
       const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
@@ -499,9 +493,8 @@ describe("MCP Internal Actions Server Utils", () => {
 
     it("should carry over parentsNotIn filter from AgentDataSourceConfigurationModel", async () => {
       const workspace = await WorkspaceFactory.basic();
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
       const space = await SpaceFactory.global(workspace);
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       const folder = await DataSourceViewFactory.folder(workspace, space);
 
       const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
@@ -539,9 +532,8 @@ describe("MCP Internal Actions Server Utils", () => {
 
     it("should carry over both parentsIn and parentsNotIn filters from AgentDataSourceConfigurationModel", async () => {
       const workspace = await WorkspaceFactory.basic();
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
       const space = await SpaceFactory.global(workspace);
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       const folder = await DataSourceViewFactory.folder(workspace, space);
 
       const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
@@ -581,9 +573,8 @@ describe("MCP Internal Actions Server Utils", () => {
 
     it("should carry over both tags and parents filters from AgentDataSourceConfigurationModel", async () => {
       const workspace = await WorkspaceFactory.basic();
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
       const space = await SpaceFactory.global(workspace);
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       const folder = await DataSourceViewFactory.folder(workspace, space);
 
       const dataSourceConfig = await AgentDataSourceConfigurationModel.create({
@@ -676,9 +667,8 @@ describe("MCP Internal Actions Server Utils", () => {
 
     it("should handle multiple datasources with no filters", async () => {
       const workspace = await WorkspaceFactory.basic();
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
       const space = await SpaceFactory.global(workspace);
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       const folder1 = await DataSourceViewFactory.folder(workspace, space);
       const folder2 = await DataSourceViewFactory.folder(workspace, space);
 
@@ -754,9 +744,8 @@ describe("MCP Internal Actions Server Utils", () => {
 
     it("should handle multiple datasources with different tag filters", async () => {
       const workspace = await WorkspaceFactory.basic();
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
       const space = await SpaceFactory.global(workspace);
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       const folder1 = await DataSourceViewFactory.folder(workspace, space);
       const folder2 = await DataSourceViewFactory.folder(workspace, space);
 
@@ -827,9 +816,8 @@ describe("MCP Internal Actions Server Utils", () => {
 
     it("should handle multiple datasources with different parent filters", async () => {
       const workspace = await WorkspaceFactory.basic();
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
       const space = await SpaceFactory.global(workspace);
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       const folder1 = await DataSourceViewFactory.folder(workspace, space);
       const folder2 = await DataSourceViewFactory.folder(workspace, space);
 
@@ -901,9 +889,8 @@ describe("MCP Internal Actions Server Utils", () => {
 
     it("should handle multiple datasources with mixed configurations", async () => {
       const workspace = await WorkspaceFactory.basic();
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
       const space = await SpaceFactory.global(workspace);
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       const folder1 = await DataSourceViewFactory.folder(workspace, space);
       const folder2 = await DataSourceViewFactory.folder(workspace, space);
       const folder3 = await DataSourceViewFactory.folder(workspace, space);
@@ -1056,9 +1043,8 @@ describe("MCP Internal Actions Server Utils", () => {
 
     it("should handle multiple datasources and return them in the correct order", async () => {
       const workspace = await WorkspaceFactory.basic();
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
       const space = await SpaceFactory.global(workspace);
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       const folder1 = await DataSourceViewFactory.folder(workspace, space);
       const folder2 = await DataSourceViewFactory.folder(workspace, space);
       const folder3 = await DataSourceViewFactory.folder(workspace, space);

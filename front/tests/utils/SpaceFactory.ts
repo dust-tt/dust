@@ -40,6 +40,13 @@ export class SpaceFactory {
   }
 
   static async global(workspace: WorkspaceType, globalGroup?: GroupResource) {
+    // Production always attaches the workspace global group (see
+    // `SpaceResource.makeDefaultsForWorkspace`), and that group's `reader` grant is what confers
+    // read on the global space. Default to it so a factory-built global space is readable the same
+    // way. `GroupFactory.defaults` reuses the workspace's existing groups.
+    const group =
+      globalGroup ?? (await GroupFactory.defaults(workspace)).globalGroup;
+
     return SpaceResource.makeNew(
       await this.internalAuth(workspace),
       {
@@ -47,7 +54,7 @@ export class SpaceFactory {
         kind: "global",
         workspaceId: workspace.id,
       },
-      { members: removeNulls([globalGroup]) } // TODO: Add groups
+      { members: [group] }
     );
   }
 

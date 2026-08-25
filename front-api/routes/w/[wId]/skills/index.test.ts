@@ -1324,6 +1324,10 @@ describe("POST /api/w/:wId/skills", () => {
 
     const openSpace = await SpaceFactory.regular(workspace);
     await GroupSpaceFactory.associate(openSpace, globalGroup);
+    // An open space confers read through the global group's `reader` grant, and an Authenticator
+    // resolves its grants once, at construction. `auth` predates the space, so refresh it before
+    // reading a skill that requests it — `SkillResource` drops skills whose spaces it cannot read.
+    await auth.refresh();
 
     const response = await postSkill(workspace, {
       name: "Skill With Additional Space",

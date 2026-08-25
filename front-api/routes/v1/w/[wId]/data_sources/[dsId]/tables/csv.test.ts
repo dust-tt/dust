@@ -1,7 +1,6 @@
 import { internalFetch } from "@app/lib/api/internal_fetch";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
@@ -104,14 +103,12 @@ function postCsv(
 
 describe("POST /api/v1/w/:wId/data_sources/:dsId/tables/csv (legacy endpoint)", () => {
   it("successfully upserts a CSV received as file", async () => {
-    const { auth, workspace, globalGroup, key } =
-      await createPublicApiMockRequest({
-        systemKey: true,
-        method: "POST",
-      });
+    const { auth, workspace, key } = await createPublicApiMockRequest({
+      systemKey: true,
+      method: "POST",
+    });
 
     const space = await SpaceFactory.global(workspace);
-    await GroupSpaceFactory.associate(space, globalGroup);
     const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
     const file = await FileFactory.csv(auth, null, {
@@ -180,14 +177,12 @@ describe("POST /api/v1/w/:wId/data_sources/:dsId/tables/csv (legacy endpoint)", 
   });
 
   it("errors if the file provided has the wrong use-case", async () => {
-    const { auth, workspace, globalGroup, key } =
-      await createPublicApiMockRequest({
-        systemKey: true,
-        method: "POST",
-      });
+    const { auth, workspace, key } = await createPublicApiMockRequest({
+      systemKey: true,
+      method: "POST",
+    });
 
     const space = await SpaceFactory.global(workspace);
-    await GroupSpaceFactory.associate(space, globalGroup);
     const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
     const file = await FileFactory.csv(auth, null, {
