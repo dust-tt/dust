@@ -27,6 +27,7 @@ export type AutomationsFilterCategory =
 export const USER_AUTOMATIONS_FILTER_CATEGORIES = [
   "agent",
   "type",
+  "pool",
 ] as const satisfies readonly AutomationsFilterCategory[];
 
 export const AUTOMATIONS_FILTER_CATEGORY_LABEL: Record<
@@ -130,9 +131,11 @@ export function toAutomationsTriggersFilter(
 export function toUserAutomationsTriggersFilter(
   filter: AutomationsFilter
 ): Omit<AutomationsTriggersFilter, "editorIds"> {
-  const { agentIds, kinds } = toAutomationsTriggersFilter(filter);
+  const { agentIds, kinds, executionModes } =
+    toAutomationsTriggersFilter(filter);
   return {
     ...(agentIds ? { agentIds } : {}),
     ...(kinds ? { kinds } : {}),
+    ...(executionModes ? { executionModes } : {}),
   };
 }

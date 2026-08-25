@@ -38,6 +38,12 @@ function matchesFilter(
     return false;
   }
   if (
+    filter?.executionModes?.length &&
+    !filter.executionModes.includes(trigger.executionMode)
+  ) {
+    return false;
+  }
+  if (
     filter?.agentIds?.length &&
     !filter.agentIds.includes(trigger.agentConfigurationId)
   ) {

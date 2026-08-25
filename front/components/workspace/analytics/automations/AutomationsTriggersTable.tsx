@@ -4,15 +4,16 @@ import { AutomationsFilterPanel } from "@app/components/workspace/analytics/auto
 import { AutomationsFilterSummary } from "@app/components/workspace/analytics/automations/AutomationsFilterSummary";
 import type { TriggerRowData as BaseTriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
 import { AutomationsTriggersRowsTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
+import type { PoolRowFields } from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
 import {
   agentColumn,
   creditsColumn,
   detailsColumn,
   nameColumn,
+  poolColumn,
   typeColumn,
 } from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
 import { BulkTriggerPoolModal } from "@app/components/workspace/analytics/automations/BulkTriggerPoolModal";
-import { POOL_OPTIONS } from "@app/components/workspace/analytics/automations/trigger_pool_options";
 import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { toAutomationsTriggersFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
@@ -43,14 +44,9 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  Button,
   ContentMessageAction,
   createSelectionColumn,
   DataTable,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   Pagination,
   SearchInput,
   SliderToggle,
@@ -68,43 +64,10 @@ import { useCallback, useContext, useMemo, useState } from "react";
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const TRIGGERS_PAGE_SIZE = 25;
 
-interface TriggerRowData extends BaseTriggerRowData {
+interface TriggerRowData extends BaseTriggerRowData, PoolRowFields {
   displayStatus: TriggerStatus;
   isStatusPending: boolean;
   onToggleStatus: () => void;
-  displayExecutionMode: TriggerExecutionMode;
-  isExecutionModePending: boolean;
-  onSetExecutionMode: (executionMode: TriggerExecutionMode) => void;
-}
-
-function PoolCell({ row }: { row: TriggerRowData }) {
-  const { hasPermission } = useWorkspacePermissions();
-  const isWorkspacePool = row.displayExecutionMode === "workspace_pool";
-  const canSetPool = hasPermission("use_workspace_pool", "trigger");
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="xs"
-          isSelect
-          disabled={row.isExecutionModePending || !canSetPool}
-          className={isWorkspacePool ? "text-highlight" : undefined}
-          label={isWorkspacePool ? "Workspace" : "Member"}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {POOL_OPTIONS.map(({ value, label }) => (
-          <DropdownMenuItem
-            key={value}
-            label={label}
-            onClick={() => row.onSetExecutionMode(value)}
-          />
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
 }
 
 function RunningCell({ row }: { row: TriggerRowData }) {
@@ -215,17 +178,7 @@ function buildColumns({
     agentColumn(),
     typeColumn(),
     creditsColumn(),
-    {
-      id: "pool",
-      header: "Pool",
-      enableSorting: false,
-      meta: { className: "w-28" },
-      cell: (info) => (
-        <DataTable.CellContent className="w-full justify-start">
-          <PoolCell row={info.row.original} />
-        </DataTable.CellContent>
-      ),
-    },
+    poolColumn(),
     {
       id: "status",
       header: "Enabled",
