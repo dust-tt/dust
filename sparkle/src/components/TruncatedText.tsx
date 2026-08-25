@@ -49,6 +49,7 @@ export const TruncatedText: React.FC<TruncatedTextProps> = ({
         `line-clamp-${lineClamp} cursor-pointer select-none`,
         className
       )}
+      style={{ maxHeight: `calc(1lh * ${lineClamp})` }}
       {...props}
     >
       {children}

@@ -1,4 +1,5 @@
 import { Button } from "@sparkle/components/Button";
+import { CARD_SHADOW } from "@sparkle/components/Card";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
@@ -58,8 +59,8 @@ export const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
         className={cn(
           "flex flex-col overflow-hidden",
           "bg-background",
-          "rounded-2xl shadow-md",
-          "border border-transparent",
+          "rounded-2xl border border-border",
+          CARD_SHADOW,
           className
         )}
         {...props}
