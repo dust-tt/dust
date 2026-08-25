@@ -74,10 +74,13 @@ export function getUsageType(
   return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
 }
 
-function getToolUsageType(
-  baseUsageType: UsageType,
-  isFreeUsage: boolean
-): UsageType {
+function getToolUsageType({
+  baseUsageType,
+  isFreeUsage,
+}: {
+  baseUsageType: UsageType;
+  isFreeUsage: boolean;
+}): UsageType {
   return isFreeUsage ? USAGE_TYPE_FREE : baseUsageType;
 }
 
@@ -351,10 +354,10 @@ export function buildToolUseEvents({
 
   return [...groups.values()].map(({ billingLine, count, totalDurationMs }) => {
     const { action, billingDisposition, toolCostCategory } = billingLine;
-    const effectiveUsageType = getToolUsageType(
-      usageType,
-      billingDisposition !== "billed"
-    );
+    const effectiveUsageType = getToolUsageType({
+      baseUsageType: usageType,
+      isFreeUsage: billingDisposition !== "billed",
+    });
     const transactionIdDispositionSuffix =
       billingDisposition === "free_mcp_server_cap"
         ? `-${billingDisposition}`
