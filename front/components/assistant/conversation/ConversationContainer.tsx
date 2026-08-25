@@ -98,7 +98,7 @@ function greetingWordStyle(index: number): HeroEntranceStyle {
 
 // Starts while the greeting is still animating in, rather than waiting for
 // it to finish, so the hero appears as one flowing wave.
-const COMPOSER_ENTER_DELAY_SECONDS = 0.16;
+const COMPOSER_ENTER_DELAY_SECONDS = 0.13;
 const composerEntranceStyle = heroEntranceStyle({
   yPx: 6,
   blurPx: 3,
