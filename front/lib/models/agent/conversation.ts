@@ -23,6 +23,7 @@ import type {
   ParticipantActionType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
+import type { StreamModelResolutions } from "@app/types/assistant/models/auto";
 import type { ModelResolutionMethodType } from "@app/types/assistant/models/types";
 import { MODEL_RESOLUTION_METHODS } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -40,6 +41,11 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
   declare hasError: CreationOptional<boolean>;
   declare metadata: CreationOptional<ConversationMetadata>;
+  // Model each (agent, stream) pair of this conversation last resolved to, so an `auto` stream
+  // stays on one model across messages instead of hopping as availability changes. Denormalized
+  // here rather than read back from the messages: every caller that resolves a model already holds
+  // the conversation row, so the lookup costs no query.
+  declare lastStreamModelResolutions: CreationOptional<StreamModelResolutions>;
 
   declare requestedSpaceIds: number[];
 
@@ -95,6 +101,11 @@ ConversationModel.init(
       defaultValue: false,
     },
     metadata: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: {},
+    },
+    lastStreamModelResolutions: {
       type: DataTypes.JSONB,
       allowNull: false,
       defaultValue: {},

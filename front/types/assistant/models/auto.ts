@@ -18,6 +18,7 @@ import type {
   ModelConfigurationType,
   ModelProviderIdType,
   ReasoningEffort,
+  ResolvedRequestedModel,
 } from "./types";
 import { GROK_3_MINI_MODEL_ID, GROK_4_6_MODEL_ID } from "./xai";
 
@@ -38,6 +39,11 @@ export type ModelStreamIdType = (typeof MODEL_STREAM_IDS)[number];
 export function isModelStreamId(modelId: string): modelId is ModelStreamIdType {
   return MODEL_STREAM_IDS.includes(modelId as ModelStreamIdType);
 }
+
+// Model that each (agent, stream) pair of a conversation last resolved to. Denormalized on the
+// conversation row so reading it costs no query: every caller that resolves a model already holds
+// the conversation. Bounded by the agents used in the conversation times the number of streams.
+export type StreamModelResolutions = Record<string, ResolvedRequestedModel>;
 
 // One candidate of a stream: a concrete model + the reasoning effort to run it
 // at. Ordered by preference — the router picks the first candidate available to
