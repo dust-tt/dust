@@ -130,6 +130,14 @@ def test_imagery_min_area_excludes_a_footer_logo_and_keeps_an_icon():
     assert icon > slide_area * A.IMAGERY_MIN_AREA
 
 
+def test_leading_break_detector_matches_every_break_character():
+    """python-pptx surfaces <a:br/> as a vertical tab, which is what the model
+    actually writes; newline and carriage return are covered for the same
+    reason."""
+    for ch in ("\v", "\n", "\r"):
+        assert ch in A._LINE_BREAKS, ch
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]

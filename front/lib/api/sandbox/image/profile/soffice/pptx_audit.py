@@ -1099,6 +1099,38 @@ def _filler_audit(file_path: str) -> List[Tuple[int, int, str]]:
     return out
 
 
+# Characters OOXML renders as a line break inside a paragraph. python-pptx
+# surfaces <a:br/> as a vertical tab.
+_LINE_BREAKS = "\v\n\r"
+
+
+def _leading_break_audit(file_path: str) -> List[Tuple[int, int, int, str]]:
+    """Paragraphs whose text starts with a line break: (slide, shape, index, text).
+
+    The break pushes every word onto the paragraph's second line: a title starts
+    lower than its box says, and a bulleted paragraph strands its bullet alone on
+    the line above the copy. PowerPoint shows it plainly; the QA render often
+    does not, which is how it ships. Nothing else sees it either - the text is
+    present, the box contains it, the contrast is fine.
+    """
+    try:
+        prs = Presentation(file_path)
+    except Exception:  # noqa: BLE001 - degrade visibly in the caller
+        return []
+    out: List[Tuple[int, int, int, str]] = []
+    for slide_no, slide in enumerate(prs.slides, start=1):
+        for shape in slide.shapes:
+            if not getattr(shape, "has_text_frame", False):
+                continue
+            for index, paragraph in enumerate(shape.text_frame.paragraphs):
+                text = paragraph.text or ""
+                if text.strip() and text[0] in _LINE_BREAKS:
+                    out.append(
+                        (slide_no, shape.shape_id, index, text.strip())
+                    )
+    return out
+
+
 def _shape_text_iter(shape: BaseShape) -> Iterable[str]:
     kind = shape_kind(shape)
     if kind == "group":
