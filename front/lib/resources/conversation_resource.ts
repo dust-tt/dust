@@ -53,7 +53,15 @@ import {
   getConversationDisplayTitle,
   getConversationUrlAccessMode,
 } from "@app/types/assistant/conversation";
-import type { ModelResolutionMethodType } from "@app/types/assistant/models/types";
+import type {
+  ModelStreamIdType,
+  StreamModelResolutions,
+} from "@app/types/assistant/models/auto";
+import { makeStreamModelResolutionKey } from "@app/types/assistant/models/auto";
+import type {
+  ModelResolutionMethodType,
+  ResolvedRequestedModel,
+} from "@app/types/assistant/models/types";
 import type { WakeUpScheduleConfig } from "@app/types/assistant/wakeups";
 import { ACTIVE_WAKE_UP_STATUSES } from "@app/types/assistant/wakeups";
 import type { ContentFragmentVersion } from "@app/types/content_fragment";
@@ -888,6 +896,80 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         userId: triggeringUserMessage.user?.sId ?? null,
       },
     };
+  }
+
+  /**
+   * Records the model an (agent, stream) pair of this conversation just resolved to.
+   *
+   * Merged server-side with the jsonb `||` operator rather than read-modify-written: concurrent
+   * writers touching different keys of the same conversation then cannot clobber each other, and
+   * the failover path (which runs outside the post transaction and its conversation lock) needs no
+   * lock of its own.
+   */
+  static async recordStreamModelResolution(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      conversationModelId,
+      resolvedModel,
+      streamId,
+      transaction,
+    }: {
+      agentConfigurationId: string;
+      conversationModelId: ModelId;
+      resolvedModel: ResolvedRequestedModel;
+      streamId: ModelStreamIdType;
+      transaction?: Transaction;
+    }
+  ): Promise<void> {
+    const entry: StreamModelResolutions = {
+      [makeStreamModelResolutionKey(agentConfigurationId, streamId)]:
+        resolvedModel,
+    };
+
+    // biome-ignore lint/plugin/noRawSql: jsonb `||` merge has no Sequelize equivalent, and it is what keeps concurrent writers of different keys from clobbering each other.
+    await frontSequelize.query(
+      `UPDATE conversations
+         SET "lastStreamModelResolutions" =
+           COALESCE("lastStreamModelResolutions", '{}'::jsonb) || CAST(:entry AS jsonb)
+       WHERE id = :conversationId
+         AND "workspaceId" = :workspaceId`,
+      {
+        type: QueryTypes.UPDATE,
+        replacements: {
+          entry: JSON.stringify(entry),
+          conversationId: conversationModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      }
+    );
+  }
+
+  /**
+   * Models the conversation's (agent, stream) pairs last resolved to, used to keep an `auto`
+   * conversation on the model it already ran on.
+   *
+   * Free when the caller holds the resource — posting, editing and retrying a message all do, and
+   * those are the latency-sensitive paths. Everything else pays a single-column primary-key read.
+   */
+  static async fetchStreamModelResolutions(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentType | ConversationResource
+  ): Promise<StreamModelResolutions> {
+    if (conversation instanceof ConversationResource) {
+      return conversation.lastStreamModelResolutions ?? {};
+    }
+
+    const row = await ConversationModel.findOne({
+      attributes: ["lastStreamModelResolutions"],
+      where: {
+        id: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return row?.lastStreamModelResolutions ?? {};
   }
 
   static async updateAgentMessageCostCredits(

@@ -827,6 +827,7 @@ export async function postUserMessage(
   let modelResolution = mentionedAgentConfiguration
     ? await resolveModelForMentionedAgent(auth, {
         configuration: mentionedAgentConfiguration,
+        conversation: conversationResource,
         selection: modelSelection,
       })
     : null;
@@ -1248,6 +1249,7 @@ export async function editUserMessage(
   let modelResolution = mentionedAgentConfiguration
     ? await resolveModelForMentionedAgent(auth, {
         configuration: mentionedAgentConfiguration,
+        conversation: conversationResource,
         selection: message.requestedModel ?? undefined,
       })
     : null;
@@ -1826,6 +1828,7 @@ export async function retryAgentMessage(
       }
     : await resolveModelForMentionedAgent(auth, {
         configuration: message.configuration,
+        conversation: conversationResource,
       });
 
   const user = auth.user();
@@ -3273,6 +3276,7 @@ export async function updateAgentMessageWithFinalStatus(
   const defaultModelResolution = agentMessage.configuration
     ? await resolveModelForMentionedAgent(auth, {
         configuration: agentMessage.configuration,
+        conversation,
       })
     : null;
 
@@ -3441,6 +3445,7 @@ export async function updateAgentMessageWithFinalStatus(
         ? defaultModelResolution
         : await resolveModelForMentionedAgent(promotedAuth, {
             configuration: agentMessage.configuration,
+            conversation,
             selection: promotedUserMessage.requestedModel ?? undefined,
           });
 

@@ -13,7 +13,10 @@ import type {
   ModelStreamResolutionsType,
   ModelStreamResolutionType,
 } from "@app/types/api/assistant/models";
-import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
+import type {
+  ModelStreamCandidate,
+  ModelStreamIdType,
+} from "@app/types/assistant/models/auto";
 import {
   AUTO_COMPLEX_MODEL_ID,
   AUTO_FAST_MODEL_CONFIG,
@@ -27,6 +30,7 @@ import type {
   ModelConfigurationType,
   ReasoningEffort,
   ReasoningEffortSupport,
+  ResolvedRequestedModel,
 } from "@app/types/assistant/models/types";
 import { getMaximumReasoningEffort } from "@app/types/assistant/models/types";
 
@@ -149,6 +153,17 @@ export interface StreamResolutionType {
   fromPool: boolean;
 }
 
+function isSameCandidate(
+  candidate: ModelStreamCandidate,
+  model: ResolvedRequestedModel
+): boolean {
+  return (
+    candidate.providerId === model.providerId &&
+    candidate.modelId === model.modelId &&
+    candidate.reasoningEffort === model.reasoningEffort
+  );
+}
+
 // Walks a stream's ordered candidate pool and picks the first one available
 // or a fallback large model
 export function resolveStreamModel(
@@ -179,6 +194,40 @@ export function resolveStreamModel(
     model: { ...fallback, isSelectable: true },
     reasoningEffort: fallback.defaultReasoningEffort,
     fromPool: false,
+  };
+}
+
+// Looks up a model in a stream's pool: the sticky hint is only honored when the exact
+// (providerId, modelId, reasoningEffort) triple is still part of the stream and still available to
+// the workspace. A stream that changes the effort it runs a model at therefore invalidates its own
+// sticky hints instead of freezing the old effort.
+export function resolveStreamModelIfInPool(
+  models: EnabledModelConfigurationType[],
+  streamId: ModelStreamIdType,
+  model: ResolvedRequestedModel
+): StreamResolutionType | null {
+  const candidate = MODEL_STREAMS[streamId].find((c) =>
+    isSameCandidate(c, model)
+  );
+  if (!candidate) {
+    return null;
+  }
+
+  const enabled = models.find(
+    (m) =>
+      m.isSelectable &&
+      m.providerId === candidate.providerId &&
+      m.modelId === candidate.modelId &&
+      m.supportedReasoningEfforts[candidate.reasoningEffort]
+  );
+  if (!enabled) {
+    return null;
+  }
+
+  return {
+    model: enabled,
+    reasoningEffort: candidate.reasoningEffort,
+    fromPool: true,
   };
 }
 

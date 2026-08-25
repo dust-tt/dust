@@ -4,6 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   getEnabledModelsForAuth,
   resolveStreamModel,
+  resolveStreamModelIfInPool,
 } from "@app/lib/model_tiers/enabled_models";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
@@ -35,16 +36,25 @@ function toResolvedModel(
 // 2. If the user did not select a model, pick the agent's configured model.
 // 3. If the agent is set on auto mode, pick the auto model.
 // 4. Finally fallback to a supported model by the workspace.
+//
+// `stickyModel` is the model a previous message of the same conversation already resolved this same
+// stream to (see `resolveModelForMentionedAgent`). It is preferred over walking the pool, so a
+// conversation stays on one model instead of hopping as availability changes — including staying on
+// the model a failover moved it to. It is only honored when it is still part of the stream and
+// still available to the workspace, and it never changes the attribution: the message is still an
+// `auto` message.
 export async function resolveModel(
   auth: Authenticator,
   {
     selection,
     configuration,
     featureFlags,
+    stickyModel,
   }: {
     selection?: ModelSelectionType;
     configuration: LightAgentConfigurationType;
     featureFlags: WhitelistableFeature[];
+    stickyModel?: ResolvedRequestedModel | null;
   }
 ): Promise<{
   resolvedModel: ResolvedRequestedModel;
@@ -94,7 +104,10 @@ export async function resolveModel(
   if (enabled && isModelStreamId(enabled.modelId)) {
     const streamId = enabled.modelId;
     const models = await getEnabledModelsForAuth(auth);
-    const resolution = resolveStreamModel(models, streamId);
+    const resolution =
+      (stickyModel &&
+        resolveStreamModelIfInPool(models, streamId, stickyModel)) ||
+      resolveStreamModel(models, streamId);
     enabled = resolution.model;
 
     if (resolution.fromPool) {

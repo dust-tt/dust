@@ -12,6 +12,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -31,11 +32,17 @@ import type {
   UserMessageType,
   UserMessageTypeWithoutMentions,
 } from "@app/types/assistant/conversation";
+import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
+import {
+  isModelStreamId,
+  makeStreamModelResolutionKey,
+} from "@app/types/assistant/models/auto";
 import type {
   ModelResolutionMethodType,
   ModelSelectionType,
   ResolvedRequestedModel,
 } from "@app/types/assistant/models/types";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -294,13 +301,73 @@ export interface AgentMessageModelResolution {
   modelResolutionMethod: ModelResolutionMethodType;
 }
 
+// The stream this resolution will go through, if any: the selection wins over the agent's
+// configured model, mirroring `resolveModel`. Returns null when a concrete model is being resolved.
+function getRequestedStreamId({
+  configuration,
+  selection,
+}: {
+  configuration: LightAgentConfigurationType;
+  selection?: ModelSelectionType;
+}): ModelStreamIdType | null {
+  const requestedModelId = selection
+    ? selection.modelId
+    : configuration.model.modelId;
+
+  return isModelStreamId(requestedModelId) ? requestedModelId : null;
+}
+
+// Model this conversation already resolved this stream to, for this same agent. Returned as a
+// hint: `resolveModel` only honors it while it is still part of the stream and still available to
+// the workspace.
+async function getStickyStreamModel(
+  auth: Authenticator,
+  {
+    conversation,
+    configuration,
+    selection,
+    featureFlags,
+  }: {
+    conversation: ConversationWithoutContentType | ConversationResource;
+    configuration: LightAgentConfigurationType;
+    selection?: ModelSelectionType;
+    featureFlags: WhitelistableFeature[];
+  }
+): Promise<ResolvedRequestedModel | null> {
+  if (!featureFlags.includes("auto_stream_model_routing")) {
+    return null;
+  }
+
+  const streamId = getRequestedStreamId({ configuration, selection });
+  if (!streamId) {
+    return null;
+  }
+
+  const resolutions = await ConversationResource.fetchStreamModelResolutions(
+    auth,
+    conversation
+  );
+
+  // Returned unvalidated on purpose: `resolveStreamModelIfInPool` only honors the hint when the
+  // exact triple is still a candidate of the stream and still enabled, so a stale or malformed
+  // entry resolves to no hint rather than to a bad model.
+  return (
+    resolutions[makeStreamModelResolutionKey(configuration.sId, streamId)] ??
+    null
+  );
+}
+
 export async function resolveModelForMentionedAgent(
   auth: Authenticator,
   {
     configuration,
+    conversation,
     selection,
   }: {
     configuration: LightAgentConfigurationType;
+    // Enables stream stickiness: without it the stream always walks its pool from the top. Pass
+    // the resource where one is at hand — reading the stickiness off it costs no query.
+    conversation?: ConversationWithoutContentType | ConversationResource;
     selection?: ModelSelectionType;
   }
 ): Promise<AgentMessageModelResolution> {
@@ -322,11 +389,58 @@ export async function resolveModelForMentionedAgent(
     effectiveSelection = undefined;
   }
 
+  const stickyModel = conversation
+    ? await getStickyStreamModel(auth, {
+        conversation,
+        configuration,
+        selection: effectiveSelection,
+        featureFlags,
+      })
+    : null;
+
   return resolveModel(auth, {
     selection: effectiveSelection,
     configuration,
     featureFlags,
+    stickyModel,
   });
+}
+
+// Remembers, on the conversation, the model each stream-resolved message just landed on, so the
+// next message of the conversation starts from it instead of walking the pool from the top again.
+// Messages that ran a pinned model carry a `modelResolutionMethod` that is not a stream id and are
+// skipped: there is nothing to stick to.
+async function recordStreamModelResolutions(
+  auth: Authenticator,
+  {
+    agentMessages,
+    conversation,
+    transaction,
+  }: {
+    agentMessages: AgentMessageType[];
+    conversation: ConversationWithoutContentType;
+    transaction?: Transaction;
+  }
+): Promise<void> {
+  for (const agentMessage of agentMessages) {
+    const { modelResolutionMethod, resolvedModel } = agentMessage;
+    if (
+      !resolvedModel ||
+      !modelResolutionMethod ||
+      !isModelStreamId(modelResolutionMethod)
+    ) {
+      continue;
+    }
+
+    // At most one agent message is created per call, so this loop issues at most one statement.
+    await ConversationResource.recordStreamModelResolution(auth, {
+      agentConfigurationId: agentMessage.configuration.sId,
+      conversationModelId: conversation.id,
+      resolvedModel,
+      streamId: modelResolutionMethod,
+      transaction,
+    });
+  }
 }
 
 export const createAgentMessages = async (
@@ -678,6 +792,12 @@ export const createAgentMessages = async (
       }
     })
   );
+
+  await recordStreamModelResolutions(auth, {
+    agentMessages,
+    conversation,
+    transaction,
+  });
 
   await updateConversationRequirements(auth, {
     agents: agentMessages.map((m) => m.configuration),

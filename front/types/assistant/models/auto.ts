@@ -40,10 +40,22 @@ export function isModelStreamId(modelId: string): modelId is ModelStreamIdType {
   return MODEL_STREAM_IDS.includes(modelId as ModelStreamIdType);
 }
 
-// Model that each (agent, stream) pair of a conversation last resolved to. Denormalized on the
-// conversation row so reading it costs no query: every caller that resolves a model already holds
-// the conversation. Bounded by the agents used in the conversation times the number of streams.
+// Model that each (agent, stream) pair of a conversation last resolved to, keyed by
+// `makeStreamModelResolutionKey`. Denormalized on the conversation row so reading it costs no
+// query: every caller that resolves a model already holds the conversation. Entries are hints —
+// the resolver only honors one while it is still part of the stream and still available to the
+// workspace. Bounded by the agents used in the conversation times the number of streams.
 export type StreamModelResolutions = Record<string, ResolvedRequestedModel>;
+
+// Scoped to one agent and one stream: a Premium turn must not inherit what Standard picked, and
+// two agents in the same conversation each keep their own resolution. Agent sIds never contain a
+// colon, so the two parts cannot collide.
+export function makeStreamModelResolutionKey(
+  agentConfigurationId: string,
+  streamId: ModelStreamIdType
+): string {
+  return `${agentConfigurationId}:${streamId}`;
+}
 
 // One candidate of a stream: a concrete model + the reasoning effort to run it
 // at. Ordered by preference — the router picks the first candidate available to

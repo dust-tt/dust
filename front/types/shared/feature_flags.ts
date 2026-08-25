@@ -28,6 +28,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
+  auto_stream_model_routing: {
+    description:
+      "On auto model streams: fail over to the next model in the stream when a provider-side error survives the retries, and prefer the model a previous message in the same conversation resolved to",
+    stage: "dust_only",
+  },
   anthropic_cache_diagnostics: {
     description:
       "Opt into Anthropic prompt-cache diagnostics to report cache-miss reasons on agent-loop steps",
