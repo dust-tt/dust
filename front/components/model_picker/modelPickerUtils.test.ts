@@ -2,6 +2,7 @@ import {
   getDefaultTierId,
   getEffortStops,
   getInitialEffort,
+  getModelLockReason,
   getTierLockReason,
   isPremiumModel,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -112,6 +113,44 @@ describe("modelPickerUtils premium gating", () => {
         isPremiumModel(CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG, UNGATED)
       ).toBe(false);
       expect(isPremiumModel(O1_MODEL_CONFIG, UNGATED)).toBe(false);
+    });
+  });
+
+  describe("getModelLockReason", () => {
+    const enabledModel = (
+      model: typeof CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
+      isKilled: boolean
+    ): EnabledModelConfigurationType => ({
+      ...model,
+      isSelectable: !isKilled,
+      isKilled,
+    });
+
+    it("locks a killed model, ungated plan included", () => {
+      expect(
+        getModelLockReason(
+          enabledModel(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, true),
+          UNGATED
+        )
+      ).toBe("killed");
+    });
+
+    it("reports the kill rather than the plan for a killed premium model", () => {
+      expect(
+        getModelLockReason(
+          enabledModel(CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG, true),
+          GATED
+        )
+      ).toBe("killed");
+    });
+
+    it("does not lock a model that is not killed", () => {
+      expect(
+        getModelLockReason(
+          enabledModel(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, false),
+          UNGATED
+        )
+      ).toBeNull();
     });
   });
 

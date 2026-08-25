@@ -18,7 +18,6 @@ import type {
   ModelStreamResolutionsType,
 } from "@app/types/api/assistant/models";
 import type {
-  ModelConfigurationType,
   ModelMakerIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
@@ -41,7 +40,7 @@ interface ModelPickerContentProps {
   canRevert: boolean;
   lockPremiumEfforts: boolean;
   makerGroups: MakerGroup[];
-  allModels: ModelConfigurationType[];
+  allModels: EnabledModelConfigurationType[];
   streamModels: EnabledModelConfigurationType[];
   streams: ModelStreamResolutionsType | null;
   search: string;
@@ -51,7 +50,7 @@ interface ModelPickerContentProps {
   expandedMaker: ModelMakerIdType | null;
   onToggleMaker: (makerId: ModelMakerIdType) => void;
   onSelectTier: (tierId: ModelTierId) => void;
-  onSelectModel: (model: ModelConfigurationType) => void;
+  onSelectModel: (model: EnabledModelConfigurationType) => void;
   onChangeEffort: (effort: ReasoningEffort) => void;
   onRevert: () => void;
 }

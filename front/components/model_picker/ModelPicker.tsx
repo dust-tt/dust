@@ -17,10 +17,10 @@ import {
   buildModelSelection,
   buildTierSelection,
   getInitialEffort,
+  getModelLockReason,
   getModelTier,
   getModelWithReasoningEffortLabel,
   getTierLockReason,
-  isPremiumModel,
   isSameSelection,
   resolveShownSelection,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -29,12 +29,12 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { useModels } from "@app/lib/swr/models";
+import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import type {
-  ModelConfigurationType,
   ModelMakerIdType,
   ModelSelectionType,
   ReasoningEffort,
@@ -158,11 +158,16 @@ export function ModelPicker({
 
   const canRevert = !isSameSelection(shown.display, agentDefault.display);
 
-  // Concrete, selectable models (meta-models are surfaced as tiers instead).
-  const allModels = useMemo<ModelConfigurationType[]>(
+  // Concrete models the picker lists (meta-models are surfaced as tiers
+  // instead). Killed models stay in: they are not selectable, but the picker
+  // shows them disabled rather than hiding them, so a model that is down reads
+  // as temporarily unavailable instead of silently disappearing.
+  const allModels = useMemo<EnabledModelConfigurationType[]>(
     () =>
       models.filter(
-        (model) => !isModelStreamId(model.modelId) && model.isSelectable
+        (model) =>
+          !isModelStreamId(model.modelId) &&
+          (model.isSelectable || model.isKilled)
       ),
     [models]
   );
@@ -177,7 +182,7 @@ export function ModelPicker({
   // Group models by maker, preserving first-seen order of both makers and
   // models within each maker.
   const makerGroups = useMemo<MakerGroup[]>(() => {
-    const groups = new Map<ModelMakerIdType, ModelConfigurationType[]>();
+    const groups = new Map<ModelMakerIdType, EnabledModelConfigurationType[]>();
     for (const model of allModels) {
       const makerId = getModelMaker(model);
       const existing = groups.get(makerId);
@@ -267,8 +272,8 @@ export function ModelPicker({
     );
   };
 
-  const onSelectModel = (model: ModelConfigurationType) => {
-    if (isPremiumModel(model, { lockPremiumEfforts })) {
+  const onSelectModel = (model: EnabledModelConfigurationType) => {
+    if (getModelLockReason(model, { lockPremiumEfforts })) {
       return;
     }
     lastModelInteractionAtMsRef.current = Date.now();

@@ -40,6 +40,21 @@ interface ModelSelectionSubmenuProps {
 const NOT_SELECTABLE_MODEL_DESCRIPTION =
   "Not enabled for you. Choose another model to save.";
 
+const KILLED_MODEL_DESCRIPTION = "Temporarily down. Choose another model.";
+
+function getModelDescription(
+  modelConfig: EnabledModelConfigurationType,
+  isSelected: boolean
+): string | undefined {
+  if (modelConfig.isSelectable || !isSelected) {
+    return modelConfig.shortDescription;
+  }
+
+  return modelConfig.isKilled
+    ? KILLED_MODEL_DESCRIPTION
+    : NOT_SELECTABLE_MODEL_DESCRIPTION;
+}
+
 interface ModelRadioItemProps {
   modelConfig: EnabledModelConfigurationType;
   isDark: boolean;
@@ -59,11 +74,7 @@ function ModelRadioItem({
     <DropdownMenuRadioItem
       value={modelConfig.modelId}
       icon={getModelMakerLogo(getModelMaker(modelConfig), isDark)}
-      description={
-        !modelConfig.isSelectable && isSelected
-          ? NOT_SELECTABLE_MODEL_DESCRIPTION
-          : modelConfig.shortDescription
-      }
+      description={getModelDescription(modelConfig, isSelected)}
       label={modelConfig.displayName}
       disabled={!modelConfig.isSelectable}
       onSelect={(e) => {

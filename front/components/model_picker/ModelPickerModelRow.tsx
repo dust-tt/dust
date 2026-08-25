@@ -5,23 +5,25 @@ import type {
 } from "@app/components/model_picker/modelPickerUtils";
 import { getModelLockTooltip } from "@app/components/model_picker/modelPickerUtils";
 import { ReasoningEffortSlider } from "@app/components/model_picker/ReasoningEffortSlider";
-import type {
-  ModelConfigurationType,
-  ReasoningEffort,
-} from "@app/types/assistant/models/types";
-import { DropdownMenuItem, Icon, Lock01 } from "@dust-tt/sparkle";
+import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import { AlertCircle, DropdownMenuItem, Icon, Lock01 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { useRef } from "react";
 
+function lockIcon(reason: ModelLockReason): ComponentType {
+  return reason === "killed" ? AlertCircle : Lock01;
+}
+
 interface ModelPickerModelRowProps {
-  model: ModelConfigurationType;
+  model: EnabledModelConfigurationType;
   isSelected: boolean;
   isDefault: boolean;
   lockReason: ModelLockReason | null;
   effort: ReasoningEffort;
   effortStops: EffortStop[];
   icon?: ComponentType;
-  onSelectModel: (model: ModelConfigurationType) => void;
+  onSelectModel: (model: EnabledModelConfigurationType) => void;
   onChangeEffort: (effort: ReasoningEffort) => void;
   canRevert: boolean;
   onRevert: () => void;
@@ -52,7 +54,11 @@ export function ModelPickerModelRow({
         disabled
         tooltip={getModelLockTooltip(lockReason)}
         endComponent={
-          <Icon visual={Lock01} size="sm" className="text-muted-foreground" />
+          <Icon
+            visual={lockIcon(lockReason)}
+            size="sm"
+            className="text-muted-foreground"
+          />
         }
         onSelect={(e) => e.preventDefault()}
       />

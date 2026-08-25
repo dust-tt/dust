@@ -13,12 +13,12 @@ import {
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
+import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import {
   getModelMaker,
   getModelMakerDisplayName,
 } from "@app/types/assistant/models/providers";
 import type {
-  ModelConfigurationType,
   ModelMakerIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
@@ -37,7 +37,7 @@ import { Fragment } from "react";
 
 interface ModelPickerMoreModelsProps {
   makerGroups: MakerGroup[];
-  allModels: ModelConfigurationType[];
+  allModels: EnabledModelConfigurationType[];
   shown: Selection;
   agentDefault: Selection;
   // Whether the active selection differs from the agent default.
@@ -51,7 +51,7 @@ interface ModelPickerMoreModelsProps {
   onToggleExpanded: () => void;
   expandedMaker: ModelMakerIdType | null;
   onToggleMaker: (makerId: ModelMakerIdType) => void;
-  onSelectModel: (model: ModelConfigurationType) => void;
+  onSelectModel: (model: EnabledModelConfigurationType) => void;
   onChangeEffort: (effort: ReasoningEffort) => void;
   onRevert: () => void;
   // Vetoes the interaction-outside dismissal that a model/effort pick triggers
@@ -100,7 +100,7 @@ export function ModelPickerMoreModels({
     shown.display.kind === "model" ? getModelMaker(shown.display.model) : null;
 
   const renderModelRow = (
-    model: ModelConfigurationType,
+    model: EnabledModelConfigurationType,
     showMakerIcon: boolean
   ) => {
     const isSelected = isModelSelection(model, shown.display);

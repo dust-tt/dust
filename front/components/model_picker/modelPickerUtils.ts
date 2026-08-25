@@ -40,6 +40,11 @@ const MODEL_TIER_LOCKED_TOOLTIP =
   "You don't have access to this model tier. " +
   "Contact your administrator to get access.";
 
+// Shown when a model row is disabled because the model is killed: its provider
+// is down and we took it out of rotation region-wide.
+const MODEL_KILLED_TOOLTIP =
+  "This model has a temporary outage. Pick another one for now.";
+
 // The three primary picks of the model picker. Each tier is backed by a
 // meta-model that is resolved to a concrete model at message-send time. Tier ids
 // keep the meta-model wording; `name` is what users see:
@@ -173,7 +178,7 @@ export interface Selection {
 
 export interface MakerGroup {
   makerId: ModelMakerIdType;
-  models: ModelConfigurationType[];
+  models: EnabledModelConfigurationType[];
 }
 
 export type EffortLockReason = "unsupported" | "premium" | "model_tier";
@@ -357,12 +362,18 @@ export function isPremiumModel(
   return getTierForModel(enabledModel.modelId, "none") === "premium";
 }
 
-export type ModelLockReason = "premium" | "model_tier";
+export type ModelLockReason = "premium" | "model_tier" | "killed";
 
 export function getModelLockReason(
-  enabledModel: ModelConfigurationType,
+  enabledModel: EnabledModelConfigurationType,
   { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
 ): ModelLockReason | null {
+  // A kill outranks the other reasons: the model cannot run at all, whatever
+  // the workspace plan or tier says.
+  if (enabledModel.isKilled) {
+    return "killed";
+  }
+
   if (!isPremiumModel(enabledModel, { lockPremiumEfforts })) {
     return null;
   }
@@ -375,6 +386,8 @@ export function getModelLockTooltip(reason: ModelLockReason): string {
       return PREMIUM_MODEL_LOCKED_TOOLTIP;
     case "model_tier":
       return MODEL_TIER_LOCKED_TOOLTIP;
+    case "killed":
+      return MODEL_KILLED_TOOLTIP;
     default:
       assertNeverAndIgnore(reason);
       return "";
