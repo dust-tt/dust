@@ -769,31 +769,27 @@ export function AssistantsTable({
 
   return (
     <>
-      {!isLoading && (
-        <>
-          <DeleteAgentDialog
-            owner={owner}
-            isOpen={showDeleteDialog.open}
-            agentConfiguration={showDeleteDialog.agentConfiguration}
-            onClose={() => {
-              setShowDeleteDialog(({ agentConfiguration }) => ({
-                open: false,
-                agentConfiguration,
-              }));
-            }}
-          />
-          <AgentEditBar
-            owner={owner}
-            selectedAgents={selectedAgents}
-            tags={sortedTags}
-            mutateAgentConfigurations={mutateAgentConfigurations}
-            pageSelectedCount={pageSelectedCount}
-            totalCount={totalSelectableCount}
-            onClear={() => setSelection([])}
-            onSelectAll={() => setSelection(selectableRowIds)}
-          />
-        </>
-      )}
+      <DeleteAgentDialog
+        owner={owner}
+        isOpen={showDeleteDialog.open}
+        agentConfiguration={showDeleteDialog.agentConfiguration}
+        onClose={() => {
+          setShowDeleteDialog(({ agentConfiguration }) => ({
+            open: false,
+            agentConfiguration,
+          }));
+        }}
+      />
+      <AgentEditBar
+        owner={owner}
+        selectedAgents={selectedAgents}
+        tags={sortedTags}
+        mutateAgentConfigurations={mutateAgentConfigurations}
+        pageSelectedCount={pageSelectedCount}
+        totalCount={totalSelectableCount}
+        onClear={() => setSelection([])}
+        onSelectAll={() => setSelection(selectableRowIds)}
+      />
       <div
         role={isLoading ? "status" : undefined}
         aria-label={isLoading ? "Loading agents" : undefined}

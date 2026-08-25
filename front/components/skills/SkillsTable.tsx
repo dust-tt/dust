@@ -57,7 +57,7 @@ type RowData = {
   messageCount: number | null;
   updatedAt: number | null;
   createdAt: number | null;
-  onClick?: () => void;
+  onClick: () => void;
   menuItems: MenuItem[];
 };
 
@@ -75,6 +75,7 @@ const SKILLS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
     messageCount: null,
     updatedAt: null,
     createdAt: null,
+    onClick: () => undefined,
     menuItems: [],
   })
 );
@@ -617,7 +618,7 @@ export function SkillsTable({
 
   return (
     <>
-      {!isLoading && skillToArchive && (
+      {skillToArchive && (
         <ArchiveSkillDialog
           owner={owner}
           isOpen={true}
@@ -627,7 +628,7 @@ export function SkillsTable({
           }}
         />
       )}
-      {!isLoading && enableSelection && (
+      {enableSelection && (
         <SkillsBatchEditBar
           owner={owner}
           selectedSkills={selectedSkills}
