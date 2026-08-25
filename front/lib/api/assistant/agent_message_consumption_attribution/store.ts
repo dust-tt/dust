@@ -1,4 +1,5 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { buildLatestMessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import {
@@ -8,8 +9,8 @@ import {
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { measureToolCallFootprints } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import type { Authenticator } from "@app/lib/auth";
+import { buildAgentMessageBillingPlan } from "@app/lib/credits/agent_message_billing";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
-import { toolAwuFromAction } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type {
   CompletedAgentMessageConsumptionItem,
@@ -22,10 +23,7 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import type {
-  AgentMessageStatus,
-  UserMessageOrigin,
-} from "@app/types/assistant/conversation";
+import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import {
   AGENT_MESSAGE_STATUSES_TO_TRACK,
   isTerminalAgentMessageStatus,
@@ -186,15 +184,15 @@ async function buildRunUsageConsumptionEvidence(
   auth: Authenticator,
   {
     enrichedActionByModelId,
+    directCreditAmountMicroByActionModelId,
     includeToolResultFootprints,
     runActions,
-    triggeringUserMessageOrigin,
     usage,
   }: {
     enrichedActionByModelId: ReadonlyMap<ModelId, AgentMCPActionWithOutputType>;
+    directCreditAmountMicroByActionModelId: ReadonlyMap<ModelId, number>;
     includeToolResultFootprints: boolean;
     runActions: AgentMCPActionResource[];
-    triggeringUserMessageOrigin: UserMessageOrigin | null;
     usage: RunUsageWithRunKeyType;
   }
 ): Promise<{
@@ -248,9 +246,8 @@ async function buildRunUsageConsumptionEvidence(
   // is the same tool call across both. From here each call carries its own data through the builder,
   // so nothing downstream re-derives the position.
   const measuredToolCalls = modelVisibleRunActionPairs.map(
-    ({ action, enrichedAction }, index) => ({
+    ({ action }, index) => ({
       action,
-      enrichedAction,
       footprint: footprints[index],
     })
   );
@@ -294,7 +291,7 @@ async function buildRunUsageConsumptionEvidence(
   }
 
   for (const toolCall of toolCalls) {
-    const { action, enrichedAction, footprint } = toolCall.tool;
+    const { action, footprint } = toolCall.tool;
 
     // A blocked action carries no result and no charge yet, and billing does not charge it. Record
     // only the emitted call output as a pending row. The rest lands once the action is final.
@@ -311,15 +308,12 @@ async function buildRunUsageConsumptionEvidence(
 
     // Zero for a denied call, which billing does not charge. Its emitted output tokens stay
     // attributed here.
-    const directCreditAmountMicro = roundCreditsToMicroCredits(
-      toolAwuFromAction(
-        {
-          toolName: enrichedAction.toolName,
-          internalMCPServerName: enrichedAction.internalMCPServerName,
-          status: action.status,
-        },
-        triggeringUserMessageOrigin
-      )
+    const directCreditAmountMicro = directCreditAmountMicroByActionModelId.get(
+      action.id
+    );
+    assert(
+      directCreditAmountMicro !== undefined,
+      "A completed action must have a canonical billing line"
     );
     const toolAttribution = buildToolAttribution({
       usage,
@@ -354,20 +348,12 @@ async function buildRunUsageConsumptionEvidence(
       continue;
     }
 
-    const enrichedAction = enrichedActionByModelId.get(action.id);
-    assert(
-      enrichedAction,
-      "A completed sandbox child action must have an enriched counterpart"
+    const directCreditAmountMicro = directCreditAmountMicroByActionModelId.get(
+      action.id
     );
-    const directCreditAmountMicro = roundCreditsToMicroCredits(
-      toolAwuFromAction(
-        {
-          toolName: enrichedAction.toolName,
-          internalMCPServerName: enrichedAction.internalMCPServerName,
-          status: action.status,
-        },
-        triggeringUserMessageOrigin
-      )
+    assert(
+      directCreditAmountMicro !== undefined,
+      "A completed sandbox child action must have a canonical billing line"
     );
 
     records.push({
@@ -561,6 +547,26 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
       item.attributionVersion === AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION
   );
 
+  const toolBillingPlan = buildAgentMessageBillingPlan({
+    actions: actions.map((actionResource) => ({
+      actionResource,
+      internalMCPServerName: actionResource.metadata.internalMCPServerName,
+      mcpServerId: actionResource.metadata.mcpServerId ?? null,
+      status: actionResource.status,
+      toolName: getToolNameFromFunctionCallName(
+        actionResource.functionCallName
+      ),
+    })),
+    contextOrigin: triggeringUserMessageOrigin,
+    runUsages: [],
+  });
+  const directCreditAmountMicroByActionModelId = new Map(
+    toolBillingPlan.tools.map(({ action, billedCredits }) => [
+      action.actionResource.id,
+      roundCreditsToMicroCredits(billedCredits),
+    ])
+  );
+
   const dustRunIdByRunModelId = new Map(
     runs.map((run) => [run.id, run.dustRunId])
   );
@@ -593,6 +599,7 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
   );
   const actionsToEnrich = actions.filter(
     (action) =>
+      !isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo) &&
       action.stepContent.dustRunId !== null &&
       dustRunIdsToProcess.has(action.stepContent.dustRunId)
   );
@@ -618,11 +625,11 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
     const runActions = (dustRunId && actionsByDustRunId.get(dustRunId)) || [];
     const usageEvidence = await buildRunUsageConsumptionEvidence(auth, {
       enrichedActionByModelId,
+      directCreditAmountMicroByActionModelId,
       includeToolResultFootprints: !unconsumedToolResultRunUsageModelIds.has(
         usage.runUsageModelId
       ),
       runActions,
-      triggeringUserMessageOrigin,
       usage,
     });
     records.push(...usageEvidence.records);

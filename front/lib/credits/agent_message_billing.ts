@@ -37,12 +37,20 @@ export const TOOL_COST_CATEGORY_AWU_WEIGHTS: Record<ToolCostCategory, number> =
     advanced: 3,
   };
 
+// Once one MCP server has accrued this many billed tool credits within an
+// agent message, its subsequent tool calls are metered but free. The action
+// that reaches (or crosses) the cap remains fully billed.
+export const MCP_SERVER_AGENT_MESSAGE_TOOL_AWU_CAP = 20;
+
 export type AgentMessageBillingRunUsage = RunUsageType & {
   runKey: string | null;
 };
 
 export type AgentMessageBillingAction = {
   internalMCPServerName: InternalMCPServerNameType | null;
+  // Old actions may not carry their server id. Internal servers still have a
+  // stable name fallback. Unidentified external actions are left uncapped.
+  mcpServerId?: string | null;
   status: ToolExecutionStatus;
   toolName: string;
 };
@@ -52,6 +60,7 @@ export type AgentMessageLlmBillingDisposition = "billed" | "free_origin";
 
 export type AgentMessageToolBillingDisposition =
   | AgentMessageLlmBillingDisposition
+  | "free_mcp_server_cap"
   | "free_tool"
   | "unbillable_status";
 
@@ -154,6 +163,16 @@ export function getToolBillingInfo(
   };
 }
 
+function getMCPServerBillingKey(
+  action: AgentMessageBillingAction
+): string | null {
+  if (action.internalMCPServerName !== null) {
+    return `internal:${action.internalMCPServerName}`;
+  }
+
+  return action.mcpServerId ? `external:${action.mcpServerId}` : null;
+}
+
 // Split a rounded billing line across its raw usage rows with the largest
 // remainder method. Stable, unique keys make the result independent of DB
 // query order, and the allocated microcredits always reconcile to the line.
@@ -250,7 +269,8 @@ function resolveToolBillingDisposition({
  *
  * LLM provider cost is grouped and rounded once per (execution, provider,
  * model), then those groups are summed for the message. Tool actions are priced
- * independently at their category's fixed rate.
+ * independently at their category's fixed rate. Actions must be provided in
+ * chronological order so the per-MCP-server message cap is deterministic.
  *
  * `ratedCredits` is the price before free-origin/tool waivers;
  * `billedCredits` is the authoritative charge after those rules. Callers should
@@ -348,17 +368,33 @@ export function buildAgentMessageBillingPlan<
     }
   );
 
+  const billedToolCreditsByMCPServer = new Map<string, number>();
   const tools = actions.map((action) => {
     const { toolCostCategory, freeUsage } = getToolBillingInfo(
       action.internalMCPServerName,
       action.toolName
     );
-    const billingDisposition = resolveToolBillingDisposition({
+    let billingDisposition = resolveToolBillingDisposition({
       freeUsage,
       isMessageFree,
       status: action.status,
     });
     const ratedCredits = TOOL_COST_CATEGORY_AWU_WEIGHTS[toolCostCategory];
+
+    const mcpServerBillingKey = getMCPServerBillingKey(action);
+    if (billingDisposition === "billed" && mcpServerBillingKey !== null) {
+      const billedCreditsForServer =
+        billedToolCreditsByMCPServer.get(mcpServerBillingKey) ?? 0;
+      if (billedCreditsForServer >= MCP_SERVER_AGENT_MESSAGE_TOOL_AWU_CAP) {
+        billingDisposition = "free_mcp_server_cap";
+      } else {
+        billedToolCreditsByMCPServer.set(
+          mcpServerBillingKey,
+          billedCreditsForServer + ratedCredits
+        );
+      }
+    }
+
     const billedCredits = billingDisposition === "billed" ? ratedCredits : 0;
 
     return {

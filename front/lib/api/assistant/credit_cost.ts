@@ -37,6 +37,7 @@ import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversati
 interface CreditActionMinimalInput {
   toolName: string;
   internalMCPServerName: InternalMCPServerNameType | null;
+  mcpServerId?: string | null;
   status: ToolExecutionStatus;
 }
 
@@ -280,6 +281,7 @@ export async function computeAndStoreAgentMessageCredits(
     actions: actions.map((action) => ({
       toolName: getToolNameFromFunctionCallName(action.functionCallName),
       internalMCPServerName: action.metadata.internalMCPServerName,
+      mcpServerId: action.metadata.mcpServerId ?? null,
       status: action.status,
     })),
     contextOrigin: triggeringUserMessageOrigin,
