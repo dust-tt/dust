@@ -184,9 +184,10 @@ def test_rendered_void_spares_a_cover_slide():
 
 
 def test_rendered_void_band_leaves_room_above_the_reference_decks():
-    """Both AFTER_ decks and the two Dust templates top out at 0.46; the four
-    Luna runs that shipped a hole measured 0.56-0.66."""
-    assert 0.46 < A.RENDERED_VOID_BAND < 0.56
+    """Both AFTER_ decks and the two Dust templates top out at 0.41, and the
+    model-built decks that read right at 0.44; the slides that ship a hole run
+    0.51 to 0.64."""
+    assert 0.44 < A.RENDERED_VOID_BAND < 0.51
 
 
 if __name__ == "__main__":

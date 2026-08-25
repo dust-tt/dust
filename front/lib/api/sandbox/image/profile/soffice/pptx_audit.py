@@ -251,8 +251,9 @@ def _void_markers(
 # as a hole wherever it falls - under the title, between two rows, or below the
 # last line. Measured on the renderer's own word boxes rather than on shape
 # geometry, because the boxes keep the exemplar's height even when the copy
-# inside them shrank to a third of it. Both reference decks and the Dust
-# templates stay under 0.46; every deck a model has collapsed goes past 0.55.
+# inside them shrank to a third of it. Both reference decks and the two Dust
+# templates top out at 0.41, the model-built decks that read right at 0.44; the
+# slides that ship a hole run 0.51 to 0.64.
 RENDERED_VOID_BAND = 0.5
 # Below this many rendered words the slide is a cover or a divider, where a big
 # empty band is the design.
