@@ -15,9 +15,6 @@ import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers"
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 
-const pokeTriggersUrl = (workspaceId: string) =>
-  `/api/poke/workspaces/${workspaceId}/triggers`;
-
 export function usePokeAutomationTriggers({
   owner,
   period,
@@ -35,7 +32,7 @@ export function usePokeAutomationTriggers({
   filter?: AutomationTriggersFilter;
   disabled?: boolean;
 }) {
-  const url = `${pokeTriggersUrl(owner.sId)}/search`;
+  const url = `/api/poke/workspaces/${owner.sId}/triggers/search`;
   const body: Omit<AutomationTriggersBody, "format"> = {
     period: period.kind,
     days:
