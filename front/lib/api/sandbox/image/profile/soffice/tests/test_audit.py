@@ -212,6 +212,73 @@ def test_split_sentence_leaves_a_box_of_whole_sentences_alone():
     assert A._split_sentence_markers(slide) == []
 
 
+def _slide_with_word_under_picture(pic_left_in, pic_top_in, order_first):
+    """A one-word textbox plus a picture, with a word box straddling them."""
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    if order_first == "picture":
+        pic = slide.shapes.add_picture(_PNG(), Inches(pic_left_in), Inches(pic_top_in),
+                                       Inches(2), Inches(0.5))
+    tb = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(4), Inches(1))
+    tb.text_frame.text = "dust.com"
+    if order_first != "picture":
+        pic = slide.shapes.add_picture(_PNG(), Inches(pic_left_in), Inches(pic_top_in),
+                                       Inches(2), Inches(0.5))
+    return prs, slide, tb, pic
+
+
+def _PNG():
+    import io, struct, zlib
+    def chunk(tag, data):
+        c = tag + data
+        return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c))
+    raw = b"\x00" + b"\xff\xff\xff"
+    png = (b"\x89PNG\r\n\x1a\n"
+           + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+           + chunk(b"IDAT", zlib.compress(raw))
+           + chunk(b"IEND", b""))
+    return io.BytesIO(png)
+
+
+class _Word:
+    def __init__(self, left, top, right, bottom, text):
+        self.left, self.top, self.right, self.bottom, self.text = (
+            left, top, right, bottom, text)
+
+
+def test_occlusion_flags_a_word_buried_under_a_picture_drawn_over_it():
+    prs, slide, tb, pic = _slide_with_word_under_picture(1.2, 1.3, "text")
+    inch = 914400
+    word = _Word(int(1.3 * inch), int(1.2 * inch), int(2.6 * inch),
+                 int(1.5 * inch), "dust.com")
+    hits = A.occluded_words(slide, [word])
+    assert hits and hits[0][0] == tb.shape_id and hits[0][2] == "dust.com"
+
+
+def test_occlusion_ignores_a_picture_drawn_behind_the_text():
+    """A table on its own background panel overlaps exactly this way, and is how
+    the templates build their pricing slides."""
+    prs, slide, tb, pic = _slide_with_word_under_picture(1.2, 1.3, "picture")
+    inch = 914400
+    word = _Word(int(1.3 * inch), int(1.2 * inch), int(2.6 * inch),
+                 int(1.5 * inch), "dust.com")
+    assert A.occluded_words(slide, [word]) == []
+
+
+def test_occlusion_ignores_a_logo_clipping_the_edge_of_a_word():
+    """A logo PNG's transparent padding reaches into the neighbouring word by a
+    third of its width. That is a template's own title line, not a defect."""
+    prs, slide, tb, pic = _slide_with_word_under_picture(2.4, 1.1, "text")
+    inch = 914400
+    word = _Word(int(1.3 * inch), int(1.2 * inch), int(2.6 * inch),
+                 int(1.5 * inch), "when")
+    assert A.occluded_words(slide, [word]) == []
+
+
+def test_occlusion_needs_both_axes():
+    assert 0 < A.OCCLUSION_HEIGHT < A.OCCLUSION_WIDTH <= 1
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]

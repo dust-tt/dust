@@ -13,6 +13,7 @@ import zipfile
 from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
 
 from pptx import Presentation
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.oxml.ns import qn
 from pptx.presentation import Presentation as PresentationType
 from pptx.shapes.base import BaseShape
@@ -294,6 +295,79 @@ def rendered_void(
     gaps.append(1.0 - blocks[-1][1])
     band = max(gaps)
     return band if band >= RENDERED_VOID_BAND else None
+
+
+# How much of a word's height a picture drawn over it has to bury before the
+# word counts as hidden rather than merely touched, and how much of its width.
+# Both axes are needed: a logo PNG's transparent padding overlaps a neighbouring
+# word almost fully in one axis and clips a third of it in the other, which is
+# what a template's own title line looks like and is not a defect. A picture
+# actually sitting on a line of copy covers its whole width.
+OCCLUSION_HEIGHT = 0.3
+OCCLUSION_WIDTH = 0.5
+
+
+def occluded_words(slide: Slide, words) -> List[Tuple[int, int, str]]:
+    """Copy buried under a picture painted after it: (text shape, picture, word).
+
+    The text is present, fits its box and reads back fine from the file, so
+    every other check passes - it is only in the render that half the glyphs are
+    gone under a button or a badge. Only pictures later in the shape tree count:
+    a table drawn on its own background panel overlaps the same way and is how
+    the templates build their pricing slides."""
+    if not words:
+        return []
+    shapes = list(slide.shapes)
+    order = {shape.shape_id: i for i, shape in enumerate(shapes)}
+    boxed = [
+        shape
+        for shape in shapes
+        if None not in (shape.left, shape.top, shape.width, shape.height)
+        and shape.width > 0
+        and shape.height > 0
+    ]
+    texts = [
+        shape
+        for shape in boxed
+        if getattr(shape, "has_text_frame", False)
+        and (shape.text_frame.text or "").strip()
+    ]
+    pics = [
+        shape for shape in boxed if shape.shape_type == MSO_SHAPE_TYPE.PICTURE
+    ]
+    out: List[Tuple[int, int, str]] = []
+    for text_shape in texts:
+        mine = [
+            w
+            for w in words
+            if text_shape.left
+            <= (w.left + w.right) // 2
+            <= text_shape.left + text_shape.width
+            and text_shape.top
+            <= (w.top + w.bottom) // 2
+            <= text_shape.top + text_shape.height
+        ]
+        if not mine:
+            continue
+        for pic in pics:
+            if order[pic.shape_id] < order[text_shape.shape_id]:
+                continue
+            for w in mine:
+                height, width = w.bottom - w.top, w.right - w.left
+                if height <= 0 or width <= 0:
+                    continue
+                buried = min(w.bottom, pic.top + pic.height) - max(w.top, pic.top)
+                across = min(w.right, pic.left + pic.width) - max(w.left, pic.left)
+                if (
+                    buried / height >= OCCLUSION_HEIGHT
+                    and across / width >= OCCLUSION_WIDTH
+                ):
+                    out.append((text_shape.shape_id, pic.shape_id, w.text))
+                    break
+            else:
+                continue
+            break
+    return out
 
 
 def _split_sentence_markers(slide: Slide) -> List[Tuple[int, str]]:

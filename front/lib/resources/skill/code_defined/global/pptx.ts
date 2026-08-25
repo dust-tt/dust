@@ -147,6 +147,7 @@ The defect list is mechanical and reliable. Clear every \`[!]\` before you look 
 | \`extends past slide edge\` | move or shrink it back inside the slide |
 | \`image distorted\` | resize the box to the image's native ratio, or crop |
 | \`stacked with shape #N\` / \`text-on-text\` | move one box clear, or shorten the copy |
+| \`buried under picture #N\` | the copy is in the file and fits, only the render shows it gone: move the text clear of the picture, or move the picture |
 | \`empty placeholder\` | fill it, or delete the shape |
 | \`text overset\` / \`text runs ~Nin below its box\` | cut copy or grow the box, never below the template's sizes |
 | \`thin - ... (2.4:1)\` | fine for a large heading, recolour if it is body copy |
@@ -187,7 +188,7 @@ export const pptxSkill = {
   instructions: PPTX_SKILL_INSTRUCTIONS,
   exposeInstructions: true,
   mcpServers: [{ name: "sandbox" }],
-  version: 10,
+  version: 11,
   icon: "ActionSlideshowIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
