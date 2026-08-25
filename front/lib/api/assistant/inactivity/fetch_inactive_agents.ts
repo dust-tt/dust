@@ -1,0 +1,74 @@
+import { fetchFirstVersionCreatedAtByAgentId } from "@app/lib/api/assistant/configuration/agent";
+import type { AgentInactivitySnapshot } from "@app/lib/api/assistant/inactivity/policy";
+import type { Authenticator } from "@app/lib/auth";
+import { MentionResource } from "@app/lib/resources/mention_resource";
+
+/**
+ * Loads one page of a workspace's agents that have not been mentioned since the cutoff. One row
+ * beyond `limit` is read and dropped, so `nextCursor` is non-null only when another candidate
+ * exists rather than whenever a page happens to be full.
+ *
+ * Status and triggers deliberately do not come from here — `fetchArchivalFacts` in the caller is
+ * the permission-filtered read and the authority on those.
+ */
+
+/** The part of a snapshot this provides; derived so the two cannot drift. */
+export type InactiveAgentCandidate = Pick<
+  AgentInactivitySnapshot,
+  "agentId" | "createdAt" | "lastMentionedAt"
+>;
+
+/**
+ * Infrastructure, not policy: it is here so a Temporal workflow can walk a large workspace one
+ * durable step at a time.
+ */
+export interface AgentPageBound {
+  // Last agent id of the previous page, or null to start from the beginning.
+  cursor: string | null;
+  limit: number;
+}
+
+export interface InactiveAgentsFetchInput {
+  cutoffAt: Date;
+  page: AgentPageBound;
+}
+
+export interface InactiveAgentsPage {
+  agents: InactiveAgentCandidate[];
+  // Null once the workspace is exhausted.
+  nextCursor: string | null;
+}
+
+export async function fetchInactiveAgents(
+  auth: Authenticator,
+  { cutoffAt, page }: InactiveAgentsFetchInput
+): Promise<InactiveAgentsPage> {
+  const idleAgents = await MentionResource.listAgentsNotMentionedSince(auth, {
+    notMentionedSince: cutoffAt,
+  });
+
+  // The cursor steps past agents the rules keep refusing, so a driver terminates.
+  const { cursor, limit } = page;
+  const fromCursor = cursor
+    ? idleAgents.filter(({ agentId }) => agentId > cursor)
+    : idleAgents;
+
+  const hasMore = fromCursor.length > limit;
+  const pageAgents = fromCursor.slice(0, limit);
+
+  const createdAtByAgentId = await fetchFirstVersionCreatedAtByAgentId(
+    auth,
+    pageAgents.map(({ agentId }) => agentId)
+  );
+
+  // No first-version date: skip, rather than archive on a date we could not establish.
+  const agents = pageAgents.flatMap(({ agentId, lastMentionedAt }) => {
+    const createdAt = createdAtByAgentId.get(agentId);
+
+    return createdAt ? [{ agentId, createdAt, lastMentionedAt }] : [];
+  });
+
+  const nextCursor = hasMore ? pageAgents[pageAgents.length - 1].agentId : null;
+
+  return { agents, nextCursor };
+}
