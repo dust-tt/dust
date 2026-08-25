@@ -19,7 +19,7 @@ const app = consumptionAnalyticsApp();
  * /api/w/{wId}/analytics/consumption/facets:
  *   post:
  *     summary: List consumption analytics facets
- *     description: Lists current entities and historical indexed values present in the selected period for each consumption dimension. The workspace route requires a manager; the /me route is restricted server-side to the authenticated member; the agent route is restricted server-side to the selected agent. A facet is disabled when it has no indexed document in that period after applying every active filter except the facet's own dimension.
+ *     description: Lists current entities and historical indexed values present in the selected period for each consumption dimension. The workspace route requires a manager; the /me route is restricted server-side to the authenticated member; agent and skill routes are restricted server-side to the selected entity. A facet is disabled when it has no indexed document in that period after applying every active filter except the facet's own dimension.
  *     tags:
  *       - Private Analytics
  *     parameters:
@@ -50,7 +50,7 @@ const app = consumptionAnalyticsApp();
  *                 description: Restricts which documents the facets are computed over. `automations` counts only trigger-originated runs.
  *               dimensions:
  *                 type: array
- *                 description: Dimensions to compute facets for. Defaults to every dimension. Omitted dimensions come back as empty arrays. The personal route omits user and group dimensions, and the agent route omits the agent dimension.
+ *                 description: Dimensions to compute facets for. Defaults to every dimension. Omitted dimensions come back as empty arrays. The personal route omits user and group dimensions, the agent route omits the agent dimension, and the skill route omits the skill dimension.
  *                 items:
  *                   type: string
  *                   enum: [agent, user, api_key, group, model, tool, skill, source]

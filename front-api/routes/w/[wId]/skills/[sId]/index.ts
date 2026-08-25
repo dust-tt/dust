@@ -35,6 +35,7 @@ import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
 import { z } from "zod";
 
+import analytics from "./analytics";
 import editors from "./editors";
 import favorite from "./favorite";
 import filesRoute from "./files/[fileId]/content";
@@ -97,6 +98,7 @@ async function loadSkill(
 const app = workspaceApp();
 
 // Sub-routes for this skill.
+app.route("/analytics", analytics);
 app.route("/editors", editors);
 app.route("/favorite", favorite);
 app.route("/history", history);

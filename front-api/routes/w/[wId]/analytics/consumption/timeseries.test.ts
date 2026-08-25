@@ -2,6 +2,7 @@ import type { GetConsumptionTimeseriesResponse } from "@app/lib/api/analytics/co
 import { fetchConsumptionTimeseries } from "@app/lib/api/analytics/consumption/timeseries";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
@@ -50,6 +51,21 @@ function postAgentTimeseriesRequest(
 ) {
   return honoApp.request(
     `/api/w/${workspaceId}/assistant/agent_configurations/${agentId}/analytics/consumption/timeseries`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+}
+
+function postSkillTimeseriesRequest(
+  workspaceId: string,
+  skillId: string,
+  body: Record<string, unknown> = {}
+) {
+  return honoApp.request(
+    `/api/w/${workspaceId}/skills/${skillId}/analytics/consumption/timeseries`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -140,6 +156,46 @@ describe("POST /api/w/:wId/analytics/consumption/timeseries", () => {
       workspace.sId,
       agent.sId,
       { breakdownBy: "agent" }
+    );
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect(vi.mocked(fetchConsumptionTimeseries)).not.toHaveBeenCalled();
+  });
+
+  it("lets editors read only the selected skill's timeseries", async () => {
+    vi.mocked(fetchConsumptionTimeseries).mockResolvedValue(new Ok(TIMESERIES));
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const skill = await SkillFactory.create(auth);
+
+    const response = await postSkillTimeseriesRequest(
+      workspace.sId,
+      skill.sId,
+      { filter: { skills: ["another-skill"], models: ["model-1"] } }
+    );
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionTimeseries)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        filter: { skills: [skill.sId], models: ["model-1"] },
+      })
+    );
+  });
+
+  it("rejects the skill breakdown when the route already fixes the skill", async () => {
+    vi.mocked(fetchConsumptionTimeseries).mockClear();
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const skill = await SkillFactory.create(auth);
+
+    const response = await postSkillTimeseriesRequest(
+      workspace.sId,
+      skill.sId,
+      { breakdownBy: "skill" }
     );
 
     expect(response.status).toBe(400);

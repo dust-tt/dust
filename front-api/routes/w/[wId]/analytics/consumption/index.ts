@@ -1,4 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
   ensureIsManager,
   ensureIsUser,
@@ -24,15 +25,22 @@ const AgentParamsSchema = z.object({
   aId: z.string(),
 });
 
+const SkillParamsSchema = z.object({
+  sId: z.string(),
+});
+
 function mountSharedConsumptionRoutes(
-  app: ReturnType<typeof consumptionAnalyticsApp>
+  app: ReturnType<typeof consumptionAnalyticsApp>,
+  { includeTopSkills = true }: { includeTopSkills?: boolean } = {}
 ) {
   app.route("/facets", facets);
   app.route("/overview", overview);
   app.route("/timeseries", timeseries);
   app.route("/top-api-keys", topApiKeys);
   app.route("/top-models", topModels);
-  app.route("/top-skills", topSkills);
+  if (includeTopSkills) {
+    app.route("/top-skills", topSkills);
+  }
   app.route("/top-sources", topSources);
   app.route("/top-tools", topTools);
 }
@@ -118,6 +126,61 @@ export function createAgentConsumptionRoutes() {
 
   mountSharedConsumptionRoutes(app);
   // The current agent is fixed by the route, so only other dimensions rank.
+  app.route("/top-groups", topGroups);
+  app.route("/top-users", topUsers);
+
+  return app;
+}
+
+export function createSkillConsumptionRoutes() {
+  const app = consumptionAnalyticsApp();
+  app.use(ensureIsUser());
+  app.use("*", validate("param", SkillParamsSchema));
+  app.use(async (ctx, next) => {
+    const auth = ctx.get("auth");
+    const sId = ctx.req.param("sId");
+    if (!sId) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Missing skill ID.",
+        },
+      });
+    }
+
+    const skill = await SkillResource.fetchById(auth, sId);
+    if (!skill) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "skill_not_found",
+          message: "The skill you're trying to access was not found.",
+        },
+      });
+    }
+
+    if (
+      !skill.canAdministrate(auth) &&
+      !(await auth.hasWorkspacePermission("publish", "skill"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only skill editors can access its consumption analytics.",
+        },
+      });
+    }
+
+    ctx.set("consumptionExcludedDimensions", ["skill"]);
+    ctx.set("consumptionRequiredFilter", { skills: [skill.sId] });
+    await next();
+  });
+
+  mountSharedConsumptionRoutes(app, { includeTopSkills: false });
+  // The current skill is fixed by the route, so only other dimensions rank.
+  app.route("/top-agents", topAgents);
   app.route("/top-groups", topGroups);
   app.route("/top-users", topUsers);
 

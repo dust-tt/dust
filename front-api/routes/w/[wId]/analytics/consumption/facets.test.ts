@@ -3,6 +3,7 @@ import { fetchConsumptionFacets } from "@app/lib/api/analytics/consumption/facet
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -126,6 +127,36 @@ describe("POST /api/w/:wId/analytics/consumption/facets", () => {
         filter: { agents: ["another-agent"], sources: ["slack"] },
         dimensions: ["user", "model"],
         requiredFilter: { agents: [agent.sId] },
+      })
+    );
+  });
+
+  it("lets editors list only facets from the selected skill", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const skill = await SkillFactory.create(auth);
+    vi.mocked(fetchConsumptionFacets).mockResolvedValue(new Ok(RESPONSE));
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/skills/${skill.sId}/analytics/consumption/facets`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filter: { skills: ["another-skill"], sources: ["slack"] },
+          dimensions: ["agent", "skill", "model"],
+        }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchConsumptionFacets).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        filter: { skills: ["another-skill"], sources: ["slack"] },
+        dimensions: ["agent", "model"],
+        requiredFilter: { skills: [skill.sId] },
       })
     );
   });

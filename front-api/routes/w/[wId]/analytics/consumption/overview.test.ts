@@ -3,6 +3,7 @@ import { fetchConsumptionOverview } from "@app/lib/api/analytics/consumption/ove
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -74,6 +75,21 @@ function postAgentOverviewRequest(
   );
 }
 
+function postSkillOverviewRequest(
+  workspaceId: string,
+  skillId: string,
+  body: Record<string, unknown> = {}
+) {
+  return honoApp.request(
+    `/api/w/${workspaceId}/skills/${skillId}/analytics/consumption/overview`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+}
+
 describe("POST /api/w/:wId/analytics/consumption/overview", () => {
   it("returns 403 for non-manager users", async () => {
     const { workspace } = await setupTest({ role: "user" });
@@ -137,6 +153,45 @@ describe("POST /api/w/:wId/analytics/consumption/overview", () => {
     const response = await postAgentOverviewRequest(
       ownerRequest.workspace.sId,
       agent.sId
+    );
+
+    expect(response.status).toBe(403);
+    expect(vi.mocked(fetchConsumptionOverview)).not.toHaveBeenCalled();
+  });
+
+  it("lets editors read only the selected skill's consumption", async () => {
+    vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
+    const { auth, workspace } = await setupTest({ role: "user" });
+    const skill = await SkillFactory.create(auth);
+
+    const response = await postSkillOverviewRequest(workspace.sId, skill.sId, {
+      filter: { skills: ["another-skill"], sources: ["slack"] },
+    });
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionOverview)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        filter: { skills: [skill.sId], sources: ["slack"] },
+        includeWorkspaceContext: false,
+      })
+    );
+  });
+
+  it("refuses skill analytics to members who cannot edit the skill", async () => {
+    const ownerRequest = await setupTest({ role: "user" });
+    const skill = await SkillFactory.create(ownerRequest.auth, {
+      availability: "workspace_users",
+    });
+    await createPrivateApiMockRequest({
+      role: "user",
+      workspace: ownerRequest.workspace,
+    });
+    vi.mocked(fetchConsumptionOverview).mockClear();
+
+    const response = await postSkillOverviewRequest(
+      ownerRequest.workspace.sId,
+      skill.sId
     );
 
     expect(response.status).toBe(403);

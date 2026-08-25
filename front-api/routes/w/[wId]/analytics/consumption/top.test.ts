@@ -34,6 +34,7 @@ import {
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -322,6 +323,7 @@ const PERSONAL_RANKINGS = RANKINGS.filter(
   ({ path }) => path !== "top-users" && path !== "top-groups"
 );
 const AGENT_RANKINGS = RANKINGS.filter(({ path }) => path !== "top-agents");
+const SKILL_RANKINGS = RANKINGS.filter(({ path }) => path !== "top-skills");
 
 async function setupTest({
   role = "admin",
@@ -336,13 +338,16 @@ function postRankingRequest(
   path: string,
   body: Record<string, unknown> = {},
   personal = false,
-  agentId?: string
+  agentId?: string,
+  skillId?: string
 ) {
-  const analyticsPath = agentId
-    ? `assistant/agent_configurations/${agentId}/analytics`
-    : personal
-      ? "me/analytics"
-      : "analytics";
+  const analyticsPath = skillId
+    ? `skills/${skillId}/analytics`
+    : agentId
+      ? `assistant/agent_configurations/${agentId}/analytics`
+      : personal
+        ? "me/analytics"
+        : "analytics";
   return honoApp.request(`/api/w/${wId}/${analyticsPath}/consumption/${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -458,6 +463,50 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
       {},
       false,
       agent.sId
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it.each(
+    SKILL_RANKINGS
+  )("$path lets editors rank only the selected skill's consumption", async ({
+    path,
+    arrangeOk,
+    lastCall,
+  }) => {
+    arrangeOk();
+    const { auth, workspace } = await setupTest({ role: "user" });
+    const skill = await SkillFactory.create(auth);
+
+    const response = await postRankingRequest(
+      workspace.sId,
+      path,
+      { filter: { skills: ["another-skill"], sources: ["slack"] } },
+      false,
+      undefined,
+      skill.sId
+    );
+
+    expect(response.status).toBe(200);
+    expect(lastCall()?.[1]).toEqual(
+      expect.objectContaining({
+        filter: { skills: [skill.sId], sources: ["slack"] },
+      })
+    );
+  });
+
+  it("does not mount the skill ranking for skill-scoped analytics", async () => {
+    const { auth, workspace } = await setupTest({ role: "user" });
+    const skill = await SkillFactory.create(auth);
+
+    const response = await postRankingRequest(
+      workspace.sId,
+      "top-skills",
+      {},
+      false,
+      undefined,
+      skill.sId
     );
 
     expect(response.status).toBe(404);
