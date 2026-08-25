@@ -17,9 +17,10 @@ import {
   DropdownMenuTrigger,
   Eye,
   FilterFunnel01,
+  Icon,
+  ShapesPlus,
   Tag01,
   Users01,
-  Tool01,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { useState } from "react";
@@ -45,6 +46,19 @@ export interface FleetFilterOption {
   value: string;
   label: string;
   icon?: ComponentType<{ className?: string }>;
+}
+
+/**
+ * Dropdown items render icons at "sm" (20px) by default, sized for a single
+ * icon carrying the whole row's meaning (Create, Models, Tags elsewhere).
+ * This menu stacks many rows of icon + label, where 20px reads heavy — so
+ * every icon here is pre-rendered at "xs" (16px) instead.
+ */
+function smallIcon(visual: ComponentType<{ className?: string }> | undefined) {
+  if (!visual) {
+    return undefined;
+  }
+  return <Icon visual={visual} size="xs" className="text-muted-foreground" />;
 }
 
 type FleetFilterListKey =
@@ -105,7 +119,7 @@ function OptionsSubMenu({
         <DropdownMenuCheckboxItem
           key={option.value}
           label={option.label}
-          icon={option.icon}
+          icon={smallIcon(option.icon)}
           truncateText
           checked={selectedIds.has(option.value)}
           onCheckedChange={() => onToggle(option.value)}
@@ -156,7 +170,7 @@ function ToolsSubMenu({
         <DropdownMenuCheckboxItem
           key={tool.id}
           label={tool.label}
-          icon={getToolIcon(tool.id)}
+          icon={smallIcon(getToolIcon(tool.id))}
           checked={selectedIds.has(tool.id)}
           onCheckedChange={() => onToggle(tool.id)}
           onSelect={(event) => event.preventDefault()}
@@ -167,7 +181,7 @@ function ToolsSubMenu({
         <DropdownMenuCheckboxItem
           key={tool.id}
           label={tool.label}
-          icon={getToolIcon(tool.id)}
+          icon={smallIcon(getToolIcon(tool.id))}
           checked={selectedIds.has(tool.id)}
           onCheckedChange={() => onToggle(tool.id)}
           onSelect={(event) => event.preventDefault()}
@@ -254,7 +268,7 @@ export function FleetFilterMenu({
       <DropdownMenuContent className="w-60" align="end">
         <DropdownMenuLabel label="Ownership" />
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger label="Editors" icon={Users01} />
+          <DropdownMenuSubTrigger label="Editors" icon={smallIcon(Users01)} />
           <PeopleSubMenu
             people={people}
             selected={filters.editors}
@@ -266,7 +280,7 @@ export function FleetFilterMenu({
         <DropdownMenuSeparator />
         <DropdownMenuLabel label="Dependencies" />
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger label="Tools" icon={Tool01} />
+          <DropdownMenuSubTrigger label="Tools" icon={smallIcon(ShapesPlus)} />
           <ToolsSubMenu
             selected={filters.tools}
             onToggle={(value) => onToggle("tools", value)}
@@ -274,7 +288,7 @@ export function FleetFilterMenu({
         </DropdownMenuSub>
         {models && models.length > 0 && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger label="Model" icon={CpuChip01} />
+            <DropdownMenuSubTrigger label="Model" icon={smallIcon(CpuChip01)} />
             <OptionsSubMenu
               options={models}
               selected={filters.models}
@@ -298,7 +312,10 @@ export function FleetFilterMenu({
             />
           ))}
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger label="Last edited" icon={ClockRewind} />
+          <DropdownMenuSubTrigger
+            label="Last edited"
+            icon={smallIcon(ClockRewind)}
+          />
           <DropdownMenuSubContent className="w-60">
             <DropdownMenuRadioGroup value={filters.editedWithin ?? ""}>
               {EDITED_WITHIN_OPTIONS.map((option) => (
@@ -320,7 +337,7 @@ export function FleetFilterMenu({
           </DropdownMenuSubContent>
         </DropdownMenuSub>
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger label="Human usage" icon={Eye} />
+          <DropdownMenuSubTrigger label="Human usage" icon={smallIcon(Eye)} />
           <DropdownMenuSubContent className="w-64">
             <DropdownMenuRadioGroup value={filters.notUsedFor ?? ""}>
               {NOT_USED_FOR_OPTIONS.map((option) => (
@@ -346,7 +363,7 @@ export function FleetFilterMenu({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger label="Tags" icon={Tag01} />
+              <DropdownMenuSubTrigger label="Tags" icon={smallIcon(Tag01)} />
               <OptionsSubMenu
                 options={tags}
                 selected={filters.tags}
