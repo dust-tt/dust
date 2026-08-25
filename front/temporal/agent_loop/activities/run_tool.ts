@@ -169,6 +169,23 @@ export async function runToolActivity(
   // Heartbeating here as retrieving the agent loop data takes some time.
   heartbeat();
 
+  // Identify the tool as early as possible: activities that die past this point (worker killed,
+  // stall in the pre-execution phases) leave no tool-level log otherwise, making heartbeat
+  // timeout failures unattributable to a tool.
+  logger.info(
+    {
+      actionId,
+      attempt: Context.current().info.attempt,
+      conversationId: runAgentArgs.conversationId,
+      agentMessageId: runAgentArgs.agentMessageId,
+      step,
+      workspaceId: authType.workspaceId,
+      toolName: action.toolConfiguration.name,
+      mcpServerName: action.toolConfiguration.mcpServerName,
+    },
+    "Tool activity starting execution"
+  );
+
   const {
     agentConfiguration,
     modelInfo: model,
