@@ -100,7 +100,12 @@ export const AssistantCard = React.forwardRef<
             <p
               className={cn(
                 "line-clamp-1 overflow-hidden text-ellipsis text-xs",
-                "text-faint"
+                // text-faint matches Figma's light-mode spec exactly, but
+                // its dark value (stone-600, #57534d) is too low-contrast
+                // against a dark card — dark:text-muted-foreground (stone-400,
+                // #a6a09b, the same value light-mode's text-faint uses) reads
+                // cleanly instead.
+                "text-faint dark:text-muted-foreground"
               )}
             >
               {subtitle}
