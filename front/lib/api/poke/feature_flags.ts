@@ -1,19 +1,13 @@
-import { FeatureFlagModel } from "@app/lib/models/feature_flag";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { FeatureFlagStage } from "@app/types/shared/feature_flags";
 import {
   isWhitelistableFeature,
   WHITELISTABLE_FEATURES,
   WHITELISTABLE_FEATURES_CONFIG,
 } from "@app/types/shared/feature_flags";
-import { isString } from "@app/types/shared/utils/general";
-
-// Type cast to enable cross-workspace queries for poke super-admin.
-const FeatureFlagModelWithBypass: ModelStaticWorkspaceAware<FeatureFlagModel> =
-  FeatureFlagModel;
 
 // A flag enabled on more workspaces than this is truncated in the detail view: the point of the
 // page is to read the list, and past a few thousand rows the payload matters more than the tail.
@@ -52,20 +46,10 @@ export interface GetPokeFeatureFlagWorkspacesResponseBody {
  * they are filtered out everywhere else, and are what `delete_legacy_feature_flag.ts` cleans up.
  */
 export async function listFeatureFlagUsage(): Promise<PokeFeatureFlagUsage[]> {
-  // `count` does not go through the workspace-isolation find hook, so this cross-workspace
-  // aggregate needs no bypass.
-  const [countRows, globalFlags] = await Promise.all([
-    FeatureFlagModel.count({ group: ["name"] }),
+  const [countByName, globalFlags] = await Promise.all([
+    FeatureFlagResource.countByFlagNameForAllWorkspaces(),
     GlobalFeatureFlagResource.listAll(),
   ]);
-
-  const countByName = new Map<string, number>();
-  for (const row of countRows) {
-    const { name } = row;
-    if (isString(name)) {
-      countByName.set(name, row.count);
-    }
-  }
 
   const rolloutByName = new Map(
     globalFlags.map((flag) => [flag.name, flag.rolloutPercentage])
@@ -102,13 +86,7 @@ export async function listWorkspacesForFeatureFlag(
   name: string
 ): Promise<GetPokeFeatureFlagWorkspacesResponseBody> {
   const [flags, globalFlags] = await Promise.all([
-    FeatureFlagModelWithBypass.findAll({
-      // WORKSPACE_ISOLATION_BYPASS: poke super-admin listing every workspace a flag is enabled on.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
-      dangerouslyBypassWorkspaceIsolationSecurity: true,
-      where: { name },
-      include: [{ model: WorkspaceModel, as: "workspace", required: true }],
-      order: [["createdAt", "DESC"]],
+    FeatureFlagResource.listForAllWorkspacesByName(name, {
       limit: MAX_WORKSPACES_PER_FEATURE_FLAG,
     }),
     GlobalFeatureFlagResource.listAll(),
@@ -124,22 +102,37 @@ export async function listWorkspacesForFeatureFlag(
   // Only pay for the count query when the list is actually truncated.
   const totalCount =
     flags.length === MAX_WORKSPACES_PER_FEATURE_FLAG
-      ? await FeatureFlagModel.count({ where: { name } })
+      ? await FeatureFlagResource.countForAllWorkspacesByName(name)
       : flags.length;
 
-  const subscriptionByWorkspaceModelId =
-    await SubscriptionResource.fetchActiveByWorkspacesModelId(
-      flags.map((flag) => flag.workspaceId)
-    );
+  const workspaceModelIds = flags.map((flag) => flag.workspaceId);
+  const [workspaces, subscriptionByWorkspaceModelId] = await Promise.all([
+    WorkspaceResource.fetchByModelIds(workspaceModelIds),
+    SubscriptionResource.fetchActiveByWorkspacesModelId(workspaceModelIds),
+  ]);
+
+  const workspaceByModelId = new Map(
+    workspaces.map((workspace) => [workspace.id, workspace])
+  );
 
   return {
     globalRolloutPercentage,
-    workspaces: flags.map((flag) => ({
-      workspaceId: flag.workspace.sId,
-      workspaceName: flag.workspace.name,
-      planCode: subscriptionByWorkspaceModelId[flag.workspaceId].getPlan().code,
-      enabledAt: flag.createdAt.toISOString(),
-    })),
+    workspaces: flags.map((flag) => {
+      const workspace = workspaceByModelId.get(flag.workspaceId);
+      if (!workspace) {
+        throw new Error(
+          `Workspace ${flag.workspaceId} not found for feature flag "${name}".`
+        );
+      }
+
+      return {
+        workspaceId: workspace.sId,
+        workspaceName: workspace.name,
+        planCode:
+          subscriptionByWorkspaceModelId[flag.workspaceId].getPlan().code,
+        enabledAt: flag.createdAt.toISOString(),
+      };
+    }),
     totalCount,
   };
 }

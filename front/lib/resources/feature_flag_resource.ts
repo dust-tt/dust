@@ -9,6 +9,7 @@ import { isWhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 import { RequestCachedQuery } from "@app/types/shared/utils/request_context";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
@@ -214,7 +215,53 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
   static async countForAllWorkspaces(
     name: WhitelistableFeature
   ): Promise<number> {
+    return FeatureFlagResource.countForAllWorkspacesByName(name);
+  }
+
+  // Counts the rows of one flag name across every workspace. The name is a plain string so that
+  // leftover rows for a flag no longer declared in WHITELISTABLE_FEATURES_CONFIG can be counted.
+  static async countForAllWorkspacesByName(name: string): Promise<number> {
+    // `count` does not go through the workspace-isolation find hook, so no bypass is needed.
     return FeatureFlagModel.count({ where: { name } });
+  }
+
+  // One entry per distinct flag name present in the database, with the number of workspaces the
+  // flag is enabled on. Names no longer declared in WHITELISTABLE_FEATURES_CONFIG are included.
+  static async countByFlagNameForAllWorkspaces(): Promise<Map<string, number>> {
+    // `count` does not go through the workspace-isolation find hook, so no bypass is needed.
+    const rows = await FeatureFlagModel.count({ group: ["name"] });
+
+    const countByName = new Map<string, number>();
+    for (const row of rows) {
+      const { name } = row;
+      if (isString(name)) {
+        countByName.set(name, row.count);
+      }
+    }
+
+    return countByName;
+  }
+
+  // Lists the rows of one flag name across every workspace, most recently created first. Names no
+  // longer declared in WHITELISTABLE_FEATURES_CONFIG are returned too, so leftover rows stay
+  // visible to the maintenance tooling.
+  static async listForAllWorkspacesByName(
+    name: string,
+    { limit }: { limit: number }
+  ): Promise<FeatureFlagResource[]> {
+    const flags = await FeatureFlagModel.findAll({
+      where: { name },
+      order: [["createdAt", "DESC"]],
+      limit,
+      // WORKSPACE_ISOLATION_BYPASS: this maintenance query intentionally lists one flag across all workspaces.
+      // @ts-expect-error -- Cross-workspace query by design.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    return flags.map(
+      (flag) => new FeatureFlagResource(FeatureFlagModel, flag.get())
+    );
   }
 
   static async deleteAllForWorkspace(
@@ -235,7 +282,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
 
   // Count/delete rows for a flag name that is no longer in WHITELISTABLE_FEATURES.
   static async countLegacyByName(name: string): Promise<number> {
-    return FeatureFlagModel.count({ where: { name } });
+    return FeatureFlagResource.countForAllWorkspacesByName(name);
   }
 
   static async deleteLegacyByName(name: string): Promise<number> {
