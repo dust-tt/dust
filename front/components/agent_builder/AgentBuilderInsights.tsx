@@ -1,5 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { CombinedInsightsContent } from "@app/components/observability/CombinedInsightsContent";
+import { AgentInsightsTab } from "@app/components/assistant/details/tabs/AgentInsightsTab";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { cn, LoadingBlock } from "@dust-tt/sparkle";
 
@@ -28,14 +28,11 @@ export function AgentBuilderInsights({
     );
   }
 
-  const isCustomAgent = agentConfiguration.scope !== "global";
-
   return (
     <section className="flex h-full flex-col overflow-y-auto p-4">
-      <CombinedInsightsContent
+      <AgentInsightsTab
         owner={owner}
-        agentConfigurationId={agentConfiguration.sId}
-        isCustomAgent={isCustomAgent}
+        agentConfiguration={agentConfiguration}
       />
     </section>
   );
