@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { CreditUsageState } from "./CreditUsage";
-import { CreditUsage } from "./CreditUsage";
+import { CREDIT_USAGE_LEARN_MORE_LABEL, CreditUsage } from "./CreditUsage";
 
 const ON_TARGET_STATE = {
   usedPercentage: 80,
@@ -34,7 +34,7 @@ describe("CreditUsage", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Understand your usage" })
+      screen.getByRole("button", { name: CREDIT_USAGE_LEARN_MORE_LABEL })
     );
 
     expect(onLearnMore).toHaveBeenCalledOnce();
