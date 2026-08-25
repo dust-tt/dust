@@ -8,6 +8,7 @@ import {
   PokeCommandList,
   PokeCommandSeparator,
 } from "@app/components/poke/shadcn/ui/command";
+import { isString } from "@app/types/shared/utils/general";
 import {
   Check,
   PlusCircle,
@@ -40,9 +41,7 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
 }: PokeDataTableFacetedFilterProps<TData, TValue>) {
   const columnFilterValue = column?.getFilterValue();
   const columnSelectedValues = Array.isArray(columnFilterValue)
-    ? columnFilterValue.filter(
-        (value): value is string => typeof value === "string"
-      )
+    ? columnFilterValue.filter(isString)
     : [];
   const selectedValueSet = new Set(selectedValues ?? columnSelectedValues);
   const facets = onSelectedValuesChange
