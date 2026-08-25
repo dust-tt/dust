@@ -113,6 +113,8 @@ A replacement with a different native aspect ratio needs the box resized on both
 
 **Adapt, don't gut.** Resize, move, remove template shapes so your content fits; scale images on both axes or crop, never one. Deleting an exemplar's photo or its second column leaves a title over an empty canvas, which reads worse than a plain slide: put content in that space or clone a sparser exemplar. Deleting most of an exemplar's shapes = wrong exemplar. Keep every box inside the slide: a box that starts at a negative coordinate or runs past the right edge is clipped, not "bleeding".
 
+**Match the exemplar to the copy you have.** An exemplar's boxes sit where they do because of the copy the template shipped in them. Clone one built for three times your copy and it holds that position: a title, a band of empty slide, then a low strip of text. Before cloning, compare \`holds~Nch\` against what you are about to write - pick the exemplar whose boxes your copy fills (a three-column layout with headings above the text carries short copy far better than one without), or move the boxes up under the title.
+
 **Fill the box or resize it.** A \`vanchor=middle\` box two lines deep in a 5-inch frame floats its copy in the middle of the slide with a hole above it. Either give the slot the content it was built for, or shrink the box to the copy.
 
 **Parallel columns stay parallel.** Same top, same width, same size, same colour across a row: a heading at 22pt in one column and 14pt in the next reads as a bug. Each column gets its own copy: three columns repeating one paragraph is a slide with one column and two mistakes.

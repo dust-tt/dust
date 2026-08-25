@@ -188,6 +188,65 @@ def _fit_tokens(shape: BaseShape, layout_chain) -> List[str]:
     return tokens
 
 
+# A band this tall between the title and the content below it reads as a hole
+# rather than as breathing room...
+VOID_GAP = 0.12
+# ...but only when the boxes under it are this empty. The template's own slides
+# leave the same gap and look right because their copy fills the boxes; the
+# reference decks never trip both at once, and every model-built deck we have
+# trips them on at least one slide.
+VOID_FILL = 0.35
+
+
+def _void_markers(
+    slide: Slide, layout_chain, slide_h: int
+) -> List[Tuple[int, float, float]]:
+    """Slides whose copy floats low under a wide empty band: (shape, gap, fill).
+
+    The exemplar's boxes are placed and sized for the copy the template shipped.
+    Cloned for a third of that copy they hold their position, so the slide reads
+    as a title, a void, and a strip of text - each box separately "fits", which
+    is why nothing else flags it."""
+    if not slide_h:
+        return []
+    title_bottom = None
+    bodies = []
+    for shape in slide.shapes:
+        if None in (shape.left, shape.top, shape.width, shape.height):
+            continue
+        if shape.height <= 0:
+            continue
+        text = getattr(shape, "has_text_frame", False) and (
+            shape.text_frame.text or ""
+        ).strip()
+        if placeholder_type(shape) == "title" and text:
+            title_bottom = max(title_bottom or 0, shape.top + shape.height)
+        elif text or _has_embedded_blip(getattr(shape, "_element", None)):
+            bodies.append(shape)
+    if title_bottom is None or not bodies:
+        return []
+    gap = (min(b.top for b in bodies) - title_bottom) / slide_h
+    if gap < VOID_GAP:
+        return []
+
+    worst = None
+    for body in bodies:
+        if not getattr(body, "has_text_frame", False):
+            continue
+        size_pt = _effective_font_size_pt(body, layout_chain)
+        if not size_pt:
+            continue
+        est = _fit_estimate(body, size_pt, _effective_typeface(body, layout_chain))
+        if not est or not est.capacity:
+            continue
+        fill = _frame_text_len(body) / est.capacity
+        if worst is None or fill < worst[1]:
+            worst = (body.shape_id, fill)
+    if worst is None or worst[1] >= VOID_FILL:
+        return []
+    return [(worst[0], gap, worst[1])]
+
+
 def embedded_image(shape: BaseShape):
     """A shape's image part, or None. python-pptx RAISES on `.image` for a
     picture placeholder with no picture in it, which `getattr(..., None)` does

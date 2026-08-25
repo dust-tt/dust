@@ -91,6 +91,7 @@ from pptx_audit import (
     _shape_text_iter,
     embedded_image,
     _shape_warning_markers,
+    _void_markers,
     _slot_audit,
     slide_word_count,
 )
@@ -1648,6 +1649,17 @@ def _annotate_slide(
         file_path, prs, slide, slide_idx, raw, words
     )
     shape_blockers = _slide_shape_blockers(file_path, prs, slide, slide_idx)
+    for sid, gap, fill in _void_markers(
+        slide, _resolve_layout_chain(file_path, slide), prs.slide_height or 0
+    ):
+        shape_blockers.append((
+            sid,
+            f"leaves a {gap:.0%} band of empty slide under the title and then "
+            f"fills {fill:.0%} of its box. The exemplar's boxes are placed for "
+            "the copy it shipped with: clone one sized for the copy you have "
+            "(the same layout with column headings above the text usually is), "
+            "or move these boxes up under the title",
+        ))
     for sid, pic_id, rows in pptx_contrast.text_over_artwork(
         slide, lambda shape: getattr(embedded_image(shape), "blob", None)
     ):
