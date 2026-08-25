@@ -8,11 +8,14 @@ import {
   CONSUMPTION_PERIOD_DAY_OPTIONS,
   DEFAULT_CONSUMPTION_PERIOD,
 } from "@app/lib/analytics/consumption_period";
+import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import type { ConsumptionScopeDimension } from "@app/types/api/analytics/consumption";
 import {
   CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION,
   CONSUMPTION_SCOPE_DIMENSIONS,
 } from "@app/types/api/analytics/consumption";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
+import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type AnalyticsViewState = {
@@ -194,4 +197,30 @@ export function analyticsConsumptionHref(
   const query = analyticsViewUrlQuery(path, {}, view);
 
   return urlWithQuery(path, query);
+}
+
+export function premiumModelUsageAnalyticsHref(
+  workspaceId: string,
+  userId: string
+): string {
+  const premiumModelIds = [
+    ...new Set(
+      getSupportedModelConfigs()
+        .filter(
+          (model) =>
+            !isModelStreamId(model.modelId) &&
+            getTierForModel(model.modelId, model.defaultReasoningEffort) ===
+              "premium"
+        )
+        .map((model) => model.modelId)
+    ),
+  ];
+
+  return analyticsConsumptionHref(workspaceId, {
+    period: { kind: "days", days: 7 },
+    filter: {
+      user: [userId],
+      model: premiumModelIds,
+    },
+  });
 }

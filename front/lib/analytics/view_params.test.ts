@@ -8,6 +8,7 @@ import {
   analyticsViewUrlQuery,
   DEFAULT_ANALYTICS_VIEW_STATE,
   MAX_ANALYTICS_URL_LENGTH,
+  premiumModelUsageAnalyticsHref,
   readAnalyticsView,
 } from "@app/lib/analytics/view_params";
 import {
@@ -221,5 +222,18 @@ describe("analyticsConsumptionHref", () => {
         filter: { source: ["x".repeat(MAX_ANALYTICS_URL_LENGTH)] },
       })
     ).toBe(`/w/${WORKSPACE_ID}/analytics/consumption`);
+  });
+});
+
+describe("premiumModelUsageAnalyticsHref", () => {
+  it("links to the user's Premium model usage for the limit window", () => {
+    const href = premiumModelUsageAnalyticsHref(WORKSPACE_ID, "user-1");
+    const url = new URL(href, "https://dust.tt");
+
+    expect(url.pathname).toBe(`/w/${WORKSPACE_ID}/analytics/consumption`);
+    expect(url.searchParams.get("p")).toBe("7");
+    expect(url.searchParams.getAll("u")).toEqual(["user-1"]);
+    expect(url.searchParams.getAll("m").length).toBeGreaterThan(0);
+    expect(url.searchParams.getAll("m")).not.toContain("auto_complex");
   });
 });

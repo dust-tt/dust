@@ -26,12 +26,12 @@ import {
 } from "@app/components/model_picker/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { getTierForModel } from "@app/lib/api/assistant/token_pricing/tiers";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { useModels } from "@app/lib/swr/models";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
+import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,

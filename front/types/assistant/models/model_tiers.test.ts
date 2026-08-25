@@ -4,7 +4,7 @@ import {
   MODELS_TIERS,
   STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
   STATIC_MODEL_TIERS,
-} from "@app/lib/api/assistant/token_pricing/tiers";
+} from "@app/types/assistant/models/model_tiers";
 import {
   CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_8_MODEL_ID,
@@ -25,7 +25,7 @@ import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types"
 import { GROK_4_6_MODEL_ID } from "@app/types/assistant/models/xai";
 import { describe, expect, it } from "vitest";
 
-describe("token_pricing/tiers", () => {
+describe("model_tiers", () => {
   it("lists tier definitions without selections", () => {
     expect(MODELS_TIERS.map((tier) => tier.id)).toEqual([1, 2, 3]);
     expect(MODELS_TIERS.every((tier) => tier.description.length > 0)).toBe(

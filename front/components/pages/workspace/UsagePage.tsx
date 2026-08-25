@@ -31,7 +31,6 @@ import {
   DEFAULT_CONSUMPTION_PERIOD,
   formatConsumptionDate,
 } from "@app/lib/analytics/consumption_period";
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import {
   useAuth,
@@ -86,6 +85,7 @@ import {
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
   MembershipSeatType,

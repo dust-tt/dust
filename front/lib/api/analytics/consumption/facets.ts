@@ -17,7 +17,6 @@ import {
   CONSUMPTION_SCOPE_DIMENSIONS,
   TRIGGER_ID_FIELD,
 } from "@app/lib/api/analytics/consumption/scope";
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
   bucketsToArray,
@@ -27,6 +26,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import tracer from "@app/logger/tracer";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

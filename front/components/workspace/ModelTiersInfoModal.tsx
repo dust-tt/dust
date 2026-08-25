@@ -1,6 +1,6 @@
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { ModelTierExplainerTier } from "@app/lib/client/model_tiers_explainer";
 import { getModelTierExplainer } from "@app/lib/client/model_tiers_explainer";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import {
   Button,
   ChevronDown,

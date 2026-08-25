@@ -4,7 +4,6 @@ import {
   PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK,
   PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
 } from "@app/lib/api/assistant/rate_limits";
-import { getTierForModel } from "@app/lib/api/assistant/token_pricing/tiers";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -21,6 +20,7 @@ import {
   AUTO_FAST_MODEL_ID,
   AUTO_MODEL_ID,
 } from "@app/types/assistant/models/auto";
+import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import type { ResolvedRequestedModel } from "@app/types/assistant/models/types";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { isCreditPricedPlan } from "@app/types/plan";

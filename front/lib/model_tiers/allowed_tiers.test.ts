@@ -1,4 +1,3 @@
-import { MODELS_TIER_NAMES } from "@app/lib/api/assistant/token_pricing/tiers";
 import { Authenticator } from "@app/lib/auth";
 import {
   clearGroupMaxAllowedTier,
@@ -19,6 +18,7 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { MODELS_TIER_NAMES } from "@app/types/assistant/models/model_tiers";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("allowed model tiers permissions", () => {
