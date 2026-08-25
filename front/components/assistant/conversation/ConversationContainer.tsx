@@ -47,37 +47,30 @@ import {
   ScrollArea,
   XClose,
 } from "@dust-tt/sparkle";
-import type { MotionProps, Variants } from "framer-motion";
-import { motion, useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
+import type { CSSProperties } from "react";
 import { useCallback, useContext, useEffect, useState } from "react";
 
 const GREETING_WORD_ENTER_Y_PX = 4;
-const GREETING_WORD_DURATION_SECONDS = 0.55;
-const GREETING_WORD_STAGGER_SECONDS = 0.07;
+const GREETING_WORD_ENTER_BLUR_PX = 2;
+const GREETING_WORD_DURATION_SECONDS = 0.28;
+const GREETING_WORD_STAGGER_SECONDS = 0.05;
+const GREETING_WORD_EASE = `cubic-bezier(${MOTION_EASINGS.move.join(", ")})`;
 
-const collapseRestingTransform: MotionProps["transformTemplate"] = (
-  { y },
-  generated
-) => (y ? generated : "none");
+interface GreetingWordStyle extends CSSProperties {
+  "--greeting-word-y": string;
+  "--greeting-word-blur": string;
+}
 
-const GREETING_VARIANTS = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: GREETING_WORD_STAGGER_SECONDS },
-  },
-} satisfies Variants;
-
-const GREETING_WORD_VARIANTS = {
-  hidden: { opacity: 0, y: GREETING_WORD_ENTER_Y_PX },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: GREETING_WORD_DURATION_SECONDS,
-      ease: MOTION_EASINGS.enter,
-    },
-  },
-} satisfies Variants;
+function greetingWordStyle(index: number): GreetingWordStyle {
+  return {
+    "--greeting-word-y": `${GREETING_WORD_ENTER_Y_PX}px`,
+    "--greeting-word-blur": `${GREETING_WORD_ENTER_BLUR_PX}px`,
+    animation:
+      `greeting-word-in ${GREETING_WORD_DURATION_SECONDS}s ${GREETING_WORD_EASE} ` +
+      `${index * GREETING_WORD_STAGGER_SECONDS}s backwards`,
+  };
+}
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -307,24 +300,24 @@ export function ConversationContainerVirtuoso({
           >
             <Page.Header
               title={
-                <motion.h3
+                <h3
                   key={greeting}
                   className="heading-3xl font-medium text-foreground"
-                  variants={GREETING_VARIANTS}
-                  initial={shouldReduceMotion ? false : "hidden"}
-                  animate="visible"
                 >
                   {greeting.split(" ").map((word, index) => (
-                    <motion.span
+                    <span
                       key={`${index}-${word}`}
                       className="inline-block whitespace-pre"
-                      variants={GREETING_WORD_VARIANTS}
-                      transformTemplate={collapseRestingTransform}
+                      style={
+                        shouldReduceMotion
+                          ? undefined
+                          : greetingWordStyle(index)
+                      }
                     >
                       {index === 0 ? word : ` ${word}`}
-                    </motion.span>
+                    </span>
                   ))}
-                </motion.h3>
+                </h3>
               }
             />
           </div>

@@ -111,6 +111,13 @@
     transform: translateY(0);
   }
 }
+@keyframes greeting-word-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--greeting-word-y));
+    filter: blur(var(--greeting-word-blur));
+  }
+}
 @keyframes input-bar-compact-in {
   0% {
     opacity: 0.45;
