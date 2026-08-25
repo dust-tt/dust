@@ -1,4 +1,5 @@
 import {
+  CONSUMPTION_ATTRIBUTION_DIMENSIONS,
   CONSUMPTION_DIMENSION_CONFIG,
   CONSUMPTION_DIMENSIONS,
   consumptionDimensionFromQueryParam,
@@ -10,6 +11,7 @@ describe("consumption dimension URL state", () => {
   it("reads valid dimensions and falls back to agents", () => {
     expect(consumptionDimensionFromQueryParam("user")).toBe("user");
     expect(consumptionDimensionFromQueryParam("api_key")).toBe("api_key");
+    expect(consumptionDimensionFromQueryParam("conversation")).toBe("agent");
     expect(consumptionDimensionFromQueryParam("invalid")).toBe("agent");
     expect(consumptionDimensionFromQueryParam(undefined)).toBe("agent");
   });
@@ -34,11 +36,27 @@ describe("consumption dimension URL state", () => {
     );
     expect(getConsumptionAttributionDimensions({ personal: true })).toEqual([
       "agent",
+      "conversation",
       "model",
       "tool",
       "skill",
       "source",
       "api_key",
     ]);
+  });
+
+  it("adds conversations only to attribution tabs", () => {
+    expect(CONSUMPTION_ATTRIBUTION_DIMENSIONS).toEqual([
+      "agent",
+      "user",
+      "group",
+      "model",
+      "tool",
+      "skill",
+      "source",
+      "api_key",
+      "conversation",
+    ]);
+    expect(CONSUMPTION_DIMENSIONS).not.toContain("conversation");
   });
 });

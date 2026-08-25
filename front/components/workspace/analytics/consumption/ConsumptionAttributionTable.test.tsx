@@ -56,6 +56,15 @@ vi.mock(
   })
 );
 
+vi.mock(
+  "@app/components/workspace/analytics/consumption/ConsumptionConversationAttribution",
+  () => ({
+    ConsumptionConversationAttribution: () => (
+      <div>Conversation attribution</div>
+    ),
+  })
+);
+
 const period = { kind: "days", days: 30 } as const;
 
 function ControlledAttributionTable({
@@ -127,6 +136,9 @@ describe("ConsumptionAttributionTable", () => {
       screen.queryByRole("button", { name: "Download raw data" })
     ).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Agents" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Conversations" })).toHaveClass(
+      "ml-auto"
+    );
     expect(
       screen.queryByRole("tab", { name: "Members" })
     ).not.toBeInTheDocument();
@@ -169,6 +181,58 @@ describe("ConsumptionAttributionTable", () => {
     expect(mockUseConsumptionTop).toHaveBeenLastCalledWith(
       expect.objectContaining({ dimension: "agent", personal: true })
     );
+  });
+
+  it("shows conversations only in personal attribution without changing the chart dimension", () => {
+    const onDimensionChange = vi.fn();
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [],
+      totalCredits: 0,
+      totalCount: 0,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    const { rerender } = render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        personal
+        dimension="agent"
+        onDimensionChange={onDimensionChange}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    const conversationsTab = screen.getByRole("tab", {
+      name: "Conversations",
+    });
+    fireEvent.pointerDown(conversationsTab);
+    fireEvent.mouseDown(conversationsTab, { button: 0, ctrlKey: false });
+
+    expect(onDimensionChange).not.toHaveBeenCalled();
+    expect(screen.getByText("Conversation attribution")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search…")).not.toBeInTheDocument();
+
+    rerender(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={onDimensionChange}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByRole("tab", { name: "Conversations" })
+    ).not.toBeInTheDocument();
   });
 
   it("caps the available pages and fetches the selected fixed-size page", async () => {

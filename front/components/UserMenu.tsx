@@ -263,6 +263,7 @@ export function UserMenu({
             key={owner.sId}
             open={analyticsOpen}
             owner={owner}
+            onClose={() => setAnalyticsOpen(false)}
           />
         </DialogContent>
       </Dialog>

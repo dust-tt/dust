@@ -16,16 +16,36 @@ export const CONSUMPTION_DIMENSIONS: ConsumptionDimension[] = [
   "api_key",
 ];
 
-const PERSONAL_CONSUMPTION_DIMENSIONS = CONSUMPTION_DIMENSIONS.filter(
-  (dimension) => dimension !== "user" && dimension !== "group"
-);
+export type ConsumptionAttributionDimension =
+  | ConsumptionDimension
+  | "conversation";
+
+export const CONSUMPTION_ATTRIBUTION_DIMENSIONS: ConsumptionAttributionDimension[] =
+  [
+    "agent",
+    "user",
+    "group",
+    "model",
+    "tool",
+    "skill",
+    "source",
+    "api_key",
+    "conversation",
+  ];
+
+const PERSONAL_CONSUMPTION_ATTRIBUTION_DIMENSIONS =
+  CONSUMPTION_ATTRIBUTION_DIMENSIONS.filter(
+    (dimension) => dimension !== "user" && dimension !== "group"
+  );
 
 export function getConsumptionAttributionDimensions({
   personal,
 }: {
   personal?: boolean;
-}): readonly ConsumptionDimension[] {
-  return personal ? PERSONAL_CONSUMPTION_DIMENSIONS : CONSUMPTION_DIMENSIONS;
+}): readonly ConsumptionAttributionDimension[] {
+  return personal
+    ? PERSONAL_CONSUMPTION_ATTRIBUTION_DIMENSIONS
+    : CONSUMPTION_DIMENSIONS;
 }
 
 interface ConsumptionDimensionConfig {
@@ -96,6 +116,20 @@ export function isConsumptionDimension(
   value: string
 ): value is ConsumptionDimension {
   return CONSUMPTION_DIMENSIONS.some((dimension) => dimension === value);
+}
+
+export function isConsumptionAttributionDimension(
+  value: string
+): value is ConsumptionAttributionDimension {
+  return value === "conversation" || isConsumptionDimension(value);
+}
+
+export function consumptionAttributionDimensionLabel(
+  dimension: ConsumptionAttributionDimension
+): string {
+  return dimension === "conversation"
+    ? "Conversations"
+    : CONSUMPTION_DIMENSION_CONFIG[dimension].label;
 }
 
 export function consumptionDimensionFromQueryParam(
