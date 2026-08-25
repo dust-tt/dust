@@ -247,6 +247,54 @@ def _void_markers(
     return [(worst[0], gap, worst[1])]
 
 
+# A horizontal band of slide this tall with no glyph and no picture in it reads
+# as a hole wherever it falls - under the title, between two rows, or below the
+# last line. Measured on the renderer's own word boxes rather than on shape
+# geometry, because the boxes keep the exemplar's height even when the copy
+# inside them shrank to a third of it. Both reference decks and the Dust
+# templates stay under 0.46; every deck a model has collapsed goes past 0.55.
+RENDERED_VOID_BAND = 0.5
+# Below this many rendered words the slide is a cover or a divider, where a big
+# empty band is the design.
+RENDERED_VOID_MIN_WORDS = 8
+# Two ink rows closer than this are the same block, not two blocks with a gap.
+_VOID_MERGE = 0.005
+
+
+def rendered_void(
+    slide: Slide, words, slide_w: int, slide_h: int
+) -> Optional[float]:
+    """The largest empty horizontal band on the rendered slide, or None.
+
+    Every box on a collapsed slide separately "fits" - each holds less copy than
+    it has room for - so no fit, overlap or contrast check sees anything wrong,
+    and the slide still ships with its bottom half blank."""
+    if not slide_h or not slide_w or not words:
+        return None
+    if len(words) < RENDERED_VOID_MIN_WORDS:
+        return None
+    rows = [(w.top / slide_h, w.bottom / slide_h) for w in words]
+    for shape in slide.shapes:
+        if getattr(shape, "has_text_frame", False):
+            continue
+        if None in (shape.top, shape.height, shape.width) or shape.height <= 0:
+            continue
+        if (shape.width * shape.height) / (slide_w * slide_h) <= 0.01:
+            continue
+        rows.append((shape.top / slide_h, (shape.top + shape.height) / slide_h))
+    rows.sort()
+    blocks = [list(rows[0])]
+    for top, bottom in rows[1:]:
+        if top <= blocks[-1][1] + _VOID_MERGE:
+            blocks[-1][1] = max(blocks[-1][1], bottom)
+        else:
+            blocks.append([top, bottom])
+    gaps = [blocks[i + 1][0] - blocks[i][1] for i in range(len(blocks) - 1)]
+    gaps.append(1.0 - blocks[-1][1])
+    band = max(gaps)
+    return band if band >= RENDERED_VOID_BAND else None
+
+
 def _split_sentence_markers(slide: Slide) -> List[Tuple[int, str]]:
     """Boxes holding the tail of a sentence that starts in another box.
 

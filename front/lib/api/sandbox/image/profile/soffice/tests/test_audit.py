@@ -146,6 +146,49 @@ def test_void_thresholds_need_both_a_gap_and_an_empty_box():
     assert 0.18 < A.VOID_FILL < 0.44
 
 
+class _W:
+    """A pdftotext word box: only the vertical extent matters here."""
+
+    def __init__(self, top, bottom):
+        self.top, self.bottom = top, bottom
+
+
+def _blank_slide():
+    prs = Presentation()
+    return prs, prs.slides.add_slide(prs.slide_layouts[6])
+
+
+def test_rendered_void_flags_copy_that_stops_halfway_down():
+    prs, slide = _blank_slide()
+    h = prs.slide_height
+    words = [_W(int(0.05 * h), int(0.30 * h))] * A.RENDERED_VOID_MIN_WORDS
+    band = A.rendered_void(slide, words, prs.slide_width, h)
+    assert band is not None and band > 0.65
+
+
+def test_rendered_void_ignores_copy_that_runs_to_the_bottom():
+    prs, slide = _blank_slide()
+    h = prs.slide_height
+    words = [_W(int(0.05 * h), int(0.20 * h)), _W(int(0.25 * h), int(0.95 * h))]
+    words *= A.RENDERED_VOID_MIN_WORDS
+    assert A.rendered_void(slide, words, prs.slide_width, h) is None
+
+
+def test_rendered_void_spares_a_cover_slide():
+    """A cover is a headline in the middle of an empty slide. Below the word
+    floor the band is the design, not a hole."""
+    prs, slide = _blank_slide()
+    h = prs.slide_height
+    words = [_W(int(0.40 * h), int(0.55 * h))] * 3
+    assert A.rendered_void(slide, words, prs.slide_width, h) is None
+
+
+def test_rendered_void_band_leaves_room_above_the_reference_decks():
+    """Both AFTER_ decks and the two Dust templates top out at 0.46; the four
+    Luna runs that shipped a hole measured 0.56-0.66."""
+    assert 0.46 < A.RENDERED_VOID_BAND < 0.56
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]

@@ -151,13 +151,14 @@ The defect list is mechanical and reliable. Clear every \`[!]\` before you look 
 | \`text overset\` / \`text runs ~Nin below its box\` | cut copy or grow the box, never below the template's sizes |
 | \`thin - ... (2.4:1)\` | fine for a large heading, recolour if it is body copy |
 | \`underfilled\` on a \`vanchor=middle\` box | the copy floats in the middle of a tall box: shorten the box or add the content the slot expects |
+| \`band of this slide holds nothing\` | the boxes are sized for the exemplar's copy, not yours: move and resize them to close it, or clone a sparser layout |
 
 Then read the render itself, per slide, and answer all of it:
 
 1. Every line legible on what is behind it.
 2. Nothing clipped by a box edge or the slide edge; no word broken across a shape.
 3. Pictures undistorted and filling their box; markers beside their rows.
-4. No leftover template copy, no gap where content should be.
+4. No leftover template copy. No band of bare slide: copy that stops halfway down with the bottom empty is the exemplar's boxes holding their position around a third of the copy they were built for.
 5. Columns and rows aligned; the slide reads like the template's own.
 
 A box you cannot read back is a real defect, not a render artifact. Fix, re-run \`--qa N\` on that slide, look again: a \`--qa\` from before your last edit is stale. A few pixels of reflow is not a defect, compare against the template's own slide. Autofit text and dense tables render least reliably: say they need a PowerPoint check.
@@ -186,7 +187,7 @@ export const pptxSkill = {
   instructions: PPTX_SKILL_INSTRUCTIONS,
   exposeInstructions: true,
   mcpServers: [{ name: "sandbox" }],
-  version: 8,
+  version: 9,
   icon: "ActionSlideshowIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

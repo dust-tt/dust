@@ -93,6 +93,7 @@ from pptx_audit import (
     _shape_warning_markers,
     _split_sentence_markers,
     _void_markers,
+    rendered_void,
     _slot_audit,
     slide_word_count,
 )
@@ -1403,6 +1404,7 @@ def _slide_findings_lines(
     words: Optional[List[pdf_text.WordBox]],
     contrasts: Optional[List[pptx_contrast.ShapeContrast]] = None,
     shape_blockers: Optional[List[Tuple[int, str]]] = None,
+    shape_reviews: Optional[List[str]] = None,
 ) -> List[str]:
     """Format one slide's QA findings as a tiered, consequence-first block.
 
@@ -1437,6 +1439,10 @@ def _slide_findings_lines(
     for sid, marker in shape_blockers or []:
         n_severe += 1
         severe.append(f"  [!] {q(sid)} - {marker}.")
+
+    for marker in shape_reviews or []:
+        n_review += 1
+        review.append(f"  [w] {marker}.")
 
     contrast_severe, contrast_review, n_contrast = pptx_contrast.contrast_lines(
         contrasts or [], q
@@ -1682,6 +1688,18 @@ def _annotate_slide(
             "as a flat block - and do not solve it by writing no title, which "
             "leaves the template's headline as yours",
         ))
+    shape_reviews: List[str] = []
+    band = rendered_void(
+        slide, words, prs.slide_width or 0, prs.slide_height or 0
+    )
+    if band is not None:
+        shape_reviews.append(
+            f"a {band:.0%} band of this slide holds nothing at all. Every box "
+            "on it separately fits, because each one holds less copy than the "
+            "exemplar sized it for - so the slide ships with a hole. Either "
+            "move and resize the boxes to close the band, or clone a layout "
+            "built for the amount of copy you actually have"
+        )
     res = _annotate_boxes(
         raw, slide,
         prs.slide_width or 0, prs.slide_height or 0,
@@ -1692,11 +1710,13 @@ def _annotate_slide(
         return raw, _slide_findings_lines(
             slide, slide_idx, {"overlaps": [], "markers": []}, words,
             contrasts=contrasts, shape_blockers=shape_blockers,
+            shape_reviews=shape_reviews,
         )
     annotated, findings = res
     return annotated, _slide_findings_lines(
         slide, slide_idx, findings, words,
         contrasts=contrasts, shape_blockers=shape_blockers,
+        shape_reviews=shape_reviews,
     )
 
 
