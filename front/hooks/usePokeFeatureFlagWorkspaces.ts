@@ -12,7 +12,7 @@ export function usePokeFeatureFlagWorkspaces({
   const workspacesFetcher: Fetcher<GetPokeFeatureFlagWorkspacesResponseBody> =
     fetcher;
 
-  const { data, error } = useSWR(
+  const { data, error, mutate } = useSWR(
     `/api/poke/feature-flags/${encodeURIComponent(flagName)}`,
     workspacesFetcher
   );
@@ -21,6 +21,7 @@ export function usePokeFeatureFlagWorkspaces({
     workspaces: data?.workspaces ?? emptyArray(),
     totalCount: data?.totalCount ?? 0,
     globalRolloutPercentage: data?.globalRolloutPercentage ?? null,
+    mutate,
     isLoading: !error && !data,
     isError: error,
   };

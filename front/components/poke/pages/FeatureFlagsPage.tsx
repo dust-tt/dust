@@ -11,24 +11,32 @@ import {
   FEATURE_FLAG_STAGE_LABELS,
   FEATURE_FLAG_STAGES,
 } from "@app/types/shared/feature_flags";
-import { Button, LinkWrapper, Pencil01 } from "@dust-tt/sparkle";
+import { Button, LinkWrapper, Pencil01, Trash01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
 const LEGACY_STAGE_VALUE = "legacy";
 
-// The global plugin that sets a flag's rollout percentage, and the name of its flag argument.
-const TOGGLE_GLOBAL_FEATURE_FLAG_PLUGIN_ID = "toggle-global-feature-flag";
-const TOGGLE_GLOBAL_FEATURE_FLAG_ARG = "feature";
+// The global plugins acting on a single flag. Both name their flag argument `feature`.
+const TOGGLE_GLOBAL_ROLLOUT_PLUGIN_ID = "toggle-global-feature-flag";
+const DELETE_LEGACY_FLAG_PLUGIN_ID = "delete-legacy-feature-flag";
+const FEATURE_FLAG_PLUGIN_ARG = "feature";
 
 const GLOBAL_PLUGIN_TARGET: PluginResourceTarget = { resourceType: "global" };
 
+interface PendingPluginAction {
+  pluginId: string;
+  flagName: string;
+}
+
 interface MakeColumnsParams {
-  // `null` when the current user cannot run the plugin that changes the rollout percentage.
+  // Both are `null` when the current user cannot run the corresponding plugin.
+  onDeleteLegacyRows: ((flagName: string) => void) | null;
   onEditGlobalRollout: ((flagName: string) => void) | null;
 }
 
 function makeColumns({
+  onDeleteLegacyRows,
   onEditGlobalRollout,
 }: MakeColumnsParams): ColumnDef<PokeFeatureFlagUsage>[] {
   return [
@@ -114,6 +122,31 @@ function makeColumns({
         </span>
       ),
     },
+    {
+      id: "actions",
+      header: "",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const { name, stage } = row.original;
+
+        // Only leftover rows are deleted wholesale; a flag that still exists is turned off per
+        // workspace, or globally, through the toggle plugins.
+        if (stage !== null || !onDeleteLegacyRows) {
+          return null;
+        }
+
+        return (
+          <Button
+            variant="warning"
+            size="xs"
+            icon={Trash01}
+            label="Delete rows"
+            tooltip="Delete every row for this retired flag"
+            onClick={() => onDeleteLegacyRows(name)}
+          />
+        );
+      },
+    },
   ];
 }
 
@@ -125,29 +158,48 @@ export function FeatureFlagsPage() {
   const { plugins } = usePokeListPluginForResourceType({
     pluginResourceTarget: GLOBAL_PLUGIN_TARGET,
   });
-  const togglePlugin = plugins.find(
-    (plugin) => plugin.id === TOGGLE_GLOBAL_FEATURE_FLAG_PLUGIN_ID
+  const rolloutPlugin = plugins.find(
+    (plugin) => plugin.id === TOGGLE_GLOBAL_ROLLOUT_PLUGIN_ID
+  );
+  const deleteLegacyPlugin = plugins.find(
+    (plugin) => plugin.id === DELETE_LEGACY_FLAG_PLUGIN_ID
   );
 
-  const [flagBeingEdited, setFlagBeingEdited] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] =
+    useState<PendingPluginAction | null>(null);
 
   const onEditGlobalRollout = useCallback(
-    (flagName: string) => setFlagBeingEdited(flagName),
+    (flagName: string) =>
+      setPendingAction({
+        pluginId: TOGGLE_GLOBAL_ROLLOUT_PLUGIN_ID,
+        flagName,
+      }),
+    []
+  );
+
+  const onDeleteLegacyRows = useCallback(
+    (flagName: string) =>
+      setPendingAction({ pluginId: DELETE_LEGACY_FLAG_PLUGIN_ID, flagName }),
     []
   );
 
   const handlePluginDialogClose = useCallback(() => {
-    setFlagBeingEdited(null);
+    setPendingAction(null);
     void mutate();
   }, [mutate]);
 
   const columns = useMemo(
     () =>
       makeColumns({
-        onEditGlobalRollout: togglePlugin ? onEditGlobalRollout : null,
+        onDeleteLegacyRows: deleteLegacyPlugin ? onDeleteLegacyRows : null,
+        onEditGlobalRollout: rolloutPlugin ? onEditGlobalRollout : null,
       }),
-    [onEditGlobalRollout, togglePlugin]
+    [deleteLegacyPlugin, onDeleteLegacyRows, onEditGlobalRollout, rolloutPlugin]
   );
+
+  const pendingPlugin = pendingAction
+    ? plugins.find((plugin) => plugin.id === pendingAction.pluginId)
+    : undefined;
 
   // The table starts unsorted, so the most-used flags come first by default.
   const sortedFeatureFlags = useMemo(
@@ -185,13 +237,13 @@ export function FeatureFlagsPage() {
         ]}
       />
 
-      {togglePlugin && flagBeingEdited && (
+      {pendingAction && pendingPlugin && (
         <RunPluginDialog
           initialValues={{
-            [TOGGLE_GLOBAL_FEATURE_FLAG_ARG]: [flagBeingEdited],
+            [FEATURE_FLAG_PLUGIN_ARG]: [pendingAction.flagName],
           }}
           onClose={handlePluginDialogClose}
-          plugin={togglePlugin}
+          plugin={pendingPlugin}
           pluginResourceTarget={GLOBAL_PLUGIN_TARGET}
         />
       )}

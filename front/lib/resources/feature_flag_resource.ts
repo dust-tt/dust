@@ -172,8 +172,11 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
     await FeatureFlagResource.listForWorkspaceCache.invalidate(workspace.id);
   }
 
-  static async disableForAllWorkspaces(
-    name: WhitelistableFeature
+  // Deletes every row for one flag name, whatever the workspace, and invalidates the affected
+  // per-workspace caches. The name is a plain string so leftover rows for a flag that is no
+  // longer declared in WHITELISTABLE_FEATURES_CONFIG can be removed too.
+  private static async destroyForAllWorkspacesByName(
+    name: string
   ): Promise<number> {
     const flags = await FeatureFlagModel.findAll({
       attributes: ["workspaceId"],
@@ -200,6 +203,12 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
     );
 
     return deleted;
+  }
+
+  static async disableForAllWorkspaces(
+    name: WhitelistableFeature
+  ): Promise<number> {
+    return FeatureFlagResource.destroyForAllWorkspacesByName(name);
   }
 
   static async countForAllWorkspaces(
@@ -230,7 +239,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
   }
 
   static async deleteLegacyByName(name: string): Promise<number> {
-    return FeatureFlagModel.destroy({ where: { name } });
+    return FeatureFlagResource.destroyForAllWorkspacesByName(name);
   }
 
   async delete(

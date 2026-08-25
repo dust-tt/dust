@@ -1,20 +1,106 @@
 import { FeatureFlagStageChip } from "@app/components/poke/features/stage_chip";
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { usePokeFeatureFlagWorkspaces } from "@app/hooks/usePokeFeatureFlagWorkspaces";
 import type { PokeFeatureFlagWorkspace } from "@app/lib/api/poke/feature_flags";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
+import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
+import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import {
   isWhitelistableFeature,
   WHITELISTABLE_FEATURES_CONFIG,
 } from "@app/types/shared/feature_flags";
 import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
-import { LinkWrapper } from "@dust-tt/sparkle";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  LinkWrapper,
+  Pencil01,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
-function makeColumns(): ColumnDef<PokeFeatureFlagWorkspace>[] {
+// The workspace-scoped plugin that turns feature flags on and off for one workspace.
+const TOGGLE_FEATURE_FLAG_PLUGIN_ID = "toggle-feature-flag";
+
+interface WorkspaceTogglePluginDialogProps {
+  onClose: () => void;
+  workspaceId: string;
+}
+
+/**
+ * Opens the workspace's Toggle Feature Flag plugin. The available plugins depend on the workspace
+ * (maintenance mode, per-plugin applicability), so the list is fetched once the workspace is
+ * known rather than upfront for the whole table.
+ *
+ * The plugin is deliberately opened without prefilled arguments: it takes the full set of flags
+ * the workspace should end up with and disables everything left unchecked, and its own async
+ * arguments already check exactly the flags the workspace has today.
+ */
+function WorkspaceTogglePluginDialog({
+  onClose,
+  workspaceId,
+}: WorkspaceTogglePluginDialogProps) {
+  const pluginResourceTarget = useMemo<PluginResourceTarget>(
+    () => ({
+      resourceType: "workspaces",
+      resourceId: workspaceId,
+      workspace: { sId: workspaceId },
+    }),
+    [workspaceId]
+  );
+
+  const { plugins, isLoading } = usePokeListPluginForResourceType({
+    pluginResourceTarget,
+  });
+
+  const togglePlugin = plugins.find(
+    (plugin) => plugin.id === TOGGLE_FEATURE_FLAG_PLUGIN_ID
+  );
+
+  if (togglePlugin) {
+    return (
+      <RunPluginDialog
+        onClose={onClose}
+        plugin={togglePlugin}
+        pluginResourceTarget={pluginResourceTarget}
+      />
+    );
+  }
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="bg-muted-background">
+        <DialogHeader>
+          <DialogTitle>Toggle Feature Flag plugin</DialogTitle>
+        </DialogHeader>
+        <div className="flex items-center justify-center px-5 py-8">
+          {isLoading ? (
+            <Spinner />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              The plugin is not available for this workspace.
+            </p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface MakeColumnsParams {
+  onToggleFlags: (workspaceId: string) => void;
+}
+
+function makeColumns({
+  onToggleFlags,
+}: MakeColumnsParams): ColumnDef<PokeFeatureFlagWorkspace>[] {
   return [
     {
       accessorKey: "workspaceName",
@@ -60,6 +146,21 @@ function makeColumns(): ColumnDef<PokeFeatureFlagWorkspace>[] {
         </span>
       ),
     },
+    {
+      id: "actions",
+      header: "",
+      enableSorting: false,
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="xs"
+          icon={Pencil01}
+          label="Toggle flags"
+          tooltip="Open this workspace's Toggle Feature Flag plugin"
+          onClick={() => onToggleFlags(row.original.workspaceId)}
+        />
+      ),
+    },
   ];
 }
 
@@ -74,6 +175,7 @@ export function FeatureFlagDetailPage() {
     globalRolloutPercentage,
     isLoading,
     isError,
+    mutate,
   } = usePokeFeatureFlagWorkspaces({ flagName });
 
   // Description and stage are static config, so they need no round trip. A flag name that is not
@@ -82,7 +184,24 @@ export function FeatureFlagDetailPage() {
     ? WHITELISTABLE_FEATURES_CONFIG[flagName]
     : null;
 
-  const columns = useMemo(() => makeColumns(), []);
+  const [workspaceBeingEdited, setWorkspaceBeingEdited] = useState<
+    string | null
+  >(null);
+
+  const onToggleFlags = useCallback(
+    (workspaceId: string) => setWorkspaceBeingEdited(workspaceId),
+    []
+  );
+
+  const handlePluginDialogClose = useCallback(() => {
+    setWorkspaceBeingEdited(null);
+    void mutate();
+  }, [mutate]);
+
+  const columns = useMemo(
+    () => makeColumns({ onToggleFlags }),
+    [onToggleFlags]
+  );
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -125,6 +244,13 @@ export function FeatureFlagDetailPage() {
             pageSize={50}
           />
         </>
+      )}
+
+      {workspaceBeingEdited && (
+        <WorkspaceTogglePluginDialog
+          onClose={handlePluginDialogClose}
+          workspaceId={workspaceBeingEdited}
+        />
       )}
     </div>
   );
