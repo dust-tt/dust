@@ -51,9 +51,9 @@ import type { Variants } from "framer-motion";
 import { motion, useReducedMotion } from "framer-motion";
 import { useCallback, useContext, useEffect, useState } from "react";
 
-const GREETING_WORD_ENTER_Y_PX = 6;
-const GREETING_WORD_DURATION_SECONDS = 0.3;
-const GREETING_WORD_STAGGER_SECONDS = 0.05;
+const GREETING_WORD_ENTER_Y_PX = 4;
+const GREETING_WORD_DURATION_SECONDS = 0.55;
+const GREETING_WORD_STAGGER_SECONDS = 0.07;
 
 const GREETING_VARIANTS = {
   hidden: {},
