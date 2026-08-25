@@ -1,5 +1,7 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
+import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
+import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
@@ -54,15 +56,28 @@ export function ConsumptionSummary({
       agentId,
       disabled,
     });
+  const { rows: topMembers, isTopLoading: isTopMemberLoading } =
+    useConsumptionTop({
+      workspaceId,
+      dimension: "user",
+      period: periodSelection,
+      limit: 1,
+      agentId,
+      disabled: disabled || agentId === undefined,
+    });
+  const isAgentScoped = agentId !== undefined;
 
   return (
     <ConsumptionSummaryView
       overview={overview}
-      isOverviewLoading={isOverviewLoading}
+      isOverviewLoading={
+        isOverviewLoading || (isAgentScoped && isTopMemberLoading)
+      }
       isOverviewError={Boolean(isOverviewError)}
       usageHref={usageHref}
       usageLinkLabel={usageLinkLabel}
       personal={personal || agentId !== undefined}
+      topMember={isAgentScoped ? (topMembers[0] ?? null) : undefined}
     />
   );
 }
@@ -75,6 +90,7 @@ interface ConsumptionSummaryViewProps {
   usageLinkLabel: string;
   responsiveLayout?: boolean;
   personal?: boolean;
+  topMember?: Pick<ConsumptionTopRow, "name" | "credits"> | null;
 }
 
 export function ConsumptionSummaryView({
@@ -85,6 +101,7 @@ export function ConsumptionSummaryView({
   usageLinkLabel,
   responsiveLayout = false,
   personal,
+  topMember,
 }: ConsumptionSummaryViewProps) {
   if (isOverviewLoading) {
     return (
@@ -115,6 +132,8 @@ export function ConsumptionSummaryView({
 
   const { topAgent, totalCredits } = overview;
   const creditUsage = personal ? null : overview.creditUsage;
+  const topConsumer = topMember === undefined ? topAgent : topMember;
+  const topConsumerLabel = topMember === undefined ? "Top agent" : "Top user";
 
   return (
     <div className="flex flex-col gap-4">
@@ -163,11 +182,11 @@ export function ConsumptionSummaryView({
           }
         />
         <SummaryCard
-          label="Top agent"
-          value={topAgent?.name ?? "—"}
+          label={topConsumerLabel}
+          value={topConsumer?.name ?? "—"}
           hint={
-            topAgent && totalCredits > 0
-              ? `${Math.round((topAgent.credits / totalCredits) * 100)}% of total consumption`
+            topConsumer && totalCredits > 0
+              ? `${Math.round((topConsumer.credits / totalCredits) * 100)}% of total consumption`
               : null
           }
         />
