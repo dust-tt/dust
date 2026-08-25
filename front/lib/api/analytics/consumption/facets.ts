@@ -125,7 +125,7 @@ type FetchDimensionFacetBucketsArgs = {
   auth: Authenticator;
   period: ConsumptionPeriod;
   filter: ConsumptionScopeFilter;
-  userId?: string;
+  requiredFilter?: ConsumptionScopeFilter;
   dimension: ConsumptionScopeDimension;
   scopeFilters: estypes.QueryDslQueryContainer[];
 };
@@ -154,13 +154,12 @@ async function fetchDimensionFacetBucketsWithoutTracing({
   auth,
   period,
   filter,
-  userId,
+  requiredFilter,
   dimension,
   scopeFilters,
 }: FetchDimensionFacetBucketsArgs): Promise<
   Result<FacetBuckets, ElasticsearchError>
 > {
-  const userFilter = userId ? { users: [userId] } : undefined;
   const contextual = new Map<string, number>();
   let afterKey: { value: string } | undefined;
 
@@ -173,7 +172,7 @@ async function fetchDimensionFacetBucketsWithoutTracing({
         auth,
         startDate: period.startDate,
         endDate: period.endDate,
-        filter: userFilter,
+        filter: requiredFilter,
         extraFilters: scopeFilters,
       }),
       {
@@ -200,7 +199,7 @@ async function fetchDimensionFacetBucketsWithoutTracing({
                   endDate: period.endDate,
                   filter: {
                     ...filterWithoutDimension(filter, dimension),
-                    ...userFilter,
+                    ...requiredFilter,
                   },
                   extraFilters: scopeFilters,
                 }),
@@ -316,13 +315,13 @@ async function fetchConsumptionFacetsWithoutTracing(
     filter = {},
     scope = "all",
     dimensions,
-    userId,
+    requiredFilter,
   }: {
     period: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
     scope?: ConsumptionFacetScope;
     dimensions?: ConsumptionScopeDimension[];
-    userId?: string;
+    requiredFilter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
   const requestedDimensions = dimensions ?? [...CONSUMPTION_SCOPE_DIMENSIONS];
@@ -335,7 +334,7 @@ async function fetchConsumptionFacetsWithoutTracing(
         auth,
         period,
         filter,
-        userId,
+        requiredFilter,
         dimension,
         scopeFilters,
       }),
@@ -351,7 +350,7 @@ async function fetchConsumptionFacetsWithoutTracing(
     bucketsByDimension.set(dimension, result.value);
   }
 
-  const catalog = userId
+  const catalog = requiredFilter
     ? EMPTY_FACET_CATALOG
     : await listConsumptionFacetCatalog(auth, requestedDimensions);
   // TODO(2026-08-11 OBSERVABILITY): Historical label resolution still reads
@@ -428,7 +427,7 @@ export async function fetchConsumptionFacets(
     filter?: ConsumptionScopeFilter;
     scope?: ConsumptionFacetScope;
     dimensions?: ConsumptionScopeDimension[];
-    userId?: string;
+    requiredFilter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
   return tracer.trace("analytics.consumption.facets", async (span) => {

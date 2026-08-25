@@ -8,12 +8,16 @@ import { fetchConsumptionTimeseries } from "@app/lib/api/analytics/consumption/t
 import logger from "@app/logger/logger";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { consumptionAnalyticsApp } from "./context";
+import {
+  applyConsumptionRequiredFilter,
+  consumptionAnalyticsApp,
+} from "./context";
 
 export type { GetConsumptionTimeseriesResponse };
 
 // Mounted at /api/w/:wId/analytics/consumption/timeseries.
 // Also mounted at /api/w/:wId/me/analytics/consumption/timeseries.
+// Also mounted at /api/w/:wId/assistant/agent_configurations/:aId/analytics/consumption/timeseries.
 const app = consumptionAnalyticsApp();
 
 /** @ignoreswagger */
@@ -22,7 +26,8 @@ app.post(
   validate("json", ConsumptionTimeseriesBodySchema),
   async (ctx): HandlerResult<GetConsumptionTimeseriesResponse> => {
     const auth = ctx.get("auth");
-    const userId = ctx.get("consumptionUserId");
+    const excludedDimensions = ctx.get("consumptionExcludedDimensions") ?? [];
+    const requiredFilter = ctx.get("consumptionRequiredFilter");
     const {
       granularity,
       mode,
@@ -33,13 +38,12 @@ app.post(
       ...periodQuery
     } = ctx.req.valid("json");
 
-    if (userId && (breakdownBy === "user" || breakdownBy === "group")) {
+    if (breakdownBy && excludedDimensions.includes(breakdownBy)) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message:
-            "Personal consumption analytics do not support user or group breakdowns.",
+          message: `This consumption analytics scope does not support ${breakdownBy} breakdowns.`,
         },
       });
     }
@@ -56,7 +60,7 @@ app.post(
       metric,
       breakdownBy,
       breakdownCount,
-      filter: userId ? { ...filter, users: [userId] } : filter,
+      filter: applyConsumptionRequiredFilter(filter, requiredFilter),
     });
     if (result.isErr()) {
       logger.error(

@@ -443,7 +443,7 @@ describe("fetchConsumptionFacets", () => {
     const result = await fetchConsumptionFacets(authenticator, {
       period: PERIOD,
       filter: { users: [user.sId], agents: ["agent_1"] },
-      userId: user.sId,
+      requiredFilter: { users: [user.sId] },
     });
 
     expect(result.isOk()).toBe(true);

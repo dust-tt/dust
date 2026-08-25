@@ -6,23 +6,26 @@ import {
 import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
 import { fetchConsumptionTopUsers } from "@app/lib/api/analytics/consumption/top_users";
 import logger from "@app/logger/logger";
-import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import {
+  applyConsumptionRequiredFilter,
+  consumptionAnalyticsApp,
+} from "./context";
 
 export type { GetConsumptionTopUsersResponse };
 
 // Mounted at /api/w/:wId/analytics/consumption/top-users.
-const app = workspaceApp();
+// Also mounted at /api/w/:wId/assistant/agent_configurations/:aId/analytics/consumption/top-users.
+const app = consumptionAnalyticsApp();
 
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsManager(),
   validate("json", ConsumptionTopBodySchema),
   async (ctx): HandlerResult<GetConsumptionTopUsersResponse> => {
     const auth = ctx.get("auth");
+    const requiredFilter = ctx.get("consumptionRequiredFilter");
     const { limit, offset, search, filter, sortOrder, ...periodQuery } =
       ctx.req.valid("json");
 
@@ -36,7 +39,7 @@ app.post(
       limit,
       offset,
       search,
-      filter,
+      filter: applyConsumptionRequiredFilter(filter, requiredFilter),
       sortOrder,
     });
     if (result.isErr()) {

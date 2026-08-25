@@ -19,7 +19,7 @@ const app = consumptionAnalyticsApp();
  * /api/w/{wId}/analytics/consumption/facets:
  *   post:
  *     summary: List consumption analytics facets
- *     description: Lists current entities and historical indexed values present in the selected period for each consumption dimension. The workspace route requires a manager; the /me route is restricted server-side to the authenticated member. A facet is disabled when it has no indexed document in that period after applying every active filter except the facet's own dimension.
+ *     description: Lists current entities and historical indexed values present in the selected period for each consumption dimension. The workspace route requires a manager; the /me route is restricted server-side to the authenticated member; the agent route is restricted server-side to the selected agent. A facet is disabled when it has no indexed document in that period after applying every active filter except the facet's own dimension.
  *     tags:
  *       - Private Analytics
  *     parameters:
@@ -50,7 +50,7 @@ const app = consumptionAnalyticsApp();
  *                 description: Restricts which documents the facets are computed over. `automations` counts only trigger-originated runs.
  *               dimensions:
  *                 type: array
- *                 description: Dimensions to compute facets for. Defaults to every dimension. Omitted dimensions come back as empty arrays. The personal route omits user and group dimensions.
+ *                 description: Dimensions to compute facets for. Defaults to every dimension. Omitted dimensions come back as empty arrays. The personal route omits user and group dimensions, and the agent route omits the agent dimension.
  *                 items:
  *                   type: string
  *                   enum: [agent, user, api_key, group, model, tool, skill, source]
@@ -156,13 +156,16 @@ const app = consumptionAnalyticsApp();
  *         description: Failed to retrieve consumption facets
  * /api/w/{wId}/me/analytics/consumption/facets:
  *   $ref: '#/paths/~1api~1w~1{wId}~1analytics~1consumption~1facets'
+ * /api/w/{wId}/assistant/agent_configurations/{aId}/analytics/consumption/facets:
+ *   $ref: '#/paths/~1api~1w~1{wId}~1analytics~1consumption~1facets'
  */
 app.post(
   "/",
   validate("json", ConsumptionFacetsBodySchema),
   async (ctx): HandlerResult<GetConsumptionFacetsResponse> => {
     const auth = ctx.get("auth");
-    const userId = ctx.get("consumptionUserId");
+    const excludedDimensions = ctx.get("consumptionExcludedDimensions") ?? [];
+    const requiredFilter = ctx.get("consumptionRequiredFilter");
     const { filter, scope, dimensions, ...periodInput } = ctx.req.valid("json");
     const period = await resolveConsumptionPeriod(
       auth,
@@ -171,14 +174,15 @@ app.post(
 
     const result = await fetchConsumptionFacets(auth, {
       period,
-      filter: userId ? { ...filter, users: [userId] } : filter,
+      filter,
       scope,
-      dimensions: userId
-        ? (dimensions ?? CONSUMPTION_SCOPE_DIMENSIONS).filter(
-            (dimension) => dimension !== "user" && dimension !== "group"
-          )
-        : dimensions,
-      userId,
+      dimensions:
+        excludedDimensions.length > 0
+          ? (dimensions ?? CONSUMPTION_SCOPE_DIMENSIONS).filter(
+              (dimension) => !excludedDimensions.includes(dimension)
+            )
+          : dimensions,
+      requiredFilter,
     });
     if (result.isErr()) {
       return apiError(

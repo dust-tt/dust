@@ -32,6 +32,7 @@ import {
   type GetConsumptionTopUsersResponse,
 } from "@app/lib/api/analytics/consumption/top_users";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
@@ -320,6 +321,7 @@ const RANKINGS = [
 const PERSONAL_RANKINGS = RANKINGS.filter(
   ({ path }) => path !== "top-users" && path !== "top-groups"
 );
+const AGENT_RANKINGS = RANKINGS.filter(({ path }) => path !== "top-agents");
 
 async function setupTest({
   role = "admin",
@@ -333,9 +335,14 @@ function postRankingRequest(
   wId: string,
   path: string,
   body: Record<string, unknown> = {},
-  personal = false
+  personal = false,
+  agentId?: string
 ) {
-  const analyticsPath = personal ? "me/analytics" : "analytics";
+  const analyticsPath = agentId
+    ? `assistant/agent_configurations/${agentId}/analytics`
+    : personal
+      ? "me/analytics"
+      : "analytics";
   return honoApp.request(`/api/w/${wId}/${analyticsPath}/consumption/${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -410,6 +417,48 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     const { workspace } = await setupTest({ role: "user" });
 
     const response = await postRankingRequest(workspace.sId, path, {}, true);
+
+    expect(response.status).toBe(404);
+  });
+
+  it.each(
+    AGENT_RANKINGS
+  )("$path lets editors rank only the selected agent's consumption", async ({
+    path,
+    arrangeOk,
+    lastCall,
+  }) => {
+    arrangeOk();
+    const { auth, workspace } = await setupTest({ role: "user" });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const response = await postRankingRequest(
+      workspace.sId,
+      path,
+      { filter: { agents: ["another-agent"], sources: ["slack"] } },
+      false,
+      agent.sId
+    );
+
+    expect(response.status).toBe(200);
+    expect(lastCall()?.[1]).toEqual(
+      expect.objectContaining({
+        filter: { agents: [agent.sId], sources: ["slack"] },
+      })
+    );
+  });
+
+  it("does not mount the agent ranking for agent-scoped analytics", async () => {
+    const { auth, workspace } = await setupTest({ role: "user" });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const response = await postRankingRequest(
+      workspace.sId,
+      "top-agents",
+      {},
+      false,
+      agent.sId
+    );
 
     expect(response.status).toBe(404);
   });

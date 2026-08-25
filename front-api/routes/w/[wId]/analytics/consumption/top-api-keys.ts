@@ -8,12 +8,16 @@ import { fetchConsumptionTopApiKeys } from "@app/lib/api/analytics/consumption/t
 import logger from "@app/logger/logger";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { consumptionAnalyticsApp } from "./context";
+import {
+  applyConsumptionRequiredFilter,
+  consumptionAnalyticsApp,
+} from "./context";
 
 export type { GetConsumptionTopApiKeysResponse };
 
 // Mounted at /api/w/:wId/analytics/consumption/top-api-keys.
 // Also mounted at /api/w/:wId/me/analytics/consumption/top-api-keys.
+// Also mounted at /api/w/:wId/assistant/agent_configurations/:aId/analytics/consumption/top-api-keys.
 const app = consumptionAnalyticsApp();
 
 /** @ignoreswagger */
@@ -22,7 +26,7 @@ app.post(
   validate("json", ConsumptionTopBodySchema),
   async (ctx): HandlerResult<GetConsumptionTopApiKeysResponse> => {
     const auth = ctx.get("auth");
-    const userId = ctx.get("consumptionUserId");
+    const requiredFilter = ctx.get("consumptionRequiredFilter");
     const { limit, offset, search, filter, sortOrder, ...periodQuery } =
       ctx.req.valid("json");
 
@@ -36,7 +40,7 @@ app.post(
       limit,
       offset,
       search,
-      filter: userId ? { ...filter, users: [userId] } : filter,
+      filter: applyConsumptionRequiredFilter(filter, requiredFilter),
       sortOrder,
     });
     if (result.isErr()) {

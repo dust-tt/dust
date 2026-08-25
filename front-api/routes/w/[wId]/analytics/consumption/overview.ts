@@ -7,10 +7,14 @@ import {
 import logger from "@app/logger/logger";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { consumptionAnalyticsApp } from "./context";
+import {
+  applyConsumptionRequiredFilter,
+  consumptionAnalyticsApp,
+} from "./context";
 
 // Mounted at /api/w/:wId/analytics/consumption/overview.
 // Also mounted at /api/w/:wId/me/analytics/consumption/overview.
+// Also mounted at /api/w/:wId/assistant/agent_configurations/:aId/analytics/consumption/overview.
 const app = consumptionAnalyticsApp();
 
 /** @ignoreswagger */
@@ -19,13 +23,13 @@ app.post(
   validate("json", ConsumptionBodySchema),
   async (ctx): HandlerResult<GetConsumptionOverviewResponse> => {
     const auth = ctx.get("auth");
-    const userId = ctx.get("consumptionUserId");
+    const requiredFilter = ctx.get("consumptionRequiredFilter");
     const body = ctx.req.valid("json");
 
     const result = await fetchConsumptionOverview(auth, {
       periodInput: toConsumptionPeriodInput(body),
-      filter: userId ? { ...body.filter, users: [userId] } : body.filter,
-      includeWorkspaceContext: userId === undefined,
+      filter: applyConsumptionRequiredFilter(body.filter, requiredFilter),
+      includeWorkspaceContext: requiredFilter === undefined,
     });
     if (result.isErr()) {
       logger.error(
