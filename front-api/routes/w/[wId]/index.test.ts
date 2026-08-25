@@ -237,3 +237,84 @@ describe("POST /api/w/:wId (workspace analytics opt-out)", () => {
     }
   });
 });
+
+describe("POST /api/w/:wId (inactive agent archival)", () => {
+  it("stores the threshold in workspace metadata", async () => {
+    const { workspace, auth } = await setup();
+    await FeatureFlagFactory.basic(auth, "archive_inactive_agents");
+
+    const response = await post(workspace, {
+      inactiveAgentArchivalThresholdDays: 90,
+    });
+
+    expect(response.status).toBe(200);
+
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.metadata?.inactiveAgentArchivalThresholdDays).toBe(90);
+  });
+
+  it("clears the threshold and preserves other metadata when passed null", async () => {
+    // Clearing it is how a workspace turns automatic archival off: the policy has no default, so an
+    // absent threshold means nothing is ever archived.
+    const { workspace, auth } = await setup();
+    await FeatureFlagFactory.basic(auth, "archive_inactive_agents");
+
+    await post(workspace, { reinforcementCapAwuCredits: 5_000 });
+    await post(workspace, { inactiveAgentArchivalThresholdDays: 90 });
+
+    const response = await post(workspace, {
+      inactiveAgentArchivalThresholdDays: null,
+    });
+    expect(response.status).toBe(200);
+
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(
+      updated?.metadata?.inactiveAgentArchivalThresholdDays
+    ).toBeUndefined();
+    expect(updated?.metadata?.reinforcementCapAwuCredits).toBe(5_000);
+  });
+
+  it("returns 403 when the feature flag is off", async () => {
+    const { workspace } = await setup();
+
+    const response = await post(workspace, {
+      inactiveAgentArchivalThresholdDays: 90,
+    });
+
+    expect(response.status).toBe(403);
+
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(
+      updated?.metadata?.inactiveAgentArchivalThresholdDays
+    ).toBeUndefined();
+  });
+
+  it("returns 403 for a non-admin member", async () => {
+    const { workspace, auth } = await setup("user");
+    await FeatureFlagFactory.basic(auth, "archive_inactive_agents");
+
+    const response = await post(workspace, {
+      inactiveAgentArchivalThresholdDays: 90,
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("rejects a threshold outside the allowed bounds", async () => {
+    const { workspace, auth } = await setup();
+    await FeatureFlagFactory.basic(auth, "archive_inactive_agents");
+
+    for (const thresholdDays of [1, 367, 30.5]) {
+      const response = await post(workspace, {
+        inactiveAgentArchivalThresholdDays: thresholdDays,
+      });
+
+      expect(response.status).toBe(400);
+    }
+
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(
+      updated?.metadata?.inactiveAgentArchivalThresholdDays
+    ).toBeUndefined();
+  });
+});

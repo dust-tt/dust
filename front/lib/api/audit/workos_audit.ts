@@ -104,6 +104,8 @@ export const AUDIT_ACTIONS = [
   "workspace.email_agents_updated",
   "workspace.extension_mcp_tools_updated",
   "workspace.governance_permission_updated",
+  "workspace.inactive_agent_archival_updated",
+  "workspace.inactive_agents_archived",
   "workspace.interactive_content_sharing_updated",
   "workspace.manual_project_knowledge_management_updated",
   "workspace.model_provider_settings_updated",

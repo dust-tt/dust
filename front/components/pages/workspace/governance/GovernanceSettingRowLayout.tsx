@@ -2,8 +2,8 @@ import { BookOpen01, Page } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 interface GovernanceSettingRowLayoutProps {
-  label: string;
-  description: string;
+  label: ReactNode;
+  description: ReactNode;
   action?: ReactNode;
   children?: ReactNode;
   documentationUrl?: string;

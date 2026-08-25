@@ -372,6 +372,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Disable the per-user fair-use AWU credit limit on this workspace: skip both the pre-message enforcement (read) and the usage recording (write). Escape hatch for workspaces that should not be subject to the fair-use cap.",
     stage: "on_demand",
   },
+  archive_inactive_agents: {
+    description:
+      "Allow this workspace to preview and archive agents that have not been mentioned for a configurable number of days.",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
