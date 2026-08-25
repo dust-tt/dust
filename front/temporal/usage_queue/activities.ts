@@ -8,8 +8,7 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
-  buildLlmUsageEvents,
-  buildToolUseEvents,
+  buildUsageEvents,
   computeRunKey,
   getUsageType,
 } from "@app/lib/metronome/events";
@@ -373,7 +372,6 @@ export async function emitMetronomeUsageEventsActivity(
       mcpServerId: json.mcpServerId,
       internalMCPServerName: json.internalMCPServerName,
       status: json.status,
-      executionDurationMs: json.executionDurationMs,
       shouldEmit:
         agentLoopArgs.startStep === undefined ||
         json.step >= agentLoopArgs.startStep,
@@ -387,8 +385,8 @@ export async function emitMetronomeUsageEventsActivity(
   // ceils per the exact same execution partition that is billed here.
   const runKey = computeRunKey(effectiveRunIds);
 
-  // Build and ingest events.
-  const llmEvents = buildLlmUsageEvents({
+  // Build and ingest the single aggregated usage event (LLM + tool cost).
+  const usageEvents = buildUsageEvents({
     workspaceId: workspace.sId,
     isByok,
     conversationId,
@@ -400,25 +398,6 @@ export async function emitMetronomeUsageEventsActivity(
     parentAgentMessageId,
     runKey,
     runUsages,
-    origin: userMessageOrigin,
-    usageType,
-    authMethod,
-    apiKeyName,
-    messageStatus,
-    isSubAgentMessage,
-    timestamp,
-  });
-
-  const toolEvents = buildToolUseEvents({
-    workspaceId: workspace.sId,
-    conversationId,
-    userId,
-    isFreeSeatedUser,
-    agentMessageId,
-    agentId,
-    subAgentId,
-    parentAgentMessageId,
-    runKey,
     actions: toolActions,
     origin: userMessageOrigin,
     usageType,
@@ -429,7 +408,7 @@ export async function emitMetronomeUsageEventsActivity(
     timestamp,
   });
 
-  await ingestMetronomeEvents([...llmEvents, ...toolEvents]);
+  await ingestMetronomeEvents(usageEvents);
 
   // Per-key cap enforcement is pull-based: Metronome spend alerts can't
   // attribute spend by `api_key_name` (it's not the products' presentation
