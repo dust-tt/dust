@@ -28,6 +28,7 @@ process-compose*.log
 **/.npm-cache
 AGENTS.local.md
 CLAUDE.local.md
+.cursor/docker-volumes/
 node_modules
 thoughts/*
 .superpowers/

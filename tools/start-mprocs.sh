@@ -3,14 +3,18 @@
 # Where the script is defined, absolute path
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 
+
+# Skip the Docker daemon check when already running inside a container.
+if [ ! -f /.dockerenv ]; then
+  if ! docker info >/dev/null 2>&1; then
+    echo "Docker is not running. Please start Docker Desktop/Orb Stack and try again."
+    exit 1
+  fi
+fi
+
 # Source and install the correct node version using nvm.
 # If DUST_NODE_VERSION is set (e.g. via `source scripts/try-node24.sh`), use that version
 # instead of the .nvmrc default.
-if ! docker info >/dev/null 2>&1; then
-  echo "Docker is not running. Please start Docker Desktop/Orb Stack and try again."
-  exit 1
-fi
-
 source ~/.nvm/nvm.sh
 if [ -n "${DUST_NODE_VERSION:-}" ]; then
   nvm install "$DUST_NODE_VERSION"
