@@ -1,3 +1,4 @@
+import { isModelKilled } from "@app/lib/api/assistant/killed_models";
 import { PREFERRED_LARGE_MODEL_CONFIGS } from "@app/lib/api/assistant/model_preferences";
 import { selectEnabledModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
@@ -69,8 +70,15 @@ export async function resolveModel(
 
   const requestedConfig = userConfig ?? agentConfig;
 
+  // Two cases keep the requested model instead of running the fallback list:
+  // a stream, which resolves through its own candidate pool below, and a killed
+  // model, which is kept so the run fails on the model that was actually asked
+  // for. Falling through on a kill would answer as a different model than the
+  // agent or the user picked, silently.
   let enabled =
-    requestedConfig && isModelStreamId(requestedConfig.modelId)
+    requestedConfig &&
+    (isModelStreamId(requestedConfig.modelId) ||
+      isModelKilled(requestedConfig.modelId))
       ? requestedConfig
       : selectEnabledModel(
           auth,

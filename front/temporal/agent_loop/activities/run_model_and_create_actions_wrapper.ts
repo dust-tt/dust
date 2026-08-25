@@ -1,4 +1,5 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { isModelKilled } from "@app/lib/api/assistant/killed_models";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -144,6 +145,38 @@ async function _runModelAndCreateActionsActivity({
   }
 
   const { auth, ...runAgentData } = runAgentDataRes.value;
+
+  const runModelConfig = runAgentData.modelInfo.endpoint.modelConfig;
+  if (isModelKilled(runModelConfig.modelId)) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentMessageId: runAgentArgs.agentMessageId,
+        conversationId: runAgentArgs.conversationId,
+        modelId: runModelConfig.modelId,
+        step,
+      },
+      "Agent loop stopped: the requested model is killed"
+    );
+
+    await publishAgentLoopGuardrailExceededError(auth, {
+      runAgentData,
+      runIds,
+      step,
+      errorCode: "model_disabled",
+      errorMessage:
+        `${runModelConfig.displayName}'s provider is temporarily down. ` +
+        "Pick another model for this conversation, or retry once it is back.",
+      errorMetadata: {
+        category: "model_disabled",
+        errorTitle: "Model unavailable",
+        modelId: runModelConfig.modelId,
+      },
+    });
+
+    return null;
+  }
+
   const isRootAgentMessage = !runAgentData.userMessage.agenticMessageData;
 
   // Intentionally check at step start (not step end) to early exit if dollar amount too high.
@@ -340,12 +373,14 @@ async function publishAgentLoopGuardrailExceededError(
     runIds,
     step,
     errorCode,
+    errorMessage = AGENT_LOOP_RESOURCE_CAP_ERROR_MESSAGE,
     errorMetadata,
   }: {
     runAgentData: AgentLoopExecutionData;
     runIds: string[];
     step: number;
     errorCode: string;
+    errorMessage?: string;
     errorMetadata: Record<string, string | number | boolean>;
   }
 ): Promise<void> {
@@ -357,7 +392,7 @@ async function publishAgentLoopGuardrailExceededError(
       messageId: runAgentData.agentMessage.sId,
       error: {
         code: errorCode,
-        message: AGENT_LOOP_RESOURCE_CAP_ERROR_MESSAGE,
+        message: errorMessage,
         metadata: errorMetadata,
       },
       runIds,

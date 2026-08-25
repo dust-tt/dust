@@ -45,7 +45,9 @@ export async function validatePublicModelSelection(
   const enabledModels = await getEnabledModelsForAuth(auth);
   const isAuthorized = enabledModels.some(
     (model) =>
-      model.isSelectable &&
+      // Let it through so the message is created and the agent message carries
+      // the "model unavailable" error instead.
+      (model.isSelectable || model.isKilled) &&
       model.providerId === modelSelection.providerId &&
       model.modelId === modelSelection.modelId
   );
