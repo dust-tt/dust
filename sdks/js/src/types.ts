@@ -812,7 +812,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "live_speech_to_text"
   | "workspace_default_agent"
   | "whitelabel_frames"
-  | "workday_mcp"
   | "user_memory"
   | "similar_agents_check"
   | "enforce_user_spend_limit_rate_cap"

@@ -2601,12 +2601,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
   },
-  "workday": {
-    "get_workers": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
-  },
   "workspace_analytics": {
     "get_agent_details": {
       "freeUsage": false,
@@ -3477,9 +3471,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "web_search_&_browse": {
     "webbrowser": "never_ask",
     "websearch": "never_ask",
-  },
-  "workday": {
-    "get_workers": "never_ask",
   },
   "workspace_analytics": {
     "get_agent_details": "never_ask",
