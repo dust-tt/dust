@@ -1,5 +1,6 @@
 import {
   addUsageFilterFromAttributionRow,
+  getUsageFilterCategories,
   getUsageFilterSummaries,
   removeUsageFilterFromAttributionRow,
   setUsageFilterFromAttributionRow,
@@ -7,6 +8,29 @@ import {
 } from "@app/components/workspace/analytics/usageFilter";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { describe, expect, it } from "vitest";
+
+describe("getUsageFilterCategories", () => {
+  it("selects the categories available to the analytics scope", () => {
+    expect(getUsageFilterCategories({ personal: false })).toEqual([
+      "agent",
+      "member",
+      "group",
+      "model",
+      "tool",
+      "skill",
+      "source",
+      "api_key",
+    ]);
+    expect(getUsageFilterCategories({ personal: true })).toEqual([
+      "agent",
+      "model",
+      "tool",
+      "skill",
+      "source",
+      "api_key",
+    ]);
+  });
+});
 
 describe("toConsumptionScopeFilter", () => {
   it("maps every selected facet to its consumption scope dimension", () => {

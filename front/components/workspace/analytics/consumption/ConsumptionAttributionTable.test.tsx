@@ -95,6 +95,82 @@ describe("ConsumptionAttributionTable", () => {
     });
   });
 
+  it("scopes attribution data and hides raw exports in the personal view", () => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [],
+      totalCredits: 0,
+      totalCount: 0,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        personal
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(mockUseConsumptionTop).toHaveBeenCalledWith(
+      expect.objectContaining({ personal: true })
+    );
+    expect(mockUseConsumptionExports).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: "Download raw data" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Agents" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: "Members" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: "Groups" })
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    "user",
+    "group",
+  ] as const)("normalizes the %s dimension in the personal view", (dimension) => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [],
+      totalCredits: 0,
+      totalCount: 0,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        personal
+        dimension={dimension}
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("tab", { name: "Agents" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(mockUseConsumptionTop).toHaveBeenLastCalledWith(
+      expect.objectContaining({ dimension: "agent", personal: true })
+    );
+  });
+
   it("caps the available pages and fetches the selected fixed-size page", async () => {
     const rows = Array.from({ length: 1_025 }, (_, index) => ({
       id: `agent-${index + 1}`,

@@ -16,6 +16,18 @@ export const CONSUMPTION_DIMENSIONS: ConsumptionDimension[] = [
   "api_key",
 ];
 
+const PERSONAL_CONSUMPTION_DIMENSIONS = CONSUMPTION_DIMENSIONS.filter(
+  (dimension) => dimension !== "user" && dimension !== "group"
+);
+
+export function getConsumptionAttributionDimensions({
+  personal,
+}: {
+  personal?: boolean;
+}): readonly ConsumptionDimension[] {
+  return personal ? PERSONAL_CONSUMPTION_DIMENSIONS : CONSUMPTION_DIMENSIONS;
+}
+
 interface ConsumptionDimensionConfig {
   label: string;
   breakdownLabel: string;

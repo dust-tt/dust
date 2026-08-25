@@ -1,4 +1,7 @@
-import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
+import {
+  getConsumptionAnalyticsUrl,
+  useConsumptionQuery,
+} from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import {
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
@@ -12,6 +15,7 @@ export interface UseConsumptionOverviewParams {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  personal?: boolean;
   disabled?: boolean;
 }
 
@@ -19,9 +23,14 @@ export function useConsumptionOverview({
   workspaceId,
   period,
   filter,
+  personal,
   disabled,
 }: UseConsumptionOverviewParams) {
-  const url = `/api/w/${workspaceId}/analytics/consumption/overview`;
+  const url = getConsumptionAnalyticsUrl({
+    workspaceId,
+    personal,
+    endpoint: "overview",
+  });
   const body: ConsumptionBody = {
     period: period.kind,
     days:
