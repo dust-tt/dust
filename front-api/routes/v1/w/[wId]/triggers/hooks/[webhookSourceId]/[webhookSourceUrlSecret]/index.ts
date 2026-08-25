@@ -124,7 +124,7 @@ app.post(
       });
     }
 
-    const auth = await Authenticator.internalBuilderForWorkspace(wId);
+    const auth = await Authenticator.internalUserForWorkspace(wId);
 
     const webhookSource = await WebhookSourceResource.fetchById(
       auth,
