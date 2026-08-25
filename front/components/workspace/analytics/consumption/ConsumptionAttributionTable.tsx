@@ -448,6 +448,7 @@ export interface ConsumptionAttributionRowsProps {
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
   personal?: boolean;
+  agentId?: string;
   disabled?: boolean;
   onAddFilter: (row: ConsumptionTopRow) => void;
   onRemoveFilter: (row: ConsumptionTopRow) => void;
@@ -526,6 +527,7 @@ export function ConsumptionAttributionRowsView({
   period,
   filter,
   personal,
+  agentId,
   disabled,
   onAddFilter,
   onRemoveFilter,
@@ -623,6 +625,7 @@ export function ConsumptionAttributionRowsView({
             period={period}
             filter={filter}
             personal={personal}
+            agentId={agentId}
             disabled={disabled}
             onViewAll={onViewAll}
             expandedRowId={expandedRowId}
@@ -660,6 +663,7 @@ export function ConsumptionAttributionRowsView({
               period={period}
               filter={filter}
               personal={personal}
+              agentId={agentId}
               disabled={disabled}
               onViewAll={onViewAll}
               expandedRowId={expandedRowId}
@@ -712,6 +716,7 @@ function WorkspaceConsumptionAttributionRows(
     search: props.search,
     filter: props.filter,
     personal: props.personal,
+    agentId: props.agentId,
     sortOrder: queryState.sortOrder,
     disabled: props.disabled,
   });
@@ -739,6 +744,7 @@ export interface ConsumptionAttributionTableProps {
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
   personal?: boolean;
+  agentId?: string;
   disabled?: boolean;
   onAddFilter: (row: ConsumptionTopRow) => void;
   onRemoveFilter: (row: ConsumptionTopRow) => void;
@@ -763,6 +769,7 @@ export function ConsumptionAttributionTableView({
   period,
   filter,
   personal,
+  agentId,
   disabled,
   onAddFilter,
   onRemoveFilter,
@@ -794,7 +801,9 @@ export function ConsumptionAttributionTableView({
     shouldReduceMotion || transition.target !== attributionDimension
       ? 0
       : transition.direction;
-  const visibleDimensions = getConsumptionAttributionDimensions({ personal });
+  const visibleDimensions = getConsumptionAttributionDimensions({
+    personal,
+  }).filter((tabDimension) => !agentId || tabDimension !== "agent");
 
   const exportBody: ConsumptionExportBody = {
     period: period.kind,
@@ -807,7 +816,7 @@ export function ConsumptionAttributionTableView({
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-base font-semibold text-foreground">Attribution</h3>
-        {showExport && !personal && (
+        {showExport && !personal && !agentId && (
           <ConsumptionExportPanel
             workspaceId={workspaceId}
             exportBody={exportBody}
@@ -886,6 +895,7 @@ export function ConsumptionAttributionTableView({
                   animate="animate"
                   exit="exit"
                 >
+                  {/* Reset table state whenever its dataset or local search changes. */}
                   {attributionDimension === "conversation" ? (
                     <ConsumptionConversationAttribution
                       workspaceId={workspaceId}
@@ -906,6 +916,7 @@ export function ConsumptionAttributionTableView({
                       period={period}
                       filter={filter}
                       personal={personal}
+                      agentId={agentId}
                       disabled={disabled}
                       onAddFilter={onAddFilter}
                       onRemoveFilter={onRemoveFilter}

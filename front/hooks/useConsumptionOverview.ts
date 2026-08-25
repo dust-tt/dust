@@ -16,6 +16,7 @@ export interface UseConsumptionOverviewParams {
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
   personal?: boolean;
+  agentId?: string;
   disabled?: boolean;
 }
 
@@ -24,11 +25,13 @@ export function useConsumptionOverview({
   period,
   filter,
   personal,
+  agentId,
   disabled,
 }: UseConsumptionOverviewParams) {
   const url = getConsumptionAnalyticsUrl({
     workspaceId,
     personal,
+    agentId,
     endpoint: "overview",
   });
   const body: ConsumptionBody = {

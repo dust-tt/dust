@@ -7,13 +7,20 @@ const CONSUMPTION_FILTER_DEBOUNCE_MS = 300;
 export function getConsumptionAnalyticsUrl({
   workspaceId,
   personal = false,
+  agentId,
   endpoint,
 }: {
   workspaceId: string;
   personal?: boolean;
+  agentId?: string;
   endpoint: string;
 }) {
-  const analyticsPath = personal ? "me/analytics" : "analytics";
+  const analyticsPath =
+    agentId !== undefined
+      ? `assistant/agent_configurations/${agentId}/analytics`
+      : personal
+        ? "me/analytics"
+        : "analytics";
   return `/api/w/${workspaceId}/${analyticsPath}/consumption/${endpoint}`;
 }
 

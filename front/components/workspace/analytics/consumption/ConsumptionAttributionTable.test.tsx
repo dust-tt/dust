@@ -235,6 +235,44 @@ describe("ConsumptionAttributionTable", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("scopes attribution data to an agent and removes the Agents tab", () => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [],
+      totalCredits: 0,
+      totalCount: 0,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        agentId="agent-id"
+        dimension="user"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(mockUseConsumptionTop).toHaveBeenCalledWith(
+      expect.objectContaining({ agentId: "agent-id", dimension: "user" })
+    );
+    expect(mockUseConsumptionExports).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: "Download raw data" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: "Agents" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Members" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Groups" })).toBeInTheDocument();
+  });
+
   it("caps the available pages and fetches the selected fixed-size page", async () => {
     const rows = Array.from({ length: 1_025 }, (_, index) => ({
       id: `agent-${index + 1}`,
