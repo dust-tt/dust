@@ -1,13 +1,78 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import { formatCredits } from "@app/lib/client/credits";
-import { clientFetch } from "@app/lib/egress/client";
-import type { TriggerType } from "@app/types/assistant/triggers";
+import type { TriggerStatus } from "@app/types/assistant/triggers";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
-import { IconButton, LinkWrapper, Trash01 } from "@dust-tt/sparkle";
+import { LinkWrapper, SliderToggle, Tooltip } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
-function ConsumptionCell({ trigger }: { trigger: AutomationTriggerRow }) {
+export interface PokeTriggerTableRow extends AutomationTriggerRow {
+  displayStatus: TriggerStatus;
+  isStatusPending: boolean;
+  onToggleStatus: () => void;
+}
+
+interface LockedStatusToggleProps {
+  label: string;
+}
+
+function LockedStatusToggle({ label }: LockedStatusToggleProps) {
+  return (
+    <Tooltip
+      label={label}
+      trigger={
+        // A disabled SliderToggle needs a wrapper to be a valid Tooltip
+        // trigger.
+        <div>
+          <SliderToggle selected={false} disabled />
+        </div>
+      }
+    />
+  );
+}
+
+interface TriggerStatusControlProps {
+  row: PokeTriggerTableRow;
+}
+
+function TriggerStatusControl({ row }: TriggerStatusControlProps) {
+  switch (row.displayStatus) {
+    case "enabled":
+    case "disabled":
+    case "disabled_by_manager":
+      return (
+        <SliderToggle
+          selected={row.displayStatus === "enabled"}
+          disabled={row.isStatusPending}
+          onClick={row.onToggleStatus}
+        />
+      );
+    case "relocating":
+      return (
+        <LockedStatusToggle label="Disabled while the workspace is being relocated." />
+      );
+    case "downgraded":
+      return (
+        <LockedStatusToggle label="Disabled following a plan downgrade." />
+      );
+    default:
+      assertNeverAndIgnore(row.displayStatus);
+      return (
+        <SliderToggle
+          selected={row.displayStatus === "enabled"}
+          disabled={row.isStatusPending}
+          onClick={row.onToggleStatus}
+        />
+      );
+  }
+}
+
+interface ConsumptionCellProps {
+  trigger: AutomationTriggerRow;
+}
+
+function ConsumptionCell({ trigger }: ConsumptionCellProps) {
   const { credits, runCount } = trigger;
   const creditsLabel = `${formatCredits(credits)} credits`;
   const runUnit = runCount === 1 ? "run" : "runs";
@@ -34,9 +99,8 @@ function ConsumptionCell({ trigger }: { trigger: AutomationTriggerRow }) {
 }
 
 export function makeColumnsForAutomationTriggers(
-  owner: LightWorkspaceType,
-  onTriggerDeleted: () => Promise<void>
-): ColumnDef<AutomationTriggerRow>[] {
+  owner: LightWorkspaceType
+): ColumnDef<PokeTriggerTableRow>[] {
   return [
     {
       accessorKey: "triggerId",
@@ -82,8 +146,13 @@ export function makeColumnsForAutomationTriggers(
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: "Enabled",
       enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          <TriggerStatusControl row={row.original} />
+        </div>
+      ),
     },
     {
       id: "editor",
@@ -91,58 +160,5 @@ export function makeColumnsForAutomationTriggers(
       enableSorting: false,
       accessorFn: (trigger) => trigger.editor.email ?? trigger.editor.name,
     },
-    {
-      id: "actions",
-      header: "",
-      enableSorting: false,
-      cell: ({ row }) => (
-        <IconButton
-          aria-label={`Delete trigger ${row.original.name}`}
-          icon={Trash01}
-          size="xs"
-          variant="outline"
-          onClick={async () => {
-            await deleteTrigger(owner, onTriggerDeleted, {
-              name: row.original.name,
-              sId: row.original.triggerId,
-            });
-          }}
-        />
-      ),
-    },
   ];
-}
-
-async function deleteTrigger(
-  owner: LightWorkspaceType,
-  onTriggerDeleted: () => Promise<void>,
-  trigger: Pick<TriggerType, "name" | "sId">
-) {
-  if (
-    !window.confirm(
-      `Are you sure you want to delete the trigger "${trigger.name}"?`
-    )
-  ) {
-    return;
-  }
-
-  try {
-    const r = await clientFetch(
-      `/api/poke/workspaces/${owner.sId}/triggers?tId=${trigger.sId}`,
-      {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    if (!r.ok) {
-      throw new Error("Failed to delete trigger.");
-    }
-
-    await onTriggerDeleted();
-  } catch (e) {
-    console.error(e);
-    window.alert("An error occurred while deleting the trigger.");
-  }
 }
