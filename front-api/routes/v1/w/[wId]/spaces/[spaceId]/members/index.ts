@@ -193,8 +193,15 @@ app.post(
       });
     }
 
+    const groupIdsBySpaceModelId =
+      await SpaceResource.listGroupIdsBySpaceModelId(auth, {
+        spaces: [space],
+      });
+
     return ctx.json({
-      space: space.toJSON(),
+      space: space.toJSONWithGroupIds(
+        groupIdsBySpaceModelId.get(space.id) ?? []
+      ),
       users: usersJson.map((userJson) => ({
         sId: userJson.sId,
         id: userJson.id,

@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { BlockType } from "./run";
 import type { ModelId } from "./shared/model_id";
 import { DbModelIdSchema } from "./shared/model_id";
-import type { SpaceType } from "./space";
+import type { SpaceType, SpaceTypeWithGroupIds } from "./space";
 
 export type AppVisibility = "private" | "deleted";
 
@@ -22,6 +22,13 @@ export type AppType = {
   savedRun: string | null;
   dustAPIProjectId: string;
   space: SpaceType;
+};
+
+// An app serialized with its space's `groupIds` (part of the public app contract). Produced by
+// `AppResource.toJSONWithSpaceGroupIds` for the public API; the internal `AppType` omits them so app
+// serialization does not depend on the space's eagerly-loaded grants.
+export type AppTypeWithSpaceGroupIds = Omit<AppType, "space"> & {
+  space: SpaceTypeWithGroupIds;
 };
 
 export type SpecificationBlockType = {

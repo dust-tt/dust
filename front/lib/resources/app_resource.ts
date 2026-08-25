@@ -10,7 +10,11 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import type { AppType, SpecificationType } from "@app/types/app";
+import type {
+  AppType,
+  AppTypeWithSpaceGroupIds,
+  SpecificationType,
+} from "@app/types/app";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -310,6 +314,16 @@ export class AppResource extends ResourceWithSpace<AppModel> {
       savedRun: this.savedRun,
       dustAPIProjectId: this.dustAPIProjectId,
       space: this.space.toJSON(),
+    };
+  }
+
+  // The app serialized with its space's `groupIds` (part of the public app contract). The public API
+  // loads them on demand via `SpaceResource.listGroupIdsBySpaceModelId` and passes them here, so app
+  // serialization does not depend on the space's eagerly-loaded grants.
+  toJSONWithSpaceGroupIds(spaceGroupIds: string[]): AppTypeWithSpaceGroupIds {
+    return {
+      ...this.toJSON(),
+      space: this.space.toJSONWithGroupIds(spaceGroupIds),
     };
   }
 

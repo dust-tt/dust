@@ -1084,7 +1084,6 @@
  *         - sId
  *         - name
  *         - kind
- *         - groupIds
  *         - isRestricted
  *         - managementMode
  *       properties:
@@ -1095,10 +1094,6 @@
  *         kind:
  *           type: string
  *           enum: [global, system, conversations, regular, project]
- *         groupIds:
- *           type: array
- *           items:
- *             type: string
  *         isRestricted:
  *           type: boolean
  *         managementMode:
@@ -1115,6 +1110,10 @@
  *         - $ref: '#/components/schemas/PrivateSpace'
  *         - type: object
  *           properties:
+ *             groupIds:
+ *               type: array
+ *               items:
+ *                 type: string
  *             description:
  *               type: string
  *               nullable: true

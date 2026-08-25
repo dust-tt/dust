@@ -4,7 +4,7 @@ import { default as config } from "@app/lib/api/config";
 import { getDatasetHash, getDatasets } from "@app/lib/api/datasets";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -396,6 +396,13 @@ export async function exportApps(
 ): Promise<Result<ApiAppType[], Error>> {
   const apps = await AppResource.listBySpace(auth, space);
 
+  // All apps belong to `space`; load its group sIds once so the exported app keeps the space's
+  // `groupIds` (part of the public app contract) without relying on the eagerly-loaded grants.
+  const spaceGroupIds =
+    (
+      await SpaceResource.listGroupIdsBySpaceModelId(auth, { spaces: [space] })
+    ).get(space.id) ?? [];
+
   const enhancedApps = await concurrentExecutor(
     apps.filter((app) => app.canRead(auth)),
 
@@ -440,7 +447,11 @@ export async function exportApps(
         }
       }
 
-      return { ...app.toJSON(), datasets, coreSpecifications };
+      return {
+        ...app.toJSONWithSpaceGroupIds(spaceGroupIds),
+        datasets,
+        coreSpecifications,
+      };
     },
     { concurrency: 5 }
   );

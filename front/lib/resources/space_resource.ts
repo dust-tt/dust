@@ -47,7 +47,11 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { SpaceKind, SpaceType } from "@app/types/space";
+import type {
+  SpaceKind,
+  SpaceType,
+  SpaceTypeWithGroupIds,
+} from "@app/types/space";
 import assert from "assert";
 import type {
   Attributes,
@@ -2519,7 +2523,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   toJSON(): SpaceType {
     return {
       createdAt: this.createdAt.getTime(),
-      groupIds: this.groups.map((group) => group.groupSId),
       isRestricted:
         this.isRegularAndRestricted() || this.isProjectAndRestricted(),
 
@@ -2529,5 +2532,54 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
     };
+  }
+
+  // Serialize with the sIds of the groups holding a grant on this space. `groupIds` is not carried
+  // on `toJSON` (it would force the eager `group_permissions` include on every space load); the
+  // endpoints that expose it — the public API for backward compatibility, and the space-management
+  // UI — load it on demand via `listGroupIdsBySpaceModelId` and pass it here.
+  toJSONWithGroupIds(groupIds: string[]): SpaceTypeWithGroupIds {
+    return {
+      ...this.toJSON(),
+      groupIds,
+    };
+  }
+
+  // The sIds of the groups holding a grant on each of `spaces`, keyed by space model id. One query
+  // against `group_permissions` (the source of truth), so serializers can include `groupIds`
+  // without relying on the eagerly-loaded `this.groups`. Mirrors `toJSON`'s former output: every
+  // grant group (members, editors, provisioned, and the open-space global reader).
+  static async listGroupIdsBySpaceModelId(
+    auth: Authenticator,
+    { spaces }: { spaces: SpaceResource[] }
+  ): Promise<Map<ModelId, string[]>> {
+    const groupIdsBySpaceModelId = new Map<ModelId, string[]>();
+    if (spaces.length === 0) {
+      return groupIdsBySpaceModelId;
+    }
+
+    const grants = await GroupPermissionModel.findAll({
+      attributes: ["resourceId", "workspaceId", "groupId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        resourceType: "space",
+        resourceId: spaces.map((space) => space.id),
+      },
+    });
+
+    for (const grant of grants) {
+      const groupId = GroupResource.modelIdToSId({
+        id: grant.groupId,
+        workspaceId: grant.workspaceId,
+      });
+      const existing = groupIdsBySpaceModelId.get(grant.resourceId);
+      if (existing) {
+        existing.push(groupId);
+      } else {
+        groupIdsBySpaceModelId.set(grant.resourceId, [groupId]);
+      }
+    }
+
+    return groupIdsBySpaceModelId;
   }
 }

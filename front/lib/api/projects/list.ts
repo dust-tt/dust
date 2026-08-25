@@ -208,8 +208,13 @@ export async function enrichProjectsWithMetadata(
     metadatas.map((m) => [m.spaceId, m])
   );
 
+  const groupIdsBySpaceModelId = await SpaceResource.listGroupIdsBySpaceModelId(
+    auth,
+    { spaces }
+  );
+
   return spaces.map((space) => ({
-    ...space.toJSON(),
+    ...space.toJSONWithGroupIds(groupIdsBySpaceModelId.get(space.id) ?? []),
     description: metadataMap.get(space.id)?.description ?? null,
     isMember: space.isMember(auth),
     isEditor: space.canAdministrate(auth),
