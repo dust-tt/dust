@@ -51,6 +51,7 @@ export type AutomationTriggersBody = z.infer<
 export const UserAutomationTriggersFilterSchema = z.object({
   agentIds: z.array(z.string()).optional(),
   kinds: z.array(z.enum(["schedule", "webhook"])).optional(),
+  executionModes: z.array(z.enum(TRIGGER_EXECUTION_MODES)).optional(),
 });
 
 export type UserAutomationTriggersFilter = z.infer<

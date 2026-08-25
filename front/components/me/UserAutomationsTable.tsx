@@ -2,11 +2,13 @@ import { AutomationsFilterPanel } from "@app/components/workspace/analytics/auto
 import { AutomationsFilterSummary } from "@app/components/workspace/analytics/automations/AutomationsFilterSummary";
 import type { TriggerRowData as BaseTriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
 import { AutomationsTriggersRowsTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
+import type { PoolRowFields } from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
 import {
   agentColumn,
   creditsColumn,
   detailsColumn,
   nameColumn,
+  poolColumn,
   typeColumn,
 } from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
 import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
@@ -21,10 +23,12 @@ import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_perio
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import {
   useDeleteTrigger,
+  useUpdateTriggerExecutionMode,
   useUpdateTriggerStatus,
 } from "@app/lib/swr/agent_triggers";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { isManager } from "@app/types/user";
@@ -51,7 +55,7 @@ import { useCallback, useMemo, useState } from "react";
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const TRIGGERS_PAGE_SIZE = 10;
 
-interface TriggerRowData extends BaseTriggerRowData {
+interface TriggerRowData extends BaseTriggerRowData, PoolRowFields {
   isStatusPending: boolean;
   onToggleStatus: () => void;
   onDelete: () => void;
@@ -165,6 +169,7 @@ function buildColumns({
     agentColumn(),
     typeColumn(),
     creditsColumn(),
+    poolColumn(),
     {
       id: "status",
       header: "Enabled",
@@ -254,7 +259,13 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
 
   const sendNotification = useSendNotification();
   const updateTriggerStatus = useUpdateTriggerStatus({ workspaceId });
+  const updateTriggerExecutionMode = useUpdateTriggerExecutionMode({
+    workspaceId,
+  });
   const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
+  const [pendingExecutionModeIds, setPendingExecutionModeIds] = useState<
+    ReadonlySet<string>
+  >(new Set());
 
   const [triggerToDelete, setTriggerToDelete] =
     useState<AutomationTriggerRow | null>(null);
@@ -280,6 +291,27 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
       });
     },
     [mutateTriggers, updateTriggerStatus]
+  );
+
+  const handleSetExecutionMode = useCallback(
+    async (
+      trigger: AutomationTriggerRow,
+      executionMode: TriggerExecutionMode
+    ) => {
+      setPendingExecutionModeIds((ids) => new Set([...ids, trigger.triggerId]));
+      await updateTriggerExecutionMode({
+        agentConfigurationId: trigger.agent.agentId,
+        triggerId: trigger.triggerId,
+        executionMode,
+      });
+      await mutateTriggers();
+      setPendingExecutionModeIds((ids) => {
+        const next = new Set(ids);
+        next.delete(trigger.triggerId);
+        return next;
+      });
+    },
+    [mutateTriggers, updateTriggerExecutionMode]
   );
 
   const handleDelete = async () => {
@@ -314,12 +346,22 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
         isStatusPending: pendingIds.has(trigger.triggerId),
         onToggleStatus: () => void handleToggle(trigger),
         onDelete: () => setTriggerToDelete(trigger),
+        displayExecutionMode: trigger.executionMode,
+        isExecutionModePending: pendingExecutionModeIds.has(trigger.triggerId),
+        onSetExecutionMode: (executionMode: TriggerExecutionMode) =>
+          void handleSetExecutionMode(trigger, executionMode),
         onClick: () =>
           setExpandedRowId((current) =>
             current === trigger.triggerId ? null : trigger.triggerId
           ),
       })),
-    [triggers, pendingIds, handleToggle]
+    [
+      triggers,
+      pendingIds,
+      handleToggle,
+      pendingExecutionModeIds,
+      handleSetExecutionMode,
+    ]
   );
 
   const columns = useMemo(

@@ -91,6 +91,12 @@ describe("POST /api/w/:wId/me/analytics/automations/triggers", () => {
     expect(filtered.status).toBe(200);
     await expect(filtered.json()).resolves.toMatchObject({ totalCount: 1 });
 
+    const pooled = await postTriggersRequest(workspace.sId, {
+      filter: { executionModes: ["workspace_pool"] },
+    });
+    expect(pooled.status).toBe(200);
+    await expect(pooled.json()).resolves.toMatchObject({ totalCount: 0 });
+
     const invalid = await postTriggersRequest(workspace.sId, { offset: -1 });
     expect(invalid.status).toBe(400);
     await expect(invalid.json()).resolves.toMatchObject({

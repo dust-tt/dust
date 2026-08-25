@@ -3,6 +3,7 @@ import {
   getAutomationsFilterSummaries,
   toAutomationsScopeFilter,
   toAutomationsTriggersFilter,
+  toUserAutomationsTriggersFilter,
 } from "@app/components/workspace/analytics/automationsFilter";
 import { describe, expect, it } from "vitest";
 
@@ -111,6 +112,37 @@ describe("toAutomationsTriggersFilter", () => {
   it("only maps the selected categories, leaving the others out", () => {
     expect(toAutomationsTriggersFilter({ agent: [agentOption] })).toEqual({
       agentIds: ["agent-1"],
+    });
+  });
+});
+
+describe("toUserAutomationsTriggersFilter", () => {
+  it("keeps the agent, type and pool selections and drops the member one", () => {
+    expect(
+      toUserAutomationsTriggersFilter({
+        agent: [agentOption],
+        member: [memberOption],
+        type: [
+          {
+            id: "webhook",
+            name: "Webhook",
+            category: "type",
+            disabled: false,
+          },
+        ],
+        pool: [
+          {
+            id: "workspace_pool",
+            name: "Workspace",
+            category: "pool",
+            disabled: false,
+          },
+        ],
+      })
+    ).toEqual({
+      agentIds: ["agent-1"],
+      kinds: ["webhook"],
+      executionModes: ["workspace_pool"],
     });
   });
 });
