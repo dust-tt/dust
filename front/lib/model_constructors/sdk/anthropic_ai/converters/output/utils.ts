@@ -447,7 +447,7 @@ function apiErrorToErrorEvent(
   // Classify only this exact Anthropic diagnostic as a retryable server error.
   if (isAnthropicFileDownloadError(error)) {
     return buildErrorEvent({
-      errorSource: "unknown",
+      errorSource: "dust",
       metadata,
       type: "server_error",
       message: httpErrorMessage({
