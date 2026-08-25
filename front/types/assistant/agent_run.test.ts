@@ -53,6 +53,7 @@ describe("getAgentLoopDataWithAuth", () => {
     }
 
     expect(result.value.agentMessage.resolvedModel).toBeNull();
+    expect("content" in result.value.conversation).toBe(false);
     expect(result.value.modelInfo.endpoint.modelConfig.modelId).not.toBe(
       AUTO_MODEL_ID
     );

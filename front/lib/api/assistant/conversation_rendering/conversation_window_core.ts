@@ -18,7 +18,7 @@ import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type { AgentConfigurationWithoutModelType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   ModelConversationTypeMultiActions,
@@ -50,6 +50,29 @@ export const PREVIOUS_INTERACTIONS_TO_PRESERVE = 3;
 // otherwise leave pruning inactive until compaction has already fired. Applies to the whole
 // conversation, current interaction included. No separate, looser budget for it.
 export const PRUNING_TARGET_CONTEXT_UTILIZATION = 0.6;
+
+export type ConversationRenderingInput = {
+  leadingMessages?: ModelMessageTypeMultiActionsWithoutContentFragment[];
+  model: ModelConfigurationType;
+  prompt: string;
+  tools: string;
+  allowedTokenCount: number;
+  excludeActions?: boolean;
+  excludeImages?: boolean;
+  onMissingAction?: "inject-placeholder" | "skip";
+  enablePreviousInteractionsPruning?: boolean;
+  agentConfiguration?: AgentConfigurationWithoutModelType;
+  enabledSkills: EnabledSkill[];
+  // Opt-in StatsD emission. Callers have different budgets, so unnamed renders would skew the
+  // pruning dashboards.
+  metricsCaller?: ConversationRenderingMetricsCaller;
+};
+
+export type RenderConversationForModelResult = {
+  modelConversation: ModelConversationTypeMultiActions;
+  tokensUsed: number;
+  prunedContext: boolean;
+};
 
 /**
  * Replays the conversation chronologically so consumed tool results are pruned at stable
@@ -95,34 +118,10 @@ export async function renderConversationForModel(
     agentConfiguration,
     enabledSkills,
     metricsCaller,
-  }: {
-    leadingMessages?: ModelMessageTypeMultiActionsWithoutContentFragment[];
+  }: ConversationRenderingInput & {
     conversation: ConversationType;
-    model: ModelConfigurationType;
-    prompt: string;
-    tools: string;
-    allowedTokenCount: number;
-    excludeActions?: boolean;
-    excludeImages?: boolean;
-    onMissingAction?: "inject-placeholder" | "skip";
-    enablePreviousInteractionsPruning?: boolean;
-    agentConfiguration?: AgentLoopExecutionData["agentConfiguration"];
-    enabledSkills: EnabledSkill[];
-    // Opt-in StatsD emission. This function has callers with very different budgets (Dust app
-    // history injection, reinforcement batches, scripts) whose renders would skew the pruning
-    // dashboards, so only callers that name themselves are measured.
-    metricsCaller?: ConversationRenderingMetricsCaller;
   }
-): Promise<
-  Result<
-    {
-      modelConversation: ModelConversationTypeMultiActions;
-      tokensUsed: number;
-      prunedContext: boolean;
-    },
-    Error
-  >
-> {
+): Promise<Result<RenderConversationForModelResult, Error>> {
   const now = Date.now();
   let stepStart = now;
 

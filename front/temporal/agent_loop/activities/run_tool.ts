@@ -25,7 +25,7 @@ import type {
   AgentLoopExecutionData,
 } from "@app/types/assistant/agent_run";
 import {
-  getAgentLoopDataWithAuth,
+  getFullAgentLoopDataWithAuth,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -120,7 +120,7 @@ export async function runToolActivity(
           Promise.all([
             // Cache conversation fetches to reduce DB load when multiple tool activities run in parallel
             // during the same step. Each tool would otherwise fetch the same conversation independently.
-            getAgentLoopDataWithAuth(auth, {
+            getFullAgentLoopDataWithAuth(auth, {
               ...runAgentArgs,
               caching: {
                 useCachedGetConversation: true,

@@ -2,7 +2,6 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
-import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { StepContext } from "@app/lib/actions/types";
@@ -14,7 +13,6 @@ import {
 } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import {
   constructPromptMultiActions,
@@ -85,21 +83,18 @@ import {
 } from "@app/temporal/agent_loop/activities/common";
 import { METRICS } from "@app/temporal/agent_loop/activities/instrumentation";
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
+import type { AgentLoopContextProvider } from "@app/temporal/agent_loop/lib/agent_loop_context_provider/types";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
-import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import { makeRunModelLLMError } from "@app/temporal/agent_loop/lib/run_model_errors";
 import type {
   AgentActionsEvent,
   AgentConfigurationType,
 } from "@app/types/assistant/agent";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
-  ConversationType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
-import { isAgentMessageType } from "@app/types/assistant/conversation";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import { isTextContent } from "@app/types/assistant/generation";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
@@ -251,34 +246,6 @@ function getReplayedToolNames(
   return [...toolNames];
 }
 
-function getMissingActionCatcherFunctionCallIds(
-  conversation: ConversationType
-): Set<string> {
-  const functionCallIds = new Set<string>();
-  const missingActionCatcherMCPServerId = autoInternalMCPServerNameToSId({
-    name: "missing_action_catcher",
-    workspaceId: conversation.owner.id,
-  });
-
-  for (const messageVersions of conversation.content) {
-    for (const message of messageVersions) {
-      if (!isAgentMessageType(message)) {
-        continue;
-      }
-
-      for (const action of message.actions) {
-        // mcpServerId is serialized from the action's
-        // toolConfiguration.toolServerId.
-        if (action.mcpServerId === missingActionCatcherMCPServerId) {
-          functionCallIds.add(action.functionCallId);
-        }
-      }
-    }
-  }
-
-  return functionCallIds;
-}
-
 function buildReplayOnlyToolSpecification(
   name: string
 ): AgentActionSpecification {
@@ -379,7 +346,7 @@ export function buildSpecificationsWithReplayPlaceholders(
 export async function runModel(
   auth: Authenticator,
   {
-    runAgentData,
+    contextProvider,
     runIds,
     step,
     functionCallStepContentIds,
@@ -387,7 +354,7 @@ export async function runModel(
     activityTimeoutDeadlineMs,
     forceDisableToolUse = false,
   }: {
-    runAgentData: AgentLoopExecutionData;
+    contextProvider: AgentLoopContextProvider;
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
@@ -405,22 +372,12 @@ export async function runModel(
   // tool use disabled to force a final answer.
   retryWithoutTools?: boolean;
 } | null> {
-  const {
-    agentConfiguration,
-    conversation: originalConversation,
-    userMessage,
-    agentMessage: originalAgentMessage,
-  } = runAgentData;
-
-  const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
-    sliceConversationForAgentMessage(originalConversation, {
-      agentMessageId: originalAgentMessage.sId,
-      agentMessageVersion: originalAgentMessage.version,
-      step,
-    });
+  const runAgentData = contextProvider.runtimeData;
+  const { agentConfiguration, conversation, userMessage, agentMessage } =
+    runAgentData;
 
   // Compute the citations offset by summing citations allocated to all past actions for this message.
-  const citationsRefsOffset = originalAgentMessage.actions.reduce(
+  const citationsRefsOffset = agentMessage.actions.reduce(
     (total, action) => total + (action.citationsAllocated || 0),
     0
   );
@@ -689,8 +646,7 @@ export async function runModel(
     "render-conversation",
     () =>
       tracer.trace("renderConversationForModel", async () =>
-        renderConversationForModel(auth, {
-          conversation,
+        contextProvider.render({
           model: modelConfig,
           prompt: promptText,
           tools,
@@ -740,8 +696,9 @@ export async function runModel(
   const { specifications, missingReplayedToolNames } =
     buildSpecificationsWithReplayPlaceholders(baseSpecifications, {
       modelConversation: modelConversationRes.value.modelConversation,
-      missingActionCatcherFunctionCallIds:
-        getMissingActionCatcherFunctionCallIds(conversation),
+      missingActionCatcherFunctionCallIds: new Set(
+        modelConversationRes.value.missingActionCatcherFunctionCallIds
+      ),
     });
 
   if (missingReplayedToolNames.length > 0) {
