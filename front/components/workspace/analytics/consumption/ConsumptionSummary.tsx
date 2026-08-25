@@ -7,14 +7,7 @@ import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/cons
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { formatCredits } from "@app/lib/client/credits";
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
-import {
-  ArrowUpRight,
-  Button,
-  CardGrid,
-  Chip,
-  LoadingBlock,
-  ValueCard,
-} from "@dust-tt/sparkle";
+import { ArrowUpRight, Button, Chip, LoadingBlock } from "@dust-tt/sparkle";
 
 const TARGET_CHIP: Record<
   CreditUsageTarget,
@@ -93,33 +86,25 @@ export function ConsumptionSummaryView({
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
 }: ConsumptionSummaryViewProps) {
   const isAgentScoped = analyticsScope.kind === "agent";
+  const cardRowClassName = responsiveLayout
+    ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+    : "flex items-stretch gap-6";
+  const loadingCardClassName = responsiveLayout
+    ? "h-24 rounded-xl"
+    : "h-24 flex-1 rounded-xl";
 
   if (isOverviewLoading) {
     return (
       <div className="flex flex-col gap-4">
         {isAgentScoped && (
-          <CardGrid adaptColumns>
-            <LoadingBlock className="h-24 rounded-xl" />
-            <LoadingBlock className="h-24 rounded-xl" />
-          </CardGrid>
+          <div className={cardRowClassName}>
+            <LoadingBlock className={loadingCardClassName} />
+            <LoadingBlock className={loadingCardClassName} />
+          </div>
         )}
-        <div
-          className={
-            responsiveLayout
-              ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
-              : "flex items-stretch gap-6"
-          }
-        >
-          <LoadingBlock
-            className={
-              responsiveLayout ? "h-24 rounded-xl" : "h-24 flex-1 rounded-xl"
-            }
-          />
-          <LoadingBlock
-            className={
-              responsiveLayout ? "h-24 rounded-xl" : "h-24 flex-1 rounded-xl"
-            }
-          />
+        <div className={cardRowClassName}>
+          <LoadingBlock className={loadingCardClassName} />
+          <LoadingBlock className={loadingCardClassName} />
         </div>
       </div>
     );
@@ -174,34 +159,20 @@ export function ConsumptionSummaryView({
         </div>
       )}
       {isAgentScoped && (
-        <CardGrid adaptColumns>
-          <ValueCard
-            title="Active Users"
-            className="h-24 bg-panel-background"
-            content={
-              <div className="truncate text-2xl tabular-nums text-foreground">
-                {overview.members.active.toLocaleString()}
-              </div>
-            }
+        <div className={cardRowClassName}>
+          <SummaryCard
+            label="Active Users"
+            value={overview.members.active.toLocaleString()}
+            hint={null}
           />
-          <ValueCard
-            title="Messages / active user"
-            className="h-24 bg-panel-background"
-            content={
-              <div className="truncate text-2xl tabular-nums text-foreground">
-                {messagesPerActiveUser?.toLocaleString() ?? "—"}
-              </div>
-            }
+          <SummaryCard
+            label="Messages / active user"
+            value={messagesPerActiveUser?.toLocaleString() ?? "—"}
+            hint={null}
           />
-        </CardGrid>
+        </div>
       )}
-      <div
-        className={
-          responsiveLayout
-            ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
-            : "flex items-stretch gap-6"
-        }
-      >
+      <div className={cardRowClassName}>
         {isAgentScoped ? (
           <>
             <SummaryCard
