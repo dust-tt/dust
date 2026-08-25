@@ -12,8 +12,8 @@ import type {
   OAuthUseCase,
 } from "@app/types/oauth/lib";
 import {
-  isValidShopifyShopDomain,
-  normalizeShopifyShopDomain,
+  isValidShopifyStoreDomain,
+  normalizeShopifyStoreDomain,
 } from "@app/types/oauth/lib";
 import type { ParsedUrlQuery } from "querystring";
 
@@ -29,11 +29,11 @@ export function isValidShopifyCallback(
   clientSecret: string
 ): boolean {
   const hmac = getStringFromQuery(query, "hmac");
-  const shop = getStringFromQuery(query, "shop");
+  const storeDomain = getStringFromQuery(query, "shop");
   if (
     !hmac ||
     !/^[a-f0-9]{64}$/i.test(hmac) ||
-    !isValidShopifyShopDomain(shop)
+    !isValidShopifyStoreDomain(storeDomain)
   ) {
     return false;
   }
@@ -55,12 +55,14 @@ export function isValidShopifyCallback(
 
 export class ShopifyOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({ connection }: { connection: OAuthConnectionType }) {
-    const shop = normalizeShopifyShopDomain(connection.metadata.store_domain);
-    if (!shop) {
+    const storeDomain = normalizeShopifyStoreDomain(
+      connection.metadata.store_domain
+    );
+    if (!storeDomain) {
       throw new Error("Invalid Shopify store domain");
     }
 
-    const url = new URL(`https://${shop}/admin/oauth/authorize`);
+    const url = new URL(`https://${storeDomain}/admin/oauth/authorize`);
     url.searchParams.set("client_id", config.getOAuthShopifyClientId());
     url.searchParams.set("scope", SHOPIFY_SCOPES.join(","));
     url.searchParams.set("redirect_uri", finalizeUriForProvider("shopify"));
@@ -84,7 +86,7 @@ export class ShopifyOAuthProvider implements BaseOAuthStrategyProvider {
     return (
       useCase === "platform_actions" &&
       Object.keys(extraConfig).length === 1 &&
-      isValidShopifyShopDomain(extraConfig.store_domain)
+      isValidShopifyStoreDomain(extraConfig.store_domain)
     );
   }
 
@@ -97,7 +99,7 @@ export class ShopifyOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<ExtraConfigType> {
-    const shop = normalizeShopifyShopDomain(extraConfig.store_domain);
-    return shop ? { store_domain: shop } : extraConfig;
+    const storeDomain = normalizeShopifyStoreDomain(extraConfig.store_domain);
+    return storeDomain ? { store_domain: storeDomain } : extraConfig;
   }
 }

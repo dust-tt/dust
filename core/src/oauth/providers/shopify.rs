@@ -17,7 +17,7 @@ lazy_static! {
         env::var("OAUTH_SHOPIFY_CLIENT_ID").expect("OAUTH_SHOPIFY_CLIENT_ID must be set");
     static ref OAUTH_SHOPIFY_CLIENT_SECRET: String =
         env::var("OAUTH_SHOPIFY_CLIENT_SECRET").expect("OAUTH_SHOPIFY_CLIENT_SECRET must be set");
-    static ref SHOPIFY_SHOP_RE: Regex =
+    static ref SHOPIFY_STORE_DOMAIN_RE: Regex =
         Regex::new(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.myshopify\.com$").unwrap();
 }
 
@@ -28,8 +28,8 @@ impl ShopifyConnectionProvider {
         Self {}
     }
 
-    fn shop_domain<'a>(&self, connection: &'a Connection) -> Result<&'a str, ProviderError> {
-        let shop = connection.metadata()["store_domain"]
+    fn store_domain<'a>(&self, connection: &'a Connection) -> Result<&'a str, ProviderError> {
+        let store_domain = connection.metadata()["store_domain"]
             .as_str()
             .ok_or_else(|| {
                 ProviderError::InvalidMetadataError(
@@ -37,13 +37,13 @@ impl ShopifyConnectionProvider {
                 )
             })?;
 
-        if !SHOPIFY_SHOP_RE.is_match(shop) {
+        if !SHOPIFY_STORE_DOMAIN_RE.is_match(store_domain) {
             return Err(ProviderError::InvalidMetadataError(
                 "Shopify store domain format is invalid".to_string(),
             ));
         }
 
-        Ok(shop)
+        Ok(store_domain)
     }
 
     fn access_token_expiry(raw_json: &serde_json::Value) -> Result<u64, ProviderError> {
@@ -95,7 +95,7 @@ impl Provider for ShopifyConnectionProvider {
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
-        let shop = self.shop_domain(connection)?;
+        let store_domain = self.store_domain(connection)?;
         let params = [
             ("client_id", OAUTH_SHOPIFY_CLIENT_ID.as_str()),
             ("client_secret", OAUTH_SHOPIFY_CLIENT_SECRET.as_str()),
@@ -104,7 +104,9 @@ impl Provider for ShopifyConnectionProvider {
         ];
         let req = self
             .reqwest_client()
-            .post(format!("https://{shop}/admin/oauth/access_token"))
+            .post(format!(
+                "https://{store_domain}/admin/oauth/access_token"
+            ))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Accept", "application/json")
             .form(&params);
@@ -133,7 +135,7 @@ impl Provider for ShopifyConnectionProvider {
         connection: &Connection,
         _related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError> {
-        let shop = self.shop_domain(connection)?;
+        let store_domain = self.store_domain(connection)?;
         let refresh_token = connection
             .unseal_refresh_token()?
             .ok_or_else(|| anyhow!("Missing refresh token in Shopify connection"))?;
@@ -145,7 +147,9 @@ impl Provider for ShopifyConnectionProvider {
         ];
         let req = self
             .reqwest_client()
-            .post(format!("https://{shop}/admin/oauth/access_token"))
+            .post(format!(
+                "https://{store_domain}/admin/oauth/access_token"
+            ))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Accept", "application/json")
             .form(&params);

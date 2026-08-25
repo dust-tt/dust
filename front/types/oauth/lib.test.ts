@@ -1,25 +1,25 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  isValidShopifyShopDomain,
+  isValidShopifyStoreDomain,
   isValidSnowflakeAccount,
-  normalizeShopifyShopDomain,
+  normalizeShopifyStoreDomain,
 } from "./lib";
 
-describe("Shopify shop domain", () => {
+describe("Shopify store domain", () => {
   it("accepts and normalizes permanent myshopify.com domains", () => {
-    expect(isValidShopifyShopDomain("my-store.myshopify.com")).toBe(true);
-    expect(normalizeShopifyShopDomain(" MY-STORE.MYSHOPIFY.COM ")).toBe(
+    expect(isValidShopifyStoreDomain("my-store.myshopify.com")).toBe(true);
+    expect(normalizeShopifyStoreDomain(" MY-STORE.MYSHOPIFY.COM ")).toBe(
       "my-store.myshopify.com"
     );
   });
 
   it("rejects custom domains and invalid hostnames", () => {
-    expect(isValidShopifyShopDomain("shop.example.com")).toBe(false);
-    expect(isValidShopifyShopDomain("evil.myshopify.com.example.com")).toBe(
+    expect(isValidShopifyStoreDomain("shop.example.com")).toBe(false);
+    expect(isValidShopifyStoreDomain("evil.myshopify.com.example.com")).toBe(
       false
     );
-    expect(isValidShopifyShopDomain("https://my-store.myshopify.com")).toBe(
+    expect(isValidShopifyStoreDomain("https://my-store.myshopify.com")).toBe(
       false
     );
   });

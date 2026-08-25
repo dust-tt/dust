@@ -269,7 +269,7 @@ export function getProviderRequiredOAuthCredentialInputs({
             value: undefined,
             helpMessage:
               "Your store's permanent myshopify.com domain (for example, my-store.myshopify.com).",
-            validator: isValidShopifyShopDomain,
+            validator: isValidShopifyStoreDomain,
           },
         };
       }
@@ -565,20 +565,20 @@ export function isValidZendeskSubdomain(s: unknown): s is string {
   );
 }
 
-const SHOPIFY_SHOP_DOMAIN_REGEX =
+const SHOPIFY_STORE_DOMAIN_REGEX =
   /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.myshopify\.com$/;
 
-export function normalizeShopifyShopDomain(s: unknown): string | null {
+export function normalizeShopifyStoreDomain(s: unknown): string | null {
   if (typeof s !== "string") {
     return null;
   }
 
   const domain = s.trim().toLowerCase();
-  return SHOPIFY_SHOP_DOMAIN_REGEX.test(domain) ? domain : null;
+  return SHOPIFY_STORE_DOMAIN_REGEX.test(domain) ? domain : null;
 }
 
-export function isValidShopifyShopDomain(s: unknown): s is string {
-  return normalizeShopifyShopDomain(s) !== null;
+export function isValidShopifyStoreDomain(s: unknown): s is string {
+  return normalizeShopifyStoreDomain(s) !== null;
 }
 
 const ATLASSIAN_CLOUD_URL_REGEX =
