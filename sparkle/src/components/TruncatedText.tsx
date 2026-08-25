@@ -49,6 +49,12 @@ export const TruncatedText: React.FC<TruncatedTextProps> = ({
         `line-clamp-${lineClamp} cursor-pointer select-none`,
         className
       )}
+      // `-webkit-line-clamp` clips by line count, not pixels: a glyph's
+      // ascender/descender can render past the Nth line's box and peek
+      // through, especially at tight line-heights. `1lh` resolves to this
+      // element's own line-height, giving overflow a hard pixel ceiling to
+      // clip against regardless of glyph bleed.
+      style={{ maxHeight: `calc(1lh * ${lineClamp})` }}
       {...props}
     >
       {children}
