@@ -70,6 +70,7 @@ export interface UseConsumptionTopParams {
   filter?: ConsumptionScopeFilter;
   personal?: boolean;
   agentId?: string;
+  skillId?: string;
   sortOrder?: ConsumptionTopSortOrder;
   disabled?: boolean;
 }
@@ -206,6 +207,7 @@ export function useConsumptionTop({
   filter,
   personal,
   agentId,
+  skillId,
   sortOrder = "desc",
   disabled,
 }: UseConsumptionTopParams) {
@@ -213,6 +215,7 @@ export function useConsumptionTop({
     workspaceId,
     personal,
     agentId,
+    skillId,
     endpoint: CONSUMPTION_TOP_ENDPOINTS[dimension],
   });
   const body: ConsumptionTopBody = {

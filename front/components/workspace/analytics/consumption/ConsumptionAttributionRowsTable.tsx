@@ -111,6 +111,7 @@ export interface ConsumptionAttributionRowsTableProps {
   filter?: ConsumptionScopeFilter;
   personal?: boolean;
   agentId?: string;
+  skillId?: string;
   disabled?: boolean;
   onViewAll: (
     dimension: ConsumptionDimension,
@@ -139,6 +140,7 @@ export function ConsumptionAttributionRowsTableView({
   filter,
   personal,
   agentId,
+  skillId,
   disabled,
   onViewAll,
   expandedRowId,
@@ -265,6 +267,7 @@ export function ConsumptionAttributionRowsTableView({
                           filter={filter}
                           personal={personal}
                           agentId={agentId}
+                          skillId={skillId}
                           disabled={disabled}
                           onViewAll={onViewAll}
                         />

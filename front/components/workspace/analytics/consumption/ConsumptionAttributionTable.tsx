@@ -441,6 +441,7 @@ export interface ConsumptionAttributionRowsProps {
   filter?: ConsumptionScopeFilter;
   personal?: boolean;
   agentId?: string;
+  skillId?: string;
   disabled?: boolean;
   onAddFilter: (row: ConsumptionTopRow) => void;
   onRemoveFilter: (row: ConsumptionTopRow) => void;
@@ -520,6 +521,7 @@ export function ConsumptionAttributionRowsView({
   filter,
   personal,
   agentId,
+  skillId,
   disabled,
   onAddFilter,
   onRemoveFilter,
@@ -618,6 +620,7 @@ export function ConsumptionAttributionRowsView({
             filter={filter}
             personal={personal}
             agentId={agentId}
+            skillId={skillId}
             disabled={disabled}
             onViewAll={onViewAll}
             expandedRowId={expandedRowId}
@@ -656,6 +659,7 @@ export function ConsumptionAttributionRowsView({
               filter={filter}
               personal={personal}
               agentId={agentId}
+              skillId={skillId}
               disabled={disabled}
               onViewAll={onViewAll}
               expandedRowId={expandedRowId}
@@ -709,6 +713,7 @@ function WorkspaceConsumptionAttributionRows(
     filter: props.filter,
     personal: props.personal,
     agentId: props.agentId,
+    skillId: props.skillId,
     sortOrder: queryState.sortOrder,
     disabled: props.disabled,
   });
@@ -737,6 +742,7 @@ export interface ConsumptionAttributionTableProps {
   filter?: ConsumptionScopeFilter;
   personal?: boolean;
   agentId?: string;
+  skillId?: string;
   disabled?: boolean;
   onAddFilter: (row: ConsumptionTopRow) => void;
   onRemoveFilter: (row: ConsumptionTopRow) => void;
@@ -761,6 +767,7 @@ export function ConsumptionAttributionTableView({
   filter,
   personal,
   agentId,
+  skillId,
   disabled,
   onAddFilter,
   onRemoveFilter,
@@ -786,7 +793,8 @@ export function ConsumptionAttributionTableView({
   const visibleDimensions = CONSUMPTION_DIMENSIONS.filter(
     (tabDimension) =>
       (!personal || (tabDimension !== "user" && tabDimension !== "group")) &&
-      (!agentId || tabDimension !== "agent")
+      (!agentId || tabDimension !== "agent") &&
+      (!skillId || tabDimension !== "skill")
   );
 
   const exportBody: ConsumptionExportBody = {
@@ -800,7 +808,7 @@ export function ConsumptionAttributionTableView({
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-base font-semibold text-foreground">Attribution</h3>
-        {showExport && !personal && !agentId && (
+        {showExport && !personal && !agentId && !skillId && (
           <ConsumptionExportPanel
             workspaceId={workspaceId}
             exportBody={exportBody}
@@ -879,6 +887,7 @@ export function ConsumptionAttributionTableView({
                     filter={filter}
                     personal={personal}
                     agentId={agentId}
+                    skillId={skillId}
                     disabled={disabled}
                     onAddFilter={onAddFilter}
                     onRemoveFilter={onRemoveFilter}

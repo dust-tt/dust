@@ -34,6 +34,7 @@ export interface ConsumptionSummaryProps {
   usageLinkLabel?: string;
   personal?: boolean;
   agentId?: string;
+  skillId?: string;
   disabled?: boolean;
 }
 
@@ -44,6 +45,7 @@ export function ConsumptionSummary({
   usageLinkLabel = "Manage in Usage",
   personal,
   agentId,
+  skillId,
   disabled,
 }: ConsumptionSummaryProps) {
   const { overview, isOverviewLoading, isOverviewError } =
@@ -52,6 +54,7 @@ export function ConsumptionSummary({
       period: periodSelection,
       personal,
       agentId,
+      skillId,
       disabled,
     });
 
@@ -62,7 +65,7 @@ export function ConsumptionSummary({
       isOverviewError={Boolean(isOverviewError)}
       usageHref={usageHref}
       usageLinkLabel={usageLinkLabel}
-      personal={personal || agentId !== undefined}
+      personal={personal || agentId !== undefined || skillId !== undefined}
     />
   );
 }

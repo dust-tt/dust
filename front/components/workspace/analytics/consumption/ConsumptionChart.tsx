@@ -353,6 +353,7 @@ export interface ConsumptionChartProps {
   filter?: ConsumptionScopeFilter;
   personal?: boolean;
   agentId?: string;
+  skillId?: string;
   disabled?: boolean;
 }
 
@@ -363,6 +364,7 @@ function WorkspaceConsumptionDailyChart({
   filter,
   personal,
   agentId,
+  skillId,
   disabled,
 }: ConsumptionChartProps) {
   const { timeseries, isTimeseriesLoading, isTimeseriesError } =
@@ -375,6 +377,7 @@ function WorkspaceConsumptionDailyChart({
       filter,
       personal,
       agentId,
+      skillId,
       disabled,
     });
 
@@ -397,6 +400,7 @@ function WorkspaceConsumptionBurnUpChart({
   filter,
   personal,
   agentId,
+  skillId,
   disabled,
 }: WorkspaceConsumptionBurnUpChartProps) {
   const { overview } = useConsumptionOverview({
@@ -405,6 +409,7 @@ function WorkspaceConsumptionBurnUpChart({
     filter,
     personal,
     agentId,
+    skillId,
     disabled,
   });
   const isFiltered = Object.values(filter ?? {}).some(
@@ -427,6 +432,7 @@ function WorkspaceConsumptionBurnUpChart({
       filter,
       personal,
       agentId,
+      skillId,
       disabled,
     });
 
@@ -448,6 +454,7 @@ export function ConsumptionChart({
   filter,
   personal,
   agentId,
+  skillId,
   disabled,
 }: ConsumptionChartProps) {
   const [mode, setMode] = useState<ConsumptionTimeseriesMode>("daily");
@@ -476,6 +483,7 @@ export function ConsumptionChart({
           filter={filter}
           personal={personal}
           agentId={agentId}
+          skillId={skillId}
           disabled={disabled}
         />
       ) : (
@@ -486,6 +494,7 @@ export function ConsumptionChart({
           filter={filter}
           personal={personal}
           agentId={agentId}
+          skillId={skillId}
           disabled={disabled}
         />
       )}

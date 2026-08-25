@@ -52,6 +52,7 @@ export interface UseConsumptionFacetsParams {
   dimensions?: ConsumptionScopeDimension[];
   personal?: boolean;
   agentId?: string;
+  skillId?: string;
   disabled?: boolean;
 }
 
@@ -124,12 +125,14 @@ export function useConsumptionFacets({
   dimensions,
   personal,
   agentId,
+  skillId,
   disabled,
 }: UseConsumptionFacetsParams) {
   const url = getConsumptionAnalyticsUrl({
     workspaceId,
     personal,
     agentId,
+    skillId,
     endpoint: "facets",
   });
   const body: ConsumptionFacetsBody = {

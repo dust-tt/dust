@@ -2,11 +2,13 @@ import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
+import { SkillInsightsTab } from "@app/components/skills/SkillInsightsTab";
 import {
   getSkillAvatarIcon,
   hasRelations,
   isDustProvidedSkill,
 } from "@app/lib/skill";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type {
   SkillRelations,
@@ -14,6 +16,7 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
+  BarChart01,
   Button,
   ContentMessage,
   ContentMessageAction,
@@ -70,15 +73,21 @@ export function SkillDetailsContent({
   owner,
   user,
 }: SkillDetailsContentProps) {
-  const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
+  const [selectedTab, setSelectedTab] = useState<
+    "info" | "insights" | "editors"
+  >("info");
+  const { hasPermission } = useWorkspacePermissions();
 
   // The editors tab is shown to everyone (non-editors get a read-only list,
   // SkillEditorsTab hides the remove column for them), except for global
   // skills which have no editor group.
   const showEditorsTabs =
     skill.status !== "suggested" && !isDustProvidedSkill(skill);
+  const showInsightsTabs =
+    skill.status !== "suggested" &&
+    (skill.canAdministrate || hasPermission("publish", "skill"));
 
-  if (showEditorsTabs) {
+  if (showEditorsTabs || showInsightsTabs) {
     return (
       <Tabs value={selectedTab}>
         <TabsList border={false}>
@@ -88,16 +97,29 @@ export function SkillDetailsContent({
             icon={InfoCircle}
             onClick={() => setSelectedTab("info")}
           />
-          <TabsTrigger
-            value="editors"
-            label="Editors"
-            icon={Users01}
-            onClick={() => setSelectedTab("editors")}
-          />
+          {showInsightsTabs && (
+            <TabsTrigger
+              value="insights"
+              label="Insights"
+              icon={BarChart01}
+              onClick={() => setSelectedTab("insights")}
+            />
+          )}
+          {showEditorsTabs && (
+            <TabsTrigger
+              value="editors"
+              label="Editors"
+              icon={Users01}
+              onClick={() => setSelectedTab("editors")}
+            />
+          )}
         </TabsList>
         <div className="mt-4">
           <TabsContent value="info">
             <SkillInfoTab skill={skill} owner={owner} />
+          </TabsContent>
+          <TabsContent value="insights">
+            <SkillInsightsTab key={skill.sId} skill={skill} owner={owner} />
           </TabsContent>
           <TabsContent value="editors">
             {hasRelations(skill) && (

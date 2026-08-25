@@ -32,4 +32,16 @@ describe("getConsumptionAnalyticsUrl", () => {
       "/api/w/workspace-id/assistant/agent_configurations/agent-id/analytics/consumption/overview"
     );
   });
+
+  it("builds the skill-scoped consumption URL", () => {
+    expect(
+      getConsumptionAnalyticsUrl({
+        workspaceId: "workspace-id",
+        skillId: "skill-id",
+        endpoint: "overview",
+      })
+    ).toBe(
+      "/api/w/workspace-id/skills/skill-id/analytics/consumption/overview"
+    );
+  });
 });

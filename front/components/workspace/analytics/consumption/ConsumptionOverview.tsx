@@ -11,6 +11,7 @@ export interface ConsumptionOverviewProps {
   showError?: boolean;
   personal?: boolean;
   agentId?: string;
+  skillId?: string;
   disabled?: boolean;
 }
 
@@ -20,6 +21,7 @@ export function ConsumptionOverview({
   showError = false,
   personal,
   agentId,
+  skillId,
   disabled,
 }: ConsumptionOverviewProps) {
   const { overview, isOverviewLoading, isOverviewError } =
@@ -28,6 +30,7 @@ export function ConsumptionOverview({
       period: periodSelection,
       personal,
       agentId,
+      skillId,
       disabled,
     });
 
@@ -37,7 +40,7 @@ export function ConsumptionOverview({
       isOverviewLoading={isOverviewLoading}
       isOverviewError={Boolean(isOverviewError)}
       showError={showError}
-      personal={personal || agentId !== undefined}
+      personal={personal || agentId !== undefined || skillId !== undefined}
     />
   );
 }

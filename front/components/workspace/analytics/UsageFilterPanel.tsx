@@ -49,6 +49,7 @@ export interface UsageFilterPanelProps {
   filter: UsageFilter;
   personal?: boolean;
   agentId?: string;
+  skillId?: string;
   onFilterChange: (next: UsageFilter) => void;
   showMemberGroupFilter?: boolean;
   hiddenCategories?: readonly UsageFilterCategory[];
@@ -60,6 +61,7 @@ export function UsageFilterPanel({
   filter,
   personal,
   agentId,
+  skillId,
   onFilterChange,
   showMemberGroupFilter = true,
   hiddenCategories = NO_HIDDEN_USAGE_FILTER_CATEGORIES,
@@ -88,6 +90,7 @@ export function UsageFilterPanel({
     filter: state.draftScopeFilter,
     personal,
     agentId,
+    skillId,
     disabled: !state.isOpen,
   });
 

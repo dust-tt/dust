@@ -31,6 +31,7 @@ export interface UseConsumptionTimeseriesParams {
   filter?: ConsumptionScopeFilter;
   personal?: boolean;
   agentId?: string;
+  skillId?: string;
   disabled?: boolean;
 }
 
@@ -43,12 +44,14 @@ export function useConsumptionTimeseries({
   filter,
   personal,
   agentId,
+  skillId,
   disabled,
 }: UseConsumptionTimeseriesParams) {
   const url = getConsumptionAnalyticsUrl({
     workspaceId,
     personal,
     agentId,
+    skillId,
     endpoint: "timeseries",
   });
   const body: ConsumptionTimeseriesBody = {

@@ -8,19 +8,23 @@ export function getConsumptionAnalyticsUrl({
   workspaceId,
   personal = false,
   agentId,
+  skillId,
   endpoint,
 }: {
   workspaceId: string;
   personal?: boolean;
   agentId?: string;
+  skillId?: string;
   endpoint: string;
 }) {
   const analyticsPath =
     agentId !== undefined
       ? `assistant/agent_configurations/${agentId}/analytics`
-      : personal
-        ? "me/analytics"
-        : "analytics";
+      : skillId !== undefined
+        ? `skills/${skillId}/analytics`
+        : personal
+          ? "me/analytics"
+          : "analytics";
   return `/api/w/${workspaceId}/${analyticsPath}/consumption/${endpoint}`;
 }
 

@@ -173,6 +173,44 @@ describe("ConsumptionAttributionTable", () => {
     expect(screen.getByRole("tab", { name: "Groups" })).toBeInTheDocument();
   });
 
+  it("scopes attribution data to a skill and removes the Skills tab", () => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [],
+      totalCredits: 0,
+      totalCount: 0,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        skillId="skill-id"
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(mockUseConsumptionTop).toHaveBeenCalledWith(
+      expect.objectContaining({ skillId: "skill-id", dimension: "agent" })
+    );
+    expect(mockUseConsumptionExports).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: "Download raw data" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: "Skills" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Agents" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Members" })).toBeInTheDocument();
+  });
+
   it("caps the available pages and fetches the selected fixed-size page", async () => {
     const rows = Array.from({ length: 1_025 }, (_, index) => ({
       id: `agent-${index + 1}`,
