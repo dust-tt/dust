@@ -64,11 +64,9 @@ async function getReinforcementWorkspaceIds(): Promise<string[]> {
 // Per-workspace cron lifecycle
 // ---------------------------------------------------------------------------
 
-const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-
 /**
  * Launch a schedule for a single workspace.
- * Fires at regional midnight with a 2-hour jitter to spread load.
+ * Fires at regional midnight; the worker pool's activity slots bound the resulting load.
  */
 export async function startReinforcementWorkspaceSchedule({
   workspaceId,
@@ -95,7 +93,6 @@ export async function startReinforcementWorkspaceSchedule({
       spec: {
         calendars: [{ hour: 0, minute: 0 }],
         timezone,
-        jitter: TWO_HOURS_MS,
       },
     });
 
@@ -223,9 +220,10 @@ export async function ensureReinforcementWorkspaceSchedules(): Promise<{
     { concurrency: CONCURRENCY }
   );
 
-  // Migrate existing schedules that point at an outdated task queue: the task
-  // queue is baked into the schedule action at creation time, so a
-  // QUEUE_VERSION bump would otherwise strand them on the old queue forever.
+  // Migrate existing schedules that drifted from the code: the task queue and
+  // spec are baked into the schedule at creation time, so a QUEUE_VERSION bump
+  // would otherwise strand them on the old queue forever, and schedules created
+  // before the jitter removal would keep firing with a 2h jitter.
   const toCheck = [...runningWorkspaceIds].filter((id) =>
     reinforcedWorkspaceIds.has(id)
   );
@@ -236,21 +234,31 @@ export async function ensureReinforcementWorkspaceSchedules(): Promise<{
         makeWorkspaceWorkflowId(workspaceId)
       );
       const description = await handle.describe();
-      if (
-        description.action.type !== "startWorkflow" ||
-        description.action.taskQueue === QUEUE_NAME
-      ) {
+      if (description.action.type !== "startWorkflow") {
+        return null;
+      }
+      const hasOutdatedQueue = description.action.taskQueue !== QUEUE_NAME;
+      const hasJitter = (description.spec.jitter ?? 0) > 0;
+      if (!hasOutdatedQueue && !hasJitter) {
         return null;
       }
       logger.info(
-        { workspaceId, previousTaskQueue: description.action.taskQueue },
-        "[Reinforcement] Updating schedule to current task queue."
+        {
+          workspaceId,
+          previousTaskQueue: description.action.taskQueue,
+          previousJitterMs: description.spec.jitter,
+        },
+        "[Reinforcement] Updating schedule to current task queue and spec."
       );
       await handle.update((previous) => ({
         ...previous,
         action: {
           ...previous.action,
           taskQueue: QUEUE_NAME,
+        },
+        spec: {
+          ...previous.spec,
+          jitter: undefined,
         },
       }));
       return workspaceId;

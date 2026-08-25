@@ -317,7 +317,6 @@ export async function ensureReinforcementWorkspaceSchedulesWorkflow(): Promise<v
 
 /**
  * Workspace-level workflow (one per workspace, schedule-triggered).
- * The Temporal schedule applies a 2-hour jitter to spread load.
  *
  * Flow:
  * 1. Check allowed
