@@ -245,7 +245,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
   // Lists the rows of one flag name across every workspace, most recently created first. Names no
   // longer declared in WHITELISTABLE_FEATURES_CONFIG are returned too, so leftover rows stay
   // visible to the maintenance tooling.
-  static async listForAllWorkspacesByName(
+  static async dangerouslyListForAllWorkspacesByName(
     name: string,
     { limit }: { limit: number }
   ): Promise<FeatureFlagResource[]> {

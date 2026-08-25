@@ -86,7 +86,7 @@ export async function listWorkspacesForFeatureFlag(
   name: string
 ): Promise<GetPokeFeatureFlagWorkspacesResponseBody> {
   const [flags, globalFlags] = await Promise.all([
-    FeatureFlagResource.listForAllWorkspacesByName(name, {
+    FeatureFlagResource.dangerouslyListForAllWorkspacesByName(name, {
       limit: MAX_WORKSPACES_PER_FEATURE_FLAG,
     }),
     GlobalFeatureFlagResource.listAll(),
