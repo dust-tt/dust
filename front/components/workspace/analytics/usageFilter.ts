@@ -38,15 +38,15 @@ const AGENT_USAGE_FILTER_CATEGORIES = USAGE_FILTER_CATEGORIES.filter(
 
 export function getUsageFilterCategories({
   personal,
-  agent,
+  agentId,
 }: {
   personal?: boolean;
-  agent?: boolean;
+  agentId?: string | null;
 }): readonly UsageFilterCategory[] {
   if (personal) {
     return PERSONAL_USAGE_FILTER_CATEGORIES;
   }
-  return agent ? AGENT_USAGE_FILTER_CATEGORIES : USAGE_FILTER_CATEGORIES;
+  return agentId ? AGENT_USAGE_FILTER_CATEGORIES : USAGE_FILTER_CATEGORIES;
 }
 
 export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =

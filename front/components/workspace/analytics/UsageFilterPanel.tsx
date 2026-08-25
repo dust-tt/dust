@@ -63,7 +63,7 @@ export function UsageFilterPanel({
 }: UsageFilterPanelProps) {
   const categories = getUsageFilterCategories({
     personal,
-    agent: agentId !== undefined,
+    agentId,
   });
   const shouldShowMemberGroupFilter = showMemberGroupFilter && !personal;
   const state = useUsageFilterPanelState({
