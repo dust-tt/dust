@@ -5,6 +5,7 @@ import type {
   ErrorType,
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
  * Maps an HTTP status to fault domain and error type.
@@ -75,10 +76,19 @@ export function httpErrorMessage({
       return status !== undefined
         ? `Server error from ${provider} (${status}): ${detail}`
         : `Server error from ${provider}: ${detail}`;
-    default:
+    case "unknown_error":
+    case "input_configuration_error":
+    case "stop_error":
+    case "refusal_error":
+    case "model_output_error":
+    case "network_error":
+    case "timeout_error":
+    case "stream_error":
       return status !== undefined
         ? `Error from ${provider} (${status}): ${detail}`
         : `Error from ${provider}: ${detail}`;
+    default:
+      assertNever(type);
   }
 }
 
