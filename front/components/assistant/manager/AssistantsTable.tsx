@@ -40,6 +40,7 @@ import {
   Edit04,
   Eye,
   Label,
+  LoadingBlock,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -67,6 +68,144 @@ type RowData = {
   canArchive: boolean;
   canEdit: boolean;
 };
+
+const ASSISTANTS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
+  { length: 5 },
+  (_, index) => ({
+    sId: `assistant-skeleton-${index}`,
+    name: "",
+    description: "",
+    pictureUrl: "",
+    editors: [],
+    usage: undefined,
+    feedbacks: undefined,
+    lastUpdate: null,
+    scope: "hidden",
+    model: "",
+    modelIcon: undefined,
+    agentTags: [],
+    agentTagsAsString: "",
+    canArchive: false,
+    canEdit: false,
+  })
+);
+
+function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
+  switch (columnId) {
+    case "select":
+      return (
+        <DataTable.CellContent className="size-full items-center justify-center">
+          <LoadingBlock className="h-4 w-4 rounded-sm" />
+        </DataTable.CellContent>
+      );
+    case "name":
+      return (
+        <DataTable.CellContent>
+          <div className="flex flex-row items-center gap-2 py-3">
+            <LoadingBlock className="h-9 w-9 shrink-0 rounded-lg" />
+            <div className="flex min-w-0 grow flex-col">
+              <div className="flex h-5 items-center">
+                <LoadingBlock
+                  className={classNames(
+                    "h-3 max-w-full",
+                    ["w-32", "w-40", "w-28", "w-36", "w-44"][rowIndex]
+                  )}
+                />
+              </div>
+              <div className="flex h-5 items-center">
+                <LoadingBlock
+                  className={classNames(
+                    "h-3 max-w-full",
+                    ["w-56", "w-64", "w-48", "w-60", "w-52"][rowIndex]
+                  )}
+                />
+              </div>
+            </div>
+          </div>
+        </DataTable.CellContent>
+      );
+    case "model":
+      return (
+        <DataTable.CellContent>
+          <div className="flex items-center">
+            <LoadingBlock className="h-5 w-5 shrink-0 rounded-sm" />
+            <LoadingBlock
+              className={classNames(
+                "ml-2 hidden h-3 @xl:block",
+                ["w-20", "w-24", "w-16", "w-28", "w-20"][rowIndex]
+              )}
+            />
+          </div>
+        </DataTable.CellContent>
+      );
+    case "scope":
+      return (
+        <DataTable.CellContent>
+          <LoadingBlock
+            className={classNames(
+              "h-6 rounded-[9px]",
+              ["w-20", "w-24", "w-20", "w-24", "w-20"][rowIndex]
+            )}
+          />
+        </DataTable.CellContent>
+      );
+    case "editors":
+      return (
+        <DataTable.CellContent>
+          <div className="flex -space-x-2">
+            {Array.from({ length: (rowIndex % 3) + 1 }, (_, index) => (
+              <LoadingBlock
+                key={index}
+                className="h-7 w-7 rounded-full ring-2 ring-background"
+              />
+            ))}
+          </div>
+        </DataTable.CellContent>
+      );
+    case "agentTagsAsString":
+      return (
+        <DataTable.CellContent grow>
+          <LoadingBlock
+            className={classNames(
+              "h-3 max-w-full",
+              ["w-14", "w-20", "w-12", "w-24", "w-16"][rowIndex]
+            )}
+          />
+        </DataTable.CellContent>
+      );
+    case "Usage":
+    case "Feedback":
+      return (
+        <DataTable.CellContent>
+          <LoadingBlock
+            className={classNames(
+              "h-3",
+              ["w-7", "w-9", "w-6", "w-8", "w-10"][rowIndex]
+            )}
+          />
+        </DataTable.CellContent>
+      );
+    case "lastUpdate":
+      return (
+        <DataTable.CellContent>
+          <LoadingBlock
+            className={classNames(
+              "h-3",
+              ["w-14", "w-16", "w-20", "w-16", "w-14"][rowIndex]
+            )}
+          />
+        </DataTable.CellContent>
+      );
+    case "actions":
+      return (
+        <DataTable.CellContent>
+          <LoadingBlock className="h-8 w-8 rounded-xl" />
+        </DataTable.CellContent>
+      );
+    default:
+      return null;
+  }
+}
 
 const getTableColumns = ({
   owner,
@@ -396,6 +535,7 @@ type AssistantsTableProps = {
   selection: string[];
   setSelection: (selection: string[]) => void;
   mutateAgentConfigurations: () => Promise<any>;
+  isLoading?: boolean;
 };
 
 export function AssistantsTable({
@@ -408,6 +548,7 @@ export function AssistantsTable({
   selection,
   setSelection,
   mutateAgentConfigurations,
+  isLoading = false,
 }: AssistantsTableProps) {
   const { tags } = useTags({ owner });
   const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
@@ -420,6 +561,15 @@ export function AssistantsTable({
         mutateAgentConfigurations,
       }),
     [owner, sortedTags]
+  );
+  const skeletonColumns = useMemo(
+    () =>
+      columns.map((column) => ({
+        ...column,
+        cell: (info: CellContext<RowData, unknown>) =>
+          renderAssistantsTableSkeletonCell(info.column.id, info.row.index),
+      })),
+    [columns]
   );
 
   const { isDark } = useTheme();
@@ -619,47 +769,74 @@ export function AssistantsTable({
 
   return (
     <>
-      <DeleteAgentDialog
-        owner={owner}
-        isOpen={showDeleteDialog.open}
-        agentConfiguration={showDeleteDialog.agentConfiguration}
-        onClose={() => {
-          setShowDeleteDialog(({ agentConfiguration }) => ({
-            open: false,
-            agentConfiguration,
-          }));
-        }}
-      />
-      <AgentEditBar
-        owner={owner}
-        selectedAgents={selectedAgents}
-        tags={sortedTags}
-        mutateAgentConfigurations={mutateAgentConfigurations}
-        pageSelectedCount={pageSelectedCount}
-        totalCount={totalSelectableCount}
-        onClear={() => setSelection([])}
-        onSelectAll={() => setSelection(selectableRowIds)}
-      />
-      <div>
-        {rows.length > 0 && (
-          <DataTable
-            className="relative"
-            data={rows}
-            columns={columns}
-            pagination={pagination}
-            setPagination={setPagination}
-            getRowId={(row) => row.sId}
-            enableRowSelection={(row) => row.original.canArchive}
-            disableRowClickSelection
-            rowSelection={rowSelection}
-            setRowSelection={(newRowSelection) => {
-              setSelection(
-                Object.keys(newRowSelection).filter(
-                  (agentId) => newRowSelection[agentId]
-                )
-              );
+      {!isLoading && (
+        <>
+          <DeleteAgentDialog
+            owner={owner}
+            isOpen={showDeleteDialog.open}
+            agentConfiguration={showDeleteDialog.agentConfiguration}
+            onClose={() => {
+              setShowDeleteDialog(({ agentConfiguration }) => ({
+                open: false,
+                agentConfiguration,
+              }));
             }}
           />
+          <AgentEditBar
+            owner={owner}
+            selectedAgents={selectedAgents}
+            tags={sortedTags}
+            mutateAgentConfigurations={mutateAgentConfigurations}
+            pageSelectedCount={pageSelectedCount}
+            totalCount={totalSelectableCount}
+            onClear={() => setSelection([])}
+            onSelectAll={() => setSelection(selectableRowIds)}
+          />
+        </>
+      )}
+      <div
+        role={isLoading ? "status" : undefined}
+        aria-label={isLoading ? "Loading agents" : undefined}
+        aria-busy={isLoading || undefined}
+      >
+        {isLoading ? (
+          <div aria-hidden="true" className="flex flex-col gap-2">
+            <DataTable
+              className="relative"
+              data={ASSISTANTS_TABLE_SKELETON_ROWS}
+              columns={skeletonColumns}
+              enableRowSelection={() => false}
+              disableRowClickSelection
+              rowSelection={{}}
+              setRowSelection={() => undefined}
+            />
+            <div className="p-1">
+              <div className="flex h-8 items-center justify-end">
+                <LoadingBlock className="h-3 w-14" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          rows.length > 0 && (
+            <DataTable
+              className="relative"
+              data={rows}
+              columns={columns}
+              pagination={pagination}
+              setPagination={setPagination}
+              getRowId={(row) => row.sId}
+              enableRowSelection={(row) => row.original.canArchive}
+              disableRowClickSelection
+              rowSelection={rowSelection}
+              setRowSelection={(newRowSelection) => {
+                setSelection(
+                  Object.keys(newRowSelection).filter(
+                    (agentId) => newRowSelection[agentId]
+                  )
+                );
+              }}
+            />
+          )
         )}
       </div>
     </>
