@@ -190,6 +190,28 @@ def test_rendered_void_band_leaves_room_above_the_reference_decks():
     assert 0.44 < A.RENDERED_VOID_BAND < 0.51
 
 
+def test_split_sentence_reads_every_paragraph_not_just_the_box():
+    """A heading paragraph over a body paragraph in one box hides the cut: the
+    box still opens with a capital, so only the paragraphs see it."""
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    tb = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(4), Inches(3))
+    tf = tb.text_frame
+    tf.text = "70+ connectors"
+    tf.add_paragraph().text = "and MCP servers."
+    assert [t for _, t in A._split_sentence_markers(slide)] == ["and MCP servers."]
+
+
+def test_split_sentence_leaves_a_box_of_whole_sentences_alone():
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    tb = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(4), Inches(3))
+    tf = tb.text_frame
+    tf.text = "Company context"
+    tf.add_paragraph().text = "70+ connectors and MCP servers."
+    assert A._split_sentence_markers(slide) == []
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]
