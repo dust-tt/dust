@@ -135,6 +135,15 @@ app.patch(
                 "Some users have insufficient role privilege to be added to the space.",
             },
           });
+        case "invalid_group_kind":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Only provisioned and manual groups can be given access to a space.",
+            },
+          });
         case "system_or_global_group":
           return apiError(ctx, {
             status_code: 400,

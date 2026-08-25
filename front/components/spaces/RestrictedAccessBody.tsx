@@ -126,9 +126,7 @@ export function RestrictedAccessBody({
                 variant="outline"
                 isSelect
                 label={
-                  managementType === "manual"
-                    ? "Manual access"
-                    : "Provisioned group access"
+                  managementType === "manual" ? "Manual access" : "Group access"
                 }
               />
             </DropdownMenuTrigger>
@@ -140,7 +138,7 @@ export function RestrictedAccessBody({
                 }}
               />
               <DropdownMenuItem
-                label="Provisioned group access"
+                label="Group access"
                 onClick={() => {
                   void handleManagementTypeChange("group");
                 }}

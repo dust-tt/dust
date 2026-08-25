@@ -31,6 +31,8 @@ import { SPACE_EDITOR_GRANT_TYPE } from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
+  isManageableGroupKind,
+  MANAGEABLE_GROUP_KINDS,
   PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
   SPACE_GROUP_PREFIX,
@@ -977,6 +979,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         | "user_not_member"
         | "user_already_member"
         | "group_requirements_not_met"
+        | "invalid_group_kind"
         | "system_or_global_group"
         | "invalid_id"
       >
@@ -1174,15 +1177,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         const groupIds = params.groupIds;
         const editorGroupIds = params.editorGroupIds;
 
-        // Remove existing provisioned associations, read straight from group_vaults rather than
-        // `this.groups` (now sourced from group_permissions). Switching to manual mode drops the
-        // provisioned grants but leaves the group_vaults rows, so `this.groups` would not list them
-        // and the re-insert below would hit the (vaultId, groupId) unique constraint.
+        // Remove the associations of every group the user can pick here (provisioned and manual
+        // alike), read straight from group_vaults rather than `this.groups` (now sourced from
+        // group_permissions). Switching to manual mode drops those grants but leaves the
+        // group_vaults rows, so `this.groups` would not list them and the re-insert below would hit
+        // the (vaultId, groupId) unique constraint. Clearing the whole selectable set is also what
+        // makes deselecting a group actually remove its access.
         await GroupSpaceModel.destroy({
           where: {
             vaultId: this.id,
             workspaceId: auth.getNonNullableWorkspace().id,
-            groupKind: "provisioned",
+            groupKind: { [Op.in]: [...MANAGEABLE_GROUP_KINDS] },
           },
           transaction: t,
         });
@@ -1198,6 +1203,23 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           return selectedGroupsResult;
         }
         const selectedGroups = selectedGroupsResult.value;
+        // `fetchByIds` only checks that the caller can read the groups, not what they are. Without
+        // this, any readable group could be attached: the global group (which would silently make
+        // the space open), another space's regular_auto group (two of those on one space breaks
+        // `fetchManualMemberGroup`), or an agent/skill editors group.
+        const unsupportedGroups = selectedGroups.filter(
+          (group) => !isManageableGroupKind(group.kind)
+        );
+        if (unsupportedGroups.length > 0) {
+          // The associations were already dropped above, so re-sync before bailing out.
+          await syncGroupPermissions();
+          return new Err(
+            new DustError(
+              "invalid_group_kind",
+              "Only provisioned and manual groups can be given access to a space."
+            )
+          );
+        }
         for (const selectedGroup of selectedGroups) {
           await GroupSpaceMemberResource.makeNew(auth, {
             group: selectedGroup,
@@ -1225,6 +1247,20 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             selectedEditorGroups.length > 0,
             "Pods must have at least one editor group."
           );
+          // Same as above: `GroupSpaceEditorResource.makeNew` asserts on the kind, which would be a
+          // 500 rather than a rejected request.
+          const unsupportedEditorGroups = selectedEditorGroups.filter(
+            (group) => !isManageableGroupKind(group.kind)
+          );
+          if (unsupportedEditorGroups.length > 0) {
+            await syncGroupPermissions();
+            return new Err(
+              new DustError(
+                "invalid_group_kind",
+                "Only provisioned and manual groups can be given access to a space."
+              )
+            );
+          }
           for (const selectedEditorGroup of selectedEditorGroups) {
             await GroupSpaceEditorResource.makeNew(auth, {
               group: selectedEditorGroup,

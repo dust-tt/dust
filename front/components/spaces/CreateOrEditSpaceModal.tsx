@@ -15,6 +15,7 @@ import {
 } from "@app/lib/swr/spaces";
 import type { SpaceCategoryInfo } from "@app/types/api/spaces";
 import type { GroupType } from "@app/types/groups";
+import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { PlanType } from "@app/types/plan";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -93,7 +94,7 @@ export function CreateOrEditSpaceModal({
 
   const { groups } = useGroups({
     owner,
-    kinds: ["provisioned"],
+    kinds: MANAGEABLE_GROUP_KINDS,
     disabled: !scimEnabled,
   });
 

@@ -38,6 +38,7 @@ export type DustErrorCode =
   | "user_not_member"
   | "group_requirements_not_met"
   | "group_not_found"
+  | "invalid_group_kind"
   // MCP Server errors
   | "remote_server_not_found"
   | "internal_server_not_found"

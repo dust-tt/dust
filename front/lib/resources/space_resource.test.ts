@@ -2680,6 +2680,76 @@ describe("SpaceResource group_permissions enforcement", () => {
     expect(openSpace!.canWrite(nonMemberAuth)).toBe(false);
   });
 
+  it("enforces the table: group mode accepts a manual group, and deselecting it revokes access", async () => {
+    const manualGroup = await GroupFactory.regularManual(workspace, "Squad");
+    await GroupFactory.withMembers(adminAuth, manualGroup, [memberUser]);
+    const provisionedGroup = await GroupFactory.provisioned(workspace, "IdP");
+
+    const space = await SpaceFactory.regular(workspace);
+    const setRes = await space.updatePermissions(adminAuth, {
+      name: space.name,
+      isRestricted: true,
+      managementMode: "group",
+      groupIds: [manualGroup.sId, provisionedGroup.sId],
+      editorGroupIds: [],
+    });
+    expect(setRes.isOk()).toBe(true);
+
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      memberUser.sId,
+      workspace.sId
+    );
+    const withGroup = await SpaceResource.fetchById(adminAuth, space.sId);
+    expect(withGroup!.canRead(memberAuth)).toBe(true);
+    expect(withGroup!.canWrite(memberAuth)).toBe(true);
+
+    // Deselecting the manual group must drop its association, not just the provisioned ones.
+    const unsetRes = await space.updatePermissions(adminAuth, {
+      name: space.name,
+      isRestricted: true,
+      managementMode: "group",
+      groupIds: [provisionedGroup.sId],
+      editorGroupIds: [],
+    });
+    expect(unsetRes.isOk()).toBe(true);
+
+    const refreshedMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      memberUser.sId,
+      workspace.sId
+    );
+    const withoutGroup = await SpaceResource.fetchById(adminAuth, space.sId);
+    expect(withoutGroup!.canRead(refreshedMemberAuth)).toBe(false);
+    expect(withoutGroup!.canWrite(refreshedMemberAuth)).toBe(false);
+  });
+
+  it("rejects internal groups in group management mode", async () => {
+    const globalGroupRes =
+      await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+    expect(globalGroupRes.isOk()).toBe(true);
+    if (globalGroupRes.isErr()) {
+      return;
+    }
+
+    const space = await SpaceFactory.regular(workspace);
+    // The space's own auto-created member group is readable by an admin, so only a kind check keeps
+    // it — and the workspace global group — out of a group-managed selection.
+    const [autoGroup] = await space.fetchRegularAutoGroups(adminAuth);
+
+    for (const group of [globalGroupRes.value, autoGroup]) {
+      const res = await space.updatePermissions(adminAuth, {
+        name: space.name,
+        isRestricted: true,
+        managementMode: "group",
+        groupIds: [group.sId],
+        editorGroupIds: [],
+      });
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.code).toBe("invalid_group_kind");
+      }
+    }
+  });
+
   it("enforces the table: provisioned group member of an open space can write", async () => {
     const provisionedGroup = await GroupFactory.provisioned(
       workspace,
