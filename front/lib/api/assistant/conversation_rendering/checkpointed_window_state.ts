@@ -14,6 +14,7 @@ import type {
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { z } from "zod";
 
 type RegularMessageNode = {
@@ -166,12 +167,12 @@ const persistedMessageSchema = persistedMessageBaseSchema.superRefine(
         message: "Assistant message requires a name or function calls",
       });
     }
-  },
+  }
 );
 
 const messageWithTokensSchema = z.custom<MessageWithTokens>(
   (value) => persistedMessageSchema.safeParse(value).success,
-  "Invalid checkpointed model message",
+  "Invalid checkpointed model message"
 );
 const windowMessageNodeSchema = z.discriminatedUnion("kind", [
   z
@@ -188,7 +189,7 @@ const windowMessageNodeSchema = z.discriminatedUnion("kind", [
           const result = persistedMessageSchema.safeParse(value);
           return result.success && result.data.role === "function";
         },
-        "Invalid checkpointed tool result",
+        "Invalid checkpointed tool result"
       ),
       tokenSavings: z.number().int().nonnegative(),
       pruned: z.boolean(),
@@ -201,7 +202,7 @@ export const ConversationWindowStateSnapshotSchema = z
   .object({
     version: z.literal(CONVERSATION_WINDOW_STATE_SNAPSHOT_VERSION),
     interactions: z.array(
-      z.object({ messages: z.array(windowMessageNodeSchema) }).strict(),
+      z.object({ messages: z.array(windowMessageNodeSchema) }).strict()
     ),
     retainedTokens: z.number().int().nonnegative(),
     totalTokensBefore: z.number().int().nonnegative(),
@@ -218,34 +219,39 @@ export const ConversationWindowStateSnapshotSchema = z
     ] of snapshot.interactions.entries()) {
       for (const [messageIndex, node] of interaction.messages.entries()) {
         retainedTokens += node.message.tokenCount;
-        if (node.kind !== "tool_result") {
-          continue;
-        }
-
-        const path = [
-          "interactions",
-          interactionIndex,
-          "messages",
-          messageIndex,
-        ];
-        if (node.pruned) {
-          prunedTokens += node.tokenSavings;
-          if (node.phase !== "consumed" || node.tokenSavings === 0) {
-            context.addIssue({
-              code: "custom",
-              path,
-              message: "Pruned tool result has an inconsistent phase",
-            });
+        switch (node.kind) {
+          case "message":
+            break;
+          case "tool_result": {
+            const path = [
+              "interactions",
+              interactionIndex,
+              "messages",
+              messageIndex,
+            ];
+            if (node.pruned) {
+              prunedTokens += node.tokenSavings;
+              if (node.phase !== "consumed" || node.tokenSavings === 0) {
+                context.addIssue({
+                  code: "custom",
+                  path,
+                  message: "Pruned tool result has an inconsistent phase",
+                });
+              }
+            } else if (
+              (node.phase === "eligible" && node.tokenSavings === 0) ||
+              (node.phase === "consumed" && node.tokenSavings !== 0)
+            ) {
+              context.addIssue({
+                code: "custom",
+                path,
+                message: "Unpruned tool result has an inconsistent phase",
+              });
+            }
+            break;
           }
-        } else if (
-          (node.phase === "eligible" && node.tokenSavings === 0) ||
-          (node.phase === "consumed" && node.tokenSavings !== 0)
-        ) {
-          context.addIssue({
-            code: "custom",
-            path,
-            message: "Unpruned tool result has an inconsistent phase",
-          });
+          default:
+            assertNever(node);
         }
       }
     }
@@ -323,7 +329,7 @@ export class CheckpointedConversationWindowState {
       pruningBudget: number;
       budgetForInteractions: number;
       logDetails: Record<string, unknown>;
-    },
+    }
   ) {}
 
   static empty(options: {
@@ -340,7 +346,7 @@ export class CheckpointedConversationWindowState {
       pruningBudget: number;
       budgetForInteractions: number;
       logDetails: Record<string, unknown>;
-    },
+    }
   ): CheckpointedConversationWindowState {
     const state = new CheckpointedConversationWindowState(options);
     state.interactions = structuredClone(snapshot.interactions);
@@ -350,15 +356,30 @@ export class CheckpointedConversationWindowState {
 
     for (const interaction of state.interactions) {
       for (const node of interaction.messages) {
-        if (node.kind !== "tool_result") {
-          continue;
-        }
+        switch (node.kind) {
+          case "message":
+            break;
 
-        if (node.phase === "pending") {
-          state.pendingToolResults.push({ phase: "pending", node });
-        } else if (node.phase === "eligible") {
-          state.eligibleToolResults.push({ phase: "eligible", node });
-          state.eligibleToolResultTokenSavings += node.tokenSavings;
+          case "tool_result":
+            switch (node.phase) {
+              case "pending":
+                state.pendingToolResults.push({ phase: "pending", node });
+                break;
+
+              case "eligible":
+                state.eligibleToolResults.push({ phase: "eligible", node });
+                state.eligibleToolResultTokenSavings += node.tokenSavings;
+                break;
+
+              case "consumed":
+                break;
+
+              default:
+                assertNever(node.phase);
+            }
+            break;
+          default:
+            assertNever(node);
         }
       }
     }
@@ -404,7 +425,7 @@ export class CheckpointedConversationWindowState {
   }
 
   private appendMessages(
-    messages: InteractionWithTokens["messages"],
+    messages: InteractionWithTokens["messages"]
   ): WindowMessageNode[] {
     const nodes: WindowMessageNode[] = [];
     for (let messageIndex = 0; messageIndex < messages.length; messageIndex++) {
@@ -458,7 +479,7 @@ export class CheckpointedConversationWindowState {
           budgetForInteractions,
           tokensOverBudget: this.retainedTokens - budgetForInteractions,
         },
-        "Render Conversation V2: complete interaction history exceeds the nominal budget.",
+        "Render Conversation V2: complete interaction history exceeds the nominal budget."
       );
     }
 
@@ -476,13 +497,13 @@ export class CheckpointedConversationWindowState {
     const latestInteraction = this.interactions[this.interactions.length - 1];
 
     return latestInteraction.messages.some(
-      (node) => node.kind === "tool_result" && node.pruned,
+      (node) => node.kind === "tool_result" && node.pruned
     );
   }
 
   private isModelInputCheckpoint(
     message: MessageWithTokens,
-    nextMessage: MessageWithTokens | undefined,
+    nextMessage: MessageWithTokens | undefined
   ): boolean {
     const endsUserInput =
       message.role === "user" &&
