@@ -9,9 +9,7 @@ import type {
   AutomationTriggerRow,
   GetAutomationTriggersResponse,
 } from "@app/lib/api/analytics/automations/triggers";
-import type { PokeListTriggers } from "@app/lib/api/poke/triggers";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { PokeGetWebhookRequestsResponseBody } from "@app/types/api/poke/triggers";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -19,26 +17,6 @@ import type { Fetcher } from "swr";
 
 const pokeTriggersUrl = (workspaceId: string) =>
   `/api/poke/workspaces/${workspaceId}/triggers`;
-
-export function usePokeTriggers({
-  disabled,
-  owner,
-}: PokeConditionalFetchProps) {
-  const { fetcher } = useFetcher();
-  const triggersFetcher: Fetcher<PokeListTriggers> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    pokeTriggersUrl(owner.sId),
-    triggersFetcher,
-    { disabled }
-  );
-
-  return {
-    data: data?.triggers ?? [],
-    isLoading: !disabled && !error && !data,
-    isError: error,
-    mutate,
-  };
-}
 
 export function usePokeAutomationTriggers({
   owner,

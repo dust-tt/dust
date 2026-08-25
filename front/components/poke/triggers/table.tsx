@@ -1,21 +1,12 @@
-import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import {
-  makeColumnsForAutomationTriggers,
-  makeColumnsForTriggers,
-} from "@app/components/poke/triggers/columns";
+import { makeColumnsForAutomationTriggers } from "@app/components/poke/triggers/columns";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
-import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
-import {
-  usePokeAutomationTriggers,
-  usePokeTriggers,
-} from "@app/poke/swr/triggers";
+import { usePokeAutomationTriggers } from "@app/poke/swr/triggers";
 import type { TriggerKind } from "@app/types/assistant/triggers";
 import { isValidTriggerKind } from "@app/types/assistant/triggers";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
-import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { PaginationState } from "@tanstack/react-table";
 import { useState } from "react";
@@ -27,26 +18,11 @@ const TRIGGER_KIND_OPTIONS = (["schedule", "webhook"] as const).map((kind) => ({
   value: kind,
 }));
 
-const TRIGGER_PROVIDER_FACETS = [
-  {
-    columnId: "provider",
-    title: "Provider",
-    options: [
-      ...WEBHOOK_PROVIDERS.map((provider) => ({
-        label: asDisplayName(provider),
-        value: provider,
-      })),
-      { label: "Custom", value: "Custom" },
-    ],
-  },
-];
-
 interface TriggerDataTableProps {
   owner: LightWorkspaceType;
-  agentId?: string;
 }
 
-export function TriggerDataTable({ owner, agentId }: TriggerDataTableProps) {
+export function TriggerDataTable({ owner }: TriggerDataTableProps) {
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
   );
@@ -56,10 +32,6 @@ export function TriggerDataTable({ owner, agentId }: TriggerDataTableProps) {
   });
   const [search, setSearch] = useState("");
   const [selectedKinds, setSelectedKinds] = useState<TriggerKind[]>([]);
-  const { data: agentConfigurations } = usePokeAgentConfigurations({
-    owner,
-    disabled: agentId === undefined,
-  });
 
   const handlePeriodChange = (nextPeriod: ConsumptionPeriodSelection) => {
     setPeriod(nextPeriod);
@@ -90,39 +62,7 @@ export function TriggerDataTable({ owner, agentId }: TriggerDataTableProps) {
     offset: pagination.pageIndex * pagination.pageSize,
     search: search || undefined,
     filter: selectedKinds.length > 0 ? { kinds: selectedKinds } : undefined,
-    disabled: agentId !== undefined,
   });
-
-  if (agentId !== undefined) {
-    return (
-      <PokeDataTableConditionalFetch
-        header="Triggers"
-        owner={owner}
-        useSWRHook={usePokeTriggers}
-      >
-        {(agentTriggers, mutateAgentTriggers) => {
-          const filteredTriggers = agentTriggers.filter(
-            (trigger) => trigger.agentConfigurationId === agentId
-          );
-          const onAgentTriggerDeleted = async () => {
-            await mutateAgentTriggers();
-          };
-
-          return (
-            <PokeDataTable
-              columns={makeColumnsForTriggers(
-                owner,
-                agentConfigurations,
-                onAgentTriggerDeleted
-              )}
-              data={filteredTriggers}
-              facets={TRIGGER_PROVIDER_FACETS}
-            />
-          );
-        }}
-      </PokeDataTableConditionalFetch>
-    );
-  }
 
   const onTriggerDeleted = async () => {
     if (triggers.length === 1 && pagination.pageIndex > 0) {
