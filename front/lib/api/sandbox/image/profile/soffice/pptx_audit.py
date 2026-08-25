@@ -304,20 +304,30 @@ def _split_sentence_markers(slide: Slide) -> List[Tuple[int, str]]:
     servers." Each box then reads as a fragment, and no fit, overlap or contrast
     check sees anything wrong because every box contains exactly what it should.
     A box whose copy opens with a lowercase word is the tell; real headings and
-    real sentences do not.
+    real sentences do not. The same cut happens one level down, between a
+    heading paragraph and the body paragraph under it in a single box, where the
+    box as a whole still opens with a capital - so every paragraph after the
+    first is read on its own terms too.
     """
     out: List[Tuple[int, str]] = []
     for shape in slide.shapes:
         if not getattr(shape, "has_text_frame", False):
             continue
-        text = flatten_text(" ".join(_shape_text_iter(shape))).strip()
-        if len(text.split()) < 2:
-            continue
-        first = text.split()[0]
-        # Skip anything that is lowercase for its own reasons: a url, a handle,
-        # an identifier, a number.
-        if text[0].islower() and first.isalpha() and "." not in first:
-            out.append((shape.shape_id, text))
+        texts = [flatten_text(" ".join(_shape_text_iter(shape))).strip()]
+        paras = [
+            flatten_text(p.text or "").strip()
+            for p in shape.text_frame.paragraphs
+        ]
+        texts.extend(t for t in paras[1:] if t)
+        for text in texts:
+            if len(text.split()) < 2:
+                continue
+            first = text.split()[0]
+            # Skip anything that is lowercase for its own reasons: a url, a
+            # handle, an identifier, a number.
+            if text[0].islower() and first.isalpha() and "." not in first:
+                out.append((shape.shape_id, text))
+                break
     return out
 
 
