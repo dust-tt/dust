@@ -47,13 +47,18 @@ import {
   ScrollArea,
   XClose,
 } from "@dust-tt/sparkle";
-import type { Variants } from "framer-motion";
+import type { MotionProps, Variants } from "framer-motion";
 import { motion, useReducedMotion } from "framer-motion";
 import { useCallback, useContext, useEffect, useState } from "react";
 
 const GREETING_WORD_ENTER_Y_PX = 4;
 const GREETING_WORD_DURATION_SECONDS = 0.55;
 const GREETING_WORD_STAGGER_SECONDS = 0.07;
+
+const collapseRestingTransform: MotionProps["transformTemplate"] = (
+  { y },
+  generated
+) => (y ? generated : "none");
 
 const GREETING_VARIANTS = {
   hidden: {},
@@ -69,7 +74,7 @@ const GREETING_WORD_VARIANTS = {
     y: 0,
     transition: {
       duration: GREETING_WORD_DURATION_SECONDS,
-      ease: MOTION_EASINGS.emphasized,
+      ease: MOTION_EASINGS.enter,
     },
   },
 } satisfies Variants;
@@ -314,6 +319,7 @@ export function ConversationContainerVirtuoso({
                       key={`${index}-${word}`}
                       className="inline-block whitespace-pre"
                       variants={GREETING_WORD_VARIANTS}
+                      transformTemplate={collapseRestingTransform}
                     >
                       {index === 0 ? word : ` ${word}`}
                     </motion.span>
