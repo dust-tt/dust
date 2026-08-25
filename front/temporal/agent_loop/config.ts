@@ -92,6 +92,19 @@ export function getQueueForUserMessageOrigin(
 // for a Temporal retry (see shouldSurfaceModelError).
 export const RUN_MODEL_MAX_RETRIES = 5;
 
+// Attempts a single model of an auto stream gets before the message is moved to the next model of
+// that stream (see shouldFailOverModel). Deliberately lower than `RUN_MODEL_MAX_RETRIES`: spending
+// a full budget on a provider that is already failing costs the user latency for nothing when
+// another provider of the same tier is one activity restart away.
+export const RUN_MODEL_ATTEMPTS_BEFORE_FAILOVER = 2;
+
+// How many times a single model step may be moved to the next model of its stream. Each failover
+// restarts the activity, and no model of a stream ever gets more than
+// `RUN_MODEL_ATTEMPTS_BEFORE_FAILOVER` attempts — including the last one, which surfaces the error
+// rather than falling back to the larger `RUN_MODEL_MAX_RETRIES` budget — so this bounds an auto
+// stream at RUN_MODEL_ATTEMPTS_BEFORE_FAILOVER * (1 + MAX_MODEL_FAILOVERS) attempts in total.
+export const MAX_MODEL_FAILOVERS = 2;
+
 // Leave room for our code to surface a retryable agent error before Temporal enforces StartToClose.
 export const RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS = 1 * 60 * 1000;
 

@@ -12,14 +12,17 @@ import type * as finalizeActivities from "@app/temporal/agent_loop/activities/fi
 import type * as finalizeSandboxChildToolActivities from "@app/temporal/agent_loop/activities/finalize_sandbox_child_tool";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
+import type { RunModelAndCreateActionsResult } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
 import {
+  MAX_MODEL_FAILOVERS,
   MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
   TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
 } from "@app/temporal/agent_loop/config";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { waitForAllPromises } from "@app/temporal/agent_loop/lib/wait_for_all_promises";
 import {
+  isModelFailoverError,
   isRunModelLLMUnresponsiveError,
   isTerminalRunModelTimeout,
 } from "@app/temporal/agent_loop/lib/workflow_failures";
@@ -473,14 +476,39 @@ async function executeStepIteration({
 }> {
   deprecatePatch("wait-for-model-activity-before-finalization");
 
-  const result = await runModelAndCreateActionsActivity({
-    authType,
-    checkForResume: currentStep === startStep, // Only run resume the first time.
-    runAgentArgs: agentLoopArgs,
-    runIds,
-    step: currentStep,
-    forceDisableToolUse,
-  });
+  // On an auto stream, a provider-side error that survives the activity's retries moves the
+  // message to the next model of its stream and fails the activity with a failover marker. Temporal
+  // resets the attempt counter per activity, so restarting the activity here is what gives the new
+  // model a full retry budget of its own. The activity enforces `MAX_MODEL_FAILOVERS` (it owns the
+  // error published to the user once the budget is spent); the same bound is applied here so a
+  // misbehaving activity cannot loop the workflow.
+  let result: RunModelAndCreateActionsResult | null = null;
+  for (
+    let modelFailoverCount = 0;
+    modelFailoverCount <= MAX_MODEL_FAILOVERS;
+    modelFailoverCount++
+  ) {
+    try {
+      result = await runModelAndCreateActionsActivity({
+        authType,
+        checkForResume: currentStep === startStep, // Only run resume the first time.
+        runAgentArgs: agentLoopArgs,
+        runIds,
+        step: currentStep,
+        forceDisableToolUse,
+        modelFailoverCount,
+      });
+      break;
+    } catch (err) {
+      if (
+        !patched("auto-stream-model-failover") ||
+        !isModelFailoverError(err) ||
+        modelFailoverCount === MAX_MODEL_FAILOVERS
+      ) {
+        throw err;
+      }
+    }
+  }
 
   if (!result) {
     // Error occurred — no runId to capture.

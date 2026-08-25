@@ -8,7 +8,10 @@ import {
   TimeoutType,
 } from "@temporalio/common";
 
-import { isRunModelLLMUnresponsiveFailureType } from "./run_model_errors";
+import {
+  isModelFailoverFailureType,
+  isRunModelLLMUnresponsiveFailureType,
+} from "./run_model_errors";
 
 export const RUN_MODEL_ACTIVITY_NAME = "runModelAndCreateActionsActivity";
 
@@ -84,6 +87,49 @@ function isLLMUnresponsiveProtoFailure(failure: ProtoFailure): boolean {
 
   if (failure.cause) {
     return isLLMUnresponsiveProtoFailure(failure.cause);
+  }
+
+  return false;
+}
+
+// The model activity moved an auto-stream message to the next model of its stream and wants the
+// workflow to restart the step on it. Walks the cause chain like
+// `isRunModelLLMUnresponsiveError`: the activity failure the workflow sees wraps the application
+// failure the activity threw.
+export function isModelFailoverError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  if (
+    error instanceof ApplicationFailure &&
+    isModelFailoverFailureType(error.type)
+  ) {
+    return true;
+  }
+
+  if (
+    error instanceof TemporalFailure &&
+    error.failure &&
+    isModelFailoverProtoFailure(error.failure)
+  ) {
+    return true;
+  }
+
+  if (error.cause instanceof Error) {
+    return isModelFailoverError(error.cause);
+  }
+
+  return false;
+}
+
+function isModelFailoverProtoFailure(failure: ProtoFailure): boolean {
+  if (isModelFailoverFailureType(failure.applicationFailureInfo?.type)) {
+    return true;
+  }
+
+  if (failure.cause) {
+    return isModelFailoverProtoFailure(failure.cause);
   }
 
   return false;

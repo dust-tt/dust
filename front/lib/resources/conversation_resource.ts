@@ -898,6 +898,49 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  static async updateAgentMessageResolvedModel(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      agentConfigurationId,
+      conversationModelId,
+      resolvedModel,
+      streamId,
+    }: {
+      agentMessageModelId: ModelId;
+      agentConfigurationId: string;
+      conversationModelId: ModelId;
+      resolvedModel: ResolvedRequestedModel;
+      streamId: ModelStreamIdType;
+    }
+  ): Promise<void> {
+    // `modelResolutionMethod` is intentionally left untouched: a stream message that fails over to
+    // another model is still an `auto` message, and tiering, pricing and analytics all read the
+    // resolution method.
+    await AgentMessageModel.update(
+      {
+        resolvedProviderId: resolvedModel.providerId,
+        resolvedModelId: resolvedModel.modelId,
+        resolvedReasoningEffort: resolvedModel.reasoningEffort,
+      },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+
+    // Keep the conversation pointing at the model the message actually ends up on, so the next
+    // message starts where this one recovered to rather than back at the candidate that failed.
+    await this.recordStreamModelResolution(auth, {
+      agentConfigurationId,
+      conversationModelId,
+      resolvedModel,
+      streamId,
+    });
+  }
+
   /**
    * Records the model an (agent, stream) pair of this conversation just resolved to.
    *

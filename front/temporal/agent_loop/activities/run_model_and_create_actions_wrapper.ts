@@ -75,6 +75,7 @@ export async function runModelAndCreateActionsActivity({
   runIds,
   step,
   forceDisableToolUse = false,
+  modelFailoverCount = 0,
 }: {
   authType: AuthenticatorType;
   checkForResume?: boolean;
@@ -82,6 +83,8 @@ export async function runModelAndCreateActionsActivity({
   runIds: string[];
   step: number;
   forceDisableToolUse?: boolean;
+  // How many times the workflow already restarted this step on the next model of its stream.
+  modelFailoverCount?: number;
 }): Promise<RunModelAndCreateActionsResult | null> {
   // The pre-stream setup (agent data loading, MCP tools listing, conversation rendering) can
   // stall past the heartbeat timeout, e.g. on a hung MCP server's tools/list call: heartbeat
@@ -98,6 +101,7 @@ export async function runModelAndCreateActionsActivity({
           runIds,
           step,
           forceDisableToolUse,
+          modelFailoverCount,
         })
       ),
     {
@@ -114,6 +118,7 @@ async function _runModelAndCreateActionsActivity({
   runIds,
   step,
   forceDisableToolUse,
+  modelFailoverCount,
 }: {
   authType: AuthenticatorType;
   checkForResume: boolean;
@@ -121,6 +126,7 @@ async function _runModelAndCreateActionsActivity({
   runIds: string[];
   step: number;
   forceDisableToolUse: boolean;
+  modelFailoverCount: number;
 }): Promise<RunModelAndCreateActionsResult | null> {
   const activityTimeoutDeadlineMs = getActivityTimeoutDeadlineMs();
   const durationRecorder = DurationRecorder.create([]);
@@ -273,6 +279,7 @@ async function _runModelAndCreateActionsActivity({
     durationRecorder,
     activityTimeoutDeadlineMs,
     forceDisableToolUse,
+    modelFailoverCount,
   });
 
   if (!modelResult) {

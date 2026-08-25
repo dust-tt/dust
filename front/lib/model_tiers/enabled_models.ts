@@ -165,12 +165,23 @@ function isSameCandidate(
 }
 
 // Walks a stream's ordered candidate pool and picks the first one available
-// or a fallback large model
+// or a fallback large model. `afterModel` restricts the walk to the candidates after.
 export function resolveStreamModel(
   models: EnabledModelConfigurationType[],
-  streamId: ModelStreamIdType
+  streamId: ModelStreamIdType,
+  { afterModel }: { afterModel?: ResolvedRequestedModel } = {}
 ): StreamResolutionType {
-  for (const candidate of MODEL_STREAMS[streamId]) {
+  const pool = MODEL_STREAMS[streamId];
+
+  let candidates = pool;
+  if (afterModel) {
+    const currentIndex = pool.findIndex((candidate) =>
+      isSameCandidate(candidate, afterModel)
+    );
+    candidates = currentIndex === -1 ? [] : pool.slice(currentIndex + 1);
+  }
+
+  for (const candidate of candidates) {
     const model = models.find(
       (m) =>
         m.isSelectable &&

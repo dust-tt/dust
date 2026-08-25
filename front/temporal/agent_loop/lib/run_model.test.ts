@@ -2,11 +2,16 @@ import { RETRY_ON_INTERRUPT_MAX_ATTEMPTS } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp_schemas";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
+import {
+  MAX_MODEL_FAILOVERS,
+  RUN_MODEL_ATTEMPTS_BEFORE_FAILOVER,
+  RUN_MODEL_MAX_RETRIES,
+} from "@app/temporal/agent_loop/config";
 import {
   buildBaseSpecifications,
   buildSpecificationsWithReplayPlaceholders,
   buildToolDefinitionsForTokenCount,
+  shouldFailOverModel,
   shouldSurfaceModelError,
 } from "@app/temporal/agent_loop/lib/run_model";
 import type {
@@ -652,5 +657,53 @@ describe("shouldSurfaceModelError", () => {
     expect(shouldSurfaceModelError({ isRetryable: false, attempt: 1 })).toBe(
       true
     );
+  });
+});
+
+describe("shouldFailOverModel", () => {
+  it("gives the model another attempt below the failover threshold", () => {
+    expect(
+      shouldFailOverModel({
+        isRetryable: true,
+        attempt: RUN_MODEL_ATTEMPTS_BEFORE_FAILOVER - 1,
+      })
+    ).toBe(false);
+  });
+
+  it("fails over once the model has had its attempts", () => {
+    expect(
+      shouldFailOverModel({
+        isRetryable: true,
+        attempt: RUN_MODEL_ATTEMPTS_BEFORE_FAILOVER,
+      })
+    ).toBe(true);
+  });
+
+  it("fails over on a non-retryable error immediately", () => {
+    expect(shouldFailOverModel({ isRetryable: false, attempt: 1 })).toBe(true);
+  });
+
+  it("fails over well before the retry budget the pinned-model path uses", () => {
+    // The whole point of the threshold: a stream moves on while `shouldSurfaceModelError` would
+    // still be handing the same failing provider more attempts.
+    expect(RUN_MODEL_ATTEMPTS_BEFORE_FAILOVER).toBeLessThan(
+      RUN_MODEL_MAX_RETRIES
+    );
+    expect(
+      shouldSurfaceModelError({
+        isRetryable: true,
+        attempt: RUN_MODEL_ATTEMPTS_BEFORE_FAILOVER,
+      })
+    ).toBe(false);
+  });
+
+  it("bounds an auto stream well below the pinned-model budget", () => {
+    // Every model of the stream is capped at the same threshold, including the last one, which
+    // surfaces the error rather than falling back to `RUN_MODEL_MAX_RETRIES`.
+    const streamAttempts =
+      RUN_MODEL_ATTEMPTS_BEFORE_FAILOVER * (1 + MAX_MODEL_FAILOVERS);
+
+    expect(streamAttempts).toBe(6);
+    expect(streamAttempts).toBeLessThan(RETRY_ON_INTERRUPT_MAX_ATTEMPTS);
   });
 });

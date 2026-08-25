@@ -45,6 +45,7 @@ import {
 import { getStreamLLM } from "@app/lib/api/llm";
 import { isFreeUsageBlocked } from "@app/lib/api/llm/free_usage";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
+import type { LLMErrorType } from "@app/lib/api/llm/types/errors";
 import {
   getByokUserFacingLLMErrorMessage,
   getUserFacingLLMErrorMessage,
@@ -65,11 +66,16 @@ import {
   parseAnthropicToolSearchBlock,
   TOOL_SEARCH_SERVER_TOOL_NAMES,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
+import type { ErrorSource } from "@app/lib/model_constructors/types/output/events";
 import {
   isToolDeferred,
   isToolSearchEnabledForModel,
 } from "@app/lib/model_constructors/types/tool_search";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
+import {
+  getEnabledModelsForAuth,
+  resolveStreamModel,
+} from "@app/lib/model_tiers/enabled_models";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -77,6 +83,7 @@ import { ProviderCredentialResource } from "@app/lib/resources/provider_credenti
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import {
@@ -84,10 +91,17 @@ import {
   updateResourceAndPublishEvent,
 } from "@app/temporal/agent_loop/activities/common";
 import { METRICS } from "@app/temporal/agent_loop/activities/instrumentation";
-import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
+import {
+  MAX_MODEL_FAILOVERS,
+  RUN_MODEL_ATTEMPTS_BEFORE_FAILOVER,
+  RUN_MODEL_MAX_RETRIES,
+} from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
-import { makeRunModelLLMError } from "@app/temporal/agent_loop/lib/run_model_errors";
+import {
+  makeModelFailoverError,
+  makeRunModelLLMError,
+} from "@app/temporal/agent_loop/lib/run_model_errors";
 import type {
   AgentActionsEvent,
   AgentConfigurationType,
@@ -102,7 +116,13 @@ import type {
 import { isAgentMessageType } from "@app/types/assistant/conversation";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import { isTextContent } from "@app/types/assistant/generation";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
+import type {
+  ModelConfigurationType,
+  ReasoningEffort,
+  ResolvedRequestedModel,
+} from "@app/types/assistant/models/types";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -143,6 +163,20 @@ export function shouldSurfaceModelError({
   attempt: number;
 }): boolean {
   return !isRetryable || attempt >= RUN_MODEL_MAX_RETRIES;
+}
+
+// A provider-side error on an auto stream does not spend the whole `RUN_MODEL_MAX_RETRIES` budget
+// on one model: after `RUN_MODEL_ATTEMPTS_BEFORE_FAILOVER` attempts the message moves to the next
+// model of the stream instead. An error that is not retryable at all has no attempts to spend, so
+// it moves on the first one. Exported for tests.
+export function shouldFailOverModel({
+  isRetryable,
+  attempt,
+}: {
+  isRetryable: boolean;
+  attempt: number;
+}): boolean {
+  return !isRetryable || attempt >= RUN_MODEL_ATTEMPTS_BEFORE_FAILOVER;
 }
 
 // Builds the JSON blob whose token count estimates how many tokens the tool
@@ -374,6 +408,149 @@ export function buildSpecificationsWithReplayPlaceholders(
   };
 }
 
+// Why a model step did — or did not — move to the next model of its stream.
+type ModelFailoverOutcome =
+  // The message now points at the next model of its stream: the step must be restarted on it.
+  | "failed_over"
+  // Eligible to fail over, but the stream has nowhere left to go. The error must be surfaced now:
+  // every attempt left would go back to the provider that just failed.
+  | "exhausted"
+  // Not an auto-stream provider-attributed failure. The normal retry budget applies, untouched.
+  | "not_eligible";
+
+// Moves an auto-stream agent message to the next model of its stream once the current model has had
+// its `RUN_MODEL_ATTEMPTS_BEFORE_FAILOVER` attempts.
+//
+// The new model is persisted on the agent message: the model activity re-reads it from the database
+// on every run (the run-model path does not use `ConversationCaching`, only the tool path does), so
+// restarting the activity is all it takes for the step to run on it. The resolution method stays
+// the stream id — the message is still an `auto` message, and tiering, pricing and analytics all
+// read that.
+async function failOverToNextStreamModel(
+  auth: Authenticator,
+  {
+    agentMessage,
+    conversation,
+    errorSource,
+    errorType,
+    localLogger,
+    modelConfig,
+    modelFailoverCount,
+    reasoningEffort,
+  }: {
+    agentMessage: AgentMessageType;
+    conversation: ConversationType;
+    errorSource: ErrorSource;
+    // Reported only: eligibility is decided on `errorSource`, not on the error type.
+    errorType: LLMErrorType;
+    localLogger: Logger;
+    modelConfig: ModelConfigurationType;
+    modelFailoverCount: number;
+    reasoningEffort: ReasoningEffort | undefined;
+  }
+): Promise<ModelFailoverOutcome> {
+  const { modelResolutionMethod } = agentMessage;
+
+  // The three `not_eligible` guards below decide whether this message plays by the stream rules at
+  // all. They must stay distinct from `exhausted`: an ineligible message keeps the full
+  // `RUN_MODEL_MAX_RETRIES` budget, while an exhausted stream gives up right away.
+  //
+  // Only auto streams fail over: a user- or agent-pinned model is a choice we must not silently
+  // swap. `modelResolutionMethod` holds the stream id exactly when the model came from a stream.
+  if (!modelResolutionMethod || !isModelStreamId(modelResolutionMethod)) {
+    return "not_eligible";
+  }
+
+  // Only failures whose fault domain is the provider: the request was well-formed, so another
+  // provider has a real chance of answering it. Errors attributed to us (a malformed request, an
+  // oversized context, bad credentials, a refusal, our own stream time budget) are excluded —
+  // spending another model on those just burns it too.
+  if (errorSource !== "provider") {
+    return "not_eligible";
+  }
+
+  const featureFlags = await getFeatureFlags(auth);
+  if (!featureFlags.includes("auto_stream_model_routing")) {
+    return "not_eligible";
+  }
+
+  if (modelFailoverCount >= MAX_MODEL_FAILOVERS) {
+    localLogger.warn(
+      {
+        errorSource,
+        errorType,
+        modelFailoverCount,
+        streamId: modelResolutionMethod,
+      },
+      "Model failover budget exhausted, surfacing the provider error."
+    );
+    return "exhausted";
+  }
+
+  // The model that just failed, as resolved for this run: the walk resumes after it, so a message
+  // that already failed over (or started on a sticky model) keeps moving forward in the pool
+  // instead of re-picking candidates that were already ruled out.
+  const failedModel: ResolvedRequestedModel = {
+    providerId: modelConfig.providerId,
+    modelId: modelConfig.modelId,
+    reasoningEffort: reasoningEffort ?? modelConfig.defaultReasoningEffort,
+  };
+
+  const models = await getEnabledModelsForAuth(auth);
+  const resolution = resolveStreamModel(models, modelResolutionMethod, {
+    afterModel: failedModel,
+  });
+
+  // `fromPool: false` means the walk found no candidate after the failed one: the stream is
+  // exhausted, and falling back to a generic large model here would leave the requested tier.
+  if (!resolution.fromPool) {
+    localLogger.warn(
+      {
+        errorSource,
+        errorType,
+        modelFailoverCount,
+        streamId: modelResolutionMethod,
+      },
+      "No model left in the stream to fail over to, surfacing the provider error."
+    );
+    return "exhausted";
+  }
+
+  const nextModel: ResolvedRequestedModel = {
+    providerId: resolution.model.providerId,
+    modelId: resolution.model.modelId,
+    reasoningEffort: resolution.reasoningEffort,
+  };
+
+  await ConversationResource.updateAgentMessageResolvedModel(auth, {
+    agentConfigurationId: agentMessage.configuration.sId,
+    agentMessageModelId: agentMessage.agentMessageId,
+    conversationModelId: conversation.id,
+    resolvedModel: nextModel,
+    streamId: modelResolutionMethod,
+  });
+
+  localLogger.warn(
+    {
+      conversationId: conversation.sId,
+      agentMessageId: agentMessage.sId,
+      errorSource,
+      errorType,
+      streamId: modelResolutionMethod,
+      modelFailoverCount: modelFailoverCount + 1,
+      fromProviderId: failedModel.providerId,
+      fromModelId: failedModel.modelId,
+      fromReasoningEffort: failedModel.reasoningEffort,
+      toProviderId: nextModel.providerId,
+      toModelId: nextModel.modelId,
+      toReasoningEffort: nextModel.reasoningEffort,
+    },
+    "Provider-attributed error survived this model's attempts, failing over to the next model of the stream."
+  );
+
+  return "failed_over";
+}
+
 // This method is used by the multi-actions execution loop to pick the next action to execute and
 // generate its inputs.
 export async function runModel(
@@ -386,6 +563,7 @@ export async function runModel(
     durationRecorder,
     activityTimeoutDeadlineMs,
     forceDisableToolUse = false,
+    modelFailoverCount = 0,
   }: {
     runAgentData: AgentLoopExecutionData;
     runIds: string[];
@@ -395,6 +573,9 @@ export async function runModel(
     activityTimeoutDeadlineMs: number;
     // Set when the previous step came back empty: force the final generation.
     forceDisableToolUse?: boolean;
+    // How many times this step already moved to the next model of its stream. Carried by the
+    // workflow across activity restarts, since Temporal resets the attempt counter for each.
+    modelFailoverCount?: number;
   }
 ): Promise<{
   actions: AgentActionsEvent["actions"];
@@ -928,7 +1109,7 @@ export async function runModel(
 
     switch (error.type) {
       case "shouldRetryMessage": {
-        const { type, isRetryable } = error.content;
+        const { type, isRetryable, errorSource } = error.content;
         const errorDustRunId = llm?.getTraceId();
         const currentAttempt = Context.current().info.attempt;
         const plan = auth.getNonNullablePlan();
@@ -976,8 +1157,8 @@ export async function runModel(
             ? getByokUserFacingLLMErrorMessage(type, metadata)
             : getUserFacingLLMErrorMessage(type, metadata);
 
-        if (shouldSurfaceModelError({ isRetryable, attempt: currentAttempt })) {
-          await publishAgentError(
+        const publishModelError = () =>
+          publishAgentError(
             {
               code: "multi_actions_error",
               message: errorMessage,
@@ -987,14 +1168,62 @@ export async function runModel(
             },
             errorDustRunId
           );
-          return null;
-        }
 
-        // Throw to let Temporal handle the retry via its retry policy.
-        throw makeRunModelLLMError({
-          type,
-          message: errorMessage,
-        });
+        // On an auto stream a provider-attributed failure is not the user's problem: once this
+        // model has had its attempts, move the message to the next model of the stream rather than
+        // spending more of them on the provider that is failing.
+        const failover = shouldFailOverModel({
+          isRetryable,
+          attempt: currentAttempt,
+        })
+          ? await failOverToNextStreamModel(auth, {
+              agentMessage,
+              conversation,
+              errorSource,
+              errorType: type,
+              localLogger,
+              modelConfig,
+              modelFailoverCount,
+              reasoningEffort: modelInfo.reasoningEffort,
+            })
+          : "not_eligible";
+
+        switch (failover) {
+          case "failed_over":
+            // The next model is already persisted on the message: fail the activity with the
+            // failover marker so the workflow restarts the step on it, with an attempt counter of
+            // its own.
+            throw makeModelFailoverError(
+              `Failing over to the next model of the ${agentMessage.modelResolutionMethod} stream after: ${errorMessage}`
+            );
+
+          case "exhausted":
+            // The stream has nowhere left to go. Surface the error instead of falling back to the
+            // larger `RUN_MODEL_MAX_RETRIES` budget: those attempts would go back to a provider
+            // that has already failed `RUN_MODEL_ATTEMPTS_BEFORE_FAILOVER` times, so they buy the
+            // user latency rather than an answer.
+            await publishModelError();
+            return null;
+
+          case "not_eligible":
+            // A pinned model, an error attributed to us, or the flag off: unchanged
+            // behavior, the error surfaces only once the full retry budget is spent.
+            if (
+              shouldSurfaceModelError({ isRetryable, attempt: currentAttempt })
+            ) {
+              await publishModelError();
+              return null;
+            }
+
+            // Throw to let Temporal handle the retry via its retry policy.
+            throw makeRunModelLLMError({
+              type,
+              message: errorMessage,
+            });
+
+          default:
+            assertNever(failover);
+        }
       }
       case "shouldReturnNull":
         return null;
@@ -1051,7 +1280,7 @@ export async function runModel(
       dustRunId,
     })),
     // Carries the whole output of this step: any trailing content left by a previous attempt of the
-    // same step (a Temporal retry) must not survive alongside it.
+    // same step (a Temporal retry, or a model failover) must not survive alongside it.
     { replacesStep: true }
   );
 
