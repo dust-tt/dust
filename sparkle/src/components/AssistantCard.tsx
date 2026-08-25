@@ -100,7 +100,7 @@ export const AssistantCard = React.forwardRef<
             <p
               className={cn(
                 "line-clamp-1 overflow-hidden text-ellipsis text-xs",
-                "text-muted-foreground"
+                "text-faint"
               )}
             >
               {subtitle}
@@ -111,7 +111,7 @@ export const AssistantCard = React.forwardRef<
           <TruncatedText
             lineClamp={descriptionLineClamp}
             className={cn(
-              "overflow-hidden text-ellipsis pb-1 text-sm",
+              "overflow-hidden text-ellipsis pb-1 text-xs",
               "text-muted-foreground"
             )}
           >
