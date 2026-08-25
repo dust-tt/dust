@@ -2024,70 +2024,89 @@ const InputBarContainer = ({
                     />
                   )}
                   {showSendButton && (
-                    <TooltipProvider>
-                      <TooltipRoot
-                        open={isBlockTooltipOpen && submitBlockMessage !== null}
-                      >
-                        <TooltipTrigger
-                          asChild
-                          onPointerEnter={() => {
-                            if (submitBlockMessage) {
-                              setIsBlockTooltipOpen(true);
-                            }
-                          }}
-                          onPointerLeave={() => {
-                            if (blockTooltipTimerRef.current) {
-                              clearTimeout(blockTooltipTimerRef.current);
-                              blockTooltipTimerRef.current = null;
-                            }
-                            setIsBlockTooltipOpen(false);
-                          }}
+                    <div className="relative">
+                      {!conversation && (
+                        // Subtle glow behind the send button on the home
+                        // (empty-conversation) input bar only, to draw the
+                        // eye toward the primary action.
+                        <div
+                          aria-hidden
+                          className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center"
                         >
-                          <Button
-                            size={buttonSize}
-                            aria-label="Send message"
-                            isLoading={
-                              isSubmitting &&
-                              activeVoiceService.status !== "transcribing"
-                            }
-                            icon={ArrowUp}
-                            variant={
-                              isSubmitBlocked ? "ghost-secondary" : "highlight"
-                            }
-                            disabled={isSubmitDisabled}
-                            className="rounded-full"
-                            onClick={async (
-                              e: React.MouseEvent<HTMLButtonElement>
-                            ) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              if (disableAutoFocus) {
-                                editorService.blur();
-                                // wait a bit for the keyboard to be closed on mobile
-                                if (isMobile) {
-                                  editorService.setLoading(true);
-                                  await new Promise((resolve) =>
-                                    setTimeout(resolve, 500)
-                                  );
-                                  editorService.setLoading(false);
-                                }
+                          <div className="h-[84px] w-[84px] rounded-full bg-[#4BABFF] opacity-40 blur-[28px]" />
+                        </div>
+                      )}
+                      <TooltipProvider>
+                        <TooltipRoot
+                          open={
+                            isBlockTooltipOpen && submitBlockMessage !== null
+                          }
+                        >
+                          <TooltipTrigger
+                            asChild
+                            onPointerEnter={() => {
+                              if (submitBlockMessage) {
+                                setIsBlockTooltipOpen(true);
                               }
-                              onEnterKeyDownWithShake(
-                                editorService.isEmpty() && !canSubmitEmpty,
-                                editorService.getMarkdownAndMentions(),
-                                () => {
-                                  editorService.clearEditor();
-                                },
-                                editorService.setLoading
-                              );
                             }}
-                          />
-                        </TooltipTrigger>
-                        {submitBlockMessage && (
-                          <TooltipContent>{submitBlockMessage}</TooltipContent>
-                        )}
-                      </TooltipRoot>
-                    </TooltipProvider>
+                            onPointerLeave={() => {
+                              if (blockTooltipTimerRef.current) {
+                                clearTimeout(blockTooltipTimerRef.current);
+                                blockTooltipTimerRef.current = null;
+                              }
+                              setIsBlockTooltipOpen(false);
+                            }}
+                          >
+                            <Button
+                              size={buttonSize}
+                              aria-label="Send message"
+                              isLoading={
+                                isSubmitting &&
+                                activeVoiceService.status !== "transcribing"
+                              }
+                              icon={ArrowUp}
+                              variant={
+                                isSubmitBlocked
+                                  ? "ghost-secondary"
+                                  : "highlight"
+                              }
+                              disabled={isSubmitDisabled}
+                              className="rounded-full"
+                              onClick={async (
+                                e: React.MouseEvent<HTMLButtonElement>
+                              ) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (disableAutoFocus) {
+                                  editorService.blur();
+                                  // wait a bit for the keyboard to be closed on mobile
+                                  if (isMobile) {
+                                    editorService.setLoading(true);
+                                    await new Promise((resolve) =>
+                                      setTimeout(resolve, 500)
+                                    );
+                                    editorService.setLoading(false);
+                                  }
+                                }
+                                onEnterKeyDownWithShake(
+                                  editorService.isEmpty() && !canSubmitEmpty,
+                                  editorService.getMarkdownAndMentions(),
+                                  () => {
+                                    editorService.clearEditor();
+                                  },
+                                  editorService.setLoading
+                                );
+                              }}
+                            />
+                          </TooltipTrigger>
+                          {submitBlockMessage && (
+                            <TooltipContent>
+                              {submitBlockMessage}
+                            </TooltipContent>
+                          )}
+                        </TooltipRoot>
+                      </TooltipProvider>
+                    </div>
                   )}
                 </div>
               </div>
