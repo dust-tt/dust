@@ -7,12 +7,11 @@ import {
   evaluateAgentArchivalEligibility,
   MAX_INACTIVITY_THRESHOLD_DAYS,
   MIN_INACTIVITY_THRESHOLD_DAYS,
+  ONE_DAY_MS,
 } from "@app/lib/api/assistant/inactivity/policy";
 import type { AgentConfigurationStatus } from "@app/types/assistant/agent";
 import type { TriggerStatus } from "@app/types/assistant/triggers";
 import { describe, expect, it } from "vitest";
-
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 const EVALUATED_AT = new Date("2026-08-18T09:00:00.000Z");
 

@@ -10,13 +10,9 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
  * infrastructure.
  */
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+export const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-// One day would archive agents used weekly, or created over a weekend. Two is the agreed floor.
 export const MIN_INACTIVITY_THRESHOLD_DAYS = 2;
-
-// A year and a leap day. Guards a 3650-for-365 typo, and values large enough to overflow the cutoff
-// arithmetic into an Invalid Date.
 export const MAX_INACTIVITY_THRESHOLD_DAYS = 366;
 
 export class AgentInactivityPolicyError extends Error {
@@ -47,11 +43,11 @@ export interface AgentInactivitySnapshot {
   createdAt: Date;
   lastMentionedAt: Date | null;
   status: AgentConfigurationStatus;
-  // All of them: `doesTriggerPreventArchival` decides which protect.
+  // Every trigger the agent has; `doesTriggerPreventArchival` picks out the ones that protect it.
   triggers: AgentTriggerSnapshot[];
 }
 
-/** Not a `TriggerResource`: the rules only ask what kind of automation it is and whether it runs. */
+/** The rules read only a trigger's kind and status, so they take this rather than a `TriggerResource`. */
 export interface AgentTriggerSnapshot {
   kind: TriggerKind;
   status: TriggerStatus;
@@ -191,6 +187,9 @@ export function evaluateAgentArchivalEligibility({
     return { eligible: true };
   }
 
+  // `MentionResource.listAgentsNotMentionedSince` applies the same comparison in SQL, so callers
+  // reading candidates from it never see this reason. The rule stays here so this module remains the
+  // one place that states what "inactive" means.
   return {
     eligible: false,
     reason: "recent_mention",
