@@ -100,14 +100,16 @@ const labelVariants = cva("pb-0.5 font-medium text-foreground", {
 });
 
 // Full-height muted box flanking the field for a unit/currency (prefix/suffix).
+// Sized to its content with a floor, so a word ("days") is not clipped by the
+// field's overflow-hidden while a single glyph ("$") keeps its square box.
 const slotBoxVariants = cva(
   cn("flex h-full shrink-0 items-center justify-center", "bg-muted"),
   {
     variants: {
       size: {
-        xs: "w-6",
-        sm: "w-8",
-        md: "w-10",
+        xs: "min-w-6 px-2",
+        sm: "min-w-8 px-2.5",
+        md: "min-w-10 px-3",
       },
     },
     defaultVariants: {

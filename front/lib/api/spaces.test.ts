@@ -434,6 +434,49 @@ describe("createSpaceAndGroup", () => {
       }
     });
 
+    it("gives members of an open space write, and everyone else read only", async () => {
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Open Space With Members",
+        isRestricted: false,
+        spaceKind: "regular",
+        managementMode: "manual",
+        memberIds: [user1.sId],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        return;
+      }
+
+      // Auths are built after the space exists: they resolve their grants once, at construction.
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user1.sId,
+        workspace.sId
+      );
+      const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user2.sId,
+        workspace.sId
+      );
+
+      const asMember = await SpaceResource.fetchById(
+        memberAuth,
+        result.value.sId
+      );
+      const asNonMember = await SpaceResource.fetchById(
+        nonMemberAuth,
+        result.value.sId
+      );
+
+      expect(asMember!.isOpen()).toBe(true);
+
+      // The member group confers write; the global group's `reader` grant only confers read.
+      expect(asMember!.canRead(memberAuth)).toBe(true);
+      expect(asMember!.canWrite(memberAuth)).toBe(true);
+
+      expect(asNonMember!.canRead(nonMemberAuth)).toBe(true);
+      expect(asNonMember!.canWrite(nonMemberAuth)).toBe(false);
+    });
+
     it("should create a restricted space without global group", async () => {
       const result = await createSpaceAndGroup(adminAuth, {
         name: "Test Restricted Space",

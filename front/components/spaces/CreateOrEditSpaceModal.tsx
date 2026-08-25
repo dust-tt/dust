@@ -353,31 +353,49 @@ export function CreateOrEditSpaceModal({
                   setSelectedMembers([user, ...selectedMembers]);
                 }
               }}
-              restrictedDescription="Restricted access is active."
-              unrestrictedDescription="Restricted access is disabled. The space is accessible to everyone in
-          the workspace."
+              restrictedDescription={
+                <>
+                  <span>Restricted access is active.</span>
+                  <span>
+                    Members can read the content of the space and write data
+                    into it (upload files, delete documents...).
+                  </span>
+                </>
+              }
+              unrestrictedDescription={
+                <>
+                  <span>Restricted access is disabled. The space is open.</span>
+                  <span>
+                    Anyone in the workspace can read the data from this space.
+                  </span>
+                  <span>
+                    Members of the space can also write data (upload files,
+                    delete documents...).
+                  </span>
+                </>
+              }
             />
 
-            {isRestricted && (
-              <RestrictedAccessBody
-                isManual={isManual}
-                scimEnabled={scimEnabled}
-                managementType={managementType}
-                owner={owner}
-                selectedMembers={selectedMembers}
-                selectedGroups={selectedGroups}
-                onManagementTypeChange={handleManagementTypeChange}
-                onMembersUpdated={(members) => {
-                  setSelectedMembers(members);
-                  setIsDirty(true);
-                }}
-                onGroupsUpdated={(groups) => {
-                  setSelectedGroups(groups);
-                  setIsDirty(true);
-                }}
-                initialMembers={spaceInfo?.members}
-              />
-            )}
+            {/* Shown in both states: an open space still has members, and they are the ones who
+                can write to it. The toggle only controls who can read. */}
+            <RestrictedAccessBody
+              isManual={isManual}
+              scimEnabled={scimEnabled}
+              managementType={managementType}
+              owner={owner}
+              selectedMembers={selectedMembers}
+              selectedGroups={selectedGroups}
+              onManagementTypeChange={handleManagementTypeChange}
+              onMembersUpdated={(members) => {
+                setSelectedMembers(members);
+                setIsDirty(true);
+              }}
+              onGroupsUpdated={(groups) => {
+                setSelectedGroups(groups);
+                setIsDirty(true);
+              }}
+              initialMembers={spaceInfo?.members}
+            />
           </div>
         </SheetContainer>
         <SheetFooter

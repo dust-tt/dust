@@ -101,12 +101,15 @@ export function PodSettingsTab({
   const { isAdmin } = useAuth();
   const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
   const hasAdminControlledPodsFeature = hasFeature("admin_controlled_pods");
-  // The pod sandbox admin sections (network allowlist, env vars) are
-  // workspace-admin only (matching the API) and part of the Sandbox
-  // Functions surface.
-  // Mirrors the API gate (workspace-admin + sandbox_functions FF; pod
-  // membership deliberately not consulted) — change both together.
+  // The pod env vars section stays workspace-admin only (matching the API,
+  // which keeps env-vars admin-only). Mirrors that gate — change both together.
   const isPodSandboxAdminEnabled = isAdmin && hasFeature("sandbox_functions");
+  // The pod network section is visible to anyone who can open this page once
+  // the feature is on (the API opens the egress GET to Pod readers); editing
+  // stays workspace-admin only. Mirrors the egress-policy route gates — change
+  // both together.
+  const canViewPodNetwork = hasFeature("sandbox_functions");
+  const canEditPodNetwork = isPodSandboxAdminEnabled;
 
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
@@ -819,8 +822,12 @@ export function PodSettingsTab({
           )}
         </div>
 
-        {isPodSandboxAdminEnabled && (
-          <PodNetworkSection owner={owner} podId={pod.sId} />
+        {canViewPodNetwork && (
+          <PodNetworkSection
+            owner={owner}
+            podId={pod.sId}
+            canEdit={canEditPodNetwork}
+          />
         )}
 
         {isPodSandboxAdminEnabled && (

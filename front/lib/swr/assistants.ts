@@ -39,7 +39,11 @@ import type { GetAgentUsageResponseBody } from "@app/types/api/assistant/agent_u
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api/assistant/builder/slack/channels_linked_with_agent";
 import type { GetSlackUserPrivateChannelsResponseBody } from "@app/types/api/assistant/builder/slack/user_private_channels";
 import type { GetAgentConfigurationsResponseBody } from "@app/types/api/assistant/configuration";
-import { BatchUpdateAgentModelResponseBodySchema } from "@app/types/api/assistant/configuration";
+import {
+  ArchiveInactiveAgentsResponseBodySchema,
+  BatchUpdateAgentModelResponseBodySchema,
+  PreviewInactiveAgentsResponseBodySchema,
+} from "@app/types/api/assistant/configuration";
 import type { GetSimilarAgentsResponseBody } from "@app/types/api/assistant/configuration/existing_agent_checker";
 import type { GetAgentMcpConfigurationsResponseBody } from "@app/types/api/assistant/mcp_configurations";
 import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
@@ -961,6 +965,163 @@ export function useBatchUpdateAgentScope({
   );
 
   return batchUpdateAgentScope;
+}
+
+export function useUpdateInactiveAgentArchival({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  // Null turns it off: the policy is opt-in and has no default threshold.
+  const updateInactiveAgentArchival = useCallback(
+    async (thresholdDays: number | null) => {
+      const res = await clientFetch(`/api/w/${owner.sId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          inactiveAgentArchivalThresholdDays: thresholdDays,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+
+        sendNotification({
+          type: "error",
+          title: "Error updating automatic archival",
+          description: `Error: ${errorData.message}`,
+        });
+        return false;
+      }
+
+      sendNotification({
+        type: "success",
+        title: thresholdDays
+          ? "Automatic archival enabled"
+          : "Automatic archival disabled",
+        description: thresholdDays
+          ? `Agents unmentioned for ${thresholdDays} days will be archived.`
+          : "No agent will be archived automatically.",
+      });
+      return true;
+    },
+    [owner.sId, sendNotification]
+  );
+
+  return updateInactiveAgentArchival;
+}
+
+export function usePreviewInactiveAgents({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const previewInactiveAgents = useCallback(
+    async (thresholdDays: number) => {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/archive_inactive/preview`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ thresholdDays }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+
+        sendNotification({
+          type: "error",
+          title: "Error previewing inactive agents",
+          description: `Error: ${errorData.message}`,
+        });
+        return null;
+      }
+
+      const parsed = PreviewInactiveAgentsResponseBodySchema.safeParse(
+        await res.json()
+      );
+      if (!parsed.success) {
+        sendNotification({
+          type: "error",
+          title: "Error previewing inactive agents",
+          description: "An unknown error occurred.",
+        });
+        return null;
+      }
+
+      return parsed.data.preview;
+    },
+    [owner.sId, sendNotification]
+  );
+
+  return previewInactiveAgents;
+}
+
+export function useArchiveInactiveAgents({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const archiveInactiveAgents = useCallback(
+    async (thresholdDays: number) => {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/archive_inactive`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ thresholdDays }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+
+        sendNotification({
+          type: "error",
+          title: "Error archiving inactive agents",
+          description: `Error: ${errorData.message}`,
+        });
+        return null;
+      }
+
+      const parsed = ArchiveInactiveAgentsResponseBodySchema.safeParse(
+        await res.json()
+      );
+      if (!parsed.success) {
+        sendNotification({
+          type: "error",
+          title: "Error archiving inactive agents",
+          description: "An unknown error occurred.",
+        });
+        return null;
+      }
+
+      const { archivedCount } = parsed.data.archival;
+      sendNotification({
+        type: "success",
+        title: "Inactive agents archived",
+        description: `Archived ${archivedCount} agent${pluralize(archivedCount)}.`,
+      });
+
+      return { archivedCount };
+    },
+    [owner.sId, sendNotification]
+  );
+
+  return archiveInactiveAgents;
 }
 
 export function useAgentUsageMetrics({
