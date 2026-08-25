@@ -9,6 +9,8 @@ export interface CreditUsageState {
   target: CreditUsageTarget;
 }
 
+export const CREDIT_USAGE_LEARN_MORE_LABEL = "See your usage";
+
 const RESET_LABEL_PREFIX: Record<CreditUsageCardVariant, string> = {
   profile_menu: "Reset",
   companion: "Credit reset",
@@ -48,7 +50,7 @@ export function CreditUsage({ state, variant, onLearnMore }: CreditUsageProps) {
         <div className="flex flex-col gap-2">
           <span>{resetLabel}</span>
           <Button
-            label="Learn more"
+            label={CREDIT_USAGE_LEARN_MORE_LABEL}
             variant="outline"
             size="sm"
             className="w-full"

@@ -312,7 +312,7 @@ export function UserMenu({
           sideOffset={8}
           className="w-64"
         >
-          {creditUsageState && (
+          {subscription?.plan.limits.canUseProduct && creditUsageState && (
             <>
               <CreditUsage
                 state={creditUsageState}
@@ -436,11 +436,14 @@ export function UserMenu({
                 icon={Clock}
                 onSelect={() => setAutomationsOpen(true)}
               />
-              <DropdownMenuItem
-                label="Analytics"
-                icon={BarChart01}
-                onSelect={() => setAnalyticsOpen(true)}
-              />
+              {/* The credit usage card is the analytics entry point when shown; keep exactly one. */}
+              {!creditUsageState && (
+                <DropdownMenuItem
+                  label="Analytics"
+                  icon={BarChart01}
+                  onSelect={() => setAnalyticsOpen(true)}
+                />
+              )}
             </>
           )}
 
