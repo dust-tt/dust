@@ -1926,6 +1926,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "list_global_agent_feedbacks": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "list_workspace_agents": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -3256,6 +3260,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_workspace_skill": "low",
     "get_workspace_spaces": "low",
     "list_data_sources": "low",
+    "list_global_agent_feedbacks": "low",
     "list_workspace_agents": "low",
     "list_workspace_groups": "low",
     "list_workspace_skills": "low",
