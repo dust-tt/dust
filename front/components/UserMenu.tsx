@@ -89,6 +89,7 @@ export function UserMenu({
   const [toolsOpen, setToolsOpen] = useState(false);
   const [automationsOpen, setAutomationsOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const sendNotification = useSendNotification();
   const devMode = useDevMode();
@@ -265,7 +266,7 @@ export function UserMenu({
           />
         </DialogContent>
       </Dialog>
-      <DropdownMenu>
+      <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
         <DropdownMenuTrigger className="hover:bg-hover data-[state=open]:bg-selected rounded-xl p-2 m-2">
           <div className="group flex cursor-pointer items-center justify-between gap-2">
             <span className="sr-only">Open user menu</span>
@@ -312,7 +313,14 @@ export function UserMenu({
         >
           {creditUsageState && (
             <>
-              <CreditUsage state={creditUsageState} variant="profile_menu" />
+              <CreditUsage
+                state={creditUsageState}
+                variant="profile_menu"
+                onLearnMore={() => {
+                  setUserMenuOpen(false);
+                  setAnalyticsOpen(true);
+                }}
+              />
               <Separator className="my-1" />
             </>
           )}
