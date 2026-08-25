@@ -18,9 +18,9 @@ import { parseEgressPolicy } from "@app/types/sandbox/egress_policy";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
-import { fromError } from "zod-validation-error";
 
 // Mounted at /api/w/:wId/spaces/:spaceId/sandbox/egress-policy. GET (and the
 // member request POST) are open to Pod readers; the admin writes (PUT,
@@ -154,6 +154,7 @@ app.put(
 app.post(
   "/requests",
   withSpace({ requireCanReadOrAdministrate: true }),
+  validate("json", EgressDomainBodySchema),
   async (ctx): HandlerResult<PostPodEgressPolicyRequestResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
@@ -168,21 +169,10 @@ app.post(
       });
     }
 
-    const body = await ctx.req.json().catch(() => null);
-    const parsedBody = EgressDomainBodySchema.safeParse(body);
-    if (!parsedBody.success) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: fromError(parsedBody.error).toString(),
-        },
-      });
-    }
-
+    const { domain } = ctx.req.valid("json");
     const result = await requestOwnerPolicyDomain(auth, {
       ownerId: space.sId,
-      domain: parsedBody.data.domain,
+      domain,
     });
     if (result.isErr()) {
       // Caller-actionable: an invalid domain or a full pending-request cap.
@@ -207,6 +197,7 @@ app.post(
   "/requests/dismiss",
   ensureIsAdmin(),
   withSpace({ requireCanReadOrAdministrate: true }),
+  validate("json", EgressDomainBodySchema),
   async (ctx): HandlerResult<PutPodEgressPolicyResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
@@ -221,21 +212,10 @@ app.post(
       });
     }
 
-    const body = await ctx.req.json().catch(() => null);
-    const parsedBody = EgressDomainBodySchema.safeParse(body);
-    if (!parsedBody.success) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: fromError(parsedBody.error).toString(),
-        },
-      });
-    }
-
+    const { domain } = ctx.req.valid("json");
     const result = await dismissRequestedOwnerPolicyDomain(auth, {
       ownerId: space.sId,
-      domain: parsedBody.data.domain,
+      domain,
     });
     if (result.isErr()) {
       return apiError(ctx, {
