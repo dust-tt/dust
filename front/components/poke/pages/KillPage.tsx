@@ -1,8 +1,12 @@
+import { ModelKillSwitchesDialog } from "@app/components/poke/ModelKillSwitchesDialog";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { KillSwitchType } from "@app/lib/poke/types";
-import { KILL_SWITCH_TYPES } from "@app/lib/poke/types";
+import {
+  killedModelIdsFromKillSwitches,
+  TOGGLABLE_KILL_SWITCH_TYPES,
+} from "@app/lib/poke/types";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeKillSwitches } from "@app/poke/swr/kill";
 import {
@@ -12,11 +16,10 @@ import {
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   AlertCircle,
-  AnthropicLogo,
   Button,
   CloudArrowLeftRight,
+  Cube01,
   Fire,
-  OpenaiLogo,
   PauseCircle,
   RefreshCw02,
   Settings01,
@@ -35,7 +38,10 @@ interface KillSwitchDefinition {
   icon: ComponentType<{ className?: string }>;
 }
 
-const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
+const KILL_SWITCH_DEFINITIONS: Record<
+  (typeof TOGGLABLE_KILL_SWITCH_TYPES)[number],
+  KillSwitchDefinition
+> = {
   save_agent_configurations: {
     title: "Agent Configurations",
     description: "Disable saving of agent configurations.",
@@ -46,28 +52,11 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
     description: "Disable saving of data source views.",
     icon: CloudArrowLeftRight,
   },
-  global_blacklist_anthropic: {
-    title: "Anthropic Models",
-    description: "Disable Anthropic models in all agents.",
-    icon: AnthropicLogo,
-  },
-  global_blacklist_openai: {
-    title: "OpenAI Models",
-    description: "Disable OpenAI models in all agents.",
-    icon: OpenaiLogo,
-  },
   global_disable_firecrawl: {
     title: "Firecrawl",
     description:
       "Disable Firecrawl for web browsing and use Spider.cloud instead.",
     icon: Fire,
-  },
-  global_dust_agents_fallback: {
-    title: "Dust Agents Fallback Provider",
-    description:
-      "Force Dust and Deep Dive agents to use non-Anthropic providers.",
-    note: "Use only when the latest Sonnet or Opus models are down.",
-    icon: RefreshCw02,
   },
   pause_upsert_queue: {
     title: "Upsert Queue",
@@ -112,6 +101,7 @@ export function KillPage() {
     useState<KillSwitchType | null>(null);
   const sendNotification = useSendNotification();
   const enabledKillSwitches = new Set(killSwitches);
+  const killedModelIds = killedModelIdsFromKillSwitches(killSwitches);
 
   const { images, isImagesLoading } = usePokeSandboxKillImages();
   const requestSandboxKill = useRequestSandboxKill();
@@ -119,7 +109,7 @@ export function KillPage() {
     useState<SandboxKillRequestKey | null>(null);
 
   async function updateKillSwitch(
-    killSwitch: KillSwitchType,
+    killSwitch: (typeof TOGGLABLE_KILL_SWITCH_TYPES)[number],
     enabled: boolean
   ): Promise<void> {
     if (updatingKillSwitch) {
@@ -216,7 +206,7 @@ export function KillPage() {
           </div>
         ) : (
           <div className={PANEL_SECTION_CLASSES}>
-            {KILL_SWITCH_TYPES.map((type, index) => {
+            {TOGGLABLE_KILL_SWITCH_TYPES.map((type, index) => {
               const {
                 title,
                 description,
@@ -266,6 +256,40 @@ export function KillPage() {
                 </div>
               );
             })}
+
+            <div
+              className={cn(
+                "grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center",
+                "border-t border-border"
+              )}
+            >
+              <div className="space-y-1">
+                <h3 className="flex items-center gap-3 text-sm font-medium text-foreground">
+                  <Cube01 className="h-4 w-4 text-foreground" />
+                  <span>Models</span>
+                </h3>
+
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Take individual models out of rotation, one switch per model.
+                  {killedModelIds.length > 0 &&
+                    ` Currently killed: ${killedModelIds.join(", ")}.`}
+                </p>
+
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Nothing routes onto a killed model any more; anything pinned
+                  to one errors on the answer instead. Takes up to 60s to apply
+                  on each pod, as model resolution reads the switches from an
+                  in-process cache.
+                </p>
+              </div>
+
+              <ModelKillSwitchesDialog
+                killedModelIds={killedModelIds}
+                onSaved={async () => {
+                  await mutateKillSwitches();
+                }}
+              />
+            </div>
           </div>
         )}
       </section>
