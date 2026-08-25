@@ -5,7 +5,10 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { usePokeTriggers } from "@app/poke/swr/triggers";
 import type { TriggerKind } from "@app/types/assistant/triggers";
-import { isValidTriggerKind } from "@app/types/assistant/triggers";
+import {
+  isValidTriggerKind,
+  TRIGGER_KINDS,
+} from "@app/types/assistant/triggers";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { PaginationState } from "@tanstack/react-table";
@@ -13,7 +16,7 @@ import { useState } from "react";
 
 const TRIGGER_PAGE_SIZE = 25;
 
-const TRIGGER_KIND_OPTIONS = (["schedule", "webhook"] as const).map((kind) => ({
+const TRIGGER_KIND_OPTIONS = TRIGGER_KINDS.map((kind) => ({
   label: asDisplayName(kind),
   value: kind,
 }));

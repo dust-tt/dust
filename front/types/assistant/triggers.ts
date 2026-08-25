@@ -194,9 +194,13 @@ export const FullTriggerSchema = z.discriminatedUnion("kind", [
 export type TriggerType = z.infer<typeof FullTriggerSchema>;
 
 export type TriggerKind = TriggerType["kind"];
+export const TRIGGER_KINDS = [
+  "schedule",
+  "webhook",
+] as const satisfies readonly TriggerKind[];
 
 export function isValidTriggerKind(kind: string): kind is TriggerKind {
-  return ["schedule", "webhook"].includes(kind);
+  return TRIGGER_KINDS.some((triggerKind) => triggerKind === kind);
 }
 
 export type WebhookTriggerType = TriggerType & {
