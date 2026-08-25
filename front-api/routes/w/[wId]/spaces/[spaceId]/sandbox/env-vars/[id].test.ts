@@ -63,13 +63,34 @@ describe("PATCH/DELETE /api/w/:wId/spaces/:spaceId/sandbox/env-vars/:id", () => 
     vi.clearAllMocks();
   });
 
-  it("rejects non-admin requests", async () => {
+  // Guard that the admin gate still covers the nested /:id routes for a Pod
+  // member (can read the Pod, not a workspace admin) after the gate moved to
+  // the env-vars leaf.
+  it("rejects a non-admin DELETE", async () => {
     const { workspace, pod } = await setupTest({ role: "user" });
 
     const response = await deleteEnvVar(
       workspace.sId,
       pod.sId,
       "env_var_unknown"
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { type: "workspace_auth_error" },
+    });
+  });
+
+  it("rejects a non-admin PATCH", async () => {
+    const { workspace, pod } = await setupTest({ role: "user" });
+
+    const response = await patchEnvVar(
+      workspace.sId,
+      pod.sId,
+      "env_var_unknown",
+      {
+        allowedDomains: ["api.github.com"],
+      }
     );
 
     expect(response.status).toBe(403);
