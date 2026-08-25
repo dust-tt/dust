@@ -19,9 +19,8 @@ const NOTIFICATION_DELAY_MS = 5000;
 export type NotificationType = {
   /** Optional action button shown under the message; clicking it also dismisses the toast. */
   action?: {
-    href?: string;
     label: string;
-    onClick?: () => void;
+    onClick: () => void;
   };
   title?: string;
   description?: string;
@@ -136,9 +135,8 @@ export function NotificationContent({
             size="xs"
             variant="ghost"
             label={action.label}
-            href={action.href}
             onClick={() => {
-              action.onClick?.();
+              action.onClick();
               onDismiss?.();
             }}
           />
