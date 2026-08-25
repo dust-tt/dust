@@ -203,7 +203,7 @@ function constructSkillsSection({
     "- **Enabled**: Fully active with instructions loaded.\n" +
     "- **Always active**: Listed under SYSTEM SKILLS below. Their instructions are already loaded and their tools are already available, with no action needed from you. " +
     `They cannot be enabled: passing one to \`${toolDisplayName}\` fails with a "not found" error.\n\n` +
-    "Enable skills proactively when a user's request matches a skill's purpose.\n" +
+    "Enable a skill only when its specialized instructions or tools are needed for the user's request.\n" +
     `Skill references can also appear as \`<skill id=\"...\" name=\"...\" />\` tags in user messages or enabled skill instructions. ` +
     "These tags are strong hints that the referenced skill is relevant, including when a skill author nested one skill inside another. " +
     `You can enable the skill using \`${toolDisplayName}\` with \`skillName\` set to the tag's \`name\` value, copied verbatim.\n` +
@@ -219,8 +219,7 @@ function constructSkillsSection({
     "Do not try to enable unavailable skill tags.\n" +
     "If you need to enable multiple skills, enable those skills in parallel together. " +
     "Do not make tool calls to other tools in parallel to skill-enablement; you may want to revisit after the skill instructions are loaded.\n\n" +
-    "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
-    "perspective on the currently available context.\n";
+    "If current capabilities are sufficient or the match is uncertain, do not enable the skill.\n";
 
   if (systemSkills.length > 0) {
     skillsSection +=

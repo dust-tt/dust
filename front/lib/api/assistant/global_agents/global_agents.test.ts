@@ -124,6 +124,26 @@ describe("getGlobalAgents custom model agents", () => {
     expect(agents[0].skills).toContain("support");
   });
 
+  it("reserves Go Deep for broad, decomposable research", async () => {
+    const auth = await createAuthenticatorWithFlags([]);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [GLOBAL_AGENTS_SID.DUST],
+      "full"
+    );
+
+    expect(agents).toHaveLength(1);
+    expect(agents[0].instructions).toContain(
+      "multiple independent research threads"
+    );
+    expect(agents[0].instructions).toContain(
+      "Do not enable it solely because the answer should be detailed"
+    );
+    expect(agents[0].instructions).toContain("When in doubt, do not enable it");
+    expect(agents[0].instructions).not.toContain("3+ steps of tool use");
+  });
+
   it("hides custom Dust agents without the custom model feature flag", async () => {
     const auth = await createAuthenticatorWithFlags([
       "dust_internal_global_agents",

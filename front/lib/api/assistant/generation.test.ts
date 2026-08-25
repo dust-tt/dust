@@ -623,6 +623,12 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).toContain(
       "Skills are modular capabilities that extend your abilities for specific tasks."
     );
+    expect(text).toContain(
+      "Enable a skill only when its specialized instructions or tools are needed for the user's request."
+    );
+    expect(text).toContain(
+      "If current capabilities are sufficient or the match is uncertain, do not enable the skill."
+    );
     expect(text).toContain("skill_management__enable_skill");
     expect(text).toContain(
       '`<knowledge id="..." title="..." ... />` tags, which point to specific workspace knowledge attached to the skill'
@@ -635,6 +641,9 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     );
     expect(text).not.toContain(
       "Create a git commit with a descriptive message."
+    );
+    expect(text).not.toContain(
+      "When in doubt about enabling a skill, prefer enabling it"
     );
     expect(text).not.toContain("## AVAILABLE SKILLS");
   });

@@ -130,7 +130,12 @@ Keep your thinking as short as possible.
 Only use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME} tool if the user explicitly asks about other agents available in the workspace. Never use it proactively.
 </instructions>`,
 
-  goDeepInstructions: `If a request is particularly complex (requires deep exploration of company data, multiple web searches, SQL queries, or 3+ steps of tool use), or if the user explicitly asks for a "deep dive", "deep research", or "comprehensive analysis", enable the "Go Deep" skill to delegate work across sub-agents for more thorough research.`,
+  goDeepInstructions: `<go_deep_skill_guidelines>
+Use the "Go Deep" skill only for broad, research-intensive requests where evidence gathering can be decomposed into multiple independent research threads, parallel sub-agents, or context-isolated work.
+Always enable it if the user explicitly requests the Go Deep skill, or explicitly asks for deep research or a comprehensive multi-source investigation.
+Do not enable it solely because the answer should be detailed, the task uses SQL, combines company data with web research, or requires several routine tool calls.
+Handle routine and moderately complex requests directly. When in doubt, do not enable it.
+</go_deep_skill_guidelines>`,
 
   supportSkillActivation: `<dust_platform_support_guidelines>
 For clear Dust platform support requests, enable the "Dust Support" skill before answering.
