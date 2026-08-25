@@ -2,6 +2,7 @@ import {
   CONSUMPTION_DIMENSION_CONFIG,
   CONSUMPTION_DIMENSIONS,
   consumptionDimensionFromQueryParam,
+  getConsumptionAttributionDimensions,
 } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { describe, expect, it } from "vitest";
 
@@ -25,5 +26,19 @@ describe("consumption dimension URL state", () => {
       "api_key",
     ]);
     expect(CONSUMPTION_DIMENSION_CONFIG.api_key.label).toBe("API keys");
+  });
+
+  it("selects the dimensions available to the analytics scope", () => {
+    expect(getConsumptionAttributionDimensions({ personal: false })).toEqual(
+      CONSUMPTION_DIMENSIONS
+    );
+    expect(getConsumptionAttributionDimensions({ personal: true })).toEqual([
+      "agent",
+      "model",
+      "tool",
+      "skill",
+      "source",
+      "api_key",
+    ]);
   });
 });

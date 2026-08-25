@@ -77,6 +77,7 @@ import {
   CONSUMPTION_DIMENSION_CONFIG,
   CONSUMPTION_DIMENSIONS,
   DEFAULT_CONSUMPTION_DIMENSION,
+  getConsumptionAttributionDimensions,
   isConsumptionDimension,
 } from "./consumptionDimensions";
 
@@ -781,11 +782,7 @@ export function ConsumptionAttributionTableView({
     shouldReduceMotion || transition.target !== activeDimension
       ? 0
       : transition.direction;
-  const visibleDimensions = personal
-    ? CONSUMPTION_DIMENSIONS.filter(
-        (tabDimension) => tabDimension !== "user" && tabDimension !== "group"
-      )
-    : CONSUMPTION_DIMENSIONS;
+  const visibleDimensions = getConsumptionAttributionDimensions({ personal });
 
   const exportBody: ConsumptionExportBody = {
     period: period.kind,

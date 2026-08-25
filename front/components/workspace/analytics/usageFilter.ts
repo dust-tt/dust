@@ -27,6 +27,19 @@ export const USAGE_FILTER_CATEGORIES = [
 
 export type UsageFilterCategory = (typeof USAGE_FILTER_CATEGORIES)[number];
 
+const PERSONAL_USAGE_FILTER_CATEGORIES: UsageFilterCategory[] =
+  USAGE_FILTER_CATEGORIES.filter(
+    (category) => category !== "member" && category !== "group"
+  );
+
+export function getUsageFilterCategories({
+  personal,
+}: {
+  personal?: boolean;
+}): readonly UsageFilterCategory[] {
+  return personal ? PERSONAL_USAGE_FILTER_CATEGORIES : USAGE_FILTER_CATEGORIES;
+}
+
 export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
   {
     agent: "Agents",

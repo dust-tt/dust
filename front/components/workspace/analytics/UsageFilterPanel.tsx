@@ -10,9 +10,9 @@ import type {
   UsageFilterOption,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
+  getUsageFilterCategories,
   toConsumptionScopeFilter,
   USAGE_FILTER_AGENT_SCOPES,
-  USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
@@ -40,10 +40,6 @@ import {
 import { useMemo, useState } from "react";
 
 const DEFAULT_MODEL_TIER: ModelsTierName = "balanced";
-const PERSONAL_USAGE_FILTER_CATEGORIES: UsageFilterCategory[] =
-  USAGE_FILTER_CATEGORIES.filter(
-    (category) => category !== "member" && category !== "group"
-  );
 
 export interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
@@ -224,9 +220,7 @@ export function UsageFilterPanelView({
     groups,
   } = state;
 
-  const visibleCategories: readonly UsageFilterCategory[] = personal
-    ? PERSONAL_USAGE_FILTER_CATEGORIES
-    : USAGE_FILTER_CATEGORIES;
+  const visibleCategories = getUsageFilterCategories({ personal });
   const activeCategory =
     personal && (selectedCategory === "member" || selectedCategory === "group")
       ? "agent"
