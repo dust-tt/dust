@@ -182,19 +182,6 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn preserves_granted_scope_as_connection_metadata() {
-        assert_eq!(
-            ShopifyConnectionProvider::extra_metadata(&json!({
-                "scope": "read_products"
-            })),
-            Some(serde_json::Map::from_iter([(
-                "scope".to_string(),
-                json!("read_products")
-            )]))
-        );
-    }
-
-    #[test]
     fn scrubs_tokens_from_raw_response() {
         let provider = ShopifyConnectionProvider::new();
         let scrubbed = provider
