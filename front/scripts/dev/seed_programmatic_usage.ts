@@ -79,7 +79,7 @@ async function seedProgrammaticUsage(
     "Found workspace"
   );
 
-  const auth = await Authenticator.internalBuilderForWorkspace(wId);
+  const auth = await Authenticator.internalUserForWorkspace(wId);
 
   const usageEntries: Array<{
     document: AgentMessageAnalyticsData;

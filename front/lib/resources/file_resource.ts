@@ -308,7 +308,7 @@ export class FileResource extends BaseResource<FileModel> {
       fileRes.useCase === "conversation" &&
       fileRes.useCaseMetadata?.conversationId
     ) {
-      const auth = await Authenticator.internalBuilderForWorkspace(
+      const auth = await Authenticator.internalUserForWorkspace(
         workspace.sId
       );
       const conversation = await ConversationResource.fetchById(
