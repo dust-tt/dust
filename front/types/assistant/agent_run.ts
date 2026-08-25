@@ -40,7 +40,7 @@ import { isGlobalAgentId } from "./assistant";
 import { ConversationError } from "./conversation";
 
 /**
- * Error types for getAgentLoopData that indicate deleted or unavailable resources.
+ * Error types for getAgentLoopRuntimeData that indicate deleted or unavailable resources.
  * These are safe to ignore in callers since retrying won't make the data available.
  */
 const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
@@ -166,7 +166,7 @@ export type AgentLoopRuntimeData = Omit<
   conversation: Omit<ConversationType, "content">;
 };
 
-export type AgentLoopDataWithAuth = AgentLoopRuntimeData & {
+export type AgentLoopRuntimeDataWithAuth = AgentLoopRuntimeData & {
   auth: Authenticator;
 };
 
@@ -178,23 +178,23 @@ export type AgentLoopArgsWithTiming = AgentLoopArgs & {
   initialStartTime: number;
 };
 
-export async function getAgentLoopData(
+export async function getAgentLoopRuntimeData(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
-): Promise<Result<AgentLoopDataWithAuth, AgentLoopDataError | Error>> {
+): Promise<Result<AgentLoopRuntimeDataWithAuth, AgentLoopDataError | Error>> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
-  return getAgentLoopDataWithAuth(auth, agentLoopArgs);
+  return getAgentLoopRuntimeDataWithAuth(auth, agentLoopArgs);
 }
 
 /**
- * Same as getAgentLoopData but accepts a pre-built Authenticator, avoiding redundant
+ * Same as getAgentLoopRuntimeData but accepts a pre-built Authenticator, avoiding redundant
  * Authenticator.fromJSON calls when the caller already has a valid auth.
  */
-export async function getAgentLoopDataWithAuth(
+export async function getAgentLoopRuntimeDataWithAuth(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
-): Promise<Result<AgentLoopDataWithAuth, AgentLoopDataError | Error>> {
+): Promise<Result<AgentLoopRuntimeDataWithAuth, AgentLoopDataError | Error>> {
   const conversation = await ConversationResource.fetchById(
     auth,
     agentLoopArgs.conversationId,
@@ -420,7 +420,7 @@ async function buildAgentLoopRuntimeData(
     conversation: Omit<ConversationType, "content">;
     userMessage: UserMessageType;
   }
-): Promise<Result<AgentLoopDataWithAuth, Error>> {
+): Promise<Result<AgentLoopRuntimeDataWithAuth, Error>> {
   const { agentMessageId, agentMessageVersion } = agentLoopArgs;
 
   const agentId = agentMessage.configuration.sId;
