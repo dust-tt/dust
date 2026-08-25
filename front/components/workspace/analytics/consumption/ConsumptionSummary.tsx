@@ -112,12 +112,9 @@ export function ConsumptionSummaryView({
     return null;
   }
 
-  const { topAgent, topUser, totalCredits } = overview;
+  const { topAgent, totalCredits } = overview;
   const creditUsage =
     analyticsScope.kind === "workspace" ? overview.creditUsage : null;
-  const topConsumer = analyticsScope.kind === "agent" ? topUser : topAgent;
-  const topConsumerLabel =
-    analyticsScope.kind === "agent" ? "Top user" : "Top agent";
 
   return (
     <div className="flex flex-col gap-4">
@@ -166,11 +163,11 @@ export function ConsumptionSummaryView({
           }
         />
         <SummaryCard
-          label={topConsumerLabel}
-          value={topConsumer?.name ?? "—"}
+          label="Top agent"
+          value={topAgent?.name ?? "—"}
           hint={
-            topConsumer && totalCredits > 0
-              ? `${Math.round((topConsumer.credits / totalCredits) * 100)}% of total consumption`
+            topAgent && totalCredits > 0
+              ? `${Math.round((topAgent.credits / totalCredits) * 100)}% of total consumption`
               : null
           }
         />
