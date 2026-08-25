@@ -1,3 +1,5 @@
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
@@ -36,17 +38,17 @@ const AGENT_USAGE_FILTER_CATEGORIES = USAGE_FILTER_CATEGORIES.filter(
   (category) => category !== "agent"
 );
 
-export function getUsageFilterCategories({
-  personal,
-  agentId,
-}: {
-  personal?: boolean;
-  agentId?: string | null;
-}): readonly UsageFilterCategory[] {
-  if (personal) {
-    return PERSONAL_USAGE_FILTER_CATEGORIES;
+export function getUsageFilterCategories(
+  analyticsScope: ConsumptionAnalyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE
+): readonly UsageFilterCategory[] {
+  switch (analyticsScope.kind) {
+    case "personal":
+      return PERSONAL_USAGE_FILTER_CATEGORIES;
+    case "agent":
+      return AGENT_USAGE_FILTER_CATEGORIES;
+    case "workspace":
+      return USAGE_FILTER_CATEGORIES;
   }
-  return agentId ? AGENT_USAGE_FILTER_CATEGORIES : USAGE_FILTER_CATEGORIES;
 }
 
 export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =

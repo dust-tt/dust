@@ -1,4 +1,5 @@
 import { getConsumptionAnalyticsUrl } from "@app/hooks/useConsumptionQuery";
+import { PERSONAL_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import { describe, expect, it } from "vitest";
 
 describe("getConsumptionAnalyticsUrl", () => {
@@ -15,7 +16,7 @@ describe("getConsumptionAnalyticsUrl", () => {
     expect(
       getConsumptionAnalyticsUrl({
         workspaceId: "workspace-id",
-        personal: true,
+        analyticsScope: PERSONAL_CONSUMPTION_ANALYTICS_SCOPE,
         endpoint: "overview",
       })
     ).toBe("/api/w/workspace-id/me/analytics/consumption/overview");
@@ -25,7 +26,7 @@ describe("getConsumptionAnalyticsUrl", () => {
     expect(
       getConsumptionAnalyticsUrl({
         workspaceId: "workspace-id",
-        agentId: "agent-id",
+        analyticsScope: { kind: "agent", agentId: "agent-id" },
         endpoint: "overview",
       })
     ).toBe(

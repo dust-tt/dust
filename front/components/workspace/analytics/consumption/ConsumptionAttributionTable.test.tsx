@@ -1,6 +1,7 @@
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
+import { PERSONAL_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import {
   fireEvent,
   render,
@@ -66,6 +67,7 @@ vi.mock(
 );
 
 const period = { kind: "days", days: 30 } as const;
+const agentAnalyticsScope = { kind: "agent", agentId: "agent-id" } as const;
 
 function ControlledAttributionTable({
   onDimensionChange,
@@ -119,7 +121,7 @@ describe("ConsumptionAttributionTable", () => {
       <ConsumptionAttributionTable
         workspaceId="workspace-id"
         period={period}
-        personal
+        analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
@@ -129,7 +131,9 @@ describe("ConsumptionAttributionTable", () => {
     );
 
     expect(mockUseConsumptionTop).toHaveBeenCalledWith(
-      expect.objectContaining({ personal: true })
+      expect.objectContaining({
+        analyticsScope: PERSONAL_CONSUMPTION_ANALYTICS_SCOPE,
+      })
     );
     expect(mockUseConsumptionExports).not.toHaveBeenCalled();
     expect(
@@ -165,7 +169,7 @@ describe("ConsumptionAttributionTable", () => {
       <ConsumptionAttributionTable
         workspaceId="workspace-id"
         period={period}
-        personal
+        analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}
         dimension={dimension}
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
@@ -179,7 +183,10 @@ describe("ConsumptionAttributionTable", () => {
       "true"
     );
     expect(mockUseConsumptionTop).toHaveBeenLastCalledWith(
-      expect.objectContaining({ dimension: "agent", personal: true })
+      expect.objectContaining({
+        dimension: "agent",
+        analyticsScope: PERSONAL_CONSUMPTION_ANALYTICS_SCOPE,
+      })
     );
   });
 
@@ -199,7 +206,7 @@ describe("ConsumptionAttributionTable", () => {
       <ConsumptionAttributionTable
         workspaceId="workspace-id"
         period={period}
-        personal
+        analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}
         dimension="agent"
         onDimensionChange={onDimensionChange}
         onAddFilter={vi.fn()}
@@ -250,7 +257,7 @@ describe("ConsumptionAttributionTable", () => {
       <ConsumptionAttributionTable
         workspaceId="workspace-id"
         period={period}
-        agentId="agent-id"
+        analyticsScope={agentAnalyticsScope}
         dimension="user"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
@@ -260,7 +267,10 @@ describe("ConsumptionAttributionTable", () => {
     );
 
     expect(mockUseConsumptionTop).toHaveBeenCalledWith(
-      expect.objectContaining({ agentId: "agent-id", dimension: "user" })
+      expect.objectContaining({
+        analyticsScope: agentAnalyticsScope,
+        dimension: "user",
+      })
     );
     expect(mockUseConsumptionExports).not.toHaveBeenCalled();
     expect(

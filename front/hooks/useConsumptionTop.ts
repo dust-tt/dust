@@ -8,6 +8,7 @@ import {
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/schema";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
 import type { GetConsumptionTopApiKeysResponse } from "@app/lib/api/analytics/consumption/top_api_keys";
@@ -68,8 +69,7 @@ export interface UseConsumptionTopParams {
   offset?: number;
   search?: string;
   filter?: ConsumptionScopeFilter;
-  personal?: boolean;
-  agentId?: string;
+  analyticsScope?: ConsumptionAnalyticsScope;
   sortOrder?: ConsumptionTopSortOrder;
   disabled?: boolean;
 }
@@ -204,15 +204,13 @@ export function useConsumptionTop({
   offset = 0,
   search,
   filter,
-  personal,
-  agentId,
+  analyticsScope,
   sortOrder = "desc",
   disabled,
 }: UseConsumptionTopParams) {
   const url = getConsumptionAnalyticsUrl({
     workspaceId,
-    personal,
-    agentId,
+    analyticsScope,
     endpoint: CONSUMPTION_TOP_ENDPOINTS[dimension],
   });
   const body: ConsumptionTopBody = {

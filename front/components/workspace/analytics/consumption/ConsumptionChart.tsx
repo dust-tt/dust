@@ -9,6 +9,7 @@ import {
   findPartialTimestamp,
   formatConsumptionDate,
 } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type {
   ConsumptionTimeseriesGroup,
   ConsumptionTimeseriesMode,
@@ -351,8 +352,7 @@ export interface ConsumptionChartProps {
   period: ConsumptionPeriodSelection;
   dimension: ConsumptionDimension;
   filter?: ConsumptionScopeFilter;
-  personal?: boolean;
-  agentId?: string;
+  analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
 }
 
@@ -361,8 +361,7 @@ function WorkspaceConsumptionDailyChart({
   period,
   dimension,
   filter,
-  personal,
-  agentId,
+  analyticsScope,
   disabled,
 }: ConsumptionChartProps) {
   const { timeseries, isTimeseriesLoading, isTimeseriesError } =
@@ -373,8 +372,7 @@ function WorkspaceConsumptionDailyChart({
       breakdownBy: dimension,
       breakdownCount: CONSUMPTION_CHART_BREAKDOWN_COUNT,
       filter,
-      personal,
-      agentId,
+      analyticsScope,
       disabled,
     });
 
@@ -395,16 +393,14 @@ function WorkspaceConsumptionBurnUpChart({
   workspaceId,
   period,
   filter,
-  personal,
-  agentId,
+  analyticsScope,
   disabled,
 }: WorkspaceConsumptionBurnUpChartProps) {
   const { overview } = useConsumptionOverview({
     workspaceId,
     period,
     filter,
-    personal,
-    agentId,
+    analyticsScope,
     disabled,
   });
   const isFiltered = Object.values(filter ?? {}).some(
@@ -425,8 +421,7 @@ function WorkspaceConsumptionBurnUpChart({
       period,
       mode: "cumulative",
       filter,
-      personal,
-      agentId,
+      analyticsScope,
       disabled,
     });
 
@@ -446,8 +441,7 @@ export function ConsumptionChart({
   period,
   dimension,
   filter,
-  personal,
-  agentId,
+  analyticsScope,
   disabled,
 }: ConsumptionChartProps) {
   const [mode, setMode] = useState<ConsumptionTimeseriesMode>("daily");
@@ -474,8 +468,7 @@ export function ConsumptionChart({
           workspaceId={workspaceId}
           period={period}
           filter={filter}
-          personal={personal}
-          agentId={agentId}
+          analyticsScope={analyticsScope}
           disabled={disabled}
         />
       ) : (
@@ -484,8 +477,7 @@ export function ConsumptionChart({
           period={period}
           dimension={dimension}
           filter={filter}
-          personal={personal}
-          agentId={agentId}
+          analyticsScope={analyticsScope}
           disabled={disabled}
         />
       )}

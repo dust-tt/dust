@@ -26,6 +26,8 @@ import type { ConsumptionFacetOptions } from "@app/hooks/useConsumptionFacets";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import { useGroups } from "@app/lib/swr/groups";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
@@ -46,8 +48,7 @@ export interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
   period: ConsumptionPeriodSelection;
   filter: UsageFilter;
-  personal?: boolean;
-  agentId?: string;
+  analyticsScope?: ConsumptionAnalyticsScope;
   onFilterChange: (next: UsageFilter) => void;
   showMemberGroupFilter?: boolean;
 }
@@ -56,16 +57,13 @@ export function UsageFilterPanel({
   owner,
   period,
   filter,
-  personal,
-  agentId,
+  analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
   onFilterChange,
   showMemberGroupFilter = true,
 }: UsageFilterPanelProps) {
-  const categories = getUsageFilterCategories({
-    personal,
-    agentId,
-  });
-  const shouldShowMemberGroupFilter = showMemberGroupFilter && !personal;
+  const categories = getUsageFilterCategories(analyticsScope);
+  const shouldShowMemberGroupFilter =
+    showMemberGroupFilter && analyticsScope.kind !== "personal";
   const state = useUsageFilterPanelState({
     owner,
     filter,
@@ -81,8 +79,7 @@ export function UsageFilterPanel({
     workspaceId: owner.sId,
     period,
     filter: state.draftScopeFilter,
-    personal,
-    agentId,
+    analyticsScope,
     disabled: !state.isOpen,
   });
 

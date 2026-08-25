@@ -1,4 +1,5 @@
 import { ConsumptionSummary } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,6 +20,10 @@ vi.mock("@app/hooks/useConsumptionTop", () => ({
 }));
 
 const period = { kind: "days", days: 30 } as const;
+const agentAnalyticsScope: ConsumptionAnalyticsScope = {
+  kind: "agent",
+  agentId: "agent-1",
+};
 
 const overview: GetConsumptionOverviewResponse = {
   period: {
@@ -68,7 +73,7 @@ describe("ConsumptionSummary", () => {
       <ConsumptionSummary
         workspaceId="workspace-id"
         period={period}
-        agentId="agent-1"
+        analyticsScope={agentAnalyticsScope}
       />
     );
 
@@ -77,7 +82,7 @@ describe("ConsumptionSummary", () => {
         workspaceId: "workspace-id",
         dimension: "user",
         limit: 1,
-        agentId: "agent-1",
+        analyticsScope: agentAnalyticsScope,
       })
     );
     expect(screen.getByText("Top user")).toBeInTheDocument();

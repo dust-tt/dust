@@ -21,6 +21,7 @@ import {
 } from "@app/components/workspace/analytics/usageFilter";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -54,6 +55,10 @@ export function AgentInsightsTab({
   const scopeFilter = useMemo(() => toConsumptionScopeFilter(filter), [filter]);
   const shouldReduceMotion = useReducedMotion();
   const agentId = agentConfiguration.sId;
+  const analyticsScope: ConsumptionAnalyticsScope = {
+    kind: "agent",
+    agentId,
+  };
   const isCustomAgent = agentConfiguration.scope !== "global";
 
   return (
@@ -106,14 +111,14 @@ export function AgentInsightsTab({
                   <ConsumptionOverview
                     workspaceId={owner.sId}
                     period={period}
-                    agentId={agentId}
+                    analyticsScope={analyticsScope}
                   />
                 </div>
 
                 <ConsumptionSummary
                   workspaceId={owner.sId}
                   period={period}
-                  agentId={agentId}
+                  analyticsScope={analyticsScope}
                 />
 
                 <div className="flex flex-col gap-4">
@@ -126,7 +131,7 @@ export function AgentInsightsTab({
                         owner={owner}
                         period={period}
                         filter={filter}
-                        agentId={agentId}
+                        analyticsScope={analyticsScope}
                         onFilterChange={setFilter}
                       />
                     </div>
@@ -148,7 +153,7 @@ export function AgentInsightsTab({
                         period={period}
                         dimension={dimension}
                         filter={scopeFilter}
-                        agentId={agentId}
+                        analyticsScope={analyticsScope}
                       />
                     </m.div>
                   </LazyMotion>
@@ -158,7 +163,7 @@ export function AgentInsightsTab({
                   workspaceId={owner.sId}
                   period={period}
                   filter={scopeFilter}
-                  agentId={agentId}
+                  analyticsScope={analyticsScope}
                   onAddFilter={(selectedRow) => {
                     setFilter((current) =>
                       addUsageFilterFromAttributionRow(
