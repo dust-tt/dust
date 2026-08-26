@@ -72,6 +72,8 @@ const VariantQuerySchema = z.object({
  *         description: Bad Request. Invalid or missing parameters.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
+ *       403:
+ *         description: Forbidden. Only admins can access unpublished agents.
  *       404:
  *         description: Agent configuration not found.
  *       500:
