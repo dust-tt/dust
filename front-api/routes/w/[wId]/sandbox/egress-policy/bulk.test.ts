@@ -286,7 +286,7 @@ describe("POST /api/w/:wId/sandbox/egress-policy/bulk", () => {
     });
   });
 
-  it("adds a domain to the workspace and every selected pod", async () => {
+  it("collapses a workspace add to the workspace alone, skipping selected pods", async () => {
     const { workspace, podA, podB } = await setupTest();
 
     const response = await postBulk(workspace.sId, {
@@ -297,42 +297,51 @@ describe("POST /api/w/:wId/sandbox/egress-policy/bulk", () => {
 
     expect(response.status).toBe(200);
     const { results } = BulkWriteResponseSchema.parse(await response.json());
-    expect(results).toEqual([
-      { scopeId: "workspace", success: true },
-      { scopeId: podA.sId, success: true },
-      { scopeId: podB.sId, success: true },
-    ]);
+    // The workspace add already covers every Pod, so the selected pods are
+    // skipped and only the workspace is written.
+    expect(results).toEqual([{ scopeId: "workspace", success: true }]);
 
-    // The GCS policy files carry the new domain.
     expect(allowedDomainsAt(workspacePolicyPath(workspace.sId))).toEqual([
       "api.github.com",
     ]);
-    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podA.sId))).toEqual([
-      "api.github.com",
-    ]);
-    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podB.sId))).toEqual([
-      "api.github.com",
-    ]);
+    // The selected pod policies are left untouched.
+    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podA.sId))).toEqual([]);
+    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podB.sId))).toEqual([]);
 
-    // One audit event per changed scope: pods carry their space_id, the
-    // workspace omits it.
-    for (const pod of [podA, podB]) {
-      expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: "sandbox_egress_policy.updated",
-          metadata: expect.objectContaining({
-            space_id: pod.sId,
-            allowed_domains: "api.github.com",
-          }),
-        })
-      );
-    }
+    // Only the workspace audit event fires (no space_id, no per-pod events).
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledTimes(1);
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "sandbox_egress_policy.updated",
         metadata: expect.not.objectContaining({ space_id: expect.anything() }),
       })
     );
+  });
+
+  it("adds a domain to only the selected pods when the workspace is not included", async () => {
+    const { workspace, podA, podB } = await setupTest();
+
+    const response = await postBulk(workspace.sId, {
+      includeWorkspace: false,
+      podIds: [podA.sId, podB.sId],
+      operation: { operation: "add", domain: "api.github.com" },
+    });
+
+    expect(response.status).toBe(200);
+    const { results } = BulkWriteResponseSchema.parse(await response.json());
+    expect(results).toEqual([
+      { scopeId: podA.sId, success: true },
+      { scopeId: podB.sId, success: true },
+    ]);
+
+    // The workspace policy is untouched; both pods carry the new domain.
+    expect(allowedDomainsAt(workspacePolicyPath(workspace.sId))).toEqual([]);
+    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podA.sId))).toEqual([
+      "api.github.com",
+    ]);
+    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podB.sId))).toEqual([
+      "api.github.com",
+    ]);
   });
 
   it("removes a domain from the workspace and every selected pod", async () => {

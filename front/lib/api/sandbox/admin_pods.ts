@@ -228,6 +228,13 @@ export async function bulkUpdateEgressDomain(
     }
   }
 
+  // A workspace add already covers every Pod, so writing to the selected Pods
+  // is redundant. Remove still targets each Pod below (a Pod can hold its own
+  // copy a workspace remove would not clear).
+  if (operation.operation === "add" && includeWorkspace) {
+    return results;
+  }
+
   // Validate against the same live, non-archived project Pods the read path
   // surfaces, so an archived Pod's id can't be used to mutate its policy.
   const livePods = await listNonArchivedProjectSpacesAsAdmin(auth);
