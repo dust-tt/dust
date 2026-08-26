@@ -339,11 +339,7 @@ export function UserMenu({
           {hasMultipleWorkspaces && (
             <>
               <DropdownMenuLabel label="Workspace" />
-              <WorkspacePickerRadioGroup
-                user={user}
-                workspace={owner}
-                onItemClick={() => trackUserMenuEvent("workspace")}
-              />
+              <WorkspacePickerRadioGroup user={user} workspace={owner} />
               <Separator className="my-1" />
             </>
           )}

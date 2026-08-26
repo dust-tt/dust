@@ -20,7 +20,6 @@ interface WorkspacePickerRadioGroupProps {
   workspace: LightWorkspaceType;
   onSelectOrganization?: (organizationId: string) => void;
   onSelectWorkspace?: (workspaceId: string) => void;
-  onItemClick?: () => void;
 }
 
 export const WorkspacePickerRadioGroup = ({
@@ -28,7 +27,6 @@ export const WorkspacePickerRadioGroup = ({
   workspace,
   onSelectOrganization,
   onSelectWorkspace,
-  onItemClick,
 }: WorkspacePickerRadioGroupProps) => {
   const router = useAppRouter();
 
@@ -45,7 +43,6 @@ export const WorkspacePickerRadioGroup = ({
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 value={org.externalId || ""}
                 onClick={async () => {
-                  onItemClick?.();
                   if (org.externalId && org.externalId !== workspace.sId) {
                     if (onSelectOrganization) {
                       onSelectOrganization(org.id);
@@ -68,7 +65,6 @@ export const WorkspacePickerRadioGroup = ({
                   key={ws.sId}
                   value={ws.sId}
                   onClick={async () => {
-                    onItemClick?.();
                     if (ws.sId !== workspace.sId) {
                       if (onSelectWorkspace) {
                         onSelectWorkspace(ws.sId);
