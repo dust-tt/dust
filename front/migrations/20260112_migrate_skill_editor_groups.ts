@@ -3,14 +3,11 @@ import { Op } from "sequelize";
 
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
 import { AGENT_GROUP_PREFIX, SKILL_GROUP_PREFIX } from "@app/types/groups";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 /**
  * This migration changes all groups that are associated with skills from
@@ -110,24 +107,12 @@ makeScript(
   async ({ wId, execute }, logger) => {
     logger.info("Starting skill editor groups migration");
 
-    if (wId) {
-      const ws = await WorkspaceResource.fetchById(wId);
-      if (!ws) {
-        throw new Error(`Workspace not found: ${wId}`);
-      }
-      await migrateSkillEditorGroups(
-        execute,
-        logger,
-        renderLightWorkspaceType({ workspace: ws })
-      );
-    } else {
-      await runOnAllWorkspaces(
-        async (workspace) => {
-          await migrateSkillEditorGroups(execute, logger, workspace);
-        },
-        { concurrency: 4 }
-      );
-    }
+    await runOnAllWorkspaces(
+      async (workspace) => {
+        await migrateSkillEditorGroups(execute, logger, workspace);
+      },
+      { concurrency: 4, wId }
+    );
 
     logger.info("Skill editor groups migration completed");
   }

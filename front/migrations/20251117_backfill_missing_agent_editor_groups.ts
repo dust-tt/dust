@@ -6,13 +6,10 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 async function backfillMissingEditorGroupForAgent(
   auth: Authenticator,
@@ -250,24 +247,12 @@ makeScript(
   async ({ wId, execute }, logger) => {
     logger.info("Starting missing agent editors group backfill");
 
-    if (wId) {
-      const ws = await WorkspaceResource.fetchById(wId);
-      if (!ws) {
-        throw new Error(`Workspace not found: ${wId}`);
-      }
-      await migrateWorkspaceMissingEditorGroups(
-        execute,
-        logger,
-        renderLightWorkspaceType({ workspace: ws })
-      );
-    } else {
-      await runOnAllWorkspaces(
-        async (workspace) => {
-          await migrateWorkspaceMissingEditorGroups(execute, logger, workspace);
-        },
-        { concurrency: 4 }
-      );
-    }
+    await runOnAllWorkspaces(
+      async (workspace) => {
+        await migrateWorkspaceMissingEditorGroups(execute, logger, workspace);
+      },
+      { concurrency: 4, wId }
+    );
 
     logger.info("Missing agent editors group backfill completed");
   }

@@ -11,12 +11,10 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
 import { AGENT_GROUP_PREFIX } from "@app/types/groups";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { DustError } from "@app/lib/error";
 import { Err } from "@app/types/shared/result";
 
@@ -207,24 +205,12 @@ makeScript(
   async ({ wId, execute }, logger) => {
     logger.info("Starting agent editors group backfill");
 
-    if (wId) {
-      const ws = await WorkspaceResource.fetchById(wId);
-      if (!ws) {
-        throw new Error(`Workspace not found: ${wId}`);
-      }
-      await migrateWorkspaceEditorsGroups(
-        execute,
-        logger,
-        renderLightWorkspaceType({ workspace: ws })
-      );
-    } else {
-      await runOnAllWorkspaces(
-        async (workspace) => {
-          await migrateWorkspaceEditorsGroups(execute, logger, workspace);
-        },
-        { concurrency: 4 }
-      );
-    }
+    await runOnAllWorkspaces(
+      async (workspace) => {
+        await migrateWorkspaceEditorsGroups(execute, logger, workspace);
+      },
+      { concurrency: 4, wId }
+    );
 
     logger.info("Agents migration completed");
   }
