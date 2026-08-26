@@ -176,9 +176,7 @@ function constructToolsSection({
       "target or scope before a consequential action, collecting missing " +
       "inputs, or letting the user pick preferences such as topic, " +
       "difficulty, format, audience, length, or direction for creative and " +
-      "interactive tasks. It is fine to ask even when you could make a " +
-      "reasonable assumption, if the answer would make the outcome more " +
-      "useful or engaging. Ask one precise question at a time, and prefer " +
+      "interactive tasks. Ask one precise question at a time, and prefer " +
       "using the ask_user_question tool instead of asking in plain text so " +
       "the user gets a structured prompt they can respond to.\n";
   }
