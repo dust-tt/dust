@@ -260,11 +260,11 @@ export interface SkillResource
 // The grant a skill's editors hold on the skill. Its verbs live in ROLE_REGISTRY.skill.
 const SKILL_EDITOR_GRANT_TYPE = "editor" as const;
 
+// Reading a skill is granted by the groups holding a `read` verb on it — the workspace global
+// group's workspace-wide `reader` grant, or an editor's `editor` grant — never by the caller's
+// role. Administrating one stays a role power for now.
 const SKILL_ROLE_GRANTS: RoleGrant[] = [
-  { role: "admin", permissions: ["read", "admin"] },
-  { role: "manager", permissions: ["read"] },
-  { role: "user", permissions: ["read"] },
-  { role: "builder", permissions: ["read"] },
+  { role: "admin", permissions: ["admin"] },
 ];
 
 // Code-defined global/system skills: everyone in the workspace reads them, nobody edits them — they
