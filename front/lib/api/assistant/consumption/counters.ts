@@ -15,6 +15,11 @@ import assert from "assert";
 const ROOT_HASH_WRITE_METRIC = "consumption.root_hash_write.count";
 const REDIS_ERROR_METRIC = "ratelimiter.error.count";
 
+export type ConsumptionRootTotals = {
+  totalCreditAmountMicro: number;
+  subagentCount: number;
+};
+
 /**
  * Atomically replaces one agent message total within its root hash.
  *
@@ -43,12 +48,20 @@ end
 redis.call("PEXPIRE", KEYS[1], ARGV[6])
 `;
 
+function parseCounter(value: string | null): number {
+  const parsed = Number(value ?? 0);
+  if (!Number.isSafeInteger(parsed) || parsed < 0) {
+    throw new Error("Consumption root contains an invalid counter");
+  }
+  return parsed;
+}
+
 function reportRedisError({
   operation,
   error,
   context,
 }: {
-  operation: "write_consumption_root";
+  operation: "read_consumption_root" | "write_consumption_root";
   error: unknown;
   context: Record<string, unknown>;
 }): void {
@@ -109,5 +122,38 @@ export async function recordAgentMessageTotal({
       error,
       context: { workspaceId, rootAgentMessageId, agentMessageId },
     });
+  }
+}
+
+export async function readRootTotals({
+  workspaceId,
+  rootAgentMessageId,
+}: {
+  workspaceId: string;
+  rootAgentMessageId: ModelId;
+}): Promise<ConsumptionRootTotals | null> {
+  try {
+    const [total, subagents] = await runOnRedisCache(
+      { origin: "consumption" },
+      (redis) =>
+        redis.hmGet(
+          makeConsumptionRootKey({ workspaceId, rootAgentMessageId }),
+          [CONSUMPTION_ROOT_TOTAL_FIELD, CONSUMPTION_ROOT_SUBAGENTS_FIELD]
+        )
+    );
+    if (total === null) {
+      return null;
+    }
+    return {
+      totalCreditAmountMicro: parseCounter(total),
+      subagentCount: parseCounter(subagents),
+    };
+  } catch (error) {
+    reportRedisError({
+      operation: "read_consumption_root",
+      error,
+      context: { workspaceId, rootAgentMessageId },
+    });
+    return null;
   }
 }

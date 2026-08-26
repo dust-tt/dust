@@ -1,9 +1,13 @@
+import { readRootTotals } from "@app/lib/api/assistant/consumption/counters";
 import type { Authenticator } from "@app/lib/auth";
+import { MICRO_CREDITS_PER_CREDIT } from "@app/lib/credits/units";
+import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import {
   AgentMessageModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { statsDMetrics } from "@app/lib/utils/statsd";
@@ -30,10 +34,12 @@ export async function checkCostAndSubagentsThresholds({
   auth,
   isRootAgentMessage,
   eventData,
+  useAgentMessageConsumption,
 }: {
   auth: Authenticator;
   isRootAgentMessage: boolean;
   eventData: CostThresholdEventData;
+  useAgentMessageConsumption: boolean;
 }): Promise<{
   totalCostMicroUsd: number;
   hardCapExceeded: boolean;
@@ -50,13 +56,9 @@ export async function checkCostAndSubagentsThresholds({
     };
   }
 
-  const { dustRunIds, descendantAgenticUserMessageCount } =
-    await collectDescendantData(auth, {
-      rootAgentMessageId: eventData.agentMessageId,
-    });
-
-  const totalCostMicroUsd = await getCumulativeCostMicroUsd(auth, {
-    dustRunIds,
+  const { subagentLaunchCount, totalCostMicroUsd } = await readTreeSpend(auth, {
+    rootAgentMessageId: eventData.agentMessageId,
+    useAgentMessageConsumption,
   });
 
   if (totalCostMicroUsd > 0) {
@@ -101,9 +103,70 @@ export async function checkCostAndSubagentsThresholds({
   return {
     totalCostMicroUsd,
     hardCapExceeded: totalCostMicroUsd >= AGENT_LOOP_COST_HARD_CAP_MICRO_USD,
-    subagentLaunchCount: descendantAgenticUserMessageCount,
+    subagentLaunchCount,
     subagentHardCapExceeded:
-      descendantAgenticUserMessageCount >= AGENT_LOOP_SUBAGENT_HARD_CAP,
+      subagentLaunchCount >= AGENT_LOOP_SUBAGENT_HARD_CAP,
+  };
+}
+
+async function readTreeSpend(
+  auth: Authenticator,
+  {
+    rootAgentMessageId,
+    useAgentMessageConsumption,
+  }: {
+    rootAgentMessageId: string;
+    useAgentMessageConsumption: boolean;
+  }
+): Promise<{ subagentLaunchCount: number; totalCostMicroUsd: number }> {
+  if (useAgentMessageConsumption) {
+    const consumptionTreeSpend = await readConsumptionTreeSpend(auth, {
+      rootAgentMessageId,
+    });
+    if (consumptionTreeSpend) {
+      return consumptionTreeSpend;
+    }
+  }
+
+  const { descendantAgenticUserMessageCount, dustRunIds } =
+    await collectDescendantData(auth, { rootAgentMessageId });
+
+  return {
+    subagentLaunchCount: descendantAgenticUserMessageCount,
+    totalCostMicroUsd: await getCumulativeCostMicroUsd(auth, { dustRunIds }),
+  };
+}
+
+async function readConsumptionTreeSpend(
+  auth: Authenticator,
+  { rootAgentMessageId }: { rootAgentMessageId: string }
+): Promise<{
+  subagentLaunchCount: number;
+  totalCostMicroUsd: number;
+} | null> {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const rootContext = await ConversationResource.fetchAgentMessageCreditContext(
+    auth,
+    {
+      agentMessageId: rootAgentMessageId,
+    }
+  );
+  if (!rootContext) {
+    return null;
+  }
+  const totals = await readRootTotals({
+    workspaceId,
+    rootAgentMessageId: rootContext.agentMessageModelId,
+  });
+  if (!totals) {
+    return null;
+  }
+  return {
+    subagentLaunchCount: totals.subagentCount,
+    totalCostMicroUsd: Math.round(
+      (totals.totalCreditAmountMicro * MODEL_COST_MICRO_USD_PER_AWU_CREDIT) /
+        MICRO_CREDITS_PER_CREDIT
+    ),
   };
 }
 
@@ -175,11 +238,11 @@ async function collectDescendantData(
       visitedAgentMessageIds.add(row.sId);
 
       const agentMessage = row.agentMessage;
-      if (!agentMessage?.runIds) {
+      if (!agentMessage) {
         continue;
       }
 
-      for (const runId of agentMessage.runIds) {
+      for (const runId of agentMessage.runIds ?? []) {
         runIds.add(runId);
       }
     }
