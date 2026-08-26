@@ -2,6 +2,7 @@ import type { Avatar, Icon } from "@dust-tt/sparkle";
 import {
   ActionFrame,
   ActionIcons,
+  ActionStore,
   AdomikLogo,
   AmplitudeLogo,
   Announcement01,
@@ -210,6 +211,7 @@ export const InternalActionIcons = {
   ActionScanIcon: Scan,
   ActionSlideshowIcon: PresentationChart01,
   ActionSpeakIcon: MessageSmileCircle,
+  ActionStoreIcon: ActionStore,
   ActionTableIcon: Table,
   ActionTimeIcon: Clock,
   AdomikLogo,

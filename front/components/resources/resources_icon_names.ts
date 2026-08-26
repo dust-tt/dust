@@ -186,6 +186,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "ActionScanIcon",
   "ActionSlideshowIcon",
   "ActionSpeakIcon",
+  "ActionStoreIcon",
   "ActionTableIcon",
   "ActionTimeIcon",
   "AdomikLogo",

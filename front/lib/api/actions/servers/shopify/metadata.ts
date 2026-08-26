@@ -43,12 +43,13 @@ export const SHOPIFY_SERVER = {
   serverInfo: {
     name: SHOPIFY_SERVER_NAME,
     version: "1.0.0",
-    description: "List the product catalog from a Shopify store.",
+    description:
+      "Access catalog, customers and orders data from a Shopify store.",
     authorization: {
       provider: "shopify" as const,
       supported_use_cases: ["platform_actions"] as const,
     },
-    icon: "ActionTableIcon",
+    icon: "ActionStoreIcon",
     documentationUrl: null,
   },
   tools: SHOPIFY_TOOLS_METADATA,

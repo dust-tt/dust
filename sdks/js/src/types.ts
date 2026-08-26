@@ -3405,6 +3405,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionRobotIcon"
   | "ActionScanIcon"
   | "ActionSpeakIcon"
+  | "ActionStoreIcon"
   | "ActionTableIcon"
   | "ActionTimeIcon"
   | "AdomikLogo"
