@@ -1,6 +1,6 @@
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import {
-  filterAvailableModels,
+  filterEnabledModels,
   isModelAvailable,
   isModelReleased,
 } from "@app/lib/assistant";
@@ -372,7 +372,7 @@ describe("isModelReleased", () => {
   });
 });
 
-describe("filterAvailableModels", () => {
+describe("filterEnabledModels", () => {
   it("excludes advanced models when the plan lacks advanced model access", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -382,13 +382,12 @@ describe("filterAvailableModels", () => {
       providerId: "anthropic",
     });
 
-    const result = filterAvailableModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: { ...auth.plan()!, hasAdvancedModelAccess: false },
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
-      killedModelIds: new Set<string>(),
     });
 
     expect(result).toEqual([]);
@@ -399,13 +398,12 @@ describe("filterAvailableModels", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const model = createMockModel({ providerId: "openai", largeModel: false });
 
-    const result = filterAvailableModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
-      killedModelIds: new Set<string>(),
     });
     expect(result).toContain(model);
   });
@@ -420,13 +418,12 @@ describe("filterAvailableModels", () => {
       largeModel: false,
     });
 
-    const result = filterAvailableModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
-      killedModelIds: new Set<string>(),
     });
     expect(result).toHaveLength(0);
   });
@@ -440,13 +437,12 @@ describe("filterAvailableModels", () => {
       largeModel: false,
     });
 
-    const result = filterAvailableModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
-      killedModelIds: new Set<string>(),
     });
     expect(result).toHaveLength(0);
   });
@@ -460,13 +456,12 @@ describe("filterAvailableModels", () => {
       largeModel: false,
     });
 
-    const result = filterAvailableModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: ["deepseek_feature"],
       plan: auth.plan(),
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
-      killedModelIds: new Set<string>(),
     });
     expect(result).toContain(model);
   });
@@ -485,13 +480,12 @@ describe("filterAvailableModels", () => {
       largeModel: false,
     });
 
-    const result = filterAvailableModels([openaiModel, xaiModel], {
+    const result = filterEnabledModels([openaiModel, xaiModel], {
       featureFlags: [],
       plan: auth.plan(),
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
-      killedModelIds: new Set<string>(),
     });
     expect(result).toEqual([openaiModel]);
   });
@@ -504,13 +498,12 @@ describe("filterAvailableModels", () => {
       largeModel: false,
     });
 
-    const result = filterAvailableModels([model], {
+    const result = filterEnabledModels([model], {
       featureFlags: [],
       plan: auth.plan(),
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
       whitelistedProviders: getWhitelistedProviders(auth),
-      killedModelIds: new Set<string>(),
     });
     expect(result).toContain(model);
   });

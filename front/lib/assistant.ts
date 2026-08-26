@@ -96,23 +96,8 @@ export function isModelAvailable(
   return true;
 }
 
-// killed means the model has an incident
-export type ModelEnablementStatus =
-  | { status: "enabled" }
-  | { status: "killed" }
-  | { status: "provider_not_whitelisted" }
-  | { status: "not_available" };
-
-export type ModelEnablementContext = {
-  featureFlags: WhitelistableFeature[];
-  plan: PlanType | null;
-  regionalModelsOnly: boolean;
-  region: RegionType;
-  whitelistedProviders: Set<ModelProviderIdType>;
-  killedModelIds: ReadonlySet<string>;
-};
-
-export function getModelEnablementStatus(
+// Returns true if the model is enabled for the workspace.
+export function isModelEnabled(
   m: ModelConfigurationType,
   {
     featureFlags,
@@ -120,50 +105,43 @@ export function getModelEnablementStatus(
     regionalModelsOnly,
     region,
     whitelistedProviders,
-    killedModelIds,
-  }: ModelEnablementContext
-): ModelEnablementStatus {
-  if (
-    !isModelAvailable(m, { featureFlags, plan, regionalModelsOnly, region })
-  ) {
-    return { status: "not_available" };
+  }: {
+    featureFlags: WhitelistableFeature[];
+    plan: PlanType | null;
+    regionalModelsOnly: boolean;
+    region: RegionType;
+    whitelistedProviders: Set<ModelProviderIdType>;
   }
-
-  if (!isProviderWhitelisted(whitelistedProviders, m.providerId)) {
-    return { status: "provider_not_whitelisted" };
-  }
-
-  if (killedModelIds.has(m.modelId)) {
-    return { status: "killed" };
-  }
-
-  return { status: "enabled" };
-}
-
-/**
- * Returns true if the model can run for the workspace right now.
- *
- * A killed model is not enabled: kills take it out of every path, so nothing
- * ever routes onto one automatically. Use `filterAvailableModels` for the
- * surfaces that must still show it as unavailable rather than hide it.
- */
-export function isModelEnabled(
-  m: ModelConfigurationType,
-  context: ModelEnablementContext
 ) {
-  return getModelEnablementStatus(m, context).status === "enabled";
+  return (
+    isModelAvailable(m, { featureFlags, plan, regionalModelsOnly, region }) &&
+    isProviderWhitelisted(whitelistedProviders, m.providerId)
+  );
 }
 
-/**
- * The models a workspace may see: the ones it can run, plus the killed ones.
- */
-export function filterAvailableModels(
+export function filterEnabledModels(
   models: ModelConfigurationType[],
-  context: ModelEnablementContext
+  {
+    featureFlags,
+    plan,
+    regionalModelsOnly,
+    region,
+    whitelistedProviders,
+  }: {
+    featureFlags: WhitelistableFeature[];
+    plan: PlanType | null;
+    regionalModelsOnly: boolean;
+    region: RegionType;
+    whitelistedProviders: Set<ModelProviderIdType>;
+  }
 ): ModelConfigurationType[] {
-  return models.filter((m) => {
-    const { status } = getModelEnablementStatus(m, context);
-
-    return status === "enabled" || status === "killed";
-  });
+  return models.filter((m) =>
+    isModelEnabled(m, {
+      featureFlags,
+      plan,
+      regionalModelsOnly,
+      region,
+      whitelistedProviders,
+    })
+  );
 }

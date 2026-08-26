@@ -1,4 +1,5 @@
 import type { AgentMessageModelResolution } from "@app/lib/api/assistant/conversation/messages";
+import { getDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import {
   makePremiumModelMessageRateLimitKeyForUser,
   PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK,
@@ -43,9 +44,14 @@ async function resolveDowngradeTarget(
   auth: Authenticator
 ): Promise<ResolvedRequestedModel | null> {
   const models = await getEnabledModelsForAuth(auth);
+  const degradedModelIds = getDegradedModelIds();
 
   for (const streamId of [AUTO_MODEL_ID, AUTO_FAST_MODEL_ID] as const) {
-    const { model, reasoningEffort } = resolveStreamModel(models, streamId);
+    const { model, reasoningEffort } = resolveStreamModel(
+      models,
+      streamId,
+      degradedModelIds
+    );
     const tierName = getTierForModel(model.modelId, reasoningEffort);
 
     if (tierName && tierName !== "premium") {

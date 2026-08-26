@@ -157,7 +157,6 @@ describe("modelPickerUtils premium gating", () => {
       modelId,
       providerId: modelId,
       isSelectable,
-      isKilled: false,
     });
 
     it("locks a tier whose stream is above the member's cap", () => {
@@ -200,7 +199,6 @@ describe("modelPickerUtils premium gating", () => {
       modelId,
       providerId: modelId,
       isSelectable,
-      isKilled: false,
     });
 
     it("falls back to Basic when Standard is above the member's cap", () => {

@@ -1,4 +1,4 @@
-import { getKilledModelIds } from "@app/lib/api/assistant/killed_models";
+import { getDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
 import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
@@ -38,16 +38,14 @@ function isStaticModel(
 
 function restrictModelConfigToAllowedTiers(
   model: ModelConfigurationType,
-  allowedTierNamesSet: Set<ModelsTierName>,
-  isKilled: boolean
+  allowedTierNamesSet: Set<ModelsTierName>
 ): EnabledModelConfigurationType {
   if (!isStaticModel(model.modelId)) {
     // Models outside the tier table are models added dynamically (as we
     // have a type guard for all models), so it is expected that we allow them.
     return {
       ...model,
-      isSelectable: !isKilled,
-      isKilled,
+      isSelectable: true,
     };
   }
 
@@ -79,12 +77,9 @@ function restrictModelConfigToAllowedTiers(
     ...model,
     supportedReasoningEfforts,
     defaultReasoningEffort,
-    isSelectable:
-      !isKilled &&
-      ORDERED_REASONING_EFFORTS.some(
-        (effort) => supportedReasoningEfforts[effort]
-      ),
-    isKilled,
+    isSelectable: ORDERED_REASONING_EFFORTS.some(
+      (effort) => supportedReasoningEfforts[effort]
+    ),
   };
 }
 
@@ -99,18 +94,12 @@ export async function withModelSelectability(
     allowedTierNamesOverride?: ModelsTierName[] | null;
   }
 ): Promise<EnabledModelConfigurationType[]> {
-  const killedModelIds = getKilledModelIds();
-
   const allowedTierNames =
     allowedTierNamesOverride ?? (await resolveAllowedTierNames(auth)).tiers;
   const allowedTierNamesSet = new Set(allowedTierNames);
 
   return models.map((model) =>
-    restrictModelConfigToAllowedTiers(
-      model,
-      allowedTierNamesSet,
-      killedModelIds.has(model.modelId)
-    )
+    restrictModelConfigToAllowedTiers(model, allowedTierNamesSet)
   );
 }
 
@@ -155,7 +144,6 @@ export function getDefaultModelFromEnabledModels(
   return {
     ...pickPreferredLargeModel(selectableModels),
     isSelectable: true,
-    isKilled: false,
   };
 }
 
@@ -167,15 +155,24 @@ export interface StreamResolutionType {
 }
 
 // Walks a stream's ordered candidate pool and picks the first one available
-// or a fallback large model
+// or a fallback large model.
+//
+// Degraded models are skipped here and only here: a stream picks a model on the
+// user's behalf, so routing around an ongoing provider incident is ours to do.
+// A definitive pick -- an agent configured on a concrete model, or a user
+// overriding the model from the picker -- is left alone and runs as usual.
 export function resolveStreamModel(
   models: EnabledModelConfigurationType[],
-  streamId: ModelStreamIdType
+  streamId: ModelStreamIdType,
+  degradedModelIds: ReadonlySet<string>
 ): StreamResolutionType {
+  const candidateModels = models.filter(
+    (m) => m.isSelectable && !degradedModelIds.has(m.modelId)
+  );
+
   for (const candidate of MODEL_STREAMS[streamId]) {
-    const model = models.find(
+    const model = candidateModels.find(
       (m) =>
-        m.isSelectable &&
         m.providerId === candidate.providerId &&
         m.modelId === candidate.modelId &&
         m.supportedReasoningEfforts[candidate.reasoningEffort]
@@ -189,11 +186,11 @@ export function resolveStreamModel(
     }
   }
 
-  const fallback = pickPreferredLargeModel(
-    models.filter((m) => m.isSelectable)
-  );
+  // Still off the degraded ones: the last-resort fallback is as automatic a pick
+  // as the pool walk itself.
+  const fallback = pickPreferredLargeModel(candidateModels);
   return {
-    model: { ...fallback, isSelectable: true, isKilled: false },
+    model: { ...fallback, isSelectable: true },
     reasoningEffort: fallback.defaultReasoningEffort,
     fromPool: false,
   };
@@ -201,9 +198,14 @@ export function resolveStreamModel(
 
 function toStreamResolution(
   models: EnabledModelConfigurationType[],
-  streamId: ModelStreamIdType
+  streamId: ModelStreamIdType,
+  degradedModelIds: ReadonlySet<string>
 ): ModelStreamResolutionType {
-  const { model, reasoningEffort } = resolveStreamModel(models, streamId);
+  const { model, reasoningEffort } = resolveStreamModel(
+    models,
+    streamId,
+    degradedModelIds
+  );
   return {
     providerId: model.providerId,
     modelId: model.modelId,
@@ -213,12 +215,25 @@ function toStreamResolution(
 }
 
 export function getStreamResolutions(
-  models: EnabledModelConfigurationType[]
+  models: EnabledModelConfigurationType[],
+  degradedModelIds: ReadonlySet<string>
 ): ModelStreamResolutionsType {
   return {
-    [AUTO_MODEL_ID]: toStreamResolution(models, AUTO_MODEL_ID),
-    [AUTO_FAST_MODEL_ID]: toStreamResolution(models, AUTO_FAST_MODEL_ID),
-    [AUTO_COMPLEX_MODEL_ID]: toStreamResolution(models, AUTO_COMPLEX_MODEL_ID),
+    [AUTO_MODEL_ID]: toStreamResolution(
+      models,
+      AUTO_MODEL_ID,
+      degradedModelIds
+    ),
+    [AUTO_FAST_MODEL_ID]: toStreamResolution(
+      models,
+      AUTO_FAST_MODEL_ID,
+      degradedModelIds
+    ),
+    [AUTO_COMPLEX_MODEL_ID]: toStreamResolution(
+      models,
+      AUTO_COMPLEX_MODEL_ID,
+      degradedModelIds
+    ),
   };
 }
 
@@ -231,6 +246,6 @@ export async function getModelsForAuth(auth: Authenticator): Promise<{
   return {
     models,
     defaultModel: getDefaultModelFromEnabledModels(models),
-    streams: getStreamResolutions(models),
+    streams: getStreamResolutions(models, getDegradedModelIds()),
   };
 }
