@@ -1439,8 +1439,11 @@ export async function buildToolConfigurationsFromRawTools(
   const toolsWithStakesRetryPoliciesAndTimeout = allToolsRaw
     .filter(({ name }) => !(toolsEnabled[name] === false)) // Include tools that are enabled (true) or not explicitly disabled (undefined).
     .map((tool) => {
+      // Admin overrides and static registry stakes first, then the stake the tool declares for
+      // itself (dynamically-listed internal tools have no static entry), then the fallback.
       const configuredStakeLevel =
         toolsStakes[tool.name] ||
+        tool.stake ||
         (availability === "manual"
           ? FALLBACK_MCP_TOOL_STAKE_LEVEL
           : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL);

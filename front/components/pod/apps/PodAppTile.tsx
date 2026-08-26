@@ -11,6 +11,7 @@ import {
   Download01,
   Edit04,
   GitBranch01,
+  Share01,
   Spinner,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -29,6 +30,8 @@ interface PodAppTileProps {
   onClone?: () => void;
   /** Absent when the viewer cannot edit (no write access). */
   onDelete?: () => void;
+  /** Absent when the viewer cannot edit (no write access). */
+  onShare?: () => void;
   /** Deletion is in flight: the tile stays put, inert, until the app is actually gone. */
   isDeleting: boolean;
 }
@@ -61,6 +64,7 @@ export function PodAppTile({
   onEdit,
   onClone,
   onDelete,
+  onShare,
   isDeleting,
 }: PodAppTileProps) {
   // The tile surfaces a single Frame — the app's first — as apps almost always have exactly one.
@@ -105,6 +109,14 @@ export function PodAppTile({
               onClick={() => void handleDownload()}
               isLoading={isDownloading}
             />
+            {onShare && (
+              <CardActionButton
+                size="icon"
+                icon={Share01}
+                tooltip="Share this app's functions as agent tools"
+                onClick={onShare}
+              />
+            )}
             {onClone && (
               <CardActionButton
                 size="icon"
@@ -146,6 +158,14 @@ export function PodAppTile({
                 size="xs"
                 color="primary"
                 label="Draft"
+                className="shrink-0"
+              />
+            )}
+            {app.share && !isDeleting && (
+              <Chip
+                size="xs"
+                color="success"
+                label="Tools"
                 className="shrink-0"
               />
             )}

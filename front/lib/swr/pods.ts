@@ -31,6 +31,7 @@ import type {
   ClonePodAppResponseBody,
   GetPodAppsResponseBody,
   PodApp,
+  SharePodAppResponseBody,
 } from "@app/types/api/pod_apps";
 import type {
   GetPodMetadataResponseBody,
@@ -195,6 +196,168 @@ export function useClonePodApp({
       sendNotification({
         type: "error",
         title: `Failed to clone ${app.name ?? app.prefix}`,
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export function useSharePodApp({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutatePodApps } = usePodApps({ owner, podId, disabled: true });
+
+  return async (
+    app: PodApp,
+    { name, description }: { name?: string; description: string }
+  ): Promise<Result<SharePodAppResponseBody["share"], Error>> => {
+    const appName = app.name ?? app.prefix;
+
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/pods/${podId}/apps/${encodeURIComponent(app.prefix)}/share`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, description }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: `Failed to share ${appName}`,
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const { share }: SharePodAppResponseBody = await res.json();
+      sendNotification({
+        type: "success",
+        title: `${share.toolsetName} shared as tools`,
+        description:
+          "Agents across the workspace can now use this app's functions.",
+      });
+      await mutatePodApps();
+
+      return new Ok(share);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: `Failed to share ${appName}`,
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export function useUpdatePodAppShare({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutatePodApps } = usePodApps({ owner, podId, disabled: true });
+
+  return async (
+    app: PodApp,
+    { name, description }: { name?: string; description?: string }
+  ): Promise<Result<SharePodAppResponseBody["share"], Error>> => {
+    const appName = app.name ?? app.prefix;
+
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/pods/${podId}/apps/${encodeURIComponent(app.prefix)}/share`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, description }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: `Failed to update sharing of ${appName}`,
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const { share }: SharePodAppResponseBody = await res.json();
+      sendNotification({
+        type: "success",
+        title: `${share.toolsetName} sharing updated`,
+      });
+      await mutatePodApps();
+
+      return new Ok(share);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: `Failed to update sharing of ${appName}`,
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export function useUnsharePodApp({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutatePodApps } = usePodApps({ owner, podId, disabled: true });
+
+  return async (app: PodApp): Promise<Result<void, Error>> => {
+    const appName = app.name ?? app.prefix;
+
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/pods/${podId}/apps/${encodeURIComponent(app.prefix)}/share`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: `Failed to stop sharing ${appName}`,
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      sendNotification({
+        type: "success",
+        title: `${appName} is no longer shared`,
+      });
+      await mutatePodApps();
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: `Failed to stop sharing ${appName}`,
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));

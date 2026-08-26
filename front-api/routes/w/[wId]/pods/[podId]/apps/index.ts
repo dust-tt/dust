@@ -1,4 +1,10 @@
 import { exportPodApp } from "@app/lib/api/projects/app_archive";
+import type { PodAppShareError } from "@app/lib/api/projects/app_shares";
+import {
+  sharePodApp,
+  unsharePodApp,
+  updatePodAppShare,
+} from "@app/lib/api/projects/app_shares";
 import {
   clonePodApp,
   deletePodApp,
@@ -7,11 +13,15 @@ import {
 import type {
   ClonePodAppResponseBody,
   DeletePodAppResponseBody,
+  DeletePodAppShareResponseBody,
   GetPodAppsResponseBody,
+  SharePodAppResponseBody,
 } from "@app/types/api/pod_apps";
 import {
   ClonePodAppRequestBodySchema,
   DeletePodAppParamsSchema,
+  SharePodAppRequestBodySchema,
+  UpdatePodAppShareRequestBodySchema,
 } from "@app/types/api/pod_apps";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -240,6 +250,126 @@ app.post(
     }
 
     return ctx.json({ app: cloneResult.value }, 201);
+  }
+);
+
+function podAppShareApiError(
+  ctx: Parameters<typeof apiError>[0],
+  error: PodAppShareError
+) {
+  switch (error.code) {
+    case "not_a_pod":
+    case "no_functions":
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: error.message,
+        },
+      });
+    case "not_found":
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: error.message,
+        },
+      });
+    case "not_shared":
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "invalid_request_error",
+          message: error.message,
+        },
+      });
+    case "name_taken":
+    case "already_shared":
+      return apiError(ctx, {
+        status_code: 409,
+        api_error: {
+          type: "invalid_request_error",
+          message: error.message,
+        },
+      });
+    case "internal":
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: error.message,
+        },
+      });
+    default:
+      return assertNever(error.code);
+  }
+}
+
+/** @ignoreswagger */
+app.post(
+  "/:prefix/share",
+  validate("param", DeletePodAppParamsSchema),
+  validate("json", SharePodAppRequestBodySchema),
+  withSpace({ requireCanAdministrate: true, routeParam: "podId" }),
+  async (ctx): HandlerResult<SharePodAppResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { prefix } = ctx.req.valid("param");
+    const { name, description } = ctx.req.valid("json");
+
+    const shareResult = await sharePodApp(auth, space, {
+      prefix,
+      name,
+      description,
+    });
+    if (shareResult.isErr()) {
+      return podAppShareApiError(ctx, shareResult.error);
+    }
+
+    return ctx.json({ share: shareResult.value }, 201);
+  }
+);
+
+/** @ignoreswagger */
+app.patch(
+  "/:prefix/share",
+  validate("param", DeletePodAppParamsSchema),
+  validate("json", UpdatePodAppShareRequestBodySchema),
+  withSpace({ requireCanAdministrate: true, routeParam: "podId" }),
+  async (ctx): HandlerResult<SharePodAppResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { prefix } = ctx.req.valid("param");
+    const { name, description } = ctx.req.valid("json");
+
+    const updateResult = await updatePodAppShare(auth, space, prefix, {
+      name,
+      description,
+    });
+    if (updateResult.isErr()) {
+      return podAppShareApiError(ctx, updateResult.error);
+    }
+
+    return ctx.json({ share: updateResult.value });
+  }
+);
+
+/** @ignoreswagger */
+app.delete(
+  "/:prefix/share",
+  validate("param", DeletePodAppParamsSchema),
+  withSpace({ requireCanAdministrate: true, routeParam: "podId" }),
+  async (ctx): HandlerResult<DeletePodAppShareResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { prefix } = ctx.req.valid("param");
+
+    const unshareResult = await unsharePodApp(auth, space, prefix);
+    if (unshareResult.isErr()) {
+      return podAppShareApiError(ctx, unshareResult.error);
+    }
+
+    return ctx.json({ success: true } as const);
   }
 );
 

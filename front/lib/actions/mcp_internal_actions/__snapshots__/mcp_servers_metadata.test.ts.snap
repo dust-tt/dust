@@ -1781,6 +1781,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
   },
+  "pod_app_toolset": {},
   "pod_manager": {
     "add_content_node": {
       "freeUsage": true,
@@ -3216,6 +3217,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "create_plan": "never_ask",
     "edit_plan": "never_ask",
   },
+  "pod_app_toolset": {},
   "pod_manager": {
     "add_content_node": "never_ask",
     "add_message_to_conversation": "medium",
