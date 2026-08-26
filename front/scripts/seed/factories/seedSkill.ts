@@ -10,7 +10,7 @@ interface SeedSkillOptions {
   // Create the skill on behalf of this user, making them its only editor. Defaults to the
   // context user.
   owner?: UserResource;
-  // Users added to the skill's editor group on top of the owner.
+  // Users granted the skill's `editor` grant on top of the owner.
   editors?: UserResource[];
   // Spaces the skill requires access to. Members of the skill that are not members of
   // these spaces cannot view or use it.
@@ -76,25 +76,18 @@ async function addSkillEditors(
   skill: SkillResource,
   editors: UserResource[]
 ): Promise<void> {
-  const { editorGroup } = skill;
-  if (!editorGroup) {
-    throw new Error(`Skill ${skill.sId} has no editor group`);
-  }
-
-  // The owner is already in the group, and adding an existing member is an error.
-  const activeMemberIds = new Set(
+  // The owner already holds the grant from creating the skill.
+  const existingEditorIds = new Set(
     ((await skill.listEditors(auth)) ?? []).map((member) => member.sId)
   );
   const usersToAdd = editors.filter(
-    (editor) => !activeMemberIds.has(editor.sId)
+    (editor) => !existingEditorIds.has(editor.sId)
   );
   if (usersToAdd.length === 0) {
     return;
   }
 
-  const addResult = await editorGroup.dangerouslyAddMembers(auth, {
-    users: usersToAdd.map((editor) => editor.toJSON()),
-  });
+  const addResult = await skill.addEditors(auth, usersToAdd);
   if (addResult.isErr()) {
     throw new Error(`Failed to add skill editors: ${addResult.error.message}`);
   }

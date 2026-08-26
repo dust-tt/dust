@@ -113,7 +113,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   );
 
   // Group kinds returned to system API keys by listWorkspaceGroupsFromKey.
-  // Excludes agent_editors and skill_editors which are per-agent/per-skill
+  // Excludes agent_editors which are per-agent
   // and not relevant to system auth.
   private static readonly groupKindsFromSystemKey: GroupKind[] =
     GROUP_KINDS.filter(
@@ -1652,7 +1652,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       this.isRegularAuto() ||
         this.isRegularManual() ||
         this.kind === "agent_editors" ||
-        this.kind === "skill_editors" ||
         (allowProvisionedGroups && this.kind === "provisioned"),
       `You can't add members to ${this.kind} groups.`
     );
@@ -1797,7 +1796,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       this.isRegularAuto() ||
         this.isRegularManual() ||
         this.kind === "agent_editors" ||
-        this.kind === "skill_editors" ||
         (allowProvisionedGroups && this.kind === "provisioned"),
       `You can't remove members from ${this.kind} groups.`
     );
@@ -2560,10 +2558,10 @@ export class GroupResource extends BaseResource<GroupModel> {
    * 1. Group-based: The group's members get read access
    * 2. Role-based: Workspace admins get read and write access
    *
-   * For agent_editors and skill_editors groups, the permissions are:
+   * For agent_editors groups, the permissions are:
    * 1. Group-based: The group's members get full access
    * 2. Role-based: Workspace admins get read and admin access. All users can
-   *    read "agent_editors" and "skill_editors" groups.
+   *    read "agent_editors" groups.
    *    Admin do not have write access, they can however add themselves to
    *    groups to gain it.
    *
@@ -2575,7 +2573,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * configuration
    */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
-    if (this.kind === "agent_editors" || this.kind === "skill_editors") {
+    if (this.kind === "agent_editors") {
       return [
         {
           groups: [
