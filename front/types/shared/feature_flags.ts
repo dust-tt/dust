@@ -11,12 +11,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   allow_sso: {
     description:
       "Allow this workspace to configure SSO, independently of the plan's isSSOAllowed flag. Enable on demand for Business plan workspaces.",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   allow_scim: {
     description:
       "Allow this workspace to configure SCIM user provisioning, independently of the plan's isSCIMAllowed flag. Enable on demand.",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   live_speech_to_text: {
     description:
@@ -26,7 +26,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   anthropic_vertex_fallback: {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
@@ -35,11 +35,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   audit_logs: {
     description: "Enable audit log emission via WorkOS",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   custom_model_feature: {
     description: "Access to custom models loaded from external config",
@@ -52,7 +52,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   gpt_5_6_terra_long_context: {
     description: "Access to GPT 5.6 Terra with its full context window",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   dust_agent_sonnet_5_default: {
     description: "Use Claude Sonnet 5 as the default model for the @dust agent",
@@ -60,16 +60,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model in the agent builder",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   claude_4_5_opus_feature: {
     description:
       "Access to Claude Opus and GPT 5.6 Sol models in the agent builder",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   claude_fable_5_feature: {
     description:
@@ -79,11 +79,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   deepseek_feature: {
     description:
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   fireworks_new_model_feature: {
     description: "Access to Fireworks new model",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   dev_mcp_actions: {
     description: "MCP tools currently in development",
@@ -99,31 +99,32 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   disable_computer_feature: {
     description: "Disable all Computer sandbox features for this workspace",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
-    stage: "ask_eng",
+    stage: "ask_owner",
+    owner: "frankaloia",
   },
   http_client_tool: {
     description: "HTTP Client MCP tool for making external API requests",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   index_private_slack_channel: {
     description: "Allow indexing of private Slack channels",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   labs_transcripts: {
     description: "Transcript feature (Labs)",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   openai_o1_feature: {
     description: "Access to OpenAI o1 model",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   openai_usage_mcp: {
     description: "OpenAI tool for tracking API consumption and costs",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   openai_concise_reasoning_summaries: {
     description:
@@ -132,17 +133,18 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   self_created_slack_app_connector_rollout: {
     description:
       "Slack Connection: rollout for self-created Slack app connector",
-    stage: "ask_eng",
+    stage: "ask_owner",
+    owner: "fabiencelier",
   },
   salesforce_tool: {
     description:
       "Salesforce MCP tool (activated by default on most plans, FF to override the plan config)",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   show_debug_tools: {
     description: "Display debug tools in the interface",
@@ -151,16 +153,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   usage_data_api: {
     description:
       "API for accessing usage data (Means that any builder with an API key can access usage data of the workspace from API)",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   usage_page_read_only: {
     description:
       "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   noop_model_feature: {
     description: "Access to noop model in the agent builder",
@@ -169,20 +171,20 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   power_bi_mcp: {
     description: "Power BI MCP tool for querying semantic models and DAX",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   netsuite_mcp: {
     description:
       "NetSuite MCP tool for querying records and interacting with your NetSuite account",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   dust_internal_dangerous_in_cluster_mcp_servers: {
     description:
@@ -196,15 +198,15 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   databricks_tool: {
     description: "Databricks MCP tool",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   servicenow_tool: {
     description: "ServiceNow MCP tool",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   shopify_tool: {
     description: "Shopify MCP tool",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   sandbox_functions: {
     description: "Enable Pod Function invocation endpoints",
@@ -221,12 +223,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   reinforced_agents: {
     description:
       "Enable self-improvement (background analysis of conversations to suggest improvements to skills).",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   self_improvement_beta_tester: {
     description:
       "Self-improvement runs for free: consumption is not reported to billing (Metronome or programmatic usage).",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   collapsible_messages: {
     description: "Enable collapsible messages in conversations",
@@ -244,7 +246,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   legacy_billing: {
     description:
       "Force this workspace to use legacy Stripe billing, bypassing Metronome credit-priced plans regardless of the global kill switch.",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   plan_mode: {
     description:
@@ -264,8 +266,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   use_dust_keys: {
     description:
       "Force BYOK workspaces to use Dust-managed keys instead of customer-provided keys",
-    // Not really on_demand but we want to be able to enable it for customers
-    stage: "on_demand",
+    // Not really self-serve but we want to be able to enable it for customers
+    stage: "self_serve",
   },
   dummy_feature_for_flag_testing: {
     description: "Dummy feature flag used for testing feature flag behavior",
@@ -274,7 +276,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   sensitivity_labels: {
     description:
       "Enable Microsoft sensitivity labels for data classification on connectors and MCP servers",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   restricted_spaces_in_input_bar: {
     description:
@@ -289,17 +291,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   workspace_default_agent: {
     description:
       "Workspace default agent: admins can pre-select a workspace-wide default agent for new conversations.",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   whitelabel_frames: {
     description:
       "Whitelabel frames: customize the workspace logo, favicon and OG image shown on shared Frames.",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   models_picker: {
     description:
       "Model picker in the conversation input bar: keep Auto (the agent's configured model) or pick a specific model and reasoning effort.",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   activation_force_nudge: {
     description:
@@ -339,7 +341,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   similar_agents_check: {
     description:
       "Warn users about similar existing agents before they create a duplicate in the agent builder.",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   enforce_user_spend_limit_rate_cap: {
     description:
@@ -359,41 +361,54 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   skip_free_usage_rate_limit: {
     description:
       "Skip the per-user daily free-usage cost cap enforced at the LLM call site. Escape hatch to unstick legitimate workspaces that legitimately exceed the free-usage limit.",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   disable_fair_use_awu_limit: {
     description:
       "Disable the per-user fair-use AWU credit limit on this workspace: skip both the pre-message enforcement (read) and the usage recording (write). Escape hatch for workspaces that should not be subject to the fair-use cap.",
-    stage: "on_demand",
+    stage: "self_serve",
   },
   archive_inactive_agents: {
     description:
       "Allow this workspace to preview and archive agents that have not been mentioned for a configurable number of days.",
-    stage: "on_demand",
+    stage: "self_serve",
   },
 } as const satisfies Record<string, FeatureFlag>;
 
-// dust_only: cannot be activated outside Dust workspaces, the feature is not ready.
-// ask_eng: ask the eng owner before activating.
-// on_demand: safe to activate if you understand the feature and its impact on the workspace.
-export type FeatureFlagStage = "dust_only" | "ask_eng" | "on_demand";
+export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";
 
 export const FEATURE_FLAG_STAGE_LABELS: Record<FeatureFlagStage, string> = {
   dust_only: "Dust-only",
-  ask_eng: "Ask eng",
-  on_demand: "On demand",
+  ask_owner: "Ask owner",
+  self_serve: "Self-serve",
 };
+
+export const FEATURE_FLAG_STAGE_DESCRIPTIONS: Record<FeatureFlagStage, string> =
+  {
+    dust_only:
+      "Cannot be activated outside Dust workspaces, the feature is not ready.",
+    ask_owner: "Ask the eng owner before activating.",
+    self_serve:
+      "Safe to activate if you understand the feature and its impact on the workspace.",
+  };
 
 export const FEATURE_FLAG_STAGES = [
   "dust_only",
-  "ask_eng",
-  "on_demand",
+  "ask_owner",
+  "self_serve",
 ] as const satisfies readonly FeatureFlagStage[];
 
-export type FeatureFlag = {
-  description: string;
-  stage: FeatureFlagStage;
-};
+export type FeatureFlag =
+  | {
+      description: string;
+      stage: "dust_only" | "self_serve";
+    }
+  | {
+      description: string;
+      stage: "ask_owner";
+      // GitHub handle of the eng owner to ask before activating.
+      owner: string;
+    };
 
 export type WhitelistableFeature = keyof typeof WHITELISTABLE_FEATURES_CONFIG;
 
@@ -414,4 +429,12 @@ export function isWhitelistableFeature(
   feature: unknown
 ): feature is WhitelistableFeature {
   return WHITELISTABLE_FEATURES.includes(feature as WhitelistableFeature);
+}
+
+export function getFeatureFlagOwner(feature: string): string | null {
+  if (!isWhitelistableFeature(feature)) {
+    return null;
+  }
+  const config: FeatureFlag = WHITELISTABLE_FEATURES_CONFIG[feature];
+  return config.stage === "ask_owner" ? config.owner : null;
 }

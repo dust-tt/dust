@@ -4,6 +4,7 @@ import type {
   FeatureFlagStage,
   WhitelistableFeature,
 } from "@app/types/shared/feature_flags";
+import { getFeatureFlagOwner } from "@app/types/shared/feature_flags";
 import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -28,7 +29,12 @@ export function makeColumnsForFeatureFlags(): ColumnDef<FeatureFlagsDisplayType>
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Stage" />
       ),
-      cell: ({ row }) => <FeatureFlagStageChip stage={row.original.stage} />,
+      cell: ({ row }) => (
+        <FeatureFlagStageChip
+          stage={row.original.stage}
+          owner={getFeatureFlagOwner(row.original.name)}
+        />
+      ),
     },
     {
       accessorKey: "description",
