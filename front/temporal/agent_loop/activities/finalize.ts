@@ -1,4 +1,3 @@
-import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { computeAndStoreAgentMessageCredits } from "@app/lib/api/assistant/credit_cost";
 import {
   sendEmailReplyOnCompletion,
@@ -190,17 +189,16 @@ export async function finalizeErroredAgentLoopActivity(
   // died without logging anything (heartbeat timeouts), but the action rows it left behind in a
   // non-final status carry the tool identity.
   if (agentMessageModelId !== null) {
-    const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
-      agentMessageModelId,
-    ]);
-    const stuckTools = actions
-      .filter((action) => !isToolExecutionStatusFinal(action.status))
-      .map((action) => ({
-        actionModelId: action.id,
-        status: action.status,
-        toolName: action.toolConfiguration.name,
-        mcpServerName: action.toolConfiguration.mcpServerName,
-      }));
+    const actions =
+      await AgentMCPActionResource.listNonFinalActionsForAgentMessage(auth, {
+        agentMessageId: agentMessageModelId,
+      });
+    const stuckTools = actions.map((action) => ({
+      actionModelId: action.id,
+      status: action.status,
+      toolName: action.toolConfiguration.name,
+      mcpServerName: action.toolConfiguration.mcpServerName,
+    }));
 
     logger.warn(
       {

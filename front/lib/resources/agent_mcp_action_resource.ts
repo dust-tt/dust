@@ -7,6 +7,7 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   isToolExecutionStatusBlocked,
   TOOL_EXECUTION_BLOCKED_STATUSES,
+  TOOL_EXECUTION_FINAL_STATUSES,
 } from "@app/lib/actions/statuses";
 import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
 import {
@@ -982,6 +983,23 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     }
 
     return actions;
+  }
+
+  // Actions the agent message left in a non-final status: still running when a workflow errors
+  // (the worker that ran them may have died before finalizing the row), or parked on a user
+  // interaction (blocked_*). Callers discriminate on `status`.
+  static async listNonFinalActionsForAgentMessage(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: ModelId }
+  ): Promise<AgentMCPActionResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        agentMessageId,
+        status: {
+          [Op.notIn]: TOOL_EXECUTION_FINAL_STATUSES,
+        },
+      },
+    });
   }
 
   /**
