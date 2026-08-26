@@ -1,8 +1,6 @@
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import type {
-  ConsumptionFacetOptions,
-  UseConsumptionFacetsParams,
-} from "@app/hooks/useConsumptionFacets";
+import { EMPTY_FACET_OPTIONS } from "@app/components/workspace/analytics/usageFilter";
+import type { UseConsumptionFacetsParams } from "@app/hooks/useConsumptionFacets";
 import { toConsumptionFacetOptions } from "@app/hooks/useConsumptionFacets";
 import type { UseConsumptionOverviewParams } from "@app/hooks/useConsumptionOverview";
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
@@ -30,17 +28,6 @@ import type {
 } from "@app/lib/api/analytics/consumption/timeseries";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useMemo } from "react";
-
-const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
-  agent: [],
-  member: [],
-  group: [],
-  model: [],
-  tool: [],
-  skill: [],
-  source: [],
-  api_key: [],
-};
 
 const CONSUMPTION_TOP_ENDPOINTS = {
   agent: "top-agents",

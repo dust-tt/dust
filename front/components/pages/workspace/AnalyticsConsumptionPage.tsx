@@ -22,6 +22,7 @@ import {
 } from "@app/components/workspace/analytics/usageFilter";
 import { useAnalyticsViewState } from "@app/hooks/useAnalyticsViewState";
 import { useQueryParams } from "@app/hooks/useQueryParams";
+import { useResolvedUsageFilter } from "@app/hooks/useResolvedUsageFilter";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -114,8 +115,15 @@ function ChartFallback({ controlsInCard = false }: ChartFallbackProps) {
 export function AnalyticsConsumptionPage() {
   const owner = useWorkspace();
   const state = useAnalyticsConsumptionState(useAnalyticsViewState());
+  const filter = useResolvedUsageFilter({
+    workspaceId: owner.sId,
+    period: state.period,
+    filter: state.filter,
+  });
 
-  return <AnalyticsConsumptionContent owner={owner} state={state} />;
+  return (
+    <AnalyticsConsumptionContent owner={owner} state={{ ...state, filter }} />
+  );
 }
 
 interface AnalyticsConsumptionContentProps {
