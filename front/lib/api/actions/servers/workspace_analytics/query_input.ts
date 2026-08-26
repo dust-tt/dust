@@ -1,4 +1,6 @@
+import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { isValidTimezone, timezoneSchema } from "@app/lib/api/timezone";
+import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -20,12 +22,14 @@ export const MAX_RESULTS = 1000;
 export const DEFAULT_CREDIT_GROUPS = 5;
 export const MAX_CREDIT_GROUPS = 10;
 
+// Mirrors ConsumptionPeriodInput (front/lib/api/analytics/consumption/period.ts)
+// as a flat string enum a model can pick from — the exact periods the
+// Analytics page itself offers.
 const ANALYTICS_PERIODS = [
-  "this_month",
+  "this_cycle",
   "last_7_days",
   "last_30_days",
   "last_90_days",
-  "this_quarter",
 ] as const;
 type AnalyticsPeriod = (typeof ANALYTICS_PERIODS)[number];
 
@@ -36,8 +40,11 @@ export const timeWindowSchemaShape = {
     .enum(ANALYTICS_PERIODS)
     .optional()
     .describe(
-      "Relative time window. Ignored when startDate/endDate are provided. " +
-        "Defaults to the tool's natural window if omitted."
+      "Relative time window. 'this_cycle' is the workspace's current " +
+        "billing cycle — the same period the Analytics page shows by " +
+        "default — and is what to use for an unqualified question like " +
+        "'how many credits have we used'. Ignored when startDate/endDate " +
+        "are provided. Defaults to 'this_cycle' if omitted."
     ),
   startDate: z
     .string()
@@ -107,10 +114,11 @@ export type ResolvedTimeWindow = {
 // Resolves a TimeWindowInput into concrete ISO start/end instants plus a human
 // label. Explicit startDate/endDate take precedence over `period`; when nothing
 // is provided, falls back to `defaultPeriod`.
-export function resolveTimeWindow(
+export async function resolveTimeWindow(
   input: TimeWindowInput,
-  defaultPeriod: AnalyticsPeriod = "this_month"
-): Result<ResolvedTimeWindow, string> {
+  auth: Authenticator,
+  defaultPeriod: AnalyticsPeriod = "this_cycle"
+): Promise<Result<ResolvedTimeWindow, string>> {
   const timezone = input.timezone ?? "UTC";
   if (!isValidTimezone(timezone)) {
     return new Err(`Invalid timezone: ${timezone}`);
@@ -147,13 +155,21 @@ export function resolveTimeWindow(
 
   const period = input.period ?? defaultPeriod;
   const now = moment.tz(timezone);
+  if (period === "this_cycle") {
+    const cyclePeriod = await resolveConsumptionPeriod(auth, {
+      kind: "cycle",
+    });
+    return new Ok({
+      startDate: cyclePeriod.startDate,
+      endDate: cyclePeriod.endDate,
+      label: "the current billing cycle",
+      timezone,
+    });
+  }
+
   let start: moment.Moment;
   let label: string;
   switch (period) {
-    case "this_month":
-      start = now.clone().startOf("month");
-      label = now.format("MMMM YYYY");
-      break;
     case "last_7_days":
       start = now.clone().subtract(6, "days").startOf("day");
       label = "the last 7 days";
@@ -165,10 +181,6 @@ export function resolveTimeWindow(
     case "last_90_days":
       start = now.clone().subtract(89, "days").startOf("day");
       label = "the last 90 days";
-      break;
-    case "this_quarter":
-      start = now.clone().startOf("quarter");
-      label = `Q${now.quarter()} ${now.year()}`;
       break;
     default:
       return assertNever(period);

@@ -74,12 +74,9 @@ export async function fetchAnalystCreditUsage({
   Result<AnalystCreditUsage, ElasticsearchError>
 > {
   const dimension = dimensionForGroupBy(groupBy);
-  const metric = DEFAULT_CONSUMPTION_METRIC;
-
+  const metricAgg = metricSubAgg(DEFAULT_CONSUMPTION_METRIC);
   const aggregations: Record<string, estypes.AggregationsAggregationContainer> =
-    {
-      ...metricSubAgg(metric),
-    };
+    metricAgg;
 
   if (dimension) {
     const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
@@ -92,7 +89,7 @@ export async function fetchAnalystCreditUsage({
             size: limit,
             order: { metric: "desc" },
           },
-          aggs: metricSubAgg(metric),
+          aggs: metricAgg,
         },
       },
     };
@@ -108,7 +105,7 @@ export async function fetchAnalystCreditUsage({
   }
 
   const totalCredits = Math.round(
-    metricValue(metric, result.value.aggregations?.metric)
+    metricValue(DEFAULT_CONSUMPTION_METRIC, result.value.aggregations?.metric)
   );
 
   if (!dimension) {
@@ -126,7 +123,9 @@ export async function fetchAnalystCreditUsage({
     return {
       groupKey: key,
       name: labels.get(key)?.name ?? key,
-      totalCredits: Math.round(metricValue(metric, bucket.metric)),
+      totalCredits: Math.round(
+        metricValue(DEFAULT_CONSUMPTION_METRIC, bucket.metric)
+      ),
     };
   });
 

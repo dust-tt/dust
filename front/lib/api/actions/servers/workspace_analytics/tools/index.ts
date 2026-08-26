@@ -132,7 +132,10 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(denied);
     }
 
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
+    const window = await resolveTimeWindow(
+      { period, startDate, endDate, timezone },
+      auth
+    );
     if (window.isErr()) {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
@@ -201,7 +204,10 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(denied);
     }
 
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
+    const window = await resolveTimeWindow(
+      { period, startDate, endDate, timezone },
+      auth
+    );
     if (window.isErr()) {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
@@ -270,7 +276,10 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(denied);
     }
 
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
+    const window = await resolveTimeWindow(
+      { period, startDate, endDate, timezone },
+      auth
+    );
     if (window.isErr()) {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
@@ -339,7 +348,10 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(denied);
     }
 
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
+    const window = await resolveTimeWindow(
+      { period, startDate, endDate, timezone },
+      auth
+    );
     if (window.isErr()) {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
@@ -468,7 +480,10 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(denied);
     }
 
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
+    const window = await resolveTimeWindow(
+      { period, startDate, endDate, timezone },
+      auth
+    );
     if (window.isErr()) {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
@@ -535,7 +550,10 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(denied);
     }
 
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
+    const window = await resolveTimeWindow(
+      { period, startDate, endDate, timezone },
+      auth
+    );
     if (window.isErr()) {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
@@ -609,7 +627,10 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(denied);
     }
 
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
+    const window = await resolveTimeWindow(
+      { period, startDate, endDate, timezone },
+      auth
+    );
     if (window.isErr()) {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
@@ -679,7 +700,10 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(denied);
     }
 
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
+    const window = await resolveTimeWindow(
+      { period, startDate, endDate, timezone },
+      auth
+    );
     if (window.isErr()) {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
@@ -721,7 +745,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
 
     const header =
       `Credit usage for ${label} (${tz}): ${totalCredits} credits. These ` +
-      "are the workspace's reconciled billed credits, the same ones the " +
+      "are the workspace's billed credits, the same ones the " +
       "Usage page shows; very recent activity may still be settling.";
 
     if (selectedGroupBy === "none" || rows.length === 0) {
@@ -765,8 +789,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(denied);
     }
 
-    const window = resolveTimeWindow(
+    const window = await resolveTimeWindow(
       { period, startDate, endDate, timezone },
+      auth,
       "last_30_days"
     );
     if (window.isErr()) {
@@ -901,8 +926,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(denied);
     }
 
-    const window = resolveTimeWindow(
+    const window = await resolveTimeWindow(
       { period, startDate, endDate, timezone },
+      auth,
       "last_30_days"
     );
     if (window.isErr()) {

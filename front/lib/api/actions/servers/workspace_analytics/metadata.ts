@@ -268,7 +268,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     name: "get_credit_usage",
     description:
       "Return AWU credit consumption over a time window (defaults to the " +
-      "current calendar month), optionally broken down by the top agents, " +
+      "current cycle), optionally broken down by the top agents, " +
       "users or models. Credits combine model compute and tool usage, " +
       "mirroring how billing computes them — these are the same reconciled, " +
       "billed credits the workspace Usage page reports; recent activity can " +

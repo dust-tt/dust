@@ -153,8 +153,9 @@ const handlers: ToolHandlers<typeof USER_ANALYTICS_TOOLS_METADATA> = {
       ]);
     }
 
-    const window = resolveTimeWindow(
+    const window = await resolveTimeWindow(
       { period, startDate, endDate, timezone },
+      auth,
       "last_30_days"
     );
     if (window.isErr()) {

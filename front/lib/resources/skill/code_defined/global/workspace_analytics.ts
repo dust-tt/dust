@@ -55,7 +55,7 @@ export const workspaceAnalyticsSkill = {
     `- Listing the agents other members have not published is admin-only, so ` +
     `fall back to the default view if it reports an authorization error.\n` +
     "- Chart timeseries results so the admin can see the trend.\n" +
-    "- get_credit_usage returns the workspace's reconciled billed credits, " +
+    "- get_credit_usage returns the workspace's billed credits, " +
     "the same ones the Usage page shows — do not describe them as " +
     "estimates. Free platform usage is never counted.",
   mcpServers: [
