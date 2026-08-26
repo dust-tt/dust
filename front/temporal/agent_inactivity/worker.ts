@@ -1,8 +1,6 @@
-import {
-  getTemporalWorkerConnection,
-  TEMPORAL_MAXED_CACHED_WORKFLOWS,
-} from "@app/lib/temporal";
+import { TEMPORAL_MAXED_CACHED_WORKFLOWS } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
+import { getTemporalWorkerConnection } from "@app/lib/temporal_worker";
 import logger from "@app/logger/logger";
 import * as activities from "@app/temporal/agent_inactivity/activities";
 import { launchArchiveInactiveAgentsSchedule } from "@app/temporal/agent_inactivity/client";
