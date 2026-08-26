@@ -31,11 +31,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   audit_logs: {
     description: "Enable audit log emission via WorkOS",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   custom_model_feature: {
     description: "Access to custom models loaded from external config",
@@ -165,7 +165,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
@@ -217,12 +217,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   reinforced_agents: {
     description:
       "Enable self-improvement (background analysis of conversations to suggest improvements to skills).",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   self_improvement_beta_tester: {
     description:
       "Self-improvement runs for free: consumption is not reported to billing (Metronome or programmatic usage).",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   collapsible_messages: {
     description: "Enable collapsible messages in conversations",
@@ -240,7 +240,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   legacy_billing: {
     description:
       "Force this workspace to use legacy Stripe billing, bypassing Metronome credit-priced plans regardless of the global kill switch.",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   plan_mode: {
     description:
@@ -295,7 +295,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   models_picker: {
     description:
       "Model picker in the conversation input bar: keep Auto (the agent's configured model) or pick a specific model and reasoning effort.",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   activation_force_nudge: {
     description:
@@ -335,7 +335,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   similar_agents_check: {
     description:
       "Warn users about similar existing agents before they create a duplicate in the agent builder.",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   enforce_user_spend_limit_rate_cap: {
     description:
