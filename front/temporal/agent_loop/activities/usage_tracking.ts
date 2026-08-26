@@ -4,6 +4,7 @@ import {
   launchEmitMetronomeUsageEventsWorkflow,
   launchTrackProgrammaticUsageWorkflow,
 } from "@app/temporal/usage_queue/client";
+import type { EnabledAgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { isCreditPricedPlan } from "@app/types/plan";
 
@@ -45,9 +46,15 @@ export async function launchTrackProgrammaticUsage(
  */
 export async function launchEmitMetronomeUsageEvents(
   auth: Authenticator,
-  agentLoopArgs: AgentLoopArgs
+  agentLoopArgs: AgentLoopArgs,
+  {
+    consumptionMode,
+  }: { consumptionMode: EnabledAgentMessageConsumptionMode | null }
 ): Promise<void> {
   if (!auth.getNonNullableWorkspace().metronomeCustomerId) {
+    return;
+  }
+  if (consumptionMode === "live") {
     return;
   }
 

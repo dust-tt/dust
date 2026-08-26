@@ -10,6 +10,12 @@ export type EnabledAgentMessageConsumptionMode = Exclude<
   "off"
 >;
 
+export type AgentMessageConsumptionExecutionContext = {
+  mode: EnabledAgentMessageConsumptionMode;
+  rootAgentMessageId: string;
+  runKey: string;
+};
+
 export const AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES = [
   "system",
   "input",

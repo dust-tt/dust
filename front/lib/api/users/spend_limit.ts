@@ -650,26 +650,21 @@ export async function isNonCreditPricedUserSpendLimitReached(
   });
 }
 
-/**
- * Adds `incrementBy` AWU credits to the per-user fixed-window spend-cap counter
- * for the current contract billing cycle. Records for every user (all users are
- * capped; the cap is resolved at enforcement/read time, not here). `incrementBy`
- * is the newly-accrued delta for a message (not its running total — the caller
- * diffs against the previously-recorded amount so repeated finalizes don't
- * over-count). No-op when the billing period can't be resolved.
- *
- * Bucketed on the cycle the workspace is enforced on: the contract billing period
- * by default, or `cycle` when the caller forces one (the UTC calendar month for
- * workspaces with no contract — see `spendLimitCycleOverrideForAuth`). Reader and
- * writer must agree here, or the counter accrues under a key nothing reads.
- */
 export async function recordUserSpendLimitUsage(
   auth: Authenticator,
   {
     user,
     incrementBy,
     cycle,
-  }: { user: UserResource; incrementBy: number; cycle?: BillingCycle }
+    idempotencyKey,
+    throwOnError,
+  }: {
+    user: UserResource;
+    incrementBy: number;
+    cycle?: BillingCycle;
+    idempotencyKey?: string;
+    throwOnError?: boolean;
+  }
 ): Promise<void> {
   // Credits may be fractional; the counter stores microCredits (integer
   // INCRBY), so convert before recording. A non-positive or non-finite delta is
@@ -704,6 +699,8 @@ export async function recordUserSpendLimitUsage(
     key,
     bounds,
     incrementBy: incrementByMicroCredits,
+    idempotencyKey,
+    throwOnError,
     logger,
   });
 }

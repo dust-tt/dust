@@ -88,10 +88,9 @@ export async function recordToolCompletionConsumption(
       }
     );
   if (existingDirectRow) {
-    await signalAffectedExecutions(
-      auth,
-      new Set([existingDirectRow.runKey ?? context.runKey])
-    );
+    if (existingDirectRow.runKey) {
+      await signalAffectedExecutions(auth, [existingDirectRow.runKey]);
+    }
     return;
   }
 
@@ -152,8 +151,6 @@ export async function recordToolCompletionConsumption(
     return { chargeMicro };
   });
 
-  await signalAffectedExecutions(auth, new Set([context.runKey]));
-
   if (settlement) {
     logger.info(
       {
@@ -166,19 +163,17 @@ export async function recordToolCompletionConsumption(
       "[Consumption] Recorded a tool completion posting."
     );
   }
+  await signalAffectedExecutions(auth, [context.runKey]);
 }
 
 async function signalAffectedExecutions(
   auth: Authenticator,
-  runKeys: Set<string>
+  runKeys: string[]
 ): Promise<void> {
-  for (const runKey of runKeys) {
-    const signalRes = await signalConsumptionEventsAppended(auth.toJSON(), {
+  for (const runKey of new Set(runKeys)) {
+    await signalConsumptionEventsAppended(auth.toJSON(), {
       runKey,
     });
-    if (signalRes.isErr()) {
-      throw signalRes.error;
-    }
   }
 }
 

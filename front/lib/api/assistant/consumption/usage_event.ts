@@ -13,6 +13,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export async function emitAgentMessageUsageEvent(
   auth: Authenticator,
@@ -54,18 +55,15 @@ export async function emitAgentMessageUsageEvent(
     origin
   );
 
-  const [runUsages, actions, attributedAgent, apiKeyName, freeSeat] =
-    await Promise.all([
-      RunResource.listRunUsagesByModelIds(auth, {
-        runUsageModelIds: bill.runUsageModelIds,
-      }),
-      AgentMCPActionResource.listByAgentMessageIds(auth, [
-        context.agentMessageModelId,
-      ]),
-      resolveAttributedAgent(auth, context),
-      resolveApiKeyName(auth, context.apiKeyModelId),
-      isFreeSeatedUser(auth, context.userId),
-    ]);
+  const runUsages = await RunResource.listRunUsagesByModelIds(auth, {
+    runUsageModelIds: bill.runUsageModelIds,
+  });
+  const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
+    context.agentMessageModelId,
+  ]);
+  const attributedAgent = await resolveAttributedAgent(auth, context);
+  const apiKeyName = await resolveApiKeyName(auth, context.apiKeyModelId);
+  const freeSeat = await isFreeSeatedUser(auth, context.userId);
   const emittedActionModelIds = new Set(bill.actionModelIds);
   const events = buildUsageEvents({
     workspaceId: workspace.sId,
@@ -161,7 +159,7 @@ async function isFreeSeatedUser(
 
 async function resolveApiKeyName(
   auth: Authenticator,
-  apiKeyModelId: number | null
+  apiKeyModelId: ModelId | null
 ): Promise<string | null> {
   if (apiKeyModelId === null) {
     return null;

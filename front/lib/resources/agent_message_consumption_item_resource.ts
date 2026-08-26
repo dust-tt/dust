@@ -1152,7 +1152,6 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       return;
     }
 
-    // `unnest` pairs both arrays by position into rows of item ID and reconciled amount.
     // biome-ignore lint/plugin/noRawSql: Sequelize cannot bulk-update each row with a distinct value.
     await frontSequelize.query(
       `
@@ -1173,7 +1172,6 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           reconciledCreditAmountsMicro: changedAllocations.map(
             ([, reconciledCreditAmountMicro]) => reconciledCreditAmountMicro
           ),
-          // Raw SQL bypasses Sequelize timestamping, so set it explicitly.
           updatedAt: new Date(),
           workspaceModelId: auth.getNonNullableWorkspace().id,
         },

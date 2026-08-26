@@ -161,11 +161,11 @@ class RedisMock {
           script: string,
           options: { keys: string[]; arguments: string[] }
         ) => {
-          const [rootKey, cursorKey] = options.keys;
+          const [rootKey] = options.keys;
           if (!rootKey?.startsWith("consumption:root:")) {
             return 1;
           }
-          if (!cursorKey && script.includes('redis.call("DEL"')) {
+          if (script.includes('redis.call("DEL"')) {
             const [
               initializedField,
               revisionField,
@@ -212,51 +212,9 @@ class RedisMock {
             hashStore.set(rootKey, root);
             return 1;
           }
-          if (!cursorKey) {
-            const [executionField, total, totalField, subagentField] =
-              options.arguments;
-            if (
-              !executionField ||
-              total === undefined ||
-              !totalField ||
-              !subagentField
-            ) {
-              throw new Error("Invalid consumption root update arguments");
-            }
-            const root = hashStore.get(rootKey) ?? new Map<string, string>();
-            hashStore.set(rootKey, root);
-            const previous = Number(root.get(executionField) ?? 0);
-            root.set(executionField, total);
-            root.set(
-              totalField,
-              (
-                Number(root.get(totalField) ?? 0) +
-                Number(total) -
-                previous
-              ).toString()
-            );
-            const subagentMarker = options.arguments[4];
-            if (subagentMarker && !root.has(subagentMarker)) {
-              root.set(subagentMarker, "1");
-              root.set(
-                subagentField,
-                (Number(root.get(subagentField) ?? 0) + 1).toString()
-              );
-            }
-            const revisionField = options.arguments[5];
-            if (!revisionField) {
-              throw new Error("Invalid consumption root revision field");
-            }
-            root.set(
-              revisionField,
-              (Number(root.get(revisionField) ?? 0) + 1).toString()
-            );
-            return 1;
-          }
-          const [eventId, executionField, total, totalField, subagentField] =
+          const [executionField, total, totalField, subagentField] =
             options.arguments;
           if (
-            !eventId ||
             !executionField ||
             total === undefined ||
             !totalField ||
@@ -264,11 +222,6 @@ class RedisMock {
           ) {
             throw new Error("Invalid consumption root update arguments");
           }
-          const currentCursor = this.stringStore.get(cursorKey)?.value;
-          if (currentCursor && Number(currentCursor) >= Number(eventId)) {
-            return 0;
-          }
-
           const root = hashStore.get(rootKey) ?? new Map<string, string>();
           hashStore.set(rootKey, root);
           const previous = Number(root.get(executionField) ?? 0);
@@ -281,22 +234,22 @@ class RedisMock {
               previous
             ).toString()
           );
-          const countsAsSubagent = options.arguments[5] === "1";
-          const subagentMarker = options.arguments[6];
-          if (!subagentMarker) {
-            throw new Error("Invalid consumption subagent marker");
-          }
-          if (countsAsSubagent && !root.has(subagentMarker)) {
+          const subagentMarker = options.arguments[4];
+          if (subagentMarker && !root.has(subagentMarker)) {
             root.set(subagentMarker, "1");
             root.set(
               subagentField,
               (Number(root.get(subagentField) ?? 0) + 1).toString()
             );
           }
-          this.stringStore.set(cursorKey, {
-            value: eventId,
-            expiresAtMs: Date.now() + Number(options.arguments[7]),
-          });
+          const revisionField = options.arguments[5];
+          if (!revisionField) {
+            throw new Error("Invalid consumption root revision field");
+          }
+          root.set(
+            revisionField,
+            (Number(root.get(revisionField) ?? 0) + 1).toString()
+          );
           return 1;
         }
       ),

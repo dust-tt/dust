@@ -500,7 +500,7 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare completedAt: Date | null;
   declare prunedContext: boolean | null;
   declare costCredits: number | null;
-  declare consumptionMode: AgentMessageConsumptionMode | null;
+  declare consumptionRolloutMode: AgentMessageConsumptionMode | null;
 
   // The concrete provider/model/effort triplet used by the message when
   // running the agent. Legacy: null when the message runs the agent's configured model.
@@ -602,9 +602,8 @@ AgentMessageModel.init(
       allowNull: true,
       defaultValue: null,
     },
-    consumptionMode: {
+    consumptionRolloutMode: {
       type: DataTypes.STRING(16),
-      field: "consumptionRolloutMode",
       allowNull: true,
       defaultValue: null,
       validate: { isIn: [["off", "shadow", "live"]] },

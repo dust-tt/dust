@@ -54,4 +54,27 @@ describe("AgentMessageConsumptionEventResource pending events", () => {
       }
     );
   });
+
+  it("deduplicates the bounded recovery scan by execution", async () => {
+    vi.spyOn(
+      AgentMessageConsumptionEventResource.model,
+      "findAll"
+    ).mockResolvedValue([
+      { runKey: "run-a", workspaceId: 123 },
+      { runKey: "run-a", workspaceId: 123 },
+      { runKey: "run-b", workspaceId: 123 },
+    ] as never);
+
+    await expect(
+      AgentMessageConsumptionEventResource.listOldestUnprocessedExecutions({
+        limit: 3,
+      })
+    ).resolves.toEqual({
+      executions: [
+        { runKey: "run-a", workspaceModelId: 123 },
+        { runKey: "run-b", workspaceModelId: 123 },
+      ],
+      hasMore: true,
+    });
+  });
 });

@@ -10,7 +10,6 @@ import {
 } from "@app/lib/api/assistant/consumption/keys";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
-import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
 const REDIS_ORIGIN = "consumption" as const;
@@ -154,7 +153,7 @@ export async function seedConsumptionRootTotals({
   expectedRevision: number;
   totals: ConsumptionRootTotals;
   executionCreditAmountMicroByRunKey: ReadonlyMap<string, number>;
-  subagentAgentMessageIds: readonly ModelId[];
+  subagentAgentMessageIds: readonly AgentMessageModel["id"][];
 }): Promise<boolean> {
   assert(
     Number.isSafeInteger(expectedRevision) && expectedRevision >= 0,
