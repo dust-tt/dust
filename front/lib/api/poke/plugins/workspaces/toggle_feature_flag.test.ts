@@ -7,7 +7,27 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import {
+  WHITELISTABLE_FEATURES,
+  WHITELISTABLE_FEATURES_CONFIG,
+} from "@app/types/shared/feature_flags";
 import { describe, expect, it } from "vitest";
+
+function findFeatureFlagByDustOnlyStatus(dustOnly: boolean) {
+  const feature = WHITELISTABLE_FEATURES.find(
+    (feature) =>
+      (WHITELISTABLE_FEATURES_CONFIG[feature].stage === "dust_only") ===
+      dustOnly
+  );
+
+  if (!feature) {
+    throw new Error(
+      `Expected at least one ${dustOnly ? "Dust-only" : "non-Dust-only"} feature flag.`
+    );
+  }
+
+  return feature;
+}
 
 describe("toggleFeatureFlagPlugin.execute", () => {
   it("ensures auto MCP server views when enabling a feature flag", async () => {
@@ -93,9 +113,10 @@ describe("toggleFeatureFlagPlugin.execute", () => {
   it("rejects enabling Dust-only feature flags on other plans", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const dustOnlyFeature = findFeatureFlagByDustOnlyStatus(true);
 
     const result = await toggleFeatureFlagPlugin.execute(auth, null, {
-      features: ["sandbox_functions"],
+      features: [dustOnlyFeature],
     });
 
     expect(result.isErr()).toBe(true);
@@ -106,7 +127,7 @@ describe("toggleFeatureFlagPlugin.execute", () => {
       "Dust-only feature flags can only be enabled on Dust or Friends & Family plans."
     );
     await expect(
-      FeatureFlagResource.isEnabledForWorkspace(workspace, "sandbox_functions")
+      FeatureFlagResource.isEnabledForWorkspace(workspace, dustOnlyFeature)
     ).resolves.toBe(false);
   });
 
@@ -114,28 +135,30 @@ describe("toggleFeatureFlagPlugin.execute", () => {
     const plan = await PlanFactory.enterprise("FREE_FRIENDSAMILY");
     const workspace = await WorkspaceFactory.fromPlan(plan);
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const dustOnlyFeature = findFeatureFlagByDustOnlyStatus(true);
 
     const result = await toggleFeatureFlagPlugin.execute(auth, null, {
-      features: ["sandbox_functions"],
+      features: [dustOnlyFeature],
     });
 
     expect(result.isOk()).toBe(true);
     await expect(
-      FeatureFlagResource.isEnabledForWorkspace(workspace, "sandbox_functions")
+      FeatureFlagResource.isEnabledForWorkspace(workspace, dustOnlyFeature)
     ).resolves.toBe(true);
   });
 
   it("allows enabling non-Dust-only feature flags on other plans", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const nonDustOnlyFeature = findFeatureFlagByDustOnlyStatus(false);
 
     const result = await toggleFeatureFlagPlugin.execute(auth, null, {
-      features: ["deepseek_feature"],
+      features: [nonDustOnlyFeature],
     });
 
     expect(result.isOk()).toBe(true);
     await expect(
-      FeatureFlagResource.isEnabledForWorkspace(workspace, "deepseek_feature")
+      FeatureFlagResource.isEnabledForWorkspace(workspace, nonDustOnlyFeature)
     ).resolves.toBe(true);
   });
 });
