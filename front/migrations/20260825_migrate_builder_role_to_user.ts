@@ -22,8 +22,8 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 // A sliding-window limiter caps the pace of `updateMembershipRole` invocations. We can't meter the
 // individual WorkOS calls it makes internally, so we gate the invocations instead. Each invocation
-// makes two WorkOS requests that hit separate rate-limit buckets: one read and one write. 
-// At 50 invocations/10s that is 50 reads/10s (5% of the 1,000 reads/10s bucket), 
+// makes two WorkOS requests that hit separate rate-limit buckets: one read and one write.
+// At 50 invocations/10s that is 50 reads/10s (5% of the 1,000 reads/10s bucket),
 // 50 writes/10s (10% of the 500 writes/10s bucket), and 100 requests/10s = 600/60s (10% of the 6,000 requests/60s general limit).
 const MAX_MIGRATIONS_PER_WINDOW = 50;
 const RATE_LIMIT_WINDOW_MS = 10_000;
