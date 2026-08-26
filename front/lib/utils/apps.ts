@@ -396,12 +396,12 @@ export async function exportApps(
 ): Promise<Result<ApiAppType[], Error>> {
   const apps = await AppResource.listBySpace(auth, space);
 
-  // All apps belong to `space`; load its group sIds once so the exported app keeps the space's
-  // `groupIds` (part of the public app contract) without relying on the eagerly-loaded grants.
-  const spaceGroupIds =
-    (
-      await SpaceResource.listGroupIdsBySpaceModelId(auth, { spaces: [space] })
-    ).get(space.id) ?? [];
+  // All apps belong to `space`; load its grant-derived enrichment once so the exported app keeps the
+  // space's `groupIds`/`isRestricted` (part of the public app contract) without relying on the
+  // eagerly-loaded grants.
+  const [enrichedSpace] = await SpaceResource.batchToJSONEnriched(auth, [
+    space,
+  ]);
 
   const enhancedApps = await concurrentExecutor(
     apps.filter((app) => app.canRead(auth)),
@@ -448,7 +448,7 @@ export async function exportApps(
       }
 
       return {
-        ...app.toJSONWithSpaceGroupIds(spaceGroupIds),
+        ...app.toJSONEnriched(enrichedSpace),
         datasets,
         coreSpecifications,
       };

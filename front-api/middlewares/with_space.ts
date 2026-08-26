@@ -89,8 +89,7 @@ export function withSpace(options: WithSpaceOptions) {
       });
     }
 
-    const spaceJSON = space.toJSON();
-    if (spaceJSON.isRestricted) {
+    if (space.isRestricted()) {
       void emitAuditLogEvent({
         auth,
         action: "space.accessed",
@@ -101,7 +100,7 @@ export function withSpace(options: WithSpaceOptions) {
         context: getAuditLogContext(auth),
         metadata: {
           space_name: space.name,
-          space_kind: spaceJSON.kind,
+          space_kind: space.kind,
           is_restricted: "true",
           access_method: deriveAccessMethod(auth),
         },

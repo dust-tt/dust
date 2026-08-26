@@ -12,11 +12,12 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   AppType,
-  AppTypeWithSpaceGroupIds,
+  EnrichedAppType,
   SpecificationType,
 } from "@app/types/app";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { EnrichedSpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import sortBy from "lodash/sortBy";
@@ -317,13 +318,14 @@ export class AppResource extends ResourceWithSpace<AppModel> {
     };
   }
 
-  // The app serialized with its space's `groupIds` (part of the public app contract). The public API
-  // loads them on demand via `SpaceResource.listGroupIdsBySpaceModelId` and passes them here, so app
-  // serialization does not depend on the space's eagerly-loaded grants.
-  toJSONWithSpaceGroupIds(spaceGroupIds: string[]): AppTypeWithSpaceGroupIds {
+  // The app serialized with its space in enriched form (`groupIds`, `isRestricted` — part of the
+  // public app contract). The caller obtains the `EnrichedSpaceType` on demand via
+  // `SpaceResource.batchToJSONEnriched`, so app serialization does not depend on the space's
+  // eagerly-loaded grants.
+  toJSONEnriched(space: EnrichedSpaceType): EnrichedAppType {
     return {
       ...this.toJSON(),
-      space: this.space.toJSONWithGroupIds(spaceGroupIds),
+      space,
     };
   }
 

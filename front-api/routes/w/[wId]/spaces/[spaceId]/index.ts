@@ -100,6 +100,8 @@ const app = workspaceApp();
  *                           type: array
  *                           items:
  *                             type: string
+ *                         isRestricted:
+ *                           type: boolean
  *                         categories:
  *                           type: object
  *                           additionalProperties:
@@ -312,14 +314,13 @@ app.get(
       ? await ProjectMetadataResource.fetchBySpace(auth, space)
       : undefined;
 
-    const groupIdsBySpaceModelId =
-      await SpaceResource.listGroupIdsBySpaceModelId(auth, {
-        spaces: [space],
-      });
+    const [enrichedSpace] = await SpaceResource.batchToJSONEnriched(auth, [
+      space,
+    ]);
 
     return ctx.json({
       space: {
-        ...space.toJSONWithGroupIds(groupIdsBySpaceModelId.get(space.id) ?? []),
+        ...enrichedSpace,
         categories,
         canWrite: space.canWrite(auth),
         canRead: space.canRead(auth),

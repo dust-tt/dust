@@ -1084,7 +1084,6 @@
  *         - sId
  *         - name
  *         - kind
- *         - isRestricted
  *         - managementMode
  *       properties:
  *         sId:
@@ -1094,8 +1093,6 @@
  *         kind:
  *           type: string
  *           enum: [global, system, conversations, regular, project]
- *         isRestricted:
- *           type: boolean
  *         managementMode:
  *           type: string
  *           enum: [manual, group]
@@ -1114,6 +1111,8 @@
  *               type: array
  *               items:
  *                 type: string
+ *             isRestricted:
+ *               type: boolean
  *             description:
  *               type: string
  *               nullable: true

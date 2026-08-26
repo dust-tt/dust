@@ -1,7 +1,7 @@
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
-import type { PodType, SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType, PodType, SpaceType } from "@app/types/space";
 import { isProjectType } from "@app/types/space";
 import {
   Checkbox,
@@ -26,7 +26,7 @@ type SpaceRowData = {
   sId: string;
   name: string;
   description?: string;
-  space: SpaceType | PodType;
+  space: EnrichedSpaceType | PodType;
   isSelected: boolean;
   isAlreadyRequested: boolean;
   onToggle: () => void;

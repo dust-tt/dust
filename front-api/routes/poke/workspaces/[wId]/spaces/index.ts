@@ -14,7 +14,9 @@ app.get("/", async (ctx): HandlerResult<PokeListSpaces> => {
 
   const spaces = await SpaceResource.listWorkspaceSpaces(auth);
 
-  return ctx.json({ spaces: spaces.map((s) => s.toJSON()) });
+  return ctx.json({
+    spaces: await SpaceResource.batchToJSONEnriched(auth, spaces),
+  });
 });
 
 app.route("/:spaceId", spaceId);

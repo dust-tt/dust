@@ -4,7 +4,7 @@ import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActio
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType } from "@app/types/space";
 import { useMemo } from "react";
 import { useWatch } from "react-hook-form";
 
@@ -14,11 +14,11 @@ interface UseAgentRequestedSpacesProps {
 
 interface UseAgentRequestedSpacesResult {
   actionsAndSkillsRequestedSpaceIds: Set<string>;
-  allSpaces: SpaceType[];
-  globalSpace: SpaceType | undefined;
+  allSpaces: EnrichedSpaceType[];
+  globalSpace: EnrichedSpaceType | undefined;
   missingSpaceIds: string[];
-  nonGlobalSpacesUsedByAgent: SpaceType[];
-  nonGlobalSpacesWithRestrictions: SpaceType[];
+  nonGlobalSpacesUsedByAgent: EnrichedSpaceType[];
+  nonGlobalSpacesWithRestrictions: EnrichedSpaceType[];
   spaceIdToActions: ReturnType<typeof getSpaceIdToActionsMap>;
 }
 

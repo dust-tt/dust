@@ -1766,14 +1766,14 @@ describe("SpaceResource", () => {
           workspaceId: workspace.id,
         }),
       ]);
-      // groupIds are no longer on `toJSON`; they are loaded on demand from group_permissions.
-      const groupIdsBySpaceModelId =
-        await SpaceResource.listGroupIdsBySpaceModelId(adminAuth, {
-          spaces: [regularSpace],
-        });
-      expect(groupIdsBySpaceModelId.get(regularSpace.id)).toEqual([
-        groupReference.groupSId,
-      ]);
+      // groupIds/isRestricted are no longer on `toJSON`; they are loaded on demand from
+      // group_permissions via `batchToJSONEnriched`.
+      const [enrichedSpace] = await SpaceResource.batchToJSONEnriched(
+        adminAuth,
+        [regularSpace]
+      );
+      expect(enrichedSpace.groupIds).toEqual([groupReference.groupSId]);
+      expect(enrichedSpace.isRestricted).toBe(true);
 
       findAllSpy.mockRestore();
     });

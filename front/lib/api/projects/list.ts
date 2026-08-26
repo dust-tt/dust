@@ -4,7 +4,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { removeDiacritics } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { SearchProjectsResponseBody } from "@app/types/api/projects/list";
-import type { PodType, SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType, PodType } from "@app/types/space";
 
 type ListPodsAccess = "member" | "open";
 
@@ -208,13 +208,10 @@ export async function enrichProjectsWithMetadata(
     metadatas.map((m) => [m.spaceId, m])
   );
 
-  const groupIdsBySpaceModelId = await SpaceResource.listGroupIdsBySpaceModelId(
-    auth,
-    { spaces }
-  );
+  const enrichedSpaces = await SpaceResource.batchToJSONEnriched(auth, spaces);
 
-  return spaces.map((space) => ({
-    ...space.toJSONWithGroupIds(groupIdsBySpaceModelId.get(space.id) ?? []),
+  return spaces.map((space, i) => ({
+    ...enrichedSpaces[i],
     description: metadataMap.get(space.id)?.description ?? null,
     isMember: space.isMember(auth),
     isEditor: space.canAdministrate(auth),
@@ -222,7 +219,7 @@ export async function enrichProjectsWithMetadata(
   }));
 }
 
-export type ProjectWithAdminMetadata = SpaceType & {
+export type ProjectWithAdminMetadata = EnrichedSpaceType & {
   description: string | null;
   archivedAt: number | null;
   todoGenerationEnabled: boolean;
@@ -244,10 +241,15 @@ export async function listAllProjectsWithAdminMetadata(
   );
   const metadataMap = new Map(metadatas.map((m) => [m.spaceId, m]));
 
-  return projectSpaces.map((space) => {
+  const enrichedSpaces = await SpaceResource.batchToJSONEnriched(
+    auth,
+    projectSpaces
+  );
+
+  return projectSpaces.map((space, i) => {
     const metadata = metadataMap.get(space.id);
     return {
-      ...space.toJSON(),
+      ...enrichedSpaces[i],
       description: metadata?.description ?? null,
       archivedAt: metadata?.archivedAt?.getTime() ?? null,
       todoGenerationEnabled: metadata?.todoGenerationEnabled ?? false,

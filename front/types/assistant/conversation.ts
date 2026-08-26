@@ -8,7 +8,7 @@ import type { ContentFragmentType } from "../content_fragment";
 import type { AllSupportedWithDustSpecificFileContentType } from "../files";
 import type { ModelId } from "../shared/model_id";
 import { assertNeverAndIgnore } from "../shared/utils/assert_never";
-import type { SpaceType } from "../space";
+import type { EnrichedSpaceType } from "../space";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
@@ -624,7 +624,7 @@ export type ConversationWithoutContentType = ConversationListItemType & {
   forkingData?: ConversationForkingDataType;
 };
 
-export type SelectableConversationSpaceType = SpaceType & {
+export type SelectableConversationSpaceType = EnrichedSpaceType & {
   selected: boolean;
 };
 

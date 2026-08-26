@@ -98,20 +98,16 @@ app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
   const filteredSpaces = nonArchivedSpaces.filter(
     (space) => space.kind === "project" || conversationsBySpace.has(space.id)
   );
-  const groupIdsBySpaceModelId = await SpaceResource.listGroupIdsBySpaceModelId(
-    auth,
-    {
-      spaces: filteredSpaces,
-    }
+  const sortedSpaces = sortSpacesSummary(
+    filteredSpaces,
+    conversationsBySpace,
+    lastUserActivityBySpace
   );
+  const enriched = await SpaceResource.batchToJSONEnriched(auth, sortedSpaces);
   return ctx.json({
-    summary: sortSpacesSummary(
-      filteredSpaces,
-      conversationsBySpace,
-      lastUserActivityBySpace
-    ).map((space) => ({
+    summary: sortedSpaces.map((space, i) => ({
       space: {
-        ...space.toJSONWithGroupIds(groupIdsBySpaceModelId.get(space.id) ?? []),
+        ...enriched[i],
         description: metadataMap.get(space.id)?.description ?? null,
         // We excluded archived projects and we only list projects where the user is a member.
         archivedAt: null,

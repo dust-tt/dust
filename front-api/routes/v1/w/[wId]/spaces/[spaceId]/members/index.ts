@@ -193,15 +193,12 @@ app.post(
       });
     }
 
-    const groupIdsBySpaceModelId =
-      await SpaceResource.listGroupIdsBySpaceModelId(auth, {
-        spaces: [space],
-      });
+    const [enrichedSpace] = await SpaceResource.batchToJSONEnriched(auth, [
+      space,
+    ]);
 
     return ctx.json({
-      space: space.toJSONWithGroupIds(
-        groupIdsBySpaceModelId.get(space.id) ?? []
-      ),
+      space: enrichedSpace,
       users: usersJson.map((userJson) => ({
         sId: userJson.sId,
         id: userJson.id,

@@ -5,7 +5,7 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type {
   PokeDataSourceType,
@@ -20,10 +20,12 @@ export async function spaceToPokeJSON(
   space: SpaceResource
 ): Promise<PokeSpaceType> {
   const groups = await space.fetchGroupResources(auth);
+  const [enriched] = await SpaceResource.batchToJSONEnriched(auth, [space]);
   return {
     id: space.id,
     ...space.toJSON(),
     groups: groups.map((group) => group.toJSON()),
+    isRestricted: enriched.isRestricted,
   };
 }
 
