@@ -514,79 +514,56 @@ export function UserMenu({
                       )) && (
                       <DropdownMenuItem
                         label="Debug conversation"
-                        onClick={withUserMenuItemTracking(
-                          "debug_conversation",
-                          () => {
-                            const regexp = new RegExp(
-                              `/w/([^/]+)/conversation/([^/]+)`
+                        onClick={() => {
+                          const regexp = new RegExp(
+                            `/w/([^/]+)/conversation/([^/]+)`
+                          );
+                          const match = window.location.href.match(regexp);
+                          if (match) {
+                            window.open(
+                              `/poke/${match[1]}/conversation/${match[2]}`,
+                              "_blank"
                             );
-                            const match = window.location.href.match(regexp);
-                            if (match) {
-                              window.open(
-                                `/poke/${match[1]}/conversation/${match[2]}`,
-                                "_blank"
-                              );
-                            }
                           }
-                        )}
+                        }}
                         icon={Shapes}
                       />
                     )}
                     {!isOnlyAdmin(owner) && (
                       <DropdownMenuItem
                         label="Become Admin"
-                        onClick={withUserMenuItemTracking("become_admin", () =>
-                          forceRoleUpdate("admin")
-                        )}
+                        onClick={() => forceRoleUpdate("admin")}
                         icon={Star01}
                       />
                     )}
                     {!isOnlyManager(owner) && (
                       <DropdownMenuItem
                         label="Become Manager"
-                        onClick={withUserMenuItemTracking(
-                          "become_manager",
-                          () => forceRoleUpdate("manager")
-                        )}
+                        onClick={() => forceRoleUpdate("manager")}
                         icon={Star01}
                       />
                     )}
                     {!isOnlyUser(owner) && (
                       <DropdownMenuItem
                         label="Become User"
-                        onClick={withUserMenuItemTracking("become_user", () =>
-                          forceRoleUpdate("user")
-                        )}
+                        onClick={() => forceRoleUpdate("user")}
                         icon={User01}
                       />
                     )}
                     <DropdownMenuItem
                       label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
-                      onClick={withUserMenuItemTracking(
-                        privacyMask.isEnabled
-                          ? "disable_privacy_mask"
-                          : "enable_privacy_mask",
-                        privacyMask.toggle
-                      )}
+                      onClick={privacyMask.toggle}
                       icon={privacyMask.isEnabled ? EyeOff : Eye}
                     />
                     <DropdownMenuItem
                       label={`${devMode.isEnabled ? "Disable" : "Enable"} Dev Console`}
-                      onClick={withUserMenuItemTracking(
-                        devMode.isEnabled
-                          ? "disable_dev_console"
-                          : "enable_dev_console",
-                        devMode.toggle
-                      )}
+                      onClick={devMode.toggle}
                       icon={Terminal}
                     />
                     {owner.role === "admin" && (
                       <DropdownMenuItem
                         label="Send onboarding conversation"
-                        onClick={withUserMenuItemTracking(
-                          "send_onboarding_conversation",
-                          handleSendOnboarding
-                        )}
+                        onClick={handleSendOnboarding}
                         icon={MessagePlusCircle}
                       />
                     )}
