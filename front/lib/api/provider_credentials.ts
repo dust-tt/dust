@@ -13,6 +13,7 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import assert from "assert";
 import type { z } from "zod";
 
+export type LlmCredentials = LLMCredentialsType;
 export const MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE =
   "An OpenAI API key is required to perform this action. Please configure it in your workspace settings or contact an admin.";
 

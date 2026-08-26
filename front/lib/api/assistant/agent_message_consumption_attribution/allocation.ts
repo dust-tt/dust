@@ -128,6 +128,31 @@ function reconcileInputCredits({
   };
 }
 
+function reconcileStoredCredits({
+  items,
+  billedCredits,
+}: {
+  items: AgentMessageConsumptionItemResource[];
+  billedCredits: number;
+}): ReconciledCreditAmounts | null {
+  const byItem = new Map<AgentMessageConsumptionItemResource, number>();
+  for (const item of items) {
+    if (item.reconciledCreditAmountMicro === null) {
+      return null;
+    }
+    byItem.set(item, item.reconciledCreditAmountMicro);
+  }
+
+  const reconciledCreditAmountMicro = [...byItem.values()].reduce(
+    (total, amount) => total + amount,
+    0
+  );
+  return reconciledCreditAmountMicro ===
+    roundCreditsToMicroCredits(billedCredits)
+    ? { byItem }
+    : null;
+}
+
 function hasCompleteModelAttribution(
   items: AgentMessageConsumptionItemResource[],
   usages: RunUsageWithRunKeyType[]
@@ -210,6 +235,7 @@ function buildMessageConsumptionAllocationForVersion<
   billedCredits,
   dustRunIds,
   items,
+  reconciliationSource,
   runs,
   usages,
 }: {
@@ -218,6 +244,7 @@ function buildMessageConsumptionAllocationForVersion<
   billedCredits: number;
   dustRunIds: string[];
   items: AgentMessageConsumptionItemResource[];
+  reconciliationSource: "derived" | "stored";
   runs: RunResource[];
   usages: TUsage[];
 }): Result<MessageConsumptionAllocation<TUsage>, AllocationSkipReason> {
@@ -285,10 +312,10 @@ function buildMessageConsumptionAllocationForVersion<
     });
   }
 
-  const reconciledCreditAmounts = reconcileInputCredits({
-    items,
-    billedCredits,
-  });
+  const reconciledCreditAmounts =
+    reconciliationSource === "stored"
+      ? reconcileStoredCredits({ items, billedCredits })
+      : reconcileInputCredits({ items, billedCredits });
   if (!reconciledCreditAmounts) {
     const billedCreditAmountMicro = roundCreditsToMicroCredits(billedCredits);
     const nonInputCreditAmountMicro = items.reduce(
@@ -318,14 +345,14 @@ function buildMessageConsumptionAllocationForVersion<
   });
 }
 
-/** Selects and allocates the newest self-consistent attribution stored for a message. */
-export function buildLatestMessageConsumptionAllocation<
+function buildMessageConsumptionAllocation<
   TUsage extends RunUsageWithRunKeyType,
 >({
   actions,
   billedCredits,
   dustRunIds,
   items,
+  reconciliationSource,
   runs,
   usages,
 }: {
@@ -333,6 +360,7 @@ export function buildLatestMessageConsumptionAllocation<
   billedCredits: number | null;
   dustRunIds: string[];
   items: AgentMessageConsumptionItemResource[];
+  reconciliationSource: "derived" | "stored";
   runs: RunResource[];
   usages: TUsage[];
 }): Result<MessageConsumptionAllocation<TUsage>, AllocationSkipReason> {
@@ -362,6 +390,7 @@ export function buildLatestMessageConsumptionAllocation<
       billedCredits,
       dustRunIds,
       items: itemsByAttributionVersion.get(attributionVersion) ?? [],
+      reconciliationSource,
       runs,
       usages,
     });
@@ -377,4 +406,66 @@ export function buildLatestMessageConsumptionAllocation<
       context: { itemCount: 0, dustRunIdCount: dustRunIds.length },
     }
   );
+}
+
+/** Selects and allocates the newest self-consistent attribution stored for a message. */
+export function buildLatestMessageConsumptionAllocation<
+  TUsage extends RunUsageWithRunKeyType,
+>({
+  actions,
+  billedCredits,
+  dustRunIds,
+  items,
+  runs,
+  usages,
+}: {
+  actions: AgentMCPActionResource[];
+  billedCredits: number | null;
+  dustRunIds: string[];
+  items: AgentMessageConsumptionItemResource[];
+  runs: RunResource[];
+  usages: TUsage[];
+}): Result<MessageConsumptionAllocation<TUsage>, AllocationSkipReason> {
+  return buildMessageConsumptionAllocation({
+    actions,
+    billedCredits,
+    dustRunIds,
+    items,
+    reconciliationSource: "derived",
+    runs,
+    usages,
+  });
+}
+
+/**
+ * @cc [owner:id13,label:backend;data-integrity] stored-consumption-reconciliation
+ * Every item in a stored consumption allocation MUST have a reconciled credit amount, and those
+ * amounts MUST sum exactly to the authoritative billed credits.
+ */
+export function buildStoredMessageConsumptionAllocation<
+  TUsage extends RunUsageWithRunKeyType,
+>({
+  actions,
+  billedCredits,
+  dustRunIds,
+  items,
+  runs,
+  usages,
+}: {
+  actions: AgentMCPActionResource[];
+  billedCredits: number | null;
+  dustRunIds: string[];
+  items: AgentMessageConsumptionItemResource[];
+  runs: RunResource[];
+  usages: TUsage[];
+}): Result<MessageConsumptionAllocation<TUsage>, AllocationSkipReason> {
+  return buildMessageConsumptionAllocation({
+    actions,
+    billedCredits,
+    dustRunIds,
+    items,
+    reconciliationSource: "stored",
+    runs,
+    usages,
+  });
 }

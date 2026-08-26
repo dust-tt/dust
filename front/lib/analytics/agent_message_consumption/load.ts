@@ -13,6 +13,7 @@ import {
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import type { AgentMessageConsumptionAnalyticsContext } from "@app/lib/resources/conversation_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -78,6 +79,7 @@ export type AgentMessageConsumptionAnalyticsInput =
     skills: SkillResource[];
     stepContents: AgentStepContentResource[];
     usages: BilledRunUsage[];
+    reconciliationSource: "derived" | "stored";
   };
 
 // We only account for billed usage types in the analytics pipeline.
@@ -179,29 +181,146 @@ async function loadAnalyticsUser({
   };
 }
 
+type ConsumptionAnalyticsSource = {
+  billedCredits: number | null;
+  completedAt: Date;
+  context: AgentMessageConsumptionAnalyticsContext;
+  items: AgentMessageConsumptionItemResource[];
+  reconciliationSource: "derived" | "stored";
+};
+
+type LoadSettledAttributionOptions = {
+  agentMessageId: string;
+  preloadedActions?: AgentMCPActionResource[];
+  source?: "settled_attribution";
+};
+
+type LoadConsumptionOptions = {
+  agentMessageModelId: ModelId;
+  preloadedActions?: AgentMCPActionResource[];
+  source: "consumption";
+};
+
+type LoadAgentMessageConsumptionAnalyticsInputOptions =
+  | LoadSettledAttributionOptions
+  | LoadConsumptionOptions;
+
+/**
+ * @cc [owner:id13,label:backend;data-integrity] consumption-analytics-source-identity
+ * Settled attribution MUST load a terminal message by public ID and use its authoritative message
+ * cost. Incremental consumption MUST load by model ID and derive its cost from ledger items.
+ */
 export async function loadAgentMessageConsumptionAnalyticsInput(
   auth: Authenticator,
-  options: (
-    | { agentMessageId: string; agentMessageModelId?: never }
-    | { agentMessageId?: never; agentMessageModelId: ModelId }
-  ) & {
-    preloadedActions?: AgentMCPActionResource[];
-    source?: "settled_attribution" | "consumption";
-  }
+  options: LoadAgentMessageConsumptionAnalyticsInputOptions
 ): Promise<AgentMessageConsumptionAnalyticsInput | null> {
-  const workspace = auth.getNonNullableWorkspace();
-  const source = options.source ?? "settled_attribution";
+  if (options.source === "consumption") {
+    return loadConsumptionAnalyticsInput(auth, options);
+  }
+
+  return loadSettledAttributionAnalyticsInput(auth, options);
+}
+
+async function loadSettledAttributionAnalyticsInput(
+  auth: Authenticator,
+  { agentMessageId, preloadedActions }: LoadSettledAttributionOptions
+): Promise<AgentMessageConsumptionAnalyticsInput | null> {
   const context =
     await ConversationResource.fetchAgentMessageConsumptionAnalyticsContext(
       auth,
-      "agentMessageId" in options && options.agentMessageId !== undefined
-        ? { agentMessageId: options.agentMessageId }
-        : { agentMessageModelId: options.agentMessageModelId }
+      { agentMessageId }
     );
   if (!context) {
     return null;
   }
 
+  const { agentMessage } = context;
+  if (
+    !AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) ||
+    !isTerminalAgentMessageStatus(agentMessage.status)
+  ) {
+    return null;
+  }
+  if (!agentMessage.completedAt) {
+    throw new Error("Settled agent message is missing completedAt");
+  }
+  const items =
+    await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
+      agentMessageModelIds: [agentMessage.agentMessageModelId],
+      maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+    });
+
+  return loadAnalyticsInputFromSource(auth, {
+    preloadedActions,
+    source: {
+      billedCredits: agentMessage.costCredits,
+      completedAt: agentMessage.completedAt,
+      context,
+      items,
+      reconciliationSource: "derived",
+    },
+  });
+}
+
+async function loadConsumptionAnalyticsInput(
+  auth: Authenticator,
+  { agentMessageModelId, preloadedActions }: LoadConsumptionOptions
+): Promise<AgentMessageConsumptionAnalyticsInput | null> {
+  const context =
+    await ConversationResource.fetchAgentMessageConsumptionAnalyticsContext(
+      auth,
+      { agentMessageModelId }
+    );
+  if (!context) {
+    return null;
+  }
+
+  const { agentMessage } = context;
+  const items =
+    await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
+      agentMessageModelIds: [agentMessage.agentMessageModelId],
+      maxAttributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+    });
+  const billedCredits = microCreditsToCredits(
+    items
+      .filter(
+        (item) =>
+          item.attributionVersion ===
+          INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION
+      )
+      .reduce(
+        (total, item) =>
+          total +
+          (item.reconciledCreditAmountMicro ??
+            item.grossAttributedCreditAmountMicro),
+        0
+      )
+  );
+  return loadAnalyticsInputFromSource(auth, {
+    preloadedActions,
+    source: {
+      billedCredits,
+      completedAt: agentMessage.completedAt ?? agentMessage.createdAt,
+      context,
+      items,
+      reconciliationSource: "stored",
+    },
+  });
+}
+
+async function loadAnalyticsInputFromSource(
+  auth: Authenticator,
+  {
+    preloadedActions,
+    source,
+  }: {
+    preloadedActions?: AgentMCPActionResource[];
+    source: ConsumptionAnalyticsSource;
+  }
+): Promise<AgentMessageConsumptionAnalyticsInput | null> {
+  const workspace = auth.getNonNullableWorkspace();
+  const { billedCredits, completedAt, context, items, reconciliationSource } =
+    source;
   const { agentMessage, conversation, triggeringUserMessage } = context;
   const agentMessageId = agentMessage.agentMessageId;
   // Deleted conversations still incurred billable consumption and must remain visible in
@@ -218,17 +337,6 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   if (!messageConversation) {
     throw new Error("Agent message conversation not found");
   }
-  if (source === "settled_attribution") {
-    if (
-      !AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) ||
-      !isTerminalAgentMessageStatus(agentMessage.status)
-    ) {
-      return null;
-    }
-    if (!agentMessage.completedAt) {
-      throw new Error("Settled agent message is missing completedAt");
-    }
-  }
 
   const dustRunIds = [...new Set(agentMessage.runIds ?? [])];
   const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
@@ -241,37 +349,11 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     auth,
     triggeringUserMessage.apiKeyModelId
   );
-  const items =
-    await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
-      agentMessageModelIds: [agentMessage.agentMessageModelId],
-      maxAttributionVersion:
-        source === "consumption"
-          ? INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION
-          : AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-    });
-  const billedCredits =
-    source === "consumption"
-      ? microCreditsToCredits(
-          items
-            .filter(
-              (item) =>
-                item.attributionVersion ===
-                INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION
-            )
-            .reduce(
-              (total, item) =>
-                total +
-                (item.reconciledCreditAmountMicro ??
-                  item.grossAttributedCreditAmountMicro),
-              0
-            )
-        )
-      : agentMessage.costCredits;
   if (billedCredits === null) {
     throw new Error("Billed agent message is missing costCredits");
   }
   const actions =
-    options.preloadedActions ??
+    preloadedActions ??
     (await AgentMCPActionResource.listByAgentMessageIds(auth, [
       agentMessage.agentMessageModelId,
     ]));
@@ -310,7 +392,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   const agentTagIds = await loadAgentTagIds(auth, agentMessage);
   const user = await loadAnalyticsUser({
     auth,
-    completedAt: agentMessage.completedAt ?? agentMessage.createdAt,
+    completedAt,
     userId: triggeringUserMessage.userId,
   });
 
@@ -335,7 +417,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     agentMessageId,
     apiKeyName,
     billedCredits,
-    completedAt: agentMessage.completedAt ?? agentMessage.createdAt,
+    completedAt,
     contextOrigin: triggeringUserMessage.origin,
     conversationId: conversation.conversationId,
     dustRunIds,
@@ -353,6 +435,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       : null,
     parentMessageId: triggeringUserMessage.agenticOriginMessageId ?? null,
     runs,
+    reconciliationSource,
     skills,
     spaceId:
       conversation.spaceModelId === null

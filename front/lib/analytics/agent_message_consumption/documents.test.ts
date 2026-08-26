@@ -2,6 +2,7 @@ import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analyti
 import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
+import { INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/consumption/version";
 import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import { intelligenceAwuFromRunUsagesGroupedByRunKey } from "@app/lib/metronome/events";
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
@@ -226,6 +227,104 @@ async function buildDocuments(
 }
 
 describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
+  it("projects stored reconciled credits for incremental consumption", async () => {
+    const context = await setupSettledMessage();
+    await AgentMessageModel.update(
+      { completedAt: null, costCredits: null, status: "created" },
+      {
+        where: {
+          id: context.agentMessageModelId,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+    const { action } = await AgentMCPActionFactory.create(context.auth, {
+      workspace: context.workspace,
+      conversationModelId: context.conversation.id,
+      agentMessageModelId: context.agentMessageModelId,
+      dustRunId: context.run.dustRunId,
+      status: "running",
+    });
+    const insertedRows =
+      await AgentMessageConsumptionItemResource.insertConsumptionRows(
+        context.auth,
+        {
+          conversationModelId: context.conversation.id,
+          agentMessageModelId: context.agentMessageModelId,
+          runKey: "stored-reconciliation",
+          modelRows: [
+            {
+              itemType: "input",
+              runUsageModelId: context.runUsageModelId,
+              inputTokensCount: 100,
+              outputTokensCount: null,
+              grossAttributedCreditAmountMicro: 1_200_000,
+              reconciledCreditAmountMicro: 1_000_000,
+            },
+            {
+              itemType: "output",
+              runUsageModelId: context.runUsageModelId,
+              inputTokensCount: null,
+              outputTokensCount: 20,
+              grossAttributedCreditAmountMicro: 500_000,
+              reconciledCreditAmountMicro: 500_000,
+            },
+          ],
+          pendingToolRows: [
+            {
+              agentMCPActionModelId: action.id,
+              runUsageModelId: context.runUsageModelId,
+              outputTokensCount: 2,
+              grossAttributedCreditAmountMicro: 300_000,
+              reconciledCreditAmountMicro: 300_000,
+            },
+          ],
+        }
+      );
+    const toolRow = insertedRows.find(
+      (row) => row.itemKey === `tool-action:${action.id}`
+    );
+    if (!toolRow) {
+      throw new Error("Tool consumption row was not inserted");
+    }
+    await AgentMessageConsumptionItemResource.addReconciledCreditAmounts(
+      context.auth,
+      {
+        creditAmountMicroDeltaByConsumptionItemId: new Map([
+          [toolRow.consumptionItemId, 200_000],
+        ]),
+      }
+    );
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      {
+        agentMessageModelId: context.agentMessageModelId,
+        source: "consumption",
+      }
+    );
+    if (!input) {
+      throw new Error("Consumption analytics input was not loaded");
+    }
+    const result = buildAgentMessageConsumptionAnalyticsDocuments(input);
+    if (result.isErr()) {
+      throw new Error(
+        `Consumption documents were not built: ${result.error.code}`
+      );
+    }
+
+    expect(input.reconciliationSource).toBe("stored");
+    expect(
+      result.value.find((document) => document.consumption_type === "tool")
+    ).toMatchObject({
+      attribution_version: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+      credit_micro: 500_000,
+    });
+    expect(
+      result.value.find((document) => document.consumption_type === "llm")
+    ).toMatchObject({ credit_micro: 1_500_000 });
+  });
+
   it("projects one additive LLM document and one tool document", async () => {
     const { action, billedMessageCreditMicro, context } =
       await setupLlmAndToolConsumptionScenario();

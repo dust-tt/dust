@@ -2,7 +2,10 @@ import { buildLlmConsumptionDocuments } from "@app/lib/analytics/agent_message_c
 import type { AgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
 import { buildToolConsumptionDocuments } from "@app/lib/analytics/agent_message_consumption/tool_documents";
 import type { AllocationSkipReason } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
-import { buildLatestMessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
+import {
+  buildLatestMessageConsumptionAllocation,
+  buildStoredMessageConsumptionAllocation,
+} from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
 import type { Result } from "@app/types/shared/result";
@@ -45,14 +48,18 @@ export function buildAgentMessageConsumptionAnalyticsDocuments(
   AgentMessageConsumptionAnalyticsData[],
   ConsumptionDocumentsSkipReason
 > {
-  const allocationResult = buildLatestMessageConsumptionAllocation({
+  const allocationInput = {
     actions: input.actions,
     billedCredits: input.billedCredits,
     dustRunIds: input.dustRunIds,
     items: input.items,
     runs: input.runs,
     usages: input.usages,
-  });
+  };
+  const allocationResult =
+    input.reconciliationSource === "stored"
+      ? buildStoredMessageConsumptionAllocation(allocationInput)
+      : buildLatestMessageConsumptionAllocation(allocationInput);
   if (allocationResult.isErr()) {
     return allocationResult;
   }

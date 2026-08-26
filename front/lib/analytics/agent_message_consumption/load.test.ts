@@ -7,6 +7,7 @@ import {
 } from "@app/lib/metronome/constants";
 import type { UsageType } from "@app/lib/metronome/types";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -154,7 +155,7 @@ async function setupSettledMessage({
       authorless,
       agentName,
     });
-  const { run } = await RunFactory.createWithUsage(auth, {
+  const { run, runUsageModelId } = await RunFactory.createWithUsage(auth, {
     inputTokens: 100,
     outputTokens: 20,
     modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
@@ -177,10 +178,12 @@ async function setupSettledMessage({
   return {
     agent,
     agentMessage,
+    agentMessageModelId,
     auth,
     completedAt,
     conversation,
     run,
+    runUsageModelId,
     workspace,
   };
 }
@@ -230,6 +233,53 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
         group_ids: [],
       },
       workspaceId: context.workspace.sId,
+    });
+  });
+
+  it("loads incremental consumption by agent message model ID", async () => {
+    const context = await setupSettledMessage();
+    await AgentMessageModel.update(
+      { completedAt: null, costCredits: null, status: "created" },
+      {
+        where: {
+          id: context.agentMessageModelId,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+    await AgentMessageConsumptionItemResource.insertConsumptionRows(
+      context.auth,
+      {
+        conversationModelId: context.conversation.id,
+        agentMessageModelId: context.agentMessageModelId,
+        runKey: "analytics-projection",
+        modelRows: [
+          {
+            itemType: "input",
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: 100,
+            outputTokensCount: null,
+            grossAttributedCreditAmountMicro: 1_500_000,
+            reconciledCreditAmountMicro: 1_500_000,
+          },
+        ],
+        pendingToolRows: [],
+      }
+    );
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      {
+        agentMessageModelId: context.agentMessageModelId,
+        source: "consumption",
+      }
+    );
+
+    expect(input).toMatchObject({
+      agentMessageId: context.agentMessage.sId,
+      billedCredits: 1.5,
+      completedAt: expect.any(Date),
+      messageStatus: "created",
     });
   });
 
