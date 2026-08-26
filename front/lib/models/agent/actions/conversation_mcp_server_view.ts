@@ -12,7 +12,7 @@ export class ConversationMCPServerViewModel extends WorkspaceAwareModel<Conversa
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
   declare mcpServerViewId: ForeignKey<MCPServerViewModel["id"]>;
-  declare userId: ForeignKey<UserModel["id"]>;
+  declare userId: ForeignKey<UserModel["id"]> | null;
   declare enabled: CreationOptional<boolean>;
   declare source: string;
   declare agentConfigurationId: string | null;
@@ -20,7 +20,7 @@ export class ConversationMCPServerViewModel extends WorkspaceAwareModel<Conversa
   // Associations
   declare conversation: NonAttribute<ConversationModel>;
   declare mcpServerView: NonAttribute<MCPServerViewModel>;
-  declare user: NonAttribute<UserModel>;
+  declare user: NonAttribute<UserModel> | null;
 }
 
 ConversationMCPServerViewModel.init(
@@ -53,7 +53,7 @@ ConversationMCPServerViewModel.init(
     },
     userId: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: UserModel,
         key: "id",
@@ -133,10 +133,10 @@ ConversationMCPServerViewModel.belongsTo(MCPServerViewModel, {
 });
 
 UserModel.hasMany(ConversationMCPServerViewModel, {
-  foreignKey: "userId",
+  foreignKey: { name: "userId", allowNull: true },
   onDelete: "RESTRICT",
 });
 
 ConversationMCPServerViewModel.belongsTo(UserModel, {
-  foreignKey: "userId",
+  foreignKey: { name: "userId", allowNull: true },
 });

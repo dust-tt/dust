@@ -4691,6 +4691,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
         transaction,
       });
+    const userId = auth.user()?.id ?? null;
 
     // Cycle through the mcpServerViewIds and create or update the conversationMCPServerView
     for (const mcpServerView of mcpServerViews) {
@@ -4703,7 +4704,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           {
             enabled,
             source,
-            userId: auth.getNonNullableUser().id,
+            userId,
             updatedAt: new Date(),
           },
           {
@@ -4721,7 +4722,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             conversationId: conversation.id,
             workspaceId: auth.getNonNullableWorkspace().id,
             mcpServerViewId: mcpServerView.id,
-            userId: auth.getNonNullableUser().id,
+            userId,
             enabled,
             source,
             agentConfigurationId,
