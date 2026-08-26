@@ -8,7 +8,7 @@ import { Chip, Tooltip } from "@dust-tt/sparkle";
 interface FeatureFlagStageChipProps {
   // `null` for flag rows whose name is no longer in WHITELISTABLE_FEATURES_CONFIG.
   stage: FeatureFlagStage | null;
-  // GitHub handle of the eng owner, for `ask_owner` flags.
+  // GitHub handle of the eng owner; `null` for legacy flag rows.
   owner?: string | null;
 }
 
