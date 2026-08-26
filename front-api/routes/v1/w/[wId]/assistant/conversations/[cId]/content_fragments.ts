@@ -6,6 +6,7 @@ import {
   isContentFragmentInputWithInlinedContent,
 } from "@app/types/api/assistant";
 import {
+  isFrameV2ContentType,
   isInteractiveContentType,
   isSandboxFunctionContentType,
 } from "@app/types/files";
@@ -158,6 +159,7 @@ app.post(
 
     const publicContentFragment =
       !contentFragmentRes.value ||
+      isFrameV2ContentType(contentFragmentRes.value.contentType) ||
       isInteractiveContentType(contentFragmentRes.value.contentType) ||
       isSandboxFunctionContentType(contentFragmentRes.value.contentType)
         ? undefined
