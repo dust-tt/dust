@@ -5,7 +5,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   frames_v2: {
-    description: "Enable Frames v2 publication and runtime loading",
+    description: "Enable Frames v2",
     stage: "dust_only",
   },
   allow_sso: {

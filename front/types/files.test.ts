@@ -2,11 +2,8 @@ import {
   allowsSandboxRawUpload,
   authorizedFileAccessEntrySchema,
   ensureFileSize,
-  frameV2ContentType,
   getAuthorizedFileRefLabel,
   isAllSupportedFileContentType,
-  isFrameV2ContentType,
-  isInteractiveContentType,
   isSandboxFunctionContentType,
   isSupportedFileContentType,
   parseAuthorizedFileAccessEntry,
@@ -262,14 +259,5 @@ describe("sandboxFunctionContentType", () => {
       true
     );
     expect(isSupportedFileContentType(sandboxFunctionContentType)).toBe(false);
-  });
-});
-
-describe("frameV2ContentType", () => {
-  it("is supported without entering legacy Interactive Content flows", () => {
-    expect(isFrameV2ContentType(frameV2ContentType)).toBe(true);
-    expect(isAllSupportedFileContentType(frameV2ContentType)).toBe(true);
-    expect(isInteractiveContentType(frameV2ContentType)).toBe(false);
-    expect(isSupportedFileContentType(frameV2ContentType)).toBe(false);
   });
 });

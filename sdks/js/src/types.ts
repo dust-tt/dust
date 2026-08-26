@@ -341,9 +341,6 @@ const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
 const FrameSlideshowContentTypeSchema = z.literal(
   "application/vnd.dust.frame.slideshow"
 );
-const FrameV2ContentTypeSchema = z.literal(
-  "application/vnd.dust.frame.v2+json"
-);
 const SandboxFunctionContentTypeSchema = z.literal(
   "application/vnd.dust.sandbox.function"
 );
@@ -352,7 +349,6 @@ const ActionGeneratedFileContentTypeSchema = z.union([
   SupportedFileContentFragmentTypeSchema,
   FrameContentTypeSchema,
   FrameSlideshowContentTypeSchema,
-  FrameV2ContentTypeSchema,
   SandboxFunctionContentTypeSchema,
 ]);
 

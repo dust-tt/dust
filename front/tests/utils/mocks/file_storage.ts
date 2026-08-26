@@ -403,10 +403,6 @@ class FileStorageMock {
             new Error(`Simulated GCS copy failure: ${src} -> ${dest}`)
           );
         }
-        const sourceContent = this._objectStore.get(src);
-        if (sourceContent !== undefined) {
-          this._objectStore.set(dest, sourceContent);
-        }
         return Promise.resolve(undefined);
       }),
       // Mirrors real GCS compose: concatenates each source's stored content, in order,
@@ -444,12 +440,6 @@ class FileStorageMock {
           files: this._filesByPrefix(prefix) ?? [],
           pageFetchCount: 1,
         })
-      ),
-      getFiles: vi.fn(
-        ({ prefix, maxResults }: { prefix: string; maxResults: number }) =>
-          Promise.resolve(
-            (this._filesByPrefix(prefix) ?? []).slice(0, maxResults)
-          )
       ),
       listSubdirectoryNames: vi.fn(({ prefix }: { prefix: string }) => {
         const normalized = prefix.endsWith("/") ? prefix : `${prefix}/`;
