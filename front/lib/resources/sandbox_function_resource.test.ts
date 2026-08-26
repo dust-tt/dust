@@ -354,19 +354,34 @@ describe("SandboxFunctionResource", () => {
     ).rejects.toThrow("Invalid JSON schema");
   });
 
-  it("declares unique file and slug indexes", () => {
-    expect(SandboxFunctionModel.options.indexes).toEqual(
+  it("declares legacy and publication-scoped uniqueness indexes", () => {
+    const indexes = SandboxFunctionModel.options.indexes ?? [];
+
+    expect(indexes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           fields: ["fileId"],
+        }),
+        expect.objectContaining({
+          fields: ["workspaceId", "spaceId", "fileId"],
           unique: true,
         }),
         expect.objectContaining({
           fields: ["workspaceId", "spaceId", "slug"],
           unique: true,
         }),
+        expect.objectContaining({
+          fields: ["workspaceId", "fileId", "publicationId", "slug"],
+          unique: true,
+        }),
       ])
     );
+
+    const fileIndex = indexes.find((index) => {
+      const fields = index.fields ?? [];
+      return fields.length === 1 && fields[0] === "fileId";
+    });
+    expect(fileIndex?.unique).not.toBe(true);
   });
 
   it("overwrites the bundle and contract in place on re-publish", async () => {

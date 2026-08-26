@@ -51,8 +51,9 @@ export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionMod
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare spaceId: ForeignKey<SpaceModel["id"]>;
+  declare spaceId: ForeignKey<SpaceModel["id"]> | null;
   declare fileId: ForeignKey<FileModel["id"]>;
+  declare publicationId: string | null;
   declare slug: string;
   declare description: string;
   declare userIdentity: SandboxFunctionUserIdentityPolicy | null;
@@ -67,7 +68,7 @@ export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionMod
   declare inputSchema: JSONSchema;
   declare outputSchema: JSONSchema;
 
-  declare space: NonAttribute<SpaceModel>;
+  declare space: NonAttribute<SpaceModel | null>;
   declare file: NonAttribute<FileModel>;
 }
 
@@ -100,11 +101,15 @@ SandboxFunctionModel.init(
     },
     spaceId: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
     },
     fileId: {
       type: DataTypes.BIGINT,
       allowNull: false,
+    },
+    publicationId: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
     },
     slug: {
       type: DataTypes.STRING(255),
@@ -179,6 +184,10 @@ SandboxFunctionModel.init(
       },
       {
         fields: ["fileId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "fileId", "publicationId", "slug"],
         unique: true,
         concurrently: true,
       },
@@ -187,13 +196,13 @@ SandboxFunctionModel.init(
 );
 
 SandboxFunctionModel.belongsTo(SpaceModel, {
-  foreignKey: { name: "spaceId", allowNull: false },
+  foreignKey: { name: "spaceId", allowNull: true },
   onDelete: "RESTRICT",
   as: "space",
 });
 
 SpaceModel.hasMany(SandboxFunctionModel, {
-  foreignKey: { name: "spaceId", allowNull: false },
+  foreignKey: { name: "spaceId", allowNull: true },
   as: "sandboxFunctions",
 });
 
