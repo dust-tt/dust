@@ -26,7 +26,7 @@ const GCS_MAX_RETRIES = 3; // Same as the SDK default.
 const GCS_EXTRA_RETRYABLE_ERROR_MESSAGE_REGEX = /socket hang up/i;
 // GCS generations are object versions. Matching generation 0 means "create only
 // if the object does not already exist", which makes the create safe to retry.
-const GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH = 0;
+export const GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH = 0;
 
 export const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
 
