@@ -16,11 +16,38 @@ export const AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES = [
   "output",
   "reasoning",
   "tool",
+  "tool_call",
+  "tool_direct",
+  "tool_result",
+  "tool_adjustment",
   "rounding",
 ] as const;
 
 export type AgentMessageConsumptionItemType =
   (typeof AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES)[number];
+
+export const AGENT_MESSAGE_CONSUMPTION_TOOL_ITEM_TYPES = [
+  "tool",
+  "tool_call",
+  "tool_direct",
+  "tool_result",
+  "tool_adjustment",
+] as const satisfies readonly AgentMessageConsumptionItemType[];
+
+export type AgentMessageConsumptionToolItemType =
+  (typeof AGENT_MESSAGE_CONSUMPTION_TOOL_ITEM_TYPES)[number];
+
+export function isAgentMessageConsumptionToolItemType(
+  itemType: AgentMessageConsumptionItemType
+): itemType is AgentMessageConsumptionToolItemType {
+  return (
+    itemType === "tool" ||
+    itemType === "tool_call" ||
+    itemType === "tool_direct" ||
+    itemType === "tool_result" ||
+    itemType === "tool_adjustment"
+  );
+}
 
 export type AgentMessageConsumptionToolDetails = {
   label: string;

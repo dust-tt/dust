@@ -1,12 +1,15 @@
 import { indexAgentMessageConsumptionSnapshot } from "@app/lib/analytics/agent_message_consumption";
+import { billExecution } from "@app/lib/api/assistant/consumption/bill";
 import { applyConsumptionExecutionTotal } from "@app/lib/api/assistant/consumption/root_hash";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_message_consumption_event_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
 const EVENT_BATCH_SIZE = 256;
@@ -16,12 +19,17 @@ const ES_VERSION_CONFLICT_METRIC = "consumption.elasticsearch_version_conflict";
 export type ApplyConsumptionEventsResult = {
   eventModelIds: number[];
   hasMore: boolean;
-  finalizedStatus: AgentMessageStatus | null;
+  finalizedExecution: {
+    agentMessageModelId: ModelId;
+    rootAgentMessageId: string;
+    status: AgentMessageStatus;
+    timestamp: string;
+  } | null;
 };
 
-function finalizedStatusFromEvents(
+function finalizedExecutionFromEvents(
   events: AgentMessageConsumptionEventResource[]
-): AgentMessageStatus | null {
+): ApplyConsumptionEventsResult["finalizedExecution"] {
   const finalized = events.findLast(
     (event) => event.kind === "execution_finalized"
   );
@@ -29,7 +37,12 @@ function finalizedStatusFromEvents(
     return null;
   }
   assert(finalized.status !== null, "Finalized event is missing its status");
-  return finalized.status;
+  return {
+    agentMessageModelId: finalized.agentMessageId,
+    rootAgentMessageId: finalized.rootAgentMessageId,
+    status: finalized.status,
+    timestamp: finalized.createdAt.toISOString(),
+  };
 }
 
 export async function applyConsumptionEventsActivity(
@@ -70,7 +83,7 @@ export async function applyConsumptionEventsActivity(
   }
 
   const latestProjectionEventByAgentMessageModelId = new Map<
-    number,
+    ModelId,
     AgentMessageConsumptionEventResource
   >();
   for (const event of events) {
@@ -115,7 +128,7 @@ export async function applyConsumptionEventsActivity(
   return {
     eventModelIds,
     hasMore: events.length === EVENT_BATCH_SIZE,
-    finalizedStatus: finalizedStatusFromEvents(events),
+    finalizedExecution: finalizedExecutionFromEvents(events),
   };
 }
 
@@ -144,4 +157,33 @@ export async function markConsumptionEventsProcessedActivity(
       "[Consumption] Marked durable consumption events as processed."
     );
   }
+}
+
+export async function billExecutionActivity(
+  authType: AuthenticatorType,
+  {
+    agentMessageModelId,
+    rootAgentMessageId,
+    runKey,
+    status,
+  }: {
+    agentMessageModelId: ModelId;
+    rootAgentMessageId: string;
+    runKey: string;
+    status: AgentMessageStatus;
+  }
+): Promise<void> {
+  const auth = await Authenticator.fromJSON(authType);
+  const context =
+    await ConversationResource.fetchAgentMessageConsumptionAnalyticsContext(
+      auth,
+      { agentMessageModelId }
+    );
+  assert(context, "Finalized consumption event references a missing message");
+  const agentMessageId = context.agentMessage.agentMessageId;
+  await billExecution(auth, {
+    agentMessageId,
+    rootAgentMessageId,
+    runKey,
+  });
 }

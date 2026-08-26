@@ -78,7 +78,7 @@ function runUsageAttributes(usage: RunUsageModel): RunUsageType {
   assert(isModelId(usage.modelId), `Unknown model id: ${usage.modelId}`);
   assert(
     isModelProviderId(usage.providerId),
-    `Unknown model provider id: ${usage.providerId}`
+    `Unknown model provider id: ${usage.providerId}`,
   );
 
   return {
@@ -91,6 +91,7 @@ function runUsageAttributes(usage: RunUsageModel): RunUsageType {
     cacheCreationTokens: usage.cacheCreationTokens,
     costMicroUsd: usage.costMicroUsd,
     isBatch: usage.isBatch,
+    serviceTier: usage.serviceTier,
   };
 }
 
@@ -128,7 +129,7 @@ export class RunResource extends BaseResource<RunModel> {
 
   static async makeNewWithPendingUsage(
     blob: CreationAttributes<RunModel>,
-    usage: PendingRunUsageParameters
+    usage: PendingRunUsageParameters,
   ): Promise<{ run: RunResource; runUsageModelId: ModelId }> {
     return withTransaction(async (transaction) => {
       const runModel = await RunResource.model.create(blob, { transaction });
@@ -151,7 +152,7 @@ export class RunResource extends BaseResource<RunModel> {
           usageType: usage.usageType,
           usageState: "pending",
         },
-        { transaction }
+        { transaction },
       );
 
       return {
@@ -162,7 +163,7 @@ export class RunResource extends BaseResource<RunModel> {
   }
 
   private static getOptions<T extends boolean>(
-    options?: FetchRunOptions<T>
+    options?: FetchRunOptions<T>,
   ): ResourceFindOptions<RunModel> {
     const result: ResourceFindOptions<RunModel> = {};
 
@@ -201,7 +202,7 @@ export class RunResource extends BaseResource<RunModel> {
 
   static async listByWorkspace<T extends boolean>(
     workspace: LightWorkspaceType,
-    options: FetchRunOptions<T>
+    options: FetchRunOptions<T>,
   ): Promise<T extends true ? RunResourceWithApp[] : RunResource[]> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Disabled error for unused includeDeleted
     const { where, includes, includeDeleted, ...opts } =
@@ -219,13 +220,13 @@ export class RunResource extends BaseResource<RunModel> {
     return runs.map((r) =>
       options.includeApp
         ? (new this(this.model, r.get()) as RunResourceWithApp)
-        : (new this(this.model, r.get()) as RunResource)
+        : (new this(this.model, r.get()) as RunResource),
     ) as T extends true ? RunResourceWithApp[] : RunResource[];
   }
 
   static async countByWorkspace(
     workspace: LightWorkspaceType,
-    options?: Pick<FetchRunOptions<boolean>, "since">
+    options?: Pick<FetchRunOptions<boolean>, "since">,
   ) {
     const { where } = this.getOptions(options);
 
@@ -240,7 +241,7 @@ export class RunResource extends BaseResource<RunModel> {
   static async listByAppAndRunType(
     workspace: LightWorkspaceType,
     { appId, runType }: { appId: ModelId; runType: string | string[] },
-    { limit, offset }: { limit?: number; offset?: number } = {}
+    { limit, offset }: { limit?: number; offset?: number } = {},
   ): Promise<RunResource[]> {
     const where: WhereOptions<RunModel> = {
       appId,
@@ -260,7 +261,7 @@ export class RunResource extends BaseResource<RunModel> {
 
   static async listByDustRunIds(
     auth: Authenticator,
-    { dustRunIds }: { dustRunIds: string[] }
+    { dustRunIds }: { dustRunIds: string[] },
   ) {
     const runs = await this.model.findAll({
       where: {
@@ -277,7 +278,7 @@ export class RunResource extends BaseResource<RunModel> {
   // Idempotent: a finalize retry recomputes the same key for the same runIds.
   static async setRunKeyForDustRunIds(
     auth: Authenticator,
-    { dustRunIds, runKey }: { dustRunIds: string[]; runKey: string }
+    { dustRunIds, runKey }: { dustRunIds: string[]; runKey: string },
   ): Promise<void> {
     if (dustRunIds.length === 0) {
       return;
@@ -292,14 +293,14 @@ export class RunResource extends BaseResource<RunModel> {
           // skip rows already tagged so repeat tagging does not rewrite identical rows.
           [Op.or]: [{ runKey: null }, { runKey: { [Op.ne]: runKey } }],
         },
-      }
+      },
     );
   }
 
   // Classify legacy usage rows without ever changing an existing classification.
   static async setUsageTypeForRunsIfMissing(
     auth: Authenticator,
-    { runs, usageType }: { runs: RunResource[]; usageType: UsageType }
+    { runs, usageType }: { runs: RunResource[]; usageType: UsageType },
   ): Promise<void> {
     const runModelIds = runs.map((run) => run.id);
     if (runModelIds.length === 0) {
@@ -313,13 +314,16 @@ export class RunResource extends BaseResource<RunModel> {
           usageType: null,
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-      }
+      },
     );
   }
 
   static async listRunUsagesByModelIds(
     auth: Authenticator,
-    { runUsageModelIds }: { runUsageModelIds: ModelId[] }
+    {
+      runUsageModelIds,
+      transaction,
+    }: { runUsageModelIds: ModelId[]; transaction?: Transaction },
   ): Promise<RunUsageWithRunKeyType[]> {
     if (runUsageModelIds.length === 0) {
       return [];
@@ -330,6 +334,7 @@ export class RunResource extends BaseResource<RunModel> {
         id: { [Op.in]: runUsageModelIds },
         workspaceId: auth.getNonNullableWorkspace().id,
       },
+      transaction,
     });
     const runs = await RunModel.findAll({
       attributes: ["id", "runKey"],
@@ -337,9 +342,10 @@ export class RunResource extends BaseResource<RunModel> {
         id: { [Op.in]: usages.map((usage) => usage.runId) },
         workspaceId: auth.getNonNullableWorkspace().id,
       },
+      transaction,
     });
     const runKeyByModelId = new Map<ModelId, string | null>(
-      runs.map((run) => [run.id, run.runKey])
+      runs.map((run) => [run.id, run.runKey]),
     );
 
     return usages.map((usage) => ({
@@ -353,13 +359,44 @@ export class RunResource extends BaseResource<RunModel> {
     }));
   }
 
+  static async listRunUsageGroupsByModelIds(
+    auth: Authenticator,
+    {
+      runUsageModelIds,
+      transaction,
+    }: { runUsageModelIds: ModelId[]; transaction?: Transaction },
+  ): Promise<
+    Array<{
+      runUsageModelId: ModelId;
+      providerId: string;
+      modelId: string;
+    }>
+  > {
+    if (runUsageModelIds.length === 0) {
+      return [];
+    }
+    const usages = await RunUsageModel.findAll({
+      attributes: ["id", "modelId", "providerId"],
+      where: {
+        id: { [Op.in]: runUsageModelIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+    });
+    return usages.map((usage) => ({
+      runUsageModelId: usage.id,
+      modelId: usage.modelId,
+      providerId: usage.providerId,
+    }));
+  }
+
   static async listRunUsagesForRuns(
     auth: Authenticator,
     {
       runs,
     }: {
       runs: RunResource[];
-    }
+    },
   ): Promise<RunUsageWithRunKeyType[]> {
     const runModelIds = runs.map((run) => run.id);
     if (runModelIds.length === 0) {
@@ -370,7 +407,7 @@ export class RunResource extends BaseResource<RunModel> {
     // can group usages by execution (e.g. to ceil credit cost per the billed
     // Metronome partition).
     const runKeyByModelId = new Map<ModelId, string | null>(
-      runs.map((run) => [run.id, run.runKey])
+      runs.map((run) => [run.id, run.runKey]),
     );
 
     const usages = await RunUsageModel.findAll({
@@ -381,6 +418,7 @@ export class RunResource extends BaseResource<RunModel> {
         // billable usage. Null supports rows written during rolling deploys.
         [Op.or]: [{ usageState: "reported" }, { usageState: null }],
       },
+      order: [["id", "ASC"]],
     });
 
     return usages.map((usage) => ({
@@ -396,7 +434,7 @@ export class RunResource extends BaseResource<RunModel> {
 
   static async fetchByDustRunId(
     auth: Authenticator,
-    { dustRunId }: { dustRunId: string }
+    { dustRunId }: { dustRunId: string },
   ): Promise<RunResource | null> {
     const run = await this.model.findOne({
       where: {
@@ -414,7 +452,7 @@ export class RunResource extends BaseResource<RunModel> {
 
   static async countByAppAndRunType(
     workspace: LightWorkspaceType,
-    { appId, runType }: { appId: ModelId; runType: string | string[] }
+    { appId, runType }: { appId: ModelId; runType: string | string[] },
   ) {
     const where: WhereOptions<RunModel> = {
       appId,
@@ -435,7 +473,7 @@ export class RunResource extends BaseResource<RunModel> {
           [Op.in]: Sequelize.literal(
             // Sequelize prevents other safer constructs due to typing with the destroy method.
             // `appId` cannot be user provided + assert above.
-            `(SELECT id FROM runs WHERE "appId" = '${appId}')`
+            `(SELECT id FROM runs WHERE "appId" = '${appId}')`,
           ),
         },
       },
@@ -461,7 +499,7 @@ export class RunResource extends BaseResource<RunModel> {
           [Op.in]: Sequelize.literal(
             // Sequelize prevents other safer constructs due to typing with the destroy method.
             // `workspace.id` cannot cannot be user provided + assert above.
-            `(SELECT id FROM runs WHERE "workspaceId" = '${workspace.id}')`
+            `(SELECT id FROM runs WHERE "workspaceId" = '${workspace.id}')`,
           ),
         },
       },
@@ -474,7 +512,7 @@ export class RunResource extends BaseResource<RunModel> {
 
   async delete(
     auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
+    { transaction }: { transaction?: Transaction } = {},
   ): Promise<Result<undefined, Error>> {
     try {
       // Delete the run usage entry.
@@ -508,7 +546,7 @@ export class RunResource extends BaseResource<RunModel> {
   async recordRunUsage(
     auth: Authenticator,
     usages: RunUsageType[],
-    { usageType }: { usageType: UsageType }
+    { usageType }: { usageType: UsageType },
   ) {
     await RunUsageModel.bulkCreate(
       usages.map(
@@ -540,8 +578,8 @@ export class RunResource extends BaseResource<RunModel> {
           serviceTier: serviceTier ?? "default",
           usageType,
           usageState: "reported",
-        })
-      )
+        }),
+      ),
     );
 
     this.emitRunUsageMetrics(usages);
@@ -557,38 +595,38 @@ export class RunResource extends BaseResource<RunModel> {
       statsDMetrics.increment(
         "run_usage.prompt_tokens",
         usage.promptTokens,
-        tags
+        tags,
       );
       statsDMetrics.increment(
         "run_usage.completion_tokens",
         usage.completionTokens,
-        tags
+        tags,
       );
       statsDMetrics.increment(
         "run_usage.cost_micro_usd",
         usage.costMicroUsd,
-        tags
+        tags,
       );
 
       if (usage.cachedTokens) {
         statsDMetrics.increment(
           "run_usage.cached_tokens",
           usage.cachedTokens,
-          tags
+          tags,
         );
       }
       if (usage.cacheCreationTokens) {
         statsDMetrics.increment(
           "run_usage.cache_creation_tokens",
           usage.cacheCreationTokens,
-          tags
+          tags,
         );
       }
       if (usage.reasoningTokens) {
         statsDMetrics.increment(
           "run_usage.reasoning_tokens",
           usage.reasoningTokens,
-          tags
+          tags,
         );
       }
     }
@@ -606,7 +644,7 @@ export class RunResource extends BaseResource<RunModel> {
       isBatch?: boolean;
       inferenceRegion?: InferenceRegionType;
       usageType: UsageType;
-    }
+    },
   ) {
     const runUsage = this.tokenUsageToRunUsage(usage, modelId, {
       isBatch,
@@ -625,7 +663,7 @@ export class RunResource extends BaseResource<RunModel> {
 
   async markPendingRunUsageUnavailable(
     auth: Authenticator,
-    runUsageModelId: ModelId
+    runUsageModelId: ModelId,
   ): Promise<void> {
     await RunUsageModel.update(
       { usageState: "unavailable" },
@@ -636,14 +674,14 @@ export class RunResource extends BaseResource<RunModel> {
           workspaceId: auth.getNonNullableWorkspace().id,
           usageState: "pending",
         },
-      }
+      },
     );
   }
 
   async finalizePendingRunUsage(
     auth: Authenticator,
     runUsageModelId: ModelId,
-    usages: RunUsageType[]
+    usages: RunUsageType[],
   ): Promise<boolean> {
     const [firstUsage, ...additionalUsages] = usages;
     if (!firstUsage) {
@@ -672,7 +710,7 @@ export class RunResource extends BaseResource<RunModel> {
           workspaceId: auth.getNonNullableWorkspace().id,
           usageState: "pending",
         },
-      }
+      },
     );
 
     // Provider streams report usage once. Treat repeated finalization as an
@@ -685,7 +723,7 @@ export class RunResource extends BaseResource<RunModel> {
       const usageType = updatedUsages[0]?.usageType;
       if (!usageType) {
         throw new Error(
-          "Cannot record additional usage for a run without a billing classification"
+          "Cannot record additional usage for a run without a billing classification",
         );
       }
       await this.recordRunUsage(auth, additionalUsages, { usageType });
@@ -703,7 +741,7 @@ export class RunResource extends BaseResource<RunModel> {
       inferenceRegion = "global",
     }: {
       inferenceRegion?: InferenceRegionType;
-    } = {}
+    } = {},
   ): Promise<number | undefined> {
     const runUsage = this.tokenUsageToRunUsage(usage, modelId, {
       isBatch: false,
@@ -716,7 +754,7 @@ export class RunResource extends BaseResource<RunModel> {
     const wasFinalized = await this.finalizePendingRunUsage(
       auth,
       runUsageModelId,
-      [runUsage]
+      [runUsage],
     );
     return wasFinalized ? runUsage.costMicroUsd : undefined;
   }
@@ -730,7 +768,7 @@ export class RunResource extends BaseResource<RunModel> {
     }: {
       isBatch: boolean;
       inferenceRegion: InferenceRegionType;
-    }
+    },
   ): RunUsageType | null {
     const modelConfig = getModelConfigByModelId(modelId);
 
@@ -779,7 +817,7 @@ export class RunResource extends BaseResource<RunModel> {
   }
 
   async listRunUsageAttempts(
-    auth: Authenticator
+    auth: Authenticator,
   ): Promise<RunUsageAttemptType[]> {
     const usages = await RunUsageModel.findAll({
       where: {
