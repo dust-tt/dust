@@ -1,3 +1,4 @@
+import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { computeAndStoreAgentMessageCredits } from "@app/lib/api/assistant/credit_cost";
 import {
   sendEmailReplyOnCompletion,
@@ -5,6 +6,8 @@ import {
 } from "@app/lib/api/assistant/email/email_reply";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import logger from "@app/logger/logger";
 import {
   launchAgentMessageAnalytics,
   launchAgentMessageConsumptionAttribution,
@@ -175,9 +178,42 @@ export async function finalizeErroredAgentLoopActivity(
   agentLoopArgs: AgentLoopArgs,
   error: { message: string; name: string }
 ): Promise<void> {
-  await notifyWorkflowError(authType, agentLoopArgs, error);
+  const agentMessageModelId = await notifyWorkflowError(
+    authType,
+    agentLoopArgs,
+    error
+  );
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+
+  // Attribute the failure to the tools that never finished. The worker that ran them may have
+  // died without logging anything (heartbeat timeouts), but the action rows it left behind in a
+  // non-final status carry the tool identity.
+  if (agentMessageModelId !== null) {
+    const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
+      agentMessageModelId,
+    ]);
+    const stuckTools = actions
+      .filter((action) => !isToolExecutionStatusFinal(action.status))
+      .map((action) => ({
+        actionModelId: action.id,
+        status: action.status,
+        toolName: action.toolConfiguration.name,
+        mcpServerName: action.toolConfiguration.mcpServerName,
+      }));
+
+    logger.warn(
+      {
+        conversationId: agentLoopArgs.conversationId,
+        agentMessageId: agentLoopArgs.agentMessageId,
+        workspaceId: authType.workspaceId,
+        workflowErrorName: error.name,
+        workflowErrorMessage: error.message,
+        stuckTools,
+      },
+      "Agent loop finalized as errored"
+    );
+  }
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
