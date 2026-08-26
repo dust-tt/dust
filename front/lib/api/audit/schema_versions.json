@@ -82,6 +82,8 @@
   "skill.self_improvement_updated": 1,
   "skill_import_github_connection.created": 1,
   "skill_import_github_connection.deleted": 1,
+  "slack_workflow.allowed": 1,
+  "slack_workflow.revoked": 1,
   "space.accessed": 2,
   "space.created": 4,
   "space.deleted": 4,

@@ -170,6 +170,9 @@ export const AUDIT_ACTIONS = [
   "datasource.deleted",
   "datasource.deleted_admin",
   "datasource.reauthorized",
+  // Slack workflows.
+  "slack_workflow.allowed",
+  "slack_workflow.revoked",
   // Files.
   "file.moved",
   "frame.authorized_files_updated",

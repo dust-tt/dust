@@ -1,0 +1,15 @@
+{
+  "action": "slack_workflow.revoked",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "data_source"
+    }
+  ],
+  "metadata": {
+    "bot_name": "string",
+    "actor_type": "string"
+  }
+}

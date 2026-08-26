@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
+import { allowSlackWorkflow } from "@app/lib/api/slack/summoning_whitelist";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import logger from "@app/logger/logger";
 import type { AdminCommandType } from "@app/types/connectors/admin/cli";
@@ -126,7 +127,6 @@ export const slackWhitelistBotPlugin = createPlugin({
     });
   },
   execute: async (auth, resource, args) => {
-    const owner = auth.getNonNullableWorkspace();
     const { botName, groupIds } = args;
 
     if (!resource) {
@@ -141,38 +141,13 @@ export const slackWhitelistBotPlugin = createPlugin({
       return new Err(new Error("Groups selection is required"));
     }
 
-    // Always include the Workspace (global) group.
-    const workspaceGroupRes =
-      await GroupResource.fetchWorkspaceGlobalGroup(auth);
-    if (workspaceGroupRes.isErr()) {
-      return new Err(new Error("Failed to fetch workspace global group"));
-    }
-
-    const allGroupIds = groupIds.includes(workspaceGroupRes.value.sId)
-      ? groupIds
-      : [...groupIds, workspaceGroupRes.value.sId];
-
-    const connectorsAPI = new ConnectorsAPI(
-      config.getConnectorsAPIConfig(),
-      logger
-    );
-
-    const whitelistBotCmd: AdminCommandType = {
-      majorCommand: "slack",
-      command: "whitelist-bot",
-      args: {
-        botName,
-        wId: owner.sId,
-        groupId: allGroupIds.join(","),
-        whitelistType: "summon_agent",
-        providerType: "slack_bot",
-      },
-    };
-
-    const adminCommandRes = await connectorsAPI.admin(whitelistBotCmd);
-    if (adminCommandRes.isErr()) {
+    const allowRes = await allowSlackWorkflow(auth, {
+      botName: botName.trim(),
+      groupIds,
+    });
+    if (allowRes.isErr()) {
       return new Err(
-        new Error(`Failed to whitelist bot: ${adminCommandRes.error.message}`)
+        new Error(`Failed to whitelist bot: ${allowRes.error.message}`)
       );
     }
 
