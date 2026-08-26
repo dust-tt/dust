@@ -151,6 +151,18 @@ export interface ToolCallFootprintInput {
   functionCallArguments: string;
 }
 
+export interface ToolCallOutputFootprintInput {
+  functionCallName: string;
+  functionCallArguments: string;
+}
+
+function toolCallOutputText({
+  functionCallName,
+  functionCallArguments,
+}: ToolCallOutputFootprintInput): string {
+  return `${functionCallName}\n${functionCallArguments}`;
+}
+
 export function toolCallFootprintTexts(
   { action, functionCallArguments }: ToolCallFootprintInput,
   // Attachment capabilities shape the rendered result, so they must match the ones used when the
@@ -160,7 +172,10 @@ export function toolCallFootprintTexts(
 ): ToolFootprintTexts {
   return {
     // The tool call as the model emitted it: its name plus the arguments it generated.
-    callText: `${action.functionCallName}\n${functionCallArguments}`,
+    callText: toolCallOutputText({
+      functionCallName: action.functionCallName,
+      functionCallArguments,
+    }),
     // Tool input means the model input created by this execution. Most tools contribute only their
     // rendered result. Enabling a skill also adds its instructions and tool definitions to later
     // requests, so those consequences belong to the same tool row.
@@ -171,6 +186,65 @@ export function toolCallFootprintTexts(
       .filter((text): text is string => text !== undefined)
       .join("\n"),
   };
+}
+
+async function getToolFootprintTokenizationContext(
+  auth: Authenticator,
+  modelId: string
+): Promise<
+  Result<
+    {
+      credentials: Awaited<ReturnType<typeof getLlmCredentials>>;
+      model: ModelConfigurationType;
+    },
+    Error
+  >
+> {
+  const model =
+    getModelConfigByModelId(modelId) ??
+    HISTORICAL_TOKENIZATION_MODEL_CONFIGS.find(
+      (configuration) => configuration.modelId === modelId
+    );
+  if (!model) {
+    return new Err(
+      new Error(`Cannot tokenize tool footprints: unknown model ${modelId}.`)
+    );
+  }
+
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
+
+  return new Ok({
+    credentials,
+    model: modelForToolFootprintAttribution(model),
+  });
+}
+
+export async function measureToolCallOutputFootprints(
+  auth: Authenticator,
+  {
+    modelId,
+    toolCalls,
+  }: {
+    modelId: string;
+    toolCalls: ToolCallOutputFootprintInput[];
+  }
+): Promise<Result<number[], Error>> {
+  if (toolCalls.length === 0) {
+    return new Ok([]);
+  }
+
+  const contextRes = await getToolFootprintTokenizationContext(auth, modelId);
+  if (contextRes.isErr()) {
+    return contextRes;
+  }
+
+  return tokenCountForTexts(
+    toolCalls.map(toolCallOutputText),
+    contextRes.value.model,
+    contextRes.value.credentials
+  );
 }
 
 /**
@@ -196,28 +270,17 @@ export async function measureToolCallFootprints(
     return new Ok([]);
   }
 
-  const model =
-    getModelConfigByModelId(modelId) ??
-    HISTORICAL_TOKENIZATION_MODEL_CONFIGS.find(
-      (configuration) => configuration.modelId === modelId
-    );
-  if (!model) {
-    return new Err(
-      new Error(`Cannot tokenize tool footprints: unknown model ${modelId}.`)
-    );
+  const contextRes = await getToolFootprintTokenizationContext(auth, modelId);
+  if (contextRes.isErr()) {
+    return contextRes;
   }
-  const attributionModel = modelForToolFootprintAttribution(model);
-
-  const credentials = await getLlmCredentials(auth, {
-    skipEmbeddingApiKeyRequirement: true,
-  });
 
   const enabledSkillInputTextByActionId =
     await getEnabledSkillInputTextByActionId(
       auth,
       toolCalls.map(({ action }) => action),
       {
-        toolSearchEnabled: isToolSearchEnabledForModel(model),
+        toolSearchEnabled: isToolSearchEnabledForModel(contextRes.value.model),
       }
     );
 
@@ -233,13 +296,13 @@ export async function measureToolCallFootprints(
   const [callCountsRes, inputCountsRes] = await Promise.all([
     tokenCountForTexts(
       footprints.map((footprint) => footprint.callText),
-      attributionModel,
-      credentials
+      contextRes.value.model,
+      contextRes.value.credentials
     ),
     tokenCountForTexts(
       footprints.map((footprint) => footprint.inputText),
-      attributionModel,
-      credentials
+      contextRes.value.model,
+      contextRes.value.credentials
     ),
   ]);
   if (callCountsRes.isErr()) {

@@ -459,6 +459,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "tdraier",
   },
+  agent_message_consumption_writes: {
+    description:
+      "Write agent-message consumption items and outbox events as usage is incurred. Shadow mode keeps existing billing.",
+    stage: "dust_only",
+    owner: "id13",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";

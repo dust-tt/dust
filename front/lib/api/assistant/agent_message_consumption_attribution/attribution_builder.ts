@@ -94,7 +94,9 @@ function assertValidRunUsage(usage: RunUsageForAttribution): void {
 }
 
 /** Converts provider cost into millionths of a Dust credit. */
-function creditAmountMicroFromCostMicroUsd(costMicroUsd: number): number {
+export function creditAmountMicroFromCostMicroUsd(
+  costMicroUsd: number
+): number {
   return Math.round(
     (costMicroUsd * MICRO_CREDITS_PER_CREDIT) /
       MODEL_COST_MICRO_USD_PER_AWU_CREDIT
@@ -147,6 +149,19 @@ function attributedCreditsForTokens({
   costMicroUsdPerToken: number;
 }): number {
   return creditAmountMicroFromCostMicroUsd(tokensCount * costMicroUsdPerToken);
+}
+
+export function creditsForInputTokens({
+  usage,
+  tokensCount,
+}: {
+  usage: RunUsageForAttribution;
+  tokensCount: number;
+}): number {
+  return attributedCreditsForTokens({
+    tokensCount,
+    costMicroUsdPerToken: getRunTokenRates(usage).inputCostMicroUsdPerToken,
+  });
 }
 
 /**
