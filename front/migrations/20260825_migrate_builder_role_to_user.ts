@@ -316,6 +316,7 @@ makeScript(
     const usersById = new Map(users.map((u) => [u.id, u]));
 
     const workItems: WorkItem[] = [];
+    const organizationIds = new Set<string>();
     for (const m of builderMemberships) {
       const workspace = workspacesById.get(m.workspaceId);
       if (!workspace) {
@@ -331,6 +332,9 @@ makeScript(
         workspaceSId: workspace.sId,
         workOSOrganizationId: workspace.workOSOrganizationId ?? null,
       });
+      if (workspace.workOSOrganizationId) {
+        organizationIds.add(workspace.workOSOrganizationId);
+      }
     }
 
     // One limiter meters every WorkOS call (list pages and updates alike), keeping the rate under
@@ -368,16 +372,9 @@ makeScript(
     // Step 4 can resolve every member from memory instead of a per-member `list` read. A non-429
     // list error is confined to that organization (its builders become `failed`); a 429 aborts the
     // whole run. Listing is read-only, so it runs in dry-run too for fidelity.
-    const organizationIds = [
-      ...new Set(
-        workItems
-          .map((item) => item.workOSOrganizationId)
-          .filter((id): id is string => id !== null)
-      ),
-    ];
     const orgListings = new Map<string, OrgListing>();
     await concurrentExecutor(
-      organizationIds,
+      [...organizationIds],
       async (organizationId) => {
         try {
           const membershipByWorkOSUserId =
