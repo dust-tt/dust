@@ -1,11 +1,17 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { EnabledAgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { CreationOptional } from "sequelize";
+
+const ENABLED_CONSUMPTION_MODES = [
+  "shadow",
+  "live",
+] as const satisfies readonly EnabledAgentMessageConsumptionMode[];
 
 function validateConsumptionEventShape(
   this: AgentMessageConsumptionEventModel
@@ -28,16 +34,29 @@ function validateConsumptionEventShape(
       if (this.status !== null) {
         throw new Error("An items-changed event cannot carry lifecycle data");
       }
+      if (this.consumptionMode !== null) {
+        throw new Error(
+          "An items-changed event cannot carry a consumption mode"
+        );
+      }
       break;
 
     case "execution_started":
-      if (this.consumptionItemIds !== null || this.status !== null) {
+      if (
+        this.consumptionItemIds !== null ||
+        this.status !== null ||
+        this.consumptionMode === null
+      ) {
         throw new Error("An execution-started event has invalid data");
       }
       break;
 
     case "execution_finalized":
-      if (this.consumptionItemIds !== null || this.status === null) {
+      if (
+        this.consumptionItemIds !== null ||
+        this.status === null ||
+        this.consumptionMode === null
+      ) {
         throw new Error("An execution-finalized event has invalid data");
       }
       break;
@@ -67,6 +86,7 @@ export class AgentMessageConsumptionEventModel extends WorkspaceAwareModel<Agent
   declare kind: ConsumptionEventKind;
   declare consumptionItemIds: ModelId[] | null;
   declare status: AgentMessageStatus | null;
+  declare consumptionMode: EnabledAgentMessageConsumptionMode | null;
 }
 
 AgentMessageConsumptionEventModel.init(
@@ -114,6 +134,11 @@ AgentMessageConsumptionEventModel.init(
       type: DataTypes.STRING(32),
       allowNull: true,
       validate: { isIn: [AGENT_MESSAGE_STATUSES] },
+    },
+    consumptionMode: {
+      type: DataTypes.STRING(16),
+      allowNull: true,
+      validate: { isIn: [ENABLED_CONSUMPTION_MODES] },
     },
   },
   {
