@@ -2,6 +2,8 @@ import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetail
 import { CHART_HEIGHT } from "@app/components/charts/constants";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { useSetRightPanel } from "@app/components/sparkle/AppLayoutContext";
+import { AnalyticsConversationPanel } from "@app/components/workspace/analytics/AnalyticsConversationPanel";
 import { AnalyticsExportPanel } from "@app/components/workspace/analytics/AnalyticsExportPanel";
 import type { ConsumptionAttributionTableProps } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
@@ -26,6 +28,7 @@ import {
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
+import { useAnalyticsConversationPanel } from "@app/hooks/useAnalyticsConversationPanel";
 import { useAnalyticsViewState } from "@app/hooks/useAnalyticsViewState";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useResolvedUsageFilter } from "@app/hooks/useResolvedUsageFilter";
@@ -38,7 +41,11 @@ import {
   DEFAULT_CONSUMPTION_GRANULARITY,
   DEFAULT_CONSUMPTION_PERIOD,
 } from "@app/lib/analytics/consumption_period";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import type { TrackingExtra } from "@app/lib/tracking";
 import {
@@ -47,10 +54,13 @@ import {
   trackEvent,
 } from "@app/lib/tracking";
 import type { LightWorkspaceType } from "@app/types/user";
+import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 import {
+  Button,
   cn,
   LoadingBlock,
   Page,
+  Robot,
   SafeSuspense,
   safeLazy,
 } from "@dust-tt/sparkle";
@@ -164,6 +174,12 @@ export function AnalyticsConsumptionPage() {
     filter: state.filter,
   });
 
+  const conversationPanel = useAnalyticsConversationPanel();
+  const { hasFeature } = useFeatureFlags();
+  const analyticsAssistantEnabled =
+    hasFeature("analytics_conversation_panel") &&
+    isWorkspaceAnalyticsEnabled(owner);
+
   useEffect(() => {
     trackEvent({
       area: TRACKING_AREAS.ANALYTICS,
@@ -172,6 +188,18 @@ export function AnalyticsConsumptionPage() {
       extra: { workspace_id: owner.sId },
     });
   }, [owner.sId]);
+
+  useSetRightPanel(
+    analyticsAssistantEnabled ? (
+      <AnalyticsConversationPanel
+        owner={owner}
+        user={user}
+        onClose={conversationPanel.closePanel}
+        disabled={!conversationPanel.isOpen}
+      />
+    ) : undefined,
+    conversationPanel.isOpen
+  );
 
   return (
     <>
@@ -188,6 +216,16 @@ export function AnalyticsConsumptionPage() {
         onClose={() => setSkillDetailsId(null)}
       />
       <AdminPageContainer>
+        {analyticsAssistantEnabled && !conversationPanel.isOpen && (
+          <div className="flex justify-end pb-4">
+            <Button
+              variant="outline"
+              icon={Robot}
+              label="Ask @analyst"
+              onClick={conversationPanel.openPanel}
+            />
+          </div>
+        )}
         <AnalyticsConsumptionContent
           owner={owner}
           state={{ ...state, filter }}

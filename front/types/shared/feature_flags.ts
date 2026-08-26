@@ -16,6 +16,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "fontanierh",
   },
+  analytics_conversation_panel: {
+    description:
+      "Enable the Ask @analyst conversation panel on the Analytics page",
+    stage: "dust_only",
+    owner: "achilleburah",
+  },  
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",

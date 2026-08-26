@@ -13,9 +13,9 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { MOBILE_DOCUMENT_SCROLL_CLASSES } from "@app/lib/documentScrollLayoutClasses";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
-import { cn } from "@dust-tt/sparkle";
+import { cn, ResizableSidePanel } from "@dust-tt/sparkle";
 import type React from "react";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef } from "react";
 
 // Lazy-load the dev panel only when dev mode is active.
 // The module is never fetched/parsed/executed when dev mode is off.
@@ -28,6 +28,8 @@ const DevFeatureFlagPanel = DEV_MODE_ACTIVE
       }))
     )
   : null;
+
+const MIN_CONTENT_WIDTH_WITH_PANEL_PX = 720;
 
 interface AppContentLayoutProps {
   children: React.ReactNode;
@@ -78,6 +80,8 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
     hideSidebar = false,
     navChildren,
     pageTitle,
+    rightPanel,
+    isRightPanelOpen = false,
     subNavigation,
     title,
   } = useAppLayout();
@@ -93,6 +97,28 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
     useDesktopNavigation();
 
   useDocumentScrollMode(isMobile);
+
+  const didFoldNavigationForPanelRef = useRef(false);
+
+  const foldNavigationForPanel = useCallback(() => {
+    if (isNavigationBarOpen) {
+      didFoldNavigationForPanelRef.current = true;
+      setIsNavigationBarOpen(false);
+    }
+  }, [isNavigationBarOpen, setIsNavigationBarOpen]);
+
+  useEffect(() => {
+    if (!isRightPanelOpen && didFoldNavigationForPanelRef.current) {
+      didFoldNavigationForPanelRef.current = false;
+      setIsNavigationBarOpen(true);
+    }
+  }, [isRightPanelOpen, setIsNavigationBarOpen]);
+
+  useEffect(() => {
+    if (isNavigationBarOpen) {
+      didFoldNavigationForPanelRef.current = false;
+    }
+  }, [isNavigationBarOpen]);
 
   return (
     <div
@@ -134,67 +160,32 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
             isMobile={isMobile}
             isFullScreen={isFullScreen}
           >
-            {/* Temporary measure to preserve title existence on smaller screens.
-             * Page has no title, prepend empty AppLayoutTitle. */}
-            {!hasTitleBar && (
-              <div
-                className={cn(
-                  "flex flex-1 flex-col",
-                  isMobile
-                    ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
-                    : "min-h-0 h-panel overflow-y-auto [scrollbar-gutter:stable]"
-                )}
-              >
-                <AppLayoutTitle />
-                {contentWidth ? (
-                  <div
-                    className={cn(
-                      "flex w-full flex-col items-center",
-                      isMobile
-                        ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
-                        : "h-full overflow-y-auto [scrollbar-gutter:stable]",
-                      contentWidth === "centered" ? "pt-4" : "pt-8",
-                      contentClassName
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "flex w-full grow flex-col px-4 md:px-8",
-                        contentWidth === "centered" && "max-w-4xl"
-                      )}
-                    >
-                      {children}
-                    </div>
-                  </div>
-                ) : (
-                  children
-                )}
-              </div>
-            )}
-            {hasTitleBar && (
-              <div
-                className={cn(
-                  "flex flex-1 flex-col",
-                  isMobile
-                    ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
-                    : "min-h-0 overflow-y-auto [scrollbar-gutter:stable]"
-                )}
-              >
-                {contentWidth ? (
-                  <>
-                    {title}
+            <ResizableSidePanel
+              panel={rightPanel}
+              isOpen={isRightPanelOpen}
+              minContentWidthPx={MIN_CONTENT_WIDTH_WITH_PANEL_PX}
+              onContentSqueezed={foldNavigationForPanel}
+            >
+              {/* Temporary measure to preserve title existence on smaller screens.
+               * Page has no title, prepend empty AppLayoutTitle. */}
+              {!hasTitleBar && (
+                <div
+                  className={cn(
+                    "flex flex-1 flex-col",
+                    isMobile
+                      ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
+                      : "min-h-0 h-panel overflow-y-auto [scrollbar-gutter:stable]"
+                  )}
+                >
+                  <AppLayoutTitle />
+                  {contentWidth ? (
                     <div
                       className={cn(
                         "flex w-full flex-col items-center",
                         isMobile
                           ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
-                          : "overflow-y-auto [scrollbar-gutter:stable]",
-                        contentWidth === "centered"
-                          ? cn(
-                              title ? "h-[calc(100vh-3.5rem)]" : "h-full",
-                              "pt-4"
-                            )
-                          : "h-full pt-8",
+                          : "h-full overflow-y-auto [scrollbar-gutter:stable]",
+                        contentWidth === "centered" ? "pt-4" : "pt-8",
                         contentClassName
                       )}
                     >
@@ -207,12 +198,54 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
                         {children}
                       </div>
                     </div>
-                  </>
-                ) : (
-                  children
-                )}
-              </div>
-            )}
+                  ) : (
+                    children
+                  )}
+                </div>
+              )}
+              {hasTitleBar && (
+                <div
+                  className={cn(
+                    "flex flex-1 flex-col",
+                    isMobile
+                      ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
+                      : "min-h-0 overflow-y-auto [scrollbar-gutter:stable]"
+                  )}
+                >
+                  {contentWidth ? (
+                    <>
+                      {title}
+                      <div
+                        className={cn(
+                          "flex w-full flex-col items-center",
+                          isMobile
+                            ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
+                            : "overflow-y-auto [scrollbar-gutter:stable]",
+                          contentWidth === "centered"
+                            ? cn(
+                                title ? "h-[calc(100vh-3.5rem)]" : "h-full",
+                                "pt-4"
+                              )
+                            : "h-full pt-8",
+                          contentClassName
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "flex w-full grow flex-col px-4 md:px-8",
+                            contentWidth === "centered" && "max-w-4xl"
+                          )}
+                        >
+                          {children}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    children
+                  )}
+                </div>
+              )}
+            </ResizableSidePanel>
           </AppContentInnerWrapper>
         </div>
         <CommandPalette owner={owner} user={user} />
