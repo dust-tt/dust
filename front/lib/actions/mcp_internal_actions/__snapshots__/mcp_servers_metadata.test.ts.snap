@@ -2142,18 +2142,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
     },
   },
   "shopify": {
-    "export_customer_ltv": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
-    "export_sales": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
-    "export_top_customers_by_period": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
     "list_products": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
@@ -3332,9 +3320,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "update_incident": "low",
   },
   "shopify": {
-    "export_customer_ltv": "never_ask",
-    "export_sales": "never_ask",
-    "export_top_customers_by_period": "never_ask",
     "list_products": "never_ask",
   },
   "skill_authoring": {

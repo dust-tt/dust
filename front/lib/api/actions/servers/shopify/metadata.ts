@@ -37,105 +37,13 @@ export const SHOPIFY_TOOLS_METADATA = [
     toolCostCategory: "advanced",
     freeUsage: false,
   },
-  {
-    name: "export_customer_ltv",
-    description:
-      "Export customer lifetime value: total amount spent and order count per customer, identified by ID.",
-    schema: {
-      sortByAmountSpent: z
-        .boolean()
-        .optional()
-        .describe(
-          "Rank customers by lifetime amount spent, highest first (default: true). Exact for up to 1000 customers; use minAmountSpentDollars to narrow beyond that."
-        ),
-      minAmountSpentDollars: z
-        .number()
-        .nonnegative()
-        .optional()
-        .describe(
-          "Keep only customers whose lifetime spend is at least this amount, in store currency."
-        ),
-      limit: limitSchema("customers"),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Exporting Shopify customer LTV",
-      done: "Export Shopify customer LTV",
-    },
-    toolCostCategory: "advanced",
-    freeUsage: false,
-  },
-  {
-    name: "export_sales",
-    description:
-      "Export Shopify orders for a date range, with totals, taxes, and payment and fulfillment status. Without the read_all_orders scope, only the last 60 days are available.",
-    schema: {
-      startDate: z
-        .string()
-        .optional()
-        .describe("ISO 8601 lower bound for order creation date (inclusive)."),
-      endDate: z
-        .string()
-        .optional()
-        .describe("ISO 8601 upper bound for order creation date (inclusive)."),
-      financialStatus: z
-        .enum([
-          "PAID",
-          "PENDING",
-          "AUTHORIZED",
-          "PARTIALLY_PAID",
-          "PARTIALLY_REFUNDED",
-          "REFUNDED",
-          "VOIDED",
-          "EXPIRED",
-        ])
-        .optional()
-        .describe("Filter by payment status."),
-      fulfillmentStatus: z
-        .enum(["UNFULFILLED", "FULFILLED", "PARTIAL", "SCHEDULED", "ON_HOLD"])
-        .optional()
-        .describe("Filter by fulfillment status."),
-      limit: limitSchema("orders"),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Exporting Shopify sales",
-      done: "Export Shopify sales",
-    },
-    toolCostCategory: "advanced",
-    freeUsage: false,
-  },
-  {
-    name: "export_top_customers_by_period",
-    description:
-      "Rank the top customers by total spend over a date range, aggregated from their orders. Without the read_all_orders scope, only the last 60 days are available.",
-    schema: {
-      startDate: z
-        .string()
-        .optional()
-        .describe("ISO 8601 lower bound for order creation date (inclusive)."),
-      endDate: z
-        .string()
-        .optional()
-        .describe("ISO 8601 upper bound for order creation date (inclusive)."),
-      limit: limitSchema("customers"),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Ranking Shopify top customers",
-      done: "Rank Shopify top customers",
-    },
-    toolCostCategory: "advanced",
-    freeUsage: false,
-  },
 ] as const;
 
 export const SHOPIFY_SERVER = {
   serverInfo: {
     name: SHOPIFY_SERVER_NAME,
     version: "1.0.0",
-    description:
-      "Export product catalog, customer lifetime value, and sales data from a Shopify store.",
+    description: "List the product catalog from a Shopify store.",
     authorization: {
       provider: "shopify" as const,
       supported_use_cases: ["platform_actions"] as const,
