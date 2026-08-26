@@ -41,7 +41,7 @@ describe("ConsumptionSummary", () => {
   });
 
   it("shows activity and cost metrics in an agent-scoped summary", () => {
-    render(
+    const { container } = render(
       <ConsumptionSummary
         workspaceId="workspace-id"
         period={period}
@@ -62,20 +62,49 @@ describe("ConsumptionSummary", () => {
     expect(screen.getByText("100 credits")).toBeInTheDocument();
     expect(screen.getByText("Avg. cost/msg")).toBeInTheDocument();
     expect(screen.getByText("0.2 credits")).toBeInTheDocument();
-    expect(
-      screen.getByText("Active Users").closest(".bg-panel-background")
-    ).toBeInTheDocument();
+    const activeUsersCard = screen
+      .getByText("Active Users")
+      .closest(".bg-panel-background");
+    expect(activeUsersCard).toHaveClass("h-20");
+    expect(activeUsersCard).not.toHaveClass("h-24");
     expect(
       screen.getByText("Messages / active user").closest(".bg-panel-background")
     ).toBeInTheDocument();
+    expect(container.firstElementChild).toHaveClass("gap-6");
     expect(screen.queryByText("Top agent")).not.toBeInTheDocument();
   });
 
+  it("matches the agent card geometry while loading", () => {
+    mockUseConsumptionOverview.mockReturnValue({
+      overview: null,
+      isOverviewLoading: true,
+      isOverviewError: undefined,
+    });
+
+    const { container } = render(
+      <ConsumptionSummary
+        workspaceId="workspace-id"
+        period={period}
+        analyticsScope={agentAnalyticsScope}
+      />
+    );
+
+    expect(container.firstElementChild).toHaveClass("gap-6");
+    expect(container.querySelectorAll(".h-20.flex-1")).toHaveLength(4);
+    expect(container.querySelectorAll(".h-24")).toHaveLength(0);
+  });
+
   it("keeps the top agent in a workspace summary", () => {
-    render(<ConsumptionSummary workspaceId="workspace-id" period={period} />);
+    const { container } = render(
+      <ConsumptionSummary workspaceId="workspace-id" period={period} />
+    );
 
     expect(screen.getByText("Top agent")).toBeInTheDocument();
     expect(screen.getByText("Research agent")).toBeInTheDocument();
+    expect(
+      screen.getByText("Top agent").closest(".bg-panel-background")
+    ).toHaveClass("h-24");
+    expect(container.firstElementChild).toHaveClass("gap-4");
     expect(screen.queryByText("Active Users")).not.toBeInTheDocument();
     expect(screen.queryByText("Total cost")).not.toBeInTheDocument();
   });

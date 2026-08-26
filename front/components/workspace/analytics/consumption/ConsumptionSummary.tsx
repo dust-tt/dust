@@ -66,10 +66,13 @@ export function ConsumptionSummary({
   );
 }
 
-interface ConsumptionSummaryViewProps {
+interface ConsumptionSummaryData {
   overview: GetConsumptionOverviewResponse | null;
   isOverviewLoading: boolean;
   isOverviewError: boolean;
+}
+
+interface ConsumptionSummaryViewProps extends ConsumptionSummaryData {
   usageHref: string;
   usageLinkLabel: string;
   responsiveLayout?: boolean;
@@ -85,10 +88,17 @@ export function ConsumptionSummaryView({
   responsiveLayout = false,
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
 }: ConsumptionSummaryViewProps) {
-  const isAgentScoped = analyticsScope.kind === "agent";
-  const cardRowClassName = responsiveLayout
-    ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
-    : "flex items-stretch gap-6";
+  if (analyticsScope.kind === "agent") {
+    return (
+      <AgentConsumptionSummaryView
+        overview={overview}
+        isOverviewLoading={isOverviewLoading}
+        isOverviewError={isOverviewError}
+        responsiveLayout={responsiveLayout}
+      />
+    );
+  }
+
   const loadingCardClassName = responsiveLayout
     ? "h-24 rounded-xl"
     : "h-24 flex-1 rounded-xl";
@@ -96,13 +106,13 @@ export function ConsumptionSummaryView({
   if (isOverviewLoading) {
     return (
       <div className="flex flex-col gap-4">
-        {isAgentScoped && (
-          <div className={cardRowClassName}>
-            <LoadingBlock className={loadingCardClassName} />
-            <LoadingBlock className={loadingCardClassName} />
-          </div>
-        )}
-        <div className={cardRowClassName}>
+        <div
+          className={
+            responsiveLayout
+              ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+              : "flex items-stretch gap-6"
+          }
+        >
           <LoadingBlock className={loadingCardClassName} />
           <LoadingBlock className={loadingCardClassName} />
         </div>
@@ -117,16 +127,6 @@ export function ConsumptionSummaryView({
   const { topAgent, totalCredits } = overview;
   const creditUsage =
     analyticsScope.kind === "workspace" ? overview.creditUsage : null;
-  const messagesPerActiveUser =
-    overview.messageCount === undefined
-      ? null
-      : overview.members.active > 0
-        ? Math.round(overview.messageCount / overview.members.active)
-        : 0;
-  const averageCostPerMessage =
-    overview.messageCount !== undefined && overview.messageCount > 0
-      ? totalCredits / overview.messageCount
-      : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -158,60 +158,137 @@ export function ConsumptionSummaryView({
           />
         </div>
       )}
-      {isAgentScoped && (
-        <div className={cardRowClassName}>
-          <SummaryCard
-            label="Active Users"
-            value={overview.members.active.toLocaleString()}
-            hint={null}
-          />
-          <SummaryCard
-            label="Messages / active user"
-            value={messagesPerActiveUser?.toLocaleString() ?? "—"}
-            hint={null}
-          />
+      <div
+        className={
+          responsiveLayout
+            ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+            : "flex items-stretch gap-6"
+        }
+      >
+        <SummaryCard
+          label="Used this period"
+          value={formatCredits(totalCredits)}
+          hint={
+            creditUsage
+              ? `${creditUsage.status.usedPercentage}% of ${formatCredits(creditUsage.capCredits)} cap`
+              : null
+          }
+        />
+        <SummaryCard
+          label="Top agent"
+          value={topAgent?.name ?? "—"}
+          hint={
+            topAgent && totalCredits > 0
+              ? `${Math.round((topAgent.credits / totalCredits) * 100)}% of total consumption`
+              : null
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+interface AgentConsumptionSummaryViewProps extends ConsumptionSummaryData {
+  responsiveLayout: boolean;
+}
+
+function AgentConsumptionSummaryView({
+  overview,
+  isOverviewLoading,
+  isOverviewError,
+  responsiveLayout,
+}: AgentConsumptionSummaryViewProps) {
+  const loadingCardClassName = responsiveLayout
+    ? "h-20 rounded-xl"
+    : "h-20 flex-1 rounded-xl";
+
+  if (isOverviewLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div
+          className={
+            responsiveLayout
+              ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+              : "flex items-stretch gap-6"
+          }
+        >
+          <LoadingBlock className={loadingCardClassName} />
+          <LoadingBlock className={loadingCardClassName} />
         </div>
-      )}
-      <div className={cardRowClassName}>
-        {isAgentScoped ? (
-          <>
-            <SummaryCard
-              label="Total cost"
-              value={`${formatCredits(totalCredits)} credits`}
-              hint={null}
-            />
-            <SummaryCard
-              label="Avg. cost/msg"
-              value={
-                averageCostPerMessage === null
-                  ? "—"
-                  : `${formatCredits(averageCostPerMessage)} credits`
-              }
-              hint={null}
-            />
-          </>
-        ) : (
-          <>
-            <SummaryCard
-              label="Used this period"
-              value={formatCredits(totalCredits)}
-              hint={
-                creditUsage
-                  ? `${creditUsage.status.usedPercentage}% of ${formatCredits(creditUsage.capCredits)} cap`
-                  : null
-              }
-            />
-            <SummaryCard
-              label="Top agent"
-              value={topAgent?.name ?? "—"}
-              hint={
-                topAgent && totalCredits > 0
-                  ? `${Math.round((topAgent.credits / totalCredits) * 100)}% of total consumption`
-                  : null
-              }
-            />
-          </>
-        )}
+        <div
+          className={
+            responsiveLayout
+              ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+              : "flex items-stretch gap-6"
+          }
+        >
+          <LoadingBlock className={loadingCardClassName} />
+          <LoadingBlock className={loadingCardClassName} />
+        </div>
+      </div>
+    );
+  }
+
+  if (isOverviewError || !overview) {
+    return null;
+  }
+
+  const messagesPerActiveUser =
+    overview.messageCount === undefined
+      ? null
+      : overview.members.active > 0
+        ? Math.round(overview.messageCount / overview.members.active)
+        : 0;
+  const averageCostPerMessage =
+    overview.messageCount !== undefined && overview.messageCount > 0
+      ? overview.totalCredits / overview.messageCount
+      : null;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div
+        className={
+          responsiveLayout
+            ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+            : "flex items-stretch gap-6"
+        }
+      >
+        <SummaryCard
+          className="h-20"
+          label="Active Users"
+          value={overview.members.active.toLocaleString()}
+          hint={null}
+        />
+        <SummaryCard
+          className="h-20"
+          label="Messages / active user"
+          value={messagesPerActiveUser?.toLocaleString() ?? "—"}
+          hint={null}
+        />
+      </div>
+      <div
+        className={
+          responsiveLayout
+            ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+            : "flex items-stretch gap-6"
+        }
+      >
+        <SummaryCard
+          className="h-20"
+          label="Total cost"
+          value={`${formatCredits(overview.totalCredits)} credits`}
+          hint={null}
+        />
+        <SummaryCard
+          className="h-20"
+          label="Avg. cost/msg"
+          value={
+            averageCostPerMessage === null
+              ? "—"
+              : `${formatCredits(averageCostPerMessage)} credits`
+          }
+          hint={null}
+        />
       </div>
     </div>
   );
