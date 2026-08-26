@@ -267,7 +267,7 @@ describe("checkCreditSpendCheckpointActivity", () => {
   });
 
   it("does not notify again when the conversation already has an action required", async () => {
-    mockCheckWorkflowAlertThresholdGate.mockResolvedValue({
+    mockCheckSpendCheckpointGate.mockResolvedValue({
       crossed: true,
       thresholdAwuCredits: 1500,
     });
@@ -280,7 +280,7 @@ describe("checkCreditSpendCheckpointActivity", () => {
       },
     });
 
-    await checkWorkflowAlertThresholdActivity({} as never, {
+    await checkSpendCheckpointActivity({} as never, {
       agentLoopArgs: {
         conversationId: "conv_id",
         agentMessageId: "msg_id",
