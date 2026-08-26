@@ -756,7 +756,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_run_logs"
   | "discord_bot"
   | "dummy_feature_for_flag_testing"
-  | "dust_agent_gpt_5_6_luna_default"
   | "dust_agent_sonnet_5_default"
   | "dust_filesystem"
   | "dust_internal_dangerous_in_cluster_mcp_servers"

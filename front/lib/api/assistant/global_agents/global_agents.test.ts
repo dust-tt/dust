@@ -277,10 +277,8 @@ describe("getGlobalAgents custom model agents", () => {
 });
 
 describe("getGlobalAgents OpenAI Dust agents", () => {
-  it("uses GPT 5.6 Luna with high reasoning as the flagged Dust default", async () => {
-    const auth = await createAuthenticatorWithFlags([
-      "dust_agent_gpt_5_6_luna_default",
-    ]);
+  it("uses GPT 5.6 Luna with high reasoning as the Dust default", async () => {
+    const auth = await createAuthenticatorWithFlags([]);
 
     const agents = await getGlobalAgents(
       auth,
@@ -296,9 +294,8 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
     });
   });
 
-  it("keeps Sonnet 5 at medium reasoning when both default flags are set", async () => {
+  it("keeps Sonnet 5 at medium reasoning when the Sonnet 5 default flag is set", async () => {
     const auth = await createAuthenticatorWithFlags([
-      "dust_agent_gpt_5_6_luna_default",
       "dust_agent_sonnet_5_default",
     ]);
 
