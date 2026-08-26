@@ -29,8 +29,8 @@ export async function storeFramePublication(
     sourceFiles: FramePublicationSourceFile[];
   }
 ): Promise<{ publicationId: string }> {
-  const workspace = auth.getNonNullableWorkspace();
-  if (!frame.isFrameV2 || frame.workspaceId !== workspace.id) {
+  const owner = auth.getNonNullableWorkspace();
+  if (!frame.isFrameV2 || frame.workspaceId !== owner.id) {
     throw new Error(
       "Frame publication storage requires a Frames v2 FileResource from the current workspace."
     );
@@ -53,7 +53,7 @@ export async function storeFramePublication(
   }
 
   const identity = {
-    workspaceId: workspace.sId,
+    workspaceId: owner.sId,
     frameId: frame.sId,
     publicationId: randomUUID(),
   };
