@@ -2,8 +2,6 @@ import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -131,24 +129,12 @@ makeScript(
   async ({ wId, execute }, logger) => {
     logger.info("Starting open regular space admin/manager backfill");
 
-    if (wId) {
-      const workspace = await WorkspaceResource.fetchById(wId);
-      if (!workspace) {
-        throw new Error(`Workspace not found: ${wId}`);
-      }
-      await backfillWorkspaceOpenSpaceMembers(
-        execute,
-        logger,
-        renderLightWorkspaceType({ workspace })
-      );
-    } else {
-      await runOnAllWorkspaces(
-        async (workspace) => {
-          await backfillWorkspaceOpenSpaceMembers(execute, logger, workspace);
-        },
-        { concurrency: 4 }
-      );
-    }
+    await runOnAllWorkspaces(
+      async (workspace) => {
+        await backfillWorkspaceOpenSpaceMembers(execute, logger, workspace);
+      },
+      { concurrency: 4, wId }
+    );
 
     logger.info("Open regular space admin/manager backfill completed");
   }
