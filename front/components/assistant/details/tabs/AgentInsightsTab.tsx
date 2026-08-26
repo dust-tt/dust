@@ -24,7 +24,7 @@ import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_perio
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
+import { isManager } from "@app/types/user";
 import {
   ContentMessage,
   Lock01,
@@ -63,7 +63,7 @@ export function AgentInsightsTab({
     agentId,
   };
   const isCustomAgent = agentConfiguration.scope !== "global";
-  const canViewInsights = agentConfiguration.canEdit || isAdmin(owner);
+  const canViewInsights = agentConfiguration.canEdit || isManager(owner);
 
   if (!canViewInsights) {
     return (
@@ -75,7 +75,8 @@ export function AgentInsightsTab({
           size="md"
           variant="primary"
         >
-          Only this agent’s editors can view its analytics and feedback.
+          Only editors of this agent and workspace managers can view its
+          analytics and feedback.
         </ContentMessage>
       </div>
     );

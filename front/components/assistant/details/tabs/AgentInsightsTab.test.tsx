@@ -59,7 +59,7 @@ describe("AgentInsightsTab", () => {
     vi.clearAllMocks();
   });
 
-  it("explains why a non-editor cannot view agent insights", () => {
+  it("explains why a non-editor member cannot view agent insights", () => {
     render(
       <AgentInsightsTab owner={owner} agentConfiguration={agentConfiguration} />
     );
@@ -72,7 +72,7 @@ describe("AgentInsightsTab", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Only this agent’s editors can view its analytics and feedback."
+        "Only editors of this agent and workspace managers can view its analytics and feedback."
       )
     ).toBeInTheDocument();
     expect(consumptionOverviewMock).not.toHaveBeenCalled();
