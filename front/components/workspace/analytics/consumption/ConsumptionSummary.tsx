@@ -89,13 +89,17 @@ export function ConsumptionSummaryView({
   const cardRowClassName = responsiveLayout
     ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
     : "flex items-stretch gap-6";
+  const summaryClassName = isAgentScoped
+    ? "flex flex-col gap-6"
+    : "flex flex-col gap-4";
+  const cardHeightClassName = isAgentScoped ? "h-20" : "h-24";
   const loadingCardClassName = responsiveLayout
-    ? "h-24 rounded-xl"
-    : "h-24 flex-1 rounded-xl";
+    ? `${cardHeightClassName} rounded-xl`
+    : `${cardHeightClassName} flex-1 rounded-xl`;
 
   if (isOverviewLoading) {
     return (
-      <div className="flex flex-col gap-4">
+      <div className={summaryClassName}>
         {isAgentScoped && (
           <div className={cardRowClassName}>
             <LoadingBlock className={loadingCardClassName} />
@@ -129,7 +133,7 @@ export function ConsumptionSummaryView({
       : null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={summaryClassName}>
       {creditUsage && (
         <div
           className={
@@ -161,11 +165,13 @@ export function ConsumptionSummaryView({
       {isAgentScoped && (
         <div className={cardRowClassName}>
           <SummaryCard
+            className="h-20"
             label="Active Users"
             value={overview.members.active.toLocaleString()}
             hint={null}
           />
           <SummaryCard
+            className="h-20"
             label="Messages / active user"
             value={messagesPerActiveUser?.toLocaleString() ?? "—"}
             hint={null}
@@ -176,11 +182,13 @@ export function ConsumptionSummaryView({
         {isAgentScoped ? (
           <>
             <SummaryCard
+              className="h-20"
               label="Total cost"
               value={`${formatCredits(totalCredits)} credits`}
               hint={null}
             />
             <SummaryCard
+              className="h-20"
               label="Avg. cost/msg"
               value={
                 averageCostPerMessage === null
