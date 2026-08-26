@@ -16,8 +16,8 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useModels } from "@app/lib/swr/models";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
@@ -75,6 +75,7 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
 
 export function ManageAgentsPage() {
   const owner = useWorkspace();
+  const { models: enabledModels } = useModels({ owner });
   const { user, isAdmin } = useAuth();
   const [assistantSearch, setAssistantSearch] = useState("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
@@ -217,20 +218,6 @@ export function ManageAgentsPage() {
     return { uniqueTags };
   }, [agentConfigurations]);
 
-  const uniqueModels = useMemo(() => {
-    // Agents pointing at a model we no longer support fall back to their raw
-    // modelId, as the Model column of the agents table does.
-    const models = agentConfigurations.map((a) => ({
-      modelId: a.model.modelId,
-      displayName:
-        getSupportedModelConfig(a.model)?.displayName ?? a.model.modelId,
-    }));
-    // Remove duplicate models by unique modelId.
-    return Array.from(
-      new Map(models.map((model) => [model.modelId, model])).values()
-    ).sort((a, b) => a.displayName.localeCompare(b.displayName));
-  }, [agentConfigurations]);
-
   const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
 
   const handleToggleAgentStatus = async (
@@ -322,7 +309,7 @@ export function ManageAgentsPage() {
             />
             <div className="flex gap-2">
               <ModelsFilterMenu
-                models={uniqueModels}
+                models={enabledModels}
                 selectedModels={selectedModels}
                 setSelectedModels={setSelectedModels}
                 isCompact={isMobile}
