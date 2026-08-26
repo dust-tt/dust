@@ -465,6 +465,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "id13",
   },
+  agent_message_consumption_bills: {
+    description:
+      "Use agent-message consumption items for Metronome, costCredits, and usage counters. Requires agent_message_consumption_writes.",
+    stage: "dust_only",
+    owner: "id13",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";

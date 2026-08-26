@@ -4,6 +4,12 @@ import type {
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
 
+export type AgentMessageConsumptionMode = "off" | "shadow" | "live";
+export type EnabledAgentMessageConsumptionMode = Exclude<
+  AgentMessageConsumptionMode,
+  "off"
+>;
+
 export const AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES = [
   "system",
   "input",

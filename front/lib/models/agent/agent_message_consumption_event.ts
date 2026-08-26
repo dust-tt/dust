@@ -2,6 +2,7 @@ import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { EnabledAgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -15,6 +16,11 @@ const AGENT_MESSAGE_STATUSES = [
   "interrupted",
   "gracefully_stopped",
 ] as const satisfies readonly AgentMessageStatus[];
+
+const ENABLED_CONSUMPTION_MODES = [
+  "shadow",
+  "live",
+] as const satisfies readonly EnabledAgentMessageConsumptionMode[];
 
 function validateConsumptionEventShape(
   this: AgentMessageConsumptionEventModel
@@ -37,6 +43,11 @@ function validateConsumptionEventShape(
       if (this.status !== null || this.subagentAgentMessageId !== null) {
         throw new Error("An items-changed event cannot carry lifecycle data");
       }
+      if (this.consumptionMode !== null) {
+        throw new Error(
+          "An items-changed event cannot carry a consumption mode"
+        );
+      }
       break;
 
     case "execution_started":
@@ -45,7 +56,8 @@ function validateConsumptionEventShape(
         this.status !== null ||
         (this.subagentAgentMessageId !== null &&
           (!Number.isSafeInteger(this.subagentAgentMessageId) ||
-            this.subagentAgentMessageId <= 0))
+            this.subagentAgentMessageId <= 0)) ||
+        this.consumptionMode === null
       ) {
         throw new Error("An execution-started event has invalid data");
       }
@@ -55,7 +67,8 @@ function validateConsumptionEventShape(
       if (
         this.consumptionItemIds !== null ||
         this.status === null ||
-        this.subagentAgentMessageId !== null
+        this.subagentAgentMessageId !== null ||
+        this.consumptionMode === null
       ) {
         throw new Error("An execution-finalized event has invalid data");
       }
@@ -87,6 +100,7 @@ export class AgentMessageConsumptionEventModel extends WorkspaceAwareModel<Agent
   declare consumptionItemIds: ModelId[] | null;
   declare status: AgentMessageStatus | null;
   declare subagentAgentMessageId: AgentMessageModel["id"] | null;
+  declare consumptionMode: EnabledAgentMessageConsumptionMode | null;
 }
 
 AgentMessageConsumptionEventModel.init(
@@ -138,6 +152,11 @@ AgentMessageConsumptionEventModel.init(
     subagentAgentMessageId: {
       type: DataTypes.BIGINT,
       allowNull: true,
+    },
+    consumptionMode: {
+      type: DataTypes.STRING(16),
+      allowNull: true,
+      validate: { isIn: [ENABLED_CONSUMPTION_MODES] },
     },
   },
   {

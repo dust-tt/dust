@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import type { StoredConsumptionEvent } from "@app/lib/resources/agent_message_consumption_event_resource";
 import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_message_consumption_event_resource";
+import type { EnabledAgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -23,6 +24,7 @@ export type ConsumptionEvent =
       rootAgentMessageId: string;
       agentMessageModelId: ModelId;
       subagentAgentMessageId: AgentMessageModel["id"] | null;
+      consumptionMode: EnabledAgentMessageConsumptionMode;
     }
   | {
       kind: "execution_finalized";
@@ -31,6 +33,7 @@ export type ConsumptionEvent =
       rootAgentMessageId: string;
       agentMessageModelId: ModelId;
       status: AgentMessageStatus;
+      consumptionMode: EnabledAgentMessageConsumptionMode;
     };
 
 function storedConsumptionEvent(
@@ -55,6 +58,7 @@ function storedConsumptionEvent(
       return {
         ...common,
         kind: event.kind,
+        consumptionMode: event.consumptionMode,
         subagentAgentMessageId: event.subagentAgentMessageId,
       };
 
@@ -62,6 +66,7 @@ function storedConsumptionEvent(
       return {
         ...common,
         kind: event.kind,
+        consumptionMode: event.consumptionMode,
         status: event.status,
       };
 

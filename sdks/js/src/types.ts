@@ -750,6 +750,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "claude_fable_5_feature"
+  | "agent_message_consumption_bills"
   | "agent_message_consumption_writes"
   | "databricks_tool"
   | "deepseek_feature"

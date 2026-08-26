@@ -4,6 +4,7 @@ import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { EnabledAgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -29,6 +30,7 @@ export type StoredConsumptionEvent =
       rootAgentMessageId: string;
       agentMessageModelId: ModelId;
       subagentAgentMessageId: AgentMessageModel["id"] | null;
+      consumptionMode: EnabledAgentMessageConsumptionMode;
     }
   | {
       kind: "execution_finalized";
@@ -37,6 +39,7 @@ export type StoredConsumptionEvent =
       rootAgentMessageId: string;
       agentMessageModelId: ModelId;
       status: AgentMessageStatus;
+      consumptionMode: EnabledAgentMessageConsumptionMode;
     };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -79,6 +82,7 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
           consumptionItemIds: event.consumptionItemIds,
           status: null,
           subagentAgentMessageId: null,
+          consumptionMode: null,
         };
       }
 
@@ -89,6 +93,7 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
           consumptionItemIds: null,
           status: null,
           subagentAgentMessageId: event.subagentAgentMessageId,
+          consumptionMode: event.consumptionMode,
         };
       }
 
@@ -99,6 +104,7 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
           consumptionItemIds: null,
           status: event.status,
           subagentAgentMessageId: null,
+          consumptionMode: event.consumptionMode,
         };
       }
 
@@ -130,6 +136,7 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
         consumptionItemIds: row.consumptionItemIds,
         status: row.status,
         subagentAgentMessageId: row.subagentAgentMessageId,
+        consumptionMode: row.consumptionMode,
       },
       {
         agentMessageId: attributes.agentMessageId,
@@ -139,6 +146,7 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
         consumptionItemIds: attributes.consumptionItemIds,
         status: attributes.status,
         subagentAgentMessageId: attributes.subagentAgentMessageId,
+        consumptionMode: attributes.consumptionMode,
       },
       "A consumption event key cannot identify different events"
     );
