@@ -212,9 +212,10 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     name: "get_top_skills",
     description:
       "Return the workspace's most-used skills over a time window (defaults " +
-      "to the current calendar month), ranked by execution count. Optionally " +
-      "filter by source (context_origin), agent, user, tag, or model. Use this " +
-      "to answer which skills are used most. Admin-only.",
+      "to the current calendar month), ranked by the number of tool calls " +
+      "made under each skill. Skills that never call a tool do not appear. " +
+      "Optionally filter by source (context_origin), agent, user, tag, or " +
+      "model. Use this to answer which skills are used most. Admin-only.",
     schema: getTopSkillsSchema,
     stake: "never_ask",
     displayLabels: {

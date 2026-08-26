@@ -74,9 +74,8 @@ export async function fetchAnalystCreditUsage({
   Result<AnalystCreditUsage, ElasticsearchError>
 > {
   const dimension = dimensionForGroupBy(groupBy);
-  const metricAgg = metricSubAgg(DEFAULT_CONSUMPTION_METRIC);
   const aggregations: Record<string, estypes.AggregationsAggregationContainer> =
-    metricAgg;
+    { ...metricSubAgg(DEFAULT_CONSUMPTION_METRIC) };
 
   if (dimension) {
     const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
@@ -89,7 +88,11 @@ export async function fetchAnalystCreditUsage({
             size: limit,
             order: { metric: "desc" },
           },
-          aggs: metricAgg,
+          // A fresh sub-agg, not the root's `metricAgg` reference — reusing
+          // it here would nest the root aggregations object inside itself
+          // (aggregations.by_group.aggs.ranked.aggs === aggregations),
+          // a circular structure the ES client can't serialize.
+          aggs: metricSubAgg(DEFAULT_CONSUMPTION_METRIC),
         },
       },
     };

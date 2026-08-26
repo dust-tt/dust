@@ -1,5 +1,9 @@
 import { TOOLS } from "@app/lib/api/actions/servers/workspace_analytics/tools";
 import { fetchAnalystCreditUsage } from "@app/lib/api/analytics/analyst/credits";
+import {
+  fetchAnalystTopSkills,
+  fetchAnalystTopTools,
+} from "@app/lib/api/analytics/analyst/top_invocations";
 import { Authenticator } from "@app/lib/auth";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -12,6 +16,18 @@ vi.mock(import("@app/lib/api/analytics/analyst/credits"), async (orig) => {
   const mod = await orig();
   return { ...mod, fetchAnalystCreditUsage: vi.fn() };
 });
+
+vi.mock(
+  import("@app/lib/api/analytics/analyst/top_invocations"),
+  async (orig) => {
+    const mod = await orig();
+    return {
+      ...mod,
+      fetchAnalystTopSkills: vi.fn(),
+      fetchAnalystTopTools: vi.fn(),
+    };
+  }
+);
 
 function getToolByName(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -119,9 +135,8 @@ describe("get_credit_usage rendering", () => {
         type: "text",
         text:
           "Credit usage for 2026-07-01 to 2026-07-31 (UTC): 42 credits. " +
-          "These are the workspace's reconciled billed credits, the same " +
-          "ones the Usage page shows; very recent activity may still be " +
-          "settling.",
+          "These are the workspace's billed credits, the same ones the " +
+          "Usage page shows; very recent activity may still be settling.",
       },
     ]);
   });
@@ -151,5 +166,153 @@ describe("get_credit_usage rendering", () => {
     );
     expect(text).not.toContain("estimate");
     expect(text).not.toContain("ESTIMATE");
+  });
+});
+
+describe("get_top_skills rendering", () => {
+  beforeEach(() => {
+    vi.mocked(fetchAnalystTopSkills).mockReset();
+  });
+
+  async function managerAuth() {
+    const workspace = await WorkspaceFactory.basic();
+    return Authenticator.internalAdminForWorkspace(workspace.sId);
+  }
+
+  it("reports no data when there are no rows", async () => {
+    const auth = await managerAuth();
+    vi.mocked(fetchAnalystTopSkills).mockResolvedValue(new Ok([]));
+
+    const tool = getToolByName("get_top_skills");
+    const result = await tool.handler(
+      { startDate: "2026-07-01", endDate: "2026-07-31" },
+      createTestExtra(auth)
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value).toEqual([
+      {
+        type: "text",
+        text: "No skill usage recorded for 2026-07-01 to 2026-07-31 (UTC).",
+      },
+    ]);
+  });
+
+  it("renders skills without an id in brackets, matching the legacy format", async () => {
+    const auth = await managerAuth();
+    vi.mocked(fetchAnalystTopSkills).mockResolvedValue(
+      new Ok([
+        { skillId: "skl_1", skillName: "Deep Research", totalExecutions: 12 },
+      ])
+    );
+
+    const tool = getToolByName("get_top_skills");
+    const result = await tool.handler(
+      { startDate: "2026-07-01", endDate: "2026-07-31" },
+      createTestExtra(auth)
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value).toEqual([
+      {
+        type: "text",
+        text:
+          "Most-used skills for 2026-07-01 to 2026-07-31 (UTC), most used " +
+          "first:\n1. Deep Research — 12 executions",
+      },
+    ]);
+  });
+});
+
+describe("get_top_tools rendering", () => {
+  beforeEach(() => {
+    vi.mocked(fetchAnalystTopTools).mockReset();
+  });
+
+  async function managerAuth() {
+    const workspace = await WorkspaceFactory.basic();
+    return Authenticator.internalAdminForWorkspace(workspace.sId);
+  }
+
+  it("reports no data when there are no rows", async () => {
+    const auth = await managerAuth();
+    vi.mocked(fetchAnalystTopTools).mockResolvedValue(new Ok([]));
+
+    const tool = getToolByName("get_top_tools");
+    const result = await tool.handler(
+      { startDate: "2026-07-01", endDate: "2026-07-31" },
+      createTestExtra(auth)
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value).toEqual([
+      {
+        type: "text",
+        text: "No tool usage recorded for 2026-07-01 to 2026-07-31 (UTC).",
+      },
+    ]);
+  });
+
+  it("omits the bracketed server name when the display name already matches it", async () => {
+    const auth = await managerAuth();
+    vi.mocked(fetchAnalystTopTools).mockResolvedValue(
+      new Ok([
+        {
+          serverName: "custom_server",
+          displayName: "custom_server",
+          totalExecutions: 4,
+        },
+      ])
+    );
+
+    const tool = getToolByName("get_top_tools");
+    const result = await tool.handler(
+      { startDate: "2026-07-01", endDate: "2026-07-31" },
+      createTestExtra(auth)
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    const text = result.value[0]?.type === "text" ? result.value[0].text : "";
+    expect(text).toContain("1. custom_server — 4 executions");
+  });
+
+  it("shows the server name in brackets when the display name differs", async () => {
+    const auth = await managerAuth();
+    vi.mocked(fetchAnalystTopTools).mockResolvedValue(
+      new Ok([
+        {
+          serverName: "web_search_&_browse",
+          displayName: "Web search & browse",
+          totalExecutions: 7,
+        },
+      ])
+    );
+
+    const tool = getToolByName("get_top_tools");
+    const result = await tool.handler(
+      { startDate: "2026-07-01", endDate: "2026-07-31" },
+      createTestExtra(auth)
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    const text = result.value[0]?.type === "text" ? result.value[0].text : "";
+    expect(text).toContain(
+      "1. Web search & browse [web_search_&_browse] — 7 executions"
+    );
   });
 });

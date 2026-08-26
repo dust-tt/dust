@@ -14,6 +14,10 @@ import {
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import { fetchAnalystCreditUsage } from "@app/lib/api/analytics/analyst/credits";
 import { buildAnalystScope } from "@app/lib/api/analytics/analyst/scope";
+import {
+  fetchAnalystTopSkills,
+  fetchAnalystTopTools,
+} from "@app/lib/api/analytics/analyst/top_invocations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import {
   fetchContextOriginBreakdown,
@@ -24,15 +28,8 @@ import {
   fetchCreditTimeseriesBreakdown,
 } from "@app/lib/api/assistant/observability/credit_usage";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
-import {
-  fetchAvailableSkills,
-  fetchSkillUsageMetrics,
-} from "@app/lib/api/assistant/observability/skill_usage";
-import {
-  fetchAvailableTools,
-  fetchToolUsageMetrics,
-  resolveServerDisplayNames,
-} from "@app/lib/api/assistant/observability/tool_usage";
+import { fetchSkillUsageMetrics } from "@app/lib/api/assistant/observability/skill_usage";
+import { fetchToolUsageMetrics } from "@app/lib/api/assistant/observability/tool_usage";
 import { fetchTopAgentTags } from "@app/lib/api/assistant/observability/top_agent_tags";
 import { fetchTopAgents } from "@app/lib/api/assistant/observability/top_agents";
 import { fetchTopModels } from "@app/lib/api/assistant/observability/top_models";
@@ -488,7 +485,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
 
-    const baseQuery = scopedBaseQuery(auth, window.value, {
+    const scope = buildAnalystScope({
+      startDate: window.value.startDate,
+      endDate: window.value.endDate,
       source,
       agentIds,
       userIds,
@@ -496,7 +495,11 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       modelIds,
     });
 
-    const result = await fetchAvailableSkills(baseQuery);
+    const result = await fetchAnalystTopSkills({
+      auth,
+      scope,
+      limit: limit ?? DEFAULT_RESULTS,
+    });
     if (result.isErr()) {
       return new Err(
         new MCPError(`Failed to retrieve skill usage: ${result.error.message}`)
@@ -504,7 +507,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     }
 
     const { label, timezone: tz } = window.value;
-    const skills = result.value.slice(0, limit ?? DEFAULT_RESULTS);
+    const skills = result.value;
 
     if (skills.length === 0) {
       return new Ok([
@@ -558,7 +561,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
 
-    const baseQuery = scopedBaseQuery(auth, window.value, {
+    const scope = buildAnalystScope({
+      startDate: window.value.startDate,
+      endDate: window.value.endDate,
       source,
       agentIds,
       userIds,
@@ -566,7 +571,11 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       modelIds,
     });
 
-    const result = await fetchAvailableTools(baseQuery);
+    const result = await fetchAnalystTopTools({
+      auth,
+      scope,
+      limit: limit ?? DEFAULT_RESULTS,
+    });
     if (result.isErr()) {
       return new Err(
         new MCPError(`Failed to retrieve tool usage: ${result.error.message}`)
@@ -574,7 +583,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     }
 
     const { label, timezone: tz } = window.value;
-    const top = result.value.slice(0, limit ?? DEFAULT_RESULTS);
+    const top = result.value;
 
     if (top.length === 0) {
       return new Ok([
@@ -585,17 +594,11 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       ]);
     }
 
-    const displayNames = await resolveServerDisplayNames(
-      auth,
-      top.map((tool) => tool.serverName)
-    );
-
     const lines = top.map((tool, index) => {
-      const displayName = displayNames.get(tool.serverName) ?? tool.displayName;
       const name =
-        displayName === tool.serverName
-          ? displayName
-          : `${displayName} [${tool.serverName}]`;
+        tool.displayName === tool.serverName
+          ? tool.displayName
+          : `${tool.displayName} [${tool.serverName}]`;
       return `${index + 1}. ${name} — ${tool.totalExecutions} executions`;
     });
 
