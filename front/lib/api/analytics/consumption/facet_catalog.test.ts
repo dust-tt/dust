@@ -106,30 +106,35 @@ describe("listConsumptionFacetCatalog", () => {
     );
   });
 
-  it.each([
-    "admin",
-    "manager",
-  ] as const)("lists private agents of other users for %ss", async (role) => {
-    const { workspace, authenticator: editorAuth } = await createResourceTest({
-      role: "user",
-    });
-    const agent = await AgentConfigurationFactory.createTestAgent(editorAuth, {
-      name: "Secret agent",
-      scope: "hidden",
-    });
-    const reportingUser = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, reportingUser, { role });
-    const reportingAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      reportingUser.sId,
-      workspace.sId
-    );
+  it.each(["admin", "manager"] as const)(
+    "lists private agents of other users for %ss",
+    async (role) => {
+      const { workspace, authenticator: editorAuth } = await createResourceTest(
+        {
+          role: "user",
+        }
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        editorAuth,
+        {
+          name: "Secret agent",
+          scope: "hidden",
+        }
+      );
+      const reportingUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, reportingUser, { role });
+      const reportingAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        reportingUser.sId,
+        workspace.sId
+      );
 
-    const catalog = await listConsumptionFacetCatalog(reportingAuth);
+      const catalog = await listConsumptionFacetCatalog(reportingAuth);
 
-    expect(catalog.agent).toContainEqual(
-      expect.objectContaining({ value: agent.sId, label: "Secret agent" })
-    );
-  });
+      expect(catalog.agent).toContainEqual(
+        expect.objectContaining({ value: agent.sId, label: "Secret agent" })
+      );
+    }
+  );
 
   it("hides private agents of other users below the manager role", async () => {
     const { workspace, authenticator: editorAuth } = await createResourceTest({

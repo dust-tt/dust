@@ -151,44 +151,44 @@ describe("ConsumptionAttributionTable", () => {
     ).not.toBeInTheDocument();
   });
 
-  it.each([
-    "user",
-    "group",
-  ] as const)("normalizes the %s dimension in the personal view", (dimension) => {
-    mockUseConsumptionTop.mockReturnValue({
-      rows: [],
-      totalCredits: 0,
-      totalCount: 0,
-      hasMore: false,
-      isTopLoading: false,
-      isTopError: undefined,
-      isTopValidating: false,
-    });
+  it.each(["user", "group"] as const)(
+    "normalizes the %s dimension in the personal view",
+    (dimension) => {
+      mockUseConsumptionTop.mockReturnValue({
+        rows: [],
+        totalCredits: 0,
+        totalCount: 0,
+        hasMore: false,
+        isTopLoading: false,
+        isTopError: undefined,
+        isTopValidating: false,
+      });
 
-    render(
-      <ConsumptionAttributionTable
-        workspaceId="workspace-id"
-        period={period}
-        analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}
-        dimension={dimension}
-        onDimensionChange={vi.fn()}
-        onAddFilter={vi.fn()}
-        onRemoveFilter={vi.fn()}
-        onViewAll={vi.fn()}
-      />
-    );
+      render(
+        <ConsumptionAttributionTable
+          workspaceId="workspace-id"
+          period={period}
+          analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}
+          dimension={dimension}
+          onDimensionChange={vi.fn()}
+          onAddFilter={vi.fn()}
+          onRemoveFilter={vi.fn()}
+          onViewAll={vi.fn()}
+        />
+      );
 
-    expect(screen.getByRole("tab", { name: "Agents" })).toHaveAttribute(
-      "aria-selected",
-      "true"
-    );
-    expect(mockUseConsumptionTop).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        dimension: "agent",
-        analyticsScope: PERSONAL_CONSUMPTION_ANALYTICS_SCOPE,
-      })
-    );
-  });
+      expect(screen.getByRole("tab", { name: "Agents" })).toHaveAttribute(
+        "aria-selected",
+        "true"
+      );
+      expect(mockUseConsumptionTop).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          dimension: "agent",
+          analyticsScope: PERSONAL_CONSUMPTION_ANALYTICS_SCOPE,
+        })
+      );
+    }
+  );
 
   it("shows conversations only in personal attribution without changing the chart dimension", () => {
     const onDimensionChange = vi.fn();

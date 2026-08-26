@@ -1737,165 +1737,167 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
     );
   });
 
-  it.each([
-    ["session"],
-    ["oauth"],
-    ["sandbox_token"],
-  ] as const)("should require participation for %s auth when private conversation URLs are private by default", async (authMethod) => {
-    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
-      privateConversationUrlsByDefault: true,
-    });
-    assert(updateResult.isOk(), "Failed to enable private conversation URLs");
+  it.each([["session"], ["oauth"], ["sandbox_token"]] as const)(
+    "should require participation for %s auth when private conversation URLs are private by default",
+    async (authMethod) => {
+      const updateResult = await WorkspaceResource.updateMetadata(
+        workspace.id,
+        {
+          privateConversationUrlsByDefault: true,
+        }
+      );
+      assert(updateResult.isOk(), "Failed to enable private conversation URLs");
 
-    const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      adminAuth.getNonNullableUser().sId,
-      workspace.sId
-    );
-    const refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      userAuth.getNonNullableUser().sId,
-      workspace.sId
-    );
+      const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+      const refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        userAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
 
-    const participantRequiredConversation = await ConversationFactory.create(
-      refreshedAdminAuth,
-      {
-        agentConfigurationId: agents[0].sId,
-        requestedSpaceIds: [globalSpace.id],
-        messagesCreatedAt: [dateFromDaysAgo(2)],
+      const participantRequiredConversation = await ConversationFactory.create(
+        refreshedAdminAuth,
+        {
+          agentConfigurationId: agents[0].sId,
+          requestedSpaceIds: [globalSpace.id],
+          messagesCreatedAt: [dateFromDaysAgo(2)],
+        }
+      );
+
+      const sessionUser = refreshedUserAuth.getNonNullableUser();
+      assert(
+        sessionUser.workOSUserId,
+        "Expected regular user to have a WorkOS user ID"
+      );
+      const userSessionAuth = await Authenticator.fromSession(
+        {
+          type: "workos",
+          sessionId: "test-session-id-user",
+          user: {
+            workOSUserId: sessionUser.workOSUserId,
+            email: sessionUser.email ?? "user@dust.tt",
+            email_verified: true,
+            name: sessionUser.username ?? "user",
+            nickname: sessionUser.username ?? "user",
+          },
+          authenticationMethod: "GoogleOAuth",
+          isSSO: false,
+          workspaceId: workspace.sId,
+          organizationId: workspace.workOSOrganizationId ?? undefined,
+          region: "us-central1",
+        },
+        workspace.sId
+      );
+
+      const userSandboxAuthRes = await Authenticator.fromSandboxToken(
+        {
+          wId: workspace.sId,
+          cId: participantRequiredConversation.sId,
+          uId: sessionUser.sId,
+          aId: agents[0].sId,
+          aV: agents[0].version,
+          mId: "test-message-id-user",
+          sbId: "test-sandbox-id-user",
+          execId: "test-exec-id-user",
+          actionId: "test-action-id",
+        },
+        workspace.sId
+      );
+      assert(
+        userSandboxAuthRes.isOk(),
+        "Failed to create sandbox authenticator for regular user"
+      );
+
+      const userAuthForMethod =
+        authMethod === "sandbox_token"
+          ? userSandboxAuthRes.value
+          : userSessionAuth;
+      if (authMethod === "oauth") {
+        vi.spyOn(userAuthForMethod, "authMethod").mockReturnValue("oauth");
       }
-    );
+      expect(userAuthForMethod.authMethod()).toBe(authMethod);
 
-    const sessionUser = refreshedUserAuth.getNonNullableUser();
-    assert(
-      sessionUser.workOSUserId,
-      "Expected regular user to have a WorkOS user ID"
-    );
-    const userSessionAuth = await Authenticator.fromSession(
-      {
-        type: "workos",
-        sessionId: "test-session-id-user",
-        user: {
-          workOSUserId: sessionUser.workOSUserId,
-          email: sessionUser.email ?? "user@dust.tt",
-          email_verified: true,
-          name: sessionUser.username ?? "user",
-          nickname: sessionUser.username ?? "user",
+      const nonParticipantUserConversations =
+        await ConversationResource.listAll(userAuthForMethod);
+      expect(nonParticipantUserConversations.map((c) => c.sId)).not.toContain(
+        participantRequiredConversation.sId
+      );
+
+      await ConversationResource.upsertParticipation(userAuthForMethod, {
+        conversation: participantRequiredConversation,
+        action: "posted",
+        user: userAuthForMethod.getNonNullableUser().toJSON(),
+        lastReadAt: null,
+      });
+
+      const participantUserConversations =
+        await ConversationResource.listAll(userAuthForMethod);
+      expect(participantUserConversations.map((c) => c.sId)).toContain(
+        participantRequiredConversation.sId
+      );
+
+      const sessionAdminUser = refreshedAdminAuth.getNonNullableUser();
+      assert(
+        sessionAdminUser.workOSUserId,
+        "Expected admin user to have a WorkOS user ID"
+      );
+      const adminSessionAuth = await Authenticator.fromSession(
+        {
+          type: "workos",
+          sessionId: "test-session-id-admin",
+          user: {
+            workOSUserId: sessionAdminUser.workOSUserId,
+            email: sessionAdminUser.email ?? "admin@dust.tt",
+            email_verified: true,
+            name: sessionAdminUser.username ?? "admin",
+            nickname: sessionAdminUser.username ?? "admin",
+          },
+          authenticationMethod: "GoogleOAuth",
+          isSSO: false,
+          workspaceId: workspace.sId,
+          organizationId: workspace.workOSOrganizationId ?? undefined,
+          region: "us-central1",
         },
-        authenticationMethod: "GoogleOAuth",
-        isSSO: false,
-        workspaceId: workspace.sId,
-        organizationId: workspace.workOSOrganizationId ?? undefined,
-        region: "us-central1",
-      },
-      workspace.sId
-    );
+        workspace.sId
+      );
 
-    const userSandboxAuthRes = await Authenticator.fromSandboxToken(
-      {
-        wId: workspace.sId,
-        cId: participantRequiredConversation.sId,
-        uId: sessionUser.sId,
-        aId: agents[0].sId,
-        aV: agents[0].version,
-        mId: "test-message-id-user",
-        sbId: "test-sandbox-id-user",
-        execId: "test-exec-id-user",
-        actionId: "test-action-id",
-      },
-      workspace.sId
-    );
-    assert(
-      userSandboxAuthRes.isOk(),
-      "Failed to create sandbox authenticator for regular user"
-    );
-
-    const userAuthForMethod =
-      authMethod === "sandbox_token"
-        ? userSandboxAuthRes.value
-        : userSessionAuth;
-    if (authMethod === "oauth") {
-      vi.spyOn(userAuthForMethod, "authMethod").mockReturnValue("oauth");
-    }
-    expect(userAuthForMethod.authMethod()).toBe(authMethod);
-
-    const nonParticipantUserConversations =
-      await ConversationResource.listAll(userAuthForMethod);
-    expect(nonParticipantUserConversations.map((c) => c.sId)).not.toContain(
-      participantRequiredConversation.sId
-    );
-
-    await ConversationResource.upsertParticipation(userAuthForMethod, {
-      conversation: participantRequiredConversation,
-      action: "posted",
-      user: userAuthForMethod.getNonNullableUser().toJSON(),
-      lastReadAt: null,
-    });
-
-    const participantUserConversations =
-      await ConversationResource.listAll(userAuthForMethod);
-    expect(participantUserConversations.map((c) => c.sId)).toContain(
-      participantRequiredConversation.sId
-    );
-
-    const sessionAdminUser = refreshedAdminAuth.getNonNullableUser();
-    assert(
-      sessionAdminUser.workOSUserId,
-      "Expected admin user to have a WorkOS user ID"
-    );
-    const adminSessionAuth = await Authenticator.fromSession(
-      {
-        type: "workos",
-        sessionId: "test-session-id-admin",
-        user: {
-          workOSUserId: sessionAdminUser.workOSUserId,
-          email: sessionAdminUser.email ?? "admin@dust.tt",
-          email_verified: true,
-          name: sessionAdminUser.username ?? "admin",
-          nickname: sessionAdminUser.username ?? "admin",
+      const adminSandboxAuthRes = await Authenticator.fromSandboxToken(
+        {
+          wId: workspace.sId,
+          cId: participantRequiredConversation.sId,
+          uId: sessionAdminUser.sId,
+          aId: agents[0].sId,
+          aV: agents[0].version,
+          mId: "test-message-id-admin",
+          sbId: "test-sandbox-id-admin",
+          execId: "test-exec-id-admin",
+          actionId: "test-action-id",
         },
-        authenticationMethod: "GoogleOAuth",
-        isSSO: false,
-        workspaceId: workspace.sId,
-        organizationId: workspace.workOSOrganizationId ?? undefined,
-        region: "us-central1",
-      },
-      workspace.sId
-    );
+        workspace.sId
+      );
+      assert(
+        adminSandboxAuthRes.isOk(),
+        "Failed to create sandbox authenticator for admin user"
+      );
 
-    const adminSandboxAuthRes = await Authenticator.fromSandboxToken(
-      {
-        wId: workspace.sId,
-        cId: participantRequiredConversation.sId,
-        uId: sessionAdminUser.sId,
-        aId: agents[0].sId,
-        aV: agents[0].version,
-        mId: "test-message-id-admin",
-        sbId: "test-sandbox-id-admin",
-        execId: "test-exec-id-admin",
-        actionId: "test-action-id",
-      },
-      workspace.sId
-    );
-    assert(
-      adminSandboxAuthRes.isOk(),
-      "Failed to create sandbox authenticator for admin user"
-    );
+      const adminAuthForMethod =
+        authMethod === "sandbox_token"
+          ? adminSandboxAuthRes.value
+          : adminSessionAuth;
+      if (authMethod === "oauth") {
+        vi.spyOn(adminAuthForMethod, "authMethod").mockReturnValue("oauth");
+      }
+      expect(adminAuthForMethod.authMethod()).toBe(authMethod);
 
-    const adminAuthForMethod =
-      authMethod === "sandbox_token"
-        ? adminSandboxAuthRes.value
-        : adminSessionAuth;
-    if (authMethod === "oauth") {
-      vi.spyOn(adminAuthForMethod, "authMethod").mockReturnValue("oauth");
+      const nonParticipantAdminConversations =
+        await ConversationResource.listAll(adminAuthForMethod);
+      expect(nonParticipantAdminConversations.map((c) => c.sId)).not.toContain(
+        participantRequiredConversation.sId
+      );
     }
-    expect(adminAuthForMethod.authMethod()).toBe(authMethod);
-
-    const nonParticipantAdminConversations =
-      await ConversationResource.listAll(adminAuthForMethod);
-    expect(nonParticipantAdminConversations.map((c) => c.sId)).not.toContain(
-      participantRequiredConversation.sId
-    );
-  });
+  );
 
   it("should not throw and should filter participant-restricted conversations for a userless sandbox token when private conversation URLs are private by default", async () => {
     const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {

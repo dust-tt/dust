@@ -414,29 +414,29 @@ describe("non-batch LLM run persistence", () => {
   it.each([
     { origin: "web" as const, usageType: USAGE_TYPE_USER },
     { origin: "api" as const, usageType: USAGE_TYPE_PROGRAMMATIC },
-  ])("classifies $origin agent usage as $usageType when creating the run", async ({
-    origin,
-    usageType,
-  }) => {
-    const { authenticator: auth } = await createResourceTest({});
-    const llm = makeNoopLLM(auth, DustNoopNoopGlobalNoopStream, {
-      operationType: "agent_conversation",
-      userMessageOrigin: origin,
-    });
+  ])(
+    "classifies $origin agent usage as $usageType when creating the run",
+    async ({ origin, usageType }) => {
+      const { authenticator: auth } = await createResourceTest({});
+      const llm = makeNoopLLM(auth, DustNoopNoopGlobalNoopStream, {
+        operationType: "agent_conversation",
+        userMessageOrigin: origin,
+      });
 
-    for await (const _event of llm.stream(
-      makeStreamParameters("consume $1.25")
-    )) {
-      // Consume the stream fully so the noop request completes.
+      for await (const _event of llm.stream(
+        makeStreamParameters("consume $1.25")
+      )) {
+        // Consume the stream fully so the noop request completes.
+      }
+
+      const run = await RunResource.fetchByDustRunId(auth, {
+        dustRunId: llm.getTraceId(),
+      });
+      expect(await run?.listRunUsageAttempts(auth)).toMatchObject([
+        { usageState: "reported", usageType },
+      ]);
     }
-
-    const run = await RunResource.fetchByDustRunId(auth, {
-      dustRunId: llm.getTraceId(),
-    });
-    expect(await run?.listRunUsageAttempts(auth)).toMatchObject([
-      { usageState: "reported", usageType },
-    ]);
-  });
+  );
 
   it("finalizes usage from the provider stream", async () => {
     const { authenticator: auth } = await createResourceTest({});

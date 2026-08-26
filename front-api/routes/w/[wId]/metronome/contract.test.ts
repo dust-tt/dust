@@ -232,37 +232,37 @@ describe("/api/w/[wId]/metronome/contract", () => {
         stripeSubscriptionId: "sub_shadow",
         metronomeContractId: "m-contract-shadow",
       },
-    ])("rejects cancel and reactivate for $title", async ({
-      stripeSubscriptionId,
-      metronomeContractId,
-    }) => {
-      for (const action of ["cancel", "reactivate"] as const) {
-        const { workspace } = await createPrivateApiMockRequest({
-          method: "PATCH",
-          role: "admin",
-        });
+    ])(
+      "rejects cancel and reactivate for $title",
+      async ({ stripeSubscriptionId, metronomeContractId }) => {
+        for (const action of ["cancel", "reactivate"] as const) {
+          const { workspace } = await createPrivateApiMockRequest({
+            method: "PATCH",
+            role: "admin",
+          });
 
-        await setActiveSubscriptionBilling({
-          workspaceId: workspace.id,
-          stripeSubscriptionId,
-          metronomeContractId,
-        });
+          await setActiveSubscriptionBilling({
+            workspaceId: workspace.id,
+            stripeSubscriptionId,
+            metronomeContractId,
+          });
 
-        const response = await honoApp.request(contractUrl(workspace.sId), {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action }),
-        });
+          const response = await honoApp.request(contractUrl(workspace.sId), {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action }),
+          });
 
-        expect(response.status).toBe(400);
-        expect((await response.json()).error.type).toBe(
-          "subscription_state_invalid"
-        );
+          expect(response.status).toBe(400);
+          expect((await response.json()).error.type).toBe(
+            "subscription_state_invalid"
+          );
+        }
+
+        expect(vi.mocked(scheduleMetronomeContractEnd)).not.toHaveBeenCalled();
+        expect(vi.mocked(reactivateMetronomeContract)).not.toHaveBeenCalled();
       }
-
-      expect(vi.mocked(scheduleMetronomeContractEnd)).not.toHaveBeenCalled();
-      expect(vi.mocked(reactivateMetronomeContract)).not.toHaveBeenCalled();
-    });
+    );
   });
 
   describe("authorization", () => {

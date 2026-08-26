@@ -534,111 +534,113 @@ describe("syncSeatCount subscription end boundary", () => {
     vi.useRealTimers();
   });
 
-  it.each(boundaryCases)("$name the SEAT_BASED source end", async ({
-    transitionAt,
-    updatesSource,
-  }) => {
-    mockGetScheduledFutureMemberships.mockResolvedValue([
-      {
-        ...membership("u1", "pro_yearly"),
-        startAt: new Date(transitionAt),
-      },
-    ]);
-
-    const result = await syncSeatCount({
-      metronomeCustomerId: "cus_1",
-      contractId: "con_1",
-      workspace: WORKSPACE,
-      planCode: "CP_BUSINESS_PLAN",
-      contract: makeContract([
+  it.each(boundaryCases)(
+    "$name the SEAT_BASED source end",
+    async ({ transitionAt, updatesSource }) => {
+      mockGetScheduledFutureMemberships.mockResolvedValue([
         {
-          id: "sub_pro",
-          productId: "pro-product",
-          mode: "SEAT_BASED",
-          endingBefore: sourceEndingBefore,
+          ...membership("u1", "pro_yearly"),
+          startAt: new Date(transitionAt),
         },
-        {
-          id: "sub_pro_yearly",
-          productId: "pro-yearly-product",
-          mode: "SEAT_BASED",
-        },
-      ]),
-    });
+      ]);
 
-    expect(result.isOk()).toBe(true);
-    expect(mockUpdateSubscriptionSeats).toHaveBeenCalledWith(
-      expect.objectContaining({
-        fromSubscriptionId: "sub_pro_yearly",
-        addSeatIds: ["u1"],
+      const result = await syncSeatCount({
+        metronomeCustomerId: "cus_1",
+        contractId: "con_1",
+        workspace: WORKSPACE,
+        planCode: "CP_BUSINESS_PLAN",
+        contract: makeContract([
+          {
+            id: "sub_pro",
+            productId: "pro-product",
+            mode: "SEAT_BASED",
+            endingBefore: sourceEndingBefore,
+          },
+          {
+            id: "sub_pro_yearly",
+            productId: "pro-yearly-product",
+            mode: "SEAT_BASED",
+          },
+        ]),
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(mockUpdateSubscriptionSeats).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromSubscriptionId: "sub_pro_yearly",
+          addSeatIds: ["u1"],
+          startingAt: transitionAt,
+        })
+      );
+      const sourceRemoval = expect.objectContaining({
+        fromSubscriptionId: "sub_pro",
+        removeSeatIds: ["u1"],
         startingAt: transitionAt,
-      })
-    );
-    const sourceRemoval = expect.objectContaining({
-      fromSubscriptionId: "sub_pro",
-      removeSeatIds: ["u1"],
-      startingAt: transitionAt,
-    });
-    if (updatesSource) {
-      expect(mockUpdateSubscriptionSeats).toHaveBeenCalledWith(sourceRemoval);
-    } else {
-      expect(mockUpdateSubscriptionSeats).not.toHaveBeenCalledWith(
-        sourceRemoval
-      );
+      });
+      if (updatesSource) {
+        expect(mockUpdateSubscriptionSeats).toHaveBeenCalledWith(sourceRemoval);
+      } else {
+        expect(mockUpdateSubscriptionSeats).not.toHaveBeenCalledWith(
+          sourceRemoval
+        );
+      }
     }
-  });
+  );
 
-  it.each(boundaryCases)("$name the QUANTITY_ONLY source end", async ({
-    transitionAt,
-    updatesSource,
-  }) => {
-    mockGetScheduledFutureMemberships.mockResolvedValue([
-      {
-        ...membership("u1", "pro_yearly"),
-        startAt: new Date(transitionAt),
-      },
-    ]);
-
-    const result = await syncSeatCount({
-      metronomeCustomerId: "cus_1",
-      contractId: "con_1",
-      workspace: WORKSPACE,
-      planCode: "CP_BUSINESS_PLAN",
-      contract: makeContract([
+  it.each(boundaryCases)(
+    "$name the QUANTITY_ONLY source end",
+    async ({ transitionAt, updatesSource }) => {
+      mockGetScheduledFutureMemberships.mockResolvedValue([
         {
-          id: "sub_pro",
-          productId: "pro-product",
-          mode: "QUANTITY_ONLY",
-          endingBefore: sourceEndingBefore,
+          ...membership("u1", "pro_yearly"),
+          startAt: new Date(transitionAt),
         },
-        {
-          id: "sub_pro_yearly",
-          productId: "pro-yearly-product",
-          mode: "QUANTITY_ONLY",
-        },
-      ]),
-    });
+      ]);
 
-    expect(result.isOk()).toBe(true);
-    expect(mockUpdateSubscriptionQuantity).toHaveBeenCalledWith({
-      metronomeCustomerId: "cus_1",
-      contractId: "con_1",
-      subscriptionId: "sub_pro_yearly",
-      quantity: 1,
-      startingAt: transitionAt,
-    });
-    const sourceUpdate = {
-      metronomeCustomerId: "cus_1",
-      contractId: "con_1",
-      subscriptionId: "sub_pro",
-      quantity: 0,
-      startingAt: transitionAt,
-    };
-    if (updatesSource) {
-      expect(mockUpdateSubscriptionQuantity).toHaveBeenCalledWith(sourceUpdate);
-    } else {
-      expect(mockUpdateSubscriptionQuantity).not.toHaveBeenCalledWith(
-        sourceUpdate
-      );
+      const result = await syncSeatCount({
+        metronomeCustomerId: "cus_1",
+        contractId: "con_1",
+        workspace: WORKSPACE,
+        planCode: "CP_BUSINESS_PLAN",
+        contract: makeContract([
+          {
+            id: "sub_pro",
+            productId: "pro-product",
+            mode: "QUANTITY_ONLY",
+            endingBefore: sourceEndingBefore,
+          },
+          {
+            id: "sub_pro_yearly",
+            productId: "pro-yearly-product",
+            mode: "QUANTITY_ONLY",
+          },
+        ]),
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(mockUpdateSubscriptionQuantity).toHaveBeenCalledWith({
+        metronomeCustomerId: "cus_1",
+        contractId: "con_1",
+        subscriptionId: "sub_pro_yearly",
+        quantity: 1,
+        startingAt: transitionAt,
+      });
+      const sourceUpdate = {
+        metronomeCustomerId: "cus_1",
+        contractId: "con_1",
+        subscriptionId: "sub_pro",
+        quantity: 0,
+        startingAt: transitionAt,
+      };
+      if (updatesSource) {
+        expect(mockUpdateSubscriptionQuantity).toHaveBeenCalledWith(
+          sourceUpdate
+        );
+      } else {
+        expect(mockUpdateSubscriptionQuantity).not.toHaveBeenCalledWith(
+          sourceUpdate
+        );
+      }
     }
-  });
+  );
 });

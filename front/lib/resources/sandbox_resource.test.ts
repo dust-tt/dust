@@ -516,37 +516,36 @@ describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested", 
     conversationResource = fetched;
   });
 
-  it.each([
-    "running",
-    "sleeping",
-    "pending_approval",
-  ] as const)("destroys at the provider and marks deleted regardless of status (%s)", async (status) => {
-    const sandbox = await SandboxFactory.create(
-      authenticator,
-      conversationResource.toJSON(),
-      {
-        status,
-        killRequestedAt: new Date(),
-      }
-    );
-
-    const result =
-      await ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
+  it.each(["running", "sleeping", "pending_approval"] as const)(
+    "destroys at the provider and marks deleted regardless of status (%s)",
+    async (status) => {
+      const sandbox = await SandboxFactory.create(
         authenticator,
-        conversationResource
+        conversationResource.toJSON(),
+        {
+          status,
+          killRequestedAt: new Date(),
+        }
       );
 
-    expect(result.isOk()).toBe(true);
-    expect(mockProviderDestroy).toHaveBeenCalledWith(sandbox.providerId, {
-      workspaceId: authenticator.getNonNullableWorkspace().sId,
-    });
+      const result =
+        await ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
+          authenticator,
+          conversationResource
+        );
 
-    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
-      authenticator,
-      conversationResource.toJSON()
-    );
-    expect(reloaded?.status).toBe("deleted");
-  });
+      expect(result.isOk()).toBe(true);
+      expect(mockProviderDestroy).toHaveBeenCalledWith(sandbox.providerId, {
+        workspaceId: authenticator.getNonNullableWorkspace().sId,
+      });
+
+      const reloaded = await ConversationSandboxAdapter.fetchSandbox(
+        authenticator,
+        conversationResource.toJSON()
+      );
+      expect(reloaded?.status).toBe("deleted");
+    }
+  );
 
   it("is a no-op when killRequestedAt is not set", async () => {
     await SandboxFactory.create(authenticator, conversationResource.toJSON(), {

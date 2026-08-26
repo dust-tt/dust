@@ -257,41 +257,41 @@ describe("MCP Actions", () => {
       createWorkspace: () => WorkspaceFactory.basic(),
       expectedStake: "high",
     },
-  ])("sets schedule_wakeup to $expectedStake stake for $planType plans", async ({
-    createWorkspace,
-    expectedStake,
-  }) => {
-    const workspace = await createWorkspace();
-    const { auth, connectionParams, mcpClient, config } = await setupTest({
-      workspace,
-      serverName: "wakeups",
-    });
+  ])(
+    "sets schedule_wakeup to $expectedStake stake for $planType plans",
+    async ({ createWorkspace, expectedStake }) => {
+      const workspace = await createWorkspace();
+      const { auth, connectionParams, mcpClient, config } = await setupTest({
+        workspace,
+        serverName: "wakeups",
+      });
 
-    const toolsResult = await listToolsForServerSideMCPServer(
-      auth,
-      connectionParams,
-      mcpClient,
-      config
-    );
+      const toolsResult = await listToolsForServerSideMCPServer(
+        auth,
+        connectionParams,
+        mcpClient,
+        config
+      );
 
-    assert(toolsResult.isOk());
-    expect(toolsResult.value).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          name: "schedule_wakeup",
-          permission: expectedStake,
-        }),
-        expect.objectContaining({
-          name: "list_wakeups",
-          permission: "never_ask",
-        }),
-        expect.objectContaining({
-          name: "cancel_wakeup",
-          permission: "never_ask",
-        }),
-      ])
-    );
-  });
+      assert(toolsResult.isOk());
+      expect(toolsResult.value).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "schedule_wakeup",
+            permission: expectedStake,
+          }),
+          expect.objectContaining({
+            name: "list_wakeups",
+            permission: "never_ask",
+          }),
+          expect.objectContaining({
+            name: "cancel_wakeup",
+            permission: "never_ask",
+          }),
+        ])
+      );
+    }
+  );
 
   it("should filter disabled tools and store metadata settings", async () => {
     const { auth, mcpServerId, connectionParams, mcpClient, config } =

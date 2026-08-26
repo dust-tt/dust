@@ -107,18 +107,21 @@ describe("getModelTierAccessErrorForAgentConfiguration", () => {
     ["auto_complex", "model_tier_not_enabled"],
     ["auto", null],
     ["auto_fast", null],
-  ] as const)("tier-checks the %s stream itself, not the model it resolved to", async (modelResolutionMethod, expectedCode) => {
-    const auth = await restrictedUserAuth();
+  ] as const)(
+    "tier-checks the %s stream itself, not the model it resolved to",
+    async (modelResolutionMethod, expectedCode) => {
+      const auth = await restrictedUserAuth();
 
-    const error = await getModelTierAccessErrorForAgentConfiguration(auth, {
-      agentName: "test-agent",
-      // Haiku 4.5 is cost_efficient at every effort: a plausible candidate for
-      // any stream, and always within a `balanced` member's cap.
-      model: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-      featureFlags: ["models_picker"],
-      modelResolutionMethod,
-    });
+      const error = await getModelTierAccessErrorForAgentConfiguration(auth, {
+        agentName: "test-agent",
+        // Haiku 4.5 is cost_efficient at every effort: a plausible candidate for
+        // any stream, and always within a `balanced` member's cap.
+        model: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+        featureFlags: ["models_picker"],
+        modelResolutionMethod,
+      });
 
-    expect(error?.code ?? null).toBe(expectedCode);
-  });
+      expect(error?.code ?? null).toBe(expectedCode);
+    }
+  );
 });

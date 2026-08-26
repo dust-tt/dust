@@ -129,25 +129,25 @@ describe("GET /api/w/:wId/files/path/:canonicalPath", () => {
       contentType: "application/x-something-unknown",
     },
     { fileName: "mixed.html", contentType: "TEXT/HTML; Charset=UTF-8" },
-  ])("forces unsafe content type $contentType to download as an attachment", async ({
-    fileName,
-    contentType,
-  }) => {
-    const { workspace, conversation } = await setup();
+  ])(
+    "forces unsafe content type $contentType to download as an attachment",
+    async ({ fileName, contentType }) => {
+      const { workspace, conversation } = await setup();
 
-    setExistingFiles([`/files/${fileName}`], { contentType, size: "42" });
+      setExistingFiles([`/files/${fileName}`], { contentType, size: "42" });
 
-    const response = await request(
-      workspace,
-      `conversation-${conversation.sId}/${fileName}`
-    );
+      const response = await request(
+        workspace,
+        `conversation-${conversation.sId}/${fileName}`
+      );
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("Content-Disposition")).toMatch(
-      /^attachment; filename=/
-    );
-    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
-  });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Disposition")).toMatch(
+        /^attachment; filename=/
+      );
+      expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    }
+  );
 
   it("sets Content-Disposition when ?download=1", async () => {
     const { workspace, conversation } = await setup();

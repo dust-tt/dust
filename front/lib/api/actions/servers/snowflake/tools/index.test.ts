@@ -59,26 +59,27 @@ describe("Snowflake tools", () => {
     listDatabasesMock.mockReset();
   });
 
-  it.each([
-    401, 403,
-  ])("returns a personal authentication error for HTTP %s", async (statusCode) => {
-    listDatabasesMock.mockResolvedValue(
-      new Err(createRequestFailedError(statusCode))
-    );
-    const { authenticator } = await createResourceTest({ role: "admin" });
-
-    const result = await getListDatabasesTool().handler(
-      {},
-      createTestExtra(authenticator)
-    );
-
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value).toEqual(
-        makePersonalAuthenticationError("snowflake").content
+  it.each([401, 403])(
+    "returns a personal authentication error for HTTP %s",
+    async (statusCode) => {
+      listDatabasesMock.mockResolvedValue(
+        new Err(createRequestFailedError(statusCode))
       );
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const result = await getListDatabasesTool().handler(
+        {},
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toEqual(
+          makePersonalAuthenticationError("snowflake").content
+        );
+      }
     }
-  });
+  );
 
   it("keeps non-authentication failures as MCP errors", async () => {
     listDatabasesMock.mockResolvedValue(new Err(createRequestFailedError(500)));

@@ -181,14 +181,17 @@ describe("isUserBlocked", () => {
     "active_low_balance",
     "active_critical_balance",
     "overage",
-  ] as const)("does not block when pool status is '%s' (non-depleted warning state)", async (poolState) => {
-    redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
-    redisValues.set("metronome:pool_credit_status:ws_test", poolState);
+  ] as const)(
+    "does not block when pool status is '%s' (non-depleted warning state)",
+    async (poolState) => {
+      redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
+      redisValues.set("metronome:pool_credit_status:ws_test", poolState);
 
-    const blocked = await isUserBlocked(workspace, user);
+      const blocked = await isUserBlocked(workspace, user);
 
-    expect(blocked).toBeNull();
-  });
+      expect(blocked).toBeNull();
+    }
+  );
 
   it("falls back to DB when 'user_credit_state' Redis value is invalid", async () => {
     redisValues.set(

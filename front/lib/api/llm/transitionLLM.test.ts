@@ -49,14 +49,14 @@ describe("inferenceRegionForEndpointRegion", () => {
       expectedInferenceRegion: "global",
     },
     { endpointRegion: "us" as const, expectedInferenceRegion: "global" },
-  ])("maps $endpointRegion endpoints to $expectedInferenceRegion pricing", ({
-    endpointRegion,
-    expectedInferenceRegion,
-  }) => {
-    expect(inferenceRegionForEndpointRegion(endpointRegion)).toBe(
-      expectedInferenceRegion
-    );
-  });
+  ])(
+    "maps $endpointRegion endpoints to $expectedInferenceRegion pricing",
+    ({ endpointRegion, expectedInferenceRegion }) => {
+      expect(inferenceRegionForEndpointRegion(endpointRegion)).toBe(
+        expectedInferenceRegion
+      );
+    }
+  );
 });
 
 describe("getPromptCacheKeyForHost", () => {

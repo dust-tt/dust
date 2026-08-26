@@ -51,26 +51,24 @@ const GPT_5_6_CONFIGURATIONS = [
 ] as const;
 
 describe("GPT 5.6 model configurations", () => {
-  it.each(
-    GPT_5_6_CONFIGURATIONS
-  )("caps $name context consistently without changing output limits", ({
-    legacy,
-    endpoints,
-  }) => {
-    expect(legacy.contextSize).toBe(EXPECTED_CONTEXT_SIZE);
-    expect(legacy.generationTokensCount).toBe(EXPECTED_MAX_OUTPUT_TOKENS);
-    expect(legacy.contextSize - legacy.generationTokensCount).toBe(
-      EXPECTED_MAX_INPUT_TOKENS
-    );
-    expect(getModelConfigByModelId(legacy.modelId)?.contextSize).toBe(
-      EXPECTED_CONTEXT_SIZE
-    );
+  it.each(GPT_5_6_CONFIGURATIONS)(
+    "caps $name context consistently without changing output limits",
+    ({ legacy, endpoints }) => {
+      expect(legacy.contextSize).toBe(EXPECTED_CONTEXT_SIZE);
+      expect(legacy.generationTokensCount).toBe(EXPECTED_MAX_OUTPUT_TOKENS);
+      expect(legacy.contextSize - legacy.generationTokensCount).toBe(
+        EXPECTED_MAX_INPUT_TOKENS
+      );
+      expect(getModelConfigByModelId(legacy.modelId)?.contextSize).toBe(
+        EXPECTED_CONTEXT_SIZE
+      );
 
-    for (const endpoint of endpoints) {
-      expect(endpoint.contextSize).toBe(EXPECTED_CONTEXT_SIZE);
-      expect(endpoint.maxOutputTokens).toBe(EXPECTED_MAX_OUTPUT_TOKENS);
+      for (const endpoint of endpoints) {
+        expect(endpoint.contextSize).toBe(EXPECTED_CONTEXT_SIZE);
+        expect(endpoint.maxOutputTokens).toBe(EXPECTED_MAX_OUTPUT_TOKENS);
+      }
     }
-  });
+  );
 
   it("exposes Terra long context as a separate provider-backed model", () => {
     const endpoint =

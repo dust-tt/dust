@@ -1419,71 +1419,73 @@ describe("validateAction", () => {
       }
     });
 
-    it.each([
-      "interrupted",
-      "gracefully_stopped",
-    ] as const)("rejects resolving an action whose agent message is %s", async (status) => {
-      const agentConfig = await AgentConfigurationFactory.createTestAgent(
-        auth,
-        { name: "Test Agent" }
-      );
-
-      const userMessageRow =
-        await ConversationFactory.createUserMessageWithRank({
+    it.each(["interrupted", "gracefully_stopped"] as const)(
+      "rejects resolving an action whose agent message is %s",
+      async (status) => {
+        const agentConfig = await AgentConfigurationFactory.createTestAgent(
           auth,
+          { name: "Test Agent" }
+        );
+
+        const userMessageRow =
+          await ConversationFactory.createUserMessageWithRank({
+            auth,
+            workspace,
+            conversationId: conversation.id,
+            rank: 0,
+            content: "Test message",
+          });
+
+        const messageRow = await ConversationFactory.createAgentMessageWithRank(
+          {
+            workspace,
+            conversationId: conversation.id,
+            rank: 1,
+            agentConfigurationId: agentConfig.sId,
+            agentConfigurationVersion: agentConfig.version,
+            parentId: userMessageRow.id,
+          }
+        );
+
+        const { action } = await AgentMCPActionFactory.create(auth, {
           workspace,
-          conversationId: conversation.id,
-          rank: 0,
-          content: "Test message",
+          conversationModelId: conversation.id,
+          agentMessageModelId: messageRow.agentMessageId!,
         });
 
-      const messageRow = await ConversationFactory.createAgentMessageWithRank({
-        workspace,
-        conversationId: conversation.id,
-        rank: 1,
-        agentConfigurationId: agentConfig.sId,
-        agentConfigurationVersion: agentConfig.version,
-        parentId: userMessageRow.id,
-      });
+        // Legacy stuck conversation: the message reached a non-resumable terminal status while its
+        // blocked action was left pending. A stale approval must not resume the loop.
+        await ConversationFactory.setAgentMessageStatus({
+          workspace,
+          agentMessageModelId: messageRow.agentMessageId!,
+          status,
+        });
 
-      const { action } = await AgentMCPActionFactory.create(auth, {
-        workspace,
-        conversationModelId: conversation.id,
-        agentMessageModelId: messageRow.agentMessageId!,
-      });
+        const conversationResource = await ConversationResource.fetchById(
+          auth,
+          conversation.sId
+        );
+        expect(conversationResource).not.toBeNull();
 
-      // Legacy stuck conversation: the message reached a non-resumable terminal status while its
-      // blocked action was left pending. A stale approval must not resume the loop.
-      await ConversationFactory.setAgentMessageStatus({
-        workspace,
-        agentMessageModelId: messageRow.agentMessageId!,
-        status,
-      });
+        const result = await validateAction(auth, conversationResource!, {
+          actionId: action.sId,
+          approvalState: "approved",
+          messageId: messageRow.sId,
+        });
 
-      const conversationResource = await ConversationResource.fetchById(
-        auth,
-        conversation.sId
-      );
-      expect(conversationResource).not.toBeNull();
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) {
+          expect(result.error.code).toBe("action_not_blocked");
+        }
 
-      const result = await validateAction(auth, conversationResource!, {
-        actionId: action.sId,
-        approvalState: "approved",
-        messageId: messageRow.sId,
-      });
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.code).toBe("action_not_blocked");
+        // The action was not transitioned.
+        const reloadedAction = await AgentMCPActionResource.fetchById(
+          auth,
+          action.sId
+        );
+        expect(reloadedAction?.status).toBe("blocked_validation_required");
       }
-
-      // The action was not transitioned.
-      const reloadedAction = await AgentMCPActionResource.fetchById(
-        auth,
-        action.sId
-      );
-      expect(reloadedAction?.status).toBe("blocked_validation_required");
-    });
+    );
 
     it("rejects resolving authentication or file authorization whose agent message can no longer resume", async () => {
       async function expectResolveAuthenticationRejected({

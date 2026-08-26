@@ -100,13 +100,14 @@ describe("conversation-unread workflow business logic", () => {
     system_activation: false,
   };
   describe("shouldSendNotificationForAgentAnswer", () => {
-    it.each(
-      Object.entries(userMessageOriginRecord)
-    )('should for origin "%s" return %s', (origin, expected) => {
-      expect(
-        shouldSendNotificationForAgentAnswer(origin as UserMessageOrigin)
-      ).toBe(expected);
-    });
+    it.each(Object.entries(userMessageOriginRecord))(
+      'should for origin "%s" return %s',
+      (origin, expected) => {
+        expect(
+          shouldSendNotificationForAgentAnswer(origin as UserMessageOrigin)
+        ).toBe(expected);
+      }
+    );
   });
 
   describe("getUserNotificationDelay", () => {

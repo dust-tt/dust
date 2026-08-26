@@ -600,17 +600,20 @@ describe("WorkspaceCreditStateMachine — illegal transitions", () => {
     },
   ];
 
-  it.each(cases)("$label returns Err and applies no side effects", async ({
-    from,
-    event,
-    ctx,
-  }) => {
-    const workspace = makeWorkspace(from);
-    const result = await transitionWorkspaceCreditState(workspace, event, ctx);
-    expect(result.isErr()).toBe(true);
-    expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
-    expect(mockInvalidateCacheAfterCommit).not.toHaveBeenCalled();
-  });
+  it.each(cases)(
+    "$label returns Err and applies no side effects",
+    async ({ from, event, ctx }) => {
+      const workspace = makeWorkspace(from);
+      const result = await transitionWorkspaceCreditState(
+        workspace,
+        event,
+        ctx
+      );
+      expect(result.isErr()).toBe(true);
+      expect(workspace.updatePoolCreditState).not.toHaveBeenCalled();
+      expect(mockInvalidateCacheAfterCommit).not.toHaveBeenCalled();
+    }
+  );
 });
 
 // ---------------------------------------------------------------------------

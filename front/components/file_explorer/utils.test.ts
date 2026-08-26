@@ -102,13 +102,12 @@ describe("file preview configuration", () => {
     expect(isFilePreviewableContentType(contentType)).toBe(true);
   });
 
-  it.each([
-    "text/javascript",
-    "application/javascript",
-    "text/typescript",
-  ])("classifies %s as code", (contentType) => {
-    expect(getFilePreviewConfig(contentType).category).toBe("code");
-  });
+  it.each(["text/javascript", "application/javascript", "text/typescript"])(
+    "classifies %s as code",
+    (contentType) => {
+      expect(getFilePreviewConfig(contentType).category).toBe("code");
+    }
+  );
 
   it.each([
     "text/plain",

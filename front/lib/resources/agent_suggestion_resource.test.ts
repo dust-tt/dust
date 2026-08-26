@@ -222,36 +222,36 @@ describe("AgentSuggestionResource", () => {
       "approved",
       "rejected",
       "outdated",
-    ])("should update a suggestion state to %s", async (newState:
-      | "approved"
-      | "rejected"
-      | "outdated") => {
-      const suggestion = await AgentSuggestionFactory.createInstructions(
-        authenticator,
-        agentConfiguration,
-        {
-          suggestion: {
-            content: "<p>new content</p>",
-            targetBlockId: "block123",
-            type: "replace",
-          },
-        }
-      );
+    ])(
+      "should update a suggestion state to %s",
+      async (newState: "approved" | "rejected" | "outdated") => {
+        const suggestion = await AgentSuggestionFactory.createInstructions(
+          authenticator,
+          agentConfiguration,
+          {
+            suggestion: {
+              content: "<p>new content</p>",
+              targetBlockId: "block123",
+              type: "replace",
+            },
+          }
+        );
 
-      expect(suggestion.state).toBe("pending");
+        expect(suggestion.state).toBe("pending");
 
-      await AgentSuggestionResource.bulkUpdateState(
-        authenticator,
-        [suggestion],
-        newState
-      );
+        await AgentSuggestionResource.bulkUpdateState(
+          authenticator,
+          [suggestion],
+          newState
+        );
 
-      const fetched = await AgentSuggestionResource.fetchById(
-        authenticator,
-        suggestion.sId
-      );
-      expect(fetched?.state).toBe(newState);
-    });
+        const fetched = await AgentSuggestionResource.fetchById(
+          authenticator,
+          suggestion.sId
+        );
+        expect(fetched?.state).toBe(newState);
+      }
+    );
 
     it("should update multiple suggestions at once", async () => {
       const suggestion1 = await AgentSuggestionFactory.createInstructions(
