@@ -35,7 +35,6 @@ import {
   Page,
   Plus,
   SearchInput,
-  Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -296,6 +295,9 @@ export function ManageAgentsPage() {
   useSetContentWidth("wide");
   useSetNavChildren(navChildren);
 
+  const isLoading =
+    isAgentConfigurationsLoading || isArchivedAgentConfigurationsLoading;
+
   return (
     <>
       <AgentDetailsSheet
@@ -410,19 +412,7 @@ export function ManageAgentsPage() {
                 )}
               </TabsList>
             </Tabs>
-            {isAgentConfigurationsLoading ||
-            isArchivedAgentConfigurationsLoading ? (
-              <div className="mt-8 flex justify-center">
-                <Spinner size="lg" />
-              </div>
-            ) : isFilterActive && agentsByTab[activeTab].length === 0 ? (
-              <div className="pt-2">
-                <EmptyCTA
-                  message="No agent matches your search or filters."
-                  action={null}
-                />
-              </div>
-            ) : agentsByTab[activeTab].length > 0 ? (
+            {isLoading || agentsByTab[activeTab].length > 0 ? (
               <AssistantsTable
                 selection={selection}
                 setSelection={setSelection}
@@ -435,7 +425,15 @@ export function ManageAgentsPage() {
                   setShowDisabledFreeWorkspacePopup
                 }
                 mutateAgentConfigurations={mutateAgentConfigurations}
+                isLoading={isLoading}
               />
+            ) : isFilterActive ? (
+              <div className="pt-2">
+                <EmptyCTA
+                  message="No agent matches your search or filters."
+                  action={null}
+                />
+              </div>
             ) : activeTab === "archived" ? (
               <div className="pt-2">
                 <NoArchivedAgentsCTA

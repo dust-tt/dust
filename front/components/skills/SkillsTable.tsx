@@ -5,7 +5,7 @@ import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useAppRouter } from "@app/lib/platform";
 import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
@@ -20,6 +20,7 @@ import {
   Edit04,
   Eye,
   Label,
+  LoadingBlock,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -59,6 +60,127 @@ type RowData = {
   onClick: () => void;
   menuItems: MenuItem[];
 };
+
+const SKILLS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
+  { length: 5 },
+  (_, index) => ({
+    sId: `skill-skeleton-${index}`,
+    name: "",
+    icon: null,
+    editedBy: null,
+    description: "",
+    availability: "editors",
+    editors: [],
+    usage: { count: 0, agents: [], skills: [] },
+    messageCount: null,
+    updatedAt: null,
+    createdAt: null,
+    onClick: () => undefined,
+    menuItems: [],
+  })
+);
+
+function renderSkillsTableSkeletonCell(columnId: string, rowIndex: number) {
+  switch (columnId) {
+    case "select":
+      return (
+        <DataTable.CellContent className="size-full items-center justify-center">
+          <LoadingBlock className="h-4 w-4 rounded-sm" />
+        </DataTable.CellContent>
+      );
+    case "name":
+      return (
+        <DataTable.CellContent>
+          <div className="flex flex-row items-center gap-2 py-3">
+            <LoadingBlock className="h-9 w-9 shrink-0 rounded-lg" />
+            <div className="flex min-w-0 grow flex-col">
+              <div className="flex h-5 items-center">
+                <LoadingBlock
+                  className={classNames(
+                    "h-3 max-w-full",
+                    ["w-32", "w-40", "w-28", "w-36", "w-44"][rowIndex]
+                  )}
+                />
+              </div>
+              <div className="flex h-5 items-center">
+                <LoadingBlock
+                  className={classNames(
+                    "h-3 max-w-full",
+                    ["w-56", "w-64", "w-48", "w-60", "w-52"][rowIndex]
+                  )}
+                />
+              </div>
+            </div>
+          </div>
+        </DataTable.CellContent>
+      );
+    case "availability":
+      return (
+        <DataTable.CellContent>
+          <LoadingBlock
+            className={classNames(
+              "h-6 rounded-[9px]",
+              ["w-20", "w-28", "w-24", "w-28", "w-20"][rowIndex]
+            )}
+          />
+        </DataTable.CellContent>
+      );
+    case "usedBy":
+      return (
+        <div className="flex h-12 w-full items-center justify-center">
+          <LoadingBlock
+            className={classNames(
+              "h-5 rounded-md",
+              ["w-14", "w-16", "w-12", "w-20", "w-14"][rowIndex]
+            )}
+          />
+        </div>
+      );
+    case "messageCount":
+      return (
+        <DataTable.CellContent>
+          <LoadingBlock
+            className={classNames(
+              "h-3",
+              ["w-7", "w-9", "w-6", "w-8", "w-10"][rowIndex]
+            )}
+          />
+        </DataTable.CellContent>
+      );
+    case "editors":
+      return (
+        <DataTable.CellContent>
+          <div className="flex -space-x-2">
+            {Array.from({ length: (rowIndex % 3) + 1 }, (_, index) => (
+              <LoadingBlock
+                key={index}
+                className="h-7 w-7 rounded-full ring-2 ring-background"
+              />
+            ))}
+          </div>
+        </DataTable.CellContent>
+      );
+    case "updatedAt":
+      return (
+        <DataTable.CellContent>
+          <LoadingBlock
+            className={classNames(
+              "h-3",
+              ["w-14", "w-16", "w-20", "w-16", "w-14"][rowIndex]
+            )}
+          />
+        </DataTable.CellContent>
+      );
+    case "menuItems":
+      return (
+        <DataTable.CellContent>
+          <LoadingBlock className="h-8 w-8 rounded-xl" />
+        </DataTable.CellContent>
+      );
+    default:
+      return null;
+  }
+}
 
 export const SKILL_AVAILABILITY_DISPLAY: Record<
   SkillAvailability,
@@ -342,6 +464,7 @@ type SkillsTableProps = {
   setRowSelection: (selection: RowSelectionState) => void;
   isBatchUpdating: boolean;
   onSelectAvailabilityAction: (action: BatchAvailabilityAction) => void;
+  isLoading?: boolean;
 };
 
 export function SkillsTable({
@@ -356,6 +479,7 @@ export function SkillsTable({
   setRowSelection,
   isBatchUpdating,
   onSelectAvailabilityAction,
+  isLoading = false,
 }: SkillsTableProps) {
   const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
@@ -373,6 +497,15 @@ export function SkillsTable({
         enableSelection,
       }),
     [onAgentClick, onUsedBySkillClick, enableSelection]
+  );
+  const skeletonColumns = useMemo(
+    () =>
+      columns.map((column) => ({
+        ...column,
+        cell: (info: CellContext<RowData, unknown>) =>
+          renderSkillsTableSkeletonCell(info.column.id, info.row.index),
+      })),
+    [columns]
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -479,7 +612,7 @@ export function SkillsTable({
     [pageRows, canMakeSkillAutoDiscoverable, selectionSet]
   );
 
-  if (rows.length === 0) {
+  if (!isLoading && rows.length === 0) {
     return null;
   }
 
@@ -512,23 +645,51 @@ export function SkillsTable({
           onSelectAction={onSelectAvailabilityAction}
         />
       )}
-      <DataTable
-        className="relative"
-        data={rows}
-        columns={columns}
-        pagination={pagination}
-        setPagination={setPagination}
-        disableRowClickSelection
-        {...(enableSelection
-          ? {
-              rowSelection,
-              setRowSelection,
-              enableRowSelection: (row: Row<RowData>) =>
-                isSkillSelectable(row.original, canMakeSkillAutoDiscoverable),
-              getRowId: (row: RowData) => row.sId,
-            }
-          : {})}
-      />
+      <div
+        role={isLoading ? "status" : undefined}
+        aria-label={isLoading ? "Loading skills" : undefined}
+        aria-busy={isLoading || undefined}
+      >
+        {isLoading ? (
+          <div aria-hidden="true" className="flex flex-col gap-2">
+            <DataTable
+              className="relative"
+              data={SKILLS_TABLE_SKELETON_ROWS}
+              columns={skeletonColumns}
+              enableRowSelection={() => false}
+              disableRowClickSelection
+              rowSelection={{}}
+              setRowSelection={() => undefined}
+            />
+            <div className="p-1">
+              <div className="flex h-8 items-center justify-end">
+                <LoadingBlock className="h-3 w-14" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <DataTable
+            className="relative"
+            data={rows}
+            columns={columns}
+            pagination={pagination}
+            setPagination={setPagination}
+            disableRowClickSelection
+            {...(enableSelection
+              ? {
+                  rowSelection,
+                  setRowSelection,
+                  enableRowSelection: (row: Row<RowData>) =>
+                    isSkillSelectable(
+                      row.original,
+                      canMakeSkillAutoDiscoverable
+                    ),
+                  getRowId: (row: RowData) => row.sId,
+                }
+              : {})}
+          />
+        )}
+      </div>
     </>
   );
 }
