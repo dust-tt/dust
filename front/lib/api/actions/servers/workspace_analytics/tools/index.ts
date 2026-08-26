@@ -688,7 +688,6 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     const scope = buildAnalystScope({
       startDate: window.value.startDate,
       endDate: window.value.endDate,
-      timezone: window.value.timezone,
       source,
       agentIds,
       userIds,

@@ -54,7 +54,7 @@ const getCreditUsageSchema = {
     .enum(["agent", "user", "model", "none"])
     .optional()
     .describe(
-      "Break the estimated credits down by top 'agent', 'user' or 'model' " +
+      "Break the billed credits down by top 'agent', 'user' or 'model' " +
         "(the model that answered the message), or 'none' (default) for the " +
         "workspace total only."
     ),

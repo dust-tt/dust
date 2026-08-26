@@ -9,6 +9,7 @@ import {
   CONSUMPTION_SCOPE_DIMENSIONS,
 } from "@app/types/api/analytics/consumption";
 import type { estypes } from "@elastic/elasticsearch";
+import moment from "moment-timezone";
 
 export type {
   ConsumptionFacetScope,
@@ -35,6 +36,12 @@ export const CONVERSATION_ID_FIELD = "conversation_id";
 export const TRIGGER_ID_FIELD = "trigger_id";
 
 export const CARDINALITY_PRECISION_THRESHOLD = 40_000;
+
+// Input: the last day to include ("YYYY-MM-DD"). Output: the start of the
+// next day, i.e. the exclusive upper bound for a `lt` range query.
+export function exclusiveEndDate(inclusiveEndDate: string): string {
+  return moment.utc(inclusiveEndDate).add(1, "day").format("YYYY-MM-DD");
+}
 
 // Upper bound on the number of buckets a terms aggregation over an export's
 // full dimension (every agent, every user, ...) can return. Large enough that

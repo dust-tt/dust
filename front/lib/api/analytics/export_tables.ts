@@ -4,7 +4,10 @@ import {
   fetchAgentExportRows,
   toAgentExportCsvRow,
 } from "@app/lib/api/analytics/agents_export";
-import { buildConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/scope";
+import {
+  buildConsumptionScopeQuery,
+  exclusiveEndDate,
+} from "@app/lib/api/analytics/consumption/scope";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
 import type { FeedbackExportRow } from "@app/lib/api/analytics/feedback_export";
 import {
@@ -263,15 +266,10 @@ function buildExportConsumptionScopeQuery(
   auth: Authenticator,
   { startDate, endDate }: { startDate: string; endDate: string }
 ): estypes.QueryDslQueryContainer {
-  const exclusiveEndDate = moment
-    .utc(endDate)
-    .add(1, "day")
-    .format("YYYY-MM-DD");
-
   return buildConsumptionScopeQuery({
     auth,
     startDate,
-    endDate: exclusiveEndDate,
+    endDate: exclusiveEndDate(endDate),
   });
 }
 

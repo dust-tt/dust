@@ -6,35 +6,19 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 describe("buildAnalystScope", () => {
-  it("converts an inclusive endOf('day') endDate to a half-open range", () => {
-    // resolveTimeWindow's explicit-range branch returns endOf("day"), i.e.
-    // 23:59:59.999 — bumping by 1ms must land exactly on the next midnight.
-    const scope = buildAnalystScope({
-      startDate: "2026-07-01T00:00:00.000Z",
-      endDate: "2026-07-13T23:59:59.999Z",
-      timezone: "UTC",
-    });
-    expect(scope.startDate).toBe("2026-07-01T00:00:00.000Z");
-    expect(scope.endDate).toBe("2026-07-14T00:00:00.000Z");
-  });
-
-  it("converts a 'now' endDate (no endOf-day rounding) the same way", () => {
-    // resolveTimeWindow's relative-period branch returns `now.toISOString()`
-    // verbatim, with no endOf("day") — the +1ms conversion must be uniform
-    // across both branches, not conditioned on the input looking rounded.
+  it("rounds endDate up to the start of the following calendar day", () => {
     const scope = buildAnalystScope({
       startDate: "2026-07-01T00:00:00.000Z",
       endDate: "2026-07-13T14:32:07.123Z",
-      timezone: "UTC",
     });
-    expect(scope.endDate).toBe("2026-07-13T14:32:07.124Z");
+    expect(scope.startDate).toBe("2026-07-01T00:00:00.000Z");
+    expect(scope.endDate).toBe("2026-07-14");
   });
 
   it("puts agentIds, userIds and modelIds in the scope filter", () => {
     const scope = buildAnalystScope({
       startDate: "2026-07-01T00:00:00.000Z",
       endDate: "2026-07-13T00:00:00.000Z",
-      timezone: "UTC",
       agentIds: ["a1"],
       userIds: ["u1", "u2"],
       modelIds: ["gpt-5.6-luna"],
@@ -51,7 +35,6 @@ describe("buildAnalystScope", () => {
     const scope = buildAnalystScope({
       startDate: "2026-07-01T00:00:00.000Z",
       endDate: "2026-07-13T00:00:00.000Z",
-      timezone: "UTC",
       agentTagIds: ["tag1"],
     });
     expect(scope.filter).toEqual({});
@@ -62,7 +45,6 @@ describe("buildAnalystScope", () => {
     const scope = buildAnalystScope({
       startDate: "2026-07-01T00:00:00.000Z",
       endDate: "2026-07-13T00:00:00.000Z",
-      timezone: "UTC",
       agentTagIds: ["tag1", "tag2"],
     });
     expect(scope.extraFilters).toEqual([
@@ -74,7 +56,6 @@ describe("buildAnalystScope", () => {
     const scope = buildAnalystScope({
       startDate: "2026-07-01T00:00:00.000Z",
       endDate: "2026-07-13T00:00:00.000Z",
-      timezone: "UTC",
       source: "unknown",
     });
     expect(scope.extraFilters).toEqual([
@@ -94,7 +75,6 @@ describe("buildAnalystScope", () => {
     const scope = buildAnalystScope({
       startDate: "2026-07-01T00:00:00.000Z",
       endDate: "2026-07-13T00:00:00.000Z",
-      timezone: "UTC",
       source: "web",
     });
     expect(scope.extraFilters).toEqual([{ term: { context_origin: "web" } }]);
@@ -107,7 +87,6 @@ describe("analystQuery", () => {
     const scope = buildAnalystScope({
       startDate: "2026-07-01T00:00:00.000Z",
       endDate: "2026-07-13T00:00:00.000Z",
-      timezone: "UTC",
       agentTagIds: ["tag1"],
     });
 
@@ -127,7 +106,7 @@ describe("analystQuery", () => {
             range: {
               completed_at: {
                 gte: "2026-07-01T00:00:00.000Z",
-                lt: "2026-07-13T00:00:00.001Z",
+                lt: "2026-07-14",
               },
             },
           },

@@ -41,7 +41,6 @@ async function setup() {
   const scope = buildAnalystScope({
     startDate: "2026-07-01T00:00:00.000Z",
     endDate: "2026-08-01T00:00:00.000Z",
-    timezone: "UTC",
   });
   return { auth, scope };
 }
