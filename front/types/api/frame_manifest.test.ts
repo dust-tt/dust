@@ -10,15 +10,6 @@ const MANIFEST = {
   version: 1,
   name: "Task List",
   description: "Track tasks.",
-  functions: [
-    {
-      name: "add-task",
-      path: "functions/add-task.ts",
-      description: "Add a task.",
-      executionMode: "fast",
-    },
-  ],
-  databases: [{ name: "tasks", path: "databases/tasks.db.ts" }],
 };
 
 describe("FrameManifestSchema", () => {
@@ -31,18 +22,12 @@ describe("FrameManifestSchema", () => {
     }
   });
 
-  it("parses an explicit UI entry point and rejects duplicate declarations", () => {
+  it("parses an explicit UI entry point", () => {
     const explicit = FrameManifestSchema.safeParse({
       ...MANIFEST,
       uiEntryPoint: "ui/App.tsx",
     });
     expect(explicit.success).toBe(true);
-
-    const duplicate = FrameManifestSchema.safeParse({
-      ...MANIFEST,
-      functions: [MANIFEST.functions[0], MANIFEST.functions[0]],
-    });
-    expect(duplicate.success).toBe(false);
   });
 
   it("returns a useful error for invalid JSON", () => {

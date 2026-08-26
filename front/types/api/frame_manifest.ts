@@ -1,9 +1,3 @@
-import {
-  POD_DATABASE_NAME_REGEX,
-  SANDBOX_FUNCTION_EXECUTION_MODES,
-  SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX,
-  SANDBOX_FUNCTION_STAKES,
-} from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -13,7 +7,6 @@ import { fromError } from "zod-validation-error";
 export const FRAME_MANIFEST_FILE = "manifest.json";
 export const FRAME_MANIFEST_VERSION = 1;
 export const FRAME_DEFAULT_UI_ENTRY_POINT = "index.tsx";
-export const FRAME_DATABASE_SCHEMA_FILE_SUFFIX = ".db.ts";
 export const MAX_FRAME_NAME_LENGTH = 128;
 
 /** Manifest paths are always relative to the Frame source folder. */
@@ -36,52 +29,12 @@ const FrameRelativePathSchema = z
       "Path must be relative to the Frame folder, using forward slashes and no '.', '..' or empty segments.",
   });
 
-const FrameManifestFunctionSchema = z.object({
-  name: z.string().regex(SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX),
-  path: FrameRelativePathSchema,
-  description: z.string().min(1),
-  executionMode: z.enum(SANDBOX_FUNCTION_EXECUTION_MODES),
-  defaultStake: z.enum(SANDBOX_FUNCTION_STAKES).optional(),
+export const FrameSourceManifestSchema = z.object({
+  version: z.literal(FRAME_MANIFEST_VERSION),
+  name: z.string().min(1).max(MAX_FRAME_NAME_LENGTH),
+  description: z.string(),
+  uiEntryPoint: FrameRelativePathSchema.optional(),
 });
-
-const FrameManifestDatabaseSchema = z.object({
-  name: z.string().regex(POD_DATABASE_NAME_REGEX),
-  path: FrameRelativePathSchema.refine(
-    (path) => path.endsWith(FRAME_DATABASE_SCHEMA_FILE_SUFFIX),
-    {
-      message: `Database schema paths must end in '${FRAME_DATABASE_SCHEMA_FILE_SUFFIX}'.`,
-    }
-  ),
-});
-
-export const FrameSourceManifestSchema = z
-  .object({
-    version: z.literal(FRAME_MANIFEST_VERSION),
-    name: z.string().min(1).max(MAX_FRAME_NAME_LENGTH),
-    description: z.string(),
-    uiEntryPoint: FrameRelativePathSchema.optional(),
-    functions: z.array(FrameManifestFunctionSchema).default([]),
-    databases: z.array(FrameManifestDatabaseSchema).default([]),
-  })
-  .superRefine((manifest, ctx) => {
-    const dimensions = [
-      ["function name", manifest.functions.map((fn) => fn.name)],
-      ["database name", manifest.databases.map((db) => db.name)],
-    ] as const;
-
-    for (const [label, values] of dimensions) {
-      const seen = new Set<string>();
-      for (const value of values) {
-        if (seen.has(value)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Duplicate ${label} '${value}'.`,
-          });
-        }
-        seen.add(value);
-      }
-    }
-  });
 
 export const FrameManifestSchema = FrameSourceManifestSchema.transform(
   (manifest) => ({

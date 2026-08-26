@@ -445,6 +445,12 @@ class FileStorageMock {
           pageFetchCount: 1,
         })
       ),
+      getFiles: vi.fn(
+        ({ prefix, maxResults }: { prefix: string; maxResults: number }) =>
+          Promise.resolve(
+            (this._filesByPrefix(prefix) ?? []).slice(0, maxResults)
+          )
+      ),
       listSubdirectoryNames: vi.fn(({ prefix }: { prefix: string }) => {
         const normalized = prefix.endsWith("/") ? prefix : `${prefix}/`;
         const names = (this._subdirectoryNames(prefix) ?? []).filter(

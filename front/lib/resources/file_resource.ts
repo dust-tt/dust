@@ -53,6 +53,7 @@ import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import { getFrameBasePath } from "@app/types/api/frame_storage";
 import { CoreAPI } from "@app/types/core/core_api";
 import type {
   AuthorizedFileAccessAllowlist,
@@ -105,7 +106,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op, UniqueConstraintError } from "sequelize";
+import { literal, Op, UniqueConstraintError } from "sequelize";
 import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
@@ -543,18 +544,27 @@ export class FileResource extends BaseResource<FileModel> {
         // Delete mount file copies if set.
         await this.deleteMountFileCopies();
 
-        await this.getBucketForVersion("original")
-          .file(this.getCloudStoragePath(auth, "original"))
-          .delete();
+        if (this.isFrameV2) {
+          await getPrivateUploadBucket().deleteByPrefix(
+            getFrameBasePath({
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              frameId: this.sId,
+            })
+          );
+        } else {
+          await this.getBucketForVersion("original")
+            .file(this.getCloudStoragePath(auth, "original"))
+            .delete();
 
-        // Delete the processed file if it exists.
-        await this.getBucketForVersion("processed")
-          .file(this.getCloudStoragePath(auth, "processed"))
-          .delete({ ignoreNotFound: true });
-        // Delete the public file if it exists.
-        await this.getBucketForVersion("public")
-          .file(this.getCloudStoragePath(auth, "public"))
-          .delete({ ignoreNotFound: true });
+          // Delete the processed file if it exists.
+          await this.getBucketForVersion("processed")
+            .file(this.getCloudStoragePath(auth, "processed"))
+            .delete({ ignoreNotFound: true });
+          // Delete the public file if it exists.
+          await this.getBucketForVersion("public")
+            .file(this.getCloudStoragePath(auth, "public"))
+            .delete({ ignoreNotFound: true });
+        }
 
         // Delete sharing grants and access snapshots before shareable file (FK constraint).
         const shareableFile = await FileResource.shareableFileModel.findOne({
@@ -690,12 +700,14 @@ export class FileResource extends BaseResource<FileModel> {
     if (!this.isFrameV2) {
       throw new Error("Cannot activate a publication on a non-v2 Frame.");
     }
+    if (!validate(publicationId)) {
+      throw new Error("Invalid Frame publication id.");
+    }
 
     await this.update({
-      useCaseMetadata: {
-        ...(this.useCaseMetadata ?? {}),
-        activePublicationId: publicationId,
-      },
+      useCaseMetadata: literal(
+        `COALESCE("useCaseMetadata", '{}'::jsonb) || jsonb_build_object('activePublicationId', '${publicationId}')`
+      ) as unknown as FileUseCaseMetadata,
     });
   }
 

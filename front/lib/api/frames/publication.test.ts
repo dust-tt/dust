@@ -3,35 +3,20 @@ import {
   publishFrameFromGCS,
 } from "@app/lib/api/frames/publication";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FileModel } from "@app/lib/resources/storage/models/files";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { getFrameBasePath } from "@app/types/api/frame_storage";
 import { frameV2ContentType } from "@app/types/files";
 import assert from "assert";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@app/lib/lock", async (importActual) => {
-  const actual = await importActual<typeof import("@app/lib/lock")>();
-  return {
-    ...actual,
-    executeWithLock: async <T>(_name: string, callback: () => Promise<T>) =>
-      callback(),
-  };
-});
+import { beforeEach, describe, expect, it } from "vitest";
 
 const MANIFEST = {
   version: 1,
   name: "Task List",
   description: "Track tasks.",
-  functions: [
-    {
-      name: "add-task",
-      path: "functions/add-task.ts",
-      description: "Add a task.",
-      executionMode: "fast",
-    },
-  ],
-  databases: [{ name: "tasks", path: "databases/tasks.db.ts" }],
 };
 
 beforeEach(() => {
@@ -42,8 +27,6 @@ function seedSource(sourcePrefix: string): void {
   const objects = {
     "manifest.json": JSON.stringify(MANIFEST),
     "index.tsx": "export default function App() { return <div />; }",
-    "functions/add-task.ts": "export default async function addTask() {}",
-    "databases/tasks.db.ts": "export const tasks = {};",
   };
 
   for (const [relativePath, content] of Object.entries(objects)) {
@@ -51,16 +34,22 @@ function seedSource(sourcePrefix: string): void {
   }
   fileStorageMock.setFilesByPrefix((prefix) =>
     prefix === sourcePrefix
-      ? Object.keys(objects).map((relativePath, index) => ({
+      ? Object.entries(objects).map(([relativePath, content], index) => ({
           name: `${sourcePrefix}${relativePath}`,
-          metadata: { generation: String(index + 1) },
+          metadata: {
+            generation: String(index + 1),
+            size: String(Buffer.byteLength(content)),
+          },
         }))
       : null
   );
 }
 
-async function createFrame() {
+async function createFrame({ featureEnabled = true } = {}) {
   const { authenticator } = await createResourceTest({});
+  if (featureEnabled) {
+    await FeatureFlagFactory.basic(authenticator, "frames_v2");
+  }
   const frame = await FileFactory.create(authenticator, null, {
     contentType: frameV2ContentType,
     fileName: "manifest.json",
@@ -73,11 +62,28 @@ async function createFrame() {
 }
 
 describe("Frames v2 publication storage", () => {
+  it("rejects publication when Frames v2 is disabled", async () => {
+    const { auth, frame } = await createFrame({ featureEnabled: false });
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+
+    const result = await publishFrameFromGCS(auth, {
+      frame,
+      sourcePrefix: `w/${workspaceId}/pods/pod_123/files/TaskList/`,
+    });
+
+    assert(result.isErr());
+    expect(result.error.code).toBe("feature_disabled");
+  });
+
   it("snapshots a source folder, activates it, and loads it by Frame identity", async () => {
     const { auth, frame } = await createFrame();
     const workspaceId = auth.getNonNullableWorkspace().sId;
     const sourcePrefix = `w/${workspaceId}/pods/pod_123/files/TaskList/`;
     seedSource(sourcePrefix);
+    await FileModel.update(
+      { useCaseMetadata: { hideFromUser: true } },
+      { where: { id: frame.id } }
+    );
 
     const publishResult = await publishFrameFromGCS(auth, {
       frame,
@@ -103,12 +109,23 @@ describe("Frames v2 publication storage", () => {
 
     const reloadedFrame = await FileResource.fetchById(auth, frame.sId);
     assert(reloadedFrame);
+    expect(reloadedFrame.useCaseMetadata?.hideFromUser).toBe(true);
     const loadResult = await loadActiveFramePublication(auth, reloadedFrame);
     assert(loadResult.isOk());
     expect(loadResult.value.publicationId).toBe(
       publishResult.value.publicationId
     );
     expect(loadResult.value.manifest.uiEntryPoint).toBe("index.tsx");
+
+    const deletedPrefixes: string[] = [];
+    fileStorageMock.setOnDeleteByPrefix((prefix) => {
+      deletedPrefixes.push(prefix);
+    });
+    const deleteResult = await reloadedFrame.delete(auth);
+    assert(deleteResult.isOk());
+    expect(deletedPrefixes).toEqual([
+      getFrameBasePath({ workspaceId, frameId: frame.sId }),
+    ]);
   });
 
   it("keeps the previous publication active when a new snapshot fails", async () => {

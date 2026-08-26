@@ -4,6 +4,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow fresh Pods and standalone conversations to use the database-backed filesystem",
     stage: "dust_only",
   },
+  frames_v2: {
+    description: "Enable Frames v2 publication and runtime loading",
+    stage: "dust_only",
+  },
   allow_sso: {
     description:
       "Allow this workspace to configure SSO, independently of the plan's isSSOAllowed flag. Enable on demand for Business plan workspaces.",
