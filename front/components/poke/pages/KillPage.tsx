@@ -1,10 +1,10 @@
-import { ModelKillSwitchesDialog } from "@app/components/poke/ModelKillSwitchesDialog";
+import { DegradedModelsDialog } from "@app/components/poke/DegradedModelsDialog";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { KillSwitchType } from "@app/lib/poke/types";
 import {
-  killedModelIdsFromKillSwitches,
+  degradedModelIdsFromKillSwitches,
   TOGGLABLE_KILL_SWITCH_TYPES,
 } from "@app/lib/poke/types";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
@@ -101,7 +101,7 @@ export function KillPage() {
     useState<KillSwitchType | null>(null);
   const sendNotification = useSendNotification();
   const enabledKillSwitches = new Set(killSwitches);
-  const killedModelIds = killedModelIdsFromKillSwitches(killSwitches);
+  const degradedModelIds = degradedModelIdsFromKillSwitches(killSwitches);
 
   const { images, isImagesLoading } = usePokeSandboxKillImages();
   const requestSandboxKill = useRequestSandboxKill();
@@ -266,25 +266,27 @@ export function KillPage() {
               <div className="space-y-1">
                 <h3 className="flex items-center gap-3 text-sm font-medium text-foreground">
                   <Cube01 className="h-4 w-4 text-foreground" />
-                  <span>Models</span>
+                  <span>Degraded Models</span>
                 </h3>
 
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Take individual models out of rotation, one switch per model.
-                  {killedModelIds.length > 0 &&
-                    ` Currently killed: ${killedModelIds.join(", ")}.`}
+                  Take individual models out of the auto streams, one switch per
+                  model.
+                  {degradedModelIds.length > 0 &&
+                    ` Currently degraded: ${degradedModelIds.join(", ")}.`}
                 </p>
 
                 <p className="text-xs leading-5 text-muted-foreground">
-                  Nothing routes onto a killed model any more; anything pinned
-                  to one errors on the answer instead. Takes up to 60s to apply
-                  on each pod, as model resolution reads the switches from an
+                  The Basic, Standard and Premium streams skip a degraded model
+                  and pick the next candidate in their pool; agents and users
+                  pinned to it keep running on it. Takes up to 60s to apply on
+                  each pod, as stream resolution reads the switches from an
                   in-process cache.
                 </p>
               </div>
 
-              <ModelKillSwitchesDialog
-                killedModelIds={killedModelIds}
+              <DegradedModelsDialog
+                degradedModelIds={degradedModelIds}
                 onSaved={async () => {
                   await mutateKillSwitches();
                 }}

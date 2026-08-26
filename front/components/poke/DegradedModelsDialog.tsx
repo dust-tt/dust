@@ -1,6 +1,6 @@
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import { KILLABLE_MODEL_CONFIGS } from "@app/lib/poke/killable_models";
-import { useUpdatePokeKilledModels } from "@app/poke/swr/kill";
+import { DEGRADABLE_MODEL_CONFIGS } from "@app/lib/poke/degradable_models";
+import { useUpdatePokeDegradedModels } from "@app/poke/swr/kill";
 import {
   getProviderDisplayName,
   MODEL_PROVIDER_IDS,
@@ -31,18 +31,18 @@ interface ProviderGroup {
   models: ModelConfigurationType[];
 }
 
-// Killable models grouped by provider, in the canonical provider order. Built
+// Degradable models grouped by provider, in the canonical provider order. Built
 // once: the catalog is a build-time constant.
 const PROVIDER_GROUPS: ProviderGroup[] = MODEL_PROVIDER_IDS.map(
   (providerId) => ({
     providerId,
     displayName: getProviderDisplayName(providerId),
-    models: KILLABLE_MODEL_CONFIGS.filter((m) => m.providerId === providerId),
+    models: DEGRADABLE_MODEL_CONFIGS.filter((m) => m.providerId === providerId),
   })
 ).filter((group) => group.models.length > 0);
 
-interface KilledModelsFormValues {
-  killedModelIds: string[];
+interface DegradedModelsFormValues {
+  degradedModelIds: string[];
 }
 
 function sameModelIds(a: string[], b: string[]): boolean {
@@ -56,20 +56,20 @@ function sameModelIds(a: string[], b: string[]): boolean {
 
 function displayNameForModelId(modelId: string): string {
   return (
-    KILLABLE_MODEL_CONFIGS.find((m) => m.modelId === modelId)?.displayName ??
+    DEGRADABLE_MODEL_CONFIGS.find((m) => m.modelId === modelId)?.displayName ??
     modelId
   );
 }
 
-interface ModelKillSwitchesDialogProps {
-  killedModelIds: string[];
+interface DegradedModelsDialogProps {
+  degradedModelIds: string[];
   onSaved: () => Promise<void>;
 }
 
-export function ModelKillSwitchesDialog({
-  killedModelIds,
+export function DegradedModelsDialog({
+  degradedModelIds,
   onSaved,
-}: ModelKillSwitchesDialogProps) {
+}: DegradedModelsDialogProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -79,30 +79,33 @@ export function ModelKillSwitchesDialog({
           variant="outline"
           size="sm"
           label={
-            killedModelIds.length === 0
+            degradedModelIds.length === 0
               ? "Manage"
-              : `${killedModelIds.length} killed`
+              : `${degradedModelIds.length} degraded`
           }
         />
       </DialogTrigger>
       <DialogContent size="xl" height="xl">
         <DialogHeader>
-          <DialogTitle>Model kill switches</DialogTitle>
+          <DialogTitle>Degraded models</DialogTitle>
           <DialogDescription>
-            Take a model out of rotation for every workspace in this region.
-            Nothing routes onto it any more: the auto streams pick the next
-            candidate in their pool, and it shows as unavailable in the picker.
-            An agent or a user already pinned to it gets their message posted,
-            then a "model unavailable" error on the answer.
+            Take a model out of the auto streams for every workspace in this
+            region: Basic, Standard and Premium skip it and pick the next
+            candidate in their pool instead.
           </DialogDescription>
           <DialogDescription>
-            Kill switches are per-region: to take a model out everywhere, do it
+            Nothing else changes. An agent configured on the model, and a user
+            who picks it from the model picker, keep running on it -- a
+            definitive pick is never silently swapped for another model.
+          </DialogDescription>
+          <DialogDescription>
+            Per-region: to take a model out of the streams everywhere, do it
             again from the other region.
           </DialogDescription>
         </DialogHeader>
         {open && (
-          <ModelKillSwitchesEditor
-            killedModelIds={killedModelIds}
+          <DegradedModelsEditor
+            degradedModelIds={degradedModelIds}
             onCancel={() => setOpen(false)}
             onSaved={async () => {
               await onSaved();
@@ -115,24 +118,24 @@ export function ModelKillSwitchesDialog({
   );
 }
 
-interface ModelKillSwitchesEditorProps {
-  killedModelIds: string[];
+interface DegradedModelsEditorProps {
+  degradedModelIds: string[];
   onCancel: () => void;
   onSaved: () => Promise<void>;
 }
 
-function ModelKillSwitchesEditor({
-  killedModelIds,
+function DegradedModelsEditor({
+  degradedModelIds,
   onCancel,
   onSaved,
-}: ModelKillSwitchesEditorProps) {
-  const updateKilledModels = useUpdatePokeKilledModels();
+}: DegradedModelsEditorProps) {
+  const updateDegradedModels = useUpdatePokeDegradedModels();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<KilledModelsFormValues>({
-    defaultValues: { killedModelIds },
+  const form = useForm<DegradedModelsFormValues>({
+    defaultValues: { degradedModelIds },
   });
-  const selected = form.watch("killedModelIds");
+  const selected = form.watch("degradedModelIds");
   const selectedSet = new Set(selected);
 
   // The switches are refetched while the dialog is open, so re-seed the form
@@ -140,49 +143,53 @@ function ModelKillSwitchesEditor({
   // pending edits, which must not be thrown away.
   useEffect(() => {
     if (!form.formState.isDirty) {
-      form.reset({ killedModelIds });
+      form.reset({ degradedModelIds });
     }
-  }, [form, killedModelIds]);
+  }, [form, degradedModelIds]);
 
   const setSelected = (modelIds: string[]) => {
-    form.setValue("killedModelIds", modelIds, { shouldDirty: true });
+    form.setValue("degradedModelIds", modelIds, { shouldDirty: true });
   };
 
-  const toggleModel = (modelId: string, killed: boolean) => {
+  const toggleModel = (modelId: string, degraded: boolean) => {
     setSelected(
-      killed ? [...selected, modelId] : selected.filter((id) => id !== modelId)
+      degraded
+        ? [...selected, modelId]
+        : selected.filter((id) => id !== modelId)
     );
   };
 
-  const toggleProvider = (group: ProviderGroup, killed: boolean) => {
+  const toggleProvider = (group: ProviderGroup, degraded: boolean) => {
     const groupModelIds = new Set<string>(group.models.map((m) => m.modelId));
     const withoutGroup = selected.filter((id) => !groupModelIds.has(id));
 
-    setSelected(killed ? [...withoutGroup, ...groupModelIds] : withoutGroup);
+    setSelected(degraded ? [...withoutGroup, ...groupModelIds] : withoutGroup);
   };
 
-  const hasChanges = !sameModelIds(selected, killedModelIds);
+  const hasChanges = !sameModelIds(selected, degradedModelIds);
 
-  const onSubmit = form.handleSubmit(async ({ killedModelIds: nextIds }) => {
-    const newlyKilled = nextIds.filter((id) => !killedModelIds.includes(id));
-    const revived = killedModelIds.filter((id) => !nextIds.includes(id));
+  const onSubmit = form.handleSubmit(async ({ degradedModelIds: nextIds }) => {
+    const newlyDegraded = nextIds.filter(
+      (id) => !degradedModelIds.includes(id)
+    );
+    const restored = degradedModelIds.filter((id) => !nextIds.includes(id));
 
     const summary = [
-      newlyKilled.length > 0 &&
-        `Kill: ${newlyKilled.map(displayNameForModelId).join(", ")}`,
-      revived.length > 0 &&
-        `Revive: ${revived.map(displayNameForModelId).join(", ")}`,
+      newlyDegraded.length > 0 &&
+        `Degrade: ${newlyDegraded.map(displayNameForModelId).join(", ")}`,
+      restored.length > 0 &&
+        `Restore: ${restored.map(displayNameForModelId).join(", ")}`,
     ]
       .filter((line) => typeof line === "string")
       .join("\n");
 
-    if (!window.confirm(`Apply these model kill switches?\n\n${summary}`)) {
+    if (!window.confirm(`Apply these degraded models?\n\n${summary}`)) {
       return;
     }
 
     setIsSubmitting(true);
     try {
-      if (await updateKilledModels(nextIds)) {
+      if (await updateDegradedModels(nextIds)) {
         await onSaved();
       }
     } finally {
@@ -195,10 +202,10 @@ function ModelKillSwitchesEditor({
       <DialogContainer>
         <div className="space-y-6">
           {PROVIDER_GROUPS.map((group) => {
-            const killedInGroup = group.models.filter((m) =>
+            const degradedInGroup = group.models.filter((m) =>
               selectedSet.has(m.modelId)
             ).length;
-            const allKilled = killedInGroup === group.models.length;
+            const allDegraded = degradedInGroup === group.models.length;
 
             return (
               <div key={group.providerId} className="space-y-3">
@@ -212,9 +219,15 @@ function ModelKillSwitchesEditor({
                     <Checkbox
                       id={`provider-${group.providerId}`}
                       checked={
-                        allKilled ? true : killedInGroup > 0 ? "partial" : false
+                        allDegraded
+                          ? true
+                          : degradedInGroup > 0
+                            ? "partial"
+                            : false
                       }
-                      onCheckedChange={() => toggleProvider(group, !allKilled)}
+                      onCheckedChange={() =>
+                        toggleProvider(group, !allDegraded)
+                      }
                     />
                     <Label
                       htmlFor={`provider-${group.providerId}`}
@@ -224,7 +237,7 @@ function ModelKillSwitchesEditor({
                     </Label>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {killedInGroup} / {group.models.length} killed
+                    {degradedInGroup} / {group.models.length} degraded
                   </span>
                 </div>
 

@@ -21,22 +21,22 @@ export function usePokeKillSwitches() {
   };
 }
 
-export function useUpdatePokeKilledModels() {
+export function useUpdatePokeDegradedModels() {
   const sendNotification = useSendNotification();
 
   return useCallback(
-    async (killedModelIds: string[]): Promise<boolean> => {
+    async (degradedModelIds: string[]): Promise<boolean> => {
       try {
         const res = await clientFetch("/api/poke/kill/models", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ killedModelIds }),
+          body: JSON.stringify({ degradedModelIds }),
         });
 
         if (!res.ok) {
           const errorData = await res.json();
           sendNotification({
-            title: "Error updating model kill switches",
+            title: "Error updating degraded models",
             description: errorData.error?.message ?? "Unknown error",
             type: "error",
           });
@@ -44,17 +44,17 @@ export function useUpdatePokeKilledModels() {
         }
 
         sendNotification({
-          title: "Model kill switches updated",
+          title: "Degraded models updated",
           description:
-            killedModelIds.length === 0
-              ? "No model is killed."
-              : `${killedModelIds.length} model(s) killed.`,
+            degradedModelIds.length === 0
+              ? "No model is degraded."
+              : `${degradedModelIds.length} model(s) degraded.`,
           type: "success",
         });
         return true;
       } catch (error) {
         sendNotification({
-          title: "Error updating model kill switches",
+          title: "Error updating degraded models",
           description: normalizeError(error).message,
           type: "error",
         });
