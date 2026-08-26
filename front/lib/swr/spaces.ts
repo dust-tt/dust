@@ -38,10 +38,10 @@ import type { SearchWarningCode } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type {
+  EnrichedSpaceType,
   PodType,
   SpaceKind,
   SpaceType,
-  SpaceTypeWithGroupIds,
 } from "@app/types/space";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import { useMemo } from "react";
@@ -78,7 +78,7 @@ export function useSpaces({
   const spaces = useMemo(() => {
     return (
       data?.spaces?.filter((s) => kinds === "all" || kinds.includes(s.kind)) ??
-      emptyArray<SpaceTypeWithGroupIds | PodType>()
+      emptyArray<EnrichedSpaceType | PodType>()
     );
     // Serialize the kinds array to a string to avoid unnecessary re-renders
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,7 +119,7 @@ export function useSpaceProjectsLookup({
 
   const spaces = useMemo(() => {
     if (!data?.spaces) {
-      return emptyArray<SpaceType>();
+      return emptyArray<PodType>();
     }
     return data.spaces;
   }, [data?.spaces]);

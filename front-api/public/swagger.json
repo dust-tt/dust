@@ -9847,6 +9847,9 @@
                                 "type": "string"
                               }
                             },
+                            "isRestricted": {
+                              "type": "boolean"
+                            },
                             "categories": {
                               "type": "object",
                               "additionalProperties": {
@@ -12270,7 +12273,6 @@
           "sId",
           "name",
           "kind",
-          "isRestricted",
           "managementMode"
         ],
         "properties": {
@@ -12289,9 +12291,6 @@
               "regular",
               "project"
             ]
-          },
-          "isRestricted": {
-            "type": "boolean"
           },
           "managementMode": {
             "type": "string",
@@ -12323,6 +12322,9 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "isRestricted": {
+                "type": "boolean"
               },
               "description": {
                 "type": "string",
@@ -14850,6 +14852,10 @@
               "type": "string"
             },
             "description": "List of group IDs that have access to the space"
+          },
+          "isRestricted": {
+            "type": "boolean",
+            "description": "Whether the space is restricted to specific groups"
           }
         }
       },

@@ -10,7 +10,7 @@ import {
   useSpaceProjectsLookup,
   useSpacesAccessCheck,
 } from "@app/lib/swr/spaces";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType, SpaceType } from "@app/types/space";
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo } from "react";
 import { useWatch } from "react-hook-form";
@@ -23,16 +23,16 @@ export interface EditorWithoutSpaceAccess {
 
 interface SkillSpaceRestrictionsContextType {
   actionsBySpaceId: ReturnType<typeof getSpaceIdToActionsMap>;
-  allSpaces: SpaceType[];
+  allSpaces: EnrichedSpaceType[];
   areSpaceRequirementsReady: boolean;
   editorsWithoutSpaceAccess: EditorWithoutSpaceAccess[];
-  globalSpace: SpaceType | undefined;
+  globalSpace: EnrichedSpaceType | undefined;
   initialAdditionalSpaces: string[];
   initialRequestedSpaceIds?: string[];
   knowledgeBySpaceId: Record<string, AttachedKnowledgeFormData[]>;
   missingSpaceIds: string[];
-  nonGlobalSpacesUsedBySkill: SpaceType[];
-  nonGlobalSpacesWithRestrictions: SpaceType[];
+  nonGlobalSpacesUsedBySkill: EnrichedSpaceType[];
+  nonGlobalSpacesWithRestrictions: EnrichedSpaceType[];
   skillsBySpaceId: Record<string, ReferencedSkillFormData[]>;
   spaceIdsUsedBySkill: Set<string>;
 }

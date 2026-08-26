@@ -15,9 +15,9 @@ import type {
 import { PostSpaceRequestBodySchema } from "@app/types/api/spaces";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
+  type EnrichedSpaceType,
   type PodType,
   SPACE_KINDS,
-  type SpaceTypeWithGroupIds,
 } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -185,13 +185,8 @@ app.get(
     const nonProjectSpaces = spaces.filter((s) => s.kind !== "project");
     const projectSpaces = spaces.filter((s) => s.kind === "project");
 
-    const groupIdsBySpaceModelId =
-      await SpaceResource.listGroupIdsBySpaceModelId(auth, {
-        spaces: nonProjectSpaces,
-      });
-    const nonProjectsJson: SpaceTypeWithGroupIds[] = nonProjectSpaces.map((s) =>
-      s.toJSONWithGroupIds(groupIdsBySpaceModelId.get(s.id) ?? [])
-    );
+    const nonProjectsJson: EnrichedSpaceType[] =
+      await SpaceResource.batchToJSONEnriched(auth, nonProjectSpaces);
     const projectsJson: PodType[] =
       projectSpaces.length > 0
         ? await enrichProjectsWithMetadata(auth, projectSpaces)

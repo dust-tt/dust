@@ -77,13 +77,19 @@ export async function listSelectableSpaces(
     selectedSpaces.map((selectedSpace) => selectedSpace.sId)
   );
 
-  const selectableSpaces = spaces
+  const selectableSpaceResources = spaces
     .filter((space) => space.isRegular())
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((space) => ({
-      ...space.toJSON(),
-      selected: selectedSpaceIds.has(space.sId),
-    }));
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const enriched = await SpaceResource.batchToJSONEnriched(
+    auth,
+    selectableSpaceResources
+  );
+
+  const selectableSpaces = selectableSpaceResources.map((space, i) => ({
+    ...enriched[i],
+    selected: selectedSpaceIds.has(space.sId),
+  }));
 
   return new Ok(selectableSpaces);
 }
@@ -200,9 +206,14 @@ export async function addSelectedConversationSpaces(
         }
       );
 
+    const enriched = await SpaceResource.batchToJSONEnriched(
+      auth,
+      selectedSpaces
+    );
+
     return new Ok({
-      selectedSpaces: selectedSpaces.map((space) => ({
-        ...space.toJSON(),
+      selectedSpaces: selectedSpaces.map((_space, i) => ({
+        ...enriched[i],
         selected: true,
       })),
       effectiveAcl: {
@@ -306,9 +317,14 @@ export async function addSelectedConversationSpaces(
         }
       );
 
+    const enriched = await SpaceResource.batchToJSONEnriched(
+      auth,
+      allSelectedSpaces
+    );
+
     return new Ok({
-      selectedSpaces: allSelectedSpaces.map((space) => ({
-        ...space.toJSON(),
+      selectedSpaces: allSelectedSpaces.map((_space, i) => ({
+        ...enriched[i],
         selected: true,
       })),
       effectiveAcl: {

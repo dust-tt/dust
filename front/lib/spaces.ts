@@ -1,7 +1,7 @@
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils_ui";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType } from "@app/types/space";
 import {
   Building04,
   CloudArrowLeftRight,
@@ -26,7 +26,7 @@ export {
 } from "@app/lib/spaces_utils";
 
 export function getSpaceIcon(
-  space: SpaceType
+  space: EnrichedSpaceType
 ): (props: React.SVGProps<SVGSVGElement>) => React.ReactElement {
   if (space.kind === "project") {
     return space.isRestricted ? CubeOutline : Cube01;

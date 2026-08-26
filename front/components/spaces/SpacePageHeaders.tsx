@@ -2,7 +2,7 @@ import { SpaceBreadCrumbs } from "@app/components/spaces/SpaceBreadcrumb";
 import { LinkWrapper } from "@app/lib/platform";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type { DataSourceViewType } from "@app/types/data_source_view";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import React from "react";
 
@@ -14,7 +14,7 @@ interface SpacePageToolsProps {
   dataSourceView: DataSourceViewType | undefined;
   owner: LightWorkspaceType;
   parentId: string | undefined;
-  space: SpaceType;
+  space: EnrichedSpaceType;
 }
 
 export function SpacePageHeader({

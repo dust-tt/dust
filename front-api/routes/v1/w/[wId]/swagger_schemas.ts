@@ -504,6 +504,9 @@
  *           items:
  *             type: string
  *           description: List of group IDs that have access to the space
+ *         isRestricted:
+ *           type: boolean
+ *           description: Whether the space is restricted to specific groups
  *     Datasource:
  *       type: object
  *       properties:

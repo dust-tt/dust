@@ -47,11 +47,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type {
-  SpaceKind,
-  SpaceType,
-  SpaceTypeWithGroupIds,
-} from "@app/types/space";
+import type { EnrichedSpaceType, SpaceKind, SpaceType } from "@app/types/space";
 import assert from "assert";
 import type {
   Attributes,
@@ -127,6 +123,19 @@ const POD_MEMBERSHIP_GRANT_TYPES: ReadonlySet<GrantType> = new Set(
 
 // The "no memberships" fallback used by batch membership resolution.
 const EMPTY_GROUP_MODEL_IDS: ReadonlySet<ModelId> = new Set();
+
+// A space's grant-derived serialization fields, loaded on demand from `group_permissions` (see
+// `listSpaceEnrichmentBySpaceModelId`) and passed to `toJSONEnriched`.
+type SpaceGrantEnrichment = {
+  groupIds: string[];
+  isRestricted: boolean;
+};
+
+// The enrichment for a space with no grants loaded (used as the fallback when serializing).
+const EMPTY_SPACE_GRANT_ENRICHMENT: SpaceGrantEnrichment = {
+  groupIds: [],
+  isRestricted: false,
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SpaceResource extends BaseResource<SpaceModel> {
@@ -2314,6 +2323,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return this.isRegular() && this.isOpen();
   }
 
+  // Whether the space is restricted (its data is visible only to its members). Only regular and
+  // project spaces can be restricted; the unique kinds (`global`/`conversations` are workspace-wide,
+  // `system` is admin-only and not a membership space) are never "restricted" in this sense. Note
+  // this is NOT `!isOpen()`: a `system` space is not open but is not restricted either.
+  isRestricted() {
+    return this.isRegularAndRestricted() || this.isProjectAndRestricted();
+  }
+
   isOpen() {
     // A space is open when it has a reader (viewer) grant: the workspace global group is attached as
     // a viewer on open spaces (restricted spaces have no reader grant). See
@@ -2526,9 +2543,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   toJSON(): SpaceType {
     return {
       createdAt: this.createdAt.getTime(),
-      isRestricted:
-        this.isRegularAndRestricted() || this.isProjectAndRestricted(),
-
       kind: this.kind,
       managementMode: this.managementMode,
       name: this.name,
@@ -2537,32 +2551,55 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     };
   }
 
-  // Serialize with the sIds of the groups holding a grant on this space. `groupIds` is not carried
-  // on `toJSON` (it would force the eager `group_permissions` include on every space load); the
-  // endpoints that expose it — the public API for backward compatibility, and the space-management
-  // UI — load it on demand via `listGroupIdsBySpaceModelId` and pass it here.
-  toJSONWithGroupIds(groupIds: string[]): SpaceTypeWithGroupIds {
+  // Serialize with the space's grant-derived fields (`groupIds` and `isRestricted`). Private: these
+  // are not carried on `toJSON` (that would force the eager `group_permissions` include on every
+  // space load), so callers go through the batched `batchToJSONEnriched` rather than pairing this
+  // with the loader themselves.
+  private toJSONEnriched({
+    groupIds,
+    isRestricted,
+  }: SpaceGrantEnrichment): EnrichedSpaceType {
     return {
       ...this.toJSON(),
       groupIds,
+      isRestricted,
     };
   }
 
-  // The sIds of the groups holding a grant on each of `spaces`, keyed by space model id. One query
-  // against `group_permissions` (the source of truth), so serializers can include `groupIds`
-  // without relying on the eagerly-loaded `this.groups`. Mirrors `toJSON`'s former output: every
-  // grant group (members, editors, provisioned, and the open-space global reader).
-  static async listGroupIdsBySpaceModelId(
+  // Serialize each of `spaces` to `EnrichedSpaceType` (base fields + grant-derived `groupIds` and
+  // `isRestricted`), loading the grants in a single `group_permissions` query. This keeps the whole
+  // enrichment flow inside the resource: the public API, the space-management UI and poke go through
+  // here instead of wiring the loader + per-space fallback at each call site. The result preserves
+  // the order of `spaces`.
+  static async batchToJSONEnriched(
     auth: Authenticator,
-    { spaces }: { spaces: SpaceResource[] }
-  ): Promise<Map<ModelId, string[]>> {
-    const groupIdsBySpaceModelId = new Map<ModelId, string[]>();
+    spaces: SpaceResource[]
+  ): Promise<EnrichedSpaceType[]> {
+    const enrichmentBySpaceModelId =
+      await this.listSpaceEnrichmentBySpaceModelId(auth, spaces);
+    return spaces.map((space) =>
+      space.toJSONEnriched(
+        enrichmentBySpaceModelId.get(space.id) ?? EMPTY_SPACE_GRANT_ENRICHMENT
+      )
+    );
+  }
+
+  // The grant-derived enrichment (`groupIds` + `isRestricted`) for each of `spaces`, keyed by space
+  // model id. One query against `group_permissions` (the source of truth), so `batchToJSONEnriched`
+  // can serialize without relying on the eagerly-loaded `this.groups`. `groupIds` mirrors `toJSON`'s
+  // former output (every grant group: members, editors, provisioned, and the open-space global
+  // reader); `isRestricted` mirrors `isRestricted()` (grant-based, without `this.groups`).
+  private static async listSpaceEnrichmentBySpaceModelId(
+    auth: Authenticator,
+    spaces: SpaceResource[]
+  ): Promise<Map<ModelId, SpaceGrantEnrichment>> {
+    const enrichmentBySpaceModelId = new Map<ModelId, SpaceGrantEnrichment>();
     if (spaces.length === 0) {
-      return groupIdsBySpaceModelId;
+      return enrichmentBySpaceModelId;
     }
 
     const grants = await GroupPermissionModel.findAll({
-      attributes: ["resourceId", "workspaceId", "groupId"],
+      attributes: ["resourceId", "workspaceId", "groupId", "grantType"],
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         resourceType: "space",
@@ -2570,6 +2607,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       },
     });
 
+    const groupIdsBySpaceModelId = new Map<ModelId, string[]>();
+    const hasReaderGrantBySpaceModelId = new Map<ModelId, boolean>();
     for (const grant of grants) {
       const groupId = GroupResource.modelIdToSId({
         id: grant.groupId,
@@ -2581,8 +2620,22 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       } else {
         groupIdsBySpaceModelId.set(grant.resourceId, [groupId]);
       }
+      if (grant.grantType === "reader") {
+        hasReaderGrantBySpaceModelId.set(grant.resourceId, true);
+      }
     }
 
-    return groupIdsBySpaceModelId;
+    for (const space of spaces) {
+      // A reader (viewer) grant means the workspace global group is attached: the space is open.
+      // Only regular and project spaces can be restricted (the unique kinds never are), matching
+      // `isRestricted()`.
+      const isOpen = hasReaderGrantBySpaceModelId.get(space.id) ?? false;
+      enrichmentBySpaceModelId.set(space.id, {
+        groupIds: groupIdsBySpaceModelId.get(space.id) ?? [],
+        isRestricted: (space.isRegular() || space.isProject()) && !isOpen,
+      });
+    }
+
+    return enrichmentBySpaceModelId;
   }
 }

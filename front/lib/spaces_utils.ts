@@ -1,7 +1,7 @@
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { PlanType } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import groupBy from "lodash/groupBy";
 
@@ -20,7 +20,7 @@ export const dustAppsListUrl = (
   return `/w/${owner.sId}/spaces/${space.sId}/categories/apps`;
 };
 
-export const groupSpacesForDisplay = (spaces: SpaceType[]) => {
+export const groupSpacesForDisplay = (spaces: EnrichedSpaceType[]) => {
   // Conversations space should never be displayed
   const spacesWithoutConversations = spaces.filter(
     (space) => space.kind !== "conversations"

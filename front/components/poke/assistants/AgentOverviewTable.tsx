@@ -6,7 +6,7 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ContentMessage, InfoCircle } from "@dust-tt/sparkle";
 
@@ -14,7 +14,7 @@ interface AgentOverviewTableProps {
   agentConfiguration: AgentConfigurationType;
   authors: UserType[];
   owner: LightWorkspaceType;
-  spacesById: Map<string, SpaceType>;
+  spacesById: Map<string, EnrichedSpaceType>;
 }
 
 export function AgentOverviewTable({
@@ -30,7 +30,8 @@ export function AgentOverviewTable({
   const restrictedSpaces = agentConfiguration.requestedSpaceIds
     .map((spaceId) => spacesById.get(spaceId))
     .filter(
-      (space): space is SpaceType => space !== undefined && space.isRestricted
+      (space): space is EnrichedSpaceType =>
+        space !== undefined && space.isRestricted
     );
 
   return (
