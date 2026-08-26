@@ -220,10 +220,8 @@ export type AgentMessageConsumptionAnalyticsToolGrossCreditMicro =
     system: 0;
     // The tool model-input credit split is not persisted yet.
     input: null;
-    // The tool result footprint credit split is not persisted yet.
-    result_footprint: null;
-    // The emitted tool call credit split is not persisted yet.
-    output: null;
+    result_footprint: number | null;
+    output: number | null;
     // Tool documents do not carry reasoning credit.
     reasoning: 0;
     // Direct charge for executing the tool.
@@ -236,6 +234,8 @@ interface AgentMessageConsumptionAnalyticsBaseData
   extends ElasticsearchBaseDocument {
   agent: AgentMessageConsumptionAnalyticsAgent;
   agent_message_id: string;
+  parent_agent_message_id?: string | null;
+  root_agent_message_id?: string;
   api_key_name: string | null;
   // Version of the attribution logic that produced this document.
   attribution_version: number;

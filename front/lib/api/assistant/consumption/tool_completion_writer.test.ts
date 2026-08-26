@@ -95,7 +95,8 @@ async function listConsumptionItems(
     });
 
   return items.filter(
-    (item) => item.attributionVersion === INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION
+    (item) =>
+      item.attributionVersion === INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION
   );
 }
 
@@ -111,6 +112,13 @@ function sumReconciled(
     );
 }
 
+async function hasConsumptionEvent(
+  auth: Authenticator,
+  idempotencyKey: string
+): Promise<boolean> {
+  return hasConsumptionEventForIdempotencyKey(auth, { idempotencyKey });
+}
+
 describe("recordToolCompletionConsumption", () => {
   beforeEach(() => {
     vi.mocked(getLlmCredentials).mockResolvedValue({} as never);
@@ -119,7 +127,7 @@ describe("recordToolCompletionConsumption", () => {
     );
   });
 
-  it("adds the charge and the measured result footprint to the tool row", async () => {
+  it("adds a direct posting with the charge and measured result footprint", async () => {
     const { auth, action, context, run } = await setupToolCall();
     await action.markAsSucceeded({ executionDurationMs: 10 });
     const settledAction = await AgentMCPActionResource.fetchByModelIdWithAuth(
@@ -133,7 +141,7 @@ describe("recordToolCompletionConsumption", () => {
     });
 
     const items = await listConsumptionItems(auth, context.agentMessageModelId);
-    const toolRow = items.find((item) => item.itemType === "tool");
+    const toolRow = items.find((item) => item.itemType === "tool_direct");
     expect(toolRow).toMatchObject({
       completedAt: expect.any(Date),
       directCreditAmountMicro: EXTERNAL_TOOL_CHARGE_MICRO,
@@ -149,13 +157,11 @@ describe("recordToolCompletionConsumption", () => {
         EXTERNAL_TOOL_CHARGE_MICRO
     );
     await expect(
-      hasConsumptionEventForIdempotencyKey(auth, {
-        idempotencyKey: `tool-completion:${action.id}:${RUN_KEY_X}`,
-      })
+      hasConsumptionEvent(auth, `tool-completion:${action.id}:${RUN_KEY_X}`)
     ).resolves.toBe(true);
   });
 
-  it("settles a tool row once, however often the writer retries", async () => {
+  it("posts a tool completion once, however often the writer retries", async () => {
     const { auth, action, context } = await setupToolCall();
     await action.markAsSucceeded({ executionDurationMs: 10 });
     const settledAction = await AgentMCPActionResource.fetchByModelIdWithAuth(
@@ -167,29 +173,74 @@ describe("recordToolCompletionConsumption", () => {
       action: settledAction!,
       context,
     });
-    const firstPass = await listConsumptionItems(auth, context.agentMessageModelId);
+    const firstPass = await listConsumptionItems(
+      auth,
+      context.agentMessageModelId
+    );
 
     await recordToolCompletionConsumption(auth, {
       action: settledAction!,
       context,
     });
-    const secondPass = await listConsumptionItems(auth, context.agentMessageModelId);
+    const secondPass = await listConsumptionItems(
+      auth,
+      context.agentMessageModelId
+    );
 
     expect(sumReconciled(secondPass)).toBe(sumReconciled(firstPass));
     await expect(
-      hasConsumptionEventForIdempotencyKey(auth, {
-        idempotencyKey: `tool-completion:${action.id}:${RUN_KEY_X}`,
-      })
+      hasConsumptionEvent(auth, `tool-completion:${action.id}:${RUN_KEY_X}`)
     ).resolves.toBe(true);
   });
 
-  it("returns the call footprint credit when the tool completes in a later execution", async () => {
+  it("posts consumed result credit to the model call that uses it", async () => {
+    const { auth, action, context } = await setupToolCall();
+    await action.markAsSucceeded({ executionDurationMs: 10 });
+    const settledAction = await AgentMCPActionResource.fetchByModelIdWithAuth(
+      auth,
+      action.id
+    );
+    await recordToolCompletionConsumption(auth, {
+      action: settledAction!,
+      context,
+    });
+
+    const { run: consumingRun, runUsageModelId } =
+      await RunFactory.createWithUsage(auth, {
+        inputTokens: INPUT_TOKENS_COUNT,
+        outputTokens: OUTPUT_TOKENS_COUNT,
+      });
+    await recordModelCallConsumption(auth, {
+      context: { ...context, runKey: RUN_KEY_Y },
+      dustRunId: consumingRun.dustRunId,
+      emittedActions: [],
+    });
+
+    const items = await listConsumptionItems(auth, context.agentMessageModelId);
+    const resultRow = items.find((item) => item.itemType === "tool_result");
+    expect(resultRow).toMatchObject({
+      agentMCPActionId: action.id,
+      inputTokensCount: TOKENS_PER_FOOTPRINT,
+      runKey: RUN_KEY_Y,
+      runUsageId: runUsageModelId,
+    });
+    const [usage] = await RunResource.listRunUsagesForRuns(auth, {
+      runs: [consumingRun],
+    });
+    expect(sumReconciled(items, RUN_KEY_Y)).toBe(
+      creditAmountMicroFromCostMicroUsd(usage.costMicroUsd)
+    );
+  });
+
+  it("keeps the call in its execution and posts completion to the restarted execution", async () => {
     const { auth, action, context, run } = await setupToolCall();
     const beforeItems = await listConsumptionItems(
       auth,
       context.agentMessageModelId
     );
-    const emittedToolRow = beforeItems.find((item) => item.itemType === "tool");
+    const emittedToolRow = beforeItems.find(
+      (item) => item.itemType === "tool_call"
+    );
     const callCreditAmountMicro =
       emittedToolRow?.reconciledCreditAmountMicro ?? 0;
     expect(callCreditAmountMicro).toBeGreaterThan(0);
@@ -211,29 +262,22 @@ describe("recordToolCompletionConsumption", () => {
     });
 
     const items = await listConsumptionItems(auth, context.agentMessageModelId);
-    const toolRow = items.find((item) => item.itemType === "tool");
-    const outputRow = items.find((item) => item.itemType === "output");
+    const callRow = items.find((item) => item.itemType === "tool_call");
+    const directRow = items.find((item) => item.itemType === "tool_direct");
 
-    expect(toolRow?.runKey).toBe(RUN_KEY_Y);
-    expect(toolRow?.reconciledCreditAmountMicro).toBe(
+    expect(callRow?.runKey).toBe(RUN_KEY_X);
+    expect(callRow?.reconciledCreditAmountMicro).toBe(callCreditAmountMicro);
+    expect(directRow?.runKey).toBe(RUN_KEY_Y);
+    expect(directRow?.reconciledCreditAmountMicro).toBe(
       EXTERNAL_TOOL_CHARGE_MICRO
     );
     expect(sumReconciled(items, RUN_KEY_X)).toBe(exactCreditAmountMicro);
     expect(sumReconciled(items, RUN_KEY_Y)).toBe(EXTERNAL_TOOL_CHARGE_MICRO);
-    expect(outputRow?.reconciledCreditAmountMicro).toBe(
-      exactCreditAmountMicro -
-        (items.find((item) => item.itemType === "input")
-          ?.reconciledCreditAmountMicro ?? 0)
-    );
     await expect(
-      hasConsumptionEventForIdempotencyKey(auth, {
-        idempotencyKey: `tool-compensation:${action.id}:${RUN_KEY_X}`,
-      })
-    ).resolves.toBe(true);
+      hasConsumptionEvent(auth, `tool-compensation:${action.id}:${RUN_KEY_X}`)
+    ).resolves.toBe(false);
     await expect(
-      hasConsumptionEventForIdempotencyKey(auth, {
-        idempotencyKey: `tool-completion:${action.id}:${RUN_KEY_Y}`,
-      })
+      hasConsumptionEvent(auth, `tool-completion:${action.id}:${RUN_KEY_Y}`)
     ).resolves.toBe(true);
   });
 
@@ -251,11 +295,59 @@ describe("recordToolCompletionConsumption", () => {
     });
 
     const items = await listConsumptionItems(auth, context.agentMessageModelId);
-    const toolRow = items.find((item) => item.itemType === "tool");
+    const toolRow = items.find((item) => item.itemType === "tool_direct");
     expect(toolRow).toMatchObject({
       completedAt: expect.any(Date),
       directCreditAmountMicro: 0,
       inputTokensCount: TOKENS_PER_FOOTPRINT,
+    });
+  });
+
+  it("records a sandbox child as a charge-only posting anchored to its parent call", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      agentMessage,
+      action: parentAction,
+      context,
+    } = await setupToolCall();
+    const { action: childAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.agentMessageId,
+      dustRunId: parentAction.stepContent.dustRunId,
+      output: [{ type: "text", text: "nested tool result" }],
+      parentAction,
+      sandboxChildActionInfo: { parentActionId: parentAction.sId },
+    });
+    await childAction.markAsSucceeded({ executionDurationMs: 10 });
+    const settledChild = await AgentMCPActionResource.fetchByModelIdWithAuth(
+      auth,
+      childAction.id
+    );
+
+    await recordToolCompletionConsumption(auth, {
+      action: settledChild!,
+      context,
+    });
+
+    const items = await listConsumptionItems(auth, context.agentMessageModelId);
+    const parentCall = items.find(
+      (item) =>
+        item.itemType === "tool_call" &&
+        item.agentMCPActionId === parentAction.id
+    );
+    const childRows = items.filter(
+      (item) => item.agentMCPActionId === childAction.id
+    );
+    expect(childRows).toHaveLength(1);
+    expect(childRows[0]).toMatchObject({
+      itemType: "tool_direct",
+      runUsageId: parentCall?.runUsageId,
+      inputTokensCount: 0,
+      outputTokensCount: null,
+      directCreditAmountMicro: EXTERNAL_TOOL_CHARGE_MICRO,
     });
   });
 
@@ -297,10 +389,13 @@ describe("recordToolCompletionConsumption", () => {
         context,
       });
 
-      const row = await AgentMessageConsumptionItemResource.fetchConsumptionToolRow(
-        auth,
-        { agentMCPActionModelId: action.id }
-      );
+      const row =
+        await AgentMessageConsumptionItemResource.fetchConsumptionToolDirectRow(
+          auth,
+          {
+            agentMCPActionModelId: action.id,
+          }
+        );
       chargedAmountsMicro.push(row?.directCreditAmountMicro ?? 0);
     }
 

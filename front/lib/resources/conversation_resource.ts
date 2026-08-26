@@ -191,6 +191,20 @@ const shouldByPassPrivateByDefaultUrlRestriction = (auth: Authenticator) => {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
+export type AgentMessageUsageEventContext = {
+  agentConfigurationId: string | null;
+  agentMessageModelId: ModelId;
+  apiKeyModelId: ModelId | null;
+  authMethod: string | null;
+  completedAt: Date;
+  conversationId: string;
+  isSubAgentMessage: boolean;
+  origin: UserMessageOrigin | null;
+  parentAgentMessageId: string | null;
+  status: AgentMessageStatus;
+  userId: string | null;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ConversationResource
   extends ReadonlyAttributesType<ConversationModel> {}
@@ -890,6 +904,79 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ],
     });
     return message?.agentMessage?.consumptionMode ?? null;
+  }
+
+  static async fetchAgentMessageUsageEventContext(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<AgentMessageUsageEventContext | null> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const messageRow = await MessageModel.findOne({
+      where: { sId: agentMessageId, workspaceId },
+      include: [
+        { model: AgentMessageModel, as: "agentMessage", required: true },
+        { model: ConversationModel, as: "conversation", required: true },
+      ],
+    });
+    const agentMessage = messageRow?.agentMessage;
+    const conversation = messageRow?.conversation;
+    if (!messageRow || !agentMessage || !conversation) {
+      return null;
+    }
+
+    const triggeringMessageRow =
+      messageRow.parentId === null
+        ? null
+        : await MessageModel.findOne({
+            where: { id: messageRow.parentId, workspaceId },
+            include: [
+              {
+                model: UserMessageModel,
+                as: "userMessage",
+                required: false,
+                include: [{ model: UserModel, required: false }],
+              },
+            ],
+          });
+    const userMessage = triggeringMessageRow?.userMessage;
+
+    return {
+      agentConfigurationId: agentMessage.agentConfigurationId ?? null,
+      agentMessageModelId: agentMessage.id,
+      apiKeyModelId: userMessage?.userContextApiKeyId ?? null,
+      authMethod: userMessage?.userContextAuthMethod ?? null,
+      completedAt: agentMessage.updatedAt,
+      conversationId: conversation.sId,
+      isSubAgentMessage: (userMessage?.agenticMessageType ?? null) !== null,
+      origin: userMessage?.userContextOrigin ?? null,
+      parentAgentMessageId: userMessage?.agenticOriginMessageId ?? null,
+      status: agentMessage.status,
+      userId: userMessage?.user?.sId ?? auth.user()?.sId ?? null,
+    };
+  }
+
+  static async fetchAgentConfigurationIdForAgentMessage(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<string | null> {
+    const messageRow = await MessageModel.findOne({
+      attributes: ["id"],
+      where: {
+        sId: agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          attributes: ["agentConfigurationId"],
+          required: true,
+        },
+      ],
+    });
+
+    return messageRow?.agentMessage?.agentConfigurationId ?? null;
   }
 
   /**

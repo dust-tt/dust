@@ -409,19 +409,10 @@ export function buildToolUseEvents({
   });
 }
 
-// ---------------------------------------------------------------------------
-// Aggregated usage event (shadow — not yet ingested)
-// ---------------------------------------------------------------------------
-
 /**
  * Build the single aggregated Metronome llm_usage_v3 event for one agent-message
  * execution: LLM (intelligence) and tool (platform action) costs are computed on
  * our side and summed into one `cost_awu`.
- *
- * This is the target shape that will eventually replace the per-model
- * `buildLlmUsageEvents` + per-tool `buildToolUseEvents` events. For now it is
- * only used to shadow-compute the aggregated amount for a parity log, so its
- * result is NOT ingested.
  *
  * `cost_awu` is the net billed credits: free origins, the per-server tool cap
  * and free tools are already waived in the number, so Metronome would price it
@@ -441,6 +432,7 @@ export function buildUsageEvents({
   agentId,
   subAgentId,
   parentAgentMessageId,
+  rootAgentMessageId,
   runKey,
   runUsages,
   actions,
@@ -451,6 +443,7 @@ export function buildUsageEvents({
   messageStatus,
   isSubAgentMessage,
   timestamp,
+  billedCredits,
 }: {
   workspaceId: string;
   isByok: boolean;
@@ -461,6 +454,7 @@ export function buildUsageEvents({
   agentId: string | null;
   subAgentId: string | null;
   parentAgentMessageId: string | null;
+  rootAgentMessageId?: string;
   runKey: string;
   runUsages: RunUsageType[];
   actions: ToolAction[];
@@ -471,7 +465,14 @@ export function buildUsageEvents({
   messageStatus: string;
   isSubAgentMessage: boolean;
   timestamp: string;
+  billedCredits?: number;
 }): MetronomeEvent[] {
+  if (
+    billedCredits !== undefined &&
+    (!Number.isFinite(billedCredits) || billedCredits < 0)
+  ) {
+    throw new Error("billedCredits must be a finite non-negative number");
+  }
   const billingPlan = buildAgentMessageBillingPlan({
     actions,
     contextOrigin: origin,
@@ -495,7 +496,8 @@ export function buildUsageEvents({
     return [];
   }
 
-  const costAwu = billingPlan.totals.llmBilledCredits + toolBilledCredits;
+  const costAwu =
+    billedCredits ?? billingPlan.totals.llmBilledCredits + toolBilledCredits;
 
   // Aggregate token counts across models for observability only — the billable
   // metric sums `cost_awu` and ignores these.
@@ -538,6 +540,7 @@ export function buildUsageEvents({
         agent_id: agentId ?? "unknown",
         sub_agent_id: subAgentId ?? "none",
         parent_agent_message_id: parentAgentMessageId ?? "none",
+        root_agent_message_id: rootAgentMessageId ?? "none",
         // Required by the billable metric but intentionally not granular: LLM and
         // tool cost are aggregated into this single event.
         provider_id: "aggregate",

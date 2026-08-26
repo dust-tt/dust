@@ -53,6 +53,8 @@ export type BilledRunUsage = RunUsageWithRunKeyType & {
 export type ConsumptionAnalyticsMessageMetadata = {
   agent: AgentMessageConsumptionAnalyticsAgent;
   agentMessageId: string;
+  parentAgentMessageId: string | null;
+  rootAgentMessageId: string;
   apiKeyName: string | null;
   completedAt: Date;
   contextOrigin: UserMessageOrigin | null;
@@ -77,6 +79,7 @@ export type AgentMessageConsumptionAnalyticsInput =
     skills: SkillResource[];
     stepContents: AgentStepContentResource[];
     usages: BilledRunUsage[];
+    usesStoredReconciledCredits?: boolean;
   };
 
 // We only account for billed usage types in the analytics pipeline.
@@ -284,14 +287,18 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     agentMessage.agentMessageModelId,
     { withToolMetadata: true }
   );
-  const ancestorAgentIds = (
+  const ancestors = (
     await listAgenticAncestors(auth, messageConversation, {
       agentMessageId,
       includeDeleted: true,
     })
-  )
-    .map((ancestor) => ancestor.agentConfigurationId)
-    .reverse();
+  ).reverse();
+  const ancestorAgentIds = ancestors.map(
+    (ancestor) => ancestor.agentConfigurationId
+  );
+  const ancestorAgentMessageIds = ancestors.map(
+    (ancestor) => ancestor.agentMessageId
+  );
   const attributedAgentId = getAgentUsageAttributedId({
     agentId: agentMessage.agentConfigurationId,
     parentAgentId: ancestorAgentIds.at(-1),
@@ -322,6 +329,8 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       depth: conversation.depth,
     },
     agentMessageId,
+    parentAgentMessageId: ancestorAgentMessageIds.at(-1) ?? null,
+    rootAgentMessageId: ancestorAgentMessageIds[0] ?? agentMessageId,
     apiKeyName,
     billedCredits,
     completedAt: agentMessage.completedAt ?? agentMessage.createdAt,
@@ -355,6 +364,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       workspace.id
     ),
     usages: billedUsages,
+    usesStoredReconciledCredits: source === "consumption",
     // userId is a nullable FK with ON DELETE SET NULL. Never substitute the worker identity.
     user,
     workspaceId: workspace.sId,

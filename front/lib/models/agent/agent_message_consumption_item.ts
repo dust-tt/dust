@@ -6,7 +6,10 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { AgentMessageConsumptionItemType } from "@app/types/assistant/agent_message_consumption";
-import { AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES } from "@app/types/assistant/agent_message_consumption";
+import {
+  AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES,
+  isAgentMessageConsumptionToolItemType,
+} from "@app/types/assistant/agent_message_consumption";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { CreationOptional, ForeignKey } from "sequelize";
@@ -15,7 +18,7 @@ import { Op } from "sequelize";
 function validateConsumptionItemShape(
   this: AgentMessageConsumptionItemModel
 ): void {
-  const isTool = this.itemType === "tool";
+  const isTool = isAgentMessageConsumptionToolItemType(this.itemType);
 
   if (isTool && this.agentMCPActionId === null) {
     throw new Error("Tool attribution items require an agent MCP action");
@@ -23,14 +26,19 @@ function validateConsumptionItemShape(
   if (!isTool && this.agentMCPActionId !== null) {
     throw new Error("Only tool attribution items may reference an action");
   }
-  if (!isTool && this.directCreditAmountMicro !== null) {
+  if (
+    this.itemType !== "tool" &&
+    this.itemType !== "tool_direct" &&
+    this.itemType !== "tool_adjustment" &&
+    this.directCreditAmountMicro !== null
+  ) {
     throw new Error("Only tool attribution items may contain direct credits");
   }
-  if (!isTool && this.completedAt === null) {
-    throw new Error("Only tool attribution items may be pending");
+  if (this.itemType !== "tool" && this.completedAt === null) {
+    throw new Error("Only legacy tool attribution items may be pending");
   }
   if (
-    isTool &&
+    this.itemType === "tool" &&
     this.completedAt === null &&
     (this.inputTokensCount !== null || this.directCreditAmountMicro !== null)
   ) {
@@ -39,10 +47,18 @@ function validateConsumptionItemShape(
     );
   }
   if (
+    this.itemType !== "tool_adjustment" &&
     this.directCreditAmountMicro !== null &&
     this.grossAttributedCreditAmountMicro < this.directCreditAmountMicro
   ) {
     throw new Error("Gross attributed credits cannot be below direct credits");
+  }
+  if (
+    this.itemType !== "tool_adjustment" &&
+    ((this.reconciledCreditAmountMicro ?? 0) < 0 ||
+      (this.directCreditAmountMicro ?? 0) < 0)
+  ) {
+    throw new Error("Only tool adjustment items may contain negative credits");
   }
 
   switch (this.itemType) {
@@ -61,6 +77,52 @@ function validateConsumptionItemShape(
       break;
 
     case "tool":
+      break;
+
+    case "tool_call":
+      if (
+        this.inputTokensCount !== null ||
+        this.directCreditAmountMicro !== null
+      ) {
+        throw new Error("Tool call items may contain only output tokens");
+      }
+      break;
+
+    case "tool_direct":
+      if (
+        this.outputTokensCount !== null ||
+        this.directCreditAmountMicro === null ||
+        this.grossAttributedCreditAmountMicro !==
+          this.directCreditAmountMicro ||
+        this.reconciledCreditAmountMicro !== this.directCreditAmountMicro
+      ) {
+        throw new Error(
+          "Tool direct items require one matching direct charge and may contain only input tokens"
+        );
+      }
+      break;
+
+    case "tool_result":
+      if (
+        this.outputTokensCount !== null ||
+        this.directCreditAmountMicro !== null
+      ) {
+        throw new Error("Tool result items may contain only input tokens");
+      }
+      break;
+
+    case "tool_adjustment":
+      if (
+        this.inputTokensCount !== null ||
+        this.outputTokensCount !== null ||
+        this.grossAttributedCreditAmountMicro !== 0 ||
+        this.directCreditAmountMicro === null ||
+        this.reconciledCreditAmountMicro !== this.directCreditAmountMicro
+      ) {
+        throw new Error(
+          "Tool adjustment items require one signed direct-credit adjustment and no token evidence"
+        );
+      }
       break;
 
     case "rounding":
@@ -178,12 +240,10 @@ AgentMessageConsumptionItemModel.init(
     reconciledCreditAmountMicro: {
       type: DataTypes.BIGINT,
       allowNull: true,
-      validate: { min: 0 },
     },
     directCreditAmountMicro: {
       type: DataTypes.BIGINT,
       allowNull: true,
-      validate: { min: 0 },
     },
     completedAt: {
       type: DataTypes.DATE,
@@ -223,8 +283,33 @@ AgentMessageConsumptionItemModel.init(
         unique: true,
         concurrently: true,
         fields: ["workspaceId", "attributionVersion", "agentMCPActionId"],
-        where: { agentMCPActionId: { [Op.ne]: null } },
-        name: "agent_message_consumption_items_unique_action",
+        where: {
+          agentMCPActionId: { [Op.ne]: null },
+          itemType: "tool",
+        },
+        name: "agent_message_consumption_items_unique_legacy_action",
+      },
+      {
+        unique: true,
+        concurrently: true,
+        fields: [
+          "workspaceId",
+          "attributionVersion",
+          "agentMCPActionId",
+          "itemType",
+        ],
+        where: {
+          agentMCPActionId: { [Op.ne]: null },
+          itemType: {
+            [Op.in]: [
+              "tool_call",
+              "tool_direct",
+              "tool_result",
+              "tool_adjustment",
+            ],
+          },
+        },
+        name: "agent_message_consumption_items_unique_action_item_type",
       },
       {
         unique: true,

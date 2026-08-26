@@ -2,6 +2,7 @@ import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analyti
 import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
+import { INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/consumption/version";
 import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import { intelligenceAwuFromRunUsagesGroupedByRunKey } from "@app/lib/metronome/events";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
@@ -215,6 +216,117 @@ async function buildDocuments(
 }
 
 describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
+  it("groups immutable tool postings into one stable tool document", async () => {
+    const context = await setupSettledMessage();
+    const { action } = await AgentMCPActionFactory.create(context.auth, {
+      workspace: context.workspace,
+      conversationModelId: context.conversation.id,
+      agentMessageModelId: context.agentMessageModelId,
+      dustRunId: context.run.dustRunId,
+      status: "succeeded",
+    });
+    await AgentMessageConsumptionItemResource.insertConsumptionRows(
+      context.auth,
+      {
+        conversationModelId: context.conversation.id,
+        agentMessageModelId: context.agentMessageModelId,
+        runKey: "execution-x",
+        modelRows: [
+          {
+            itemType: "input",
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: 100,
+            outputTokensCount: null,
+            grossAttributedCreditAmountMicro: 1_000_000,
+            reconciledCreditAmountMicro: 1_000_000,
+          },
+          {
+            itemType: "output",
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: null,
+            outputTokensCount: 18,
+            grossAttributedCreditAmountMicro: 700_000,
+            reconciledCreditAmountMicro: 700_000,
+          },
+        ],
+        toolCallRows: [
+          {
+            agentMCPActionModelId: action.id,
+            runUsageModelId: context.runUsageModelId,
+            outputTokensCount: 2,
+            grossAttributedCreditAmountMicro: 100_000,
+            reconciledCreditAmountMicro: 100_000,
+          },
+        ],
+        toolResultRows: [
+          {
+            agentMCPActionModelId: action.id,
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: 3,
+            grossAttributedCreditAmountMicro: 200_000,
+            reconciledCreditAmountMicro: 200_000,
+          },
+        ],
+      }
+    );
+    await AgentMessageConsumptionItemResource.insertConsumptionToolDirectRow(
+      context.auth,
+      {
+        agentMCPActionModelId: action.id,
+        agentMessageModelId: context.agentMessageModelId,
+        chargeAmountMicro: 3_000_000,
+        conversationModelId: context.conversation.id,
+        inputTokensCount: 3,
+        runKey: "execution-x",
+        runUsageModelId: context.runUsageModelId,
+      }
+    );
+    await AgentMessageConsumptionItemResource.insertConsumptionToolAdjustmentRows(
+      context.auth,
+      {
+        adjustments: [
+          {
+            agentMCPActionModelId: action.id,
+            agentMessageModelId: context.agentMessageModelId,
+            amountMicro: -1_000_000,
+            conversationModelId: context.conversation.id,
+            runKey: "execution-x",
+            runUsageModelId: context.runUsageModelId,
+          },
+        ],
+      }
+    );
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      {
+        agentMessageId: context.agentMessage.sId,
+        source: "consumption",
+      }
+    );
+    const documents = input
+      ? buildAgentMessageConsumptionAnalyticsDocuments(input)
+      : null;
+    const toolDocuments =
+      documents?.filter((document) => document.consumption_type === "tool") ??
+      [];
+
+    expect(toolDocuments).toHaveLength(1);
+    expect(toolDocuments[0]).toMatchObject({
+      attribution_version: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+      consumption_key: `tool-action:${action.id}`,
+      credit_micro: 2_300_000,
+      gross_credit_micro: {
+        direct: 2_000_000,
+        output: 100_000,
+        result_footprint: 200_000,
+        total: 2_300_000,
+      },
+      tokens: { output: 2, result_footprint: 3 },
+      tool: { action_id: action.sId },
+    });
+  });
+
   it("projects one additive LLM document and one tool document", async () => {
     const { action, billedMessageCreditMicro, context } =
       await setupLlmAndToolConsumptionScenario();
@@ -336,6 +448,13 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
 
     expect(llmDocument?.agent).toMatchObject(expectedAncestry);
     expect(toolDocument?.agent).toMatchObject(expectedAncestry);
+    for (const document of documents) {
+      expect(document).toMatchObject({
+        agent_message_id: context.agentMessage.sId,
+        parent_agent_message_id: parent.agentMessage.sId,
+        root_agent_message_id: parent.agentMessage.sId,
+      });
+    }
   });
 
   it("keeps the parent server on a tool called through the sandbox", async () => {
