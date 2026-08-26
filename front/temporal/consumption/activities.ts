@@ -1,8 +1,12 @@
 import { indexAgentMessageConsumptionSnapshot } from "@app/lib/analytics/agent_message_consumption";
 import { billExecution } from "@app/lib/api/assistant/consumption/bill";
-import { applyConsumptionExecutionTotal } from "@app/lib/api/assistant/consumption/root_hash";
+import {
+  applyExecutionTotal,
+  readExecutionTotal,
+} from "@app/lib/api/assistant/consumption/counters";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import { MICRO_CREDITS_PER_CREDIT } from "@app/lib/credits/units";
 import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_message_consumption_event_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -15,6 +19,8 @@ import assert from "assert";
 const EVENT_BATCH_SIZE = 256;
 const EVENTS_APPLIED_METRIC = "consumption.events_applied";
 const ES_VERSION_CONFLICT_METRIC = "consumption.elasticsearch_version_conflict";
+const CONSUMPTION_ROOT_HASH_DRIFT_METRIC =
+  "consumption.root_hash_drift_micro_credits";
 
 export type ApplyConsumptionEventsResult = {
   eventModelIds: number[];
@@ -73,7 +79,7 @@ export async function applyConsumptionEventsActivity(
         auth,
         { runKey }
       );
-    await applyConsumptionExecutionTotal({
+    await applyExecutionTotal({
       workspaceId,
       runKey,
       rootAgentMessageId: lastEvent.rootAgentMessageId,
@@ -181,9 +187,64 @@ export async function billExecutionActivity(
     );
   assert(context, "Finalized consumption event references a missing message");
   const agentMessageId = context.agentMessage.agentMessageId;
-  await billExecution(auth, {
+  const bill = await billExecution(auth, {
     agentMessageId,
     rootAgentMessageId,
     runKey,
   });
+  if (!bill) {
+    return;
+  }
+
+  await reportRootHashDrift(auth, {
+    agentMessageId,
+    billedCreditAmountMicro: bill.eventCreditAmount * MICRO_CREDITS_PER_CREDIT,
+    rootAgentMessageId,
+    runKey,
+  });
+}
+
+async function reportRootHashDrift(
+  auth: Authenticator,
+  {
+    agentMessageId,
+    billedCreditAmountMicro,
+    rootAgentMessageId,
+    runKey,
+  }: {
+    agentMessageId: string;
+    billedCreditAmountMicro: number;
+    rootAgentMessageId: string;
+    runKey: string;
+  }
+): Promise<void> {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const hashCreditAmountMicro = await readExecutionTotal({
+    workspaceId,
+    rootAgentMessageId,
+    runKey,
+  });
+  if (hashCreditAmountMicro === null) {
+    return;
+  }
+
+  const driftCreditAmountMicro = Math.abs(
+    hashCreditAmountMicro - billedCreditAmountMicro
+  );
+  statsDMetrics.distribution(
+    CONSUMPTION_ROOT_HASH_DRIFT_METRIC,
+    driftCreditAmountMicro
+  );
+  if (driftCreditAmountMicro > 0) {
+    logger.warn(
+      {
+        workspaceId,
+        agentMessageId,
+        runKey,
+        hashCreditAmountMicro,
+        billedCreditAmountMicro,
+      },
+      "[Consumption] Root hash disagrees with the billed execution."
+    );
+  }
 }

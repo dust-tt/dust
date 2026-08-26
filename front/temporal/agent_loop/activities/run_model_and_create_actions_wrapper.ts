@@ -1,4 +1,5 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { usesAgentMessageConsumption } from "@app/lib/api/assistant/consumption/gate";
 import { recordModelCallConsumption } from "@app/lib/api/assistant/consumption/model_call_writer";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
@@ -160,11 +161,16 @@ async function _runModelAndCreateActionsActivity({
   const runAgentData = contextProvider.runtimeData;
   const isRootAgentMessage = !runAgentData.userMessage.agenticMessageData;
 
-  if (step === (runAgentArgs.startStep ?? 0)) {
-    await recordExecutionStarted(auth, runAgentArgs, {
-      startStep: runAgentArgs.startStep ?? 0,
-    });
-  }
+  const executionUsesConsumption =
+    step === (runAgentArgs.startStep ?? 0)
+      ? await recordExecutionStarted(auth, runAgentArgs, {
+          startStep: runAgentArgs.startStep ?? 0,
+        })
+      : !!runAgentArgs.runKey &&
+        !!runAgentArgs.rootAgentMessageId &&
+        (await usesAgentMessageConsumption(auth, {
+          rootAgentMessageId: runAgentArgs.rootAgentMessageId,
+        }));
 
   // Intentionally check at step start (not step end) to early exit if dollar amount too high.
   // This can miss thresholds crossed on the final step.
@@ -179,6 +185,8 @@ async function _runModelAndCreateActionsActivity({
     hardCapCheckResult = await checkCostAndSubagentsThresholds({
       auth,
       isRootAgentMessage,
+      useAgentMessageConsumption:
+        isRootAgentMessage && executionUsesConsumption,
       eventData: {
         agentMessageId: runAgentArgs.agentMessageId,
         conversationId: runAgentArgs.conversationId,

@@ -70,7 +70,7 @@ redis.call("PEXPIRE", KEYS[1], ARGV[7])
  * - ARGV[6]: Seed total in microcredits.
  * - ARGV[7]: Seed subagent count.
  * - ARGV[8]: Hash TTL in milliseconds.
- * - ARGV[9...]: Alternating execution-total hash fields and values.
+ * - ARGV[9...]: Alternating execution-total or subagent-marker hash fields and values.
  *
  * Returns 1 when seeded, 0 when already initialized, and -1 on revision mismatch.
  */
@@ -256,12 +256,14 @@ export async function seedRootTotals({
   expectedRevision,
   totals,
   executionCreditAmountMicroByRunKey,
+  subagentAgentMessageIds,
 }: {
   workspaceId: string;
   rootAgentMessageId: ModelId;
   expectedRevision: number;
   totals: ConsumptionRootTotals;
   executionCreditAmountMicroByRunKey: ReadonlyMap<string, number>;
+  subagentAgentMessageIds: readonly ModelId[];
 }): Promise<boolean> {
   assert(
     Number.isSafeInteger(expectedRevision) && expectedRevision >= 0,
@@ -287,6 +289,11 @@ export async function seedRootTotals({
     executionTotal === totals.totalCreditAmountMicro,
     "Consumption execution seed totals must equal the root total"
   );
+  assert(
+    new Set(subagentAgentMessageIds).size === subagentAgentMessageIds.length &&
+      subagentAgentMessageIds.length === totals.subagentCount,
+    "Consumption subagent seed IDs must be unique and equal the root count"
+  );
 
   return runConsumptionRedisOperation({
     operation: "seed_consumption_root_totals",
@@ -310,6 +317,10 @@ export async function seedRootTotals({
                 totalCreditAmountMicro.toString(),
               ]
             ),
+            ...subagentAgentMessageIds.flatMap((agentMessageId) => [
+              makeConsumptionRootSubagentField(agentMessageId),
+              "1",
+            ]),
           ],
         });
         return seeded === 1;
