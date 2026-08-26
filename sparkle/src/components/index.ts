@@ -92,6 +92,10 @@ export {
   ConversationMessageContent,
   ConversationMessageTitle,
 } from "./ConversationMessages";
+export {
+  ConversationPanel,
+  type ConversationPanelProps,
+} from "./ConversationPanel";
 export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
 export {
@@ -253,6 +257,10 @@ export {
   ResizablePanel,
   ResizablePanelGroup,
 } from "./Resizable";
+export {
+  ResizableSidePanel,
+  type ResizableSidePanelProps,
+} from "./ResizableSidePanel";
 export { ScrollArea, ScrollBar } from "./ScrollArea";
 export { SearchDropdownMenu } from "./SearchDropdownMenu";
 export { SearchInput, SearchInputWithPopover } from "./SearchInput";
