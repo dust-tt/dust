@@ -4,23 +4,28 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockOpenPanel, mockSidePanelContext, mockUseAgentMessageConsumption } =
-  vi.hoisted(() => {
-    const mockOpenPanel = vi.fn();
-    const mockSidePanelContext: {
-      currentPanel: "credits" | undefined;
-      openPanel: typeof mockOpenPanel;
-    } = {
-      currentPanel: undefined,
-      openPanel: mockOpenPanel,
-    };
+const {
+  mockOpenPanel,
+  mockSidePanelContext,
+  mockTrackEvent,
+  mockUseAgentMessageConsumption,
+} = vi.hoisted(() => {
+  const mockOpenPanel = vi.fn();
+  const mockSidePanelContext: {
+    currentPanel: "credits" | undefined;
+    openPanel: typeof mockOpenPanel;
+  } = {
+    currentPanel: undefined,
+    openPanel: mockOpenPanel,
+  };
 
-    return {
-      mockOpenPanel,
-      mockSidePanelContext,
-      mockUseAgentMessageConsumption: vi.fn(),
-    };
-  });
+  return {
+    mockOpenPanel,
+    mockSidePanelContext,
+    mockTrackEvent: vi.fn(),
+    mockUseAgentMessageConsumption: vi.fn(),
+  };
+});
 
 vi.mock(
   "@app/components/assistant/conversation/ConversationSidePanelContext",
@@ -32,6 +37,11 @@ vi.mock(
 vi.mock("@app/hooks/conversations/useAgentMessageConsumption", () => ({
   useAgentMessageConsumption: mockUseAgentMessageConsumption,
 }));
+
+vi.mock("@app/lib/tracking", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/tracking")>();
+  return { ...actual, trackEvent: mockTrackEvent };
+});
 
 vi.mock("@app/components/assistant/conversation/actions/inline/utils", () => ({
   getActionStepIcon: () => () => null,
@@ -103,6 +113,7 @@ describe("CreditCostPopover", () => {
   beforeEach(() => {
     mockOpenPanel.mockReset();
     mockSidePanelContext.currentPanel = undefined;
+    mockTrackEvent.mockReset();
     mockUseAgentMessageConsumption.mockReset();
   });
 
@@ -259,15 +270,27 @@ describe("CreditCostPopover", () => {
     const openButton = screen.getByRole("button", {
       name: "Open credit details",
     });
+    expect(mockTrackEvent).not.toHaveBeenCalled();
     fireEvent.click(openButton);
 
     expect(mockUseAgentMessageConsumption).toHaveBeenLastCalledWith(
       expect.objectContaining({ disabled: false })
     );
     expect(mutateConsumption).not.toHaveBeenCalled();
+    expect(mockTrackEvent).toHaveBeenLastCalledWith({
+      area: "analytics",
+      object: "message_breakdown",
+      action: "view",
+      extra: {
+        workspace_id: "workspace_test",
+        conversation_id: "conversation_test",
+        message_id: "message_test",
+      },
+    });
 
     fireEvent.click(openButton);
 
     expect(mutateConsumption).toHaveBeenCalledOnce();
+    expect(mockTrackEvent).toHaveBeenCalledTimes(2);
   });
 });

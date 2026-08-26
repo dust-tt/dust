@@ -24,9 +24,18 @@ import { useAnalyticsViewState } from "@app/hooks/useAnalyticsViewState";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useResolvedUsageFilter } from "@app/hooks/useResolvedUsageFilter";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
+import {
+  consumptionPeriodKey,
+  DEFAULT_CONSUMPTION_PERIOD,
+} from "@app/lib/analytics/consumption_period";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
+import type { TrackingExtra } from "@app/lib/tracking";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   cn,
@@ -37,7 +46,7 @@ import {
 } from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
 import type { ComponentType } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const canReload = () => !isNavigationLocked();
 
@@ -64,6 +73,27 @@ const WORKSPACE_CONSUMPTION_COMPONENTS: AnalyticsConsumptionComponents = {
   Summary: ConsumptionSummary,
   UsageFilterPanel,
 };
+
+function trackAnalyticsClick(
+  workspaceId: string | null,
+  clickTarget: string,
+  extra?: TrackingExtra
+) {
+  if (!workspaceId) {
+    return;
+  }
+
+  trackEvent({
+    area: TRACKING_AREAS.ANALYTICS,
+    object: "analytics_page",
+    action: TRACKING_ACTIONS.CLICK,
+    extra: {
+      ...extra,
+      workspace_id: workspaceId,
+      click_target: clickTarget,
+    },
+  });
+}
 
 interface ChartFallbackProps {
   controlsInCard?: boolean;
@@ -121,6 +151,15 @@ export function AnalyticsConsumptionPage() {
     filter: state.filter,
   });
 
+  useEffect(() => {
+    trackEvent({
+      area: TRACKING_AREAS.ANALYTICS,
+      object: "analytics_page",
+      action: TRACKING_ACTIONS.VIEW,
+      extra: { workspace_id: owner.sId },
+    });
+  }, [owner.sId]);
+
   return (
     <AnalyticsConsumptionContent owner={owner} state={{ ...state, filter }} />
   );
@@ -168,6 +207,21 @@ export function AnalyticsConsumptionContent({
     Summary: SummaryComponent,
     UsageFilterPanel: UsageFilterPanelComponent,
   } = components;
+  const trackingWorkspaceId = embedded ? null : owner.sId;
+
+  const handlePeriodChange = (nextPeriod: ConsumptionPeriodSelection) => {
+    trackAnalyticsClick(trackingWorkspaceId, "period_selector", {
+      period: consumptionPeriodKey(nextPeriod),
+    });
+    setPeriod(nextPeriod);
+  };
+
+  const handleFilterChange = (nextFilter: UsageFilter) => {
+    trackAnalyticsClick(trackingWorkspaceId, "filter", {
+      filter_action: "apply",
+    });
+    setFilter(nextFilter);
+  };
 
   const header = embedded ? (
     <div className="flex w-full flex-col gap-4 sm:flex-row sm:justify-between">
@@ -178,7 +232,10 @@ export function AnalyticsConsumptionContent({
           showError={showOverviewError}
         />
       </div>
-      <ConsumptionPeriodSelector period={period} onPeriodChange={setPeriod} />
+      <ConsumptionPeriodSelector
+        period={period}
+        onPeriodChange={handlePeriodChange}
+      />
     </div>
   ) : (
     <div className="flex w-full flex-row justify-between">
@@ -186,7 +243,10 @@ export function AnalyticsConsumptionContent({
         <Page.H variant="h3">{title}</Page.H>
         <OverviewComponent workspaceId={owner.sId} period={period} />
       </div>
-      <ConsumptionPeriodSelector period={period} onPeriodChange={setPeriod} />
+      <ConsumptionPeriodSelector
+        period={period}
+        onPeriodChange={handlePeriodChange}
+      />
     </div>
   );
 
@@ -211,11 +271,26 @@ export function AnalyticsConsumptionContent({
               owner={owner}
               period={period}
               filter={filter}
-              onFilterChange={setFilter}
+              onFilterChange={handleFilterChange}
+              onOpenChange={(open) => {
+                if (open) {
+                  trackAnalyticsClick(trackingWorkspaceId, "filter", {
+                    filter_action: "open",
+                  });
+                }
+              }}
               showMemberGroupFilter={showMemberGroupFilter}
             />
           </div>
-          <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
+          <UsageFilterSummary
+            filter={filter}
+            onFilterChange={(nextFilter) => {
+              trackAnalyticsClick(trackingWorkspaceId, "filter", {
+                filter_action: "clear",
+              });
+              setFilter(nextFilter);
+            }}
+          />
         </div>
         <LazyMotion features={domMax}>
           <m.div
@@ -231,6 +306,11 @@ export function AnalyticsConsumptionContent({
                 period={period}
                 dimension={dimension}
                 filter={scopeFilter}
+                onModeChange={(mode) => {
+                  trackAnalyticsClick(trackingWorkspaceId, "chart_mode", {
+                    mode,
+                  });
+                }}
               />
             </SafeSuspense>
           </m.div>
@@ -242,18 +322,34 @@ export function AnalyticsConsumptionContent({
         period={period}
         filter={scopeFilter}
         onAddFilter={(selectedRow) => {
+          trackAnalyticsClick(trackingWorkspaceId, "attribution_filter", {
+            dimension,
+            filter_action: "add",
+          });
           setFilter((current) =>
             addUsageFilterFromAttributionRow(current, dimension, selectedRow)
           );
         }}
         onRemoveFilter={(selectedRow) => {
+          trackAnalyticsClick(trackingWorkspaceId, "attribution_filter", {
+            dimension,
+            filter_action: "remove",
+          });
           setFilter((current) =>
             removeUsageFilterFromAttributionRow(current, dimension, selectedRow)
           );
         }}
         dimension={dimension}
-        onDimensionChange={handleDimensionChange}
+        onDimensionChange={(nextDimension) => {
+          trackAnalyticsClick(trackingWorkspaceId, "attribution_tab", {
+            dimension: nextDimension,
+          });
+          handleDimensionChange(nextDimension);
+        }}
         onViewAll={(nextDimension, selectedRow) => {
+          trackAnalyticsClick(trackingWorkspaceId, "attribution_view_all", {
+            dimension: nextDimension,
+          });
           setFilter((current) =>
             setUsageFilterFromAttributionRow(current, dimension, selectedRow)
           );

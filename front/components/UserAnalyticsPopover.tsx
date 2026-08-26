@@ -18,6 +18,11 @@ import {
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { PERSONAL_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -28,7 +33,7 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface UserAnalyticsPopoverProps {
   open: boolean;
@@ -50,6 +55,17 @@ export function UserAnalyticsPopover({
   const [filter, setFilter] = useState<UsageFilter>({});
   const scopeFilter = useMemo(() => toConsumptionScopeFilter(filter), [filter]);
   const shouldReduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (open) {
+      trackEvent({
+        area: TRACKING_AREAS.ANALYTICS,
+        object: "personal_view",
+        action: TRACKING_ACTIONS.VIEW,
+        extra: { workspace_id: owner.sId },
+      });
+    }
+  }, [open, owner.sId]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

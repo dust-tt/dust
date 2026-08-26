@@ -2,9 +2,10 @@ import { ConversationCreditUsagePanel } from "@app/components/assistant/conversa
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockUseConversationConsumption } = vi.hoisted(() => ({
+const { mockTrackEvent, mockUseConversationConsumption } = vi.hoisted(() => ({
+  mockTrackEvent: vi.fn(),
   mockUseConversationConsumption: vi.fn(),
 }));
 
@@ -18,6 +19,11 @@ vi.mock(
 vi.mock("@app/hooks/conversations/useConversationConsumption", () => ({
   useConversationConsumption: mockUseConversationConsumption,
 }));
+
+vi.mock("@app/lib/tracking", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/tracking")>();
+  return { ...actual, trackEvent: mockTrackEvent };
+});
 
 const owner: LightWorkspaceType = {
   id: 1,
@@ -51,6 +57,11 @@ const conversation: ConversationWithoutContentType = {
 };
 
 describe("ConversationCreditUsagePanel", () => {
+  beforeEach(() => {
+    mockTrackEvent.mockReset();
+    mockUseConversationConsumption.mockReset();
+  });
+
   it("shows the empty usage placeholder when no credits have been consumed", () => {
     mockUseConversationConsumption.mockReturnValue({
       consumption: undefined,
@@ -67,5 +78,15 @@ describe("ConversationCreditUsagePanel", () => {
     expect(
       screen.getByText("Updates once a message is fully processed.")
     ).toBeInTheDocument();
+    expect(mockTrackEvent).toHaveBeenCalledOnce();
+    expect(mockTrackEvent).toHaveBeenCalledWith({
+      area: "analytics",
+      object: "conversation_breakdown",
+      action: "view",
+      extra: {
+        workspace_id: "workspace_1",
+        conversation_id: "conversation_1",
+      },
+    });
   });
 });
