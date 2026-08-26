@@ -503,11 +503,3 @@ export function isWhitelistableFeature(
 ): feature is WhitelistableFeature {
   return WHITELISTABLE_FEATURES.includes(feature as WhitelistableFeature);
 }
-
-// Returns `null` only for legacy flag names no longer in WHITELISTABLE_FEATURES_CONFIG.
-export function getFeatureFlagOwner(feature: string): string | null {
-  if (!isWhitelistableFeature(feature)) {
-    return null;
-  }
-  return WHITELISTABLE_FEATURES_CONFIG[feature].owner;
-}

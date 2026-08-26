@@ -9,7 +9,6 @@ import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import {
-  getFeatureFlagOwner,
   isWhitelistableFeature,
   WHITELISTABLE_FEATURES_CONFIG,
 } from "@app/types/shared/feature_flags";
@@ -214,10 +213,7 @@ export function FeatureFlagDetailPage() {
         </LinkWrapper>
         <div className="mt-2 flex items-center gap-3">
           <h1 className="font-mono text-2xl font-bold">{flagName}</h1>
-          <FeatureFlagStageChip
-            stage={flagConfig?.stage ?? null}
-            owner={getFeatureFlagOwner(flagName)}
-          />
+          <FeatureFlagStageChip flagName={flagName} />
           {globalRolloutPercentage !== null && (
             <span className="text-sm text-muted-foreground">
               global rollout: {globalRolloutPercentage}%

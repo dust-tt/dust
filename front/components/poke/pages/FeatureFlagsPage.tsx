@@ -10,7 +10,6 @@ import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import {
   FEATURE_FLAG_STAGE_LABELS,
   FEATURE_FLAG_STAGES,
-  getFeatureFlagOwner,
 } from "@app/types/shared/feature_flags";
 import { Button, LinkWrapper, Pencil01, Trash01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -61,12 +60,7 @@ function makeColumns({
         <PokeColumnSortableHeader column={column} label="Stage" />
       ),
       filterFn: (row, id, value) => value.includes(row.getValue(id)),
-      cell: ({ row }) => (
-        <FeatureFlagStageChip
-          stage={row.original.stage}
-          owner={getFeatureFlagOwner(row.original.name)}
-        />
-      ),
+      cell: ({ row }) => <FeatureFlagStageChip flagName={row.original.name} />,
     },
     {
       accessorKey: "workspaceCount",
