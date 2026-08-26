@@ -1,4 +1,5 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { usesAgentMessageConsumption } from "@app/lib/api/assistant/consumption/gate";
 import { recordModelCallConsumptionItems } from "@app/lib/api/assistant/consumption/model_call_writer";
 import {
   getCreditSpendCheckpointEnabled,
@@ -179,6 +180,7 @@ async function _runModelAndCreateActionsActivity({
   const runAgentData = contextProvider.runtimeData;
   const isRootAgentMessage = !runAgentData.userMessage.agenticMessageData;
 
+  let executionUsesConsumption: boolean;
   if (step === (runAgentArgs.startStep ?? 0)) {
     const result = await recordExecutionStarted(auth, runAgentArgs, {
       canInitializeConsumption,
@@ -186,6 +188,14 @@ async function _runModelAndCreateActionsActivity({
     if (result.isErr()) {
       return new Err(result.error);
     }
+    executionUsesConsumption = result.value;
+  } else {
+    executionUsesConsumption =
+      !!runAgentArgs.runKey &&
+      !!runAgentArgs.rootAgentMessageId &&
+      (await usesAgentMessageConsumption(auth, {
+        rootAgentMessageId: runAgentArgs.rootAgentMessageId,
+      }));
   }
 
   // Intentionally check at step start (not step end) to early exit if dollar amount too high.
@@ -201,6 +211,8 @@ async function _runModelAndCreateActionsActivity({
     hardCapCheckResult = await checkCostAndSubagentsThresholds({
       auth,
       isRootAgentMessage,
+      useAgentMessageConsumption:
+        isRootAgentMessage && executionUsesConsumption,
       eventData: {
         agentMessageId: runAgentArgs.agentMessageId,
         conversationId: runAgentArgs.conversationId,
