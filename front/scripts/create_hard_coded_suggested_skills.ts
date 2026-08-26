@@ -1,9 +1,8 @@
+import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import {
-  SkillConfigurationModel,
-  SkillMCPServerConfigurationModel,
-} from "@app/lib/models/skill";
-import { frontSequelize } from "@app/lib/resources/storage";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
@@ -14,7 +13,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
 import * as fs from "fs";
 import * as path from "path";
-import type { Transaction } from "sequelize";
 import { z } from "zod";
 
 const SkillToolSchema = z.object({
@@ -91,6 +89,7 @@ async function createSuggestedSkills(
   }
 ): Promise<void> {
   const logger = parentLogger.child({ workspaceId: workspace.sId });
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   logger.info({ filePath }, "Starting creation of suggested skills");
 
@@ -255,62 +254,50 @@ async function createSuggestedSkills(
       }
 
       if (execute) {
-        // Use a transaction to ensure all creations succeed or all are rolled back
-        await frontSequelize.transaction(async (transaction: Transaction) => {
-          // Create the skill configuration
-          const createdSkill = await SkillConfigurationModel.create(
-            {
-              workspaceId: workspace.id,
-              name: skill.name,
-              agentFacingDescription: skill.description_for_agents,
-              userFacingDescription: skill.description_for_humans,
-              instructions: skill.instructions,
-              status: "suggested",
-              editedBy: null,
-              requestedSpaceIds: [],
-              icon: skill.icon,
-              availability: DEFAULT_SKILL_AVAILABILITY,
-            },
-            { transaction }
-          );
+        // Go through the resource: it creates the skill, its tool configurations and its grants
+        // in one transaction. `makeSuggestion` never adds a creator as editor,
+        // so the skill starts with no editor.
+        const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
+          auth,
+          mcpServerViewIds
+        );
 
-          // Link MCP server views (tools) to the skill
-          if (mcpServerViewIds.length > 0) {
-            await SkillMCPServerConfigurationModel.bulkCreate(
-              mcpServerViewIds.map((mcpServerViewId) => ({
-                workspaceId: workspace.id,
-                skillConfigurationId: createdSkill.id,
-                mcpServerViewId,
-              })),
-              { transaction }
-            );
-          }
+        const skillRes = await SkillResource.makeSuggestion(
+          auth,
+          {
+            name: skill.name,
+            agentFacingDescription: skill.description_for_agents,
+            userFacingDescription: skill.description_for_humans,
+            instructions: skill.instructions,
+            icon: skill.icon,
+            availability: DEFAULT_SKILL_AVAILABILITY,
+          },
+          { mcpServerViewIds: mcpServerViews.map((view) => view.sId) }
+        );
+        if (skillRes.isErr()) {
+          throw skillRes.error;
+        }
 
-          // TODO: Data source configuration
-          // To link data sources to a skill, you would need to:
-          // 1. Validate that each data source view exists in the workspace using DataSourceViewResource.fetchByModelPk()
-          // 2. Verify that the data source ID, name, and connector provider match
-          // 3. Create SkillDataSourceConfigurationModel entries with:
-          //    - workspaceId: workspace.id
-          //    - skillConfigurationId: createdSkill.id
-          //    - dataSourceViewId: the validated data source view ID
-          //    - tagsIn: the tags to filter by (optional)
-          //    - tagsNotIn: the tags to exclude (optional)
-          //    - parentsIn: the parent folders to filter by (optional)
-          // 4. Use bulkCreate similar to how MCP server configurations are created above
-          //
-          // However, this script currently throws an error if requiredDatasources is present
-          // to avoid accidentally creating incomplete skill configurations.
+        // TODO: Data source configuration
+        // To link data sources to a skill, you would need to:
+        // 1. Validate that each data source view exists in the workspace using
+        //    DataSourceViewResource.fetchByModelPk()
+        // 2. Verify that the data source ID, name, and connector provider match
+        // 3. Pass the validated views to `makeSuggestion` through the `attachedKnowledge` option
+        //    of `SkillResource.makeNew`, with their tags/parents filters
+        //
+        // However, this script currently throws an error if requiredDatasources is present
+        // to avoid accidentally creating incomplete skill configurations.
 
-          logger.info(
-            {
-              skillName: skill.name,
-              toolsLinked: mcpServerViewIds.length,
-              datasourcesLinked: skill.requiredDatasources?.length ?? 0,
-            },
-            "Successfully created suggested skill with tools and datasources"
-          );
-        });
+        logger.info(
+          {
+            skillId: skillRes.value.sId,
+            skillName: skill.name,
+            toolsLinked: mcpServerViewIds.length,
+            datasourcesLinked: skill.requiredDatasources?.length ?? 0,
+          },
+          "Successfully created suggested skill with tools and datasources"
+        );
       }
 
       successCount++;
