@@ -804,6 +804,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     triggeringUserMessageOrigin: UserMessageOrigin | null;
     triggeringUserId: string | null;
     triggeringUserMessageAuthMethod: string | null;
+    parentAgentMessageId: string | null;
     // The total cost already stored (and already recorded to the usage
     // counters) by a prior finalize of this message. Used to record only the
     // newly-accrued delta on re-finalize.
@@ -837,6 +838,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     let triggeringUserMessageOrigin: UserMessageOrigin | null = null;
     let triggeringUserId: string | null = null;
     let triggeringUserMessageAuthMethod: string | null = null;
+    let parentAgentMessageId: string | null = null;
     if (messageRow.parentId !== null) {
       const parentRow = await MessageModel.findOne({
         where: { id: messageRow.parentId, workspaceId },
@@ -854,6 +856,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       triggeringUserId = parentRow?.userMessage?.user?.sId ?? null;
       triggeringUserMessageAuthMethod =
         parentRow?.userMessage?.userContextAuthMethod ?? null;
+      parentAgentMessageId =
+        parentRow?.userMessage?.agenticOriginMessageId ?? null;
     }
 
     return {
@@ -864,6 +868,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       triggeringUserMessageOrigin,
       triggeringUserId,
       triggeringUserMessageAuthMethod,
+      parentAgentMessageId,
       previousCostCredits: agentMessage.costCredits,
     };
   }
@@ -957,7 +962,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const messageRow = await MessageModel.findOne({
       where: {
         workspaceId,
-        ...(identity.agentMessageId
+        ...("agentMessageId" in identity
           ? { sId: identity.agentMessageId }
           : { agentMessageId: identity.agentMessageModelId }),
       },
@@ -1047,6 +1052,32 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         where: {
           id: agentMessageModelId,
           workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
+  static async updateAgentMessageCostCreditsAtLeast(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      costCredits,
+    }: { agentMessageModelId: ModelId; costCredits: number }
+  ): Promise<void> {
+    assert(
+      Number.isSafeInteger(costCredits) && costCredits >= 0,
+      "Agent message credits must be a non-negative integer"
+    );
+    await AgentMessageModel.update(
+      { costCredits },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          [Op.or]: [
+            { costCredits: null },
+            { costCredits: { [Op.lt]: costCredits } },
+          ],
         },
       }
     );

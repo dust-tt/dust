@@ -7,7 +7,6 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   getMCPServerBillingKey,
   getToolBillingInfo,
-  isFreeOrigin,
   MCP_SERVER_AGENT_MESSAGE_TOOL_AWU_CAP,
   TOOL_COST_CATEGORY_AWU_WEIGHTS,
 } from "@app/lib/credits/agent_message_billing";
@@ -23,6 +22,8 @@ import logger from "@app/logger/logger";
 import { signalConsumptionEventsAppended } from "@app/temporal/credit_consumption/client";
 import { isTerminalAgentMessageStatus } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { Transaction } from "sequelize";
 
 type ToolCompletionConsumptionContext = {
@@ -69,7 +70,7 @@ export async function recordToolCompletionConsumption(
     context: ToolCompletionConsumptionContext;
     action: AgentMCPActionResource;
   }
-): Promise<void> {
+): Promise<Result<void, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const ownToolCallRow =
@@ -97,7 +98,13 @@ export async function recordToolCompletionConsumption(
         )
       : null);
   if (!toolCallRow) {
-    return;
+    logger.warn(
+      { workspaceId, actionId: action.sId },
+      "Tool completion has no consumption call posting"
+    );
+    return new Err(
+      new Error(`Tool action ${action.sId} has no consumption call posting`)
+    );
   }
 
   const existingDirectRow =
@@ -108,11 +115,10 @@ export async function recordToolCompletionConsumption(
       }
     );
   if (existingDirectRow) {
-    await signalAffectedExecutions(
-      auth,
-      new Set([existingDirectRow.runKey ?? context.runKey])
-    );
-    return;
+    if (existingDirectRow.runKey) {
+      await signalAffectedExecutions(auth, [existingDirectRow.runKey]);
+    }
+    return new Ok(undefined);
   }
 
   let resultTokensCount = 0;
@@ -125,13 +131,19 @@ export async function recordToolCompletionConsumption(
         { workspaceId, actionId: action.sId },
         "[Consumption] Tool row has no emitting run usage."
       );
-      return;
+      return new Err(
+        new Error(`Tool action ${action.sId} has no emitting run usage`)
+      );
     }
-    resultTokensCount = await measureResultFootprint(auth, {
+    const resultFootprintRes = await measureResultFootprint(auth, {
       action,
       conversationModelId: toolCallRow.conversationId,
       usage: emittingUsage,
     });
+    if (resultFootprintRes.isErr()) {
+      return resultFootprintRes;
+    }
+    resultTokensCount = resultFootprintRes.value;
   }
   const chargeMicro = await rateToolCharge(auth, {
     action,
@@ -149,8 +161,6 @@ export async function recordToolCompletionConsumption(
     runUsageModelId: toolCallRow.runUsageId,
   });
 
-  await signalAffectedExecutions(auth, new Set([context.runKey]));
-
   if (wasRecorded) {
     logger.info(
       {
@@ -163,6 +173,8 @@ export async function recordToolCompletionConsumption(
       "[Consumption] Recorded a tool completion posting."
     );
   }
+  await signalAffectedExecutions(auth, [context.runKey]);
+  return new Ok(undefined);
 }
 
 /**
@@ -273,22 +285,19 @@ async function appendToolCompletionEvent(
  */
 async function signalAffectedExecutions(
   auth: Authenticator,
-  runKeys: Set<string>
+  runKeys: string[]
 ): Promise<void> {
-  for (const runKey of runKeys) {
-    const signalRes = await signalConsumptionEventsAppended(auth.toJSON(), {
+  for (const runKey of new Set(runKeys)) {
+    await signalConsumptionEventsAppended(auth.toJSON(), {
       runKey,
     });
-    if (signalRes.isErr()) {
-      throw signalRes.error;
-    }
   }
 }
 
 /**
  * @cc [owner:id13,label:backend;billing] tool-charge-eligibility
- * Non-billable, free-origin, terminal-message, and free-usage tools MUST rate to zero. A billable
- * tool with a server billing key MUST rate to zero after that server reaches its per-message cap.
+ * Non-billable, terminal-message, and free-usage tools MUST rate to zero. A billable tool with a
+ * server billing key MUST rate to zero after that server reaches its per-message cap.
  *
  * ```text
  * tool terminal state
@@ -322,11 +331,7 @@ async function rateToolCharge(
     await ConversationResource.fetchAgentMessageCreditContext(auth, {
       agentMessageId,
     });
-  if (
-    !creditContext ||
-    isTerminalAgentMessageStatus(creditContext.status) ||
-    isFreeOrigin(creditContext.triggeringUserMessageOrigin)
-  ) {
+  if (!creditContext || isTerminalAgentMessageStatus(creditContext.status)) {
     return 0;
   }
 
@@ -419,15 +424,17 @@ async function measureResultFootprint(
     conversationModelId: ModelId;
     usage: RunUsageWithRunKeyType;
   }
-): Promise<number> {
+): Promise<Result<number, Error>> {
   const [conversation] = await ConversationResource.fetchByModelIds(
     auth,
     [conversationModelId],
     { includeDeleted: true }
   );
   if (!conversation) {
-    throw new Error(
-      `[Consumption] Conversation ${conversationModelId} not found while measuring a tool result.`
+    return new Err(
+      new Error(
+        `Conversation ${conversationModelId} not found while measuring a tool result`
+      )
     );
   }
   const capabilities = await getAttachmentCapabilityContext(auth, conversation);
@@ -438,7 +445,7 @@ async function measureResultFootprint(
       ignoreContent: false,
     });
   if (!enrichedAction) {
-    return 0;
+    return new Ok(0);
   }
 
   const footprintsRes = await measureToolCallFootprints(auth, {
@@ -452,8 +459,7 @@ async function measureResultFootprint(
     ],
   });
   if (footprintsRes.isErr()) {
-    throw footprintsRes.error;
+    return footprintsRes;
   }
-
-  return footprintsRes.value[0]?.inputTokensCount ?? 0;
+  return new Ok(footprintsRes.value[0]?.inputTokensCount ?? 0);
 }

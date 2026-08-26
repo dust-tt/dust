@@ -30,6 +30,10 @@ import {
   launchEmitMetronomeUsageEvents,
   launchTrackProgrammaticUsage,
 } from "@app/temporal/agent_loop/activities/usage_tracking";
+import type {
+  AgentMessageConsumptionExecutionContext,
+  EnabledAgentMessageConsumptionMode,
+} from "@app/types/assistant/agent_message_consumption";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -38,50 +42,66 @@ async function launchAgentMessageConsumptionAttributionAfterPersistingInputs(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs,
   {
+    consumptionMode,
     creditArgs = agentLoopArgs,
+    rootAgentMessageModelId,
   }: {
+    consumptionMode: EnabledAgentMessageConsumptionMode | null;
     creditArgs?: {
       agentMessageId: string;
       dustRunIds?: string[];
       rootAgentMessageId?: string;
     };
-  } = {}
+    rootAgentMessageModelId?: ModelId;
+  },
 ): Promise<void> {
-  await computeAndStoreAgentMessageCredits(auth, creditArgs);
+  if (consumptionMode === "live") {
+    return;
+  }
 
+  await computeAndStoreAgentMessageCredits(auth, {
+    ...creditArgs,
+    rootAgentMessageModelId,
+  });
   await launchAgentMessageConsumptionAttribution(auth, agentLoopArgs);
 }
 
-async function recordExecutionFinalizedAfterSkillSnapshot(
+async function snapshotSkillsAndRecordExecutionFinalized(
   auth: Authenticator,
-  agentLoopArgs: AgentLoopArgs
-): ReturnType<typeof recordExecutionFinalized> {
+  agentLoopArgs: AgentLoopArgs,
+  consumptionContext?: AgentMessageConsumptionExecutionContext | null,
+): Promise<EnabledAgentMessageConsumptionMode | null> {
   await snapshotAgentMessageSkills(auth, agentLoopArgs);
-  return recordExecutionFinalized(auth, agentLoopArgs);
+  return recordExecutionFinalized(auth, agentLoopArgs, consumptionContext);
 }
 
 export async function finalizeSuccessfulAgentLoopActivity(
   authType: AuthenticatorType,
-  agentLoopArgs: AgentLoopArgs
+  agentLoopArgs: AgentLoopArgs,
+  consumptionContext?: AgentMessageConsumptionExecutionContext | null,
 ): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
-  const consumptionResult = await recordExecutionFinalizedAfterSkillSnapshot(
+  const consumptionMode = await snapshotSkillsAndRecordExecutionFinalized(
     auth,
-    agentLoopArgs
+    agentLoopArgs,
+    consumptionContext,
   );
-  if (consumptionResult.isErr()) {
-    throw consumptionResult.error;
-  }
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
     launchAgentMessageConsumptionAttributionAfterPersistingInputs(
       auth,
-      agentLoopArgs
+      agentLoopArgs,
+      {
+        consumptionMode,
+        rootAgentMessageModelId: consumptionContext?.rootAgentMessageModelId,
+      },
     ),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(auth, agentLoopArgs, {
+      consumptionMode,
+    }),
     conversationUnreadNotification(auth, agentLoopArgs),
     activationNewConversationNotification(auth, agentLoopArgs),
     handleMentions(auth, agentLoopArgs),
@@ -97,28 +117,33 @@ export async function finalizeSuccessfulAgentLoopActivity(
  */
 export async function finalizeGracefullyStoppedAgentLoopActivity(
   authType: AuthenticatorType,
-  agentLoopArgs: AgentLoopArgs
+  agentLoopArgs: AgentLoopArgs,
+  consumptionContext?: AgentMessageConsumptionExecutionContext | null,
 ): Promise<void> {
   await finalizeGracefulStop(authType, agentLoopArgs);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
-  const consumptionResult = await recordExecutionFinalizedAfterSkillSnapshot(
+  const consumptionMode = await snapshotSkillsAndRecordExecutionFinalized(
     auth,
-    agentLoopArgs
+    agentLoopArgs,
+    consumptionContext,
   );
-  if (consumptionResult.isErr()) {
-    throw consumptionResult.error;
-  }
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
     launchAgentMessageConsumptionAttributionAfterPersistingInputs(
       auth,
-      agentLoopArgs
+      agentLoopArgs,
+      {
+        consumptionMode,
+        rootAgentMessageModelId: consumptionContext?.rootAgentMessageModelId,
+      },
     ),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(auth, agentLoopArgs, {
+      consumptionMode,
+    }),
     conversationUnreadNotification(auth, agentLoopArgs),
     handleMentions(auth, agentLoopArgs),
   ]);
@@ -134,80 +159,18 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
  */
 export async function finalizeInterruptedAgentLoopActivity(
   authType: AuthenticatorType,
-  agentLoopArgs: AgentLoopArgs
+  agentLoopArgs: AgentLoopArgs,
+  consumptionContext?: AgentMessageConsumptionExecutionContext | null,
 ): Promise<void> {
   await finalizeInterruption(authType, agentLoopArgs);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
-  const consumptionResult = await recordExecutionFinalizedAfterSkillSnapshot(
+  const consumptionMode = await snapshotSkillsAndRecordExecutionFinalized(
     auth,
-    agentLoopArgs
+    agentLoopArgs,
+    consumptionContext,
   );
-  if (consumptionResult.isErr()) {
-    throw consumptionResult.error;
-  }
-
-  await Promise.all([
-    launchAgentMessageAnalytics(auth, agentLoopArgs),
-    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
-      auth,
-      agentLoopArgs
-    ),
-    launchTrackProgrammaticUsage(auth, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    conversationUnreadNotification(auth, agentLoopArgs),
-    handleMentions(auth, agentLoopArgs),
-  ]);
-}
-
-export async function finalizeCancelledAgentLoopActivity(
-  authType: AuthenticatorType,
-  agentLoopArgs: AgentLoopArgs
-): Promise<void> {
-  await finalizeCancellation(authType, agentLoopArgs);
-
-  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
-
-  const consumptionResult = await recordExecutionFinalizedAfterSkillSnapshot(
-    auth,
-    agentLoopArgs
-  );
-  if (consumptionResult.isErr()) {
-    throw consumptionResult.error;
-  }
-
-  await Promise.all([
-    launchAgentMessageAnalytics(auth, agentLoopArgs),
-    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
-      auth,
-      agentLoopArgs
-    ),
-    launchTrackProgrammaticUsage(auth, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    sendEmailReplyOnError(
-      auth,
-      agentLoopArgs,
-      "Agent execution was cancelled."
-    ),
-  ]);
-}
-
-export async function finalizeCreditStoppedAgentLoopActivity(
-  authType: AuthenticatorType,
-  agentLoopArgs: AgentLoopArgs
-): Promise<void> {
-  await finalizeCreditStop(authType, agentLoopArgs);
-
-  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
-
-  const consumptionResult = await recordExecutionFinalizedAfterSkillSnapshot(
-    auth,
-    agentLoopArgs
-  );
-  if (consumptionResult.isErr()) {
-    throw consumptionResult.error;
-  }
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
@@ -215,14 +178,88 @@ export async function finalizeCreditStoppedAgentLoopActivity(
       auth,
       agentLoopArgs,
       {
-        creditArgs: {
-          agentMessageId: agentLoopArgs.agentMessageId,
-          rootAgentMessageId: agentLoopArgs.rootAgentMessageId,
-        },
-      }
+        consumptionMode,
+        rootAgentMessageModelId: consumptionContext?.rootAgentMessageModelId,
+      },
     ),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(auth, agentLoopArgs, {
+      consumptionMode,
+    }),
+    conversationUnreadNotification(auth, agentLoopArgs),
+    handleMentions(auth, agentLoopArgs),
+  ]);
+}
+
+export async function finalizeCancelledAgentLoopActivity(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs,
+  consumptionContext?: AgentMessageConsumptionExecutionContext | null,
+): Promise<void> {
+  await finalizeCancellation(authType, agentLoopArgs);
+
+  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+
+  const consumptionMode = await snapshotSkillsAndRecordExecutionFinalized(
+    auth,
+    agentLoopArgs,
+    consumptionContext,
+  );
+
+  await Promise.all([
+    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
+      auth,
+      agentLoopArgs,
+      {
+        consumptionMode,
+        rootAgentMessageModelId: consumptionContext?.rootAgentMessageModelId,
+      },
+    ),
+    launchTrackProgrammaticUsage(auth, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(auth, agentLoopArgs, {
+      consumptionMode,
+    }),
+    sendEmailReplyOnError(
+      auth,
+      agentLoopArgs,
+      "Agent execution was cancelled.",
+    ),
+  ]);
+}
+
+export async function finalizeCreditStoppedAgentLoopActivity(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs,
+  consumptionContext?: AgentMessageConsumptionExecutionContext | null,
+): Promise<void> {
+  await finalizeCreditStop(authType, agentLoopArgs);
+
+  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+
+  const consumptionMode = await snapshotSkillsAndRecordExecutionFinalized(
+    auth,
+    agentLoopArgs,
+    consumptionContext,
+  );
+
+  await Promise.all([
+    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
+      auth,
+      agentLoopArgs,
+      {
+        consumptionMode,
+        rootAgentMessageModelId: consumptionContext?.rootAgentMessageModelId,
+        creditArgs: {
+          agentMessageId: agentLoopArgs.agentMessageId,
+        },
+      },
+    ),
+    launchTrackProgrammaticUsage(auth, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(auth, agentLoopArgs, {
+      consumptionMode,
+    }),
     sendEmailReplyOnError(auth, agentLoopArgs, creditsExhaustedMessage(auth)),
   ]);
 }
@@ -242,7 +279,7 @@ export async function logStuckToolsForErroredAgentMessage(
     agentLoopArgs: Pick<AgentLoopArgs, "conversationId" | "agentMessageId">;
     agentMessageModelId: ModelId;
     error: { message: string; name: string };
-  }
+  },
 ): Promise<void> {
   let stuckTools: {
     actionModelId: ModelId;
@@ -268,7 +305,7 @@ export async function logStuckToolsForErroredAgentMessage(
         conversationId: agentLoopArgs.conversationId,
         agentMessageId: agentLoopArgs.agentMessageId,
       },
-      "Failed to list stuck tools for errored agent message"
+      "Failed to list stuck tools for errored agent message",
     );
   }
 
@@ -281,19 +318,20 @@ export async function logStuckToolsForErroredAgentMessage(
       workflowErrorMessage: error.message,
       stuckTools,
     },
-    "Agent loop finalized as errored"
+    "Agent loop finalized as errored",
   );
 }
 
 export async function finalizeErroredAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs,
-  error: { message: string; name: string }
+  error: { message: string; name: string },
+  consumptionContext?: AgentMessageConsumptionExecutionContext | null,
 ): Promise<void> {
   const agentMessageModelId = await notifyWorkflowError(
     authType,
     agentLoopArgs,
-    error
+    error,
   );
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
@@ -306,26 +344,30 @@ export async function finalizeErroredAgentLoopActivity(
     });
   }
 
-  const consumptionResult = await recordExecutionFinalizedAfterSkillSnapshot(
+  const consumptionMode = await snapshotSkillsAndRecordExecutionFinalized(
     auth,
-    agentLoopArgs
+    agentLoopArgs,
+    consumptionContext,
   );
-  if (consumptionResult.isErr()) {
-    throw consumptionResult.error;
-  }
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
     launchAgentMessageConsumptionAttributionAfterPersistingInputs(
       auth,
-      agentLoopArgs
+      agentLoopArgs,
+      {
+        consumptionMode,
+        rootAgentMessageModelId: consumptionContext?.rootAgentMessageModelId,
+      },
     ),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(auth, agentLoopArgs, {
+      consumptionMode,
+    }),
     sendEmailReplyOnError(
       auth,
       agentLoopArgs,
-      `Agent execution failed: ${error.message}`
+      `Agent execution failed: ${error.message}`,
     ),
   ]);
 }

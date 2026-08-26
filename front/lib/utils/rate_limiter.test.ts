@@ -453,6 +453,26 @@ describe("fixed-window counter", () => {
     }
   });
 
+  it("applies an idempotent fixed-window increment only once", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    const bounds = boundsFor("idempotent");
+    fixedWindowKeysToExpire.add(`${key}:${bounds.label}`);
+    fixedWindowKeysToExpire.add(`${key}:${bounds.label}:idempotency`);
+
+    for (const incrementBy of [2_500_000, 9_000_000]) {
+      await addFixedWindowCount({
+        key,
+        bounds,
+        incrementBy,
+        idempotencyKey: "execution-x",
+        logger,
+      });
+    }
+
+    const count = await getFixedWindowCount({ key, bounds });
+    expect(count.isOk() && count.value).toBe(2_500_000);
+  });
+
   it("keeps separate counts per window label", async () => {
     const key = `test:${crypto.randomUUID()}`;
     const windowA = boundsFor("wA");

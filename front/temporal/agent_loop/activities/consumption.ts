@@ -1,32 +1,79 @@
 import { getAgentMessageConsumptionMode } from "@app/lib/api/assistant/consumption/mode_switch";
-import type { Authenticator } from "@app/lib/auth";
+import { recordModelCallConsumption } from "@app/lib/api/assistant/consumption/model_call_writer";
+import { recordToolCompletionConsumption } from "@app/lib/api/assistant/consumption/tool_completion_writer";
+import type { AuthenticatorType } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_message_consumption_event_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { signalConsumptionEventsAppended } from "@app/temporal/credit_consumption/client";
-import type { EnabledAgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
+import type {
+  AgentMessageConsumptionExecutionContext,
+  EnabledAgentMessageConsumptionMode,
+} from "@app/types/assistant/agent_message_consumption";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { isRecord, isString } from "@app/types/shared/utils/general";
 
 type ExecutionEntryContext = {
   agentMessageModelId: ModelId;
-  rootAgentMessageModelId: ModelId;
+  parentAgentMessageId: string | null;
   runKey: string;
   status: AgentMessageStatus;
 };
 
+type LegacyConsumptionExecutionContext = {
+  rootAgentMessageId: string;
+  runKey: string;
+};
+
+type ConsumptionExecutionLineage = {
+  rootAgentMessageModelId: ModelId;
+  consumptionMode: EnabledAgentMessageConsumptionMode;
+};
+
+function isLegacyConsumptionExecutionContext(
+  value: unknown
+): value is LegacyConsumptionExecutionContext {
+  if (typeof value !== "object" || value === null || !isRecord(value)) {
+    return false;
+  }
+  return (
+    isString(value.rootAgentMessageId) &&
+    value.rootAgentMessageId.length > 0 &&
+    isString(value.runKey) &&
+    value.runKey.length > 0
+  );
+}
+
+async function signalPersistedConsumptionWork(
+  auth: Authenticator,
+  runKey: string
+): Promise<void> {
+  const signalRes = await signalConsumptionEventsAppended(auth.toJSON(), {
+    runKey,
+  });
+  if (signalRes.isErr()) {
+    logger.warn(
+      { error: signalRes.error, runKey },
+      "Failed to signal persisted consumption work"
+    );
+  }
+}
+
 async function resolveExecutionEntryContext(
   auth: Authenticator,
-  agentLoopArgs: AgentLoopArgs
-): Promise<ExecutionEntryContext | null> {
-  const { agentMessageId, rootAgentMessageId, runKey } = agentLoopArgs;
-  if (!runKey || !rootAgentMessageId) {
-    return null;
+  {
+    agentMessageId,
+    runKey,
+  }: {
+    agentMessageId: string;
+    runKey: string;
   }
+): Promise<ExecutionEntryContext | null> {
   const creditContext =
     await ConversationResource.fetchAgentMessageCreditContext(auth, {
       agentMessageId,
@@ -34,53 +81,299 @@ async function resolveExecutionEntryContext(
   if (!creditContext) {
     return null;
   }
-  const rootCreditContext =
-    agentMessageId === rootAgentMessageId
-      ? creditContext
-      : await ConversationResource.fetchAgentMessageCreditContext(auth, {
-          agentMessageId: rootAgentMessageId,
-        });
-  if (!rootCreditContext) {
-    return null;
-  }
 
   return {
     agentMessageModelId: creditContext.agentMessageModelId,
-    rootAgentMessageModelId: rootCreditContext.agentMessageModelId,
+    parentAgentMessageId: creditContext.parentAgentMessageId,
     runKey,
     status: creditContext.status,
   };
 }
 
-async function fetchExecutionStartedMode(
+export function getLegacyConsumptionExecutionContext(
+  agentLoopArgs: AgentLoopArgs
+): LegacyConsumptionExecutionContext | null {
+  return isLegacyConsumptionExecutionContext(agentLoopArgs)
+    ? agentLoopArgs
+    : null;
+}
+
+async function fetchExecutionStarted(
   auth: Authenticator,
-  context: ExecutionEntryContext
-): Promise<EnabledAgentMessageConsumptionMode | null> {
+  {
+    agentMessageModelId,
+    fallbackAgentMessageModelId,
+  }: {
+    agentMessageModelId: ModelId;
+    fallbackAgentMessageModelId?: ModelId;
+  }
+): Promise<ConsumptionExecutionLineage | null> {
   const executionStarted =
     await AgentMessageConsumptionEventResource.fetchLatestExecutionStartedForAgentMessage(
       auth,
-      { agentMessageModelId: context.agentMessageModelId }
+      { agentMessageModelId }
     );
-  if (executionStarted) {
-    return executionStarted.consumptionMode;
+  if (executionStarted || fallbackAgentMessageModelId === undefined) {
+    return executionStarted;
   }
-  if (context.agentMessageModelId === context.rootAgentMessageModelId) {
-    return null;
-  }
-  const rootExecutionStarted =
-    await AgentMessageConsumptionEventResource.fetchLatestExecutionStartedForAgentMessage(
-      auth,
-      { agentMessageModelId: context.rootAgentMessageModelId }
-    );
-  return rootExecutionStarted?.consumptionMode ?? null;
+  return AgentMessageConsumptionEventResource.fetchLatestExecutionStartedForAgentMessage(
+    auth,
+    { agentMessageModelId: fallbackAgentMessageModelId }
+  );
 }
 
 /**
- * @cc [owner:id13,label:backend;product] consumption-mode-event-snapshot
- * An existing execution-started event MUST determine the mode. Without one, feature flags MUST be
- * evaluated only when consumption initialization is explicitly allowed; other launches MUST remain
- * on legacy billing.
+ * @cc [owner:id13,label:backend;product] legacy-consumption-event-source
+ * Legacy activity inputs MUST derive their execution context from execution-started events. An
+ * absent event MUST keep the execution on legacy billing.
  */
+export async function resolveLegacyConsumptionExecutionContext(
+  auth: Authenticator,
+  agentLoopArgs: AgentLoopArgs
+): Promise<AgentMessageConsumptionExecutionContext | null> {
+  const legacyContext = getLegacyConsumptionExecutionContext(agentLoopArgs);
+  if (!legacyContext) {
+    return null;
+  }
+  const isRootExecution =
+    agentLoopArgs.agentMessageId === legacyContext.rootAgentMessageId;
+  const [context, rootCreditContext] = await Promise.all([
+    resolveExecutionEntryContext(auth, {
+      agentMessageId: agentLoopArgs.agentMessageId,
+      runKey: legacyContext.runKey,
+    }),
+    isRootExecution
+      ? Promise.resolve(null)
+      : ConversationResource.fetchAgentMessageCreditContext(auth, {
+          agentMessageId: legacyContext.rootAgentMessageId,
+        }),
+  ]);
+  if (!context || (!isRootExecution && !rootCreditContext)) {
+    return null;
+  }
+  const rootAgentMessageModelId =
+    rootCreditContext?.agentMessageModelId ?? context.agentMessageModelId;
+  const executionStarted = await fetchExecutionStarted(auth, {
+    agentMessageModelId: context.agentMessageModelId,
+    fallbackAgentMessageModelId: rootAgentMessageModelId,
+  });
+  if (!executionStarted) {
+    return null;
+  }
+  return {
+    mode: executionStarted.consumptionMode,
+    rootAgentMessageModelId: executionStarted.rootAgentMessageModelId,
+    runKey: legacyContext.runKey,
+  };
+}
+
+async function startConsumptionExecution(
+  auth: Authenticator,
+  {
+    context,
+    lineage,
+  }: {
+    context: ExecutionEntryContext;
+    lineage: ConsumptionExecutionLineage;
+  }
+): Promise<EnabledAgentMessageConsumptionMode | null> {
+  await withTransaction((transaction) =>
+    AgentMessageConsumptionEventResource.append(auth, {
+      event: {
+        kind: "execution_started",
+        idempotencyKey: `execution:${context.runKey}:started`,
+        runKey: context.runKey,
+        rootAgentMessageModelId: lineage.rootAgentMessageModelId,
+        agentMessageModelId: context.agentMessageModelId,
+        consumptionMode: lineage.consumptionMode,
+      },
+      transaction,
+    })
+  );
+
+  await signalPersistedConsumptionWork(auth, context.runKey);
+  return lineage.consumptionMode;
+}
+
+export async function recordModelCallConsumptionActivity(
+  authType: AuthenticatorType,
+  {
+    agentMessageId,
+    consumptionContext,
+    conversationId,
+    dustRunId,
+    emittedActionModelIds,
+  }: {
+    agentMessageId: string;
+    consumptionContext: AgentMessageConsumptionExecutionContext;
+    conversationId: string;
+    dustRunId: string;
+    emittedActionModelIds: ModelId[];
+  }
+): Promise<void> {
+  const auth = await Authenticator.fromJSON(authType);
+  const [creditContext, conversation, emittedActions] = await Promise.all([
+    ConversationResource.fetchAgentMessageCreditContext(auth, {
+      agentMessageId,
+    }),
+    ConversationResource.fetchById(auth, conversationId, {
+      includeDeleted: true,
+    }),
+    AgentMCPActionResource.fetchByModelIds(auth, emittedActionModelIds),
+  ]);
+  if (!creditContext || !conversation) {
+    logger.info(
+      { agentMessageId, conversationId },
+      "Skipping consumption for deleted model-call context"
+    );
+    return;
+  }
+
+  const result = await recordModelCallConsumption(auth, {
+    context: {
+      agentMessageModelId: creditContext.agentMessageModelId,
+      conversationModelId: conversation.id,
+      rootAgentMessageId: consumptionContext.rootAgentMessageModelId,
+      runKey: consumptionContext.runKey,
+    },
+    dustRunId,
+    emittedActions,
+  });
+  if (result.isErr()) {
+    throw result.error;
+  }
+}
+
+export async function recordToolCompletionConsumptionActivity(
+  authType: AuthenticatorType,
+  {
+    actionModelId,
+    agentMessageId,
+    consumptionContext,
+  }: {
+    actionModelId: ModelId;
+    agentMessageId: string;
+    consumptionContext: AgentMessageConsumptionExecutionContext;
+  }
+): Promise<void> {
+  const auth = await Authenticator.fromJSON(authType);
+  const [action, creditContext] = await Promise.all([
+    AgentMCPActionResource.fetchByModelIdWithAuth(auth, actionModelId),
+    ConversationResource.fetchAgentMessageCreditContext(auth, {
+      agentMessageId,
+    }),
+  ]);
+  if (!action || !creditContext) {
+    logger.info(
+      { actionModelId, agentMessageId },
+      "Skipping consumption for deleted tool context"
+    );
+    return;
+  }
+
+  const result = await recordToolCompletionConsumption(auth, {
+    action,
+    context: {
+      agentMessageId,
+      agentMessageModelId: creditContext.agentMessageModelId,
+      rootAgentMessageId: consumptionContext.rootAgentMessageModelId,
+      runKey: consumptionContext.runKey,
+    },
+  });
+  if (result.isErr()) {
+    throw result.error;
+  }
+}
+
+/**
+ * @cc [owner:id13,label:backend;product] consumption-root-execution-snapshot
+ * A root execution MUST reuse its latest execution-started mode. Without one, feature flags MUST be
+ * evaluated and an execution-started event appended only when consumption initialization is
+ * explicitly allowed.
+ */
+/**
+ * @cc [owner:id13,label:backend;product] consumption-descendant-execution-inheritance
+ * A descendant execution MUST start consumption only when its immediate parent has a persisted
+ * execution-started event, and MUST inherit that event's root agent message ID and mode.
+ */
+export async function initializeConsumptionExecutionActivity(
+  authType: AuthenticatorType,
+  {
+    agentMessageId,
+    canInitializeConsumption,
+    runKey,
+  }: {
+    agentMessageId: string;
+    // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
+    canInitializeConsumption: boolean;
+    runKey: string;
+  }
+): Promise<AgentMessageConsumptionExecutionContext | null> {
+  const auth = await Authenticator.fromJSON(authType);
+  const context = await resolveExecutionEntryContext(auth, {
+    agentMessageId,
+    runKey,
+  });
+  if (!context) {
+    return null;
+  }
+
+  let lineage: ConsumptionExecutionLineage;
+  if (context.parentAgentMessageId === null) {
+    const existingExecution = await fetchExecutionStarted(auth, {
+      agentMessageModelId: context.agentMessageModelId,
+    });
+    if (existingExecution) {
+      lineage = existingExecution;
+    } else {
+      if (!canInitializeConsumption) {
+        return null;
+      }
+      const mode = await getAgentMessageConsumptionMode(auth);
+      if (mode === "off") {
+        return null;
+      }
+      lineage = {
+        rootAgentMessageModelId: context.agentMessageModelId,
+        consumptionMode: mode,
+      };
+    }
+  } else {
+    const parentCreditContext =
+      await ConversationResource.fetchAgentMessageCreditContext(auth, {
+        agentMessageId: context.parentAgentMessageId,
+      });
+    if (!parentCreditContext) {
+      return null;
+    }
+    const parentExecution =
+      await AgentMessageConsumptionEventResource.fetchLatestExecutionStartedForAgentMessage(
+        auth,
+        { agentMessageModelId: parentCreditContext.agentMessageModelId }
+      );
+    if (!parentExecution) {
+      return null;
+    }
+    lineage = {
+      rootAgentMessageModelId: parentExecution.rootAgentMessageModelId,
+      consumptionMode: parentExecution.consumptionMode,
+    };
+  }
+
+  const mode = await startConsumptionExecution(auth, {
+    context,
+    lineage,
+  });
+  if (mode === null) {
+    return null;
+  }
+  return {
+    mode,
+    rootAgentMessageModelId: lineage.rootAgentMessageModelId,
+    runKey,
+  };
+}
+
 export async function recordExecutionStarted(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs,
@@ -90,59 +383,87 @@ export async function recordExecutionStarted(
     // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
     canInitializeConsumption: boolean;
   }
-): Promise<Result<boolean, Error>> {
-  const { runKey } = agentLoopArgs;
-  if (!runKey) {
-    return new Ok(false);
+): Promise<boolean> {
+  const legacyContext = getLegacyConsumptionExecutionContext(agentLoopArgs);
+  if (!legacyContext) {
+    return false;
   }
-  const context = await resolveExecutionEntryContext(auth, agentLoopArgs);
-  if (!context) {
-    return new Ok(false);
+  const { rootAgentMessageId, runKey } = legacyContext;
+  const isRootExecution = agentLoopArgs.agentMessageId === rootAgentMessageId;
+  const [context, rootCreditContext] = await Promise.all([
+    resolveExecutionEntryContext(auth, {
+      agentMessageId: agentLoopArgs.agentMessageId,
+      runKey,
+    }),
+    isRootExecution
+      ? Promise.resolve(null)
+      : ConversationResource.fetchAgentMessageCreditContext(auth, {
+          agentMessageId: rootAgentMessageId,
+        }),
+  ]);
+  if (!context || (!isRootExecution && !rootCreditContext)) {
+    return false;
   }
-  const existingMode = await fetchExecutionStartedMode(auth, context);
-  const mode =
-    existingMode ??
-    (canInitializeConsumption
-      ? await getAgentMessageConsumptionMode(auth)
-      : "off");
-  if (mode === "off") {
-    return new Ok(false);
-  }
-
-  await withTransaction((transaction) =>
-    AgentMessageConsumptionEventResource.append(auth, {
-      event: {
-        kind: "execution_started",
-        idempotencyKey: `execution:${runKey}:started`,
-        runKey: context.runKey,
-        rootAgentMessageModelId: context.rootAgentMessageModelId,
-        agentMessageModelId: context.agentMessageModelId,
-        consumptionMode: mode,
-      },
-      transaction,
-    })
-  );
-
-  const signalRes = await signalConsumptionEventsAppended(auth.toJSON(), {
-    runKey: context.runKey,
+  const rootAgentMessageModelId =
+    rootCreditContext?.agentMessageModelId ?? context.agentMessageModelId;
+  let lineage = await fetchExecutionStarted(auth, {
+    agentMessageModelId: context.agentMessageModelId,
+    fallbackAgentMessageModelId: rootAgentMessageModelId,
   });
-  if (signalRes.isErr()) {
-    return new Err(signalRes.error);
+  if (!lineage) {
+    if (!canInitializeConsumption) {
+      return false;
+    }
+    const mode = await getAgentMessageConsumptionMode(auth);
+    if (mode === "off") {
+      return false;
+    }
+    lineage = {
+      rootAgentMessageModelId,
+      consumptionMode: mode,
+    };
   }
-  return new Ok(true);
+  const mode = await startConsumptionExecution(auth, {
+    context,
+    lineage,
+  });
+  return mode !== null;
 }
 
 export async function recordExecutionFinalized(
   auth: Authenticator,
-  agentLoopArgs: AgentLoopArgs
-): Promise<Result<EnabledAgentMessageConsumptionMode | null, Error>> {
-  const context = await resolveExecutionEntryContext(auth, agentLoopArgs);
-  if (!context) {
-    return new Ok(null);
+  agentLoopArgs: AgentLoopArgs,
+  consumptionContext?: AgentMessageConsumptionExecutionContext | null
+): Promise<EnabledAgentMessageConsumptionMode | null> {
+  if (consumptionContext === null) {
+    return null;
   }
-  const consumptionMode = await fetchExecutionStartedMode(auth, context);
+  let rootAgentMessageModelId: ModelId;
+  let runKey: string;
+  let consumptionMode: EnabledAgentMessageConsumptionMode | null;
+  if (consumptionContext) {
+    rootAgentMessageModelId = consumptionContext.rootAgentMessageModelId;
+    runKey = consumptionContext.runKey;
+    consumptionMode = consumptionContext.mode;
+  } else {
+    const legacyConsumptionContext =
+      await resolveLegacyConsumptionExecutionContext(auth, agentLoopArgs);
+    if (!legacyConsumptionContext) {
+      return null;
+    }
+    rootAgentMessageModelId = legacyConsumptionContext.rootAgentMessageModelId;
+    runKey = legacyConsumptionContext.runKey;
+    consumptionMode = legacyConsumptionContext.mode;
+  }
+  const context = await resolveExecutionEntryContext(auth, {
+    agentMessageId: agentLoopArgs.agentMessageId,
+    runKey,
+  });
+  if (!context) {
+    return null;
+  }
   if (consumptionMode === null) {
-    return new Ok(null);
+    return null;
   }
   await withTransaction((transaction) =>
     AgentMessageConsumptionEventResource.append(auth, {
@@ -150,7 +471,7 @@ export async function recordExecutionFinalized(
         kind: "execution_finalized",
         idempotencyKey: `execution:${context.runKey}:finalized`,
         runKey: context.runKey,
-        rootAgentMessageModelId: context.rootAgentMessageModelId,
+        rootAgentMessageModelId,
         agentMessageModelId: context.agentMessageModelId,
         status: context.status,
         consumptionMode,
@@ -159,12 +480,7 @@ export async function recordExecutionFinalized(
     })
   );
 
-  const signalRes = await signalConsumptionEventsAppended(auth.toJSON(), {
-    runKey: context.runKey,
-  });
-  if (signalRes.isErr()) {
-    return new Err(signalRes.error);
-  }
+  await signalPersistedConsumptionWork(auth, context.runKey);
 
   logger.info(
     {
@@ -175,5 +491,5 @@ export async function recordExecutionFinalized(
     },
     "[Consumption] Closed an execution."
   );
-  return new Ok(consumptionMode);
+  return consumptionMode;
 }

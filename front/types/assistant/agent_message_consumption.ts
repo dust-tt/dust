@@ -3,6 +3,7 @@ import type {
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export const AGENT_MESSAGE_CONSUMPTION_MODES = [
   "off",
@@ -14,11 +15,17 @@ export type AgentMessageConsumptionMode =
   (typeof AGENT_MESSAGE_CONSUMPTION_MODES)[number];
 
 export const ENABLED_AGENT_MESSAGE_CONSUMPTION_MODES = Object.freeze(
-  AGENT_MESSAGE_CONSUMPTION_MODES.filter((mode) => mode !== "off")
+  AGENT_MESSAGE_CONSUMPTION_MODES.filter((mode) => mode !== "off"),
 );
 
 export type EnabledAgentMessageConsumptionMode =
   (typeof ENABLED_AGENT_MESSAGE_CONSUMPTION_MODES)[number];
+
+export type AgentMessageConsumptionExecutionContext = {
+  mode: EnabledAgentMessageConsumptionMode;
+  rootAgentMessageModelId: ModelId;
+  runKey: string;
+};
 
 export const AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES = [
   "system",
@@ -48,7 +55,7 @@ export type AgentMessageConsumptionToolItemType =
   (typeof AGENT_MESSAGE_CONSUMPTION_TOOL_ITEM_TYPES)[number];
 
 export function isAgentMessageConsumptionToolItemType(
-  itemType: AgentMessageConsumptionItemType
+  itemType: AgentMessageConsumptionItemType,
 ): itemType is AgentMessageConsumptionToolItemType {
   return (
     itemType === "tool" ||

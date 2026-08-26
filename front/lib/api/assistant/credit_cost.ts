@@ -2,41 +2,23 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { recordAgentMessageTotal } from "@app/lib/api/assistant/consumption/counters";
-import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
-import { maybeProactivelyAutoUpgradeSeatOnCapReached } from "@app/lib/api/credits/auto_seat_upgrade";
-import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
-import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
-import { PostHogServerSideTracking } from "@app/lib/api/posthog";
+import { recordAgentMessageCreditCounters } from "@app/lib/api/assistant/credit_counters";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
-import {
-  recordFreeSeatLifetimeUsage,
-  recordUserSpendLimitUsage,
-} from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   buildAgentMessageBillingPlan,
   computeRunKey,
 } from "@app/lib/credits/agent_message_billing";
-import {
-  microCreditsToCredits,
-  roundCreditsToMicroCredits,
-} from "@app/lib/credits/units";
+import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { getUsageType } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
-import { spendLimitCycleOverrideForAuth } from "@app/lib/spend_limits/cycle";
-import {
-  addRateLimiterCount,
-  getTimeframeSecondsFromLiteral,
-  getWeightedRateLimiterUsage,
-} from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 
 interface CreditActionMinimalInput {
   toolName: string;
@@ -96,10 +78,12 @@ export async function computeAndStoreAgentMessageCredits(
     agentMessageId,
     dustRunIds,
     rootAgentMessageId,
+    rootAgentMessageModelId,
   }: {
     agentMessageId: string;
     dustRunIds?: string[];
     rootAgentMessageId?: string;
+    rootAgentMessageModelId?: ModelId;
   }
 ): Promise<number | null> {
   const creditContext =
@@ -118,7 +102,7 @@ export async function computeAndStoreAgentMessageCredits(
 
   const {
     agentMessageModelId,
-    rootAgentMessageModelId,
+    rootAgentMessageModelId: resolvedRootAgentMessageModelId,
     status,
     runIds,
     triggeringUserMessageOrigin,
@@ -183,10 +167,12 @@ export async function computeAndStoreAgentMessageCredits(
     costCredits,
   });
 
-  if (rootAgentMessageModelId !== null) {
+  const consumptionRootAgentMessageModelId =
+    rootAgentMessageModelId ?? resolvedRootAgentMessageModelId;
+  if (consumptionRootAgentMessageModelId !== null) {
     await recordAgentMessageTotal({
       workspaceId: auth.getNonNullableWorkspace().sId,
-      rootAgentMessageId: rootAgentMessageModelId,
+      rootAgentMessageId: consumptionRootAgentMessageModelId,
       agentMessageId: agentMessageModelId,
       totalCreditAmountMicro: roundCreditsToMicroCredits(costCredits ?? 0),
     });
@@ -211,125 +197,10 @@ export async function computeAndStoreAgentMessageCredits(
   const recordedCostDelta =
     costCredits !== null ? costCredits - (previousCostCredits ?? 0) : 0;
 
-  const user = auth.user();
-  const plan = auth.plan();
-  const assistantLimits = plan?.limits.assistant;
-
-  // The `disable_fair_use_awu_limit` flag gates the fair-use recording below;
-  // fetch once when there is a delta to record.
-  const featureFlags = recordedCostDelta > 0 ? await getFeatureFlags(auth) : [];
-
-  if (
-    user &&
-    assistantLimits &&
-    recordedCostDelta > 0 &&
-    assistantLimits.maxAwuCredits !== -1 &&
-    !featureFlags.includes("disable_fair_use_awu_limit")
-  ) {
-    // The limit guard lives in isMessagesLimitReached (pre-message), which reads
-    // the count via getRateLimiterCount and blocks the next message once the
-    // total reaches maxAwuCredits.
-    const fairUseKey = makeFairUseAwuCreditsRateLimitKeyForUser(
-      auth.getNonNullableWorkspace(),
-      user.toJSON(),
-      assistantLimits.maxAwuCreditsTimeframe
-    );
-    const fairUseTimeframeSeconds = getTimeframeSecondsFromLiteral(
-      assistantLimits.maxAwuCreditsTimeframe
-    );
-
-    await addRateLimiterCount({
-      key: fairUseKey,
-      timeframeSeconds: fairUseTimeframeSeconds,
-      incrementBy: recordedCostDelta,
-      logger,
-    });
-
-    // Only the message that crosses the cap emits: from here on the user is
-    // blocked upstream, and each retry emits `fair_use_limit_blocked` instead.
-    const usage = await getWeightedRateLimiterUsage({
-      key: fairUseKey,
-      timeframeSeconds: fairUseTimeframeSeconds,
-    });
-    const limitMicroCredits = roundCreditsToMicroCredits(
-      assistantLimits.maxAwuCredits
-    );
-    if (
-      usage.isOk() &&
-      usage.value.count >= limitMicroCredits &&
-      usage.value.count - roundCreditsToMicroCredits(recordedCostDelta) <
-        limitMicroCredits
-    ) {
-      PostHogServerSideTracking.trackEvent({
-        distinctId: user.sId,
-        event: "fair_use_limit_reached",
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        extra: {
-          limit_credits: assistantLimits.maxAwuCredits,
-          timeframe: assistantLimits.maxAwuCreditsTimeframe,
-          used_credits: microCreditsToCredits(usage.value.count),
-          // How fast the window was burnt: low -> spike, not steady use.
-          burn_duration_hours: usage.value.oldestTimestampMs
-            ? (Date.now() - usage.value.oldestTimestampMs) / (60 * 60 * 1000)
-            : 0,
-          origin: messageOrigin,
-        },
-      });
-    }
-  }
-
-  // Record against the spend-cap counters (Redis fixed-window, over the contract
-  // billing cycle) that back enforcement in `lib/api/credits/access_control`.
-  if (recordedCostDelta > 0) {
-    // Per-user cap. Free and paid consumption are kept in separate counters:
-    // free seats accrue only against their lifetime counter, everyone else only
-    // against the per-cycle counter. Recording a free seat's usage into the
-    // per-cycle counter would leak it into their paid cap after a free→pro
-    // switch within the same cycle (mirrors the Metronome `free-<sId>` user-key
-    // split).
-    if (user) {
-      const membership =
-        await MembershipResource.getActiveMembershipOfUserInWorkspace({
-          user,
-          workspace: auth.getNonNullableWorkspace(),
-        });
-      if (membership?.seatType === "free") {
-        await recordFreeSeatLifetimeUsage(auth, {
-          user,
-          incrementBy: recordedCostDelta,
-        });
-      } else {
-        await recordUserSpendLimitUsage(auth, {
-          user,
-          incrementBy: recordedCostDelta,
-          cycle: spendLimitCycleOverrideForAuth(auth),
-        });
-      }
-
-      // Proactively auto-upgrade the moment this message's usage puts the user
-      // at/over their per-user cap, so the next message isn't blocked and the
-      // "limit reached" banner never appears — the proactive counterpart to the
-      // reactive upgrade at message-send. Fire-and-forget: runs off the send
-      // path and never fails it.
-      void maybeProactivelyAutoUpgradeSeatOnCapReached(auth, { user });
-    }
-
-    // Per-API-key cap.
-    const apiKey = auth.keyForUsageAttribution();
-    if (apiKey) {
-      await recordApiKeySpendLimitUsage(auth, {
-        keyModelId: apiKey.id,
-        incrementBy: recordedCostDelta,
-      });
-    }
-
-    // Workspace programmatic cap, for programmatic calls.
-    if (isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin })) {
-      await recordProgrammaticSpendLimitUsage(auth, {
-        incrementBy: recordedCostDelta,
-      });
-    }
-  }
+  await recordAgentMessageCreditCounters(auth, {
+    creditAmount: recordedCostDelta,
+    userMessageOrigin: messageOrigin,
+  });
 
   return costCredits;
 }

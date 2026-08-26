@@ -10,18 +10,19 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getShutdownSignal } from "@app/lib/shutdown_signal";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { resolveLegacyConsumptionExecutionContext } from "@app/temporal/agent_loop/activities/consumption";
 import { TOOL_SETUP_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agent_loop/config";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
+import type { AgentMessageConsumptionExecutionContext } from "@app/types/assistant/agent_message_consumption";
 import type {
   AgentLoopArgsWithTiming,
   AgentLoopExecutionData,
@@ -64,7 +65,7 @@ function formatAccessedIdsSample(ids: string[]): string {
 }
 
 function extractDataSourceIds(
-  inputs: Record<string, unknown>
+  inputs: Record<string, unknown>,
 ): Record<string, string> {
   const result: Record<string, string> = {};
   const ds = inputs.dataSources;
@@ -96,15 +97,19 @@ export async function runToolActivity(
   authType: AuthenticatorType,
   {
     actionId,
+    consumptionContext,
+    recordConsumptionInline = true,
     runAgentArgs,
     step,
     runIds,
   }: {
     actionId: ModelId;
+    consumptionContext?: AgentMessageConsumptionExecutionContext | null;
+    recordConsumptionInline?: boolean;
     runAgentArgs: AgentLoopArgsWithTiming;
     step: number;
     runIds?: string[];
-  }
+  },
 ): Promise<ToolExecutionResult> {
   // The setup phase below is DB-bound and can stall past the heartbeat timeout under
   // connection-pool contention. Tool activities are not retried, so a missed first heartbeat
@@ -132,7 +137,7 @@ export async function runToolActivity(
               },
             }),
             AgentMCPActionResource.fetchByModelIdWithAuth(auth, actionId),
-          ])
+          ]),
       );
 
       return { auth, runAgentDataRes, action };
@@ -149,10 +154,10 @@ export async function runToolActivity(
             step,
             workspaceId: authType.workspaceId,
           },
-          "MCP tool setup heartbeat"
+          "MCP tool setup heartbeat",
         );
       },
-    }
+    },
   );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
@@ -161,7 +166,7 @@ export async function runToolActivity(
           actionId,
           runIds,
         },
-        "Message or conversation was deleted, exiting"
+        "Message or conversation was deleted, exiting",
       );
       return { deferredEvents };
     }
@@ -186,7 +191,7 @@ export async function runToolActivity(
       toolName: action.toolConfiguration.name,
       mcpServerName: action.toolConfiguration.mcpServerName,
     },
-    "Tool activity starting execution"
+    "Tool activity starting execution",
   );
 
   const {
@@ -221,7 +226,7 @@ export async function runToolActivity(
             mcpServerName: action.toolConfiguration.mcpServerName,
           },
         },
-        { asType: "tool" }
+        { asType: "tool" },
       );
 
       return executeToolStreaming(auth, {
@@ -236,14 +241,17 @@ export async function runToolActivity(
         userMessage,
       });
     },
-    { asType: "tool" }
+    { asType: "tool" },
   );
 
-  await recordToolCompletionConsumptionItem(auth, {
-    action,
-    agentMessage,
-    runAgentArgs,
-  });
+  if (recordConsumptionInline) {
+    await recordToolCompletionConsumptionItem(auth, {
+      action,
+      agentMessage,
+      consumptionContext,
+      runAgentArgs,
+    });
+  }
 
   return executionResult;
 }
@@ -253,43 +261,52 @@ async function recordToolCompletionConsumptionItem(
   {
     action,
     agentMessage,
+    consumptionContext,
     runAgentArgs,
   }: {
     action: AgentMCPActionResource;
     agentMessage: AgentMessageType;
+    consumptionContext?: AgentMessageConsumptionExecutionContext | null;
     runAgentArgs: AgentLoopArgsWithTiming;
-  }
+  },
 ): Promise<void> {
-  const { rootAgentMessageId, runKey } = runAgentArgs;
-  if (
-    !isToolExecutionStatusFinal(action.status) ||
-    !runKey ||
-    !rootAgentMessageId
-  ) {
+  if (!isToolExecutionStatusFinal(action.status)) {
     return;
   }
 
-  const featureFlags = await getFeatureFlags(auth);
-  if (!featureFlags.includes("agent_message_consumption_writes")) {
+  if (consumptionContext === null) {
     return;
   }
-  const rootAgentMessage =
-    await ConversationResource.fetchAgentMessageCreditContext(auth, {
-      agentMessageId: rootAgentMessageId,
-    });
-  if (!rootAgentMessage) {
+  let rootAgentMessageId: ModelId | undefined;
+  let runKey: string;
+  if (consumptionContext) {
+    rootAgentMessageId = consumptionContext.rootAgentMessageModelId;
+    runKey = consumptionContext.runKey;
+  } else {
+    const legacyConsumptionContext =
+      await resolveLegacyConsumptionExecutionContext(auth, runAgentArgs);
+    if (!legacyConsumptionContext) {
+      return;
+    }
+    rootAgentMessageId = legacyConsumptionContext.rootAgentMessageId;
+    runKey = legacyConsumptionContext.runKey;
+  }
+  if (rootAgentMessageId === undefined) {
     return;
   }
 
-  await recordToolCompletionConsumption(auth, {
+  const result = await recordToolCompletionConsumption(auth, {
     action,
     context: {
       agentMessageId: agentMessage.sId,
       agentMessageModelId: agentMessage.agentMessageId,
-      rootAgentMessageId: rootAgentMessage.agentMessageModelId,
+      rootAgentMessageId,
       runKey,
     },
   });
+  if (result.isErr()) {
+    throw result.error;
+  }
 }
 
 async function executeToolStreaming(
@@ -314,7 +331,7 @@ async function executeToolStreaming(
     runIds?: string[];
     step: number;
     userMessage: AgentLoopExecutionData["userMessage"];
-  }
+  },
 ): Promise<ToolExecutionResult> {
   const abortSignal = AbortSignal.any([
     Context.current().cancellationSignal,
@@ -324,7 +341,7 @@ async function executeToolStreaming(
   // Sandbox-child actions are observed by the CLI through polling; they must
   // not surface in the conversation timeline, so progress events are dropped.
   const isSandboxChildAction = isSandboxChildActionInfo(
-    action.stepContext.sandboxChildActionInfo
+    action.stepContext.sandboxChildActionInfo,
   );
 
   const handleNonDeferredEvents = !isSandboxChildAction
@@ -348,7 +365,7 @@ async function executeToolStreaming(
   const eventStream = runToolWithStreaming(
     auth,
     { toolContext },
-    { signal: abortSignal }
+    { signal: abortSignal },
   );
 
   for await (const event of eventStream) {
@@ -360,7 +377,7 @@ async function executeToolStreaming(
             level: "ERROR",
             statusMessage: event.error.message,
           },
-          { asType: "tool" }
+          { asType: "tool" },
         );
 
         // For tool errors, send immediately.
@@ -392,7 +409,7 @@ async function executeToolStreaming(
             level: event.isError ? "ERROR" : "WARNING",
             statusMessage: event.text ?? "Early exit",
           },
-          { asType: "tool" }
+          { asType: "tool" },
         );
 
         if (event.reason === "user_cancellation") {
@@ -490,7 +507,7 @@ async function executeToolStreaming(
         // function scoped events cannot surface here.
         assert(
           "conversationId" in event,
-          "Unexpected sandbox function tool event in the agent loop."
+          "Unexpected sandbox function tool event in the agent loop.",
         );
 
         updateActiveObservation(
@@ -498,7 +515,7 @@ async function executeToolStreaming(
             output: { status: event.type },
             level: "WARNING",
           },
-          { asType: "tool" }
+          { asType: "tool" },
         );
 
         // Batched for publishing after all parallel tools complete to avoid partial UI state.
@@ -532,7 +549,7 @@ async function executeToolStreaming(
           {
             output: { status: "success" },
           },
-          { asType: "tool" }
+          { asType: "tool" },
         );
 
         void emitAuditLogEventDirect({
@@ -556,7 +573,7 @@ async function executeToolStreaming(
           metadata: {
             tool_name: action.toolConfiguration.originalName,
             tool_type: isLightClientSideMCPToolConfiguration(
-              action.toolConfiguration
+              action.toolConfiguration,
             )
               ? "remote"
               : "internal",
@@ -599,7 +616,7 @@ async function executeToolStreaming(
         // sandbox function notification events cannot surface here.
         assert(
           isAgentLoopToolEvent(event),
-          "Unexpected sandbox function tool notification in the agent loop."
+          "Unexpected sandbox function tool notification in the agent loop.",
         );
         await handleNonDeferredEvents(auth, {
           event,
