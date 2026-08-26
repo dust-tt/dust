@@ -743,6 +743,152 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     );
   }
 
+  static async fetchConsumptionToolRow(
+    auth: Authenticator,
+    {
+      agentMCPActionModelId,
+      transaction,
+    }: {
+      agentMCPActionModelId: ModelId;
+      transaction?: Transaction;
+    }
+  ): Promise<AgentMessageToolConsumptionItemResource | null> {
+    const row = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        agentMCPActionId: agentMCPActionModelId,
+        itemType: "tool",
+      },
+      transaction,
+    });
+    if (!row) {
+      return null;
+    }
+
+    const item = new this(this.model, row.get());
+    return item.isToolItem() ? item : null;
+  }
+
+  static async fetchConsumptionModelRow(
+    auth: Authenticator,
+    {
+      runUsageModelId,
+      itemType,
+      transaction,
+    }: {
+      runUsageModelId: ModelId;
+      itemType: "input" | "output" | "reasoning";
+      transaction?: Transaction;
+    }
+  ): Promise<AgentMessageConsumptionItemResource | null> {
+    const row = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        runUsageId: runUsageModelId,
+        itemType,
+        agentMCPActionId: null,
+      },
+      transaction,
+    });
+
+    return row ? new this(this.model, row.get()) : null;
+  }
+
+  static async listConsumptionChargedToolRows(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      transaction,
+    }: {
+      agentMessageModelId: ModelId;
+      transaction?: Transaction;
+    }
+  ): Promise<AgentMessageToolConsumptionItemResource[]> {
+    const rows = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentMessageId: agentMessageModelId,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        itemType: "tool",
+        directCreditAmountMicro: { [Op.gt]: 0 },
+      },
+      order: [["completedAt", "ASC"]],
+      transaction,
+    });
+
+    return rows.flatMap((row) => {
+      const item = new this(this.model, row.get());
+      return item.isToolItem() ? [item] : [];
+    });
+  }
+
+  /**
+   * @cc [owner:id13,label:backend;concurrency] consumption-tool-completion-once
+   * A pending tool row MUST be locked and completed at most once. A retry after completion MUST
+   * return `null` without changing its execution, evidence, or credit amounts. Any call-footprint
+   * credit reallocation MUST be calculated from the row value held under that lock.
+   */
+  static async completeConsumptionToolRow(
+    auth: Authenticator,
+    {
+      consumptionItemId,
+      runKey,
+      inputTokensCount,
+      grossCreditAmountMicroDelta,
+      directCreditAmountMicro,
+      shouldReallocateCallFootprintCredit,
+      transaction,
+    }: {
+      consumptionItemId: ModelId;
+      runKey: string;
+      inputTokensCount: number;
+      grossCreditAmountMicroDelta: number;
+      directCreditAmountMicro: number;
+      shouldReallocateCallFootprintCredit: boolean;
+      transaction: Transaction;
+    }
+  ): Promise<{ reallocatedCallFootprintCreditAmountMicro: number } | null> {
+    const row = await this.model.findOne({
+      where: {
+        id: consumptionItemId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        completedAt: { [Op.is]: null },
+      },
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+    });
+    if (!row) {
+      return null;
+    }
+
+    const existingReconciledCreditAmountMicro =
+      row.reconciledCreditAmountMicro ?? 0;
+    const reallocatedCallFootprintCreditAmountMicro =
+      shouldReallocateCallFootprintCredit
+        ? existingReconciledCreditAmountMicro
+        : 0;
+
+    await row.update(
+      {
+        completedAt: new Date(),
+        runKey,
+        inputTokensCount,
+        directCreditAmountMicro,
+        grossAttributedCreditAmountMicro:
+          row.grossAttributedCreditAmountMicro + grossCreditAmountMicroDelta,
+        reconciledCreditAmountMicro:
+          existingReconciledCreditAmountMicro -
+          reallocatedCallFootprintCreditAmountMicro +
+          directCreditAmountMicro,
+      },
+      { transaction }
+    );
+
+    return { reallocatedCallFootprintCreditAmountMicro };
+  }
+
   static async listConsumptionToolResultsPendingConsumption(
     auth: Authenticator,
     {
