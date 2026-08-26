@@ -56,11 +56,16 @@ describe("storeFramePublication", () => {
   it("stores immutable source files before the manifest commit marker", async () => {
     const { auth, frame, workspaceId } = await setupFrame();
 
-    const { publicationId } = await storeFramePublication(auth, {
+    const result = await storeFramePublication(auth, {
       frame,
       manifest,
       sourceFiles,
     });
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    const { publicationId } = result.value;
     const identity = { workspaceId, frameId: frame.sId, publicationId };
 
     const savedPaths = fileStorageMock.saveFileCalls.map(
@@ -92,13 +97,43 @@ describe("storeFramePublication", () => {
   it("rejects a publication whose UI entry point is missing", async () => {
     const { auth, frame } = await setupFrame();
 
-    await expect(
-      storeFramePublication(auth, {
-        frame,
-        manifest,
-        sourceFiles: sourceFiles.slice(1),
-      })
-    ).rejects.toThrow("Frame UI entry point not found");
+    const result = await storeFramePublication(auth, {
+      frame,
+      manifest,
+      sourceFiles: sourceFiles.slice(1),
+    });
+
+    expect(result.isErr() && result.error.code).toBe("invalid_source");
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it.each([
+    ["an invalid path", [{ ...sourceFiles[0], relativePath: "../index.tsx" }]],
+    ["a duplicate path", [sourceFiles[0], sourceFiles[0]]],
+  ])("rejects %s before writing", async (_name, invalidSourceFiles) => {
+    const { auth, frame } = await setupFrame();
+
+    const result = await storeFramePublication(auth, {
+      frame,
+      manifest,
+      sourceFiles: invalidSourceFiles,
+    });
+
+    expect(result.isErr() && result.error.code).toBe("invalid_source");
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("rejects a Frame from another workspace before writing", async () => {
+    const { frame } = await setupFrame();
+    const { authenticator: otherAuth } = await createResourceTest({});
+
+    const result = await storeFramePublication(otherAuth, {
+      frame,
+      manifest,
+      sourceFiles,
+    });
+
+    expect(result.isErr() && result.error.code).toBe("invalid_frame");
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
