@@ -213,7 +213,7 @@ export function FeatureFlagDetailPage() {
         </LinkWrapper>
         <div className="mt-2 flex items-center gap-3">
           <h1 className="font-mono text-2xl font-bold">{flagName}</h1>
-          <FeatureFlagStageChip stage={flagConfig?.stage ?? null} />
+          <FeatureFlagStageChip flagName={flagName} />
           {globalRolloutPercentage !== null && (
             <span className="text-sm text-muted-foreground">
               global rollout: {globalRolloutPercentage}%

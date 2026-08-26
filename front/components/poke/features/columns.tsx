@@ -28,7 +28,7 @@ export function makeColumnsForFeatureFlags(): ColumnDef<FeatureFlagsDisplayType>
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Stage" />
       ),
-      cell: ({ row }) => <FeatureFlagStageChip stage={row.original.stage} />,
+      cell: ({ row }) => <FeatureFlagStageChip flagName={row.original.name} />,
     },
     {
       accessorKey: "description",
