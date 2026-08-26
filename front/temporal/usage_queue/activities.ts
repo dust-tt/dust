@@ -8,6 +8,9 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
+  billedCostAwuFromEvents,
+  buildLlmUsageEvents,
+  buildToolUseEvents,
   buildUsageEvents,
   computeRunKey,
   getUsageType,
@@ -372,6 +375,7 @@ export async function emitMetronomeUsageEventsActivity(
       mcpServerId: json.mcpServerId,
       internalMCPServerName: json.internalMCPServerName,
       status: json.status,
+      executionDurationMs: json.executionDurationMs,
       shouldEmit:
         agentLoopArgs.startStep === undefined ||
         json.step >= agentLoopArgs.startStep,
@@ -385,8 +389,54 @@ export async function emitMetronomeUsageEventsActivity(
   // ceils per the exact same execution partition that is billed here.
   const runKey = computeRunKey(effectiveRunIds);
 
-  // Build and ingest the single aggregated usage event (LLM + tool cost).
-  const usageEvents = buildUsageEvents({
+  // Build and ingest events.
+  const llmEvents = buildLlmUsageEvents({
+    workspaceId: workspace.sId,
+    isByok,
+    conversationId,
+    userId,
+    isFreeSeatedUser,
+    agentMessageId,
+    agentId,
+    subAgentId,
+    parentAgentMessageId,
+    runKey,
+    runUsages,
+    origin: userMessageOrigin,
+    usageType,
+    authMethod,
+    apiKeyName,
+    messageStatus,
+    isSubAgentMessage,
+    timestamp,
+  });
+
+  const toolEvents = buildToolUseEvents({
+    workspaceId: workspace.sId,
+    conversationId,
+    userId,
+    isFreeSeatedUser,
+    agentMessageId,
+    agentId,
+    subAgentId,
+    parentAgentMessageId,
+    runKey,
+    actions: toolActions,
+    origin: userMessageOrigin,
+    usageType,
+    authMethod,
+    apiKeyName,
+    messageStatus,
+    isSubAgentMessage,
+    timestamp,
+  });
+
+  await ingestMetronomeEvents([...llmEvents, ...toolEvents]);
+
+  // Shadow the upcoming single aggregated event and log its cost against the
+  // legacy events' cost, so we can confirm parity on real traffic before
+  // switching over. The aggregated event is NOT ingested yet.
+  const aggregatedUsageEvents = buildUsageEvents({
     workspaceId: workspace.sId,
     isByok,
     conversationId,
@@ -407,8 +457,23 @@ export async function emitMetronomeUsageEventsActivity(
     isSubAgentMessage,
     timestamp,
   });
-
-  await ingestMetronomeEvents(usageEvents);
+  const newCostAwu = aggregatedUsageEvents.reduce((total, event) => {
+    const costAwu = event.properties["cost_awu"];
+    return total + (typeof costAwu === "number" ? costAwu : 0);
+  }, 0);
+  const oldCostAwu = billedCostAwuFromEvents([...llmEvents, ...toolEvents]);
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      conversationId,
+      agentMessageId,
+      runKey,
+      newCostAwu,
+      oldCostAwu,
+      costMatches: newCostAwu === oldCostAwu,
+    },
+    "[UsageQueue] Metronome usage event cost parity check."
+  );
 
   // Per-key cap enforcement is pull-based: Metronome spend alerts can't
   // attribute spend by `api_key_name` (it's not the products' presentation

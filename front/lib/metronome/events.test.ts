@@ -1,5 +1,10 @@
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
-import { buildUsageEvents } from "@app/lib/metronome/events";
+import {
+  billedCostAwuFromEvents,
+  buildLlmUsageEvents,
+  buildToolUseEvents,
+  buildUsageEvents,
+} from "@app/lib/metronome/events";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { describe, expect, it } from "vitest";
 
@@ -20,7 +25,6 @@ function usage(overrides: Partial<RunUsageType>): RunUsageType {
 
 const commonEventInput = {
   workspaceId: "workspace",
-  isByok: false,
   conversationId: "conversation",
   userId: "user",
   isFreeSeatedUser: false,
@@ -29,8 +33,6 @@ const commonEventInput = {
   subAgentId: null,
   parentAgentMessageId: null,
   runKey: "execution",
-  runUsages: [],
-  actions: [],
   origin: "web" as const,
   usageType: "user" as const,
   authMethod: "session",
@@ -40,10 +42,11 @@ const commonEventInput = {
   timestamp: "2026-08-05T12:00:00.000Z",
 };
 
-describe("Metronome usage event adapter", () => {
-  it("emits a single event summing LLM and tool cost", () => {
-    const events = buildUsageEvents({
+describe("Metronome billing event adapters", () => {
+  it("emits the canonical LLM billing groups and credit amounts", () => {
+    const events = buildLlmUsageEvents({
       ...commonEventInput,
+      isByok: false,
       runUsages: [
         usage({ costMicroUsd: 1, promptTokens: 2 }),
         usage({ costMicroUsd: 2, promptTokens: 3 }),
@@ -53,147 +56,61 @@ describe("Metronome usage event adapter", () => {
           providerId: "anthropic",
         }),
       ],
+    });
+
+    expect(events).toHaveLength(2);
+    expect(events.map(({ properties }) => properties)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          provider_id: "openai",
+          model_id: "gpt-4o",
+          prompt_tokens: 5,
+          cost_micro_usd: 3,
+          cost_awu: 1,
+        }),
+        expect.objectContaining({
+          provider_id: "anthropic",
+          model_id: "claude-opus-4-8",
+          cost_awu: 1,
+        }),
+      ])
+    );
+  });
+
+  it("emits canonical tool categories and free-usage overrides", () => {
+    const events = buildToolUseEvents({
+      ...commonEventInput,
       actions: [
         {
           toolName: "websearch",
           mcpServerId: null,
           internalMCPServerName: "web_search_&_browse",
           status: "succeeded",
+          executionDurationMs: 10,
           shouldEmit: true,
         },
-      ],
-    });
-
-    expect(events).toHaveLength(1);
-    expect(events[0]?.event_type).toBe("llm_usage_v3");
-    expect(events[0]?.transaction_id).toBe(
-      "usage3-workspace-conversation-message-execution"
-    );
-    expect(events[0]?.properties).toMatchObject({
-      provider_id: "aggregate",
-      model_id: "aggregate",
-      // LLM: ceil(3/µ)=1 + ceil(1/µ)=1 = 2. Tool: one "basic" (1 AWU) call = 1.
-      cost_awu: 3,
-      prompt_tokens: 5,
-      usage_type: "user",
-    });
-  });
-
-  it("always emits the required billable shape with valid values", () => {
-    // Even with no user / api key / agent, the required properties fall back to
-    // valid, non-empty values so the billable metric's `exists` filters match.
-    const events = buildUsageEvents({
-      ...commonEventInput,
-      userId: null,
-      apiKeyName: null,
-      agentId: null,
-      runUsages: [usage({ costMicroUsd: 1 })],
-    });
-
-    expect(events).toHaveLength(1);
-    const event = events[0];
-    expect(event?.event_type).toBe("llm_usage_v3");
-
-    const props = event?.properties ?? {};
-    for (const key of [
-      "agent_id",
-      "api_key_name",
-      "cost_awu",
-      "model_id",
-      "origin",
-      "usage_type",
-      "user_id",
-    ]) {
-      expect(props[key]).toBeDefined();
-    }
-
-    // The attribution keys must carry valid, non-empty values.
-    expect(props["user_id"]).toBe("unknown");
-    expect(props["api_key_name"]).toBe("unknown");
-    expect(props["agent_id"]).toBe("unknown");
-    expect(props["usage_type"]).toBe("user");
-    expect(props["model_id"]).toBe("aggregate");
-    expect(props["origin"]).toBe("web");
-  });
-
-  it("matches the pre-merge cost: per-model LLM rounding, then flat tool addition excluding free/capped", () => {
-    const perAwu = MODEL_COST_MICRO_USD_PER_AWU_CREDIT;
-
-    const events = buildUsageEvents({
-      ...commonEventInput,
-      runUsages: [
-        // openai/gpt-4o group: two usages summed (1 + 1 = 2 µUSD) THEN rounded.
-        usage({ costMicroUsd: 1 }),
-        usage({ costMicroUsd: 1 }),
-        // anthropic group: a separate model, rounded on its own.
-        usage({
-          costMicroUsd: perAwu + 1,
-          modelId: "claude-opus-4-8",
-          providerId: "anthropic",
-        }),
-      ],
-      // 8 external "advanced" (3 AWU) calls on one server: the 20-credit
-      // per-server cap is reached after 7 (21 credits), so the 8th is waived.
-      actions: [
-        ...Array.from({ length: 8 }, () => ({
-          toolName: "custom_tool",
-          mcpServerId: "mcp_server",
-          internalMCPServerName: null,
-          status: "succeeded" as const,
-          shouldEmit: true,
-        })),
-        // A denied call is unbillable and must not contribute either.
         {
-          toolName: "custom_tool",
-          mcpServerId: "mcp_server",
-          internalMCPServerName: null,
-          status: "denied" as const,
+          toolName: "websearch",
+          mcpServerId: null,
+          internalMCPServerName: "web_search_&_browse",
+          status: "succeeded",
+          executionDurationMs: 20,
           shouldEmit: true,
         },
       ],
     });
 
-    // Reference computed exactly as billing did before the merge:
-    // LLM cost is the SUM of per-(provider, model) ceilings — never a single
-    // ceiling over the combined micro-USD.
-    const expectedLlmCredits =
-      Math.ceil(2 / perAwu) + Math.ceil((perAwu + 1) / perAwu); // 1 + 2 = 3
-    // Tool cost is the flat sum of the rated weights of the BILLED calls only
-    // (7 × 3); the capped 8th call and the denied call add nothing.
-    const expectedToolCredits = 21;
-    const expectedCostAwu = expectedLlmCredits + expectedToolCredits; // 24
-
-    expect(events).toHaveLength(1);
-    expect(events[0]?.properties["cost_awu"]).toBe(expectedCostAwu);
-
-    // Guard against a regression to "round once at the end": collapsing the
-    // per-model ceilings into a single ceiling over the combined micro-USD would
-    // undercount here (ceil((2 + perAwu + 1) / perAwu) = 2, not 3).
-    const roundOnceLlmCredits = Math.ceil((2 + perAwu + 1) / perAwu);
-    expect(roundOnceLlmCredits).not.toBe(expectedLlmCredits);
-  });
-
-  it("emits an LLM-only event when there are no tool actions", () => {
-    const events = buildUsageEvents({
-      ...commonEventInput,
-      runUsages: [usage({ costMicroUsd: 1 })],
-    });
-
     expect(events).toHaveLength(1);
     expect(events[0]?.properties).toMatchObject({
-      cost_awu: 1,
+      tool_category: "basic",
+      count: 2,
+      total_execution_duration_ms: 30,
       usage_type: "user",
     });
   });
 
-  it("emits no event when there is nothing to attribute", () => {
-    const events = buildUsageEvents({ ...commonEventInput });
-
-    expect(events).toEqual([]);
-  });
-
-  it("does not bill unbillable tool statuses", () => {
-    const events = buildUsageEvents({
+  it("does not emit events for unbillable tool statuses", () => {
+    const events = buildToolUseEvents({
       ...commonEventInput,
       actions: [
         {
@@ -201,63 +118,42 @@ describe("Metronome usage event adapter", () => {
           mcpServerId: null,
           internalMCPServerName: null,
           status: "denied",
+          executionDurationMs: null,
           shouldEmit: true,
         },
       ],
     });
 
-    // The action is emitted for observability but denied statuses are never
-    // billed, so cost is 0.
-    expect(events).toHaveLength(1);
-    expect(events[0]?.properties).toMatchObject({ cost_awu: 0 });
+    expect(events).toEqual([]);
   });
 
-  it("waives per-server-capped tool calls in the net cost", () => {
-    const events = buildUsageEvents({
+  it("splits paid and post-cap calls to the same tool", () => {
+    const events = buildToolUseEvents({
       ...commonEventInput,
       actions: Array.from({ length: 8 }, () => ({
         toolName: "custom_tool",
         mcpServerId: "mcp_server",
         internalMCPServerName: null,
         status: "succeeded" as const,
+        executionDurationMs: 10,
         shouldEmit: true,
       })),
     });
 
-    // External tools are "advanced" (3 AWU). The 20-credit per-server cap is
-    // reached after 7 calls (21 credits); the 8th is waived. Net billed = 21.
-    expect(events).toHaveLength(1);
-    expect(events[0]?.properties).toMatchObject({ cost_awu: 21 });
+    expect(events).toHaveLength(2);
+    expect(events.map(({ properties }) => properties)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ count: 7, usage_type: "user" }),
+        expect.objectContaining({ count: 1, usage_type: "free" }),
+      ])
+    );
+    expect(
+      new Set(events.map(({ transaction_id }) => transaction_id)).size
+    ).toBe(2);
   });
 
-  it("applies the free_mcp_server_cap per server, not globally", () => {
-    // Two different servers, 8 "advanced" (3 AWU) calls each. The 20-credit cap
-    // is applied independently per server, so each server bills 7 calls (21) and
-    // waives its own 8th. A global cap would waive far more and undercount.
-    const serverActions = (mcpServerId: string) =>
-      Array.from({ length: 8 }, () => ({
-        toolName: "custom_tool",
-        mcpServerId,
-        internalMCPServerName: null,
-        status: "succeeded" as const,
-        shouldEmit: true,
-      }));
-
-    const events = buildUsageEvents({
-      ...commonEventInput,
-      actions: [
-        ...serverActions("mcp_server_a"),
-        ...serverActions("mcp_server_b"),
-      ],
-    });
-
-    // 21 (server A) + 21 (server B) = 42.
-    expect(events).toHaveLength(1);
-    expect(events[0]?.properties).toMatchObject({ cost_awu: 42 });
-  });
-
-  it("does not re-bill prior-execution actions", () => {
-    const events = buildUsageEvents({
+  it("applies prior execution spend without re-emitting prior actions", () => {
+    const events = buildToolUseEvents({
       ...commonEventInput,
       actions: [
         ...Array.from({ length: 7 }, () => ({
@@ -265,6 +161,7 @@ describe("Metronome usage event adapter", () => {
           mcpServerId: "mcp_server",
           internalMCPServerName: null,
           status: "succeeded" as const,
+          executionDurationMs: 10,
           shouldEmit: false,
         })),
         {
@@ -272,29 +169,7 @@ describe("Metronome usage event adapter", () => {
           mcpServerId: "mcp_server",
           internalMCPServerName: null,
           status: "succeeded",
-          shouldEmit: true,
-        },
-      ],
-    });
-
-    // Prior actions already reached the cap, so this execution's only action is
-    // waived: it is emitted but bills 0.
-    expect(events).toHaveLength(1);
-    expect(events[0]?.properties).toMatchObject({ cost_awu: 0 });
-  });
-
-  it("bills nothing for free origins", () => {
-    const events = buildUsageEvents({
-      ...commonEventInput,
-      usageType: "free",
-      origin: "agent_sidekick",
-      runUsages: [usage({ costMicroUsd: 1_000_000 })],
-      actions: [
-        {
-          toolName: "custom_tool",
-          mcpServerId: "mcp_server",
-          internalMCPServerName: null,
-          status: "succeeded",
+          executionDurationMs: 10,
           shouldEmit: true,
         },
       ],
@@ -302,8 +177,139 @@ describe("Metronome usage event adapter", () => {
 
     expect(events).toHaveLength(1);
     expect(events[0]?.properties).toMatchObject({
-      cost_awu: 0,
+      count: 1,
       usage_type: "free",
     });
+  });
+});
+
+describe("Aggregated usage event (shadow) and legacy cost parity", () => {
+  const aggregatedInput = { ...commonEventInput, isByok: false };
+
+  it("aggregates LLM and tool cost into a single llm_usage_v3 event", () => {
+    const events = buildUsageEvents({
+      ...aggregatedInput,
+      runUsages: [usage({ costMicroUsd: 1 })],
+      actions: [
+        {
+          toolName: "websearch",
+          mcpServerId: null,
+          internalMCPServerName: "web_search_&_browse",
+          status: "succeeded",
+          executionDurationMs: 10,
+          shouldEmit: true,
+        },
+      ],
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.event_type).toBe("llm_usage_v3");
+    expect(events[0]?.properties).toMatchObject({
+      model_id: "aggregate",
+      // LLM ceil(1/µ) = 1 + one "basic" (1 AWU) tool = 2.
+      cost_awu: 2,
+      usage_type: "user",
+    });
+  });
+
+  it("matches the legacy events' billed cost on a mixed message", () => {
+    const perAwu = MODEL_COST_MICRO_USD_PER_AWU_CREDIT;
+
+    const runUsages = [
+      // openai group: two usages summed (1 + 1 µUSD) THEN rounded → 1 credit.
+      usage({ costMicroUsd: 1 }),
+      usage({ costMicroUsd: 1 }),
+      // anthropic group: rounded on its own → 2 credits.
+      usage({
+        costMicroUsd: perAwu + 1,
+        modelId: "claude-opus-4-8",
+        providerId: "anthropic",
+      }),
+    ];
+    const actions = [
+      // 8 external "advanced" (3 AWU) calls: 7 billed (21) + 1 capped (free).
+      ...Array.from({ length: 8 }, () => ({
+        toolName: "custom_tool",
+        mcpServerId: "mcp_server",
+        internalMCPServerName: null,
+        status: "succeeded" as const,
+        executionDurationMs: 10,
+        shouldEmit: true,
+      })),
+      // One internal "basic" (1 AWU) billed call.
+      {
+        toolName: "websearch",
+        mcpServerId: null,
+        internalMCPServerName: "web_search_&_browse" as const,
+        status: "succeeded" as const,
+        executionDurationMs: 5,
+        shouldEmit: true,
+      },
+      // A denied call: unbillable, must not contribute on either side.
+      {
+        toolName: "custom_tool",
+        mcpServerId: null,
+        internalMCPServerName: null,
+        status: "denied" as const,
+        executionDurationMs: null,
+        shouldEmit: true,
+      },
+    ];
+
+    const legacyEvents = [
+      ...buildLlmUsageEvents({ ...aggregatedInput, runUsages }),
+      ...buildToolUseEvents({ ...commonEventInput, actions }),
+    ];
+    const aggregatedEvents = buildUsageEvents({
+      ...aggregatedInput,
+      runUsages,
+      actions,
+    });
+
+    // LLM 3 (1 + 2, per-model rounding) + tools 22 (7×3 capped + 1 basic) = 25.
+    const newCostAwu = Number(aggregatedEvents[0]?.properties["cost_awu"]);
+    expect(newCostAwu).toBe(25);
+    expect(billedCostAwuFromEvents(legacyEvents)).toBe(newCostAwu);
+  });
+
+  it("matches (both zero) for free-origin messages", () => {
+    const runUsages = [usage({ costMicroUsd: 1_000_000 })];
+    const actions = [
+      {
+        toolName: "custom_tool",
+        mcpServerId: "mcp_server",
+        internalMCPServerName: null,
+        status: "succeeded" as const,
+        executionDurationMs: 10,
+        shouldEmit: true,
+      },
+    ];
+    const freeInput = {
+      ...aggregatedInput,
+      usageType: "free" as const,
+      origin: "agent_sidekick" as const,
+    };
+
+    const legacyEvents = [
+      ...buildLlmUsageEvents({ ...freeInput, runUsages }),
+      ...buildToolUseEvents({
+        ...commonEventInput,
+        usageType: "free" as const,
+        origin: "agent_sidekick" as const,
+        actions,
+      }),
+    ];
+    const aggregatedEvents = buildUsageEvents({
+      ...freeInput,
+      runUsages,
+      actions,
+    });
+
+    const newCostAwu = aggregatedEvents.reduce(
+      (total, event) => total + Number(event.properties["cost_awu"] ?? 0),
+      0
+    );
+    expect(newCostAwu).toBe(0);
+    expect(billedCostAwuFromEvents(legacyEvents)).toBe(0);
   });
 });
