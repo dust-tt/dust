@@ -22,11 +22,17 @@ import {
 import { serializeMention } from "@app/lib/mentions/format";
 import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
+import { useUserMetadata } from "@app/lib/swr/user";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
+import {
+  CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY,
+  FIREFOX_EXTENSION_LAST_USED_AT_METADATA_KEY,
+  shouldShowExtensionMenu,
+} from "@app/types/extension";
 import type { SubscriptionType } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
@@ -99,6 +105,19 @@ export function UserMenu({
   const [automationsOpen, setAutomationsOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  const isFirefox =
+    typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
+  const extensionLastUsedAtMetadataKey = isFirefox
+    ? FIREFOX_EXTENSION_LAST_USED_AT_METADATA_KEY
+    : CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY;
+  const {
+    metadata: extensionLastUsedAt,
+    isMetadataLoading: isExtensionLastUsedAtLoading,
+  } = useUserMetadata(extensionLastUsedAtMetadataKey);
+  const showExtensionMenu =
+    !isExtensionLastUsedAtLoading &&
+    shouldShowExtensionMenu(extensionLastUsedAt?.value);
 
   const sendNotification = useSendNotification();
   const devMode = useDevMode();
@@ -184,9 +203,6 @@ export function UserMenu({
       [createConversationWithMessage, owner, router, sendNotification]
     )
   );
-
-  const isFirefox =
-    typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "admin" | "manager") => {
@@ -412,23 +428,24 @@ export function UserMenu({
             onClick={() => trackUserMenuEvent("dust_academy")}
           />
 
-          {isFirefox ? (
-            <DropdownMenuItem
-              label="Firefox extension"
-              icon={FirefoxLogo}
-              href="https://addons.mozilla.org/firefox/addon/dust/"
-              target="_blank"
-              onClick={() => trackUserMenuEvent("firefox_extension")}
-            />
-          ) : (
-            <DropdownMenuItem
-              label="Chrome extension"
-              icon={ChromeLogo}
-              href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
-              target="_blank"
-              onClick={() => trackUserMenuEvent("chrome_extension")}
-            />
-          )}
+          {showExtensionMenu &&
+            (isFirefox ? (
+              <DropdownMenuItem
+                label="Firefox extension"
+                icon={FirefoxLogo}
+                href="https://addons.mozilla.org/firefox/addon/dust/"
+                target="_blank"
+                onClick={() => trackUserMenuEvent("firefox_extension")}
+              />
+            ) : (
+              <DropdownMenuItem
+                label="Chrome extension"
+                icon={ChromeLogo}
+                href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
+                target="_blank"
+                onClick={() => trackUserMenuEvent("chrome_extension")}
+              />
+            ))}
 
           {subscription?.plan.limits.canUseProduct && (
             <>
