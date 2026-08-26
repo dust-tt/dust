@@ -70,6 +70,7 @@ import {
   ALL_FILE_FORMATS,
   frameContentType,
   frameSlideshowContentType,
+  frameV2ContentType,
   isConversationFileUseCase,
   isInteractiveContentType,
   isSandboxFunctionContentType,
@@ -666,6 +667,36 @@ export class FileResource extends BaseResource<FileModel> {
 
   get isInteractiveContent(): boolean {
     return isInteractiveContentType(this.contentType);
+  }
+
+  get isFrameV2(): boolean {
+    return this.contentType === frameV2ContentType;
+  }
+
+  getActiveFramePublicationId(): string | null {
+    return this.isFrameV2
+      ? (this.useCaseMetadata?.activePublicationId ?? null)
+      : null;
+  }
+
+  async activateFramePublication(
+    auth: Authenticator,
+    publicationId: string
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+    if (this.workspaceId !== workspace.id) {
+      throw new Error("Cannot activate a Frame publication across workspaces.");
+    }
+    if (!this.isFrameV2) {
+      throw new Error("Cannot activate a publication on a non-v2 Frame.");
+    }
+
+    await this.update({
+      useCaseMetadata: {
+        ...(this.useCaseMetadata ?? {}),
+        activePublicationId: publicationId,
+      },
+    });
   }
 
   // Content access logic.

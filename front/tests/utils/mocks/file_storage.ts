@@ -403,6 +403,10 @@ class FileStorageMock {
             new Error(`Simulated GCS copy failure: ${src} -> ${dest}`)
           );
         }
+        const sourceContent = this._objectStore.get(src);
+        if (sourceContent !== undefined) {
+          this._objectStore.set(dest, sourceContent);
+        }
         return Promise.resolve(undefined);
       }),
       // Mirrors real GCS compose: concatenates each source's stored content, in order,

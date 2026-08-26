@@ -61,6 +61,9 @@ export type FileUseCaseMetadata = {
   // record of what the entry actually is. Live edits (no model in the loop, triggered by a UI
   // click) reuse it to know what to rebuild from, rather than guessing from fileName.
   frameEntryRelPath?: string;
+  // Immutable publication currently served for a Frames v2 FileResource. Publication bytes live
+  // under the Frame-owned GCS prefix; this pointer flips only after every object is present.
+  activePublicationId?: string;
 };
 
 export function isConversationFileUseCase(
@@ -713,6 +716,7 @@ export const FILE_FORMATS = {
 export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 
 export const frameContentType = "application/vnd.dust.frame";
+export const frameV2ContentType = "application/vnd.dust.frame.v2+json";
 export const frameSlideshowContentType = "application/vnd.dust.frame.slideshow";
 export const sandboxFunctionContentType =
   "application/vnd.dust.sandbox.function";
@@ -734,9 +738,19 @@ export const INTERACTIVE_CONTENT_FILE_FORMATS = {
   },
 } as const satisfies Record<string, FileFormat>;
 
+const FRAME_V2_FILE_FORMATS = {
+  [frameV2ContentType]: {
+    cat: "code",
+    exts: [".json"],
+    isSafeToDisplay: true,
+  },
+} as const satisfies Record<string, FileFormat>;
+
 // Define a type for Interactive Content file content types.
 export type InteractiveContentFileContentType =
   keyof typeof INTERACTIVE_CONTENT_FILE_FORMATS;
+
+type FrameV2FileContentType = keyof typeof FRAME_V2_FILE_FORMATS;
 
 const SANDBOX_FUNCTION_FILE_FORMATS = {
   [sandboxFunctionContentType]: {
@@ -751,12 +765,14 @@ export type SandboxFunctionFileContentType =
 
 export const ALL_FILE_FORMATS = {
   ...INTERACTIVE_CONTENT_FILE_FORMATS,
+  ...FRAME_V2_FILE_FORMATS,
   ...SANDBOX_FUNCTION_FILE_FORMATS,
   ...FILE_FORMATS,
 };
 // Union type for all supported content types.
 export type AllSupportedFileContentType =
   | InteractiveContentFileContentType
+  | FrameV2FileContentType
   | SandboxFunctionFileContentType
   | SupportedFileContentType;
 
@@ -826,11 +842,18 @@ export function isSandboxFunctionContentType(
   ];
 }
 
+export function isFrameV2ContentType(
+  contentType: string
+): contentType is FrameV2FileContentType {
+  return contentType === frameV2ContentType;
+}
+
 export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
     isInteractiveContentType(contentType) ||
+    isFrameV2ContentType(contentType) ||
     isSandboxFunctionContentType(contentType) ||
     isSupportedFileContentType(contentType)
   );

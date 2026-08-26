@@ -1,14 +1,15 @@
-import { MAX_POD_APP_NAME_LENGTH } from "@app/types/api/pod_apps";
 import {
-  POD_DATABASE_NAME_REGEX,
-  SANDBOX_FUNCTION_EXECUTION_MODES,
-  SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX,
-  SANDBOX_FUNCTION_STAKES,
-} from "@app/types/api/sandbox_functions";
+  FRAME_DATABASE_SCHEMA_FILE_SUFFIX,
+  FRAME_DEFAULT_UI_ENTRY_POINT,
+  FRAME_MANIFEST_FILE,
+  FRAME_MANIFEST_VERSION,
+  FrameSourceManifestSchema,
+  isSafeFrameRelativePath,
+} from "@app/types/api/frame_manifest";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { z } from "zod";
+import type { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 /**
@@ -32,8 +33,8 @@ import { fromError } from "zod-validation-error";
  * frame at its entry point.
  */
 
-export const POD_APP_MANIFEST_FILE = "manifest.json";
-export const POD_APP_MANIFEST_VERSION = 1;
+export const POD_APP_MANIFEST_FILE = FRAME_MANIFEST_FILE;
+export const POD_APP_MANIFEST_VERSION = FRAME_MANIFEST_VERSION;
 
 /**
  * Default UI entry point when a manifest omits `uiEntryPoint`. Not baked into the zod schema as a
@@ -41,85 +42,24 @@ export const POD_APP_MANIFEST_VERSION = 1;
  * exist names the declared path in the error, while a defaulted one that doesn't exist gets a more
  * helpful "no entry point at all" message. Both are `invalid_manifest` — every app needs a frame.
  */
-export const POD_APP_DEFAULT_UI_ENTRY_POINT = "index.tsx";
+export const POD_APP_DEFAULT_UI_ENTRY_POINT = FRAME_DEFAULT_UI_ENTRY_POINT;
 
 /**
  * Suffix a database schema file must keep wherever it lives. apps.ts's
  * POD_DATABASE_SCHEMA_FILE_SUFFIX aliases this constant rather than redeclaring it.
  */
-export const POD_APP_MANIFEST_DB_FILE_SUFFIX = ".db.ts";
+export const POD_APP_MANIFEST_DB_FILE_SUFFIX =
+  FRAME_DATABASE_SCHEMA_FILE_SUFFIX;
 
 /**
  * A manifest path must stay inside the app folder: relative, forward slashes, and no `.`/`..`/empty
  * segments. Publish additionally checks the file actually exists in the folder.
  */
 export function isSafePodAppRelativePath(path: string): boolean {
-  if (path.startsWith("/") || path.includes("\\")) {
-    return false;
-  }
-  const segments = path.split("/");
-  return segments.every(
-    (segment) => segment.length > 0 && segment !== "." && segment !== ".."
-  );
+  return isSafeFrameRelativePath(path);
 }
 
-const RelativePathSchema = z.string().min(1).refine(isSafePodAppRelativePath, {
-  message:
-    "Path must be relative to the app folder, using forward slashes and no '.', '..' or empty segments.",
-});
-
-const PodAppManifestFunctionSchema = z.object({
-  /** Bare name; the published slug is `<appPrefix>__<name>`. */
-  name: z.string().regex(SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX),
-  /** Folder-relative path to the function's TypeScript source. */
-  path: RelativePathSchema,
-  description: z.string().min(1),
-  executionMode: z.enum(SANDBOX_FUNCTION_EXECUTION_MODES),
-  /** Optional; publish applies its own default. */
-  defaultStake: z.enum(SANDBOX_FUNCTION_STAKES).optional(),
-});
-
-const PodAppManifestDatabaseSchema = z.object({
-  /** App-relative database name, what the schema file declares and `db()` opens. */
-  name: z.string().regex(POD_DATABASE_NAME_REGEX),
-  /** Folder-relative path to the drizzle schema file; must keep the `.db.ts` suffix. */
-  path: RelativePathSchema.refine(
-    (path) => path.endsWith(POD_APP_MANIFEST_DB_FILE_SUFFIX),
-    {
-      message: `Database schema paths must end in '${POD_APP_MANIFEST_DB_FILE_SUFFIX}'.`,
-    }
-  ),
-});
-
-export const PodAppPublishManifestSchema = z
-  .object({
-    version: z.literal(POD_APP_MANIFEST_VERSION),
-    /** Human-facing display name; the folder name stays the app's identity. */
-    name: z.string().min(1).max(MAX_POD_APP_NAME_LENGTH),
-    description: z.string(),
-    /** Folder-relative path to the app's UI entry point; defaults to `index.tsx` when omitted. */
-    uiEntryPoint: RelativePathSchema.optional(),
-    functions: z.array(PodAppManifestFunctionSchema).default([]),
-    databases: z.array(PodAppManifestDatabaseSchema).default([]),
-  })
-  .superRefine((manifest, ctx) => {
-    const dimensions = [
-      ["function name", manifest.functions.map((fn) => fn.name)],
-      ["database name", manifest.databases.map((db) => db.name)],
-    ] as const;
-    for (const [label, values] of dimensions) {
-      const seen = new Set<string>();
-      for (const value of values) {
-        if (seen.has(value)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Duplicate ${label} '${value}'.`,
-          });
-        }
-        seen.add(value);
-      }
-    }
-  });
+export const PodAppPublishManifestSchema = FrameSourceManifestSchema;
 
 export type PodAppPublishManifest = z.infer<typeof PodAppPublishManifestSchema>;
 
