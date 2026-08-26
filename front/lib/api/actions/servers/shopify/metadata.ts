@@ -109,7 +109,7 @@ export const SHOPIFY_SERVER = {
       provider: "shopify" as const,
       supported_use_cases: ["platform_actions"] as const,
     },
-    icon: "ActionStoreIcon",
+    icon: "ShopifyLogo",
     documentationUrl: null,
   },
   tools: SHOPIFY_TOOLS_METADATA,
