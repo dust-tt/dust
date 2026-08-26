@@ -7,11 +7,11 @@ import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 export class OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream extends WithOpenAIGptFiveDotSixSolConfig(
   OpenAIResponsesStream
 ) {
-  // https://developers.openai.com/api/docs/models/gpt-5.6-sol
+  // Verified 2026-08-26: https://developers.openai.com/api/docs/pricing
   static readonly tokenPricing = {
-    cacheHit: 0.5,
-    standardInput: 5.0,
-    standardOutput: 30.0,
+    cacheHit: 0.4,
+    standardInput: 4.0,
+    standardOutput: 20.0,
   };
 
   static readonly region = GLOBAL;

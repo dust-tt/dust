@@ -1,3 +1,4 @@
+import { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { DustOpenAIGptFiveDotSixTerraLongContextGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_terra_long_context_global_openai_responses";
 import { isEndpointAvailable } from "@app/lib/llms/stream/utils/is_endpoint_available";
@@ -14,6 +15,7 @@ import { GPT_5_6_TERRA_LONG_CONTEXT } from "@app/lib/model_constructors/types/mo
 import {
   GPT_5_6_LUNA_MODEL_CONFIG,
   GPT_5_6_SOL_MODEL_CONFIG,
+  GPT_5_6_SOL_MODEL_ID,
   GPT_5_6_TERRA_LONG_CONTEXT_MODEL_CONFIG,
   GPT_5_6_TERRA_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
@@ -51,6 +53,29 @@ const GPT_5_6_CONFIGURATIONS = [
 ] as const;
 
 describe("GPT 5.6 model configurations", () => {
+  it("keeps Sol pricing synchronized across billing and endpoints", () => {
+    expect(MODEL_PRICING[GPT_5_6_SOL_MODEL_ID]).toEqual({
+      input: 4.0,
+      output: 20.0,
+      cache_creation_input_tokens: 5.0,
+      cache_read_input_tokens: 0.4,
+    });
+    expect(
+      OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream.tokenPricing
+    ).toEqual({
+      cacheHit: 0.4,
+      standardInput: 4.0,
+      standardOutput: 20.0,
+    });
+    expect(
+      OpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream.tokenPricing
+    ).toEqual({
+      cacheHit: 0.44,
+      standardInput: 4.4,
+      standardOutput: 22.0,
+    });
+  });
+
   it.each(
     GPT_5_6_CONFIGURATIONS
   )("caps $name context consistently without changing output limits", ({
