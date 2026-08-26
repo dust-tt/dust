@@ -1,4 +1,5 @@
 import type { InitialTasksSyncLookbackValue } from "@app/lib/project_task/analyze_document/types";
+import { Label, RadioGroup, RadioGroupCustomItem } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 const OPTIONS: {
@@ -42,33 +43,41 @@ export function FirstSyncTaskLookbackForm({
         context is best-effort. Later runs cover everything new since the
         previous scan.
       </p>
-      <div className="flex flex-col gap-2">
+      <RadioGroup
+        value={value}
+        onValueChange={(newValue) => {
+          const opt = OPTIONS.find((o) => o.value === newValue);
+          if (opt) {
+            setValue(opt.value);
+            onValueChange(opt.value);
+          }
+        }}
+        className="flex flex-col gap-2"
+      >
         {OPTIONS.map((opt) => (
-          <label
+          <div
             key={opt.value}
-            className="border-border hover:bg-muted-background/50 flex cursor-pointer flex-col gap-0.5 rounded-lg border p-3"
+            className="border-border hover:bg-muted-background/50 flex flex-col gap-0.5 rounded-lg border p-3"
           >
-            <span className="flex items-center gap-2">
-              <input
-                type="radio"
-                className="mt-0.5"
-                name="initial-task-sync-lookback"
-                checked={value === opt.value}
-                onChange={() => {
-                  setValue(opt.value);
-                  onValueChange(opt.value);
-                }}
-              />
-              <span className="text-sm font-medium text-foreground">
-                {opt.title}
+            <RadioGroupCustomItem
+              value={opt.value}
+              id={opt.value}
+              customItem={
+                <Label
+                  htmlFor={opt.value}
+                  className="cursor-pointer text-sm font-medium text-foreground"
+                >
+                  {opt.title}
+                </Label>
+              }
+            >
+              <span className="pl-6 text-xs text-muted-foreground">
+                {opt.description}
               </span>
-            </span>
-            <span className="pl-6 text-xs text-muted-foreground">
-              {opt.description}
-            </span>
-          </label>
+            </RadioGroupCustomItem>
+          </div>
         ))}
-      </div>
+      </RadioGroup>
     </div>
   );
 }
