@@ -12,6 +12,7 @@ import type {
   BilledRunUsage,
 } from "@app/types/assistant/agent_message_consumption_analytics";
 import type { AgentMessageConsumptionAnalyticsToolData } from "@app/types/assistant/analytics";
+import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
 function serverNameForAction(action: AgentMCPActionResource): string {
@@ -146,7 +147,7 @@ export function buildToolConsumptionDocuments(
     input.actions.map((action) => [action.sId, action])
   );
   const toolItemsByActionModelId = new Map<
-    number,
+    ModelId,
     AgentMessageToolConsumptionItemResource[]
   >();
 

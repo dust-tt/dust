@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionEventModel } from "@app/lib/models/agent/agent_message_consumption_event";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { EnabledAgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
@@ -11,7 +12,7 @@ import { Err } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 export type ConsumptionEvent =
   | {
@@ -213,19 +214,6 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
     };
   }
 
-  static async fetchByEventKey(
-    auth: Authenticator,
-    { eventKey }: { eventKey: string }
-  ): Promise<AgentMessageConsumptionEventResource | null> {
-    const row = await this.model.findOne({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        eventKey,
-      },
-    });
-    return row ? new this(this.model, row.get()) : null;
-  }
-
   static async deleteByAgentMessageModelIds(
     auth: Authenticator,
     { agentMessageModelIds }: { agentMessageModelIds: ModelId[] }
@@ -285,6 +273,39 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
   }
 
   /**
+   * @cc [owner:id13,label:backend;concurrency] bounded-global-recovery-scan
+   * The unauthenticated recovery scan MUST inspect at most the requested number of oldest pending
+   * rows globally, return at most one entry per workspace and run in that window, and derive
+   * `hasMore` from whether the raw row window reached the limit.
+   */
+  static async listOldestUnprocessedExecutions({
+    limit,
+  }: {
+    limit: number;
+  }): Promise<{
+    executions: { runKey: string; workspaceModelId: ModelId }[];
+    hasMore: boolean;
+  }> {
+    assert(limit > 0 && limit <= 10_000, "Invalid outbox recovery scan size");
+    const rows = await this.model.findAll({
+      attributes: ["workspaceId", "runKey"],
+      where: { processedAt: null },
+      order: [["id", "ASC"]],
+      limit,
+    });
+    const seen = new Set<string>();
+    const executions = rows.flatMap((row) => {
+      const key = `${row.workspaceId}:${row.runKey}`;
+      if (seen.has(key)) {
+        return [];
+      }
+      seen.add(key);
+      return [{ runKey: row.runKey, workspaceModelId: row.workspaceId }];
+    });
+    return { executions, hasMore: rows.length === limit };
+  }
+
+  /**
    * @cc [owner:id13,label:backend] committed-projection-version
    * The projection version MUST be the greatest committed event ID for the requested workspace and
    * agent message, and the lookup MUST fail when no such event exists.
@@ -304,6 +325,58 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
       "Consumption event is missing its committed Elasticsearch version"
     );
     return maxId;
+  }
+
+  static async fetchByEventKey(
+    auth: Authenticator,
+    { eventKey }: { eventKey: string }
+  ): Promise<AgentMessageConsumptionEventResource | null> {
+    const row = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        eventKey,
+      },
+    });
+    return row ? new this(this.model, row.get()) : null;
+  }
+
+  /**
+   * @cc [owner:id13,label:backend] processed-event-retention
+   * Retention cleanup MUST delete at most the requested number of processed events created before
+   * the cutoff, oldest first, and MUST NOT delete an unprocessed event.
+   */
+  static async deleteOlderThan({
+    cutoff,
+    limit,
+  }: {
+    cutoff: Date;
+    limit: number;
+  }): Promise<number> {
+    assert(limit > 0 && limit <= 10_000, "Invalid outbox cleanup batch size");
+    // biome-ignore lint/plugin/noRawSql: PostgreSQL has no DELETE LIMIT; the CTE keeps each batch bounded.
+    const [result] = await frontSequelize.query<{ deletedCount: number }>(
+      `
+        WITH victims AS (
+          SELECT id
+          FROM agent_message_consumption_events
+          WHERE "createdAt" < $cutoff
+            AND "processedAt" IS NOT NULL
+          ORDER BY "createdAt", id
+          LIMIT $limit
+        ), deleted AS (
+          DELETE FROM agent_message_consumption_events event
+          USING victims
+          WHERE event.id = victims.id
+          RETURNING event.id
+        )
+        SELECT COUNT(*)::int AS "deletedCount" FROM deleted
+      `,
+      {
+        bind: { cutoff, limit },
+        type: QueryTypes.SELECT,
+      }
+    );
+    return result?.deletedCount ?? 0;
   }
 
   /**
