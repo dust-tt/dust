@@ -1,4 +1,4 @@
-import { FeedbackDistributionTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
+import { FeedbackDistributionTooltip } from "@app/components/agent_builder/observability/charts/FeedbackDistributionTooltip";
 import {
   FEEDBACK_DISTRIBUTION_LEGEND,
   FEEDBACK_DISTRIBUTION_PALETTE,
