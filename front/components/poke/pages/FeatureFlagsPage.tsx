@@ -78,7 +78,16 @@ function makeColumns({
         if (!owner) {
           return <span className="text-muted-foreground">—</span>;
         }
-        return <span className="text-sm">@{owner}</span>;
+        return (
+          <a
+            href={`https://github.com/${owner}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-highlight-600 hover:underline"
+          >
+            @{owner}
+          </a>
+        );
       },
     },
     {

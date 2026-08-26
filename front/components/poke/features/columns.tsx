@@ -36,7 +36,16 @@ export function makeColumnsForFeatureFlags(): ColumnDef<FeatureFlagsDisplayType>
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Owner" />
       ),
-      cell: ({ row }) => <span className="text-sm">@{row.original.owner}</span>,
+      cell: ({ row }) => (
+        <a
+          href={`https://github.com/${row.original.owner}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-highlight-600 hover:underline"
+        >
+          @{row.original.owner}
+        </a>
+      ),
     },
     {
       accessorKey: "description",
