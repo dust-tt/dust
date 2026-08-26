@@ -15,6 +15,19 @@ SET SESSION lock_timeout = 3000;
 ALTER TABLE "public"."sandbox_functions"
   ALTER COLUMN "spaceId" DROP NOT NULL;
 
+/* Every function is either a legacy Space function or a published Frame function. */
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."sandbox_functions"
+  ADD CONSTRAINT "sandbox_functions_exactly_one_scope_check"
+  CHECK (num_nonnulls("spaceId", "publicationId") = 1)
+  NOT VALID;
+
+SET SESSION statement_timeout = 1200000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."sandbox_functions"
+  VALIDATE CONSTRAINT "sandbox_functions_exactly_one_scope_check";
+
 /* Replace the legacy one-function-per-file index with a plain FK index. */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
