@@ -130,19 +130,6 @@ export function AnalyticsConsumptionPage() {
     filter: state.filter,
   });
 
-  const trackClick = (clickTarget: string, extra?: TrackingExtra) => {
-    trackEvent({
-      area: TRACKING_AREAS.ANALYTICS,
-      object: "analytics_page",
-      action: TRACKING_ACTIONS.CLICK,
-      extra: {
-        ...extra,
-        workspace_id: owner.sId,
-        click_target: clickTarget,
-      },
-    });
-  };
-
   useEffect(() => {
     trackEvent({
       area: TRACKING_AREAS.ANALYTICS,
@@ -153,11 +140,7 @@ export function AnalyticsConsumptionPage() {
   }, [owner.sId]);
 
   return (
-    <AnalyticsConsumptionContent
-      owner={owner}
-      state={{ ...state, filter }}
-      onTrackClick={trackClick}
-    />
+    <AnalyticsConsumptionContent owner={owner} state={{ ...state, filter }} />
   );
 }
 
@@ -165,7 +148,6 @@ interface AnalyticsConsumptionContentProps {
   components?: AnalyticsConsumptionComponents;
   embedded?: boolean;
   owner: LightWorkspaceType;
-  onTrackClick?: (clickTarget: string, extra?: TrackingExtra) => void;
   showExport?: boolean;
   showMemberGroupFilter?: boolean;
   showOverviewError?: boolean;
@@ -179,7 +161,6 @@ export function AnalyticsConsumptionContent({
   components = WORKSPACE_CONSUMPTION_COMPONENTS,
   embedded = false,
   owner,
-  onTrackClick,
   showExport = true,
   showMemberGroupFilter = true,
   showOverviewError = false,
@@ -206,15 +187,32 @@ export function AnalyticsConsumptionContent({
     UsageFilterPanel: UsageFilterPanelComponent,
   } = components;
 
+  function trackAnalyticsClick(clickTarget: string, extra?: TrackingExtra) {
+    if (embedded) {
+      return;
+    }
+
+    trackEvent({
+      area: TRACKING_AREAS.ANALYTICS,
+      object: "analytics_page",
+      action: TRACKING_ACTIONS.CLICK,
+      extra: {
+        ...extra,
+        workspace_id: owner.sId,
+        click_target: clickTarget,
+      },
+    });
+  }
+
   const handlePeriodChange = (nextPeriod: ConsumptionPeriodSelection) => {
-    onTrackClick?.("period_selector", {
+    trackAnalyticsClick("period_selector", {
       period: consumptionPeriodKey(nextPeriod),
     });
     setPeriod(nextPeriod);
   };
 
   const handleFilterChange = (nextFilter: UsageFilter) => {
-    onTrackClick?.("filter", { filter_action: "apply" });
+    trackAnalyticsClick("filter", { filter_action: "apply" });
     setFilter(nextFilter);
   };
 
@@ -269,7 +267,7 @@ export function AnalyticsConsumptionContent({
               onFilterChange={handleFilterChange}
               onOpenChange={(open) => {
                 if (open) {
-                  onTrackClick?.("filter", { filter_action: "open" });
+                  trackAnalyticsClick("filter", { filter_action: "open" });
                 }
               }}
               showMemberGroupFilter={showMemberGroupFilter}
@@ -278,7 +276,7 @@ export function AnalyticsConsumptionContent({
           <UsageFilterSummary
             filter={filter}
             onFilterChange={(nextFilter) => {
-              onTrackClick?.("filter", { filter_action: "clear" });
+              trackAnalyticsClick("filter", { filter_action: "clear" });
               setFilter(nextFilter);
             }}
           />
@@ -298,7 +296,7 @@ export function AnalyticsConsumptionContent({
                 dimension={dimension}
                 filter={scopeFilter}
                 onModeChange={(mode) => {
-                  onTrackClick?.("chart_mode", { mode });
+                  trackAnalyticsClick("chart_mode", { mode });
                 }}
               />
             </SafeSuspense>
@@ -311,7 +309,7 @@ export function AnalyticsConsumptionContent({
         period={period}
         filter={scopeFilter}
         onAddFilter={(selectedRow) => {
-          onTrackClick?.("attribution_filter", {
+          trackAnalyticsClick("attribution_filter", {
             dimension,
             filter_action: "add",
           });
@@ -320,7 +318,7 @@ export function AnalyticsConsumptionContent({
           );
         }}
         onRemoveFilter={(selectedRow) => {
-          onTrackClick?.("attribution_filter", {
+          trackAnalyticsClick("attribution_filter", {
             dimension,
             filter_action: "remove",
           });
@@ -330,11 +328,11 @@ export function AnalyticsConsumptionContent({
         }}
         dimension={dimension}
         onDimensionChange={(nextDimension) => {
-          onTrackClick?.("attribution_tab", { dimension: nextDimension });
+          trackAnalyticsClick("attribution_tab", { dimension: nextDimension });
           handleDimensionChange(nextDimension);
         }}
         onViewAll={(nextDimension, selectedRow) => {
-          onTrackClick?.("attribution_view_all", {
+          trackAnalyticsClick("attribution_view_all", {
             dimension: nextDimension,
           });
           setFilter((current) =>
