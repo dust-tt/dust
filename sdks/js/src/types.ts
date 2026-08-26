@@ -741,7 +741,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "allow_sso"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
-  | "anthropic_cache_diagnostics"
   | "archive_inactive_agents"
   | "audit_logs"
   | "claude_4_5_opus_feature"
