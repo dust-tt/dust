@@ -13,6 +13,7 @@ import {
   Button,
   Chip,
   Icon,
+  LoadingBlock,
   Plus,
   PopoverContent,
   PopoverRoot,
@@ -195,7 +196,7 @@ export function CreditCostPopover({
               className="flex min-h-9 items-center text-sm text-muted-foreground"
             >
               <span className="flex-1">Loading details</span>
-              <span className="h-3 w-8 animate-pulse rounded bg-muted-foreground/20" />
+              <LoadingBlock className="h-3 w-8" />
             </div>
           ) : details ? (
             <dl>
