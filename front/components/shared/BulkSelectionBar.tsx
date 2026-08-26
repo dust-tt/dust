@@ -1,5 +1,5 @@
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import { Button, Hoverable, Spinner } from "@dust-tt/sparkle";
+import { Button, cn, Hoverable, Spinner } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 interface BulkSelectionBarProps {
@@ -34,7 +34,13 @@ export function BulkSelectionBar({
   // `.dark .bg-modal-background` elevation shadow still matches a descendant.
   return (
     <div className="dark pointer-events-none sticky bottom-4 z-20 flex justify-center pt-4">
-      <div className="pointer-events-auto flex min-w-[min(792px,100%)] max-w-full animate-in flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl bg-modal-background p-4 text-foreground duration-200 ease-out fade-in slide-in-from-bottom-4 motion-reduce:animate-none">
+      <div
+        className={cn(
+          "pointer-events-auto bg-modal-background text-foreground rounded-xl",
+          "flex flex-wrap items-center justify-between min-w-[80%] max-w-full gap-x-4 gap-y-2 p-4",
+          "animate-in motion-reduce:animate-none duration-200 ease-out fade-in slide-in-from-bottom-4"
+        )}
+      >
         <div className="flex items-center gap-2 text-xs">
           <span>{selectedCount} selected.</span>
           {canSelectAll && (
