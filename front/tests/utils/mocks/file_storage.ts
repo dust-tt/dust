@@ -363,6 +363,30 @@ class FileStorageMock {
           return Promise.resolve(undefined);
         }
       ),
+      uploadBufferToBucketAsNewFile: vi.fn(
+        (args: { buffer: Buffer; contentType: string; filePath: string }) => {
+          if (this._objectStore.has(args.filePath)) {
+            return Promise.reject(
+              Object.assign(
+                new Error(`Object already exists: ${args.filePath}`),
+                { code: 412 }
+              )
+            );
+          }
+          if (this._saveShouldFail(args.filePath)) {
+            return Promise.reject(
+              new Error(`Simulated GCS write failure: ${args.filePath}`)
+            );
+          }
+          this._objectStore.set(args.filePath, args.buffer.toString());
+          this._saveFileCalls.push({
+            filePath: args.filePath,
+            content: args.buffer,
+            contentType: args.contentType,
+          });
+          return Promise.resolve(undefined);
+        }
+      ),
       uploadRawContentToBucket: vi.fn(
         (args: { content: string; contentType: string; filePath: string }) => {
           this._objectStore.set(args.filePath, args.content);

@@ -178,6 +178,23 @@ export class FileStorage {
     );
   }
 
+  async uploadBufferToBucketAsNewFile({
+    buffer,
+    contentType,
+    filePath,
+  }: {
+    buffer: Buffer;
+    contentType: AllSupportedFileContentType;
+    filePath: string;
+  }) {
+    await this.file(filePath).save(buffer, {
+      contentType,
+      preconditionOpts: {
+        ifGenerationMatch: GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+      },
+    });
+  }
+
   async uploadRawContentToBucket({
     content,
     contentType,
