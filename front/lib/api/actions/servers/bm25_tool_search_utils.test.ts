@@ -52,6 +52,7 @@ import {
 import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
 import { SALESLOFT_SERVER } from "@app/lib/api/actions/servers/salesloft/metadata";
 import { SERVICENOW_SERVER } from "@app/lib/api/actions/servers/servicenow/metadata";
+import { SHOPIFY_SERVER } from "@app/lib/api/actions/servers/shopify/metadata";
 import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
@@ -148,6 +149,7 @@ const SERVER_SOURCES: Array<{
   { name: "salesforce", tools: SALESFORCE_SERVER.tools },
   { name: "salesloft", tools: SALESLOFT_SERVER.tools },
   { name: "servicenow", tools: SERVICENOW_SERVER.tools },
+  { name: "shopify", tools: SHOPIFY_SERVER.tools },
   { name: "slab", tools: SLAB_SERVER.tools },
   { name: "sound_studio", tools: SOUND_STUDIO_SERVER.tools },
   { name: "speech_generator", tools: SPEECH_GENERATOR_SERVER.tools },

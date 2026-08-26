@@ -1777,6 +1777,11 @@ const QUERIES: LabeledQuery[] = [
     query: "show active incidents on the status page",
     expected: "statuspage.list_incidents",
   },
+  // --- shopify ---
+  {
+    query: "list the products in my shopify store",
+    expected: "shopify.list_products",
+  },
 ];
 
 export const fullIndexWithAllServers = buildIndex(buildDocs(SERVERS));
