@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { Authenticator } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import {
+  GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+  getPrivateUploadBucket,
+} from "@app/lib/file_storage";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
 import {
@@ -10,6 +14,8 @@ import {
 } from "@app/types/api/frame_storage";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { frameV2ContentType } from "@app/types/files";
+
+const FRAME_PUBLICATION_UPLOAD_CONCURRENCY = 4;
 
 export type FramePublicationSourceFile = {
   relativePath: string;
@@ -59,22 +65,30 @@ export async function storeFramePublication(
   };
   const storage = getPrivateUploadBucket();
 
-  for (const sourceFile of sourceFiles) {
-    await storage.uploadBufferToBucketAsNewFile({
-      buffer: sourceFile.content,
-      contentType: sourceFile.contentType,
-      filePath: getFramePublicationSourcePath({
+  await concurrentExecutor(
+    sourceFiles,
+    (sourceFile) => {
+      const filePath = getFramePublicationSourcePath({
         ...identity,
         relativePath: sourceFile.relativePath,
-      }),
-    });
-  }
+      });
+      return storage.file(filePath).save(sourceFile.content, {
+        contentType: sourceFile.contentType,
+        preconditionOpts: {
+          ifGenerationMatch: GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+        },
+      });
+    },
+    { concurrency: FRAME_PUBLICATION_UPLOAD_CONCURRENCY }
+  );
 
   // The manifest is the publication commit marker. Readers never observe a partial source write.
-  await storage.uploadBufferToBucketAsNewFile({
-    buffer: Buffer.from(JSON.stringify(manifest), "utf8"),
+  const manifestPath = getFramePublicationManifestPath(identity);
+  await storage.file(manifestPath).save(Buffer.from(JSON.stringify(manifest)), {
     contentType: frameV2ContentType,
-    filePath: getFramePublicationManifestPath(identity),
+    preconditionOpts: {
+      ifGenerationMatch: GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+    },
   });
 
   return { publicationId: identity.publicationId };

@@ -63,19 +63,22 @@ describe("storeFramePublication", () => {
     });
     const identity = { workspaceId, frameId: frame.sId, publicationId };
 
-    expect(
-      fileStorageMock.saveFileCalls.map(({ filePath }) => filePath)
-    ).toEqual([
-      getFramePublicationSourcePath({
-        ...identity,
-        relativePath: "index.tsx",
-      }),
-      getFramePublicationSourcePath({
-        ...identity,
-        relativePath: "data.json",
-      }),
-      getFramePublicationManifestPath(identity),
-    ]);
+    const savedPaths = fileStorageMock.saveFileCalls.map(
+      ({ filePath }) => filePath
+    );
+    expect(new Set(savedPaths.slice(0, -1))).toEqual(
+      new Set([
+        getFramePublicationSourcePath({
+          ...identity,
+          relativePath: "index.tsx",
+        }),
+        getFramePublicationSourcePath({
+          ...identity,
+          relativePath: "data.json",
+        }),
+      ])
+    );
+    expect(savedPaths.at(-1)).toBe(getFramePublicationManifestPath(identity));
     expect(fileStorageMock.saveFileCalls.at(-1)?.contentType).toBe(
       frameV2ContentType
     );
