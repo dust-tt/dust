@@ -9,7 +9,7 @@ import {
   Button,
   Check,
   DataTable,
-  LoadingBlock,
+  DataTableLoadingSkeleton,
   Spinner,
   X,
 } from "@dust-tt/sparkle";
@@ -204,13 +204,7 @@ export function UpgradeRequestsTable({
   );
 
   if (isLoading) {
-    return (
-      <div className="flex w-full flex-col space-y-2">
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-      </div>
-    );
+    return <DataTableLoadingSkeleton showSelectionColumn={false} rows={3} />;
   }
 
   if (rows.length === 0) {

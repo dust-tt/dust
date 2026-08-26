@@ -3,7 +3,12 @@ import type { CreditDisplayData, CreditType } from "@app/types/credits";
 import { CREDIT_TYPE_SORT_ORDER } from "@app/types/credits";
 import type { EditedByUser } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
-import { Chip, DataTable, LoadingBlock, Page } from "@dust-tt/sparkle";
+import {
+  Chip,
+  DataTable,
+  DataTableLoadingSkeleton,
+  Page,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type React from "react";
 import { useMemo } from "react";
@@ -179,13 +184,7 @@ export function CreditsList({ credits, isLoading }: CreditsListProps) {
   }, [credits]);
 
   if (isLoading) {
-    return (
-      <div className="flex w-full flex-col space-y-2">
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-      </div>
-    );
+    return <DataTableLoadingSkeleton showSelectionColumn={false} rows={3} />;
   }
 
   if (credits.length === 0) {

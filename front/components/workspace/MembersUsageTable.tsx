@@ -39,8 +39,8 @@ import {
   Clock,
   createSelectionColumn,
   DataTable,
+  DataTableLoadingSkeleton,
   Icon,
-  LoadingBlock,
   ProgressBar,
   Spinner,
   Tooltip,
@@ -820,11 +820,10 @@ export function MembersUsageTable({
 
   if (isLoading) {
     return (
-      <div className="flex w-full flex-col space-y-2">
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-      </div>
+      <DataTableLoadingSkeleton
+        showSelectionColumn={enableSelection}
+        rows={3}
+      />
     );
   }
 

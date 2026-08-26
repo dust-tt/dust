@@ -12,8 +12,8 @@ import type { RoleType, UserType } from "@app/types/user";
 import {
   Chip,
   DataTable,
+  DataTableLoadingSkeleton,
   IconButton,
-  LoadingBlock,
   XClose,
 } from "@dust-tt/sparkle";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
@@ -225,11 +225,7 @@ export function MembersList({
   return (
     <>
       {isLoading ? (
-        <div className="flex w-full flex-col space-y-2">
-          <LoadingBlock className="h-8 w-full rounded-xl" />
-          <LoadingBlock className="h-8 w-full rounded-xl" />
-          <LoadingBlock className="h-8 w-full rounded-xl" />
-        </div>
+        <DataTableLoadingSkeleton showSelectionColumn={false} rows={3} />
       ) : (
         <DataTable
           data={rows}
