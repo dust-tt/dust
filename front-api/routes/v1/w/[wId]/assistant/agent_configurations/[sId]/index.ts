@@ -309,6 +309,16 @@ app.get(
       });
     }
 
+    if (!agentConfiguration.canRead && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only admins can access unpublished agents.",
+        },
+      });
+    }
+
     return ctx.json({
       agentConfiguration,
     });
