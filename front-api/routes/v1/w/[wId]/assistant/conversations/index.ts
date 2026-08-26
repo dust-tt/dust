@@ -42,6 +42,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import {
+  isFrameV2ContentType,
   isInteractiveContentType,
   isSandboxFunctionContentType,
 } from "@app/types/files";
@@ -541,6 +542,7 @@ app.post(
       message: newMessage ?? undefined,
       contentFragment:
         !newContentFragment ||
+        isFrameV2ContentType(newContentFragment.contentType) ||
         isInteractiveContentType(newContentFragment.contentType) ||
         isSandboxFunctionContentType(newContentFragment.contentType)
           ? undefined
