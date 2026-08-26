@@ -17,7 +17,11 @@ import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { sandboxFunctionContentType, TABLE_PREFIX } from "@app/types/files";
+import {
+  frameV2ContentType,
+  sandboxFunctionContentType,
+  TABLE_PREFIX,
+} from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
@@ -608,13 +612,18 @@ describe("isFileTypeUpsertableForUseCase", () => {
     }
   });
 
-  it("does not index sandbox function files", () => {
-    expect(
-      isFileTypeUpsertableForUseCase({
-        contentType: sandboxFunctionContentType,
-        useCase: "project_context",
-      })
-    ).toBe(false);
+  it("does not index internal executable files", () => {
+    for (const contentType of [
+      frameV2ContentType,
+      sandboxFunctionContentType,
+    ] as const) {
+      expect(
+        isFileTypeUpsertableForUseCase({
+          contentType,
+          useCase: "project_context",
+        })
+      ).toBe(false);
+    }
   });
 
   it("indexes plain-text files for non-conversation use cases", () => {

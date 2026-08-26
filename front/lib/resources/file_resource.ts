@@ -70,6 +70,7 @@ import {
   ALL_FILE_FORMATS,
   frameContentType,
   frameSlideshowContentType,
+  frameV2ContentType,
   isConversationFileUseCase,
   isInteractiveContentType,
   isSandboxFunctionContentType,
@@ -666,6 +667,10 @@ export class FileResource extends BaseResource<FileModel> {
 
   get isInteractiveContent(): boolean {
     return isInteractiveContentType(this.contentType);
+  }
+
+  get isFrameV2(): boolean {
+    return this.contentType === frameV2ContentType;
   }
 
   // Content access logic.
