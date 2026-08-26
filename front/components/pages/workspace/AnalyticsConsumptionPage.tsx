@@ -24,9 +24,13 @@ import { useAnalyticsViewState } from "@app/hooks/useAnalyticsViewState";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useResolvedUsageFilter } from "@app/hooks/useResolvedUsageFilter";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
+import {
+  consumptionPeriodKey,
+  DEFAULT_CONSUMPTION_PERIOD,
+} from "@app/lib/analytics/consumption_period";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
+import type { TrackingExtra } from "@app/lib/tracking";
 import {
   TRACKING_ACTIONS,
   TRACKING_AREAS,
@@ -126,6 +130,19 @@ export function AnalyticsConsumptionPage() {
     filter: state.filter,
   });
 
+  const trackClick = (clickTarget: string, extra?: TrackingExtra) => {
+    trackEvent({
+      area: TRACKING_AREAS.ANALYTICS,
+      object: "analytics_page",
+      action: TRACKING_ACTIONS.CLICK,
+      extra: {
+        ...extra,
+        workspace_id: owner.sId,
+        click_target: clickTarget,
+      },
+    });
+  };
+
   useEffect(() => {
     trackEvent({
       area: TRACKING_AREAS.ANALYTICS,
@@ -136,7 +153,11 @@ export function AnalyticsConsumptionPage() {
   }, [owner.sId]);
 
   return (
-    <AnalyticsConsumptionContent owner={owner} state={{ ...state, filter }} />
+    <AnalyticsConsumptionContent
+      owner={owner}
+      state={{ ...state, filter }}
+      onTrackClick={trackClick}
+    />
   );
 }
 
@@ -144,6 +165,7 @@ interface AnalyticsConsumptionContentProps {
   components?: AnalyticsConsumptionComponents;
   embedded?: boolean;
   owner: LightWorkspaceType;
+  onTrackClick?: (clickTarget: string, extra?: TrackingExtra) => void;
   showExport?: boolean;
   showMemberGroupFilter?: boolean;
   showOverviewError?: boolean;
@@ -157,6 +179,7 @@ export function AnalyticsConsumptionContent({
   components = WORKSPACE_CONSUMPTION_COMPONENTS,
   embedded = false,
   owner,
+  onTrackClick,
   showExport = true,
   showMemberGroupFilter = true,
   showOverviewError = false,
@@ -183,6 +206,18 @@ export function AnalyticsConsumptionContent({
     UsageFilterPanel: UsageFilterPanelComponent,
   } = components;
 
+  const handlePeriodChange = (nextPeriod: ConsumptionPeriodSelection) => {
+    onTrackClick?.("period_selector", {
+      period: consumptionPeriodKey(nextPeriod),
+    });
+    setPeriod(nextPeriod);
+  };
+
+  const handleFilterChange = (nextFilter: UsageFilter) => {
+    onTrackClick?.("filter", { filter_action: "apply" });
+    setFilter(nextFilter);
+  };
+
   const header = embedded ? (
     <div className="flex w-full flex-col gap-4 sm:flex-row sm:justify-between">
       <div className="flex flex-row flex-wrap items-center gap-2">
@@ -192,7 +227,10 @@ export function AnalyticsConsumptionContent({
           showError={showOverviewError}
         />
       </div>
-      <ConsumptionPeriodSelector period={period} onPeriodChange={setPeriod} />
+      <ConsumptionPeriodSelector
+        period={period}
+        onPeriodChange={handlePeriodChange}
+      />
     </div>
   ) : (
     <div className="flex w-full flex-row justify-between">
@@ -200,7 +238,10 @@ export function AnalyticsConsumptionContent({
         <Page.H variant="h3">{title}</Page.H>
         <OverviewComponent workspaceId={owner.sId} period={period} />
       </div>
-      <ConsumptionPeriodSelector period={period} onPeriodChange={setPeriod} />
+      <ConsumptionPeriodSelector
+        period={period}
+        onPeriodChange={handlePeriodChange}
+      />
     </div>
   );
 
@@ -225,11 +266,22 @@ export function AnalyticsConsumptionContent({
               owner={owner}
               period={period}
               filter={filter}
-              onFilterChange={setFilter}
+              onFilterChange={handleFilterChange}
+              onOpenChange={(open) => {
+                if (open) {
+                  onTrackClick?.("filter", { filter_action: "open" });
+                }
+              }}
               showMemberGroupFilter={showMemberGroupFilter}
             />
           </div>
-          <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
+          <UsageFilterSummary
+            filter={filter}
+            onFilterChange={(nextFilter) => {
+              onTrackClick?.("filter", { filter_action: "clear" });
+              setFilter(nextFilter);
+            }}
+          />
         </div>
         <LazyMotion features={domMax}>
           <m.div
@@ -245,6 +297,9 @@ export function AnalyticsConsumptionContent({
                 period={period}
                 dimension={dimension}
                 filter={scopeFilter}
+                onModeChange={(mode) => {
+                  onTrackClick?.("chart_mode", { mode });
+                }}
               />
             </SafeSuspense>
           </m.div>
@@ -256,18 +311,32 @@ export function AnalyticsConsumptionContent({
         period={period}
         filter={scopeFilter}
         onAddFilter={(selectedRow) => {
+          onTrackClick?.("attribution_filter", {
+            dimension,
+            filter_action: "add",
+          });
           setFilter((current) =>
             addUsageFilterFromAttributionRow(current, dimension, selectedRow)
           );
         }}
         onRemoveFilter={(selectedRow) => {
+          onTrackClick?.("attribution_filter", {
+            dimension,
+            filter_action: "remove",
+          });
           setFilter((current) =>
             removeUsageFilterFromAttributionRow(current, dimension, selectedRow)
           );
         }}
         dimension={dimension}
-        onDimensionChange={handleDimensionChange}
+        onDimensionChange={(nextDimension) => {
+          onTrackClick?.("attribution_tab", { dimension: nextDimension });
+          handleDimensionChange(nextDimension);
+        }}
         onViewAll={(nextDimension, selectedRow) => {
+          onTrackClick?.("attribution_view_all", {
+            dimension: nextDimension,
+          });
           setFilter((current) =>
             setUsageFilterFromAttributionRow(current, dimension, selectedRow)
           );

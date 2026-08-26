@@ -354,6 +354,7 @@ export interface ConsumptionChartProps {
   filter?: ConsumptionScopeFilter;
   analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
+  onModeChange?: (mode: ConsumptionTimeseriesMode) => void;
 }
 
 function WorkspaceConsumptionDailyChart({
@@ -443,8 +444,14 @@ export function ConsumptionChart({
   filter,
   analyticsScope,
   disabled,
+  onModeChange,
 }: ConsumptionChartProps) {
   const [mode, setMode] = useState<ConsumptionTimeseriesMode>("daily");
+
+  const handleModeChange = (nextMode: ConsumptionTimeseriesMode) => {
+    onModeChange?.(nextMode);
+    setMode(nextMode);
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -454,12 +461,12 @@ export function ConsumptionChart({
           <ButtonsSwitch
             value="daily"
             label="Daily"
-            onClick={() => setMode("daily")}
+            onClick={() => handleModeChange("daily")}
           />
           <ButtonsSwitch
             value="cumulative"
             label="Cumulative"
-            onClick={() => setMode("cumulative")}
+            onClick={() => handleModeChange("cumulative")}
           />
         </ButtonsSwitchList>
       </div>

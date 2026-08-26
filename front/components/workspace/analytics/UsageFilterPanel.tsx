@@ -50,6 +50,7 @@ export interface UsageFilterPanelProps {
   filter: UsageFilter;
   analyticsScope?: ConsumptionAnalyticsScope;
   onFilterChange: (next: UsageFilter) => void;
+  onOpenChange?: (open: boolean) => void;
   showMemberGroupFilter?: boolean;
 }
 
@@ -59,6 +60,7 @@ export function UsageFilterPanel({
   filter,
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
   onFilterChange,
+  onOpenChange,
   showMemberGroupFilter = true,
 }: UsageFilterPanelProps) {
   const categories = getUsageFilterCategories(analyticsScope);
@@ -87,6 +89,7 @@ export function UsageFilterPanel({
     <UsageFilterPanelView
       filter={filter}
       onFilterChange={onFilterChange}
+      onOpenChange={onOpenChange}
       showMemberGroupFilter={shouldShowMemberGroupFilter}
       categories={categories}
       state={state}
@@ -185,6 +188,7 @@ export function useUsageFilterPanelState({
 interface UsageFilterPanelViewProps {
   filter: UsageFilter;
   onFilterChange: (next: UsageFilter) => void;
+  onOpenChange?: (open: boolean) => void;
   showMemberGroupFilter: boolean;
   categories?: readonly UsageFilterCategory[];
   state: ReturnType<typeof useUsageFilterPanelState>;
@@ -197,6 +201,7 @@ interface UsageFilterPanelViewProps {
 export function UsageFilterPanelView({
   filter,
   onFilterChange,
+  onOpenChange,
   showMemberGroupFilter,
   categories = USAGE_FILTER_CATEGORIES,
   state,
@@ -298,6 +303,7 @@ export function UsageFilterPanelView({
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
+    onOpenChange?.(open);
     if (open) {
       setDraftFilter(filter);
       setSearchText("");
