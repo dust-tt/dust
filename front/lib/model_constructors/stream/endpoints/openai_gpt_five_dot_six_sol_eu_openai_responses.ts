@@ -8,6 +8,7 @@ export class OpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream extends WithOpenA
   OpenAIResponsesStream
 ) {
   // Verified 2026-08-26: https://developers.openai.com/api/docs/pricing
+  // Promotional pricing is available at least through 2026-11-21; re-verify after that date.
   // Regional (data residency) endpoints are charged a 10% uplift for models
   // released on or after March 5, 2026.
   static readonly tokenPricing = {

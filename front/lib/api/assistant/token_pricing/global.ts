@@ -21,6 +21,7 @@ export type PricingEntry = TokenPricingRates & {
 // This record contains all static model IDs. Custom models use default pricing.
 const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   // Verified 2026-08-26: https://developers.openai.com/api/docs/pricing
+  // Promotional pricing is available at least through 2026-11-21; re-verify after that date.
   "gpt-5.6-sol": {
     input: 4.0,
     output: 20.0,

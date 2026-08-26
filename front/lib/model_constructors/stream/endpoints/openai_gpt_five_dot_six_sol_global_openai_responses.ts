@@ -8,6 +8,7 @@ export class OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream extends WithOpenA
   OpenAIResponsesStream
 ) {
   // Verified 2026-08-26: https://developers.openai.com/api/docs/pricing
+  // Promotional pricing is available at least through 2026-11-21; re-verify after that date.
   static readonly tokenPricing = {
     cacheHit: 0.4,
     standardInput: 4.0,
