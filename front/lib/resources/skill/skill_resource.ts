@@ -3947,12 +3947,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-        // The per-user grant group (see `writeEditorUserGrants`) exists only to hold this skill's
-        // grant, so it goes with the skill. Fetched before the grants are dropped, since that is
-        // what identifies it.
-        const editorGrantGroup =
-          await GroupPermissionResource.findRegularAutoGroupForGrant(auth, {
-            grantType: SKILL_EDITOR_GRANT_TYPE,
+        // The per-user grant groups (see `writeEditorUserGrants`) exist only to hold this skill's
+        // grants, so they go with the skill. Listed by resource rather than by grant so a skill
+        // never leaves a grant group behind, and fetched before the grants are dropped, since the
+        // grants are what identifies them.
+        const grantGroups =
+          await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
             resourceType: "skill",
             resourceId: this.id,
             transaction,
@@ -3966,8 +3966,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-        if (editorGrantGroup) {
-          await editorGrantGroup.delete(auth, { transaction });
+        for (const grantGroup of grantGroups) {
+          await grantGroup.delete(auth, { transaction });
         }
 
         if (this.editorGroup) {
