@@ -86,12 +86,6 @@ export function ConsumptionSummaryView({
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
 }: ConsumptionSummaryViewProps) {
   const isAgentScoped = analyticsScope.kind === "agent";
-  const cardRowClassName = responsiveLayout
-    ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
-    : "flex items-stretch gap-6";
-  const summaryClassName = isAgentScoped
-    ? "flex flex-col gap-6"
-    : "flex flex-col gap-4";
   const cardHeightClassName = isAgentScoped ? "h-20" : "h-24";
   const loadingCardClassName = responsiveLayout
     ? `${cardHeightClassName} rounded-xl`
@@ -99,14 +93,30 @@ export function ConsumptionSummaryView({
 
   if (isOverviewLoading) {
     return (
-      <div className={summaryClassName}>
+      <div
+        className={
+          isAgentScoped ? "flex flex-col gap-6" : "flex flex-col gap-4"
+        }
+      >
         {isAgentScoped && (
-          <div className={cardRowClassName}>
+          <div
+            className={
+              responsiveLayout
+                ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+                : "flex items-stretch gap-6"
+            }
+          >
             <LoadingBlock className={loadingCardClassName} />
             <LoadingBlock className={loadingCardClassName} />
           </div>
         )}
-        <div className={cardRowClassName}>
+        <div
+          className={
+            responsiveLayout
+              ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+              : "flex items-stretch gap-6"
+          }
+        >
           <LoadingBlock className={loadingCardClassName} />
           <LoadingBlock className={loadingCardClassName} />
         </div>
@@ -133,7 +143,9 @@ export function ConsumptionSummaryView({
       : null;
 
   return (
-    <div className={summaryClassName}>
+    <div
+      className={isAgentScoped ? "flex flex-col gap-6" : "flex flex-col gap-4"}
+    >
       {creditUsage && (
         <div
           className={
@@ -163,7 +175,13 @@ export function ConsumptionSummaryView({
         </div>
       )}
       {isAgentScoped && (
-        <div className={cardRowClassName}>
+        <div
+          className={
+            responsiveLayout
+              ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+              : "flex items-stretch gap-6"
+          }
+        >
           <SummaryCard
             className="h-20"
             label="Active Users"
@@ -178,7 +196,13 @@ export function ConsumptionSummaryView({
           />
         </div>
       )}
-      <div className={cardRowClassName}>
+      <div
+        className={
+          responsiveLayout
+            ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+            : "flex items-stretch gap-6"
+        }
+      >
         {isAgentScoped ? (
           <>
             <SummaryCard
