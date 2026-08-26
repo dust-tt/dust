@@ -78,15 +78,12 @@ interface UserMenuProps {
   creditUsageState?: CreditUsageState | null;
 }
 
-function withUserMenuItemTracking(item: string, handler?: () => unknown) {
-  return () => {
-    trackEvent({
-      area: TRACKING_AREAS.NAVIGATION,
-      object: "user_menu_item",
-      extra: { item },
-    });
-    void handler?.();
-  };
+function trackUserMenuEvent(item: string) {
+  trackEvent({
+    area: TRACKING_AREAS.NAVIGATION,
+    object: "user_menu_item",
+    extra: { item },
+  });
 }
 
 export function UserMenu({
@@ -329,13 +326,11 @@ export function UserMenu({
               <CreditUsage
                 state={creditUsageState}
                 variant="profile_menu"
-                onLearnMore={withUserMenuItemTracking(
-                  "credit_usage_learn_more",
-                  () => {
-                    setUserMenuOpen(false);
-                    setAnalyticsOpen(true);
-                  }
-                )}
+                onLearnMore={() => {
+                  trackUserMenuEvent("credit_usage_learn_more");
+                  setUserMenuOpen(false);
+                  setAnalyticsOpen(true);
+                }}
               />
               <Separator className="my-1" />
             </>
@@ -347,7 +342,7 @@ export function UserMenu({
               <WorkspacePickerRadioGroup
                 user={user}
                 workspace={owner}
-                onItemClick={withUserMenuItemTracking("workspace")}
+                onItemClick={() => trackUserMenuEvent("workspace")}
               />
               <Separator className="my-1" />
             </>
@@ -363,50 +358,52 @@ export function UserMenu({
                   icon={BookOpen01}
                   href="https://docs.dust.tt"
                   target="_blank"
-                  onClick={withUserMenuItemTracking(
-                    "help_guides_documentation"
-                  )}
+                  onClick={() =>
+                    trackUserMenuEvent("help_guides_documentation")
+                  }
                 />
                 <DropdownMenuItem
                   label="Join the Slack Community"
                   icon={SlackLogo}
                   href="https://dust-community.tightknit.community/join"
                   target="_blank"
-                  onClick={withUserMenuItemTracking("help_slack_community")}
+                  onClick={() => trackUserMenuEvent("help_slack_community")}
                 />
                 <DropdownMenuLabel label="Ask questions" />
                 <DropdownMenuItem
                   label="Ask @help"
                   icon={MessageChatCircle}
-                  onClick={withUserMenuItemTracking("help_ask", handleAskHelp)}
+                  onClick={() => {
+                    trackUserMenuEvent("help_ask");
+                    handleAskHelp();
+                  }}
                 />
                 <DropdownMenuItem
                   label="How do I invite new users?"
                   icon={MessageTextCircle01}
-                  onClick={withUserMenuItemTracking(
-                    "help_invite_users_question",
-                    () => handleHelpSubmit("How do I invite new users?", [])
-                  )}
+                  onClick={() => {
+                    trackUserMenuEvent("help_invite_users_question");
+                    void handleHelpSubmit("How do I invite new users?", []);
+                  }}
                 />
                 <DropdownMenuItem
                   label="How do I use agents in Slack workflow?"
                   icon={MessageTextCircle01}
-                  onClick={withUserMenuItemTracking(
-                    "help_slack_workflow_question",
-                    () =>
-                      handleHelpSubmit(
-                        "How do I use agents in Slack workflow?",
-                        []
-                      )
-                  )}
+                  onClick={() => {
+                    trackUserMenuEvent("help_slack_workflow_question");
+                    void handleHelpSubmit(
+                      "How do I use agents in Slack workflow?",
+                      []
+                    );
+                  }}
                 />
                 <DropdownMenuItem
                   label="How do I manage billing?"
                   icon={MessageTextCircle01}
-                  onClick={withUserMenuItemTracking(
-                    "help_billing_question",
-                    () => handleHelpSubmit("How do I manage billing?", [])
-                  )}
+                  onClick={() => {
+                    trackUserMenuEvent("help_billing_question");
+                    void handleHelpSubmit("How do I manage billing?", []);
+                  }}
                 />
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
@@ -416,7 +413,7 @@ export function UserMenu({
             icon={BookOpen01}
             href="https://dust.tt/academy"
             target="_blank"
-            onClick={withUserMenuItemTracking("dust_academy")}
+            onClick={() => trackUserMenuEvent("dust_academy")}
           />
 
           {isFirefox ? (
@@ -425,7 +422,7 @@ export function UserMenu({
               icon={FirefoxLogo}
               href="https://addons.mozilla.org/firefox/addon/dust/"
               target="_blank"
-              onClick={withUserMenuItemTracking("firefox_extension")}
+              onClick={() => trackUserMenuEvent("firefox_extension")}
             />
           ) : (
             <DropdownMenuItem
@@ -433,7 +430,7 @@ export function UserMenu({
               icon={ChromeLogo}
               href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
               target="_blank"
-              onClick={withUserMenuItemTracking("chrome_extension")}
+              onClick={() => trackUserMenuEvent("chrome_extension")}
             />
           )}
 
@@ -443,7 +440,7 @@ export function UserMenu({
                 label="Exploratory features"
                 icon={Beaker02}
                 href={`/w/${owner.sId}/labs`}
-                onClick={withUserMenuItemTracking("exploratory_features")}
+                onClick={() => trackUserMenuEvent("exploratory_features")}
               />
               <Separator className="my-1" />
             </>
@@ -455,32 +452,36 @@ export function UserMenu({
               <DropdownMenuItem
                 label="Personal Settings"
                 icon={User01}
-                onSelect={withUserMenuItemTracking("personal_settings", () =>
-                  setSettingsOpen(true)
-                )}
+                onSelect={() => {
+                  trackUserMenuEvent("personal_settings");
+                  setSettingsOpen(true);
+                }}
               />
               <DropdownMenuItem
                 label="Tools"
                 icon={ShapesPlus}
-                onSelect={withUserMenuItemTracking("tools", () =>
-                  setToolsOpen(true)
-                )}
+                onSelect={() => {
+                  trackUserMenuEvent("tools");
+                  setToolsOpen(true);
+                }}
               />
               <DropdownMenuItem
                 label="Automations"
                 icon={Clock}
-                onSelect={withUserMenuItemTracking("automations", () =>
-                  setAutomationsOpen(true)
-                )}
+                onSelect={() => {
+                  trackUserMenuEvent("automations");
+                  setAutomationsOpen(true);
+                }}
               />
               {/* The credit usage card is the analytics entry point when shown; keep exactly one. */}
               {!creditUsageState && (
                 <DropdownMenuItem
                   label="Analytics"
                   icon={BarChart01}
-                  onSelect={withUserMenuItemTracking("analytics", () =>
-                    setAnalyticsOpen(true)
-                  )}
+                  onSelect={() => {
+                    trackUserMenuEvent("analytics");
+                    setAnalyticsOpen(true);
+                  }}
                 />
               )}
             </>
@@ -489,7 +490,9 @@ export function UserMenu({
           <DropdownMenuItem
             label="Sign&nbsp;out"
             icon={LogOut01}
-            onClick={withUserMenuItemTracking("sign_out", () => {
+            onClick={() => {
+              trackUserMenuEvent("sign_out");
+
               // Clear all conversation drafts for this user.
               clearAllDraftsFromUser();
 
@@ -498,7 +501,7 @@ export function UserMenu({
                 window.DD_RUM?.clearUser();
               });
               window.location.href = `${config.getApiBaseUrl()}/api/workos/logout`;
-            })}
+            }}
           />
 
           {showDebugTools(featureFlags) && (
