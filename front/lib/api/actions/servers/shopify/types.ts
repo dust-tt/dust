@@ -5,6 +5,17 @@ const MoneySchema = z.object({
   currencyCode: z.string(),
 });
 
+const MoneyBagSchema = z.object({
+  shopMoney: MoneySchema,
+});
+
+export const ShopifyCustomerIdSchema = z
+  .string()
+  .regex(
+    /^(?:\d+|gid:\/\/shopify\/Customer\/\d+)$/,
+    "Customer ID must be a numeric ID or a Shopify Customer GID."
+  );
+
 export const ShopifyCustomerStateSchema = z.enum([
   "DECLINED",
   "DISABLED",
@@ -52,6 +63,39 @@ export type ShopifyCustomer = z.infer<typeof CustomerNodeSchema>;
 
 export interface CustomerListResult {
   customers: ShopifyCustomer[];
+}
+
+export const OrderNodeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  cancelledAt: z.string().nullable(),
+  displayFinancialStatus: z.string().nullable(),
+  displayFulfillmentStatus: z.string(),
+  currentSubtotalPriceSet: MoneyBagSchema,
+  currentTotalPriceSet: MoneyBagSchema,
+  currentTotalTaxSet: MoneyBagSchema,
+  currentSubtotalLineItemsQuantity: z.number(),
+  email: z.string().nullable(),
+  tags: z.array(z.string()),
+  customer: z
+    .object({
+      id: z.string(),
+      displayName: z.string(),
+      defaultEmailAddress: z
+        .object({
+          emailAddress: z.string(),
+        })
+        .nullable(),
+    })
+    .nullable(),
+});
+
+export type ShopifyOrder = z.infer<typeof OrderNodeSchema>;
+
+export interface OrderListResult {
+  orders: ShopifyOrder[];
 }
 
 export const ProductNodeSchema = z.object({

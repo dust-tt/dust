@@ -2146,6 +2146,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
+    "list_orders": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
     "list_products": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
@@ -3325,6 +3329,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "shopify": {
     "list_customers": "never_ask",
+    "list_orders": "never_ask",
     "list_products": "never_ask",
   },
   "skill_authoring": {

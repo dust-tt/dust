@@ -21,4 +21,19 @@ describe("Shopify list tool metadata", () => {
       );
     }
   });
+
+  it("accepts Shopify customer IDs for the order filter", () => {
+    const listOrders = SHOPIFY_TOOLS_METADATA.find(
+      (tool) => tool.name === "list_orders"
+    );
+    expect(listOrders?.schema.customerId.safeParse("123").success).toBe(true);
+    expect(
+      listOrders?.schema.customerId.safeParse("gid://shopify/Customer/123")
+        .success
+    ).toBe(true);
+    expect(
+      listOrders?.schema.customerId.safeParse("gid://shopify/Product/123")
+        .success
+    ).toBe(false);
+  });
 });
