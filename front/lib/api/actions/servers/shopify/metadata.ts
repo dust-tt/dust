@@ -1,4 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import {
+  DEFAULT_LIST_LIMIT,
+  MAX_LIST_LIMIT,
+} from "@app/lib/api/actions/servers/shopify/helpers";
+import { ShopifyCustomerStateSchema } from "@app/lib/api/actions/servers/shopify/types";
 import { z } from "zod";
 
 export const SHOPIFY_SERVER_NAME = "shopify" as const;
@@ -8,11 +13,41 @@ const limitSchema = (noun: string) =>
     .number()
     .int()
     .positive()
-    .max(1000)
+    .max(MAX_LIST_LIMIT)
     .optional()
-    .describe(`Maximum number of ${noun} to return (max 1000).`);
+    .default(DEFAULT_LIST_LIMIT)
+    .describe(
+      `Maximum number of ${noun} to return (default: ${DEFAULT_LIST_LIMIT}, max: ${MAX_LIST_LIMIT}).`
+    );
 
 export const SHOPIFY_TOOLS_METADATA = [
+  {
+    name: "list_customers",
+    description:
+      "List Shopify customers with contact details, account state, order count, total spend, tags, and default address.",
+    schema: {
+      state: ShopifyCustomerStateSchema.optional().describe(
+        "Filter by customer account state."
+      ),
+      email: z
+        .string()
+        .optional()
+        .describe("Filter by exact customer email address."),
+      tag: z.string().optional().describe("Filter by exact customer tag."),
+      searchQuery: z
+        .string()
+        .optional()
+        .describe("Additional Shopify customer search query."),
+      limit: limitSchema("customers"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing Shopify customers",
+      done: "List Shopify customers",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
   {
     name: "list_products",
     description:

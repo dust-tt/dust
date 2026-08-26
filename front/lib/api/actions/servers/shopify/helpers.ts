@@ -1,2 +1,3 @@
-// Hard cap on exported records to keep responses and API usage bounded.
-export const MAX_EXPORT_ITEMS = 1_000;
+// The default matches Shopify's GraphQL page size, while the maximum bounds total results.
+export const DEFAULT_LIST_LIMIT = 250;
+export const MAX_LIST_LIMIT = 1_000;

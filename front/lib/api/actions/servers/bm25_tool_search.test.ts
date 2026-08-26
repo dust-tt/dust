@@ -1782,6 +1782,10 @@ const QUERIES: LabeledQuery[] = [
     query: "list the products in my shopify store",
     expected: "shopify.list_products",
   },
+  {
+    query: "list the customers in my shopify store",
+    expected: "shopify.list_customers",
+  },
 ];
 
 export const fullIndexWithAllServers = buildIndex(buildDocs(SERVERS));

@@ -2,7 +2,10 @@ import {
   createShopifyClient,
   ShopifyClient,
 } from "@app/lib/api/actions/servers/shopify/client";
-import type { ShopifyProduct } from "@app/lib/api/actions/servers/shopify/types";
+import type {
+  ShopifyCustomer,
+  ShopifyProduct,
+} from "@app/lib/api/actions/servers/shopify/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -12,6 +15,33 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@app/lib/egress/server", () => ({
   untrustedFetch: mocks.untrustedFetch,
 }));
+
+function customer(id: number): ShopifyCustomer {
+  return {
+    id: `gid://shopify/Customer/${id}`,
+    displayName: `Customer ${id}`,
+    firstName: "Customer",
+    lastName: `${id}`,
+    defaultEmailAddress: { emailAddress: `customer-${id}@example.com` },
+    defaultPhoneNumber: { phoneNumber: "+33123456789" },
+    state: "ENABLED",
+    numberOfOrders: `${id}`,
+    amountSpent: { amount: `${id * 10}.00`, currencyCode: "EUR" },
+    tags: ["VIP"],
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-02T00:00:00Z",
+    defaultAddress: {
+      address1: "1 Dust Avenue",
+      address2: null,
+      city: "Paris",
+      province: null,
+      provinceCode: null,
+      country: "France",
+      countryCodeV2: "FR",
+      zip: "75001",
+    },
+  };
+}
 
 function product(id: number): ShopifyProduct {
   return {
@@ -44,6 +74,93 @@ function pageResponse(
     { status: 200 }
   );
 }
+
+function customerPageResponse(
+  customers: ShopifyCustomer[],
+  { hasNextPage, endCursor }: { hasNextPage: boolean; endCursor: string | null }
+) {
+  return new Response(
+    JSON.stringify({
+      data: {
+        customers: { nodes: customers, pageInfo: { hasNextPage, endCursor } },
+      },
+    }),
+    { status: 200 }
+  );
+}
+
+describe("ShopifyClient.listCustomers", () => {
+  beforeEach(() => {
+    mocks.untrustedFetch.mockReset();
+  });
+
+  it("paginates customers up to the requested limit and sends filters as variables", async () => {
+    mocks.untrustedFetch
+      .mockResolvedValueOnce(
+        customerPageResponse([customer(1), customer(2)], {
+          hasNextPage: true,
+          endCursor: "cursor-2",
+        })
+      )
+      .mockResolvedValueOnce(
+        customerPageResponse([customer(3)], {
+          hasNextPage: false,
+          endCursor: null,
+        })
+      );
+    const client = new ShopifyClient("access-token", "my-store.myshopify.com");
+
+    const result = await client.listCustomers({
+      state: "ENABLED",
+      email: "jane.o'reilly@example.com",
+      tag: "VIP Customers",
+      searchQuery: "country:FR",
+      limit: 3,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.customers).toHaveLength(3);
+    expect(mocks.untrustedFetch).toHaveBeenCalledTimes(2);
+
+    const [firstUrl, firstInit] = mocks.untrustedFetch.mock.calls[0];
+    expect(firstUrl).toBe(
+      "https://my-store.myshopify.com/admin/api/2026-07/graphql.json"
+    );
+    const firstBody = JSON.parse(firstInit.body as string);
+    expect(firstBody.query).toContain("query ListCustomers");
+    expect(firstBody.variables).toEqual({
+      first: 3,
+      after: null,
+      query:
+        "state:ENABLED email:'jane.o\\'reilly@example.com' tag:'VIP Customers' country:FR",
+    });
+
+    const secondBody = JSON.parse(
+      mocks.untrustedFetch.mock.calls[1][1].body as string
+    );
+    expect(secondBody.variables).toMatchObject({
+      first: 1,
+      after: "cursor-2",
+    });
+  });
+
+  it("identifies the required customer scope when authentication fails", async () => {
+    mocks.untrustedFetch.mockResolvedValueOnce(
+      new Response("Forbidden", { status: 403 })
+    );
+    const client = new ShopifyClient("access-token", "my-store.myshopify.com");
+
+    const result = await client.listCustomers({ limit: 10 });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("read_customers scope");
+    }
+  });
+});
 
 describe("ShopifyClient.listProducts", () => {
   beforeEach(() => {
@@ -78,7 +195,6 @@ describe("ShopifyClient.listProducts", () => {
       return;
     }
     expect(result.value.products).toHaveLength(3);
-    expect(result.value.truncated).toBe(false);
     expect(mocks.untrustedFetch).toHaveBeenCalledTimes(2);
 
     const [firstUrl, firstInit] = mocks.untrustedFetch.mock.calls[0];
