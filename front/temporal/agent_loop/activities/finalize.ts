@@ -20,6 +20,7 @@ import {
   finalizeInterruption,
   notifyWorkflowError,
 } from "@app/temporal/agent_loop/activities/common";
+import { recordExecutionFinalized } from "@app/temporal/agent_loop/activities/consumption";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
 import {
   activationNewConversationNotification,
@@ -43,12 +44,17 @@ async function launchAgentMessageConsumptionAttributionAfterPersistingInputs(
     creditArgs?: { agentMessageId: string; dustRunIds?: string[] };
   } = {}
 ): Promise<void> {
-  // Consumption analytics needs the authoritative bill, usage type, and historical skill snapshot
-  // before its attribution workflow can safely materialize Elasticsearch documents.
-  await snapshotAgentMessageSkills(auth, agentLoopArgs);
   await computeAndStoreAgentMessageCredits(auth, creditArgs);
 
   await launchAgentMessageConsumptionAttribution(auth, agentLoopArgs);
+}
+
+async function recordExecutionFinalizedAfterSkillSnapshot(
+  auth: Authenticator,
+  agentLoopArgs: AgentLoopArgs
+): Promise<void> {
+  await snapshotAgentMessageSkills(auth, agentLoopArgs);
+  await recordExecutionFinalized(auth, agentLoopArgs);
 }
 
 export async function finalizeSuccessfulAgentLoopActivity(
@@ -56,6 +62,8 @@ export async function finalizeSuccessfulAgentLoopActivity(
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+
+  await recordExecutionFinalizedAfterSkillSnapshot(auth, agentLoopArgs);
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
@@ -94,6 +102,8 @@ async function launchStoppedLoopSideEffects(
 ): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
+  await recordExecutionFinalizedAfterSkillSnapshot(auth, agentLoopArgs);
+
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
     launchAgentMessageConsumptionAttributionAfterPersistingInputs(
@@ -131,6 +141,8 @@ export async function finalizeCancelledAgentLoopActivity(
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
+  await recordExecutionFinalizedAfterSkillSnapshot(auth, agentLoopArgs);
+
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
     launchAgentMessageConsumptionAttributionAfterPersistingInputs(
@@ -154,6 +166,8 @@ export async function finalizeCreditStoppedAgentLoopActivity(
   await finalizeCreditStop(authType, agentLoopArgs);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+
+  await recordExecutionFinalizedAfterSkillSnapshot(auth, agentLoopArgs);
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
@@ -256,6 +270,8 @@ export async function finalizeErroredAgentLoopActivity(
       error,
     });
   }
+
+  await recordExecutionFinalizedAfterSkillSnapshot(auth, agentLoopArgs);
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),

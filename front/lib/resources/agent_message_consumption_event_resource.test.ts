@@ -128,11 +128,12 @@ describe("AgentMessageConsumptionEventResource append", () => {
       withTransaction((transaction) =>
         AgentMessageConsumptionEventResource.append(auth, {
           event: {
-            kind: "execution_started",
-            idempotencyKey: "execution:started",
+            kind: "items_changed",
+            idempotencyKey: "items:retry",
             runKey: "run",
             rootAgentMessageId: 7,
             agentMessageModelId: 8,
+            consumptionItemIds: [11],
           },
           transaction,
         })
