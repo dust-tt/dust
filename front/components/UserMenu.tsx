@@ -291,7 +291,7 @@ export function UserMenu({
         owner={owner}
       />
       <Dialog open={analyticsOpen} onOpenChange={setAnalyticsOpen}>
-        <DialogContent size="2xl" height="xl" className="focus:outline-none">
+        <DialogContent size="full" className="focus:outline-none">
           <UserAnalyticsPopover
             key={owner.sId}
             open={analyticsOpen}
