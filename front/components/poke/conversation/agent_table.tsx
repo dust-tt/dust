@@ -2,12 +2,15 @@ import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditio
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeListConversationItem } from "@app/lib/api/poke/conversations";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { PokeConversationsFetchProps } from "@app/poke/swr/conversation";
-import { usePokeConversations } from "@app/poke/swr/conversation";
+import { usePokeAgentConversations } from "@app/poke/swr/conversation";
+import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Chip, IconButton, LinkWrapper } from "@dust-tt/sparkle";
+import { Button, Chip, IconButton, LinkWrapper } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useState } from "react";
+
+const PAGE_SIZE = 25;
 
 interface ConversationAgentDataTableProps {
   owner: LightWorkspaceType;
@@ -99,8 +102,9 @@ export function ConversationAgentDataTable({
   owner,
   agentId,
 }: ConversationAgentDataTableProps) {
-  const useConversationsWithAgent = (props: PokeConversationsFetchProps) =>
-    usePokeConversations({ ...props, agentId });
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const useConversationsWithAgent = (props: PokeConditionalFetchProps) =>
+    usePokeAgentConversations({ ...props, agentId, limit });
 
   return (
     <PokeDataTableConditionalFetch
@@ -109,16 +113,25 @@ export function ConversationAgentDataTable({
       showSensitiveDataWarning={true}
       useSWRHook={useConversationsWithAgent}
     >
-      {(conversations) => {
-        const columns = makeColumnsForConversations(owner);
-
-        return (
+      {({ conversations, hasMore, isLoadingMore }) => (
+        <div className="flex flex-col gap-3">
           <PokeDataTable<PokeListConversationItem, unknown>
-            columns={columns}
+            columns={makeColumnsForConversations(owner)}
             data={conversations}
+            pageSize={PAGE_SIZE}
           />
-        );
-      }}
+          {hasMore && (
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                label="Load more"
+                isLoading={isLoadingMore}
+                onClick={() => setLimit((current) => current + PAGE_SIZE)}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </PokeDataTableConditionalFetch>
   );
 }

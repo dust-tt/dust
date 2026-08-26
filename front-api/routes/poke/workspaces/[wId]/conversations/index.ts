@@ -14,6 +14,9 @@ const ListConversationsQuerySchema = z.object({
   agentId: z.string().optional(),
   triggerId: z.string().optional(),
   reinforcedSkillId: z.string().optional(),
+  // Only honored on the agent branch: the trigger and reinforced-skill listings are
+  // already bounded by their own scope.
+  limit: z.coerce.number().int().min(1).max(100).optional().default(25),
 });
 
 // Mounted at /api/poke/workspaces/:wId/conversations.
@@ -25,9 +28,11 @@ app.get(
   validate("query", ListConversationsQuerySchema),
   async (ctx): HandlerResult<PokeListConversations> => {
     const auth = ctx.get("auth");
-    const { agentId, triggerId, reinforcedSkillId } = ctx.req.valid("query");
+    const { agentId, triggerId, reinforcedSkillId, limit } =
+      ctx.req.valid("query");
 
     let conversations: PokeListConversationItem[];
+    let hasMore = false;
 
     if (triggerId) {
       conversations = await ConversationResource.listConversationsForTrigger(
@@ -45,16 +50,17 @@ app.get(
           { after: oneWeekAgo }
         );
     } else if (agentId) {
-      const conversationResources =
-        await ConversationResource.listConversationWithAgentCreatedBeforeDate(
+      const { conversations: conversationResources, hasMore: hasMoreForAgent } =
+        await ConversationResource.listConversationsWithAgentPaginated(
           auth,
           {
             agentConfigurationId: agentId,
-            cutoffDate: new Date(),
+            limit,
           },
           { includeDeleted: true }
         );
 
+      hasMore = hasMoreForAgent;
       conversations = conversationResources.map((c) => ({
         id: c.id,
         created: c.createdAt.getTime(),
@@ -74,8 +80,6 @@ app.get(
         metadata: c.metadata,
         isRunningAgentLoop: c.isRunningAgentLoop,
       }));
-
-      conversations.sort((a, b) => b.created - a.created);
     } else {
       return apiError(ctx, {
         status_code: 400,
@@ -87,7 +91,7 @@ app.get(
       });
     }
 
-    return ctx.json({ conversations });
+    return ctx.json({ conversations, hasMore });
   }
 );
 

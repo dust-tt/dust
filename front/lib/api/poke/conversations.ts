@@ -11,6 +11,7 @@ export type PokeListConversationItem = ConversationWithoutContentType & {
 
 export type PokeListConversations = {
   conversations: PokeListConversationItem[];
+  hasMore: boolean;
 };
 
 export type PokeGetConversationConfig = {

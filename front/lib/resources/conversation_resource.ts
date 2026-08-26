@@ -1706,6 +1706,77 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
+   * Page of the conversations in which `agentConfigurationId` produced at least one
+   * message, newest first. Paging happens in SQL: an active agent's conversation set is
+   * unbounded, so neither its conversation ids nor the hydrated conversations can be
+   * materialized in full.
+   *
+   * `hasMore` is computed before visibility and permission filtering, so a page can hold
+   * fewer than `limit` conversations while still reporting that more can be loaded.
+   */
+  static async listConversationsWithAgentPaginated(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      limit,
+    }: {
+      agentConfigurationId: string;
+      limit: number;
+    },
+    options?: FetchConversationOptions
+  ): Promise<{ conversations: ConversationResource[]; hasMore: boolean }> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // `agent_messages` carries `conversationId` since the side-table denormalization, so
+    // the agent's conversations resolve without joining `messages`.
+    const query = `
+      WITH agent_conversations AS (
+        SELECT DISTINCT am."conversationId"
+        FROM agent_messages am
+        WHERE am."workspaceId" = :workspaceId
+          AND am."agentConfigurationId" = :agentConfigurationId
+      )
+      SELECT c."id"
+      FROM agent_conversations ac
+      JOIN conversations c
+        ON c."id" = ac."conversationId"
+       AND c."workspaceId" = :workspaceId
+      ORDER BY c."createdAt" DESC, c."id" DESC
+      LIMIT :limit
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: no association from conversations to agent_messages.
+    const rows = await frontSequelize.query<{ id: ModelId }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId,
+        agentConfigurationId,
+        // One extra row tells us whether another page exists.
+        limit: limit + 1,
+      },
+    });
+
+    const conversationIds = rows.slice(0, limit).map((r) => r.id);
+    if (conversationIds.length === 0) {
+      return { conversations: [], hasMore: false };
+    }
+
+    const conversations = await this.baseFetchWithAuthorization(auth, options, {
+      where: {
+        id: {
+          [Op.in]: conversationIds,
+        },
+      },
+      order: [
+        ["createdAt", "DESC"],
+        ["id", "DESC"],
+      ],
+    });
+
+    return { conversations, hasMore: rows.length > limit };
+  }
+
+  /**
    * For each agent, returns the sIds of qualifying conversations in the window
    * createdAt >= cutoffDate. With excludeHumanOutOfTheLoop, removes conversations where
    * triggerId IS NOT NULL and no user messages are present.
