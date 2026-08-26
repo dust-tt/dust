@@ -287,7 +287,6 @@ export async function getOutputFromLLMStream(
     conversation,
     toolSearchEnabled,
     disableToolUse,
-    cacheDiagnosticsEnabled,
     specifications,
     flushParserTokens,
     contentParser,
@@ -324,16 +323,14 @@ export async function getOutputFromLLMStream(
   // Prompt-cache diagnostics: thread the previous step's response id so Anthropic
   // can report why the cache prefix diverged. Keyed by conversation and agent in
   // Redis so the chain survives across steps and user turns. `null` (no prior, or
-  // expired) is still a valid opt-in value. `undefined` keeps the feature off.
+  // expired) is still a valid value.
   const cacheDiagnosticsKey: CacheDiagnosticsKey = {
     conversationId: conversation.sId,
     agentConfigurationId: agentConfiguration.sId,
     providerId: model.providerId,
   };
 
-  const previousMessageId = cacheDiagnosticsEnabled
-    ? await getPreviousMessageId(cacheDiagnosticsKey)
-    : undefined;
+  const previousMessageId = await getPreviousMessageId(cacheDiagnosticsKey);
 
   const events = llm.stream(
     {
@@ -565,45 +562,43 @@ export async function getOutputFromLLMStream(
       }
 
       if (event.type === "interaction_id") {
-        if (cacheDiagnosticsEnabled) {
-          const { modelInteractionId, cacheMissReason } = event.content;
+        const { modelInteractionId, cacheMissReason } = event.content;
 
-          // Store this response id so the next step/turn can compare against it.
-          await setPreviousMessageId(cacheDiagnosticsKey, modelInteractionId);
+        // Store this response id so the next step/turn can compare against it.
+        await setPreviousMessageId(cacheDiagnosticsKey, modelInteractionId);
 
-          if (cacheMissReason) {
-            logger.info(
-              {
-                ...logContext,
-                agentConfigurationId: agentConfiguration.sId,
-                modelInteractionId,
-                previousMessageId,
-                cacheMissReasonType: cacheMissReason.type,
-                cacheMissedInputTokens: cacheMissReason.cacheMissedInputTokens,
-              },
-              "[LLM stream] prompt cache miss"
-            );
-            const reasonTags = [
-              `model_id:${model.modelId}`,
-              `reason:${cacheMissReason.type}`,
-              `is_dust_like_agent:${isDustLikeAgent(agentConfiguration.sId)}`,
-            ];
-            // Count: how often each reason occurs.
-            getStatsDClient().increment(
-              "llm.cache_miss_reason.count",
-              1,
+        if (cacheMissReason) {
+          logger.info(
+            {
+              ...logContext,
+              agentConfigurationId: agentConfiguration.sId,
+              modelInteractionId,
+              previousMessageId,
+              cacheMissReasonType: cacheMissReason.type,
+              cacheMissedInputTokens: cacheMissReason.cacheMissedInputTokens,
+            },
+            "[LLM stream] prompt cache miss"
+          );
+          const reasonTags = [
+            `model_id:${model.modelId}`,
+            `reason:${cacheMissReason.type}`,
+            `is_dust_like_agent:${isDustLikeAgent(agentConfiguration.sId)}`,
+          ];
+          // Count: how often each reason occurs.
+          getStatsDClient().increment(
+            "llm.cache_miss_reason.count",
+            1,
+            reasonTags
+          );
+          // Weighted by lost-cache tokens: which reason actually costs the most,
+          // not just which happens most. Only the `*_changed` reasons carry this
+          // (the inconclusive ones have no diverged prefix to measure).
+          if (cacheMissReason.cacheMissedInputTokens !== undefined) {
+            getStatsDClient().distribution(
+              "llm.cache_miss_reason.missed_input_tokens",
+              cacheMissReason.cacheMissedInputTokens,
               reasonTags
             );
-            // Weighted by lost-cache tokens: which reason actually costs the most,
-            // not just which happens most. Only the `*_changed` reasons carry this
-            // (the inconclusive ones have no diverged prefix to measure).
-            if (cacheMissReason.cacheMissedInputTokens !== undefined) {
-              getStatsDClient().distribution(
-                "llm.cache_miss_reason.missed_input_tokens",
-                cacheMissReason.cacheMissedInputTokens,
-                reasonTags
-              );
-            }
           }
         }
         continue;

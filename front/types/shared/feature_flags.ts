@@ -28,11 +28,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
-  anthropic_cache_diagnostics: {
-    description:
-      "Opt into Anthropic prompt-cache diagnostics to report cache-miss reasons on agent-loop steps",
-    stage: "dust_only",
-  },
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",

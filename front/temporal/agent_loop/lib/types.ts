@@ -47,9 +47,6 @@ export type GetOutputRequestParams = {
   // When true, the tools are sent but the model is forbidden from calling them
   // (tool choice "none"). Set on the last step to force the final generation.
   disableToolUse: boolean;
-  // When true, opt this step's Anthropic call into prompt-cache diagnostics and
-  // thread the previous step's response id via Redis (see cache_diagnostics.ts).
-  cacheDiagnosticsEnabled: boolean;
   userMessage: UserMessageType;
   specifications: AgentActionSpecification[];
   flushParserTokens: () => Promise<void>;

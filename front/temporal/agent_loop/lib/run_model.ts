@@ -903,9 +903,6 @@ export async function runModel(
     conversation,
     toolSearchEnabled,
     disableToolUse,
-    cacheDiagnosticsEnabled: featureFlags.includes(
-      "anthropic_cache_diagnostics"
-    ),
     userMessage,
     specifications,
     flushParserTokens,
