@@ -21,7 +21,6 @@ import feedbacks from "./feedbacks";
 import files from "./files";
 import mentions from "./mentions";
 import messages from "./messages";
-import tools from "./tools";
 
 type PatchConversationResponseBody = z.infer<
   typeof PatchConversationResponseSchema
@@ -256,6 +255,5 @@ app.route("/feedbacks", feedbacks);
 app.route("/files", files);
 app.route("/mentions", mentions);
 app.route("/messages", messages);
-app.route("/tools", tools);
 
 export default app;
