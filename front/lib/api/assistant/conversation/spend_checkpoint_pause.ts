@@ -58,7 +58,7 @@ async function findPausedAgentMessage(
         model: AgentMessageModel,
         as: "agentMessage",
         required: true,
-        attributes: ["id", "workflowAlertThresholdStatus"],
+        attributes: ["id", "spendCheckpointStatus"],
       },
     ],
   });
@@ -69,11 +69,11 @@ async function findPausedAgentMessage(
     );
   }
 
-  if (message.agentMessage.workflowAlertThresholdStatus !== "paused") {
+  if (message.agentMessage.spendCheckpointStatus !== "paused") {
     return new Err(
       new DustError(
         "agent_message_not_resumable",
-        "Agent message is not paused at the workflow alert threshold"
+        "Agent message is not paused at the spend checkpoint"
       )
     );
   }
@@ -135,7 +135,7 @@ async function findPausedAgentMessage(
   });
 }
 
-async function clearWorkflowAlertThresholdPause(
+async function clearSpendCheckpointPause(
   auth: Authenticator,
   {
     agentMessageModelId,
@@ -144,13 +144,13 @@ async function clearWorkflowAlertThresholdPause(
 ): Promise<{ applied: boolean }> {
   const [updatedCount] = await AgentMessageModel.update(
     {
-      workflowAlertThresholdStatus: acknowledge ? "acknowledged" : null,
+      spendCheckpointStatus: acknowledge ? "acknowledged" : null,
     },
     {
       where: {
         id: agentMessageModelId,
         workspaceId: auth.getNonNullableWorkspace().id,
-        workflowAlertThresholdStatus: "paused",
+        spendCheckpointStatus: "paused",
       },
     }
   );
@@ -158,7 +158,7 @@ async function clearWorkflowAlertThresholdPause(
   return { applied: updatedCount > 0 };
 }
 
-export async function continueWorkflowAlertThresholdPause(
+export async function continueSpendCheckpointPause(
   auth: Authenticator,
   conversation: ConversationResource,
   { messageId }: { messageId: string }
@@ -182,14 +182,14 @@ export async function continueWorkflowAlertThresholdPause(
     userMessageOrigin,
   } = foundRes.value;
 
-  const { applied } = await clearWorkflowAlertThresholdPause(auth, {
+  const { applied } = await clearSpendCheckpointPause(auth, {
     agentMessageModelId,
     acknowledge: true,
   });
   if (!applied) {
     logger.info(
       { agentMessageId, conversationId },
-      "Workflow alert threshold pause already resolved"
+      "Spend checkpoint pause already resolved"
     );
     return new Ok(undefined);
   }
@@ -256,7 +256,7 @@ async function writeSmoothShutdownRecap(
   });
 }
 
-export async function declineWorkflowAlertThresholdPause(
+export async function declineSpendCheckpointPause(
   auth: Authenticator,
   conversation: ConversationResource,
   { messageId }: { messageId: string }
@@ -279,14 +279,14 @@ export async function declineWorkflowAlertThresholdPause(
     userMessageOrigin,
   } = foundRes.value;
 
-  const { applied } = await clearWorkflowAlertThresholdPause(auth, {
+  const { applied } = await clearSpendCheckpointPause(auth, {
     agentMessageModelId,
     acknowledge: false,
   });
   if (!applied) {
     logger.info(
       { agentMessageId, conversationId },
-      "Workflow alert threshold pause already resolved"
+      "Spend checkpoint pause already resolved"
     );
     return new Ok(undefined);
   }

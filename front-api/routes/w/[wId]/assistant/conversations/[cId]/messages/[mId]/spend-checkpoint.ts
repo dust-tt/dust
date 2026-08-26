@@ -1,7 +1,7 @@
 import {
-  continueWorkflowAlertThresholdPause,
-  declineWorkflowAlertThresholdPause,
-} from "@app/lib/api/assistant/conversation/workflow_alert_threshold_pause";
+  continueSpendCheckpointPause,
+  declineSpendCheckpointPause,
+} from "@app/lib/api/assistant/conversation/spend_checkpoint_pause";
 import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { Result } from "@app/types/shared/result";
@@ -16,18 +16,18 @@ const ParamsSchema = z.object({
   mId: z.string(),
 });
 
-const WorkflowAlertThresholdDecisionSchema = z.object({
+const SpendCheckpointDecisionSchema = z.object({
   decision: z.enum(["continue", "decline"]),
 });
 
-// Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/workflow-alert-threshold.
+// Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/spend-checkpoint.
 const app = workspaceApp();
 
 /** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),
-  validate("json", WorkflowAlertThresholdDecisionSchema),
+  validate("json", SpendCheckpointDecisionSchema),
   async (ctx) => {
     const auth = ctx.get("auth");
     const { cId, mId } = ctx.req.valid("param");
@@ -48,12 +48,12 @@ app.post(
     let result: Result<void, DustError | Error>;
     switch (decision) {
       case "continue":
-        result = await continueWorkflowAlertThresholdPause(auth, conversation, {
+        result = await continueSpendCheckpointPause(auth, conversation, {
           messageId: mId,
         });
         break;
       case "decline":
-        result = await declineWorkflowAlertThresholdPause(auth, conversation, {
+        result = await declineSpendCheckpointPause(auth, conversation, {
           messageId: mId,
         });
         break;
@@ -93,7 +93,7 @@ app.post(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: "Failed to resolve the workflow alert threshold pause.",
+            message: "Failed to resolve the spend checkpoint pause.",
           },
         },
         error

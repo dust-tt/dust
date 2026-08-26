@@ -355,7 +355,7 @@ export type BaseAgentMessageType = {
   completionDurationMs: number | null;
   reactions: MessageReactionType[];
   prunedContext?: boolean;
-  pausedAtWorkflowAlertThreshold?: boolean;
+  pausedAtSpendCheckpoint?: boolean;
   costCredits: number | null;
   // Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned
   // (recursively) by this message, separate from `costCredits` (this message's own

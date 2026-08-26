@@ -32,8 +32,8 @@ import resolveAuthentication from "./resolve-authentication";
 import resolveFileAuthorization from "./resolve-file-authorization";
 import retry from "./retry";
 import skills from "./skills";
+import spendCheckpoint from "./spend-checkpoint";
 import validateAction from "./validate-action";
-import workflowAlertThreshold from "./workflow-alert-threshold";
 
 const ParamsSchema = z.object({
   cId: z.string(),
@@ -302,6 +302,6 @@ app.route("/resolve-file-authorization", resolveFileAuthorization);
 app.route("/retry", retry);
 app.route("/skills", skills);
 app.route("/validate-action", validateAction);
-app.route("/workflow-alert-threshold", workflowAlertThreshold);
+app.route("/spend-checkpoint", spendCheckpoint);
 
 export default app;
