@@ -36,6 +36,19 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      postgres:
+        image: mirror.gcr.io/postgres:14.13
+        env:
+          POSTGRES_DB: front_test_shard_${{ matrix.shardIndex }}
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup Node Dependencies
@@ -43,17 +56,11 @@ jobs:
         with:
           build-sdks: "true"
           build-sparkle: "true"
-      - name: Install Postgres
-        uses: dust-tt/postgresql-action@91c1ba371e7f9529945c312bb2883e9e0630063b
-        with:
-          postgresql docker image: mirror.gcr.io/postgres
-          postgresql version: "14.13"
-          postgresql db: front_test_shard_${{ matrix.shardIndex }}
-          postgresql user: test
-          postgresql password: test
-          postgresql port: 5433
       - name: Install Sandbox
-        run: sudo apt-get update && sudo apt-get install -y ripgrep fd-find sd
+        # The runner image ships with a populated apt cache, so the install
+        # usually succeeds outright; `apt-get update` alone costs ~8s per shard,
+        # so only pay for it when the cached lists are too stale to resolve.
+        run: sudo apt-get install -y ripgrep fd-find sd || (sudo apt-get update && sudo apt-get install -y ripgrep fd-find sd)
       - name: Run Tests
         working-directory: front
         env:
