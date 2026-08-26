@@ -151,7 +151,6 @@ function getGlobalAgent({
   globalAgentContext,
   excludeProviders,
   autoDefaultModelConfig,
-  preferGpt56LunaDefaultModel,
   preferSonnet5DefaultModel,
   featureFlags,
 }: {
@@ -166,7 +165,6 @@ function getGlobalAgent({
   globalAgentContext?: GlobalAgentContext;
   excludeProviders: ReadonlySet<ModelProviderIdType>;
   autoDefaultModelConfig: ModelConfigurationType | null;
-  preferGpt56LunaDefaultModel: boolean;
   preferSonnet5DefaultModel: boolean;
   featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType | null {
@@ -388,7 +386,6 @@ function getGlobalAgent({
         globalAgentContext,
         excludeProviders,
         autoDefaultModelConfig,
-        preferGpt56LunaDefaultModel,
         preferSonnet5DefaultModel,
       });
       break;
@@ -1223,9 +1220,6 @@ export async function getGlobalAgents(
       globalAgentContext: options?.globalAgentContext,
       excludeProviders,
       autoDefaultModelConfig,
-      preferGpt56LunaDefaultModel: flags.includes(
-        "dust_agent_gpt_5_6_luna_default"
-      ),
       preferSonnet5DefaultModel: flags.includes("dust_agent_sonnet_5_default"),
       featureFlags: flags,
     })

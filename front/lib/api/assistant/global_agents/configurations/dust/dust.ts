@@ -87,13 +87,10 @@ interface DustLikeGlobalAgentArgs {
   // same model availability check that is enforced when a message is posted.
   featureFlags: WhitelistableFeature[];
   // When set, the @dust agent defaults to this stream meta-model (the highest
-  // one the member's model-tier cap allows) instead of Claude Sonnet 4.6.
+  // one the member's model-tier cap allows) instead of GPT 5.6 Luna.
   autoDefaultModelConfig?: ModelConfigurationType | null;
-  // When set, the @dust agent defaults to GPT 5.6 Luna (high reasoning) instead
-  // of Claude Sonnet 4.6. Gated by the `dust_agent_gpt_5_6_luna_default` flag.
-  preferGpt56LunaDefaultModel?: boolean;
-  // When set, the @dust agent defaults to Claude Sonnet 5 instead of Claude
-  // Sonnet 4.6. Gated by the `dust_agent_sonnet_5_default` feature flag.
+  // When set, the @dust agent defaults to Claude Sonnet 5 instead of GPT 5.6
+  // Luna. Gated by the `dust_agent_sonnet_5_default` feature flag.
   preferSonnet5DefaultModel?: boolean;
 }
 
@@ -480,8 +477,8 @@ export function _getDustGlobalAgent(
   args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   let preferredModelConfiguration: ModelConfigurationType =
-    CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
-  let preferredReasoningEffort: ReasoningEffort = "medium";
+    GPT_5_6_LUNA_MODEL_CONFIG;
+  let preferredReasoningEffort: ReasoningEffort = "high";
 
   if (args.autoDefaultModelConfig) {
     preferredModelConfiguration = args.autoDefaultModelConfig;
@@ -489,9 +486,6 @@ export function _getDustGlobalAgent(
   } else if (args.preferSonnet5DefaultModel) {
     preferredModelConfiguration = CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG;
     preferredReasoningEffort = "medium";
-  } else if (args.preferGpt56LunaDefaultModel) {
-    preferredModelConfiguration = GPT_5_6_LUNA_MODEL_CONFIG;
-    preferredReasoningEffort = "high";
   }
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
