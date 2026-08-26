@@ -5,6 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { resolveAllowedTierNames } from "@app/lib/model_tiers/allowed_tiers";
 import type {
   EnabledModelConfigurationType,
+  GetEnabledModelsResponseType,
   ModelStreamResolutionsType,
   ModelStreamResolutionType,
 } from "@app/types/api/assistant/models";
@@ -237,15 +238,18 @@ export function getStreamResolutions(
   };
 }
 
-export async function getModelsForAuth(auth: Authenticator): Promise<{
-  models: EnabledModelConfigurationType[];
-  defaultModel: EnabledModelConfigurationType;
-  streams: ModelStreamResolutionsType;
-}> {
+export async function getModelsForAuth(
+  auth: Authenticator
+): Promise<GetEnabledModelsResponseType> {
   const models = await getEnabledModelsForAuth(auth);
+  const degradedModelIds = getDegradedModelIds();
+
   return {
     models,
     defaultModel: getDefaultModelFromEnabledModels(models),
-    streams: getStreamResolutions(models, getDegradedModelIds()),
+    streams: getStreamResolutions(models, degradedModelIds),
+    degradedModelIds: models
+      .filter((m) => degradedModelIds.has(m.modelId))
+      .map((m) => m.modelId),
   };
 }

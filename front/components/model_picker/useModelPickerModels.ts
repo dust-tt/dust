@@ -42,7 +42,10 @@ export function useModelPickerModels({
   const isFilterMode = mode === "filter";
   const lockPremiumEfforts = !canSelectPremiumModels;
 
-  const { models, streams, isModelsLoading } = useModels({ owner, disabled });
+  const { models, streams, degradedModelIds, isModelsLoading } = useModels({
+    owner,
+    disabled,
+  });
 
   // Concrete models (meta-models are surfaced as tiers instead).
   const allModels = useMemo<ModelConfigurationType[]>(() => {
@@ -110,6 +113,7 @@ export function useModelPickerModels({
       lockPremiumEfforts,
       ignoreTierRestrictions: isFilterMode,
       tiers,
+      degradedModelIds,
       makerGroups,
       allModels,
       streamModels,
@@ -118,6 +122,7 @@ export function useModelPickerModels({
     models,
     allModels,
     streamModels,
+    degradedModelIds,
     isModelsLoading,
     lockPremiumEfforts,
   };

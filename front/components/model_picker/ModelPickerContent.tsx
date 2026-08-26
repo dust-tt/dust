@@ -39,6 +39,7 @@ interface ModelPickerContentProps {
   lockPremiumEfforts: boolean;
   ignoreTierRestrictions: boolean;
   tiers: ModelTierDefinition[];
+  degradedModelIds: ReadonlySet<string>;
   makerGroups: MakerGroup[];
   streamModels: EnabledModelConfigurationType[];
   streams: ModelStreamResolutionsType | null;
@@ -65,6 +66,7 @@ export function ModelPickerContent({
   lockPremiumEfforts,
   ignoreTierRestrictions,
   tiers,
+  degradedModelIds,
   makerGroups,
   streamModels,
   streams,
@@ -155,6 +157,7 @@ export function ModelPickerContent({
           selection={selection}
           ignoreTierRestrictions={ignoreTierRestrictions}
           lockPremiumEfforts={lockPremiumEfforts}
+          degradedModelIds={degradedModelIds}
           onSelectModel={onSelectModel}
           onChangeEffort={onChangeEffort}
         />

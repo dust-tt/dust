@@ -4,13 +4,16 @@ import type {
   EffortStop,
   ModelLockReason,
 } from "@app/components/model_picker/modelPickerUtils";
-import { getModelLockTooltip } from "@app/components/model_picker/modelPickerUtils";
+import {
+  DEGRADED_MODEL_TOOLTIP,
+  getModelLockTooltip,
+} from "@app/components/model_picker/modelPickerUtils";
 import { ReasoningEffortSlider } from "@app/components/model_picker/ReasoningEffortSlider";
 import type {
   ModelConfigurationType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import { DropdownMenuItem, Icon, Lock01 } from "@dust-tt/sparkle";
+import { DropdownMenuItem, Icon, InfoCircle, Lock01 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { useRef } from "react";
 
@@ -19,6 +22,7 @@ interface ModelPickerModelRowProps {
   isSelected: boolean;
   isDefault: boolean;
   lockReason: ModelLockReason | null;
+  isDegraded: boolean;
   effort: ReasoningEffort | null;
   effortStops: EffortStop[];
   icon?: ComponentType;
@@ -32,6 +36,7 @@ export function ModelPickerModelRow({
   isSelected,
   isDefault,
   lockReason,
+  isDegraded,
   effort,
   effortStops,
   icon,
@@ -57,6 +62,26 @@ export function ModelPickerModelRow({
     );
   }
 
+  // A degraded model stays pickable, so it takes the lock's slot with an info
+  // icon rather than being disabled.
+  const endComponent =
+    isSelected || isDegraded ? (
+      <div className="flex items-center gap-2">
+        {isDegraded && (
+          <Icon visual={InfoCircle} size="sm" className="text-info-500" />
+        )}
+        {isSelected && (
+          <>
+            <ModelTierChip
+              model={model}
+              reasoningEffort={effort ?? undefined}
+            />
+            <ModelPickerSelectionIndicator onRevert={onRevert} />
+          </>
+        )}
+      </div>
+    ) : undefined;
+
   return (
     <>
       <DropdownMenuItem
@@ -64,17 +89,8 @@ export function ModelPickerModelRow({
         label={`${model.displayName}${isDefault ? " (Default)" : ""}`}
         icon={icon}
         truncateText
-        endComponent={
-          isSelected ? (
-            <div className="flex items-center gap-2">
-              <ModelTierChip
-                model={model}
-                reasoningEffort={effort ?? undefined}
-              />
-              <ModelPickerSelectionIndicator onRevert={onRevert} />
-            </div>
-          ) : undefined
-        }
+        tooltip={isDegraded ? DEGRADED_MODEL_TOOLTIP : undefined}
+        endComponent={endComponent}
         onClick={() => {
           onSelectModel(model);
         }}
