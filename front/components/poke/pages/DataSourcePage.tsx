@@ -1,3 +1,4 @@
+import { SlackWorkflowsTable } from "@app/components/poke/data_sources/slack/workflows_table";
 import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
@@ -1150,6 +1151,9 @@ export function DataSourcePage() {
                 dataSource={dataSource}
               />
             </div>
+          )}
+          {dataSource.connectorProvider === "slack_bot" && (
+            <SlackWorkflowsTable owner={owner} />
           )}
           {!dataSource.connectorId ? (
             <FolderDisplay
