@@ -16,7 +16,7 @@ export function FeatureFlagStageChip({ stage }: FeatureFlagStageChipProps) {
     );
   }
 
-  const warningStages: FeatureFlagStage[] = ["dust_only", "rolling_out"];
+  const warningStages: FeatureFlagStage[] = ["dust_only", "ask_eng"];
 
   return (
     <Chip

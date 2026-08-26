@@ -103,7 +103,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
-    stage: "rolling_out",
+    stage: "ask_eng",
   },
   http_client_tool: {
     description: "HTTP Client MCP tool for making external API requests",
@@ -137,7 +137,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   self_created_slack_app_connector_rollout: {
     description:
       "Slack Connection: rollout for self-created Slack app connector",
-    stage: "rolling_out",
+    stage: "ask_eng",
   },
   salesforce_tool: {
     description:
@@ -373,17 +373,20 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
 } as const satisfies Record<string, FeatureFlag>;
 
-export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
+// dust_only: cannot be activated outside Dust workspaces, the feature is not ready.
+// ask_eng: ask the eng owner before activating.
+// on_demand: safe to activate if you understand the feature and its impact on the workspace.
+export type FeatureFlagStage = "dust_only" | "ask_eng" | "on_demand";
 
 export const FEATURE_FLAG_STAGE_LABELS: Record<FeatureFlagStage, string> = {
   dust_only: "Dust-only",
-  rolling_out: "Rolling out",
+  ask_eng: "Ask eng",
   on_demand: "On demand",
 };
 
 export const FEATURE_FLAG_STAGES = [
   "dust_only",
-  "rolling_out",
+  "ask_eng",
   "on_demand",
 ] as const satisfies readonly FeatureFlagStage[];
 
