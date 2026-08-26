@@ -3,7 +3,12 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { WritableIncidentFields } from "@app/lib/api/actions/servers/servicenow/client";
 import { createServiceNowClient } from "@app/lib/api/actions/servers/servicenow/client";
-import { renderIncident } from "@app/lib/api/actions/servers/servicenow/helpers";
+import {
+  renderIncident,
+  renderPaginationFooter,
+  renderRecord,
+  validateAdditionalFields,
+} from "@app/lib/api/actions/servers/servicenow/helpers";
 import { SERVICENOW_TOOLS_METADATA } from "@app/lib/api/actions/servers/servicenow/metadata";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -52,20 +57,49 @@ function writableFieldsFromParams({
 }
 
 const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
-  list_incidents: async ({ query, limit }, { authInfo }) => {
+  list_incidents: async (
+    {
+      query,
+      fields,
+      cursor,
+      limit,
+      openedAfter,
+      openedBefore,
+      updatedAfter,
+      updatedBefore,
+      includeTotalCount,
+    },
+    { authInfo }
+  ) => {
     const clientResult = createServiceNowClient(authInfo);
     if (clientResult.isErr()) {
       return clientResult;
     }
     const client = clientResult.value;
 
-    const result = await client.listIncidents({ query, limit });
+    const result = await client.listIncidents({
+      query,
+      fields,
+      cursor,
+      limit,
+      openedAfter,
+      openedBefore,
+      updatedAfter,
+      updatedBefore,
+      includeTotalCount,
+    });
 
     if (result.isErr()) {
       return result;
     }
 
-    const incidents = result.value;
+    const {
+      records: incidents,
+      hasMore,
+      nextCursor,
+      returnedCount,
+      totalCount,
+    } = result.value;
 
     if (incidents.length === 0) {
       return new Ok([{ type: "text" as const, text: "No incidents found." }]);
@@ -75,6 +109,12 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
     for (const incident of incidents) {
       text += renderIncident(incident) + "\n";
     }
+    text += renderPaginationFooter({
+      hasMore,
+      nextCursor,
+      returnedCount,
+      totalCount,
+    });
 
     return new Ok([{ type: "text" as const, text }]);
   },
@@ -105,16 +145,23 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
     ]);
   },
 
-  create_incident: async (params, { authInfo }) => {
+  create_incident: async ({ additionalFields, ...params }, { authInfo }) => {
     const clientResult = createServiceNowClient(authInfo);
     if (clientResult.isErr()) {
       return clientResult;
     }
     const client = clientResult.value;
 
-    const result = await client.createIncident(
-      writableFieldsFromParams(params)
-    );
+    const validatedAdditionalFields =
+      validateAdditionalFields(additionalFields);
+    if (validatedAdditionalFields.isErr()) {
+      return validatedAdditionalFields;
+    }
+
+    const result = await client.createIncident({
+      ...writableFieldsFromParams(params),
+      ...validatedAdditionalFields.value,
+    });
 
     if (result.isErr()) {
       return result;
@@ -128,16 +175,28 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
     ]);
   },
 
-  update_incident: async ({ incidentNumber, ...fields }, { authInfo }) => {
+  update_incident: async (
+    { incidentNumber, additionalFields, ...fields },
+    { authInfo }
+  ) => {
     const clientResult = createServiceNowClient(authInfo);
     if (clientResult.isErr()) {
       return clientResult;
     }
     const client = clientResult.value;
 
-    const writableFields = writableFieldsFromParams(fields);
+    const validatedAdditionalFields =
+      validateAdditionalFields(additionalFields);
+    if (validatedAdditionalFields.isErr()) {
+      return validatedAdditionalFields;
+    }
 
-    if (Object.keys(writableFields).length === 0) {
+    const mergedFields = {
+      ...writableFieldsFromParams(fields),
+      ...validatedAdditionalFields.value,
+    };
+
+    if (Object.keys(mergedFields).length === 0) {
       return new Ok([
         {
           type: "text" as const,
@@ -160,7 +219,7 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
 
     const result = await client.updateIncident(
       existingResult.value.sys_id,
-      writableFields
+      mergedFields
     );
 
     if (result.isErr()) {
@@ -172,6 +231,92 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
         type: "text" as const,
         text: `Updated incident ${result.value.number}:\n${renderIncident(result.value)}`,
       },
+    ]);
+  },
+
+  list_records: async (
+    {
+      table,
+      query,
+      fields,
+      limit,
+      cursor,
+      createdAfter,
+      createdBefore,
+      updatedAfter,
+      updatedBefore,
+      includeTotalCount,
+    },
+    { authInfo }
+  ) => {
+    const clientResult = createServiceNowClient(authInfo);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+    const client = clientResult.value;
+
+    const result = await client.listRecords(table, {
+      query,
+      fields,
+      limit,
+      cursor,
+      createdAfter,
+      createdBefore,
+      updatedAfter,
+      updatedBefore,
+      includeTotalCount,
+    });
+
+    if (result.isErr()) {
+      return result;
+    }
+
+    const { records, hasMore, nextCursor, returnedCount, totalCount } =
+      result.value;
+
+    if (records.length === 0) {
+      return new Ok([
+        { type: "text" as const, text: `No records found in "${table}".` },
+      ]);
+    }
+
+    let text = `Found ${records.length} record(s) in "${table}":\n\n`;
+    for (const record of records) {
+      text += renderRecord(record) + "\n";
+    }
+    text += renderPaginationFooter({
+      hasMore,
+      nextCursor,
+      returnedCount,
+      totalCount,
+    });
+
+    return new Ok([{ type: "text" as const, text }]);
+  },
+
+  get_record: async ({ table, sysId, fields }, { authInfo }) => {
+    const clientResult = createServiceNowClient(authInfo);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+    const client = clientResult.value;
+
+    const result = await client.getRecord(table, sysId, fields);
+
+    if (result.isErr()) {
+      return result;
+    }
+
+    if (!result.value) {
+      return new Err(
+        new MCPError(`No record found in "${table}" with sys_id "${sysId}".`, {
+          tracked: false,
+        })
+      );
+    }
+
+    return new Ok([
+      { type: "text" as const, text: renderRecord(result.value) },
     ]);
   },
 };

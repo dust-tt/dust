@@ -1,5 +1,33 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { ALLOWED_TABLES } from "@app/lib/api/actions/servers/servicenow/client";
 import { z } from "zod";
+
+const ADDITIONAL_FIELDS_SCHEMA = {
+  additionalFields: z
+    .record(
+      z.string(),
+      z.union([z.string(), z.number(), z.boolean(), z.null()])
+    )
+    .optional()
+    .describe(
+      "Customer-specific or custom (e.g. 'u_*') field values, keyed by the raw ServiceNow field name. Flat scalar values only — no nested objects or arrays. Do not use this for fields already covered by a dedicated parameter (e.g. priority, state, assignmentGroup)."
+    ),
+};
+
+const PAGINATION_SCHEMA = {
+  cursor: z
+    .string()
+    .optional()
+    .describe(
+      "Opaque pagination cursor from a previous call's nextCursor. Omit to start from the first page."
+    ),
+  includeTotalCount: z
+    .boolean()
+    .optional()
+    .describe(
+      "Include the total number of matching records. This runs an extra, more expensive query against the instance. Defaults to false."
+    ),
+};
 
 const WRITABLE_INCIDENT_FIELDS_SCHEMA = {
   description: z
@@ -42,7 +70,40 @@ export const SERVICENOW_TOOLS_METADATA = [
       limit: z
         .number()
         .optional()
-        .describe("Maximum number of incidents to return. Defaults to 25."),
+        .describe(
+          "Maximum number of incidents to return per page. Defaults to 25, capped at 1000."
+        ),
+      fields: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Restrict the response to these ServiceNow field names (sys_id and number are always included)."
+        ),
+      openedAfter: z
+        .string()
+        .optional()
+        .describe(
+          "Only include incidents opened on or after this ISO 8601 timestamp, e.g. '2026-01-01T00:00:00Z'."
+        ),
+      openedBefore: z
+        .string()
+        .optional()
+        .describe(
+          "Only include incidents opened on or before this ISO 8601 timestamp."
+        ),
+      updatedAfter: z
+        .string()
+        .optional()
+        .describe(
+          "Only include incidents last updated on or after this ISO 8601 timestamp."
+        ),
+      updatedBefore: z
+        .string()
+        .optional()
+        .describe(
+          "Only include incidents last updated on or before this ISO 8601 timestamp."
+        ),
+      ...PAGINATION_SCHEMA,
     },
     stake: "never_ask",
     displayLabels: {
@@ -76,6 +137,7 @@ export const SERVICENOW_TOOLS_METADATA = [
     schema: {
       shortDescription: z.string().describe("Short summary of the incident."),
       ...WRITABLE_INCIDENT_FIELDS_SCHEMA,
+      ...ADDITIONAL_FIELDS_SCHEMA,
     },
     stake: "low",
     displayLabels: {
@@ -127,11 +189,104 @@ export const SERVICENOW_TOOLS_METADATA = [
         .describe(
           "Resolution code. Required by ServiceNow to move state to 'Resolved' or 'Closed'. Valid values are configured per ServiceNow instance (e.g. 'Solution provided', 'Resolved by caller') — if unsure, call list_incidents on an already-resolved incident to see a value your instance accepts."
         ),
+      ...ADDITIONAL_FIELDS_SCHEMA,
     },
     stake: "low",
     displayLabels: {
       running: "Updating ServiceNow incident",
       done: "Update ServiceNow incident",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  {
+    name: "list_records",
+    description:
+      "List records from a ServiceNow table (incident, problem, change_request, sc_request, or kb_knowledge). Supports filtering with a ServiceNow encoded query.",
+    schema: {
+      table: z
+        .enum(ALLOWED_TABLES)
+        .describe(
+          "The ServiceNow table to query: incident, problem, change_request, sc_request, or kb_knowledge."
+        ),
+      query: z
+        .string()
+        .optional()
+        .describe(
+          "ServiceNow encoded query (sysparm_query) to filter records, e.g. 'active=true^priority=1'."
+        ),
+      fields: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Restrict the response to these ServiceNow field names (sys_id is always included)."
+        ),
+      limit: z
+        .number()
+        .optional()
+        .describe(
+          "Maximum number of records to return per page. Defaults to 25, capped at 1000."
+        ),
+      createdAfter: z
+        .string()
+        .optional()
+        .describe(
+          "Only include records created on or after this ISO 8601 timestamp, e.g. '2026-01-01T00:00:00Z'."
+        ),
+      createdBefore: z
+        .string()
+        .optional()
+        .describe(
+          "Only include records created on or before this ISO 8601 timestamp."
+        ),
+      updatedAfter: z
+        .string()
+        .optional()
+        .describe(
+          "Only include records last updated on or after this ISO 8601 timestamp."
+        ),
+      updatedBefore: z
+        .string()
+        .optional()
+        .describe(
+          "Only include records last updated on or before this ISO 8601 timestamp."
+        ),
+      ...PAGINATION_SCHEMA,
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing ServiceNow records",
+      done: "List ServiceNow records",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  {
+    name: "get_record",
+    description:
+      "Get a single record from a ServiceNow table (incident, problem, change_request, sc_request, or kb_knowledge) by its sys_id.",
+    schema: {
+      table: z
+        .enum(ALLOWED_TABLES)
+        .describe(
+          "The ServiceNow table to query: incident, problem, change_request, sc_request, or kb_knowledge."
+        ),
+      sysId: z
+        .string()
+        .describe(
+          "The record's sys_id, a 32-character hexadecimal identifier."
+        ),
+      fields: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Restrict the response to these ServiceNow field names (sys_id is always included)."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving ServiceNow record",
+      done: "Retrieve ServiceNow record",
     },
     toolCostCategory: "advanced",
     freeUsage: false,
