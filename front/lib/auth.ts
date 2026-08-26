@@ -1034,11 +1034,13 @@ export class Authenticator {
   }
 
   /**
-   * Creates an Authenticator for a given workspace (with role `builder`). Used for internal calls
+   * Creates an Authenticator for a given workspace (with role `user`). Used for internal calls
    * to the Dust API or other functions, when the system is calling something for the workspace.
+   * Only the workspace global group is granted; use `internalAdminForWorkspace` when broader
+   * access is required.
    * @param workspaceId string
    */
-  static async internalBuilderForWorkspace(
+  static async internalUserForWorkspace(
     workspaceId: string
   ): Promise<Authenticator> {
     const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -1063,7 +1065,7 @@ export class Authenticator {
     return new Authenticator({
       authMethod: "internal",
       workspace,
-      role: "builder",
+      role: "user",
       groupModelIds,
       subscription,
       providersHealth,

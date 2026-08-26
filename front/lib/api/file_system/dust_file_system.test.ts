@@ -284,7 +284,7 @@ describe("DustFileSystem.forUser", () => {
 
   it("returns Err(unauthorized) when there is no authenticated user", async () => {
     const { workspace } = await createResourceTest({});
-    const noUserAuth = await Authenticator.internalBuilderForWorkspace(
+    const noUserAuth = await Authenticator.internalUserForWorkspace(
       workspace.sId
     );
     expect(noUserAuth.user()).toBeNull();
