@@ -1,4 +1,8 @@
 import { createPlugin } from "@app/lib/api/poke/types";
+import {
+  isDustCompanyPlan,
+  isFriendsAndFamilyPlan,
+} from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -10,7 +14,7 @@ import {
   WHITELISTABLE_FEATURES,
   WHITELISTABLE_FEATURES_CONFIG,
 } from "@app/types/shared/feature_flags";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const toggleFeatureFlagPlugin = createPlugin({
   manifest: {
@@ -81,6 +85,23 @@ export const toggleFeatureFlagPlugin = createPlugin({
     const toRemove = existingFlags
       .filter((flag) => !featureFlags.includes(flag.name))
       .map((flag) => flag.name);
+
+    const planCode = auth.plan()?.code;
+    const dustOnlyFeatures = toAdd.filter(
+      (feature) => WHITELISTABLE_FEATURES_CONFIG[feature].stage === "dust_only"
+    );
+    if (
+      dustOnlyFeatures.length > 0 &&
+      (!planCode ||
+        (!isDustCompanyPlan(planCode) && !isFriendsAndFamilyPlan(planCode)))
+    ) {
+      return new Err(
+        new Error(
+          "Dust-only feature flags can only be enabled on Dust or Friends & Family plans. " +
+            `Invalid flags: ${dustOnlyFeatures.join(", ")}.`
+        )
+      );
+    }
 
     if (toAdd.length > 0) {
       await FeatureFlagResource.enableMany(workspace, toAdd);
