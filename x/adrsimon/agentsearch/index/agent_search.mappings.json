@@ -1,0 +1,185 @@
+{
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "agent_id": {
+        "type": "keyword"
+      },
+      "name": {
+        "type": "text",
+        "analyzer": "agent_name_index",
+        "search_analyzer": "agent_name_search",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "subsequence": {
+            "type": "wildcard"
+          }
+        },
+        "similarity": "name_bm25"
+      },
+      "description": {
+        "type": "text",
+        "analyzer": "agent_text",
+        "fields": {
+          "subsequence": {
+            "type": "wildcard"
+          }
+        },
+        "similarity": "text_bm25"
+      },
+      "instructions": {
+        "type": "text",
+        "analyzer": "agent_text",
+        "similarity": "text_bm25"
+      },
+      "tags": {
+        "type": "keyword"
+      },
+      "scope": {
+        "type": "keyword"
+      },
+      "status": {
+        "type": "keyword"
+      },
+      "author": {
+        "type": "keyword"
+      },
+      "editors": {
+        "type": "keyword"
+      },
+      "requested_space_ids": {
+        "type": "keyword"
+      },
+      "requested_space_count": {
+        "type": "integer"
+      },
+      "non_pod_space_ids": {
+        "type": "keyword"
+      },
+      "non_pod_space_count": {
+        "type": "integer"
+      },
+      "pod_space_ids": {
+        "type": "keyword"
+      },
+      "usage": {
+        "properties": {
+          "messages": {
+            "type": "integer"
+          },
+          "conversations": {
+            "type": "integer"
+          },
+          "users": {
+            "type": "integer"
+          },
+          "credits": {
+            "type": "long"
+          },
+          "feedbacks_up": {
+            "type": "integer"
+          },
+          "feedbacks_down": {
+            "type": "integer"
+          },
+          "by_group": {
+            "type": "nested",
+            "properties": {
+              "group_id": {
+                "type": "keyword"
+              },
+              "group_name": {
+                "type": "keyword"
+              },
+              "messages": {
+                "type": "integer"
+              },
+              "users": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "filter": {
+        "agent_name_delimiter": {
+          "type": "word_delimiter_graph",
+          "generate_word_parts": true,
+          "generate_number_parts": true,
+          "catenate_words": true,
+          "catenate_numbers": true,
+          "split_on_case_change": true,
+          "split_on_numerics": true,
+          "preserve_original": true,
+          "stem_english_possessive": true
+        },
+        "english_stop": {
+          "type": "stop",
+          "stopwords": "_english_"
+        },
+        "english_stemmer": {
+          "type": "stemmer",
+          "language": "light_english"
+        },
+        "english_possessive": {
+          "type": "stemmer",
+          "language": "possessive_english"
+        }
+      },
+      "analyzer": {
+        "agent_name_index": {
+          "type": "custom",
+          "tokenizer": "whitespace",
+          "filter": [
+            "agent_name_delimiter",
+            "flatten_graph",
+            "lowercase",
+            "english_stop",
+            "english_stemmer"
+          ]
+        },
+        "agent_name_search": {
+          "type": "custom",
+          "tokenizer": "whitespace",
+          "filter": [
+            "agent_name_delimiter",
+            "lowercase",
+            "english_stop",
+            "english_stemmer"
+          ]
+        },
+        "agent_text": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "english_possessive",
+            "lowercase",
+            "english_stop",
+            "english_stemmer"
+          ]
+        }
+      }
+    },
+    "similarity": {
+      "name_bm25": {
+        "type": "BM25",
+        "k1": 1.2,
+        "b": 0.75
+      },
+      "text_bm25": {
+        "type": "BM25",
+        "k1": 1.2,
+        "b": 0.75
+      }
+    }
+  }
+}
