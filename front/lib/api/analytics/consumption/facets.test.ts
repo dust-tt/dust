@@ -436,7 +436,7 @@ describe("fetchConsumptionFacets", () => {
     }
   });
 
-  it("keeps personal facets bucket-scoped and preserves their metadata", async () => {
+  it("preserves metadata on personal bucket facets", async () => {
     const { authenticator, user } = await createResourceTest({ role: "user" });
     const valuesByField: Record<string, string> = {
       "agent.attributed_id": "used-agent",
@@ -462,7 +462,7 @@ describe("fetchConsumptionFacets", () => {
     const labels: Partial<Record<ConsumptionScopeDimension, DimensionLabel>> = {
       agent: {
         name: "Used agent",
-        pictureUrl: null,
+        pictureUrl: "https://example.com/agent.png",
         description: null,
         scope: "visible",
       },
@@ -505,7 +505,11 @@ describe("fetchConsumptionFacets", () => {
     }
     expect(listConsumptionFacetCatalog).not.toHaveBeenCalled();
     expect(result.value.facets.agent).toEqual([
-      expect.objectContaining({ value: "used-agent", scope: "visible" }),
+      expect.objectContaining({
+        value: "used-agent",
+        pictureUrl: "https://example.com/agent.png",
+        scope: "visible",
+      }),
     ]);
     expect(result.value.facets.model).toEqual([
       expect.objectContaining({
@@ -528,24 +532,8 @@ describe("fetchConsumptionFacets", () => {
     }
   });
 
-  it("keeps agent facets bucket-scoped and preserves their metadata", async () => {
+  it("returns model metadata for agent-scoped bucket facets", async () => {
     const { authenticator } = await createResourceTest({ role: "manager" });
-    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
-      agent: [],
-      user: [],
-      api_key: [],
-      group: [],
-      model: [
-        {
-          value: "unrelated-model",
-          label: "Unrelated model",
-          pictureUrl: null,
-        },
-      ],
-      tool: [],
-      skill: [],
-      source: [],
-    });
     vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
       esResponse({
         values: {

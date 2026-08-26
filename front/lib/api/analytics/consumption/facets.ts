@@ -366,9 +366,6 @@ async function fetchConsumptionFacetsWithoutTracing(
     bucketsByDimension.set(dimension, result.value);
   }
 
-  // Scoped views are available to non-managers. Keep their option universe to
-  // values found in their Elasticsearch buckets instead of appending unrelated
-  // current workspace entities from the catalog.
   const catalog =
     userId || agentId
       ? EMPTY_FACET_CATALOG
