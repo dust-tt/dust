@@ -39,6 +39,7 @@ describe("consumption root projection", () => {
       expectedRevision: 0,
       totals: { totalCreditAmountMicro: 0, subagentCount: 0 },
       executionCreditAmountMicroByRunKey: new Map(),
+      subagentAgentMessageIds: [],
     });
   });
 
@@ -101,6 +102,7 @@ describe("consumption root projection", () => {
       expectedRevision: 0,
       totals: { totalCreditAmountMicro: 4_000_000, subagentCount: 3 },
       executionCreditAmountMicroByRunKey: new Map([[RUN_KEY, 4_000_000]]),
+      subagentAgentMessageIds: [101, 102, 103],
     });
     await seedConsumptionRootTotals({
       workspaceId: WORKSPACE_ID,
@@ -108,6 +110,7 @@ describe("consumption root projection", () => {
       expectedRevision: 0,
       totals: { totalCreditAmountMicro: 9_000_000, subagentCount: 7 },
       executionCreditAmountMicroByRunKey: new Map([[RUN_KEY, 9_000_000]]),
+      subagentAgentMessageIds: [101, 102, 103, 104, 105, 106, 107],
     });
 
     expect(
@@ -123,6 +126,17 @@ describe("consumption root projection", () => {
         runKey: RUN_KEY,
       })
     ).toBe(4_000_000);
+
+    await applyTotal({
+      totalCreditAmountMicro: 4_500_000,
+      subagentAgentMessageId: 101,
+    });
+    expect(
+      await readConsumptionRootTotals({
+        workspaceId: WORKSPACE_ID,
+        rootAgentMessageId: ROOT_AGENT_MESSAGE_ID,
+      })
+    ).toEqual({ totalCreditAmountMicro: 4_500_000, subagentCount: 3 });
   });
 
   it("rejects a stale rebuild after an execution changed", async () => {
@@ -142,6 +156,7 @@ describe("consumption root projection", () => {
         expectedRevision: 0,
         totals: { totalCreditAmountMicro: 0, subagentCount: 0 },
         executionCreditAmountMicroByRunKey: new Map(),
+        subagentAgentMessageIds: [],
       })
     ).resolves.toBe(false);
 
@@ -156,6 +171,7 @@ describe("consumption root projection", () => {
         expectedRevision: revision,
         totals: { totalCreditAmountMicro: 1_000_000, subagentCount: 0 },
         executionCreditAmountMicroByRunKey: new Map([[RUN_KEY, 1_000_000]]),
+        subagentAgentMessageIds: [],
       })
     ).resolves.toBe(true);
   });
