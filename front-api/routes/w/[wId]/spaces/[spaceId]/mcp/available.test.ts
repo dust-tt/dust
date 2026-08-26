@@ -27,12 +27,12 @@ describe("GET /api/w/:wId/spaces/:spaceId/mcp/available", () => {
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    // Override the primitive_types_debugger config so the test passes even if
+    // Override the http_client config so the test passes even if
     // we change the real one. Availability must be "manual": auto servers get
     // their global-space view hydrated just in time, so they are never
     // "available" to add to a space.
-    const original = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
-    Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+    const original = INTERNAL_MCP_SERVERS["http_client"];
+    Object.defineProperty(INTERNAL_MCP_SERVERS, "http_client", {
       value: {
         ...original,
         availability: "manual",
@@ -41,17 +41,17 @@ describe("GET /api/w/:wId/spaces/:spaceId/mcp/available", () => {
         }: {
           plan: PlanType;
           featureFlags: WhitelistableFeature[];
-        }) => !featureFlags.includes("dev_mcp_actions"),
+        }) => !featureFlags.includes("http_client_tool"),
       },
       writable: true,
       configurable: true,
     });
 
-    await FeatureFlagFactory.basic(auth, "dev_mcp_actions");
+    await FeatureFlagFactory.basic(auth, "http_client_tool");
 
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(
       auth,
-      { name: "primitive_types_debugger", useCase: null }
+      { name: "http_client", useCase: null }
     );
 
     const remoteServer = await RemoteMCPServerFactory.create(workspace);

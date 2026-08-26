@@ -262,9 +262,9 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
   it("should work with internal MCP servers and update all views", async () => {
     const { workspace, auth, globalSpace } = await setup("admin");
 
-    await FeatureFlagFactory.basic(auth, "dev_mcp_actions");
+    await FeatureFlagFactory.basic(auth, "http_client_tool");
     const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
-      name: "primitive_types_debugger",
+      name: "http_client",
       useCase: null,
     });
 
