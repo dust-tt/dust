@@ -3,7 +3,10 @@ import {
   DEFAULT_LIST_LIMIT,
   MAX_LIST_LIMIT,
 } from "@app/lib/api/actions/servers/shopify/helpers";
-import { ShopifyCustomerStateSchema } from "@app/lib/api/actions/servers/shopify/types";
+import {
+  ShopifyCustomerIdSchema,
+  ShopifyCustomerStateSchema,
+} from "@app/lib/api/actions/servers/shopify/types";
 import { z } from "zod";
 
 export const SHOPIFY_SERVER_NAME = "shopify" as const;
@@ -44,6 +47,28 @@ export const SHOPIFY_TOOLS_METADATA = [
     displayLabels: {
       running: "Listing Shopify customers",
       done: "List Shopify customers",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  {
+    name: "list_orders",
+    description:
+      "List Shopify orders with buyer details, status, quantity, and current financial totals.",
+    schema: {
+      customerId: ShopifyCustomerIdSchema.optional().describe(
+        "Filter by buyer ID. Accepts a numeric ID or the full Shopify GID."
+      ),
+      searchQuery: z
+        .string()
+        .optional()
+        .describe("Additional Shopify order search query."),
+      limit: limitSchema("orders"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing Shopify orders",
+      done: "List Shopify orders",
     },
     toolCostCategory: "advanced",
     freeUsage: false,

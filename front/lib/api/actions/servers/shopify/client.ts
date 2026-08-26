@@ -1,13 +1,16 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   CustomerListResult,
+  OrderListResult,
   ProductListResult,
   ShopifyCustomer,
   ShopifyCustomerState,
+  ShopifyOrder,
   ShopifyProduct,
 } from "@app/lib/api/actions/servers/shopify/types";
 import {
   CustomerNodeSchema,
+  OrderNodeSchema,
   ProductNodeSchema,
 } from "@app/lib/api/actions/servers/shopify/types";
 import { untrustedFetch } from "@app/lib/egress/server";
@@ -77,6 +80,34 @@ const PRODUCTS_QUERY = `
   }
 `;
 
+const ORDERS_QUERY = `
+  query ListOrders($first: Int!, $after: String, $query: String) {
+    orders(first: $first, after: $after, query: $query) {
+      nodes {
+        id
+        name
+        createdAt
+        updatedAt
+        cancelledAt
+        displayFinancialStatus
+        displayFulfillmentStatus
+        currentSubtotalPriceSet { shopMoney { amount currencyCode } }
+        currentTotalPriceSet { shopMoney { amount currencyCode } }
+        currentTotalTaxSet { shopMoney { amount currencyCode } }
+        currentSubtotalLineItemsQuantity
+        email
+        tags
+        customer {
+          id
+          displayName
+          defaultEmailAddress { emailAddress }
+        }
+      }
+      pageInfo { hasNextPage endCursor }
+    }
+  }
+`;
+
 const CustomersDataSchema = z.object({
   customers: z.object({
     nodes: z.array(CustomerNodeSchema),
@@ -90,6 +121,16 @@ const CustomersDataSchema = z.object({
 const ProductsDataSchema = z.object({
   products: z.object({
     nodes: z.array(ProductNodeSchema),
+    pageInfo: z.object({
+      hasNextPage: z.boolean(),
+      endCursor: z.string().nullable(),
+    }),
+  }),
+});
+
+const OrdersDataSchema = z.object({
+  orders: z.object({
+    nodes: z.array(OrderNodeSchema),
     pageInfo: z.object({
       hasNextPage: z.boolean(),
       endCursor: z.string().nullable(),
@@ -119,8 +160,8 @@ export class ShopifyClient {
     query: string;
     variables: Record<string, unknown>;
     dataSchema: z.ZodType<T>;
-    resourceName: "customer" | "product";
-    requiredScope: "read_customers" | "read_products";
+    resourceName: "customer" | "order" | "product";
+    requiredScope: "read_customers" | "read_orders" | "read_products";
   }): Promise<Result<T, MCPError>> {
     const url = `https://${this.storeDomain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
     let response: Awaited<ReturnType<typeof untrustedFetch>>;
@@ -277,6 +318,42 @@ export class ShopifyClient {
     });
   }
 
+  private async fetchOrdersPage({
+    first,
+    after,
+    query,
+  }: {
+    first: number;
+    after: string | null;
+    query: string | null;
+  }): Promise<
+    Result<
+      {
+        orders: ShopifyOrder[];
+        hasNextPage: boolean;
+        endCursor: string | null;
+      },
+      MCPError
+    >
+  > {
+    const data = await this.fetchGraphQL({
+      query: ORDERS_QUERY,
+      variables: { first, after, query },
+      dataSchema: OrdersDataSchema,
+      resourceName: "order",
+      requiredScope: "read_orders",
+    });
+    if (data.isErr()) {
+      return data;
+    }
+
+    return new Ok({
+      orders: data.value.orders.nodes,
+      hasNextPage: data.value.orders.pageInfo.hasNextPage,
+      endCursor: data.value.orders.pageInfo.endCursor,
+    });
+  }
+
   async listCustomers({
     state,
     email,
@@ -368,6 +445,48 @@ export class ShopifyClient {
     }
 
     return new Ok({ products });
+  }
+
+  async listOrders({
+    customerId,
+    searchQuery,
+    limit,
+  }: {
+    customerId?: string;
+    searchQuery?: string;
+    limit: number;
+  }): Promise<Result<OrderListResult, MCPError>> {
+    const filters: string[] = [];
+    if (customerId) {
+      const customerGidMatch = /^gid:\/\/shopify\/Customer\/(\d+)$/.exec(
+        customerId
+      );
+      filters.push(`customer_id:${customerGidMatch?.[1] ?? customerId}`);
+    }
+    if (searchQuery) {
+      filters.push(searchQuery);
+    }
+
+    const orders: ShopifyOrder[] = [];
+    let cursor: string | null = null;
+    while (orders.length < limit) {
+      const page = await this.fetchOrdersPage({
+        first: Math.min(PAGE_SIZE, limit - orders.length),
+        after: cursor,
+        query: filters.length > 0 ? filters.join(" ") : null,
+      });
+      if (page.isErr()) {
+        return page;
+      }
+
+      orders.push(...page.value.orders);
+      if (!page.value.hasNextPage || !page.value.endCursor) {
+        return new Ok({ orders });
+      }
+      cursor = page.value.endCursor;
+    }
+
+    return new Ok({ orders });
   }
 }
 
