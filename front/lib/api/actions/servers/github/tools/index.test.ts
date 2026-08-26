@@ -73,77 +73,80 @@ describe("GitHub pull request tools", () => {
   it.each([
     ["search_advanced", { query: "is:pr" }, searchResponse],
     ["list_pull_requests", { owner: "dust-tt", repo: "dust" }, listResponse],
-  ])("retries %s without review requests when GitHub denies team details", async (toolName, params, response) => {
-    const reviewerAccessError = Object.assign(
-      new Error("Resource not accessible by integration"),
-      {
-        errors: [
-          {
-            type: "FORBIDDEN",
-            path: [
-              "repository",
-              "pullRequests",
-              "nodes",
-              0,
-              "reviewRequests",
-              "nodes",
-              0,
-              "requestedReviewer",
-              "slug",
-            ],
-          },
-        ],
+  ])(
+    "retries %s without review requests when GitHub denies team details",
+    async (toolName, params, response) => {
+      const reviewerAccessError = Object.assign(
+        new Error("Resource not accessible by integration"),
+        {
+          errors: [
+            {
+              type: "FORBIDDEN",
+              path: [
+                "repository",
+                "pullRequests",
+                "nodes",
+                0,
+                "reviewRequests",
+                "nodes",
+                0,
+                "requestedReviewer",
+                "slug",
+              ],
+            },
+          ],
+        }
+      );
+      graphqlMock.mockRejectedValueOnce(reviewerAccessError);
+      graphqlMock.mockResolvedValueOnce(response);
+
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const tool = createGithubTools(authenticator).find(
+        ({ name }) => name === toolName
+      );
+      if (!tool) {
+        throw new Error(`Tool not found: ${toolName}`);
       }
-    );
-    graphqlMock.mockRejectedValueOnce(reviewerAccessError);
-    graphqlMock.mockResolvedValueOnce(response);
 
-    const { authenticator } = await createResourceTest({ role: "admin" });
-    const tool = createGithubTools(authenticator).find(
-      ({ name }) => name === toolName
-    );
-    if (!tool) {
-      throw new Error(`Tool not found: ${toolName}`);
+      const extra: Omit<ToolHandlerExtra, "runContext"> = {
+        auth: authenticator,
+        authInfo: {
+          token: "github-token",
+          clientId: "github-client",
+          scopes: [],
+        },
+        requestId: "github-reviewer-test",
+        sendNotification: async () => {},
+        sendRequest: async () => {
+          throw new Error("Unexpected MCP request");
+        },
+        signal: new AbortController().signal,
+      };
+
+      // @ts-expect-error These handlers do not read runContext.
+      const result = await tool.handler(params, extra);
+
+      expect(result.isOk()).toBe(true);
+      expect(graphqlMock).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining(
+          "reviewRequests(first: 10) @include(if: $includeReviewRequests)"
+        ),
+        expect.objectContaining({ includeReviewRequests: true })
+      );
+      expect(graphqlMock).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining(
+          "reviewRequests(first: 10) @include(if: $includeReviewRequests)"
+        ),
+        expect.objectContaining({ includeReviewRequests: false })
+      );
+      if (result.isOk()) {
+        expect(result.value[1]).toMatchObject({
+          type: "text",
+          text: expect.stringContaining('"reviewRequests": []'),
+        });
+      }
     }
-
-    const extra: Omit<ToolHandlerExtra, "runContext"> = {
-      auth: authenticator,
-      authInfo: {
-        token: "github-token",
-        clientId: "github-client",
-        scopes: [],
-      },
-      requestId: "github-reviewer-test",
-      sendNotification: async () => {},
-      sendRequest: async () => {
-        throw new Error("Unexpected MCP request");
-      },
-      signal: new AbortController().signal,
-    };
-
-    // @ts-expect-error These handlers do not read runContext.
-    const result = await tool.handler(params, extra);
-
-    expect(result.isOk()).toBe(true);
-    expect(graphqlMock).toHaveBeenNthCalledWith(
-      1,
-      expect.stringContaining(
-        "reviewRequests(first: 10) @include(if: $includeReviewRequests)"
-      ),
-      expect.objectContaining({ includeReviewRequests: true })
-    );
-    expect(graphqlMock).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining(
-        "reviewRequests(first: 10) @include(if: $includeReviewRequests)"
-      ),
-      expect.objectContaining({ includeReviewRequests: false })
-    );
-    if (result.isOk()) {
-      expect(result.value[1]).toMatchObject({
-        type: "text",
-        text: expect.stringContaining('"reviewRequests": []'),
-      });
-    }
-  });
+  );
 });

@@ -218,38 +218,42 @@ describe("measureToolCallFootprints", () => {
 
   // Static IDs are retained for stored runs and pricing after serving retirement. This contract
   // fails when a model leaves SUPPORTED_MODEL_CONFIGS without joining the historical allowlist.
-  it.each(
-    STATIC_MODEL_IDS
-  )("keeps a tool-footprint tokenizer configuration for static model %s", async (modelId) => {
-    const res = await measureToolCallFootprints(auth, {
-      modelId,
-      toolCalls: [footprintInput(makeAction())],
-    });
+  it.each(STATIC_MODEL_IDS)(
+    "keeps a tool-footprint tokenizer configuration for static model %s",
+    async (modelId) => {
+      const res = await measureToolCallFootprints(auth, {
+        modelId,
+        toolCalls: [footprintInput(makeAction())],
+      });
 
-    expect(res.isOk()).toBe(true);
-  });
+      expect(res.isOk()).toBe(true);
+    }
+  );
 
   it.each([
     GPT_4_1_MODEL_CONFIG,
     GPT_4O_20240806_MODEL_CONFIG,
     CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
     GEMINI_3_FLASH_MODEL_CONFIG,
-  ])("tokenizes historical $modelId runs whose model is no longer served", async (modelConfig) => {
-    const res = await measureToolCallFootprints(auth, {
-      modelId: modelConfig.modelId,
-      toolCalls: [footprintInput(makeAction())],
-    });
+  ])(
+    "tokenizes historical $modelId runs whose model is no longer served",
+    async (modelConfig) => {
+      const res = await measureToolCallFootprints(auth, {
+        modelId: modelConfig.modelId,
+        toolCalls: [footprintInput(makeAction())],
+      });
 
-    expect(res.isOk()).toBe(true);
-    expect(tokenCountForTexts).toHaveBeenCalledWith(
-      expect.any(Array),
-      {
-        ...modelConfig,
-        tokenCountAdjustment: modelConfig.tokenCountAdjustment ?? 1,
-      },
-      expect.anything()
-    );
-  });
+      expect(res.isOk()).toBe(true);
+      expect(tokenCountForTexts).toHaveBeenCalledWith(
+        expect.any(Array),
+        {
+          ...modelConfig,
+          tokenCountAdjustment: modelConfig.tokenCountAdjustment ?? 1,
+        },
+        expect.anything()
+      );
+    }
+  );
 
   it("tokenizes GPT-5 footprints without safety padding using o200k", async () => {
     const res = await measureToolCallFootprints(auth, {

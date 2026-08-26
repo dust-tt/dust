@@ -86,26 +86,26 @@ describe("RemoteMCPServerResource.discoverOAuthMetadata", () => {
       registeredMethod: "client_secret_post",
       clientSecret: "secret",
     },
-  ])("persists the DCR-returned $registeredMethod token authentication method", async ({
-    registeredMethod,
-    clientSecret,
-  }) => {
-    oauthMocks.registerClient.mockResolvedValue({
-      client_id: "registered-client",
-      client_secret: clientSecret,
-      token_endpoint_auth_method: registeredMethod,
-    });
+  ])(
+    "persists the DCR-returned $registeredMethod token authentication method",
+    async ({ registeredMethod, clientSecret }) => {
+      oauthMocks.registerClient.mockResolvedValue({
+        client_id: "registered-client",
+        client_secret: clientSecret,
+        token_endpoint_auth_method: registeredMethod,
+      });
 
-    const result = await RemoteMCPServerResource.discoverOAuthMetadata({
-      serverUrl: "https://mcp.example.com/mcp",
-      provider: oauthProvider,
-    });
+      const result = await RemoteMCPServerResource.discoverOAuthMetadata({
+        serverUrl: "https://mcp.example.com/mcp",
+        provider: oauthProvider,
+      });
 
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value.token_endpoint_auth_method).toBe(registeredMethod);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.token_endpoint_auth_method).toBe(registeredMethod);
+      }
     }
-  });
+  );
 });
 
 describe("getMCPAuthorizationScope", () => {

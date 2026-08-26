@@ -547,12 +547,15 @@ describe("streamErrorToErrorEvent", () => {
     [404, "not_found_error", "dust"],
     [429, "rate_limit_error", "dust"],
     [503, "overloaded_error", "provider"],
-  ] as const)("maps HTTP %i to %s from %s", (status, expectedType, errorSource) => {
-    const err = new APIError(status, {}, "http failure", undefined, null);
-    const result = streamErrorToErrorEvent(metadata, err);
-    expect(result.content.type).toBe(expectedType);
-    expect(result.content.errorSource).toBe(errorSource);
-  });
+  ] as const)(
+    "maps HTTP %i to %s from %s",
+    (status, expectedType, errorSource) => {
+      const err = new APIError(status, {}, "http failure", undefined, null);
+      const result = streamErrorToErrorEvent(metadata, err);
+      expect(result.content.type).toBe(expectedType);
+      expect(result.content.errorSource).toBe(errorSource);
+    }
+  );
 
   it("maps a generic 5xx status to server_error", () => {
     const err = new APIError(500, {}, "kaboom", undefined, null);
@@ -598,12 +601,15 @@ describe("streamErrorToErrorEvent", () => {
     ["request timed out", "timeout_error", "provider"],
     ["stream interrupted", "stream_error", "provider"],
     ["internal server error", "server_error", "provider"],
-  ] as const)("classifies bare AnthropicError %j as %s from %s (old-router parity)", (message, expectedType, errorSource) => {
-    const err = new AnthropicError(message);
-    const result = streamErrorToErrorEvent(metadata, err);
-    expect(result.content.type).toBe(expectedType);
-    expect(result.content.errorSource).toBe(errorSource);
-  });
+  ] as const)(
+    "classifies bare AnthropicError %j as %s from %s (old-router parity)",
+    (message, expectedType, errorSource) => {
+      const err = new AnthropicError(message);
+      const result = streamErrorToErrorEvent(metadata, err);
+      expect(result.content.type).toBe(expectedType);
+      expect(result.content.errorSource).toBe(errorSource);
+    }
+  );
 
   it("maps an unclassifiable bare error to unknown_error", () => {
     const err = new AnthropicError("something inexplicable happened");

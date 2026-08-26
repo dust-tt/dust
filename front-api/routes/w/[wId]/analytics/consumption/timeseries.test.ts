@@ -89,23 +89,23 @@ describe("POST /api/w/:wId/analytics/consumption/timeseries", () => {
     );
   });
 
-  it.each([
-    "user",
-    "group",
-  ] as const)("rejects the %s breakdown in personal analytics", async (breakdownBy) => {
-    vi.mocked(fetchConsumptionTimeseries).mockClear();
-    const { workspace } = await createPrivateApiMockRequest({ role: "user" });
+  it.each(["user", "group"] as const)(
+    "rejects the %s breakdown in personal analytics",
+    async (breakdownBy) => {
+      vi.mocked(fetchConsumptionTimeseries).mockClear();
+      const { workspace } = await createPrivateApiMockRequest({ role: "user" });
 
-    const response = await postTimeseriesRequest(
-      workspace.sId,
-      { breakdownBy },
-      true
-    );
+      const response = await postTimeseriesRequest(
+        workspace.sId,
+        { breakdownBy },
+        true
+      );
 
-    expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
-    expect(vi.mocked(fetchConsumptionTimeseries)).not.toHaveBeenCalled();
-  });
+      expect(response.status).toBe(400);
+      expect((await response.json()).error.type).toBe("invalid_request_error");
+      expect(vi.mocked(fetchConsumptionTimeseries)).not.toHaveBeenCalled();
+    }
+  );
 
   it("lets editors read only the selected agent's timeseries", async () => {
     vi.mocked(fetchConsumptionTimeseries).mockResolvedValue(new Ok(TIMESERIES));

@@ -531,39 +531,42 @@ describe("computeAuthorizedFileAccess", () => {
     "upsert_table",
     "skill_attachment",
     "workspace_branding",
-  ] satisfies FileUseCase[])("marks %s file_id refs as unverifiable even with conversation metadata", async (useCase) => {
-    const { authenticator: auth } = await createResourceTest({});
+  ] satisfies FileUseCase[])(
+    "marks %s file_id refs as unverifiable even with conversation metadata",
+    async (useCase) => {
+      const { authenticator: auth } = await createResourceTest({});
 
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
 
-    const excludedFile = await FileFactory.create(auth, null, {
-      contentType: "text/plain",
-      fileName: `${useCase}.txt`,
-      fileSize: 10,
-      status: "ready",
-      useCase,
-      useCaseMetadata: { conversationId: conversation.sId },
-    });
+      const excludedFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: `${useCase}.txt`,
+        fileSize: 10,
+        status: "ready",
+        useCase,
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
 
-    const frameFile = await FileFactory.create(auth, null, {
-      contentType: frameContentType,
-      fileName: "Frame.tsx",
-      fileSize: 100,
-      status: "ready",
-      useCase: "conversation",
-      useCaseMetadata: { conversationId: conversation.sId },
-    });
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "Frame.tsx",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
 
-    const result = await frameFile.computeAuthorizedFileAccess(auth, {
-      frameContent: `useFile("${excludedFile.sId}");`,
-    });
+      const result = await frameFile.computeAuthorizedFileAccess(auth, {
+        frameContent: `useFile("${excludedFile.sId}");`,
+      });
 
-    expect(result.refs).toEqual([]);
-    expect(result.unverifiableRefs).toEqual([excludedFile.sId]);
-  });
+      expect(result.refs).toEqual([]);
+      expect(result.unverifiableRefs).toEqual([excludedFile.sId]);
+    }
+  );
 
   it("verifies file_id refs from another accessible conversation", async () => {
     const { authenticator: auth } = await createResourceTest({});

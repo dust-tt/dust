@@ -108,18 +108,18 @@ describe("buildAgentMessageBillingPlan", () => {
     { costMicroUsd: 8_499, expectedCredits: 1 },
     { costMicroUsd: 8_500, expectedCredits: 1 },
     { costMicroUsd: 8_501, expectedCredits: 2 },
-  ])("rounds $costMicroUsd micro-dollars to $expectedCredits credit(s)", ({
-    costMicroUsd,
-    expectedCredits,
-  }) => {
-    const plan = buildAgentMessageBillingPlan({
-      actions: [],
-      contextOrigin: "api",
-      runUsages: [usage({ costMicroUsd, runKey: "exec1" })],
-    });
+  ])(
+    "rounds $costMicroUsd micro-dollars to $expectedCredits credit(s)",
+    ({ costMicroUsd, expectedCredits }) => {
+      const plan = buildAgentMessageBillingPlan({
+        actions: [],
+        contextOrigin: "api",
+        runUsages: [usage({ costMicroUsd, runKey: "exec1" })],
+      });
 
-    expect(plan.totals.llmBilledCredits).toBe(expectedCredits);
-  });
+      expect(plan.totals.llmBilledCredits).toBe(expectedCredits);
+    }
+  );
 
   it("prices tools and returns one total across LLM and tools", () => {
     const plan = buildAgentMessageBillingPlan({

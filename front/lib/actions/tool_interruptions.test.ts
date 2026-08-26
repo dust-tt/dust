@@ -25,15 +25,18 @@ describe("tool interruptions", () => {
     [true, RETRY_ON_INTERRUPT_MAX_ATTEMPTS, "retry_on_interrupt", false],
     [true, 1, "no_retry", false],
     [false, 1, "retry_on_interrupt", false],
-  ])("returns whether interruption should retry %#", (isInterruption, attempt, retryPolicy, expected) => {
-    expect(
-      shouldRetryToolInterruption({
-        isInterruption,
-        attempt,
-        retryPolicy,
-      })
-    ).toBe(expected);
-  });
+  ])(
+    "returns whether interruption should retry %#",
+    (isInterruption, attempt, retryPolicy, expected) => {
+      expect(
+        shouldRetryToolInterruption({
+          isInterruption,
+          attempt,
+          retryPolicy,
+        })
+      ).toBe(expected);
+    }
+  );
 
   it("creates a typed retryable tool interruption failure", () => {
     const error = makeToolInterruptionError();

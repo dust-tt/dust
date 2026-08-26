@@ -205,18 +205,22 @@ export function runStreamEndpointTests(
       `\n\x1b[33m${"=".repeat(60)}\n🧪 ${id}\n⚠️  Running ${testIds.length}/${totalTestCases} test case(s):\n${testIds.map((testId) => `   - ${testId}`).join("\n")}\n${"=".repeat(60)}\x1b[0m\n`
     );
 
-    it.each(testIds)("[%s]", async (testId: TestKey) => {
-      const testCase = TEST_CASES[testId];
-      const events = await collectEvents(
-        instance,
-        configSchema,
-        testCase,
-        debug
-      );
-      // A `null` override falls back to the case's default checkers.
-      for (const checker of tests[testId] ?? testCase.defaultCheckers) {
-        checkResponseChecker(checker, events);
-      }
-    }, 60_000);
+    it.each(testIds)(
+      "[%s]",
+      async (testId: TestKey) => {
+        const testCase = TEST_CASES[testId];
+        const events = await collectEvents(
+          instance,
+          configSchema,
+          testCase,
+          debug
+        );
+        // A `null` override falls back to the case's default checkers.
+        for (const checker of tests[testId] ?? testCase.defaultCheckers) {
+          checkResponseChecker(checker, events);
+        }
+      },
+      60_000
+    );
   });
 }

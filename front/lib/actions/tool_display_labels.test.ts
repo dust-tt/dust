@@ -118,20 +118,23 @@ describe("getToolDisplayLabels", () => {
     ["microsoft-anything-opaque", "Microsoft content"],
     ["gong-transcript-folder-12", "Gong transcripts"],
     ["dpd_1234567890abcdef", "Dust project folder"],
-  ])("uses provider labels for data source file node ID %s", (nodeId, target) => {
-    expect(
-      getToolDisplayLabels({
-        internalMCPServerName: "data_sources_file_system",
-        toolName: "cat",
-        inputs: {
-          nodeId,
-        },
-      })
-    ).toEqual({
-      running: `Reading ${target}`,
-      done: `Read ${target}`,
-    });
-  });
+  ])(
+    "uses provider labels for data source file node ID %s",
+    (nodeId, target) => {
+      expect(
+        getToolDisplayLabels({
+          internalMCPServerName: "data_sources_file_system",
+          toolName: "cat",
+          inputs: {
+            nodeId,
+          },
+        })
+      ).toEqual({
+        running: `Reading ${target}`,
+        done: `Read ${target}`,
+      });
+    }
+  );
 
   it("does not show opaque IDs in data source file labels", () => {
     expect(

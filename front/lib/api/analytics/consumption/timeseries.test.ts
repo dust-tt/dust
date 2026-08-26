@@ -249,41 +249,44 @@ describe("fetchConsumptionTimeseries", () => {
       "tool",
       "skill",
       "source",
-    ] as ConsumptionScopeDimension[])("ranks %s on its index field and restricts the histogram to the top N", async (dimension) => {
-      const { auth, period } = await setup();
-      mockGroupNames({ k1: "First" });
-      mockBreakdown({ rankedKeys: ["k1"], buckets: [] });
+    ] as ConsumptionScopeDimension[])(
+      "ranks %s on its index field and restricts the histogram to the top N",
+      async (dimension) => {
+        const { auth, period } = await setup();
+        mockGroupNames({ k1: "First" });
+        mockBreakdown({ rankedKeys: ["k1"], buckets: [] });
 
-      await fetchConsumptionTimeseries(auth, {
-        period,
-        granularity: "day",
-        mode: "daily",
-        breakdownBy: dimension,
-        breakdownCount: 10,
-      });
+        await fetchConsumptionTimeseries(auth, {
+          period,
+          granularity: "day",
+          mode: "daily",
+          breakdownBy: dimension,
+          breakdownCount: 10,
+        });
 
-      const field = CONSUMPTION_DIMENSION_FIELDS[dimension];
+        const field = CONSUMPTION_DIMENSION_FIELDS[dimension];
 
-      const [, rankingOptions] = vi.mocked(searchConsumptionAnalytics).mock
-        .calls[0];
-      expect(rankingOptions?.aggregations?.by_group?.terms).toMatchObject({
-        field,
-        size: 10,
-        order: { metric: "desc" },
-      });
+        const [, rankingOptions] = vi.mocked(searchConsumptionAnalytics).mock
+          .calls[0];
+        expect(rankingOptions?.aggregations?.by_group?.terms).toMatchObject({
+          field,
+          size: 10,
+          order: { metric: "desc" },
+        });
 
-      const [, histogramOptions] = vi.mocked(searchConsumptionAnalytics).mock
-        .calls[1];
-      expect(
-        histogramOptions?.aggregations?.by_date?.aggs?.by_group?.terms
-      ).toMatchObject({ field, include: ["k1"] });
+        const [, histogramOptions] = vi.mocked(searchConsumptionAnalytics).mock
+          .calls[1];
+        expect(
+          histogramOptions?.aggregations?.by_date?.aggs?.by_group?.terms
+        ).toMatchObject({ field, include: ["k1"] });
 
-      expect(vi.mocked(resolveDimensionDisplayNames)).toHaveBeenCalledWith(
-        auth,
-        dimension,
-        ["k1"]
-      );
-    });
+        expect(vi.mocked(resolveDimensionDisplayNames)).toHaveBeenCalledWith(
+          auth,
+          dimension,
+          ["k1"]
+        );
+      }
+    );
 
     it("returns one series per ranked group, named and in rank order", async () => {
       const { auth, period } = await setup();

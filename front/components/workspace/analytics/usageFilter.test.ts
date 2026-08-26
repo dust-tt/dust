@@ -137,14 +137,14 @@ describe("setUsageFilterFromAttributionRow", () => {
     { dimension: "skill", expectedScopeFilter: { skills: [row.id] } },
     { dimension: "source", expectedScopeFilter: { sources: [row.id] } },
     { dimension: "api_key", expectedScopeFilter: { api_keys: [row.id] } },
-  ])("maps a $dimension row to its page-level filter", ({
-    dimension,
-    expectedScopeFilter,
-  }) => {
-    const filter = setUsageFilterFromAttributionRow({}, dimension, row);
+  ])(
+    "maps a $dimension row to its page-level filter",
+    ({ dimension, expectedScopeFilter }) => {
+      const filter = setUsageFilterFromAttributionRow({}, dimension, row);
 
-    expect(toConsumptionScopeFilter(filter)).toEqual(expectedScopeFilter);
-  });
+      expect(toConsumptionScopeFilter(filter)).toEqual(expectedScopeFilter);
+    }
+  );
 
   it("replaces the selected dimension while preserving other filters", () => {
     const filter = setUsageFilterFromAttributionRow(
@@ -289,17 +289,22 @@ describe("removeUsageFilterFromAttributionRow", () => {
     { dimension: "skill" },
     { dimension: "source" },
     { dimension: "api_key" },
-  ])("removes a previously added $dimension row, clearing the category", ({
-    dimension,
-  }) => {
-    const added = addUsageFilterFromAttributionRow({}, dimension, row);
+  ])(
+    "removes a previously added $dimension row, clearing the category",
+    ({ dimension }) => {
+      const added = addUsageFilterFromAttributionRow({}, dimension, row);
 
-    expect(toConsumptionScopeFilter(added)).not.toEqual({});
+      expect(toConsumptionScopeFilter(added)).not.toEqual({});
 
-    const removed = removeUsageFilterFromAttributionRow(added, dimension, row);
+      const removed = removeUsageFilterFromAttributionRow(
+        added,
+        dimension,
+        row
+      );
 
-    expect(toConsumptionScopeFilter(removed)).toEqual({});
-  });
+      expect(toConsumptionScopeFilter(removed)).toEqual({});
+    }
+  );
 
   it("removes only the targeted row, preserving other selections", () => {
     const filter = addUsageFilterFromAttributionRow(

@@ -2034,40 +2034,38 @@ describe("agent_sidekick_context tools", () => {
       }
     });
 
-    it.each([
-      { state: "rejected" as const },
-      { state: "outdated" as const },
-    ])("updates suggestion state to $state and returns all fields", async ({
-      state,
-    }) => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
+    it.each([{ state: "rejected" as const }, { state: "outdated" as const }])(
+      "updates suggestion state to $state and returns all fields",
+      async ({ state }) => {
+        const { authenticator } = await createResourceTest({ role: "admin" });
 
-      // Create a real agent configuration and suggestion.
-      const agentConfiguration =
-        await AgentConfigurationFactory.createTestAgent(authenticator);
-      const suggestion = await AgentSuggestionFactory.createSkills(
-        authenticator,
-        agentConfiguration,
-        { state: "pending", analysis: "Test analysis for skills" }
-      );
+        // Create a real agent configuration and suggestion.
+        const agentConfiguration =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const suggestion = await AgentSuggestionFactory.createSkills(
+          authenticator,
+          agentConfiguration,
+          { state: "pending", analysis: "Test analysis for skills" }
+        );
 
-      const tool = getToolByName("update_suggestions_state");
-      const result = await tool.handler(
-        { suggestions: [{ suggestionId: suggestion.sId, state }] },
-        createTestExtra(authenticator)
-      );
+        const tool = getToolByName("update_suggestions_state");
+        const result = await tool.handler(
+          { suggestions: [{ suggestionId: suggestion.sId, state }] },
+          createTestExtra(authenticator)
+        );
 
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const content = result.value[0];
-        expect(content.type).toBe("text");
-        if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.results).toHaveLength(1);
-          expect(parsed.results[0].success).toBe(true);
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          const content = result.value[0];
+          expect(content.type).toBe("text");
+          if (content.type === "text") {
+            const parsed = JSON.parse(content.text);
+            expect(parsed.results).toHaveLength(1);
+            expect(parsed.results[0].success).toBe(true);
+          }
         }
       }
-    });
+    );
 
     it("updates multiple suggestions to outdated in a single call", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });

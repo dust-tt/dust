@@ -373,31 +373,27 @@ function postRankingRequest(
 }
 
 describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
-  it.each(
-    RANKINGS
-  )("$path is mounted, returns the ranking and defaults its period and limit", async ({
-    path,
-    body,
-    arrangeOk,
-    lastCall,
-  }) => {
-    arrangeOk();
-    const { workspace } = await setupTest({ role: "admin" });
+  it.each(RANKINGS)(
+    "$path is mounted, returns the ranking and defaults its period and limit",
+    async ({ path, body, arrangeOk, lastCall }) => {
+      arrangeOk();
+      const { workspace } = await setupTest({ role: "admin" });
 
-    const response = await postRankingRequest(workspace.sId, path);
+      const response = await postRankingRequest(workspace.sId, path);
 
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual(body);
-    // The period is resolved by the route, so only its shape is asserted here.
-    expect(lastCall()?.[1]).toEqual({
-      limit: 10,
-      offset: 0,
-      period: { startDate: expect.any(String), endDate: expect.any(String) },
-      search: undefined,
-      filter: {},
-      sortOrder: "desc",
-    });
-  });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual(body);
+      // The period is resolved by the route, so only its shape is asserted here.
+      expect(lastCall()?.[1]).toEqual({
+        limit: 10,
+        offset: 0,
+        period: { startDate: expect.any(String), endDate: expect.any(String) },
+        search: undefined,
+        filter: {},
+        sortOrder: "desc",
+      });
+    }
+  );
 
   it.each(RANKINGS)("$path is refused to non-managers", async ({ path }) => {
     const { workspace } = await setupTest({ role: "user" });
@@ -407,68 +403,62 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     expect(response.status).toBe(403);
   });
 
-  it.each(
-    PERSONAL_RANKINGS
-  )("$path lets members read only their own consumption", async ({
-    path,
-    arrangeOk,
-    lastCall,
-  }) => {
-    arrangeOk();
-    const { workspace, user } = await setupTest({ role: "user" });
+  it.each(PERSONAL_RANKINGS)(
+    "$path lets members read only their own consumption",
+    async ({ path, arrangeOk, lastCall }) => {
+      arrangeOk();
+      const { workspace, user } = await setupTest({ role: "user" });
 
-    const response = await postRankingRequest(
-      workspace.sId,
-      path,
-      { filter: { users: ["another-user"], sources: ["slack"] } },
-      true
-    );
+      const response = await postRankingRequest(
+        workspace.sId,
+        path,
+        { filter: { users: ["another-user"], sources: ["slack"] } },
+        true
+      );
 
-    expect(response.status).toBe(200);
-    expect(lastCall()?.[1]).toEqual(
-      expect.objectContaining({
-        filter: { users: [user.sId], sources: ["slack"] },
-      })
-    );
-  });
+      expect(response.status).toBe(200);
+      expect(lastCall()?.[1]).toEqual(
+        expect.objectContaining({
+          filter: { users: [user.sId], sources: ["slack"] },
+        })
+      );
+    }
+  );
 
-  it.each([
-    "top-users",
-    "top-groups",
-  ])("%s is not mounted for personal analytics", async (path) => {
-    const { workspace } = await setupTest({ role: "user" });
+  it.each(["top-users", "top-groups"])(
+    "%s is not mounted for personal analytics",
+    async (path) => {
+      const { workspace } = await setupTest({ role: "user" });
 
-    const response = await postRankingRequest(workspace.sId, path, {}, true);
+      const response = await postRankingRequest(workspace.sId, path, {}, true);
 
-    expect(response.status).toBe(404);
-  });
+      expect(response.status).toBe(404);
+    }
+  );
 
-  it.each(
-    AGENT_RANKINGS
-  )("$path lets editors rank only the selected agent's consumption", async ({
-    path,
-    arrangeOk,
-    lastCall,
-  }) => {
-    arrangeOk();
-    const { auth, workspace } = await setupTest({ role: "user" });
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+  it.each(AGENT_RANKINGS)(
+    "$path lets editors rank only the selected agent's consumption",
+    async ({ path, arrangeOk, lastCall }) => {
+      arrangeOk();
+      const { auth, workspace } = await setupTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
-    const response = await postRankingRequest(
-      workspace.sId,
-      path,
-      { filter: { agents: ["another-agent"], sources: ["slack"] } },
-      false,
-      agent.sId
-    );
+      const response = await postRankingRequest(
+        workspace.sId,
+        path,
+        { filter: { agents: ["another-agent"], sources: ["slack"] } },
+        false,
+        agent.sId
+      );
 
-    expect(response.status).toBe(200);
-    expect(lastCall()?.[1]).toEqual(
-      expect.objectContaining({
-        filter: { agents: [agent.sId], sources: ["slack"] },
-      })
-    );
-  });
+      expect(response.status).toBe(200);
+      expect(lastCall()?.[1]).toEqual(
+        expect.objectContaining({
+          filter: { agents: [agent.sId], sources: ["slack"] },
+        })
+      );
+    }
+  );
 
   it("does not mount the agent ranking for agent-scoped analytics", async () => {
     const { auth, workspace } = await setupTest({ role: "user" });

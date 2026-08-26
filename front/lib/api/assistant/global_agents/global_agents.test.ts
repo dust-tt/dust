@@ -536,31 +536,34 @@ describe("getGlobalAgents Dust Auto default", () => {
   it.each([
     ["premium", AUTO_MODEL_ID],
     ["cost_efficient", AUTO_FAST_MODEL_ID],
-  ] as const)("defaults @dust to %s member's highest allowed stream", async (tierName, expectedModelId) => {
-    const workspace = await WorkspaceFactory.basic();
-    const adminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-    await FeatureFlagFactory.basic(adminAuth, "models_picker");
+  ] as const)(
+    "defaults @dust to %s member's highest allowed stream",
+    async (tierName, expectedModelId) => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await FeatureFlagFactory.basic(adminAuth, "models_picker");
 
-    const user = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user, { role: "user" });
-    await setUserMaxAllowedTier(adminAuth, {
-      userId: user.sId,
-      tierName,
-    });
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      await setUserMaxAllowedTier(adminAuth, {
+        userId: user.sId,
+        tierName,
+      });
 
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    const agents = await getGlobalAgents(
-      auth,
-      [GLOBAL_AGENTS_SID.DUST],
-      "light"
-    );
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+      const agents = await getGlobalAgents(
+        auth,
+        [GLOBAL_AGENTS_SID.DUST],
+        "light"
+      );
 
-    expect(agents).toHaveLength(1);
-    expect(agents[0].model).toMatchObject({ modelId: expectedModelId });
-  });
+      expect(agents).toHaveLength(1);
+      expect(agents[0].model).toMatchObject({ modelId: expectedModelId });
+    }
+  );
 });
