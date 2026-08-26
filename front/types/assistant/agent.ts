@@ -402,8 +402,8 @@ export type AgentContextPrunedEvent = {
   messageId: string;
 };
 
-export type AgentCreditAlertThresholdCrossedEvent = {
-  type: "agent_credit_alert_threshold_crossed";
+export type AgentSpendCheckpointReachedEvent = {
+  type: "agent_spend_checkpoint_reached";
   created: number;
   configurationId: string;
   messageId: string;

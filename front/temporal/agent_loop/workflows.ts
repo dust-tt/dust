@@ -142,7 +142,7 @@ const { checkCreditsActivity } = proxyActivities<typeof creditCheckActivities>({
 
 // No retries: this is a fail-open check, so a
 // failure should resolve immediately rather than delaying the step with retries.
-const { checkWorkflowAlertThresholdActivity } = proxyActivities<
+const { checkSpendCheckpointActivity } = proxyActivities<
   typeof creditCheckActivities
 >({
   startToCloseTimeout: "1 minutes",
@@ -281,10 +281,10 @@ export async function agentLoopWorkflow({
   // Credit stop: the per-step gate found the workspace pool exhausted.
   let creditStopRequested = false;
 
-  let workflowAlertCreditThresholdPauseRequested = false;
+  let spendCheckpointPauseRequested = false;
 
-  // Cached per execution: acknowledgment can't flip back to false once observed true (see checkWorkflowAlertThresholdActivity).
-  let workflowAlertCreditThresholdAcknowledged = false;
+  // Cached per execution: acknowledgment can't flip back to false once observed true (see checkSpendCheckpointActivity).
+  let spendCheckpointAcknowledged = false;
 
   const runIds: string[] = [];
 
@@ -379,26 +379,28 @@ export async function agentLoopWorkflow({
           break;
         }
 
-        if (!workflowAlertCreditThresholdAcknowledged) {
+        if (!spendCheckpointAcknowledged) {
           try {
-            const workflowAlertResult =
-              await checkWorkflowAlertThresholdActivity(authType, {
+            const workflowAlertResult = await checkSpendCheckpointActivity(
+              authType,
+              {
                 agentLoopArgs: {
                   ...agentLoopArgs,
                   initialStartTime,
                 },
-              });
+              }
+            );
             if (workflowAlertResult.acknowledged) {
-              workflowAlertCreditThresholdAcknowledged = true;
+              spendCheckpointAcknowledged = true;
             } else if (workflowAlertResult.crossed) {
-              workflowAlertCreditThresholdPauseRequested = true;
+              spendCheckpointPauseRequested = true;
             }
           } catch {
             // Non-critical: fails open, must never fail the agent loop.
           }
         }
 
-        if (workflowAlertCreditThresholdPauseRequested) {
+        if (spendCheckpointPauseRequested) {
           break;
         }
       }

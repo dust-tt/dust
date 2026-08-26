@@ -57,28 +57,28 @@ export async function checkPoolCreditGate(
   return DO_NOT_STOP;
 }
 
-export type WorkflowAlertThresholdCheckResult =
+export type SpendCheckpointCheckResult =
   | { crossed: false }
   | { crossed: true; thresholdAwuCredits: number };
 
-const DO_NOT_NOTIFY: WorkflowAlertThresholdCheckResult = { crossed: false };
+const DO_NOT_NOTIFY: SpendCheckpointCheckResult = { crossed: false };
 
 /**
  * Determines whether the user's current spend has crossed the workflow alert threshold (a
- * single fixed value for every user/workspace, see `config.getWorkflowAlertThresholdAwuCredits`).
+ * single fixed value for every user/workspace, see `config.getSpendCheckpointThresholdAwuCredits`).
  * Unlike `checkPoolCreditGate`, this pauses the agent loop rather than stopping it outright: the
  * caller persists the pause and the user can resume by confirming they want to keep going. Fails
  * open (does not pause) when no billing cycle can be resolved or the counter read fails.
  */
-export async function checkWorkflowAlertThresholdGate(
+export async function checkSpendCheckpointGate(
   auth: Authenticator
-): Promise<WorkflowAlertThresholdCheckResult> {
+): Promise<SpendCheckpointCheckResult> {
   const user = auth.user();
   if (!user) {
     return DO_NOT_NOTIFY;
   }
   const workspace = auth.getNonNullableWorkspace();
-  const thresholdAwuCredits = config.getWorkflowAlertThresholdAwuCredits();
+  const thresholdAwuCredits = config.getSpendCheckpointThresholdAwuCredits();
 
   const bounds = await resolveSpendLimitCycleBounds(workspace);
   if (!bounds) {

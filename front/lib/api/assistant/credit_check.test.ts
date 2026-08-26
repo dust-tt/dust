@@ -1,6 +1,6 @@
 import {
   checkPoolCreditGate,
-  checkWorkflowAlertThresholdGate,
+  checkSpendCheckpointGate,
 } from "@app/lib/api/assistant/credit_check";
 import type { Authenticator } from "@app/lib/auth";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
@@ -11,7 +11,7 @@ const {
   mockIsApiBlocked,
   mockIsProgrammaticApiBlocked,
   mockIsProgrammaticUsage,
-  mockGetWorkflowAlertThresholdAwuCredits,
+  mockGetSpendCheckpointAwuCredits,
   mockResolveSpendLimitCycleBounds,
   mockIsSpendCapCounterReached,
 } = vi.hoisted(() => ({
@@ -19,7 +19,7 @@ const {
   mockIsApiBlocked: vi.fn(),
   mockIsProgrammaticApiBlocked: vi.fn(),
   mockIsProgrammaticUsage: vi.fn(),
-  mockGetWorkflowAlertThresholdAwuCredits: vi.fn(),
+  mockGetSpendCheckpointAwuCredits: vi.fn(),
   mockResolveSpendLimitCycleBounds: vi.fn(),
   mockIsSpendCapCounterReached: vi.fn(),
 }));
@@ -41,8 +41,7 @@ vi.mock("@app/types/plan", () => ({
 
 vi.mock("@app/lib/api/config", () => ({
   default: {
-    getWorkflowAlertThresholdAwuCredits:
-      mockGetWorkflowAlertThresholdAwuCredits,
+    getSpendCheckpointThresholdAwuCredits: mockGetSpendCheckpointAwuCredits,
   },
 }));
 
@@ -180,19 +179,19 @@ describe("checkPoolCreditGate", () => {
   });
 });
 
-describe("checkWorkflowAlertThresholdGate", () => {
+describe("checkSpendCheckpointGate", () => {
   const FAKE_BOUNDS = { startMs: 0, endMs: 1 } as never;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetWorkflowAlertThresholdAwuCredits.mockReturnValue(1000);
+    mockGetSpendCheckpointAwuCredits.mockReturnValue(1000);
     mockResolveSpendLimitCycleBounds.mockResolvedValue(FAKE_BOUNDS);
     mockIsSpendCapCounterReached.mockResolvedValue(false);
   });
 
   it("does not notify when there is no user", async () => {
     const auth = makeAuth({ hasUser: false });
-    const result = await checkWorkflowAlertThresholdGate(auth);
+    const result = await checkSpendCheckpointGate(auth);
     expect(result).toEqual({ crossed: false });
     expect(mockResolveSpendLimitCycleBounds).not.toHaveBeenCalled();
   });
@@ -200,7 +199,7 @@ describe("checkWorkflowAlertThresholdGate", () => {
   it("does not notify when the billing cycle can't be resolved", async () => {
     mockResolveSpendLimitCycleBounds.mockResolvedValue(null);
     const auth = makeAuth({ hasUser: true });
-    const result = await checkWorkflowAlertThresholdGate(auth);
+    const result = await checkSpendCheckpointGate(auth);
     expect(result).toEqual({ crossed: false });
     expect(mockIsSpendCapCounterReached).not.toHaveBeenCalled();
   });
@@ -208,14 +207,14 @@ describe("checkWorkflowAlertThresholdGate", () => {
   it("does not notify when the counter has not reached the threshold", async () => {
     mockIsSpendCapCounterReached.mockResolvedValue(false);
     const auth = makeAuth({ hasUser: true });
-    const result = await checkWorkflowAlertThresholdGate(auth);
+    const result = await checkSpendCheckpointGate(auth);
     expect(result).toEqual({ crossed: false });
   });
 
   it("notifies with the fixed threshold once the counter crosses it", async () => {
     mockIsSpendCapCounterReached.mockResolvedValue(true);
     const auth = makeAuth({ hasUser: true });
-    const result = await checkWorkflowAlertThresholdGate(auth);
+    const result = await checkSpendCheckpointGate(auth);
     expect(result).toEqual({ crossed: true, thresholdAwuCredits: 1000 });
     expect(mockIsSpendCapCounterReached).toHaveBeenCalledWith(auth, {
       user: { id: 42, sId: "user_test" },

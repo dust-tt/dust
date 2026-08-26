@@ -13,7 +13,7 @@ import {
 } from "@app/temporal/agent_loop/activities/compaction";
 import {
   checkCreditsActivity,
-  checkWorkflowAlertThresholdActivity,
+  checkSpendCheckpointActivity,
 } from "@app/temporal/agent_loop/activities/credit_check";
 import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import {
@@ -118,7 +118,7 @@ async function runAgentLoopWorkerForQueue({
       finalizeErroredAgentLoopActivity,
       finalizeErroredSandboxChildToolActivity,
       checkCreditsActivity,
-      checkWorkflowAlertThresholdActivity,
+      checkSpendCheckpointActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,

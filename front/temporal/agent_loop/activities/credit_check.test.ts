@@ -1,13 +1,13 @@
 import {
   checkCreditsActivity,
-  checkWorkflowAlertThresholdActivity,
+  checkSpendCheckpointActivity,
 } from "@app/temporal/agent_loop/activities/credit_check";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockFromJson,
   mockCheckPoolCreditGate,
-  mockCheckWorkflowAlertThresholdGate,
+  mockCheckSpendCheckpointGate,
   mockGetAgentLoopData,
   mockIsAgentLoopDataSoftDeleteError,
   mockPublishConversationRelatedEvent,
@@ -17,7 +17,7 @@ const {
 } = vi.hoisted(() => ({
   mockFromJson: vi.fn(),
   mockCheckPoolCreditGate: vi.fn(),
-  mockCheckWorkflowAlertThresholdGate: vi.fn(),
+  mockCheckSpendCheckpointGate: vi.fn(),
   mockGetAgentLoopData: vi.fn(),
   mockIsAgentLoopDataSoftDeleteError: vi.fn(),
   mockPublishConversationRelatedEvent: vi.fn(),
@@ -32,7 +32,7 @@ vi.mock("@app/lib/auth", () => ({
 
 vi.mock("@app/lib/api/assistant/credit_check", () => ({
   checkPoolCreditGate: mockCheckPoolCreditGate,
-  checkWorkflowAlertThresholdGate: mockCheckWorkflowAlertThresholdGate,
+  checkSpendCheckpointGate: mockCheckSpendCheckpointGate,
 }));
 
 vi.mock("@app/lib/api/assistant/streaming/events", () => ({
@@ -120,7 +120,7 @@ describe("checkCreditsActivity (pure decision)", () => {
   });
 });
 
-describe("checkWorkflowAlertThresholdActivity", () => {
+describe("checkSpendCheckpointActivity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFromJson.mockResolvedValue(FAKE_AUTH);
@@ -129,21 +129,21 @@ describe("checkWorkflowAlertThresholdActivity", () => {
 
   it("returns crossed: false without checking the gate once acknowledged", async () => {
     mockMessageModelFindOne.mockResolvedValue({
-      agentMessage: { workflowAlertThresholdStatus: "acknowledged" },
+      agentMessage: { spendCheckpointStatus: "acknowledged" },
     });
 
-    const result = await checkWorkflowAlertThresholdActivity({} as never, {
+    const result = await checkSpendCheckpointActivity({} as never, {
       agentLoopArgs: { agentMessageId: "msg_id" } as never,
     });
 
     expect(result).toEqual({ crossed: false, acknowledged: true });
-    expect(mockCheckWorkflowAlertThresholdGate).not.toHaveBeenCalled();
+    expect(mockCheckSpendCheckpointGate).not.toHaveBeenCalled();
   });
 
   it("does not load the conversation or publish when the gate says not crossed", async () => {
-    mockCheckWorkflowAlertThresholdGate.mockResolvedValue({ crossed: false });
+    mockCheckSpendCheckpointGate.mockResolvedValue({ crossed: false });
 
-    const result = await checkWorkflowAlertThresholdActivity({} as never, {
+    const result = await checkSpendCheckpointActivity({} as never, {
       agentLoopArgs: {} as never,
     });
 
@@ -153,7 +153,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
   });
 
   it("loads the conversation and publishes a notification event when crossed", async () => {
-    mockCheckWorkflowAlertThresholdGate.mockResolvedValue({
+    mockCheckSpendCheckpointGate.mockResolvedValue({
       crossed: true,
       thresholdAwuCredits: 1500,
     });
@@ -166,7 +166,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
       },
     });
 
-    const result = await checkWorkflowAlertThresholdActivity({} as never, {
+    const result = await checkSpendCheckpointActivity({} as never, {
       agentLoopArgs: {
         conversationId: "conv_id",
         agentMessageId: "msg_id",
@@ -178,7 +178,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
       conversationId: "conv_id",
       step: 2,
       event: {
-        type: "agent_credit_alert_threshold_crossed",
+        type: "agent_spend_checkpoint_reached",
         created: expect.any(Number),
         configurationId: "agent_config_id",
         messageId: "msg_id",
@@ -188,7 +188,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
   });
 
   it("still reports crossed but skips publishing when the message was soft-deleted", async () => {
-    mockCheckWorkflowAlertThresholdGate.mockResolvedValue({
+    mockCheckSpendCheckpointGate.mockResolvedValue({
       crossed: true,
       thresholdAwuCredits: 1500,
     });
@@ -198,7 +198,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
     });
     mockIsAgentLoopDataSoftDeleteError.mockReturnValue(true);
 
-    const result = await checkWorkflowAlertThresholdActivity({} as never, {
+    const result = await checkSpendCheckpointActivity({} as never, {
       agentLoopArgs: {} as never,
     });
 
@@ -207,7 +207,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
   });
 
   it("throws (instead of pausing) on a non-deletion failure to load agent loop data", async () => {
-    mockCheckWorkflowAlertThresholdGate.mockResolvedValue({
+    mockCheckSpendCheckpointGate.mockResolvedValue({
       crossed: true,
       thresholdAwuCredits: 1500,
     });
@@ -218,7 +218,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
     mockIsAgentLoopDataSoftDeleteError.mockReturnValue(false);
 
     await expect(
-      checkWorkflowAlertThresholdActivity({} as never, {
+      checkSpendCheckpointActivity({} as never, {
         agentLoopArgs: {} as never,
       })
     ).rejects.toThrow("transient_db_error");
@@ -228,7 +228,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
   });
 
   it("still reports crossed when the pause is persisted but the notification fails", async () => {
-    mockCheckWorkflowAlertThresholdGate.mockResolvedValue({
+    mockCheckSpendCheckpointGate.mockResolvedValue({
       crossed: true,
       thresholdAwuCredits: 1500,
     });
@@ -244,7 +244,7 @@ describe("checkWorkflowAlertThresholdActivity", () => {
       new Error("redis_publish_failed")
     );
 
-    const result = await checkWorkflowAlertThresholdActivity({} as never, {
+    const result = await checkSpendCheckpointActivity({} as never, {
       agentLoopArgs: {
         conversationId: "conv_id",
         agentMessageId: "msg_id",

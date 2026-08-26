@@ -1,7 +1,7 @@
 import type { CreditCheckResult } from "@app/lib/api/assistant/credit_check";
 import {
   checkPoolCreditGate,
-  checkWorkflowAlertThresholdGate,
+  checkSpendCheckpointGate,
 } from "@app/lib/api/assistant/credit_check";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AuthenticatorType } from "@app/lib/auth";
@@ -31,7 +31,7 @@ export async function checkCreditsActivity(
   });
 }
 
-async function hasAcknowledgedWorkflowAlertThreshold(
+async function hasAcknowledgedSpendCheckpoint(
   auth: Authenticator,
   { agentMessageId }: { agentMessageId: string }
 ): Promise<boolean> {
@@ -46,12 +46,12 @@ async function hasAcknowledgedWorkflowAlertThreshold(
         model: AgentMessageModel,
         as: "agentMessage",
         required: true,
-        attributes: ["workflowAlertThresholdStatus"],
+        attributes: ["spendCheckpointStatus"],
       },
     ],
   });
 
-  return message?.agentMessage?.workflowAlertThresholdStatus === "acknowledged";
+  return message?.agentMessage?.spendCheckpointStatus === "acknowledged";
 }
 
 /**
@@ -59,21 +59,21 @@ async function hasAcknowledgedWorkflowAlertThreshold(
  * `acknowledged` lets the workflow stop calling this activity for the
  * rest of the execution, since it can't flip back once observed true.
  */
-export async function checkWorkflowAlertThresholdActivity(
+export async function checkSpendCheckpointActivity(
   authType: AuthenticatorType,
   { agentLoopArgs }: { agentLoopArgs: AgentLoopArgsWithTiming }
 ): Promise<{ crossed: boolean; acknowledged: boolean }> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
   if (
-    await hasAcknowledgedWorkflowAlertThreshold(auth, {
+    await hasAcknowledgedSpendCheckpoint(auth, {
       agentMessageId: agentLoopArgs.agentMessageId,
     })
   ) {
     return { crossed: false, acknowledged: true };
   }
 
-  const result = await checkWorkflowAlertThresholdGate(auth);
+  const result = await checkSpendCheckpointGate(auth);
   if (!result.crossed) {
     return { crossed: false, acknowledged: false };
   }
@@ -93,7 +93,7 @@ export async function checkWorkflowAlertThresholdActivity(
   // Persisted here so the pause survives a refresh.
   await AgentMessageModel.update(
     {
-      workflowAlertThresholdStatus: "paused",
+      spendCheckpointStatus: "paused",
     },
     {
       where: {
@@ -110,7 +110,7 @@ export async function checkWorkflowAlertThresholdActivity(
       conversationId: conversation.sId,
       step,
       event: {
-        type: "agent_credit_alert_threshold_crossed",
+        type: "agent_spend_checkpoint_reached",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
@@ -124,7 +124,7 @@ export async function checkWorkflowAlertThresholdActivity(
         agentMessageId: agentLoopArgs.agentMessageId,
         error: normalizeError(err),
       },
-      "[WorkflowAlertThreshold] Failed to notify after persisting pause"
+      "[SpendCheckpoint] Failed to notify after persisting pause"
     );
   }
 
