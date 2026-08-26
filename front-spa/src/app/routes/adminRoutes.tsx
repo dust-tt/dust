@@ -1,5 +1,6 @@
 import { RequirePermissionLayout } from "@spa/app/layouts/RequirePermissionLayout";
 import { RequireRoleLayout } from "@spa/app/layouts/RequireRoleLayout";
+import { RequireWorkspaceConsumptionAnalyticsLayout } from "@spa/app/layouts/RequireWorkspaceConsumptionAnalyticsLayout";
 import { withSuspense } from "@spa/app/routes/withSuspense";
 import type { RouteObject } from "react-router-dom";
 import { Navigate } from "react-router-dom";
@@ -113,6 +114,15 @@ const GovernancePage = withSuspense(
 
 export const adminRoutes: RouteObject[] = [
   {
+    element: <RequireWorkspaceConsumptionAnalyticsLayout />,
+    children: [
+      {
+        path: "analytics/consumption",
+        element: <AnalyticsConsumptionPage />,
+      },
+    ],
+  },
+  {
     // Accessible to admins and managers.
     element: <RequireRoleLayout requiredRole="manager" />,
     children: [
@@ -120,10 +130,6 @@ export const adminRoutes: RouteObject[] = [
       // Legacy analytics page, kept for direct access but intentionally absent
       // from the admin sidebar.
       { path: "analytics", element: <AnalyticsPage /> },
-      {
-        path: "analytics/consumption",
-        element: <AnalyticsConsumptionPage />,
-      },
       {
         path: "automations",
         element: <AnalyticsAutomationsPage />,

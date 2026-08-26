@@ -43,6 +43,7 @@ export function PokeWorkspacePage({ children }: PokeLayoutProps) {
 
   const fullAuthContext: AuthContextValue = {
     ...authContext,
+    canViewWorkspaceConsumptionAnalytics: true,
     featureFlags: [],
     vizUrl: "",
     providersHealth: null,

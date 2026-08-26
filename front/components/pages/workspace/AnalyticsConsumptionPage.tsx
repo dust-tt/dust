@@ -28,7 +28,7 @@ import {
   consumptionPeriodKey,
   DEFAULT_CONSUMPTION_PERIOD,
 } from "@app/lib/analytics/consumption_period";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import type { TrackingExtra } from "@app/lib/tracking";
 import {
@@ -144,6 +144,7 @@ function ChartFallback({ controlsInCard = false }: ChartFallbackProps) {
 
 export function AnalyticsConsumptionPage() {
   const owner = useWorkspace();
+  const { isManager } = useAuth();
   const state = useAnalyticsConsumptionState(useAnalyticsViewState());
   const filter = useResolvedUsageFilter({
     workspaceId: owner.sId,
@@ -161,7 +162,12 @@ export function AnalyticsConsumptionPage() {
   }, [owner.sId]);
 
   return (
-    <AnalyticsConsumptionContent owner={owner} state={{ ...state, filter }} />
+    <AnalyticsConsumptionContent
+      owner={owner}
+      showExport={isManager}
+      state={{ ...state, filter }}
+      usageHref={isManager ? `/w/${owner.sId}/usage` : null}
+    />
   );
 }
 
@@ -174,7 +180,7 @@ interface AnalyticsConsumptionContentProps {
   showOverviewError?: boolean;
   state: AnalyticsConsumptionState;
   title?: string;
-  usageHref?: string;
+  usageHref?: string | null;
   usageLinkLabel?: string;
 }
 

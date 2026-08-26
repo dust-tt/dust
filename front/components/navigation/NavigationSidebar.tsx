@@ -5,7 +5,7 @@ import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { SidebarUserMenu } from "@app/components/navigation/SidebarUserMenu";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
@@ -33,6 +33,7 @@ import React, { useCallback, useContext, useMemo } from "react";
 
 function getAdminSectionHref(
   owner: WorkspaceType,
+  canViewWorkspaceConsumptionAnalytics: boolean,
   hasPermission: (
     verb: GrantVerb,
     resourceType: ConcreteResourceType
@@ -46,6 +47,9 @@ function getAdminSectionHref(
   }
   if (hasPermission("admin", "security")) {
     return `/w/${owner.sId}/identity-and-provisioning`;
+  }
+  if (canViewWorkspaceConsumptionAnalytics) {
+    return `/w/${owner.sId}/analytics/consumption`;
   }
   return null;
 }
@@ -83,9 +87,14 @@ export const NavigationSidebar = React.forwardRef<
   }, [router.isReady, router.pathname]);
 
   const { hasFeature } = useFeatureFlags();
+  const { canViewWorkspaceConsumptionAnalytics } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
 
-  const adminSectionHref = getAdminSectionHref(owner, hasPermission);
+  const adminSectionHref = getAdminSectionHref(
+    owner,
+    canViewWorkspaceConsumptionAnalytics,
+    hasPermission
+  );
 
   const showAdminSection = adminSectionHref !== null;
 

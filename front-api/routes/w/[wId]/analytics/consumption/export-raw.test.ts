@@ -1,4 +1,5 @@
 import { buildConsumptionExportGcsPrefix } from "@app/temporal/analytics_queue/activities/consumption_export";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -230,8 +231,9 @@ describe("POST /api/w/:wId/analytics/consumption/export-raw", () => {
     expect(startWorkflowMock).not.toHaveBeenCalled();
   });
 
-  it("is refused to non-managers", async () => {
-    const { workspace } = await setupTest({ role: "user" });
+  it("is refused to agent editors who are not managers", async () => {
+    const { auth, workspace } = await setupTest({ role: "user" });
+    await AgentConfigurationFactory.createTestAgent(auth);
 
     const response = await postExportRawRequest(workspace.sId, {});
 

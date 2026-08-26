@@ -252,6 +252,7 @@ export const subNavigationAdmin = ({
   featureFlags,
   subscription,
   hasPermission,
+  canViewWorkspaceConsumptionAnalytics,
 }: {
   owner: WorkspaceType;
   currentRoute: string;
@@ -261,15 +262,21 @@ export const subNavigationAdmin = ({
     verb: GrantVerb,
     resourceType: ConcreteResourceType
   ) => boolean;
+  canViewWorkspaceConsumptionAnalytics: boolean;
 }): SidebarNavigation[] => {
   const nav: SidebarNavigation[] = [];
 
   const canAdminBilling = hasPermission("admin", "billing");
   const canAdminSecurity = hasPermission("admin", "security");
 
-  // Admins and managers see the admin sidebar; builders and members do
-  // not. Each item is then individually enabled/disabled based on permission.
-  if (!isManager(owner) && !canAdminBilling && !canAdminSecurity) {
+  // Show the admin sidebar to managers and members who can access one of its
+  // scoped sections. Each item is then individually enabled/disabled.
+  if (
+    !isManager(owner) &&
+    !canAdminBilling &&
+    !canAdminSecurity &&
+    !canViewWorkspaceConsumptionAnalytics
+  ) {
     return nav;
   }
 
@@ -346,7 +353,7 @@ export const subNavigationAdmin = ({
         icon: BarChart01,
         href: `/w/${owner.sId}/analytics/consumption`,
         current: isCurrent("analytics"),
-        disabled: !hasManagerRole,
+        disabled: !hasManagerRole && !canViewWorkspaceConsumptionAnalytics,
       },
       isCreditPricedPlan(subscription.plan)
         ? {

@@ -108,4 +108,33 @@ describe("ConsumptionSummary", () => {
     expect(screen.queryByText("Active Users")).not.toBeInTheDocument();
     expect(screen.queryByText("Total cost")).not.toBeInTheDocument();
   });
+
+  it("hides the Usage management link when no destination is provided", () => {
+    mockUseConsumptionOverview.mockReturnValue({
+      overview: {
+        ...overview,
+        creditUsage: {
+          capCredits: 1_000,
+          status: {
+            usedPercentage: 10,
+            resetAt: "2026-09-01T00:00:00.000Z",
+            target: "on_target",
+          },
+        },
+      },
+      isOverviewLoading: false,
+      isOverviewError: undefined,
+    });
+
+    render(
+      <ConsumptionSummary
+        workspaceId="workspace-id"
+        period={period}
+        usageHref={null}
+      />
+    );
+
+    expect(screen.getByText("On target")).toBeInTheDocument();
+    expect(screen.queryByText("Manage in Usage")).not.toBeInTheDocument();
+  });
 });
