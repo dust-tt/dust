@@ -22,6 +22,7 @@ import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
+import { v4 as uuidv4 } from "uuid";
 import { getQueueForUserMessageOrigin, getQueueName } from "./config";
 import {
   agentLoopWorkflow,
@@ -108,18 +109,28 @@ export async function launchAgentLoopWorkflow({
     }
   }
 
+  const executionArgs: AgentLoopArgs = {
+    ...agentLoopArgs,
+    runKey: uuidv4(),
+    rootAgentMessageId:
+      agentLoopArgs.rootAgentMessageId ??
+      (await ConversationResource.findRootAgentMessageId(auth, {
+        agentMessageId,
+      })),
+  };
+
   try {
     await client.workflow.start(agentLoopWorkflow, {
       args: [
         {
           authType,
-          agentLoopArgs,
+          agentLoopArgs: executionArgs,
           startStep,
           initialStartTime,
         },
       ],
       taskQueue: await getTaskQueueForRun(auth, {
-        userMessageOrigin: agentLoopArgs.userMessageOrigin,
+        userMessageOrigin: executionArgs.userMessageOrigin,
         conversationId,
       }),
       workflowId,
