@@ -14,6 +14,8 @@ import type {
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { z } from "zod";
 
 type RegularMessageNode = {
   kind: "message";
@@ -25,6 +27,7 @@ type ToolResultNode = {
   message: Extract<MessageWithTokens, { role: "function" }>;
   tokenSavings: number;
   pruned: boolean;
+  phase: "pending" | "eligible" | "consumed";
 };
 
 type PendingToolResult = {
@@ -45,6 +48,241 @@ type WindowInteraction = {
   messages: WindowMessageNode[];
 };
 
+export const CONVERSATION_WINDOW_STATE_SNAPSHOT_VERSION = 1;
+
+const modelContentSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("text"), text: z.string() }).strict(),
+  z
+    .object({
+      type: z.literal("image_url"),
+      image_url: z.object({ url: z.string() }).strict(),
+    })
+    .strict(),
+]);
+
+const functionCallSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    arguments: z.string(),
+    namespace: z.string().optional(),
+    metadata: z
+      .object({ thoughtSignature: z.string().optional() })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
+const assistantContentSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal("text_content"),
+      value: z.string(),
+      metadata: z
+        .object({ phase: z.enum(["commentary", "final_answer"]).optional() })
+        .strict()
+        .optional(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("reasoning"),
+      value: z
+        .object({
+          reasoning: z.string().optional(),
+          metadata: z.string(),
+          tokens: z.number().int().nonnegative(),
+          provider: z.string(),
+          region: z.string().nullable().optional(),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({ type: z.literal("function_call"), value: functionCallSchema })
+    .strict(),
+  z
+    .object({
+      type: z.literal("provider_passthrough"),
+      value: z.object({ provider: z.string(), block: z.unknown() }).strict(),
+    })
+    .strict(),
+]);
+
+const tokenCountSchema = z.number().int().nonnegative();
+const persistedMessageBaseSchema = z.discriminatedUnion("role", [
+  z
+    .object({
+      role: z.literal("user"),
+      name: z.string(),
+      content: z.array(modelContentSchema),
+      tokenCount: tokenCountSchema,
+    })
+    .strict(),
+  z
+    .object({
+      role: z.literal("content_fragment"),
+      name: z.string(),
+      content: z.array(modelContentSchema),
+      tokenCount: tokenCountSchema,
+    })
+    .strict(),
+  z
+    .object({
+      role: z.literal("assistant"),
+      name: z.string().optional(),
+      content: z.string().optional(),
+      function_calls: z.array(functionCallSchema).optional(),
+      contents: z.array(assistantContentSchema),
+      tokenCount: tokenCountSchema,
+    })
+    .strict(),
+  z
+    .object({
+      role: z.literal("function"),
+      name: z.string(),
+      function_call_id: z.string(),
+      content: z.union([z.string(), z.array(modelContentSchema)]),
+      tokenCount: tokenCountSchema,
+    })
+    .strict(),
+  z
+    .object({
+      role: z.literal("compaction"),
+      content: z.string(),
+      tokenCount: tokenCountSchema,
+    })
+    .strict(),
+]);
+
+const persistedMessageSchema = persistedMessageBaseSchema.superRefine(
+  (message, context) => {
+    if (
+      message.role === "assistant" &&
+      message.name === undefined &&
+      message.function_calls === undefined
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Assistant message requires a name or function calls",
+      });
+    }
+  }
+);
+
+const messageWithTokensSchema = z.custom<MessageWithTokens>(
+  (value) => persistedMessageSchema.safeParse(value).success,
+  "Invalid checkpointed model message"
+);
+const windowMessageNodeSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("message"),
+      message: messageWithTokensSchema,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("tool_result"),
+      message: z.custom<Extract<MessageWithTokens, { role: "function" }>>(
+        (value) => {
+          const result = persistedMessageSchema.safeParse(value);
+          return result.success && result.data.role === "function";
+        },
+        "Invalid checkpointed tool result"
+      ),
+      tokenSavings: z.number().int().nonnegative(),
+      pruned: z.boolean(),
+      phase: z.enum(["pending", "eligible", "consumed"]),
+    })
+    .strict(),
+]);
+
+export const ConversationWindowStateSnapshotSchema = z
+  .object({
+    version: z.literal(CONVERSATION_WINDOW_STATE_SNAPSHOT_VERSION),
+    interactions: z.array(
+      z.object({ messages: z.array(windowMessageNodeSchema) }).strict()
+    ),
+    retainedTokens: z.number().int().nonnegative(),
+    totalTokensBefore: z.number().int().nonnegative(),
+    prunedTokens: z.number().int().nonnegative(),
+  })
+  .strict()
+  .superRefine((snapshot, context) => {
+    let retainedTokens = 0;
+    let prunedTokens = 0;
+
+    for (const [
+      interactionIndex,
+      interaction,
+    ] of snapshot.interactions.entries()) {
+      for (const [messageIndex, node] of interaction.messages.entries()) {
+        retainedTokens += node.message.tokenCount;
+        switch (node.kind) {
+          case "message":
+            break;
+          case "tool_result": {
+            const path = [
+              "interactions",
+              interactionIndex,
+              "messages",
+              messageIndex,
+            ];
+            if (node.pruned) {
+              prunedTokens += node.tokenSavings;
+              if (node.phase !== "consumed" || node.tokenSavings === 0) {
+                context.addIssue({
+                  code: "custom",
+                  path,
+                  message: "Pruned tool result has an inconsistent phase",
+                });
+              }
+            } else if (
+              (node.phase === "eligible" && node.tokenSavings === 0) ||
+              (node.phase === "consumed" && node.tokenSavings !== 0)
+            ) {
+              context.addIssue({
+                code: "custom",
+                path,
+                message: "Unpruned tool result has an inconsistent phase",
+              });
+            }
+            break;
+          }
+          default:
+            assertNever(node);
+        }
+      }
+    }
+
+    if (retainedTokens !== snapshot.retainedTokens) {
+      context.addIssue({
+        code: "custom",
+        message: "Checkpoint retained token count is inconsistent",
+      });
+    }
+    if (
+      snapshot.retainedTokens + snapshot.prunedTokens !==
+      snapshot.totalTokensBefore
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Checkpoint total token count is inconsistent",
+      });
+    }
+    if (prunedTokens !== snapshot.prunedTokens) {
+      context.addIssue({
+        code: "custom",
+        message: "Checkpoint pruned token count is inconsistent",
+      });
+    }
+  });
+
+export type ConversationWindowStateSnapshot = z.infer<
+  typeof ConversationWindowStateSnapshotSchema
+>;
+
 export const MINIMUM_PRUNING_BATCH_TOKENS = 5_000;
 
 function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
@@ -54,6 +292,7 @@ function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
       message,
       tokenSavings: getToolResultTokenSavings(message),
       pruned: false,
+      phase: "pending",
     };
   }
 
@@ -101,28 +340,104 @@ export class CheckpointedConversationWindowState {
     return new CheckpointedConversationWindowState(options);
   }
 
+  static restore(
+    snapshot: ConversationWindowStateSnapshot,
+    options: {
+      pruningBudget: number;
+      budgetForInteractions: number;
+      logDetails: Record<string, unknown>;
+    }
+  ): CheckpointedConversationWindowState {
+    const state = new CheckpointedConversationWindowState(options);
+    state.interactions = structuredClone(snapshot.interactions);
+    state.retainedTokens = snapshot.retainedTokens;
+    state.totalTokensBefore = snapshot.totalTokensBefore;
+    state.prunedTokens = snapshot.prunedTokens;
+
+    for (const interaction of state.interactions) {
+      for (const node of interaction.messages) {
+        switch (node.kind) {
+          case "message":
+            break;
+
+          case "tool_result":
+            switch (node.phase) {
+              case "pending":
+                state.pendingToolResults.push({ phase: "pending", node });
+                break;
+
+              case "eligible":
+                state.eligibleToolResults.push({ phase: "eligible", node });
+                state.eligibleToolResultTokenSavings += node.tokenSavings;
+                break;
+
+              case "consumed":
+                break;
+
+              default:
+                assertNever(node.phase);
+            }
+            break;
+          default:
+            assertNever(node);
+        }
+      }
+    }
+
+    return state;
+  }
+
+  snapshot(): ConversationWindowStateSnapshot {
+    return {
+      version: CONVERSATION_WINDOW_STATE_SNAPSHOT_VERSION,
+      interactions: structuredClone(this.interactions),
+      retainedTokens: this.retainedTokens,
+      totalTokensBefore: this.totalTokensBefore,
+      prunedTokens: this.prunedTokens,
+    };
+  }
+
   append(interaction: InteractionWithTokens): void {
     if (interaction.messages.length === 0) {
       return;
     }
 
-    const windowInteraction: WindowInteraction = { messages: [] };
-    this.interactions.push(windowInteraction);
+    const messages = this.appendMessages(interaction.messages);
+    this.interactions.push({ messages });
+  }
 
-    for (
-      let messageIndex = 0;
-      messageIndex < interaction.messages.length;
-      messageIndex++
-    ) {
-      const message = interaction.messages[messageIndex];
-      const nextMessage = interaction.messages[messageIndex + 1];
+  appendToLatestInteraction(interaction: InteractionWithTokens): void {
+    if (interaction.messages.length === 0) {
+      return;
+    }
+
+    const latestInteractionIndex = this.interactions.length - 1;
+    const latestInteraction = this.interactions[latestInteractionIndex];
+    if (!latestInteraction) {
+      this.append(interaction);
+      return;
+    }
+
+    const messages = this.appendMessages(interaction.messages);
+    this.interactions[latestInteractionIndex] = {
+      messages: [...latestInteraction.messages, ...messages],
+    };
+  }
+
+  private appendMessages(
+    messages: InteractionWithTokens["messages"]
+  ): WindowMessageNode[] {
+    const nodes: WindowMessageNode[] = [];
+    for (let messageIndex = 0; messageIndex < messages.length; messageIndex++) {
+      const message = messages[messageIndex];
+      const nextMessage = messages[messageIndex + 1];
 
       if (message.role === "assistant") {
         this.makePendingToolResultsEligible();
       }
 
       const node = makeWindowMessageNode(message);
-      windowInteraction.messages.push(node);
+      nodes.push(node);
       this.retainedTokens += message.tokenCount;
       this.totalTokensBefore += message.tokenCount;
 
@@ -134,6 +449,8 @@ export class CheckpointedConversationWindowState {
         this.applyBufferedPruning();
       }
     }
+
+    return nodes;
   }
 
   renderedInteractions(): InteractionWithTokens[] {
@@ -201,8 +518,11 @@ export class CheckpointedConversationWindowState {
   private makePendingToolResultsEligible(): void {
     for (const { node } of this.pendingToolResults) {
       if (node.tokenSavings > 0) {
+        node.phase = "eligible";
         this.eligibleToolResults.push({ phase: "eligible", node });
         this.eligibleToolResultTokenSavings += node.tokenSavings;
+      } else {
+        node.phase = "consumed";
       }
     }
 
@@ -239,6 +559,7 @@ export class CheckpointedConversationWindowState {
 
       node.message = pruneToolResultMessage(node.message);
       node.pruned = true;
+      node.phase = "consumed";
       this.retainedTokens -= node.tokenSavings;
       this.prunedTokens += node.tokenSavings;
       this.eligibleToolResultTokenSavings -= node.tokenSavings;
