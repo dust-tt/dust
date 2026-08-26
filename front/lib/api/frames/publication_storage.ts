@@ -53,7 +53,7 @@ function getFrameIdentity(
     return new Err(
       new FramePublicationError(
         "invalid_frame",
-        "Frame publication storage requires a Frames v2 FileResource from the current workspace."
+        "Frame publication access requires a Frames v2 FileResource from the current workspace."
       )
     );
   }
