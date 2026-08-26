@@ -36,6 +36,8 @@ export type BilledRunUsage = RunUsageWithRunKeyType & {
 export type ConsumptionAnalyticsMessageMetadata = {
   agent: AgentMessageConsumptionAnalyticsAgent;
   agentMessageId: string;
+  parentAgentMessageId: string | null;
+  rootAgentMessageId: string;
   apiKeyName: string | null;
   completedAt: Date | null;
   contextOrigin: UserMessageOrigin | null;

@@ -1,7 +1,9 @@
 import { indexAgentMessageConsumptionSnapshot } from "@app/lib/analytics/agent_message_consumption";
+import { billExecution } from "@app/lib/api/assistant/consumption/bill";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_message_consumption_event_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import type { EnabledAgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
@@ -203,11 +205,20 @@ export async function billExecutionActivity(
     timestamp,
   }: BillExecutionArgs
 ): Promise<void> {
-  void authType;
-  void agentMessageModelId;
   void consumptionMode;
-  void rootAgentMessageId;
-  void runKey;
   void status;
   void timestamp;
+  const auth = await Authenticator.fromJSON(authType);
+  const context =
+    await ConversationResource.fetchAgentMessageConsumptionAnalyticsContext(
+      auth,
+      { agentMessageModelId }
+    );
+  assert(context, "Finalized consumption event references a missing message");
+  const agentMessageId = context.agentMessage.agentMessageId;
+  await billExecution(auth, {
+    agentMessageId,
+    rootAgentMessageId,
+    runKey,
+  });
 }

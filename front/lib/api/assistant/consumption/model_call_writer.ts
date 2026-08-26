@@ -6,7 +6,8 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_message_consumption_event_resource";
 import type {
   ConsumptionModelRow,
-  ConsumptionPendingToolRow,
+  ConsumptionToolCallRow,
+  ConsumptionToolResultRow,
 } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -205,13 +206,21 @@ async function recordRunUsageConsumption(
           ]
         : []),
     ];
-    const pendingToolRows: ConsumptionPendingToolRow[] =
+    const toolCallRows: ConsumptionToolCallRow[] =
       consumption.emittedToolCalls.map((toolCall) => ({
         agentMCPActionModelId: toolCall.tool.id,
         runUsageModelId: usage.runUsageModelId,
         outputTokensCount: toolCall.outputTokensCount,
         grossAttributedCreditAmountMicro: toolCall.grossCreditAmountMicro,
         reconciledCreditAmountMicro: toolCall.reconciledCreditAmountMicro,
+      }));
+    const toolResultRows: ConsumptionToolResultRow[] =
+      consumption.consumedToolResults.map((result) => ({
+        agentMCPActionModelId: result.tool.agentMCPActionId,
+        runUsageModelId: usage.runUsageModelId,
+        inputTokensCount: result.inputTokensCount,
+        grossAttributedCreditAmountMicro: result.grossCreditAmountMicro,
+        reconciledCreditAmountMicro: result.reconciledCreditAmountMicro,
       }));
 
     const insertedRows =
@@ -220,24 +229,13 @@ async function recordRunUsageConsumption(
         agentMessageModelId: context.agentMessageModelId,
         runKey: context.runKey,
         modelRows,
-        pendingToolRows,
+        toolCallRows,
+        toolResultRows,
         transaction,
       });
     if (insertedRows.length === 0) {
       return;
     }
-
-    const resultCreditAmountMicroByConsumptionItemId = new Map(
-      consumption.consumedToolResults.map((result) => [
-        result.tool.id,
-        result.reconciledCreditAmountMicro,
-      ])
-    );
-    await AgentMessageConsumptionItemResource.addReconciledCreditAmounts(auth, {
-      creditAmountMicroDeltaByConsumptionItemId:
-        resultCreditAmountMicroByConsumptionItemId,
-      transaction,
-    });
 
     await AgentMessageConsumptionEventResource.append(auth, {
       event: {
@@ -246,12 +244,7 @@ async function recordRunUsageConsumption(
         runKey: context.runKey,
         rootAgentMessageModelId: context.rootAgentMessageId,
         agentMessageModelId: context.agentMessageModelId,
-        consumptionItemIds: [
-          ...new Set([
-            ...insertedRows.map((row) => row.consumptionItemId),
-            ...consumption.consumedToolResults.map((result) => result.tool.id),
-          ]),
-        ],
+        consumptionItemIds: insertedRows.map((row) => row.consumptionItemId),
       },
       transaction,
     });

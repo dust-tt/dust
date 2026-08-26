@@ -249,57 +249,42 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       dustRunId: context.run.dustRunId,
       status: "running",
     });
-    const insertedRows =
-      await AgentMessageConsumptionItemResource.insertConsumptionRows(
-        context.auth,
-        {
-          conversationModelId: context.conversation.id,
-          agentMessageModelId: context.agentMessageModelId,
-          runKey: "stored-reconciliation",
-          modelRows: [
-            {
-              itemType: "input",
-              runUsageModelId: context.runUsageModelId,
-              inputTokensCount: 100,
-              outputTokensCount: null,
-              grossAttributedCreditAmountMicro: 1_200_000,
-              reconciledCreditAmountMicro: 1_000_000,
-            },
-            {
-              itemType: "output",
-              runUsageModelId: context.runUsageModelId,
-              inputTokensCount: null,
-              outputTokensCount: 20,
-              grossAttributedCreditAmountMicro: 500_000,
-              reconciledCreditAmountMicro: 500_000,
-            },
-          ],
-          pendingToolRows: [
-            {
-              agentMCPActionModelId: action.id,
-              runUsageModelId: context.runUsageModelId,
-              outputTokensCount: 2,
-              grossAttributedCreditAmountMicro: 300_000,
-              reconciledCreditAmountMicro: 300_000,
-            },
-          ],
-        }
-      );
-    const toolRow = insertedRows.find(
-      (row) => row.itemKey === `tool-action:${action.id}`
-    );
-    if (!toolRow) {
-      throw new Error("Tool consumption row was not inserted");
-    }
-    await AgentMessageConsumptionItemResource.addReconciledCreditAmounts(
+    await AgentMessageConsumptionItemResource.insertConsumptionRows(
       context.auth,
       {
-        creditAmountMicroDeltaByConsumptionItemId: new Map([
-          [toolRow.consumptionItemId, 200_000],
-        ]),
+        conversationModelId: context.conversation.id,
+        agentMessageModelId: context.agentMessageModelId,
+        runKey: "stored-reconciliation",
+        modelRows: [
+          {
+            itemType: "input",
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: 100,
+            outputTokensCount: null,
+            grossAttributedCreditAmountMicro: 1_200_000,
+            reconciledCreditAmountMicro: 1_000_000,
+          },
+          {
+            itemType: "output",
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: null,
+            outputTokensCount: 20,
+            grossAttributedCreditAmountMicro: 500_000,
+            reconciledCreditAmountMicro: 500_000,
+          },
+        ],
+        toolCallRows: [
+          {
+            agentMCPActionModelId: action.id,
+            runUsageModelId: context.runUsageModelId,
+            outputTokensCount: 2,
+            grossAttributedCreditAmountMicro: 300_000,
+            reconciledCreditAmountMicro: 500_000,
+          },
+        ],
+        toolResultRows: [],
       }
     );
-
     const input = await loadConsumptionAnalyticsInput(context.auth, {
       agentMessageModelId: context.agentMessageModelId,
     });
@@ -328,6 +313,123 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     expect(
       result.value.find((document) => document.consumption_type === "llm")
     ).toMatchObject({ credit_micro: 1_500_000 });
+  });
+
+  it("groups immutable tool postings into one stable tool document", async () => {
+    const context = await setupSettledMessage();
+    const { action } = await AgentMCPActionFactory.create(context.auth, {
+      workspace: context.workspace,
+      conversationModelId: context.conversation.id,
+      agentMessageModelId: context.agentMessageModelId,
+      dustRunId: context.run.dustRunId,
+      status: "succeeded",
+    });
+    await AgentMessageConsumptionItemResource.insertConsumptionRows(
+      context.auth,
+      {
+        conversationModelId: context.conversation.id,
+        agentMessageModelId: context.agentMessageModelId,
+        runKey: "execution-x",
+        modelRows: [
+          {
+            itemType: "input",
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: 100,
+            outputTokensCount: null,
+            grossAttributedCreditAmountMicro: 1_000_000,
+            reconciledCreditAmountMicro: 1_000_000,
+          },
+          {
+            itemType: "output",
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: null,
+            outputTokensCount: 18,
+            grossAttributedCreditAmountMicro: 700_000,
+            reconciledCreditAmountMicro: 700_000,
+          },
+        ],
+        toolCallRows: [
+          {
+            agentMCPActionModelId: action.id,
+            runUsageModelId: context.runUsageModelId,
+            outputTokensCount: 2,
+            grossAttributedCreditAmountMicro: 100_000,
+            reconciledCreditAmountMicro: 100_000,
+          },
+        ],
+        toolResultRows: [
+          {
+            agentMCPActionModelId: action.id,
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: 3,
+            grossAttributedCreditAmountMicro: 200_000,
+            reconciledCreditAmountMicro: 200_000,
+          },
+        ],
+      }
+    );
+    await AgentMessageConsumptionItemResource.insertConsumptionToolDirectRow(
+      context.auth,
+      {
+        agentMCPActionModelId: action.id,
+        agentMessageModelId: context.agentMessageModelId,
+        chargeAmountMicro: 3_000_000,
+        conversationModelId: context.conversation.id,
+        inputTokensCount: 3,
+        runKey: "execution-x",
+        runUsageModelId: context.runUsageModelId,
+      }
+    );
+    await AgentMessageConsumptionItemResource.insertConsumptionToolAdjustmentRows(
+      context.auth,
+      {
+        adjustments: [
+          {
+            agentMCPActionModelId: action.id,
+            agentMessageModelId: context.agentMessageModelId,
+            amountMicro: -1_000_000,
+            conversationModelId: context.conversation.id,
+            runKey: "execution-x",
+            runUsageModelId: context.runUsageModelId,
+          },
+        ],
+      }
+    );
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      {
+        agentMessageModelId: context.agentMessageModelId,
+        source: "consumption",
+      }
+    );
+    if (!input) {
+      throw new Error("Consumption analytics input was not loaded");
+    }
+    const documents = buildAgentMessageConsumptionAnalyticsDocuments(input);
+    if (documents.isErr()) {
+      throw new Error(
+        `Consumption documents were not built: ${documents.error.code}`
+      );
+    }
+    const toolDocuments = documents.value.filter(
+      (document) => document.consumption_type === "tool"
+    );
+
+    expect(toolDocuments).toHaveLength(1);
+    expect(toolDocuments[0]).toMatchObject({
+      attribution_version: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+      consumption_key: `tool-action:${action.id}`,
+      credit_micro: 2_300_000,
+      gross_credit_micro: {
+        direct: 2_000_000,
+        output: 100_000,
+        result_footprint: 200_000,
+        total: 2_300_000,
+      },
+      tokens: { output: 2, result_footprint: 3 },
+      tool: { action_id: action.sId },
+    });
   });
 
   it("projects one additive LLM document and one tool document", async () => {
@@ -451,6 +553,13 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
 
     expect(llmDocument?.agent).toMatchObject(expectedAncestry);
     expect(toolDocument?.agent).toMatchObject(expectedAncestry);
+    for (const document of documents) {
+      expect(document).toMatchObject({
+        agent_message_id: context.agentMessage.sId,
+        parent_agent_message_id: parent.agentMessage.sId,
+        root_agent_message_id: parent.agentMessage.sId,
+      });
+    }
   });
 
   it("keeps the parent server on a tool called through the sandbox", async () => {
