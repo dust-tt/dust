@@ -5,6 +5,7 @@ export type ConversationPruningStats = {
   totalTokensAfterPruning: number;
   pruningBudget: number;
   budgetForInteractions: number;
+  prunedImageCount: number;
 };
 
 export type ConversationWindowResult = {

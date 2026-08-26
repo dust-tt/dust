@@ -10,7 +10,10 @@ import type {
   InteractionWithTokens,
   MessageWithTokens,
 } from "@app/lib/api/assistant/conversation_rendering/pruning";
-import { sumInteractionTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
+import {
+  IMAGE_CONTENT_TOKEN_COUNT,
+  sumInteractionTokens,
+} from "@app/lib/api/assistant/conversation_rendering/pruning";
 import type { ConversationWindowResult } from "@app/lib/api/assistant/conversation_rendering/window_types";
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
@@ -36,8 +39,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-// Fixed number of tokens assumed for image contents
-const IMAGE_CONTENT_TOKEN_COUNT = 3100;
 export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
 export const TOKENS_MARGIN = 1024;
 
