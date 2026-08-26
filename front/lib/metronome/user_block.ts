@@ -28,7 +28,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
   getTimeframeSecondsFromLiteral,
-  getWeightedRateLimiterCount,
+  getWeightedRateLimiterUsage,
 } from "@app/lib/utils/rate_limiter";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -59,12 +59,14 @@ export type FairUseAwuCreditsStatus = {
   limit: number;
   timeframe: MaxAwuCreditsTimeframeType;
   count: number;
+  nextResetAt?: string | null;
 };
 
 const DEFAULT_FAIR_USE_AWU_CREDITS_STATUS: FairUseAwuCreditsStatus = {
   limit: -1,
   timeframe: "lifetime",
   count: 0,
+  nextResetAt: null,
 };
 
 export type GetWorkspaceUsageStatusResponseBody = {
@@ -251,12 +253,14 @@ export async function getFairUseAwuCreditsStatus({
       limit,
       timeframe,
       count: 0,
+      nextResetAt: null,
     };
   }
 
-  const result = await getWeightedRateLimiterCount({
+  const timeframeSeconds = getTimeframeSecondsFromLiteral(timeframe);
+  const result = await getWeightedRateLimiterUsage({
     key: makeFairUseAwuCreditsRateLimitKeyForUser(workspace, user, timeframe),
-    timeframeSeconds: getTimeframeSecondsFromLiteral(timeframe),
+    timeframeSeconds,
   });
 
   if (result.isErr()) {
@@ -273,6 +277,7 @@ export async function getFairUseAwuCreditsStatus({
       limit,
       timeframe,
       count: 0,
+      nextResetAt: null,
     };
   }
 
@@ -281,7 +286,13 @@ export async function getFairUseAwuCreditsStatus({
   return {
     limit,
     timeframe,
-    count: Math.min(microCreditsToCredits(result.value), limit),
+    count: Math.min(microCreditsToCredits(result.value.count), limit),
+    nextResetAt:
+      result.value.oldestTimestampMs === null
+        ? null
+        : new Date(
+            result.value.oldestTimestampMs + timeframeSeconds * 1000
+          ).toISOString(),
   };
 }
 

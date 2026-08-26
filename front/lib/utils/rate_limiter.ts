@@ -251,22 +251,56 @@ export async function getRateLimiterCount({
   }
 }
 
-/**
- * Reads the weighted total (in microCredits) of the amount-carrying entries
- * written by `addRateLimiterCount`. Each entry is `<microCredits>:<uuid>`, so
- * unlike `getRateLimiterCount` (which counts rows), this sums the amount prefix
- * of every entry still inside the rolling window. The scan + sum runs
- * server-side in Lua so only the total crosses the wire (not every member), and
- * the window is derived from Redis server time to match the writer. Malformed
- * members (no separator or a non-numeric prefix) are skipped.
- */
-export async function getWeightedRateLimiterCount({
+// TODO: @jd 20260825 - Remove this once all legacy plans are gone
+// (or if we get rid of the premium limit)
+export async function getRateLimiterTimestamps({
   key,
   timeframeSeconds,
 }: {
   key: string;
   timeframeSeconds: number;
-}): Promise<Result<number, Error>> {
+}): Promise<Result<number[], Error>> {
+  if (!Number.isInteger(timeframeSeconds) || timeframeSeconds <= 0) {
+    return new Err(new Error("timeframeSeconds must be a positive integer."));
+  }
+
+  try {
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    const redisKey = makeRateLimiterKey(key);
+    const trimBeforeMs = Date.now() - timeframeSeconds * 1000;
+    const entries = await redis.zRangeWithScores(
+      redisKey,
+      trimBeforeMs,
+      "+inf",
+      { BY: "SCORE" }
+    );
+
+    return new Ok(entries.map(({ score }) => score));
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+export type WeightedRateLimiterUsage = {
+  count: number;
+  oldestTimestampMs: number | null;
+};
+
+/**
+ * Reads the weighted total (in microCredits) and oldest timestamp of the
+ * amount-carrying entries written by `addRateLimiterCount`. Each entry is
+ * `<microCredits>:<uuid>`, so unlike `getRateLimiterCount` (which counts rows),
+ * this sums the amount prefix of every entry still inside the rolling window.
+ * The scan runs server-side in Lua so only the aggregate and oldest timestamp
+ * cross the wire. Malformed members are skipped from the total.
+ */
+export async function getWeightedRateLimiterUsage({
+  key,
+  timeframeSeconds,
+}: {
+  key: string;
+  timeframeSeconds: number;
+}): Promise<Result<WeightedRateLimiterUsage, Error>> {
   if (!Number.isInteger(timeframeSeconds) || timeframeSeconds <= 0) {
     return new Err(new Error("timeframeSeconds must be a positive integer."));
   }
@@ -285,31 +319,54 @@ export async function getWeightedRateLimiterCount({
 
     -- Sum the '<microCredits>:<uuid>' amount prefixes of the entries still
     -- inside the window, server-side, so only the total crosses the wire.
-    local members = redis.call('ZRANGEBYSCORE', key, trim_before, '+inf')
+    local entries = redis.call('ZRANGEBYSCORE', key, trim_before, '+inf', 'WITHSCORES')
     local total = 0
-    for i = 1, #members do
-      local sep = string.find(members[i], ':', 1, true)
+    local oldest_timestamp_ms = -1
+    for i = 1, #entries, 2 do
+      local member = entries[i]
+      local score = tonumber(entries[i + 1])
+      local sep = string.find(member, ':', 1, true)
       if sep then
-        local amount = tonumber(string.sub(members[i], 1, sep - 1))
+        local amount = tonumber(string.sub(member, 1, sep - 1))
         if amount then
+          if oldest_timestamp_ms == -1 and score then
+            oldest_timestamp_ms = score
+          end
           total = total + amount
         end
       end
     end
-    return total
+    return { total, oldest_timestamp_ms }
   `;
 
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
-    const totalMicroCredits = (await redis.eval(luaScript, {
+    const [count, oldestTimestampMs] = (await redis.eval(luaScript, {
       keys: [redisKey],
       arguments: [windowMs.toString()],
-    })) as number;
+    })) as [number, number];
 
-    return new Ok(totalMicroCredits);
+    return new Ok({
+      count,
+      oldestTimestampMs: oldestTimestampMs === -1 ? null : oldestTimestampMs,
+    });
   } catch (err) {
     return new Err(normalizeError(err));
   }
+}
+
+export async function getWeightedRateLimiterCount({
+  key,
+  timeframeSeconds,
+}: {
+  key: string;
+  timeframeSeconds: number;
+}): Promise<Result<number, Error>> {
+  const result = await getWeightedRateLimiterUsage({ key, timeframeSeconds });
+  if (result.isErr()) {
+    return result;
+  }
+  return new Ok(result.value.count);
 }
 
 export function getTimeframeSecondsFromLiteral(

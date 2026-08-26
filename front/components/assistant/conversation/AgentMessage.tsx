@@ -56,7 +56,7 @@ import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { premiumModelUsageAnalyticsHref } from "@app/lib/analytics/view_params";
+import { OpenUserAnalyticsEvent } from "@app/lib/analytics/events";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -175,15 +175,7 @@ function MessageInfoChip({ children, label, title }: MessageInfoChipProps) {
   );
 }
 
-interface PremiumDowngradeChipProps {
-  workspaceId: string;
-  userId: string;
-}
-
-function PremiumDowngradeChip({
-  workspaceId,
-  userId,
-}: PremiumDowngradeChipProps) {
+function PremiumDowngradeChip() {
   return (
     <MessageInfoChip label="Auto-switched to Standard">
       <p>
@@ -192,8 +184,9 @@ function PremiumDowngradeChip({
       </p>
       <p>
         <LinkWrapper
-          href={premiumModelUsageAnalyticsHref(workspaceId, userId)}
+          href="#personal-usage"
           className="underline hover:text-foreground"
+          onClick={() => window.dispatchEvent(new OpenUserAnalyticsEvent())}
         >
           View your Premium model usage in Analytics
         </LinkWrapper>
@@ -1167,10 +1160,7 @@ export function AgentMessage({
             timestamp={timestamp}
             infoChip={
               isFairUseDowngrade ? (
-                <PremiumDowngradeChip
-                  workspaceId={owner.sId}
-                  userId={user.sId}
-                />
+                <PremiumDowngradeChip />
               ) : agentMessage.prunedContext ? (
                 <PrunedContextChip />
               ) : undefined

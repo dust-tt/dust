@@ -40,7 +40,9 @@ let runOnRedis: RedisModule["runOnRedis"];
 let addRateLimiterCount: RateLimiterModule["addRateLimiterCount"];
 let expireRateLimiterKey: RateLimiterModule["expireRateLimiterKey"];
 let getRateLimiterCount: RateLimiterModule["getRateLimiterCount"];
+let getRateLimiterTimestamps: RateLimiterModule["getRateLimiterTimestamps"];
 let getWeightedRateLimiterCount: RateLimiterModule["getWeightedRateLimiterCount"];
+let getWeightedRateLimiterUsage: RateLimiterModule["getWeightedRateLimiterUsage"];
 let rateLimiter: RateLimiterModule["rateLimiter"];
 let RATE_LIMITER_PREFIX: RateLimiterModule["RATE_LIMITER_PREFIX"];
 
@@ -59,6 +61,7 @@ describe("rateLimiter", () => {
     addRateLimiterCount = rateLimiterModule.addRateLimiterCount;
     expireRateLimiterKey = rateLimiterModule.expireRateLimiterKey;
     getRateLimiterCount = rateLimiterModule.getRateLimiterCount;
+    getRateLimiterTimestamps = rateLimiterModule.getRateLimiterTimestamps;
     RATE_LIMITER_PREFIX = rateLimiterModule.RATE_LIMITER_PREFIX;
     rateLimiter = rateLimiterModule.rateLimiter;
   });
@@ -222,6 +225,31 @@ describe("rateLimiter", () => {
       expect(count.value).toBe(1);
     }
   });
+
+  it("returns timestamps inside the rolling window", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    await expireTestKey(key);
+    const redisKey = `${RATE_LIMITER_PREFIX}:${key}`;
+    const nowMs = Date.now();
+    const recentTimestampMs = nowMs - 30_000;
+
+    await runOnRedis({ origin: "rate_limiter" }, async (redis) =>
+      redis.zAdd(redisKey, [
+        { score: nowMs - 90_000, value: crypto.randomUUID() },
+        { score: recentTimestampMs, value: crypto.randomUUID() },
+      ])
+    );
+
+    const timestamps = await getRateLimiterTimestamps({
+      key,
+      timeframeSeconds: 60,
+    });
+
+    expect(timestamps.isOk()).toBe(true);
+    if (timestamps.isOk()) {
+      expect(timestamps.value).toEqual([recentTimestampMs]);
+    }
+  });
 });
 
 describe("addRateLimiterCount", () => {
@@ -234,6 +262,7 @@ describe("addRateLimiterCount", () => {
     addRateLimiterCount = rateLimiterModule.addRateLimiterCount;
     expireRateLimiterKey = rateLimiterModule.expireRateLimiterKey;
     getWeightedRateLimiterCount = rateLimiterModule.getWeightedRateLimiterCount;
+    getWeightedRateLimiterUsage = rateLimiterModule.getWeightedRateLimiterUsage;
     RATE_LIMITER_PREFIX = rateLimiterModule.RATE_LIMITER_PREFIX;
   });
 
@@ -327,6 +356,37 @@ describe("addRateLimiterCount", () => {
     expect(count.isOk()).toBe(true);
     if (count.isOk()) {
       expect(count.value).toBe(3_000_000);
+    }
+  });
+
+  it("returns the oldest timestamp still inside the rolling window", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    await expireTestKey(key);
+    const redisKey = `${RATE_LIMITER_PREFIX}:${key}`;
+    const nowMs = Date.now();
+    const oldestTimestampMs = nowMs - 30_000;
+
+    await runOnRedis({ origin: "rate_limiter" }, async (redis) => {
+      await redis.zAdd(redisKey, {
+        score: oldestTimestampMs,
+        value: `2000000:${crypto.randomUUID()}`,
+      });
+      await redis.zAdd(redisKey, {
+        score: nowMs - 10_000,
+        value: `3000000:${crypto.randomUUID()}`,
+      });
+    });
+
+    const usage = await getWeightedRateLimiterUsage({
+      key,
+      timeframeSeconds: 60,
+    });
+    expect(usage.isOk()).toBe(true);
+    if (usage.isOk()) {
+      expect(usage.value).toEqual({
+        count: 5_000_000,
+        oldestTimestampMs,
+      });
     }
   });
 });
