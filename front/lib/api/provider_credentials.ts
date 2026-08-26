@@ -15,6 +15,8 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import assert from "assert";
 import type { z } from "zod";
 
+export type LlmCredentials = LLMCredentialsType;
+
 // Fraction of requests that use BYOK credentials during the transition period.
 const BYOK_TRANSITION_BYOK_KEYS_RATIO = 1; // 100%
 
@@ -95,7 +97,7 @@ export async function getLlmCredentials(
   auth: Authenticator,
   { skipEmbeddingApiKeyRequirement } = {
     skipEmbeddingApiKeyRequirement: false,
-  }
+  },
 ): Promise<LLMCredentialsType> {
   const plan = auth.getNonNullablePlan();
 
@@ -126,7 +128,7 @@ export async function getLlmCredentials(
         .map((cred) => ({
           providerId: cred.providerId,
           content: cred.credentials,
-        }))
+        })),
     );
 
     const shouldUseByokKeys = Math.random() < BYOK_TRANSITION_BYOK_KEYS_RATIO;
@@ -144,13 +146,13 @@ export async function getLlmCredentials(
     providerCredentials.map((cred) => ({
       providerId: cred.providerId,
       content: cred.credentials,
-    }))
+    })),
   );
 
   if (!skipEmbeddingApiKeyRequirement) {
     assert(
       credentials.OPENAI_EMBEDDING_API_KEY,
-      "[BYOK] This action requires OPENAI_EMBEDDING_API_KEY to be configured."
+      "[BYOK] This action requires OPENAI_EMBEDDING_API_KEY to be configured.",
     );
   }
 
@@ -164,7 +166,7 @@ function mapOauthCredentialsToLlmCredentials(
   oauthCredentials: {
     providerId: ByokModelProviderIdType;
     content: z.infer<typeof ApiKeyCredentialContentSchema>;
-  }[]
+  }[],
 ): LLMCredentialsType {
   const result: LLMCredentialsType = {};
 
