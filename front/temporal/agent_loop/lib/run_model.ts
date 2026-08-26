@@ -449,7 +449,6 @@ export async function runModel(
         agentName: agentConfiguration.name,
         model: modelInfo.endpoint.modelConfig,
         reasoningEffort: modelInfo.reasoningEffort,
-        featureFlags,
         agentScope: agentConfiguration.scope,
         modelResolutionMethod: agentMessage.modelResolutionMethod,
       }

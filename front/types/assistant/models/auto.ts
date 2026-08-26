@@ -196,9 +196,6 @@ function makeMetaModelConfig(
     },
     defaultReasoningEffort: "none",
     supportsResponseFormat: false,
-    availableIfOneOf: {
-      featureFlag: "models_picker",
-    },
     tokenizer: { type: "tiktoken", base: "o200k_base" },
     regionalAvailability: {
       "us-central1": true,

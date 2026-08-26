@@ -315,7 +315,6 @@ export function UsagePage() {
     []
   );
   const isWorkspaceAdmin = isAdmin(owner);
-  const modelsPickerEnabled = hasFeature("models_picker") && isWorkspaceAdmin;
   const [membersTab, setMembersTab] = useState<"members" | "requests">(
     "members"
   );
@@ -565,19 +564,19 @@ export function UsagePage() {
 
   const { tiers: modelTiersCatalog } = useModelTiers({
     owner,
-    disabled: !modelsPickerEnabled,
+    disabled: !isWorkspaceAdmin,
   });
   const { users: userAllowedModelTiers } = useUserAllowedModelTiers({
     owner,
-    disabled: !modelsPickerEnabled,
+    disabled: !isWorkspaceAdmin,
   });
   const { groups: groupAllowedModelTiers } = useGroupAllowedModelTiers({
     owner,
-    disabled: !modelsPickerEnabled,
+    disabled: !isWorkspaceAdmin,
   });
   const { maxTierName: workspaceMaxTierName } = useWorkspaceAllowedModelTiers({
     owner,
-    disabled: !modelsPickerEnabled,
+    disabled: !isWorkspaceAdmin,
   });
   const modelTierDefinitionByName = useMemo(
     () => buildModelTierDefinitionByName(modelTiersCatalog),
@@ -1041,7 +1040,7 @@ export function UsagePage() {
       readOnly={isReadOnly}
       seatActionsDisabled={isSubscriptionCancelled}
       showSpendLimit={!isFreePlanWorkspace}
-      showModelTiersColumn={modelsPickerEnabled}
+      showModelTiersColumn={isWorkspaceAdmin}
       userModelTierSelectionByUserId={userModelTierSelectionByUserId}
       userAllowedModelTiersByUserId={userAllowedModelTiersByUserId}
       groupModelTiersByGroupId={groupModelTiersByGroupId}
@@ -1373,7 +1372,7 @@ export function UsagePage() {
                   {membersTab === "members" && (
                     <div className="flex flex-row items-center gap-2">
                       {groupsFilterDropdown}
-                      {modelsPickerEnabled && groupFilter && (
+                      {isWorkspaceAdmin && groupFilter && (
                         <GroupModelTierPickerDropdown
                           owner={owner}
                           groupId={groupFilter}
@@ -1409,7 +1408,7 @@ export function UsagePage() {
             <GroupsUsageTable
               owner={owner}
               readOnly={isReadOnly}
-              showModelTiersColumn={modelsPickerEnabled}
+              showModelTiersColumn={isWorkspaceAdmin}
             />
           </TabsContent>
 
@@ -1427,7 +1426,7 @@ export function UsagePage() {
                   readOnly={isReadOnly}
                   hasPool={hasPool}
                 />
-                {modelsPickerEnabled && (
+                {isWorkspaceAdmin && (
                   <ModelTiersSettingsCard owner={owner} readOnly={isReadOnly} />
                 )}
                 <LockedSection

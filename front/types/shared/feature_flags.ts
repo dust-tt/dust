@@ -296,11 +296,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Whitelabel frames: customize the workspace logo, favicon and OG image shown on shared Frames.",
     stage: "on_demand",
   },
-  models_picker: {
-    description:
-      "Model picker in the conversation input bar: keep Auto (the agent's configured model) or pick a specific model and reasoning effort.",
-    stage: "on_demand",
-  },
   activation_force_nudge: {
     description:
       "Bypass the activated-user check in the activation orchestrator so already-activated users are still nudged",

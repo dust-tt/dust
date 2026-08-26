@@ -21,8 +21,8 @@ Element.prototype.scrollIntoView = vi.fn();
 
 const OPTIONS = [
   {
-    label: "[On demand] models_picker",
-    value: "models_picker",
+    label: "[On demand] workspace_default_agent",
+    value: "workspace_default_agent",
   },
   {
     label: "[Dust only] xai_feature",
@@ -64,10 +64,12 @@ describe("EnumSelect", () => {
     await user.click(screen.getByRole("combobox"));
     await user.type(
       screen.getByPlaceholderText("Feature Flags"),
-      "models picker"
+      "workspace default"
     );
 
-    expect(screen.getByText("[On demand] models_picker")).toBeVisible();
+    expect(
+      screen.getByText("[On demand] workspace_default_agent")
+    ).toBeVisible();
     expect(
       screen.queryByText("[Dust only] xai_feature")
     ).not.toBeInTheDocument();

@@ -430,8 +430,7 @@ const InputBarContainer = ({
   includeAttachKnowledgeRef.current = actions.includes("attachment");
   const { hasFeature } = useFeatureFlags();
   const includePickModelRef = useRef(false);
-  includePickModelRef.current =
-    hasFeature("models_picker") && actions.includes("model-picker");
+  includePickModelRef.current = actions.includes("model-picker");
   const modelSelectionCommitRef = useRef<
     ((selection: Selection) => void) | null
   >(null);

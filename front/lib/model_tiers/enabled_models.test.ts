@@ -52,35 +52,13 @@ describe("withModelSelectability", () => {
     return Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId);
   }
 
-  it("keeps full reasoning efforts when models_picker is disabled", async () => {
+  it("keeps full reasoning efforts when the user has no tier cap", async () => {
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
     );
-
-    const [model] = await withModelSelectability(auth, {
-      models: [CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG],
-    });
-
-    expect(model.isSelectable).toBe(true);
-    expect(model.supportedReasoningEfforts).toEqual(
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.supportedReasoningEfforts
-    );
-    expect(model.defaultReasoningEffort).toBe(
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort
-    );
-  });
-
-  it("keeps full reasoning efforts when models_picker is enabled and user has no tier cap", async () => {
-    const user = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user, { role: "user" });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    await FeatureFlagFactory.basic(auth, "models_picker");
 
     const [model] = await withModelSelectability(auth, {
       models: [CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG],
@@ -96,7 +74,6 @@ describe("withModelSelectability", () => {
   });
 
   it("filters reasoning efforts to those allowed by the user's tier cap", async () => {
-    await FeatureFlagFactory.basic(adminAuth, "models_picker");
     const auth = await userAuthForTierCap("cost_efficient");
 
     const [model] = await withModelSelectability(auth, {
@@ -114,7 +91,6 @@ describe("withModelSelectability", () => {
   });
 
   it("keeps reasoning efforts up to the user's tier cap and drops premium ones", async () => {
-    await FeatureFlagFactory.basic(adminAuth, "models_picker");
     const auth = await userAuthForTierCap("balanced");
 
     const [model] = await withModelSelectability(auth, {
@@ -134,7 +110,6 @@ describe("withModelSelectability", () => {
   });
 
   it("marks frontier-only models as not selectable when capped at balanced", async () => {
-    await FeatureFlagFactory.basic(adminAuth, "models_picker");
     const auth = await userAuthForTierCap("balanced");
 
     const [model] = await withModelSelectability(auth, {
@@ -151,7 +126,6 @@ describe("withModelSelectability", () => {
   });
 
   it("gates each stream on the tier it is named after", async () => {
-    await FeatureFlagFactory.basic(adminAuth, "models_picker");
     const auth = await userAuthForTierCap("balanced");
 
     const models = await withModelSelectability(auth, {
@@ -172,7 +146,6 @@ describe("withModelSelectability", () => {
   });
 
   it("defaults a Basic-capped member to the Basic stream", async () => {
-    await FeatureFlagFactory.basic(adminAuth, "models_picker");
     const auth = await userAuthForTierCap("cost_efficient");
 
     const models = await withModelSelectability(auth, {
@@ -189,8 +162,7 @@ describe("withModelSelectability", () => {
     );
   });
 
-  it("keeps custom (non-tiered) models selectable when models_picker is enabled and the user is tier-capped", async () => {
-    await FeatureFlagFactory.basic(adminAuth, "models_picker");
+  it("keeps custom (non-tiered) models selectable when the user is tier-capped", async () => {
     const auth = await userAuthForTierCap("cost_efficient");
 
     const [model] = await withModelSelectability(auth, {
@@ -270,9 +242,9 @@ describe("resolveStreamModel", () => {
 
     expect(resolved.fromPool).toBe(true);
     expect(resolved.model.modelId).toBe(
-      CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG.modelId
+      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
     );
-    expect(resolved.reasoningEffort).toBe("high");
+    expect(resolved.reasoningEffort).toBe("light");
   });
 
   it("only ever resolves to a candidate declared in the stream", async () => {
