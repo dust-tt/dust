@@ -6,7 +6,7 @@ const PRODUCTION_DUST_API = "https://dust.tt";
 
 // Same for every user/workspace: how much a user can spend in a billing cycle before the agent
 // loop pauses and asks them to confirm they want to keep going.
-const DEFAULT_WORKFLOW_ALERT_THRESHOLD_AWU_CREDITS = 1500;
+const DEFAULT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS = 1500;
 
 // Pluggable base URL resolver (e.g. RegionContext in the SPA).
 let baseUrlResolver: (() => string) | null = null;
@@ -62,12 +62,12 @@ const config = {
     return durationSeconds * 1_000;
   },
 
-  getWorkflowAlertThresholdAwuCredits: (): number => {
+  getSpendCheckpointThresholdAwuCredits: (): number => {
     const value = EnvironmentConfig.getOptionalEnvVariable(
-      "WORKFLOW_ALERT_THRESHOLD_AWU_CREDITS"
+      "SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS"
     );
     if (!value) {
-      return DEFAULT_WORKFLOW_ALERT_THRESHOLD_AWU_CREDITS;
+      return DEFAULT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS;
     }
 
     const thresholdAwuCredits = Number(value);
@@ -76,7 +76,7 @@ const config = {
       thresholdAwuCredits <= 0
     ) {
       throw new Error(
-        "WORKFLOW_ALERT_THRESHOLD_AWU_CREDITS must be a positive integer"
+        "SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS must be a positive integer"
       );
     }
 
