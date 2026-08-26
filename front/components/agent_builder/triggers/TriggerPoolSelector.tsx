@@ -1,5 +1,4 @@
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
 import {
@@ -29,13 +28,8 @@ export function TriggerPoolSelector({
 }: TriggerPoolSelectorProps) {
   const { control } = useFormContext<TriggerViewsSheetFormValues>();
   const { field } = useController({ control, name });
-  const { hasFeature } = useFeatureFlags();
+
   const { hasPermission } = useWorkspacePermissions();
-
-  if (!hasFeature("trigger_pool_choice")) {
-    return null;
-  }
-
   const canSetPool = hasPermission("use_workspace_pool", "trigger");
 
   return (

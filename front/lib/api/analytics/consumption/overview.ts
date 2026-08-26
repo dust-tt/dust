@@ -6,7 +6,9 @@ import type {
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import {
+  AGENT_MESSAGE_ID_FIELD,
   buildConsumptionScopeQuery,
+  CARDINALITY_PRECISION_THRESHOLD,
   COMPLETED_AT_FIELD,
   CONSUMPTION_DIMENSION_FIELDS,
   CREDIT_MICRO_FIELD,
@@ -43,6 +45,7 @@ export type ConsumptionOverview = {
     active: number;
     total: number;
   };
+  messageCount?: number;
   lastRecordAt: string | null;
   totalCredits: number;
   topAgent: ConsumptionOverviewTopAgent | null;
@@ -60,6 +63,7 @@ type TopAgentBucket = {
 
 type OverviewAggs = {
   active_members?: estypes.AggregationsCardinalityAggregate;
+  message_count?: estypes.AggregationsCardinalityAggregate;
   last_completed_at?: estypes.AggregationsMaxAggregate;
   total_credit_micro?: estypes.AggregationsSumAggregate;
   top_agent?: estypes.AggregationsMultiBucketAggregateBase<TopAgentBucket>;
@@ -142,7 +146,12 @@ export async function fetchConsumptionOverview(
   {
     periodInput,
     filter,
-  }: { periodInput: ConsumptionPeriodInput; filter?: ConsumptionScopeFilter }
+    includeWorkspaceContext = true,
+  }: {
+    periodInput: ConsumptionPeriodInput;
+    filter?: ConsumptionScopeFilter;
+    includeWorkspaceContext?: boolean;
+  }
 ): Promise<Result<ConsumptionOverview, ElasticsearchError>> {
   const workspace = auth.getNonNullableWorkspace();
   const period = await resolveConsumptionPeriod(auth, periodInput);
@@ -158,6 +167,12 @@ export async function fetchConsumptionOverview(
     searchConsumptionAnalytics<never, OverviewAggs>(query, {
       aggregations: {
         active_members: { cardinality: { field: "user.id" } },
+        message_count: {
+          cardinality: {
+            field: AGENT_MESSAGE_ID_FIELD,
+            precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+          },
+        },
         last_completed_at: { max: { field: COMPLETED_AT_FIELD } },
         total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
         top_agent: {
@@ -173,8 +188,12 @@ export async function fetchConsumptionOverview(
       },
       size: 0,
     }),
-    MembershipResource.countActiveMembersForWorkspace({ workspace }),
-    fetchPoolCapCredits(auth, periodInput),
+    includeWorkspaceContext
+      ? MembershipResource.countActiveMembersForWorkspace({ workspace })
+      : Promise.resolve(0),
+    includeWorkspaceContext
+      ? fetchPoolCapCredits(auth, periodInput)
+      : Promise.resolve(null),
   ]);
 
   if (searchResult.isErr()) {
@@ -185,13 +204,15 @@ export async function fetchConsumptionOverview(
   const totalCredits = microCreditsToCredits(
     aggregations?.total_credit_micro?.value ?? 0
   );
+  const activeMembers = Math.round(aggregations?.active_members?.value ?? 0);
 
   return new Ok({
     period,
     members: {
-      active: Math.round(aggregations?.active_members?.value ?? 0),
-      total: totalMembers,
+      active: activeMembers,
+      total: includeWorkspaceContext ? totalMembers : activeMembers,
     },
+    messageCount: Math.round(aggregations?.message_count?.value ?? 0),
     lastRecordAt: lastRecordAtFromAgg(aggregations?.last_completed_at),
     totalCredits,
     topAgent: await topAgentFromAgg(auth, aggregations?.top_agent),

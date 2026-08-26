@@ -1,7 +1,6 @@
 import { AgentBuilderInsights } from "@app/components/agent_builder/AgentBuilderInsights";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { AgentBuilderSidekick } from "@app/components/agent_builder/AgentBuilderSidekick";
-import { ObservabilityProvider } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
@@ -156,20 +155,18 @@ function ExpandedContent({
           <AgentBuilderPreview />
         </div>
       )}
-      <ObservabilityProvider>
-        {selectedTab === "insights" &&
-          (agentConfigurationId ? (
-            <AgentBuilderInsights agentConfigurationId={agentConfigurationId} />
-          ) : (
-            <TabContentLayout title="Insights">
-              <EmptyPlaceholder
-                icon={BarChart01}
-                title="Waiting for data"
-                description="Use your agent or share it with your team to see insights data."
-              />
-            </TabContentLayout>
-          ))}
-      </ObservabilityProvider>
+      {selectedTab === "insights" &&
+        (agentConfigurationId ? (
+          <AgentBuilderInsights agentConfigurationId={agentConfigurationId} />
+        ) : (
+          <TabContentLayout title="Insights">
+            <EmptyPlaceholder
+              icon={BarChart01}
+              title="Waiting for data"
+              description="Use your agent or share it with your team to see insights data."
+            />
+          </TabContentLayout>
+        ))}
     </div>
   );
 }

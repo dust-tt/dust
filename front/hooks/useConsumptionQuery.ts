@@ -1,8 +1,37 @@
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 const CONSUMPTION_FILTER_DEBOUNCE_MS = 300;
+
+export function getConsumptionAnalyticsUrl({
+  workspaceId,
+  analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
+  endpoint,
+}: {
+  workspaceId: string;
+  analyticsScope?: ConsumptionAnalyticsScope;
+  endpoint: string;
+}) {
+  let analyticsPath: string;
+  switch (analyticsScope.kind) {
+    case "workspace":
+      analyticsPath = "analytics";
+      break;
+    case "personal":
+      analyticsPath = "me/analytics";
+      break;
+    case "agent":
+      analyticsPath = `assistant/agent_configurations/${analyticsScope.agentId}/analytics`;
+      break;
+    default:
+      assertNever(analyticsScope);
+  }
+  return `/api/w/${workspaceId}/${analyticsPath}/consumption/${endpoint}`;
+}
 
 function useDebouncedValue<T>(value: T, delayMs: number) {
   const [debouncedValue, setDebouncedValue] = useState(value);

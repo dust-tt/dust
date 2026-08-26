@@ -5,6 +5,7 @@ import {
   reconcileWorkspaceApiKeyCreditStates,
 } from "@app/lib/api/metronome/reconcile_credit_state";
 import type { Authenticator } from "@app/lib/auth";
+import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import {
   clearMetronomeApiKeyCapAlert,
   upsertMetronomeApiKeyCapAlert,
@@ -344,17 +345,34 @@ export async function backfillApiKeyCreditCapsForWorkspace(
 async function readApiKeySpendLimitCountWithLazySeed(
   auth: Authenticator,
   {
-    apiKeyName,
+    keyModelId,
     redisKey,
     bounds,
-  }: { apiKeyName: string; redisKey: string; bounds: FixedWindowBounds }
+  }: { keyModelId: number; redisKey: string; bounds: FixedWindowBounds }
 ): Promise<number | null> {
   return readFixedWindowCountWithLazySeed({
     key: redisKey,
     bounds,
     logger,
-    fetchSeedValue: () =>
-      getEsConsumedAwuCreditsForApiKey(auth, { apiKeyName }),
+    // The ES query is keyed by the api-key name; resolve it here (only invoked
+    // on a seed miss, so no per-record fetch). The counter stores microCredits;
+    // convert the ES credit value. Preserve the null contract (ES read failed
+    // or key gone → skip seed, do not seed as 0).
+    fetchSeedValue: async () => {
+      const key = await KeyResource.fetchByWorkspaceAndId({
+        workspace: auth.getNonNullableWorkspace(),
+        id: keyModelId,
+      });
+      if (!key) {
+        return null;
+      }
+      const consumedAwuCredits = await getEsConsumedAwuCreditsForApiKey(auth, {
+        apiKeyName: key.name,
+      });
+      return consumedAwuCredits === null
+        ? null
+        : roundCreditsToMicroCredits(consumedAwuCredits);
+    },
   });
 }
 
@@ -388,7 +406,7 @@ export async function isApiKeySpendLimitRateCapReached(
   }
 
   const count = await readApiKeySpendLimitCountWithLazySeed(auth, {
-    apiKeyName: key.name,
+    keyModelId: key.id,
     redisKey: makeApiKeySpendLimitAwuCreditsRateLimitKey(key.id),
     bounds,
   });
@@ -400,7 +418,9 @@ export async function isApiKeySpendLimitRateCapReached(
     return false;
   }
 
-  return count >= threshold;
+  // The counter stores microCredits; scale the credit threshold up so the
+  // comparison stays integer-on-integer.
+  return count >= roundCreditsToMicroCredits(threshold);
 }
 
 /**
@@ -415,9 +435,10 @@ export async function recordApiKeySpendLimitUsage(
   auth: Authenticator,
   { keyModelId, incrementBy }: { keyModelId: number; incrementBy: number }
 ): Promise<void> {
-  // Only whole positive credits are recordable (the counter is an integer
-  // INCRBY); skip anything else rather than letting it reach the counter.
-  if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
+  // Credits may be fractional; the counter stores microCredits (integer
+  // INCRBY), so convert before recording. A non-positive or non-finite delta is
+  // a normal no-op (e.g. a retry with no new usage) and stays silent.
+  if (!Number.isFinite(incrementBy) || incrementBy <= 0) {
     return;
   }
 
@@ -428,10 +449,23 @@ export async function recordApiKeySpendLimitUsage(
     return;
   }
 
-  await addFixedWindowCount({
-    key: makeApiKeySpendLimitAwuCreditsRateLimitKey(keyModelId),
+  const redisKey = makeApiKeySpendLimitAwuCreditsRateLimitKey(keyModelId);
+
+  // Seed from ES on the counter's first touch of the cycle (SET-if-absent), so
+  // it reflects cycle-to-date consumption even when the enforcement reader
+  // never runs for this key (e.g. a key with no cap set). No-ops once live.
+  await readApiKeySpendLimitCountWithLazySeed(auth, {
+    keyModelId,
+    redisKey,
     bounds,
-    incrementBy,
+  });
+
+  const incrementByMicroCredits = roundCreditsToMicroCredits(incrementBy);
+
+  await addFixedWindowCount({
+    key: redisKey,
+    bounds,
+    incrementBy: incrementByMicroCredits,
     logger,
   });
 }

@@ -23,9 +23,26 @@ Stories must live in `src/stories/`, not next to components: `package.json` `fil
 
 - `npm run storybook` — dev server on :6006. A static build is deployed as the prod instance.
 - `npm run build-storybook` — static build; also the cheapest way to catch story compile errors.
-- Addons: themes, docs, a11y, vitest, tag-badges. Suite packages are pinned to one exact
+- Addons: themes, docs, a11y, vitest, mcp, tag-badges. Suite packages are pinned to one exact
   version (no `^`) because Storybook addons peer-lock to the exact core version; bump them all
   together, and only to versions older than the repo `.npmrc` `min-release-age` cooldown.
+
+# AI manifests & MCP
+
+`@storybook/addon-mcp` generates AI-consumable manifests and serves an MCP endpoint:
+
+- Manifests: `/manifests/components.json` and `/manifests/docs.json` (dev server and static
+  build); debugger UI at `/manifests/components.html`.
+- MCP endpoint: `http://localhost:6006/mcp` (dev server only). Register it in an agent with
+  `npx mcp-add --type http --url "http://localhost:6006/mcp" --scope project`.
+- Curation is tag-driven: stories or files tagged `"!manifest"` are excluded (asset catalogs,
+  token tables, design-review galleries, interaction tests, deprecated components). The
+  `"deprecated"` tag renders a sidebar badge. Keep meta `tags: [...]` on one line — the a11y
+  sync script parses it textually.
+- Story conventions that feed the manifest: JSDoc with `@summary` on every story export,
+  intent-bearing story names, args-driven CSF3 (a `render` must spread its args), `fn()` from
+  `storybook/test` for callbacks, component-level JSDoc in `src/components/` (picked up by
+  react-docgen-typescript). `src/stories/Button.stories.tsx` is the model file.
 
 # Story tests
 

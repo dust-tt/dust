@@ -1,11 +1,16 @@
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
-} from "@app/lib/api/analytics/consumption/scope";
-import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
+} from "@app/types/api/analytics/consumption";
+import {
+  CONSUMPTION_DIMENSION_FILTER_KEYS,
+  CONSUMPTION_SCOPE_DIMENSIONS,
+} from "@app/types/api/analytics/consumption";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 import { isConnectorProvider } from "@app/types/data_source";
@@ -23,6 +28,28 @@ export const USAGE_FILTER_CATEGORIES = [
 ] as const;
 
 export type UsageFilterCategory = (typeof USAGE_FILTER_CATEGORIES)[number];
+
+const PERSONAL_USAGE_FILTER_CATEGORIES: UsageFilterCategory[] =
+  USAGE_FILTER_CATEGORIES.filter(
+    (category) => category !== "member" && category !== "group"
+  );
+
+const AGENT_USAGE_FILTER_CATEGORIES = USAGE_FILTER_CATEGORIES.filter(
+  (category) => category !== "agent"
+);
+
+export function getUsageFilterCategories(
+  analyticsScope: ConsumptionAnalyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE
+): readonly UsageFilterCategory[] {
+  switch (analyticsScope.kind) {
+    case "personal":
+      return PERSONAL_USAGE_FILTER_CATEGORIES;
+    case "agent":
+      return AGENT_USAGE_FILTER_CATEGORIES;
+    case "workspace":
+      return USAGE_FILTER_CATEGORIES;
+  }
+}
 
 export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
   {
@@ -136,6 +163,106 @@ export type UsageFilterOptionForCategory<C extends UsageFilterCategory> =
 export type UsageFilter = {
   [C in UsageFilterCategory]?: UsageFilterOptionForCategory<C>[];
 };
+
+export type UsageFilterIds = Partial<
+  Record<ConsumptionScopeDimension, string[]>
+>;
+
+export type ConsumptionFacetOptions = {
+  [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
+};
+
+export const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
+  agent: [],
+  member: [],
+  group: [],
+  model: [],
+  tool: [],
+  skill: [],
+  source: [],
+  api_key: [],
+};
+
+// URL filters only carry ids. Keep that transport shape at the boundary and
+// use minimal options until the user replaces them from the filter panel.
+export function usageFilterFromIds(ids: UsageFilterIds): UsageFilter {
+  let filter: UsageFilter = {};
+  for (const dimension of CONSUMPTION_SCOPE_DIMENSIONS) {
+    for (const id of ids[dimension] ?? []) {
+      filter = addUsageFilterOption(
+        filter,
+        usageFilterOptionFromAttributionRow(dimension, {
+          id,
+          name: id,
+          pictureUrl: null,
+        })
+      );
+    }
+  }
+
+  return filter;
+}
+
+function resolveCategory<C extends UsageFilterCategory>(
+  selected: UsageFilterOptionForCategory<C>[] | undefined,
+  facetOptions: UsageFilterOptionForCategory<C>[]
+): UsageFilterOptionForCategory<C>[] | undefined {
+  if (!selected?.length || facetOptions.length === 0) {
+    return selected;
+  }
+
+  const facetOptionById = new Map(
+    facetOptions.map((option) => [option.id, option])
+  );
+  const resolved = selected.map(
+    (option) => facetOptionById.get(option.id) ?? option
+  );
+
+  return resolved.every((option, index) => option === selected[index])
+    ? selected
+    : resolved;
+}
+
+export function hasUnresolvedUsageFilterNames(filter: UsageFilter): boolean {
+  return USAGE_FILTER_CATEGORIES.flatMap(
+    (category): UsageFilterOption[] => filter[category] ?? []
+  ).some((option) => option.name === option.id);
+}
+
+export function resolveUsageFilter(
+  filter: UsageFilter,
+  facetOptions: ConsumptionFacetOptions
+): UsageFilter {
+  const resolved: UsageFilter = {
+    agent: resolveCategory(filter.agent, facetOptions.agent),
+    member: resolveCategory(filter.member, facetOptions.member),
+    group: resolveCategory(filter.group, facetOptions.group),
+    model: resolveCategory(filter.model, facetOptions.model),
+    tool: resolveCategory(filter.tool, facetOptions.tool),
+    skill: resolveCategory(filter.skill, facetOptions.skill),
+    source: resolveCategory(filter.source, facetOptions.source),
+    api_key: resolveCategory(filter.api_key, facetOptions.api_key),
+  };
+
+  return USAGE_FILTER_CATEGORIES.every(
+    (category) => resolved[category] === filter[category]
+  )
+    ? filter
+    : resolved;
+}
+
+export function usageFilterToIds(filter: UsageFilter): UsageFilterIds {
+  return {
+    agent: filter.agent?.map(({ id }) => id),
+    user: filter.member?.map(({ id }) => id),
+    group: filter.group?.map(({ id }) => id),
+    model: filter.model?.map(({ id }) => id),
+    tool: filter.tool?.map(({ id }) => id),
+    skill: filter.skill?.map(({ id }) => id),
+    source: filter.source?.map(({ id }) => id),
+    api_key: filter.api_key?.map(({ id }) => id),
+  };
+}
 
 export interface UsageFilterSummary {
   category: UsageFilterCategory;

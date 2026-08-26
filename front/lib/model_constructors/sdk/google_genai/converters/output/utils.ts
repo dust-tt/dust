@@ -187,6 +187,7 @@ export function finishReasonToErrorEvent(
       return null;
     case FinishReason.MAX_TOKENS:
       return buildErrorEvent({
+        errorSource: "dust",
         metadata,
         type: "stop_error",
         message: "The maximum response length was reached.",
@@ -200,6 +201,7 @@ export function finishReasonToErrorEvent(
     case FinishReason.IMAGE_SAFETY:
     case FinishReason.LANGUAGE:
       return buildErrorEvent({
+        errorSource: "dust",
         metadata,
         type: "refusal_error",
         message:
@@ -208,6 +210,7 @@ export function finishReasonToErrorEvent(
     case FinishReason.MALFORMED_FUNCTION_CALL:
     case FinishReason.UNEXPECTED_TOOL_CALL:
       return buildErrorEvent({
+        errorSource: "unknown",
         metadata,
         type: "model_output_error",
         message: `Model generated an invalid tool call for ${metadata.model}.`,
@@ -216,6 +219,7 @@ export function finishReasonToErrorEvent(
     // is surfaced as an unknown error.
     default:
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "unknown_error",
         message: `Unexpected finish reason from Google: ${finishReason}.`,
@@ -235,6 +239,7 @@ function apiErrorToErrorEvent(
 
   if (status === 401 || (status === 400 && isAuthMessage)) {
     return buildErrorEvent({
+      errorSource: "dust",
       metadata,
       type: "authentication_error",
       message: `Authentication failed for Google: ${error.message}`,
@@ -244,6 +249,7 @@ function apiErrorToErrorEvent(
   switch (status) {
     case 400:
       return buildErrorEvent({
+        errorSource: "dust",
         metadata,
         type: "invalid_request_error",
         message: `Invalid request to Google: ${error.message}`,
@@ -251,6 +257,7 @@ function apiErrorToErrorEvent(
       });
     case 403:
       return buildErrorEvent({
+        errorSource: "dust",
         metadata,
         type: "permission_error",
         message: `Permission denied for Google: ${error.message}`,
@@ -258,6 +265,7 @@ function apiErrorToErrorEvent(
       });
     case 404:
       return buildErrorEvent({
+        errorSource: "dust",
         metadata,
         type: "not_found_error",
         message: `Resource not found for Google: ${error.message}`,
@@ -265,6 +273,7 @@ function apiErrorToErrorEvent(
       });
     case 429:
       return buildErrorEvent({
+        errorSource: "dust",
         metadata,
         type: "rate_limit_error",
         message: `Rate limit exceeded for Google/${metadata.model}: ${error.message}`,
@@ -272,6 +281,7 @@ function apiErrorToErrorEvent(
       });
     case 503:
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "overloaded_error",
         message: `Google is overloaded: ${error.message}`,
@@ -280,6 +290,7 @@ function apiErrorToErrorEvent(
     default:
       if (status >= 500 && status < 600) {
         return buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "server_error",
           message: `Server error from Google (${status}): ${error.message}`,
@@ -287,6 +298,7 @@ function apiErrorToErrorEvent(
         });
       }
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "unknown_error",
         message: `Error from Google (${status}): ${error.message}`,
@@ -305,6 +317,7 @@ export function streamErrorToErrorEvent(
     return apiErrorToErrorEvent(metadata, error);
   }
   return buildErrorEvent({
+    errorSource: "provider",
     metadata,
     type: "unknown_error",
     message: `Unknown error from Google: ${normalizeError(error).message}`,

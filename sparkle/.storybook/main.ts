@@ -17,6 +17,10 @@ const config: StorybookConfig = {
     "@storybook/addon-docs",
     "@storybook/addon-a11y",
     "@storybook/addon-vitest",
+    // Generates AI manifests (/manifests/components.json, /manifests/docs.json)
+    // and serves the MCP endpoint at /mcp. Stories tagged "!manifest" are
+    // excluded from the manifests.
+    "@storybook/addon-mcp",
     "storybook-addon-tag-badges",
   ],
 

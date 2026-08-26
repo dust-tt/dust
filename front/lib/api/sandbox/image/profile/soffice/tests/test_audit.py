@@ -64,6 +64,221 @@ def test_spacer_write_only_counts_interior():
     assert A._filled_spacer_slots(out, src) == set()
 
 
+
+
+def test_filler_detector_catches_lorem_past_its_opening_words():
+    """A template's second and third filler paragraphs never say "lorem ipsum";
+    matching only the opening words let four slides of untouched filler ship."""
+    assert A._is_leftover_suspect("Lorem ipsum dolor sit amet, consectetur.")
+    assert A._is_leftover_suspect(
+        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris."
+    )
+    assert A._is_leftover_suspect(
+        "Duis aute irure dolor in reprehenderit in voluptate velit esse."
+    )
+    assert A._is_leftover_suspect("[Slide Title]")
+    assert A._is_leftover_suspect("Click to add text")
+
+
+def test_filler_detector_leaves_real_copy_alone():
+    for line in (
+        "70+ connectors and MCP servers",
+        "Start with one workflow. Expand from there.",
+        "Pods and Frames for shared work",
+        "EUR 24 per seat per month",
+        "Contrat de vente, douleur et suivi",
+    ):
+        assert not A._is_leftover_suspect(line), line
+
+def test_furniture_is_a_small_box_at_a_slide_edge_not_repeated_text():
+    """Repetition used to define furniture, which excused a template body
+    paragraph left on ten slides. Position defines it instead."""
+    class Box:
+        def __init__(self, left, top, width, height):
+            self.left, self.top = left, top
+            self.width, self.height = width, height
+
+    inch = 914400
+    slide_w, slide_h = int(13.33 * inch), int(7.5 * inch)
+    footer = Box(int(0.5 * inch), int(7.0 * inch), int(3 * inch), int(0.3 * inch))
+    body = Box(int(0.29 * inch), int(1.32 * inch), int(8.98 * inch), int(0.95 * inch))
+    assert A._is_furniture(footer, slide_w, slide_h)
+    assert not A._is_furniture(body, slide_w, slide_h)
+
+
+def test_repeated_text_needs_a_real_sentence():
+    assert A.REPEATED_TEXT_MIN_WORDS >= 6, (
+        "short recurring labels (a stage name, a column header) are legitimate"
+    )
+    assert A.REPEATED_TEXT_SLIDES >= 3
+
+
+def test_padding_is_baselined_against_the_template_not_a_bare_count():
+    """Three slides sharing one picture is the padding shape we actually see (a
+    case-study logo and its chart pasted onto the next three slides), so the
+    count alone cannot be the rule - the template's own usage has to excuse an
+    icon set it repeats itself."""
+    assert A.REPEATED_IMAGE_SLIDES == 3
+
+
+def test_imagery_min_area_excludes_a_footer_logo_and_keeps_an_icon():
+    inch = 914400
+    slide_area = int(10 * inch) * int(5.625 * inch)
+    logo = (int(0.3 * inch)) ** 2
+    icon = (int(0.8 * inch)) ** 2
+    assert logo < slide_area * A.IMAGERY_MIN_AREA
+    assert icon > slide_area * A.IMAGERY_MIN_AREA
+
+
+def test_leading_break_detector_matches_every_break_character():
+    """python-pptx surfaces <a:br/> as a vertical tab, which is what the model
+    actually writes; newline and carriage return are covered for the same
+    reason."""
+    for ch in ("\v", "\n", "\r"):
+        assert ch in A._LINE_BREAKS, ch
+
+
+def test_void_thresholds_need_both_a_gap_and_an_empty_box():
+    """The template's own slides leave the same band under the title and look
+    right, because their copy fills the boxes - so the gap alone cannot be the
+    rule. Measured: reference decks 0.44-0.58 fill, model-built ones 0.14-0.31."""
+    assert A.VOID_GAP <= 0.12
+    assert 0.18 < A.VOID_FILL < 0.44
+
+
+class _W:
+    """A pdftotext word box: only the vertical extent matters here."""
+
+    def __init__(self, top, bottom):
+        self.top, self.bottom = top, bottom
+
+
+def _blank_slide():
+    prs = Presentation()
+    return prs, prs.slides.add_slide(prs.slide_layouts[6])
+
+
+def test_rendered_void_flags_copy_that_stops_halfway_down():
+    prs, slide = _blank_slide()
+    h = prs.slide_height
+    words = [_W(int(0.05 * h), int(0.30 * h))] * A.RENDERED_VOID_MIN_WORDS
+    band = A.rendered_void(slide, words, prs.slide_width, h)
+    assert band is not None and band > 0.65
+
+
+def test_rendered_void_ignores_copy_that_runs_to_the_bottom():
+    prs, slide = _blank_slide()
+    h = prs.slide_height
+    words = [_W(int(0.05 * h), int(0.20 * h)), _W(int(0.25 * h), int(0.95 * h))]
+    words *= A.RENDERED_VOID_MIN_WORDS
+    assert A.rendered_void(slide, words, prs.slide_width, h) is None
+
+
+def test_rendered_void_spares_a_cover_slide():
+    """A cover is a headline in the middle of an empty slide. Below the word
+    floor the band is the design, not a hole."""
+    prs, slide = _blank_slide()
+    h = prs.slide_height
+    words = [_W(int(0.40 * h), int(0.55 * h))] * 3
+    assert A.rendered_void(slide, words, prs.slide_width, h) is None
+
+
+def test_rendered_void_band_leaves_room_above_the_reference_decks():
+    """Both AFTER_ decks and the two Dust templates top out at 0.41, and the
+    model-built decks that read right at 0.44; the slides that ship a hole run
+    0.51 to 0.64."""
+    assert 0.44 < A.RENDERED_VOID_BAND < 0.51
+
+
+def test_split_sentence_reads_every_paragraph_not_just_the_box():
+    """A heading paragraph over a body paragraph in one box hides the cut: the
+    box still opens with a capital, so only the paragraphs see it."""
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    tb = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(4), Inches(3))
+    tf = tb.text_frame
+    tf.text = "70+ connectors"
+    tf.add_paragraph().text = "and MCP servers."
+    assert [t for _, t in A._split_sentence_markers(slide)] == ["and MCP servers."]
+
+
+def test_split_sentence_leaves_a_box_of_whole_sentences_alone():
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    tb = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(4), Inches(3))
+    tf = tb.text_frame
+    tf.text = "Company context"
+    tf.add_paragraph().text = "70+ connectors and MCP servers."
+    assert A._split_sentence_markers(slide) == []
+
+
+def _slide_with_word_under_picture(pic_left_in, pic_top_in, order_first):
+    """A one-word textbox plus a picture, with a word box straddling them."""
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    if order_first == "picture":
+        pic = slide.shapes.add_picture(_PNG(), Inches(pic_left_in), Inches(pic_top_in),
+                                       Inches(2), Inches(0.5))
+    tb = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(4), Inches(1))
+    tb.text_frame.text = "dust.com"
+    if order_first != "picture":
+        pic = slide.shapes.add_picture(_PNG(), Inches(pic_left_in), Inches(pic_top_in),
+                                       Inches(2), Inches(0.5))
+    return prs, slide, tb, pic
+
+
+def _PNG():
+    import io, struct, zlib
+    def chunk(tag, data):
+        c = tag + data
+        return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c))
+    raw = b"\x00" + b"\xff\xff\xff"
+    png = (b"\x89PNG\r\n\x1a\n"
+           + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+           + chunk(b"IDAT", zlib.compress(raw))
+           + chunk(b"IEND", b""))
+    return io.BytesIO(png)
+
+
+class _Word:
+    def __init__(self, left, top, right, bottom, text):
+        self.left, self.top, self.right, self.bottom, self.text = (
+            left, top, right, bottom, text)
+
+
+def test_occlusion_flags_a_word_buried_under_a_picture_drawn_over_it():
+    prs, slide, tb, pic = _slide_with_word_under_picture(1.2, 1.3, "text")
+    inch = 914400
+    word = _Word(int(1.3 * inch), int(1.2 * inch), int(2.6 * inch),
+                 int(1.5 * inch), "dust.com")
+    hits = A.occluded_words(slide, [word])
+    assert hits and hits[0][0] == tb.shape_id and hits[0][2] == "dust.com"
+
+
+def test_occlusion_ignores_a_picture_drawn_behind_the_text():
+    """A table on its own background panel overlaps exactly this way, and is how
+    the templates build their pricing slides."""
+    prs, slide, tb, pic = _slide_with_word_under_picture(1.2, 1.3, "picture")
+    inch = 914400
+    word = _Word(int(1.3 * inch), int(1.2 * inch), int(2.6 * inch),
+                 int(1.5 * inch), "dust.com")
+    assert A.occluded_words(slide, [word]) == []
+
+
+def test_occlusion_ignores_a_logo_clipping_the_edge_of_a_word():
+    """A logo PNG's transparent padding reaches into the neighbouring word by a
+    third of its width. That is a template's own title line, not a defect."""
+    prs, slide, tb, pic = _slide_with_word_under_picture(2.4, 1.1, "text")
+    inch = 914400
+    word = _Word(int(1.3 * inch), int(1.2 * inch), int(2.6 * inch),
+                 int(1.5 * inch), "when")
+    assert A.occluded_words(slide, [word]) == []
+
+
+def test_occlusion_needs_both_axes():
+    assert 0 < A.OCCLUSION_HEIGHT < A.OCCLUSION_WIDTH <= 1
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]

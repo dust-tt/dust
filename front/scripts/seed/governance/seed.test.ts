@@ -142,8 +142,7 @@ describe("governance seed script integration test", () => {
     // The current user's skill requires the restricted space and has Bob and Alfred as editors.
     // Alfred is not a member of the space, which is what the skill builder warns about.
     expect(currentUserSkill!.requestedSpaceIds).toEqual([restrictedSpace!.id]);
-    const skillEditors =
-      await currentUserSkill!.editorGroup!.getActiveMembers(authenticator);
+    const skillEditors = (await currentUserSkill!.listEditors(authenticator))!;
     expect(new Set(skillEditors.map((e) => e.sId))).toEqual(
       new Set([user.sId, bob!.sId, alfred!.sId])
     );

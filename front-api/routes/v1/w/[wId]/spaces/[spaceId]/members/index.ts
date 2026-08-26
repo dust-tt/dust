@@ -193,8 +193,12 @@ app.post(
       });
     }
 
+    const [enrichedSpace] = await SpaceResource.batchToJSONEnriched(auth, [
+      space,
+    ]);
+
     return ctx.json({
-      space: space.toJSON(),
+      space: enrichedSpace,
       users: usersJson.map((userJson) => ({
         sId: userJson.sId,
         id: userJson.id,

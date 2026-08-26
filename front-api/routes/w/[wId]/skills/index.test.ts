@@ -1324,6 +1324,10 @@ describe("POST /api/w/:wId/skills", () => {
 
     const openSpace = await SpaceFactory.regular(workspace);
     await GroupSpaceFactory.associate(openSpace, globalGroup);
+    // An open space confers read through the global group's `reader` grant, and an Authenticator
+    // resolves its grants once, at construction. `auth` predates the space, so refresh it before
+    // reading a skill that requests it — `SkillResource` drops skills whose spaces it cannot read.
+    await auth.refresh();
 
     const response = await postSkill(workspace, {
       name: "Skill With Additional Space",
@@ -1481,14 +1485,9 @@ describe("POST /api/w/:wId/skills", () => {
     const { auth, workspace, user } = await setupTest("admin");
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    // A manual group: `SpaceFactory.regular` already attaches a `regular_auto` member group, and
-    // only one `regular_auto` group may hold a given grant tuple.
-    const memberGroup = await GroupFactory.regularManual(
-      workspace,
-      "Tool Space Members"
-    );
+    // Membership on a manually-managed space comes from its own auto-created member group.
+    const [memberGroup] = await regularSpace.fetchRegularAutoGroups(auth);
     await GroupFactory.withMembers(auth, memberGroup, [user]);
-    await GroupSpaceFactory.associate(regularSpace, memberGroup);
     const spaceMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
@@ -1584,14 +1583,9 @@ describe("POST /api/w/:wId/skills", () => {
     const { auth, workspace, user } = await setupTest("admin");
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    // A manual group: `SpaceFactory.regular` already attaches a `regular_auto` member group, and
-    // only one `regular_auto` group may hold a given grant tuple.
-    const memberGroup = await GroupFactory.regularManual(
-      workspace,
-      "Knowledge Space Members"
-    );
+    // Membership on a manually-managed space comes from its own auto-created member group.
+    const [memberGroup] = await regularSpace.fetchRegularAutoGroups(auth);
     await GroupFactory.withMembers(auth, memberGroup, [user]);
-    await GroupSpaceFactory.associate(regularSpace, memberGroup);
     const spaceMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId

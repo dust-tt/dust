@@ -17,6 +17,7 @@ import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import { getNonCreditPricedDefaultUserSpendLimit } from "@app/lib/api/workspace/default_user_spend_limit";
 import type { Authenticator } from "@app/lib/auth";
 import type { BillingCycle } from "@app/lib/client/subscription";
+import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import {
   clearMetronomePerUserCapAlert,
   clearMetronomePerUserWarningAlert,
@@ -531,7 +532,18 @@ async function readSpendLimitCountWithLazySeed(
     key,
     bounds,
     logger,
-    fetchSeedValue: () => getEsConsumedAwuCreditsForUser(auth, { user, cycle }),
+    // The counter stores microCredits; convert the ES credit value before
+    // seeding. Preserve the null contract (ES read failed → skip seed, do not
+    // seed as 0).
+    fetchSeedValue: async () => {
+      const consumedAwuCredits = await getEsConsumedAwuCreditsForUser(auth, {
+        user,
+        cycle,
+      });
+      return consumedAwuCredits === null
+        ? null
+        : roundCreditsToMicroCredits(consumedAwuCredits);
+    },
   });
 }
 
@@ -571,7 +583,9 @@ async function isSpendCapCounterReached(
     return false;
   }
 
-  return count >= thresholdAwuCredits;
+  // The counter stores microCredits; scale the credit threshold up so the
+  // comparison stays integer-on-integer.
+  return count >= roundCreditsToMicroCredits(thresholdAwuCredits);
 }
 
 /**
@@ -657,9 +671,10 @@ export async function recordUserSpendLimitUsage(
     cycle,
   }: { user: UserResource; incrementBy: number; cycle?: BillingCycle }
 ): Promise<void> {
-  // Only whole positive credits are recordable (the counter is an integer
-  // INCRBY); skip anything else rather than letting it reach the counter.
-  if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
+  // Credits may be fractional; the counter stores microCredits (integer
+  // INCRBY), so convert before recording. A non-positive or non-finite delta is
+  // a normal no-op (e.g. a retry with no new usage) and stays silent.
+  if (!Number.isFinite(incrementBy) || incrementBy <= 0) {
     return;
   }
 
@@ -672,10 +687,23 @@ export async function recordUserSpendLimitUsage(
     return;
   }
 
+  const key = makeSpendLimitAwuCreditsRateLimitKeyForUser(
+    workspace,
+    user.toJSON()
+  );
+
+  // Seed the counter from ES on its first touch of the cycle (SET-if-absent),
+  // so it reflects cycle-to-date consumption even when the enforcement reader —
+  // the other lazy seeder — never runs for this user (e.g. a user with no
+  // effective cap). No-ops once the counter is live.
+  await readSpendLimitCountWithLazySeed(auth, { user, key, bounds, cycle });
+
+  const incrementByMicroCredits = roundCreditsToMicroCredits(incrementBy);
+
   await addFixedWindowCount({
-    key: makeSpendLimitAwuCreditsRateLimitKeyForUser(workspace, user.toJSON()),
+    key,
     bounds,
-    incrementBy,
+    incrementBy: incrementByMicroCredits,
     logger,
   });
 }

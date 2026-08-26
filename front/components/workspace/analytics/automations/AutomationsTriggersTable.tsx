@@ -1,18 +1,19 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { TableSelectionBanner } from "@app/components/shared/TableSelectionBanner";
+import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
 import { AutomationsFilterPanel } from "@app/components/workspace/analytics/automations/AutomationsFilterPanel";
 import { AutomationsFilterSummary } from "@app/components/workspace/analytics/automations/AutomationsFilterSummary";
 import type { TriggerRowData as BaseTriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
 import { AutomationsTriggersRowsTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
+import type { PoolRowFields } from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
 import {
   agentColumn,
   creditsColumn,
   detailsColumn,
   nameColumn,
+  poolColumn,
   typeColumn,
 } from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
 import { BulkTriggerPoolModal } from "@app/components/workspace/analytics/automations/BulkTriggerPoolModal";
-import { POOL_OPTIONS } from "@app/components/workspace/analytics/automations/trigger_pool_options";
 import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { toAutomationsTriggersFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
@@ -28,7 +29,6 @@ import type {
 } from "@app/lib/api/analytics/automations/schema";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import type { BulkTriggerSelection } from "@app/lib/api/triggers/bulk_selection";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   useBulkUpdateTriggerExecutionMode,
   useUpdateTriggerExecutionMode,
@@ -45,13 +45,8 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
-  ContentMessageAction,
   createSelectionColumn,
   DataTable,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   Pagination,
   SearchInput,
   SliderToggle,
@@ -69,43 +64,10 @@ import { useCallback, useContext, useMemo, useState } from "react";
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const TRIGGERS_PAGE_SIZE = 25;
 
-interface TriggerRowData extends BaseTriggerRowData {
+interface TriggerRowData extends BaseTriggerRowData, PoolRowFields {
   displayStatus: TriggerStatus;
   isStatusPending: boolean;
   onToggleStatus: () => void;
-  displayExecutionMode: TriggerExecutionMode;
-  isExecutionModePending: boolean;
-  onSetExecutionMode: (executionMode: TriggerExecutionMode) => void;
-}
-
-function PoolCell({ row }: { row: TriggerRowData }) {
-  const { hasPermission } = useWorkspacePermissions();
-  const isWorkspacePool = row.displayExecutionMode === "workspace_pool";
-  const canSetPool = hasPermission("use_workspace_pool", "trigger");
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="xs"
-          isSelect
-          disabled={row.isExecutionModePending || !canSetPool}
-          className={isWorkspacePool ? "text-highlight" : undefined}
-          label={isWorkspacePool ? "Workspace" : "Member"}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {POOL_OPTIONS.map(({ value, label }) => (
-          <DropdownMenuItem
-            key={value}
-            label={label}
-            onClick={() => row.onSetExecutionMode(value)}
-          />
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
 }
 
 function RunningCell({ row }: { row: TriggerRowData }) {
@@ -194,11 +156,9 @@ function rowSelectionColumn(): ColumnDef<TriggerRowData> {
 
 function buildColumns({
   expandedRowId,
-  showPoolColumn,
   showSelectionColumn,
 }: {
   expandedRowId: string | null;
-  showPoolColumn: boolean;
   showSelectionColumn: boolean;
 }): ColumnDef<TriggerRowData>[] {
   return [
@@ -218,21 +178,7 @@ function buildColumns({
     agentColumn(),
     typeColumn(),
     creditsColumn(),
-    ...(showPoolColumn
-      ? [
-          {
-            id: "pool",
-            header: "Pool",
-            enableSorting: false,
-            meta: { className: "w-28" },
-            cell: (info) => (
-              <DataTable.CellContent className="w-full justify-start">
-                <PoolCell row={info.row.original} />
-              </DataTable.CellContent>
-            ),
-          } satisfies ColumnDef<TriggerRowData>,
-        ]
-      : []),
+    poolColumn(),
     {
       id: "status",
       header: "Enabled",
@@ -314,11 +260,8 @@ export function AutomationsTriggersTable({
     workspaceId,
   });
 
-  const { hasFeature } = useFeatureFlags();
-  const showPoolColumn = hasFeature("trigger_pool_choice");
   const { hasPermission } = useWorkspacePermissions();
-  const canBulkSetPool =
-    showPoolColumn && hasPermission("use_workspace_pool", "trigger");
+  const canBulkSetPool = hasPermission("use_workspace_pool", "trigger");
 
   const triggersQuery: AutomationTriggersQuery = useMemo(
     () => ({
@@ -541,72 +484,72 @@ export function AutomationsTriggersTable({
   );
 
   return (
-    <div className="rounded-lg border border-border bg-panel-background p-4">
-      <div className="mb-4 flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <SearchInput
-            name="automations-triggers-search"
-            placeholder="Search…"
-            value={inputValue}
-            onChange={setValue}
-            className="flex-1"
-          />
-          <AutomationsFilterPanel
-            owner={owner}
-            period={period}
+    <>
+      <div className="rounded-lg border border-border bg-panel-background p-4">
+        <div className="mb-4 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <SearchInput
+              name="automations-triggers-search"
+              placeholder="Search…"
+              value={inputValue}
+              onChange={setValue}
+              className="flex-1"
+            />
+            <AutomationsFilterPanel
+              owner={owner}
+              period={period}
+              filter={filter}
+              onFilterChange={onFilterChange}
+            />
+            <CsvDownloadButton {...csvDownload} size="sm" />
+          </div>
+          <AutomationsFilterSummary
             filter={filter}
             onFilterChange={onFilterChange}
           />
-          <CsvDownloadButton {...csvDownload} size="sm" />
         </div>
-        <AutomationsFilterSummary
-          filter={filter}
-          onFilterChange={onFilterChange}
+        <TriggersTableBody
+          isLoading={isTriggersLoading}
+          isError={!!isTriggersError}
+          search={debouncedValue}
+          rows={rows}
+          totalCount={totalCount}
+          medianRunCount={medianRunCount}
+          medianCostPerRun={medianCostPerRun}
+          pagination={pagination}
+          setPagination={setPagination}
+          workspaceId={workspaceId}
+          period={period}
+          expandedRowId={expandedRowId}
+          showSelectionColumn={canBulkSetPool}
+          rowSelection={selection.rowSelection}
+          onRowSelectionChange={selection.onRowSelectionChange}
         />
-        {canBulkSetPool && (
-          <TableSelectionBanner
-            selectedCount={selection.selectedCount}
-            pageCount={pageTriggerIds.length}
-            totalCount={totalCount}
-            itemLabel="automation"
-            isAllAcrossPagesSelected={selection.isAllAcrossPagesSelected}
-            hasMorePagesToSelect={selection.hasMorePagesToSelect}
-            onSelectAllAcrossPages={selection.selectAllAcrossPages}
-            onClear={selection.clearSelection}
-          >
-            <ContentMessageAction
-              variant="primary"
-              label="Set pool"
-              onClick={() => setIsBulkPoolOpen(true)}
-            />
-          </TableSelectionBanner>
-        )}
+        <BulkTriggerPoolModal
+          isOpen={isBulkPoolOpen}
+          onClose={() => setIsBulkPoolOpen(false)}
+          triggerCount={selection.selectedCount}
+          onValidate={handleBulkExecutionMode}
+        />
       </div>
-      <TriggersTableBody
-        isLoading={isTriggersLoading}
-        isError={!!isTriggersError}
-        search={debouncedValue}
-        rows={rows}
-        totalCount={totalCount}
-        medianRunCount={medianRunCount}
-        medianCostPerRun={medianCostPerRun}
-        pagination={pagination}
-        setPagination={setPagination}
-        workspaceId={workspaceId}
-        period={period}
-        expandedRowId={expandedRowId}
-        showPoolColumn={showPoolColumn}
-        showSelectionColumn={canBulkSetPool}
-        rowSelection={selection.rowSelection}
-        onRowSelectionChange={selection.onRowSelectionChange}
-      />
-      <BulkTriggerPoolModal
-        isOpen={isBulkPoolOpen}
-        onClose={() => setIsBulkPoolOpen(false)}
-        triggerCount={selection.selectedCount}
-        onValidate={handleBulkExecutionMode}
-      />
-    </div>
+      {canBulkSetPool && (
+        <BulkSelectionBar
+          selectedCount={selection.selectedCount}
+          totalCount={totalCount}
+          itemLabel="automation"
+          canSelectAll={selection.hasMorePagesToSelect}
+          onSelectAll={selection.selectAllAcrossPages}
+          onClear={selection.clearSelection}
+        >
+          <Button
+            size="sm"
+            variant="primary"
+            label="Set pool"
+            onClick={() => setIsBulkPoolOpen(true)}
+          />
+        </BulkSelectionBar>
+      )}
+    </>
   );
 }
 
@@ -623,7 +566,6 @@ interface TriggersTableBodyProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   expandedRowId: string | null;
-  showPoolColumn: boolean;
   showSelectionColumn: boolean;
   rowSelection: RowSelectionState;
   onRowSelectionChange: (selection: RowSelectionState) => void;
@@ -642,14 +584,13 @@ function TriggersTableBody({
   workspaceId,
   period,
   expandedRowId,
-  showPoolColumn,
   showSelectionColumn,
   rowSelection,
   onRowSelectionChange,
 }: TriggersTableBodyProps) {
   const columns = useMemo(
-    () => buildColumns({ expandedRowId, showPoolColumn, showSelectionColumn }),
-    [expandedRowId, showPoolColumn, showSelectionColumn]
+    () => buildColumns({ expandedRowId, showSelectionColumn }),
+    [expandedRowId, showSelectionColumn]
   );
 
   const firstRowIndex = pagination.pageIndex * pagination.pageSize;

@@ -1,5 +1,4 @@
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { expectArrayOfObjectsWithSpecificLength } from "@app/tests/utils/utils";
@@ -22,10 +21,9 @@ describe("GET /api/v1/w/:wId/data_sources (legacy endpoint)", () => {
   });
 
   it("returns data sources for the global space", async () => {
-    const { workspace, globalGroup, key } = await createPublicApiMockRequest();
+    const { workspace, key } = await createPublicApiMockRequest();
 
     const space = await SpaceFactory.global(workspace);
-    await GroupSpaceFactory.associate(space, globalGroup);
 
     // Create test data source views to the space
     await DataSourceViewFactory.folder(workspace, space);

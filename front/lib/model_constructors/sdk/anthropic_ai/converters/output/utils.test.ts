@@ -140,7 +140,11 @@ function makeStubConverters(): OutputEventConverters {
     stopReasonToErrorEvent: vi.fn(() => null),
     streamErrorToErrorEvent: vi.fn(() => ({
       type: "error" as const,
-      content: { type: "unknown_error" as const, message: "stub-error" },
+      content: {
+        type: "unknown_error" as const,
+        message: "stub-error",
+        errorSource: "unknown" as const,
+      },
       metadata,
     })),
   };
@@ -503,6 +507,7 @@ describe("streamErrorToErrorEvent", () => {
   it("maps invalid tool JSON to a retryable model_output_error", () => {
     const result = streamErrorToErrorEvent(metadata, apiInvalidToolJsonError());
     expect(result.content.type).toBe("model_output_error");
+    expect(result.content.errorSource).toBe("unknown");
   });
 
   it("maps APIConnectionError to network_error", () => {
@@ -529,28 +534,31 @@ describe("streamErrorToErrorEvent", () => {
     expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
       "server_error"
     );
+    expect(streamErrorToErrorEvent(metadata, err).content.errorSource).toBe(
+      "provider"
+    );
   });
 
   it.each([
-    [400, "invalid_request_error"],
-    [422, "invalid_request_error"],
-    [401, "authentication_error"],
-    [403, "permission_error"],
-    [404, "not_found_error"],
-    [429, "rate_limit_error"],
-    [503, "overloaded_error"],
-  ] as const)("maps HTTP %i to %s", (status, expectedType) => {
+    [400, "invalid_request_error", "dust"],
+    [422, "invalid_request_error", "dust"],
+    [401, "authentication_error", "dust"],
+    [403, "permission_error", "dust"],
+    [404, "not_found_error", "dust"],
+    [429, "rate_limit_error", "dust"],
+    [503, "overloaded_error", "provider"],
+  ] as const)("maps HTTP %i to %s from %s", (status, expectedType, errorSource) => {
     const err = new APIError(status, {}, "http failure", undefined, null);
-    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
-      expectedType
-    );
+    const result = streamErrorToErrorEvent(metadata, err);
+    expect(result.content.type).toBe(expectedType);
+    expect(result.content.errorSource).toBe(errorSource);
   });
 
   it("maps a generic 5xx status to server_error", () => {
     const err = new APIError(500, {}, "kaboom", undefined, null);
-    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
-      "server_error"
-    );
+    const result = streamErrorToErrorEvent(metadata, err);
+    expect(result.content.type).toBe("server_error");
+    expect(result.content.errorSource).toBe("provider");
   });
 
   it("maps an unrecognized status to unknown_error", () => {
@@ -581,27 +589,27 @@ describe("streamErrorToErrorEvent", () => {
   // The old router substring-matched these to keep transient failures retryable;
   // we replicate that classification (see `bareStreamErrorToErrorEvent`).
   it.each([
-    ["terminated", "network_error"],
-    ["other side closed", "network_error"],
-    ["socket hang up, connection reset", "network_error"],
-    ["ECONNREFUSED", "network_error"],
-    ["too many requests", "rate_limit_error"],
-    ["Overloaded", "overloaded_error"],
-    ["request timed out", "timeout_error"],
-    ["stream interrupted", "stream_error"],
-    ["internal server error", "server_error"],
-  ] as const)("classifies bare AnthropicError %j as %s (old-router parity)", (message, expectedType) => {
+    ["terminated", "network_error", "provider"],
+    ["other side closed", "network_error", "provider"],
+    ["socket hang up, connection reset", "network_error", "provider"],
+    ["ECONNREFUSED", "network_error", "provider"],
+    ["too many requests", "rate_limit_error", "dust"],
+    ["Overloaded", "overloaded_error", "provider"],
+    ["request timed out", "timeout_error", "provider"],
+    ["stream interrupted", "stream_error", "provider"],
+    ["internal server error", "server_error", "provider"],
+  ] as const)("classifies bare AnthropicError %j as %s from %s (old-router parity)", (message, expectedType, errorSource) => {
     const err = new AnthropicError(message);
-    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
-      expectedType
-    );
+    const result = streamErrorToErrorEvent(metadata, err);
+    expect(result.content.type).toBe(expectedType);
+    expect(result.content.errorSource).toBe(errorSource);
   });
 
   it("maps an unclassifiable bare error to unknown_error", () => {
     const err = new AnthropicError("something inexplicable happened");
-    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
-      "unknown_error"
-    );
+    const result = streamErrorToErrorEvent(metadata, err);
+    expect(result.content.type).toBe("unknown_error");
+    expect(result.content.errorSource).toBe("unknown");
   });
 
   it("maps a non-SDK error with no matchable message to unknown_error", () => {

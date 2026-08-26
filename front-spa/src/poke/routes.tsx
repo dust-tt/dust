@@ -13,6 +13,8 @@ import { DataSourceQueryPage } from "@dust-tt/front/components/poke/pages/DataSo
 import { DataSourceSearchPage } from "@dust-tt/front/components/poke/pages/DataSourceSearchPage";
 import { DataSourceViewPage } from "@dust-tt/front/components/poke/pages/DataSourceViewPage";
 import { EmailTemplatesPage } from "@dust-tt/front/components/poke/pages/EmailTemplatesPage";
+import { FeatureFlagDetailPage } from "@dust-tt/front/components/poke/pages/FeatureFlagDetailPage";
+import { FeatureFlagsPage } from "@dust-tt/front/components/poke/pages/FeatureFlagsPage";
 import { FramePage } from "@dust-tt/front/components/poke/pages/FramePage";
 import { GlobalAgentFeedbacksPage } from "@dust-tt/front/components/poke/pages/GlobalAgentFeedbacksPage";
 import { GroupPage } from "@dust-tt/front/components/poke/pages/GroupPage";
@@ -77,6 +79,11 @@ export const routes: RouteObject[] = [
           { path: "plans", element: <PlansPage /> },
           { path: "coupons", element: <CouponsPage /> },
           { path: "pokefy", element: <PokefyPage /> },
+          { path: "feature-flags", element: <FeatureFlagsPage /> },
+          {
+            path: "feature-flags/:flagName",
+            element: <FeatureFlagDetailPage />,
+          },
           { path: "production-checks", element: <ProductionChecksPage /> },
           { path: "email-templates", element: <EmailTemplatesPage /> },
           {

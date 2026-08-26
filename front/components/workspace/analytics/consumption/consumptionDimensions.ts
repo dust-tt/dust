@@ -1,3 +1,5 @@
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { ConsumptionBreakdownDimension } from "@app/lib/api/analytics/consumption/timeseries";
 
 export type ConsumptionDimension = ConsumptionBreakdownDimension;
@@ -15,6 +17,45 @@ export const CONSUMPTION_DIMENSIONS: ConsumptionDimension[] = [
   "source",
   "api_key",
 ];
+
+export type ConsumptionAttributionDimension =
+  | ConsumptionDimension
+  | "conversation";
+
+export const CONSUMPTION_ATTRIBUTION_DIMENSIONS: ConsumptionAttributionDimension[] =
+  [
+    "agent",
+    "user",
+    "group",
+    "model",
+    "tool",
+    "skill",
+    "source",
+    "api_key",
+    "conversation",
+  ];
+
+const PERSONAL_CONSUMPTION_ATTRIBUTION_DIMENSIONS =
+  CONSUMPTION_ATTRIBUTION_DIMENSIONS.filter(
+    (dimension) => dimension !== "user" && dimension !== "group"
+  );
+
+const AGENT_CONSUMPTION_ATTRIBUTION_DIMENSIONS = CONSUMPTION_DIMENSIONS.filter(
+  (dimension) => dimension !== "agent"
+);
+
+export function getConsumptionAttributionDimensions(
+  analyticsScope: ConsumptionAnalyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE
+): readonly ConsumptionAttributionDimension[] {
+  switch (analyticsScope.kind) {
+    case "personal":
+      return PERSONAL_CONSUMPTION_ATTRIBUTION_DIMENSIONS;
+    case "agent":
+      return AGENT_CONSUMPTION_ATTRIBUTION_DIMENSIONS;
+    case "workspace":
+      return CONSUMPTION_DIMENSIONS;
+  }
+}
 
 interface ConsumptionDimensionConfig {
   label: string;
@@ -84,6 +125,20 @@ export function isConsumptionDimension(
   value: string
 ): value is ConsumptionDimension {
   return CONSUMPTION_DIMENSIONS.some((dimension) => dimension === value);
+}
+
+export function isConsumptionAttributionDimension(
+  value: string
+): value is ConsumptionAttributionDimension {
+  return value === "conversation" || isConsumptionDimension(value);
+}
+
+export function consumptionAttributionDimensionLabel(
+  dimension: ConsumptionAttributionDimension
+): string {
+  return dimension === "conversation"
+    ? "Conversations"
+    : CONSUMPTION_DIMENSION_CONFIG[dimension].label;
 }
 
 export function consumptionDimensionFromQueryParam(

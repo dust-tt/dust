@@ -11,10 +11,8 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { ButtonProps } from "@dust-tt/sparkle";
 import {
   Button,
-  CpuChip01,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -38,14 +36,12 @@ interface SetModelAssistantsDialogProps {
   agentConfigurations: LightAgentConfigurationType[];
   disabled: boolean;
   owner: LightWorkspaceType;
-  variant?: ButtonProps["variant"];
 }
 
 export function SetModelAssistantsDialog({
   agentConfigurations,
   disabled,
   owner,
-  variant = "outline",
 }: SetModelAssistantsDialogProps) {
   const { isDark } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
@@ -89,9 +85,9 @@ export function SetModelAssistantsDialog({
     >
       <DialogTrigger asChild>
         <Button
-          size="xs"
-          variant={variant}
-          icon={CpuChip01}
+          size="sm"
+          variant="primary"
+          isSelect
           label="Set model"
           disabled={disabled}
         />

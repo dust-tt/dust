@@ -21,12 +21,9 @@ export function useAutomationsTriggerBreakdown({
   scope: AutomationsScope;
   disabled?: boolean;
 }) {
-  const url =
-    scope === "user"
-      ? `/api/w/${workspaceId}/me/automations/trigger-breakdown`
-      : `/api/w/${workspaceId}/analytics/automations/trigger-breakdown`;
+  const scopePath = scope === "user" ? "me/analytics" : "analytics";
+  const url = `/api/w/${workspaceId}/${scopePath}/automations/triggers/${triggerId}/breakdown`;
   const body: AutomationTriggerBreakdownBody = {
-    triggerId,
     period: period.kind,
     days:
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,

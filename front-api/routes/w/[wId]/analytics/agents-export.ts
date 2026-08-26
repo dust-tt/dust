@@ -4,8 +4,8 @@ import {
   fetchAgentExportRows,
   toAgentExportCsvRow,
 } from "@app/lib/api/analytics/agents_export";
+import { buildDaysConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/period";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
@@ -24,12 +24,8 @@ app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 
   const { days } = ctx.req.valid("query");
-  const owner = auth.getNonNullableWorkspace();
 
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
-    days,
-  });
+  const baseQuery = await buildDaysConsumptionScopeQuery(auth, days);
 
   const result = await fetchAgentExportRows(baseQuery, auth, true);
 

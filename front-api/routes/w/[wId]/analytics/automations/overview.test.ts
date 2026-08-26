@@ -25,6 +25,7 @@ const OVERVIEW: GetAutomationsOverviewResponse = {
   triggers: {
     enabled: 142,
     total: 152,
+    workspacePool: 12,
   },
 };
 

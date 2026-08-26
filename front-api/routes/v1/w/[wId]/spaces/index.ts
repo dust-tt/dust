@@ -1,5 +1,5 @@
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType } from "@app/types/space";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -8,7 +8,7 @@ import { z } from "zod";
 import spaceId from "./[spaceId]";
 
 export type GetPublicSpacesResponseBody = {
-  spaces: SpaceType[];
+  spaces: EnrichedSpaceType[];
 };
 
 // The kinds this endpoint returns when `kinds` is omitted.
@@ -89,7 +89,7 @@ app.get(
     });
 
     return ctx.json({
-      spaces: spaces.map((space) => space.toJSON()),
+      spaces: await SpaceResource.batchToJSONEnriched(auth, spaces),
     });
   }
 );

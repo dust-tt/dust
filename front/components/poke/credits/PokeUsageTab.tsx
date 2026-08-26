@@ -1,6 +1,7 @@
 import { PokeWorkspaceUsageChart } from "@app/components/poke/analytics/PokeWorkspaceUsageChart";
 import { AlertChip } from "@app/components/poke/credits/AlertChip";
 import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLogsLink";
+import { PokeApiKeysUsageTable } from "@app/components/poke/credits/PokeApiKeysUsageTable";
 import { PokeAwuUsageFromAnalyticsChart } from "@app/components/poke/credits/PokeAwuUsageFromAnalyticsChart";
 import { PokeMembersUsageTable } from "@app/components/poke/credits/PokeMembersUsageTable";
 import { PokeTopUpsHistoryTable } from "@app/components/poke/credits/PokeTopUpsHistoryTable";
@@ -10,7 +11,7 @@ import type {
   PokeProgrammaticAlerts,
   PokeStripeSubscriptionWire,
 } from "@app/lib/api/poke/workspace_info";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCredits, formatCreditsPrecise } from "@app/lib/client/credits";
 import type { DefaultMetronomeAlerts } from "@app/lib/metronome/alerts/default_alerts";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { usePokeAwuPoolSummary } from "@app/poke/swr/credits";
@@ -54,7 +55,7 @@ interface SpendCountersInlineProps {
 }
 
 const formatCreditsOrDash = (value: number | null): string =>
-  value !== null ? formatCredits(value) : "—";
+  value !== null ? formatCreditsPrecise(value) : "—";
 
 // The three spend figures for a cap dimension shown together to spot
 // divergence: ES = Elasticsearch-derived, RL = Redis rate-limiter counter (the
@@ -353,7 +354,19 @@ export function PokeUsageTab({
   defaultAlerts,
 }: PokeUsageTabProps) {
   if (!hasMetronomeBillingUsage) {
-    return <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />;
+    // Non-credit-based workspaces (no Metronome contract) have no credit
+    // diagnostics, but fair-use AWU limits still apply to them (free/trial), so
+    // the members table — which surfaces per-user fair-use usage — is shown
+    // alongside the activity chart.
+    return (
+      <div className="flex flex-col gap-4">
+        <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />
+        <PokeMembersUsageTable
+          owner={owner}
+          isCreditBased={hasMetronomeBillingUsage}
+        />
+      </div>
+    );
   }
 
   const billingCycleStartDay = stripeSubscription?.current_period_start
@@ -386,7 +399,11 @@ export function PokeUsageTab({
       <PokeDefaultAlertsCard defaultAlerts={defaultAlerts} />
       <PokeCreditPoolCard owner={owner} />
       <PokeTopUpsHistoryTable owner={owner} />
-      <PokeMembersUsageTable owner={owner} />
+      <PokeMembersUsageTable
+        owner={owner}
+        isCreditBased={hasMetronomeBillingUsage}
+      />
+      <PokeApiKeysUsageTable owner={owner} />
       {billingCycleStartDay && (
         <PokeAwuUsageFromAnalyticsChart
           owner={owner}

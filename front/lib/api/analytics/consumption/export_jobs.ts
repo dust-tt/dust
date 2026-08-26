@@ -1,7 +1,7 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { Authenticator } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { getTmpWorkloadsBucket } from "@app/lib/file_storage";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import {
   buildConsumptionExportCacheKey,
@@ -37,7 +37,7 @@ export async function listConsumptionExports(
   auth: Authenticator
 ): Promise<ConsumptionExportListItem[]> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
-  const bucket = getPrivateUploadBucket();
+  const bucket = getTmpWorkloadsBucket();
 
   const { files } = await bucket.getAllFilesByPrefix({
     prefix: buildConsumptionExportGcsPrefix(workspaceId),
@@ -64,7 +64,7 @@ export async function getConsumptionExportDownloadUrl(
   }
 
   const workspaceId = auth.getNonNullableWorkspace().sId;
-  const bucket = getPrivateUploadBucket();
+  const bucket = getTmpWorkloadsBucket();
   const path = `${buildConsumptionExportGcsPrefix(workspaceId)}${fileName}`;
 
   const downloadUrl = await bucket.getSignedUrl(path, {
@@ -106,7 +106,7 @@ export async function getConsumptionExportStatus(
 
   const [isGenerating, [isReady]] = await Promise.all([
     isConsumptionExportRunning(client.workflow.getHandle(workflowId)),
-    getPrivateUploadBucket()
+    getTmpWorkloadsBucket()
       .file(buildConsumptionExportGcsPath(workspaceId, exportId))
       .exists(),
   ]);

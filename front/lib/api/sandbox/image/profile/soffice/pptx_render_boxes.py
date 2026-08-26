@@ -69,11 +69,11 @@ def _contrast_text(color):
 # text from background regardless of contrast polarity or gradient. Returns each
 # detected line's vertical centre (px): the input for marker alignment.
 #
-# Per-row colour and contrast were tried here and dropped: legible white-on-brand
-# text over the template's gradient measures only ~1.4-3.0 (no threshold
-# separates intended low-contrast from broken), and the per-strip ink colour is
-# too noisy to judge colour uniformity. The deterministic `--compare` slot audit
-# catches the colour-mismatch defect at its source instead.
+# Contrast is NOT measured here. Sampling it per detected row was tried and
+# dropped - a row strip mixes glyphs with whatever the box sits on, so legible
+# white-on-brand text scored as low as broken dark-on-dark. `pptx_contrast`
+# measures it per rendered WORD box instead, where the ink is a solid fraction of
+# the pixels, and that separates the two cleanly (1.1-1.6 broken, 2.4+ legible).
 TEXTROW_EDGE_DELTA = 60  # adjacent-sample manhattan diff that marks a glyph edge
 TEXTROW_X_STEP = 2  # sample every Nth column (speed; detection is robust to it)
 
@@ -246,6 +246,7 @@ def _annotate_boxes(
     slide_w_emu: int,
     slide_h_emu: int,
     effective_boxes: Optional[Dict[int, BoxEmu]] = None,
+    draw_boxes: bool = True,
 ):
     """Overlay each top-level shape's bounding box on the slide image and
     compute pixel metrics. Box positions are read from the file (exact even
@@ -253,6 +254,13 @@ def _annotate_boxes(
     pixels (colors/positions are faithful). Draws box outlines, an `#id` label
     just OUTSIDE each box (detail goes to stdout, not onto the image), a tint on
     text boxes, and a red wash over peer-overlap regions.
+
+    `draw_boxes=False` computes the same findings but draws only the collision
+    wash. That is the QA default: the per-shape tint and outlines answer "which
+    box is #id" at the cost of the question QA actually asks - is this copy
+    legible on this background, is this margin even - because a 16%-alpha wash
+    over every text box and a 3px saturated outline around it change exactly the
+    pixels being judged.
 
     `effective_boxes` maps a shape_id to a box (EMU) grown to wrap copy that
     overflows its declared box; when present the overlay draws and tests that
@@ -337,7 +345,14 @@ def _annotate_boxes(
             ix0, iy0 = max(ax0, bx0), max(ay0, by0)
             ix1, iy1 = min(ax1, bx1), min(ay1, by1)
             if ix1 > ix0 and iy1 > iy0:
-                draw.rectangle([ix0, iy0, ix1, iy1], fill=(255, 0, 0, 130))
+                # Wash only on the --boxes diagnostic view. On the plain QA
+                # render it is a lie of omission: the pdf-word check downstream
+                # clears most of these pairs (a designed overlay, two boxes whose
+                # text sits in opposite halves), so a red block appears over
+                # perfectly good copy with no finding to explain it, and the
+                # render stops being a faithful picture of the slide.
+                if draw_boxes:
+                    draw.rectangle([ix0, iy0, ix1, iy1], fill=(255, 0, 0, 130))
                 findings["overlaps"].append(
                     _overlap_finding(
                         a, b, ea, eb, pen, kind, has_text(a), has_text(b)
@@ -363,6 +378,14 @@ def _annotate_boxes(
             nearest = min(abs(yc - my) for yc in rows)
             if nearest / ppi > MARKER_ALIGN_TOL_IN:
                 findings["markers"].append((m.shape_id, nearest / ppi))
+
+    if not draw_boxes:
+        out_path = image_path.with_name(image_path.stem + "-qa.png")
+        try:
+            Image.alpha_composite(base, overlay).convert("RGB").save(out_path)
+        except (OSError, ValueError):
+            return None
+        return out_path, findings
 
     for i, shape in enumerate(shapes):
         x0, y0, x1, y1 = to_px(shape)

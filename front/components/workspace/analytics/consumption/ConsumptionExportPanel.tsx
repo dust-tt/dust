@@ -120,7 +120,7 @@ export function ConsumptionExportPanel({
             Raw data exports
           </span>
           <span className="text-xs text-muted-foreground">
-            Exports are kept for a maximum of 15 days.
+            Exports are kept for a maximum of 7 days.
           </span>
           {isConsumptionExportsLoading ? (
             <div className="flex justify-center py-4">

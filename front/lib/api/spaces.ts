@@ -43,6 +43,7 @@ import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
 import type { SpaceCategoryInfo } from "@app/types/api/spaces";
 import { SKILL_STATUSES } from "@app/types/assistant/skill_configuration";
 import {
+  isManageableGroupKind,
   PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
   SPACE_GROUP_PREFIX,
@@ -684,14 +685,6 @@ export async function createSpaceAndGroup(
       );
     }
 
-    // Trim the name to prevent issues with leading/trailing whitespace
-    if (spaceKind === "regular" && !isRestricted) {
-      assert(
-        managementMode === "manual",
-        "Unrestricted regular spaces must use manual management mode."
-      );
-    }
-
     const nameAvailable = await SpaceResource.isNameAvailable(auth, name, t);
     if (!nameAvailable) {
       return new Err(
@@ -847,6 +840,17 @@ export async function createSpaceAndGroup(
           }
 
           const selectedGroups = selectedGroupsResult.value;
+          // `fetchByIds` only checks that the caller can read the groups, not what they are. Keep
+          // internal groups (global, system, another space's regular_auto, agent/skill editors) out
+          // of a space's group-managed access.
+          if (selectedGroups.some((g) => !isManageableGroupKind(g.kind))) {
+            return new Err(
+              new DustError(
+                "invalid_request_error",
+                "Only provisioned and manual groups can be given access to a space."
+              )
+            );
+          }
           memberGroups.push(...selectedGroups);
           for (const selectedGroup of selectedGroups) {
             await GroupSpaceMemberResource.makeNew(auth, {

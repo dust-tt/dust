@@ -85,7 +85,7 @@ describe("FireworksResponsesStream", () => {
       stream: true,
       input: [
         {
-          role: "developer",
+          role: "system",
           content: [{ type: "input_text", text: "Be concise." }],
         },
         {

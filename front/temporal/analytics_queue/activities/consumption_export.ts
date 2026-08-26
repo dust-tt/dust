@@ -12,7 +12,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { FileStorage } from "@app/lib/file_storage";
 import {
   GCS_COMPOSE_MAX_SOURCES,
-  getPrivateUploadBucket,
+  getTmpWorkloadsBucket,
 } from "@app/lib/file_storage";
 import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/consumption-export-ready";
 import logger from "@app/logger/logger";
@@ -135,7 +135,7 @@ export async function runConsumptionExportBucketActivity(
     bucketIndex
   );
 
-  await getPrivateUploadBucket()
+  await getTmpWorkloadsBucket()
     .file(gcsPath)
     .save(Buffer.from(result.value, "utf-8"), {
       contentType: "text/csv",
@@ -186,7 +186,7 @@ export async function finalizeConsumptionExportActivity(
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
   const workspaceId = auth.getNonNullableWorkspace().sId;
-  const bucket = getPrivateUploadBucket();
+  const bucket = getTmpWorkloadsBucket();
 
   const tmpPrefix = buildConsumptionExportBucketPartsGcsPrefix(
     workspaceId,

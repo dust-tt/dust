@@ -48,7 +48,8 @@ type GroupLabel =
 // read they fall back into the date-grouped Conversations list like any other read conversation.
 export function getGroupConversationsByUnreadAndActionRequired(
   conversations: ConversationListItemType[],
-  titleFilter: string
+  titleFilter: string,
+  activeConversationId: string | null
 ) {
   return (
     conversations
@@ -76,6 +77,14 @@ export function getGroupConversationsByUnreadAndActionRequired(
               conversation.nextWakeupAt !== null
             ) {
               acc.triggeredConversations.push(conversation);
+            } else if (
+              conversation.sId === activeConversationId &&
+              !conversation.actionRequired
+            ) {
+              // The conversation being viewed cannot be unread for its viewer: the server only
+              // reports it unread while the debounced mark-as-read has not landed yet. Keep it
+              // out of the inbox so it does not flash there while the agent responds.
+              acc.readConversations.push(conversation);
             } else {
               acc.inboxConversations.push(conversation);
             }

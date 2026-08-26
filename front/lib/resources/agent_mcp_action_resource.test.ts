@@ -15,6 +15,7 @@ import {
   warmGcsContentCache,
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -31,6 +32,7 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
@@ -1274,5 +1276,141 @@ describe("listGeneratedFilesForConversation", () => {
       });
 
     expect(result).toEqual([]);
+  });
+});
+
+describe("fetchByStepContents", () => {
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
+  let conversation: ConversationType;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    workspace = setup.workspace;
+    auth = setup.authenticator;
+
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+  });
+
+  async function createAgentMessage(rank: number): Promise<ModelId> {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: `Test Agent ${rank}`,
+    });
+
+    const userMessageRow = await ConversationFactory.createUserMessageWithRank({
+      auth,
+      workspace,
+      conversationId: conversation.id,
+      rank,
+      content: "Test message",
+    });
+
+    const agentMessageRow =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: rank + 1,
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: agentConfig.version,
+        parentId: userMessageRow.id,
+      });
+
+    return agentMessageRow.agentMessageId!;
+  }
+
+  function createAction(agentMessageModelId: ModelId, step: number) {
+    return AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      status: "succeeded",
+      step,
+    });
+  }
+
+  it("should return the actions of every given agent message", async () => {
+    const firstAgentMessageId = await createAgentMessage(0);
+    const secondAgentMessageId = await createAgentMessage(2);
+
+    const { action: firstAction } = await createAction(firstAgentMessageId, 1);
+    const { action: secondAction } = await createAction(
+      secondAgentMessageId,
+      1
+    );
+
+    const stepContents = await AgentStepContentResource.fetchByAgentMessages(
+      auth,
+      { agentMessageIds: [firstAgentMessageId, secondAgentMessageId] }
+    );
+
+    const actions = await AgentMCPActionResource.fetchByStepContents(auth, {
+      stepContents,
+    });
+
+    expect(actions.map((a) => a.id).sort()).toEqual(
+      [firstAction.id, secondAction.id].sort()
+    );
+  });
+
+  it("should only return the actions of the given step contents", async () => {
+    const agentMessageId = await createAgentMessage(0);
+    const { action: firstAction } = await createAction(agentMessageId, 1);
+    await createAction(agentMessageId, 2);
+
+    const actions = await AgentMCPActionResource.fetchByStepContents(auth, {
+      stepContents: [firstAction.stepContent],
+    });
+
+    expect(actions.map((a) => a.id)).toEqual([firstAction.id]);
+  });
+
+  it("should return no action when no step content is a function call", async () => {
+    const agentMessageId = await createAgentMessage(0);
+    await createAction(agentMessageId, 1);
+
+    const textContent = await AgentStepContentResource.createNewVersion({
+      workspaceId: workspace.id,
+      agentMessageId,
+      step: 1,
+      index: 42,
+      type: "text_content",
+      value: { type: "text_content", value: "Some text" },
+    });
+
+    const actions = await AgentMCPActionResource.fetchByStepContents(auth, {
+      stepContents: [textContent],
+    });
+
+    expect(actions).toEqual([]);
+  });
+
+  it("should exclude sandbox child actions sharing their parent step content", async () => {
+    const agentMessageId = await createAgentMessage(0);
+    const { action: parentAction } = await createAction(agentMessageId, 1);
+
+    await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessageId,
+      status: "succeeded",
+      step: 1,
+      parentAction,
+      sandboxChildActionInfo: { parentActionId: parentAction.sId },
+    });
+
+    const stepContents = await AgentStepContentResource.fetchByAgentMessages(
+      auth,
+      { agentMessageIds: [agentMessageId] }
+    );
+
+    const actions = await AgentMCPActionResource.fetchByStepContents(auth, {
+      stepContents,
+    });
+
+    expect(actions.map((a) => a.id)).toEqual([parentAction.id]);
   });
 });

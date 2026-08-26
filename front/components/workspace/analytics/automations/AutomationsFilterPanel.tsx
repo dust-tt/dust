@@ -1,4 +1,5 @@
 import { AutomationsFilterOptionIcon } from "@app/components/workspace/analytics/automations/AutomationsFilterOptionIcon";
+import { POOL_OPTIONS } from "@app/components/workspace/analytics/automations/trigger_pool_options";
 import type {
   AutomationsFilter,
   AutomationsFilterCategory,
@@ -17,7 +18,7 @@ import { FilterSelectionSummary } from "@app/components/workspace/analytics/filt
 import { useAutomationsFilter } from "@app/components/workspace/analytics/useAutomationsFilter";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionScopeDimension } from "@app/types/api/analytics/consumption";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -42,12 +43,22 @@ const TYPE_OPTIONS: AutomationsFilterOption[] = [
   { id: "webhook", name: "Webhook", disabled: false, category: "type" },
 ];
 
+const POOL_FILTER_OPTIONS: AutomationsFilterOption[] = POOL_OPTIONS.map(
+  ({ value, label }) => ({
+    id: value,
+    name: label,
+    disabled: false,
+    category: "pool",
+  })
+);
+
 interface AutomationsFilterPanelProps {
   owner: LightWorkspaceType;
   period: ConsumptionPeriodSelection;
   filter: AutomationsFilter;
   onFilterChange: (next: AutomationsFilter) => void;
   categories?: readonly AutomationsFilterCategory[];
+  agentOptions?: { agentId: string; name: string; pictureUrl: string | null }[];
 }
 
 export function AutomationsFilterPanel({
@@ -56,6 +67,7 @@ export function AutomationsFilterPanel({
   filter,
   onFilterChange,
   categories = AUTOMATIONS_FILTER_CATEGORIES,
+  agentOptions,
 }: AutomationsFilterPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const {
@@ -88,20 +100,28 @@ export function AutomationsFilterPanel({
     filter: draftScopeFilter,
     scope: "automations",
     dimensions: AUTOMATIONS_FACET_DIMENSIONS,
-    disabled: !isOpen,
+    disabled: !isOpen || agentOptions !== undefined,
   });
 
   const categoryOptions = useMemo<
     Record<AutomationsFilterCategory, AutomationsFilterOption[]>
   >(
     () => ({
-      agent: facetOptions.agent.map((option) => ({
-        id: option.id,
-        name: option.name,
-        disabled: option.disabled,
-        image: option.image,
-        category: "agent",
-      })),
+      agent: agentOptions
+        ? agentOptions.map((option) => ({
+            id: option.agentId,
+            name: option.name,
+            disabled: false,
+            image: option.pictureUrl,
+            category: "agent",
+          }))
+        : facetOptions.agent.map((option) => ({
+            id: option.id,
+            name: option.name,
+            disabled: option.disabled,
+            image: option.image,
+            category: "agent",
+          })),
       member: facetOptions.member.map((option) => ({
         id: option.id,
         name: option.name,
@@ -110,11 +130,13 @@ export function AutomationsFilterPanel({
         category: "member",
       })),
       type: TYPE_OPTIONS,
+      pool: POOL_FILTER_OPTIONS,
     }),
-    [facetOptions]
+    [agentOptions, facetOptions]
   );
 
-  const isFacetBackedCategory = activeCategory !== "type";
+  const isFacetBackedCategory =
+    activeCategory !== "type" && activeCategory !== "pool";
   const isOptionsLoading = isFacetBackedCategory && isFacetsLoading;
 
   const activeOptions = categoryOptions[activeCategory];

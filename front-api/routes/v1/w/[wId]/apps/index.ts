@@ -1,4 +1,5 @@
 import { AppResource } from "@app/lib/resources/app_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { GetAppsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -27,8 +28,16 @@ app.get(
 
     const apps = await AppResource.listBySpace(auth, space);
 
+    // All apps belong to `space`; load its group sIds once so the public app response keeps the
+    // space's `groupIds` without relying on the eagerly-loaded grants.
+    const [enrichedSpace] = await SpaceResource.batchToJSONEnriched(auth, [
+      space,
+    ]);
+
     return ctx.json({
-      apps: apps.filter((a) => a.canRead(auth)).map((a) => a.toJSON()),
+      apps: apps
+        .filter((a) => a.canRead(auth))
+        .map((a) => a.toJSONEnriched(enrichedSpace)),
     });
   }
 );

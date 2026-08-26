@@ -1,6 +1,8 @@
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import { timeAgoFrom } from "@app/lib/utils";
 import { LoadingBlock, Page, Tooltip } from "@dust-tt/sparkle";
@@ -9,15 +11,24 @@ export interface ConsumptionOverviewProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   showError?: boolean;
+  analyticsScope?: ConsumptionAnalyticsScope;
+  disabled?: boolean;
 }
 
 export function ConsumptionOverview({
   workspaceId,
   period: periodSelection,
   showError = false,
+  analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
+  disabled,
 }: ConsumptionOverviewProps) {
   const { overview, isOverviewLoading, isOverviewError } =
-    useConsumptionOverview({ workspaceId, period: periodSelection });
+    useConsumptionOverview({
+      workspaceId,
+      period: periodSelection,
+      analyticsScope,
+      disabled,
+    });
 
   return (
     <ConsumptionOverviewView
@@ -25,6 +36,7 @@ export function ConsumptionOverview({
       isOverviewLoading={isOverviewLoading}
       isOverviewError={Boolean(isOverviewError)}
       showError={showError}
+      analyticsScope={analyticsScope}
     />
   );
 }
@@ -35,6 +47,7 @@ interface ConsumptionOverviewViewProps {
   isOverviewError: boolean;
   showError?: boolean;
   showIndexingDetails?: boolean;
+  analyticsScope?: ConsumptionAnalyticsScope;
 }
 
 export function ConsumptionOverviewView({
@@ -43,6 +56,7 @@ export function ConsumptionOverviewView({
   isOverviewError,
   showError = false,
   showIndexingDetails = false,
+  analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
 }: ConsumptionOverviewViewProps) {
   if (isOverviewLoading) {
     return <LoadingBlock className="h-5 w-80" />;
@@ -60,7 +74,11 @@ export function ConsumptionOverviewView({
 
   const header = [
     `${formatConsumptionDate(period.startDate)} to ${formatConsumptionDate(period.endDate)}`,
-    `${members.active.toLocaleString()} of ${members.total.toLocaleString()} members active`,
+    ...(analyticsScope.kind === "workspace"
+      ? [
+          `${members.active.toLocaleString()} of ${members.total.toLocaleString()} members active`,
+        ]
+      : []),
     ...(lastRecordAt
       ? [
           showIndexingDetails

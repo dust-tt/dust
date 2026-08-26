@@ -97,7 +97,6 @@ type SubNavigationAdminId =
   | "dev_secrets"
   | "sandbox"
   | "analytics"
-  | "analytics_consumption"
   | "automations"
   | "credits_usage"
   | "usage"
@@ -109,8 +108,7 @@ const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   governance: ["/w/[wId]/governance"],
   workspace_branding: ["/w/[wId]/brand"],
   model_providers: ["/w/[wId]/model-providers"],
-  analytics: ["/w/[wId]/analytics"],
-  analytics_consumption: ["/w/[wId]/analytics/consumption"],
+  analytics: ["/w/[wId]/analytics/consumption"],
   automations: ["/w/[wId]/automations"],
   subscription: ["/w/[wId]/subscription"],
   billing: ["/w/[wId]/billing"],
@@ -346,22 +344,10 @@ export const subNavigationAdmin = ({
         id: "analytics",
         label: "Analytics",
         icon: BarChart01,
-        href: `/w/${owner.sId}/analytics`,
+        href: `/w/${owner.sId}/analytics/consumption`,
         current: isCurrent("analytics"),
         disabled: !hasManagerRole,
       },
-      ...(featureFlags.includes("enable_analytics_consumption")
-        ? [
-            {
-              id: "analytics_consumption" as const,
-              label: "Analytics (new)",
-              icon: BarChart01,
-              href: `/w/${owner.sId}/analytics/consumption`,
-              current: isCurrent("analytics_consumption"),
-              disabled: !hasManagerRole,
-            },
-          ]
-        : []),
       isCreditPricedPlan(subscription.plan)
         ? {
             id: "billing",

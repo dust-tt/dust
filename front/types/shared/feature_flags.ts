@@ -51,11 +51,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to internal global agents (dust-edge, dust-quick, dust-oai, dust-goog, custom model agents and their variants)",
     stage: "dust_only",
   },
-  dust_agent_gpt_5_6_luna_default: {
-    description:
-      "Use GPT 5.6 Luna (high reasoning) as the default model for the @dust agent",
-    stage: "on_demand",
-  },
   gpt_5_6_terra_long_context: {
     description: "Access to GPT 5.6 Terra with its full context window",
     stage: "on_demand",
@@ -164,11 +159,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
     stage: "on_demand",
   },
-  enable_analytics_consumption: {
-    description:
-      "Access to the new consumption-based Analytics dashboard, built alongside the current one while it is brought to parity.",
-    stage: "dust_only",
-  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
@@ -215,10 +205,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   shopify_tool: {
     description: "Shopify MCP tool",
-    stage: "on_demand",
-  },
-  workday_mcp: {
-    description: "Workday MCP tool",
     stage: "on_demand",
   },
   sandbox_functions: {
@@ -286,11 +272,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Dummy feature flag used for testing feature flag behavior",
     stage: "dust_only",
   },
-  browser_extension_mcp_tools: {
-    description:
-      "Show the browser extension MCP tools toggle in workspace access settings",
-    stage: "dust_only",
-  },
   sensitivity_labels: {
     description:
       "Enable Microsoft sensitivity labels for data classification on connectors and MCP servers",
@@ -324,6 +305,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   activation_force_nudge: {
     description:
       "Bypass the activated-user check in the activation orchestrator so already-activated users are still nudged",
+    stage: "dust_only",
+  },
+  dust_pod_goal: {
+    description:
+      "Enable the Dust Pod Goal skill for persistent job loops in Pods",
     stage: "dust_only",
   },
   admin_controlled_pods: {
@@ -371,14 +357,19 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow editing tool inputs before approving a tool call in the tool validation UI.",
     stage: "dust_only",
   },
-  trigger_pool_choice: {
-    description:
-      "Let trigger editors pick the credit pool (workspace or member) a trigger runs on, and let admins govern who may pick the workspace pool.",
-    stage: "dust_only",
-  },
   skip_free_usage_rate_limit: {
     description:
       "Skip the per-user daily free-usage cost cap enforced at the LLM call site. Escape hatch to unstick legitimate workspaces that legitimately exceed the free-usage limit.",
+    stage: "on_demand",
+  },
+  disable_fair_use_awu_limit: {
+    description:
+      "Disable the per-user fair-use AWU credit limit on this workspace: skip both the pre-message enforcement (read) and the usage recording (write). Escape hatch for workspaces that should not be subject to the fair-use cap.",
+    stage: "on_demand",
+  },
+  archive_inactive_agents: {
+    description:
+      "Allow this workspace to preview and archive agents that have not been mentioned for a configurable number of days.",
     stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
@@ -390,6 +381,12 @@ export const FEATURE_FLAG_STAGE_LABELS: Record<FeatureFlagStage, string> = {
   rolling_out: "Rolling out",
   on_demand: "On demand",
 };
+
+export const FEATURE_FLAG_STAGES = [
+  "dust_only",
+  "rolling_out",
+  "on_demand",
+] as const satisfies readonly FeatureFlagStage[];
 
 export type FeatureFlag = {
   description: string;

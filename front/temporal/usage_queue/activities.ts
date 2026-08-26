@@ -358,30 +358,25 @@ export async function emitMetronomeUsageEventsActivity(
   });
   const runUsages = await RunResource.listRunUsagesForRuns(auth, { runs });
 
-  // Get MCP actions, filtered to this execution's steps if startStep is available. The event
-  // adapter applies the canonical billing-status gate before producing Metronome events.
+  // Get every MCP action for the message so the canonical billing plan can
+  // apply message-level policies across interrupt/resume executions. The event
+  // adapter only emits the actions belonging to this execution.
   const allMcpActions = await AgentMCPActionResource.listByAgentMessageIds(
     auth,
     [agentMessage.id]
   );
-  const mcpActions = allMcpActions.filter((a) => {
+  const toolActions = allMcpActions.map((a) => {
     const json = a.toJSON();
-    if (
-      agentLoopArgs.startStep !== undefined &&
-      json.step < agentLoopArgs.startStep
-    ) {
-      return false;
-    }
-    return true;
-  });
-  const toolActions = mcpActions.map((a) => {
-    const json = a.toJSON();
+
     return {
       toolName: json.toolName,
       mcpServerId: json.mcpServerId,
       internalMCPServerName: json.internalMCPServerName,
       status: json.status,
       executionDurationMs: json.executionDurationMs,
+      shouldEmit:
+        agentLoopArgs.startStep === undefined ||
+        json.step >= agentLoopArgs.startStep,
     };
   });
 

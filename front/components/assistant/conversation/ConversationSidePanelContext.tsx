@@ -1,4 +1,4 @@
-import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
+import { getDefaultRightPanelSize } from "@app/components/assistant/conversation/constant";
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useHashParam } from "@app/hooks/useHashParams";
@@ -215,7 +215,7 @@ export function ConversationSidePanelProvider({
 
       // Re-expand imperatively: the container's expand effect only fires when `currentPanel`
       // changes, so a close→reopen race (same value) wouldn't re-run it. No-op on mobile.
-      panelRef.current?.expand(DEFAULT_RIGHT_PANEL_SIZE);
+      panelRef.current?.expand(getDefaultRightPanelSize(params.type));
     },
     [setCurrentPanel, setData, data, closePanel, currentPanel]
   );

@@ -1,7 +1,3 @@
-import {
-  getTierForModel,
-  STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
-} from "@app/lib/api/assistant/token_pricing/tiers";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type {
   EnabledModelConfigurationType,
@@ -15,6 +11,10 @@ import {
   AUTO_MODEL_ID,
   isModelStreamId,
 } from "@app/types/assistant/models/auto";
+import {
+  getTierForModel,
+  STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
+} from "@app/types/assistant/models/model_tiers";
 import { isStaticModelId } from "@app/types/assistant/models/models";
 import type {
   ModelConfigurationType,

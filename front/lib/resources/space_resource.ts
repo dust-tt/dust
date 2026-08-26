@@ -5,6 +5,7 @@ import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/pr
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConcreteGrantType } from "@app/lib/resources/group_permission_registry";
+import { grantTypesForVerb } from "@app/lib/resources/group_permission_registry";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
@@ -31,6 +32,8 @@ import { SPACE_EDITOR_GRANT_TYPE } from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
+  isManageableGroupKind,
+  MANAGEABLE_GROUP_KINDS,
   PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
   SPACE_GROUP_PREFIX,
@@ -44,7 +47,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { SpaceKind, SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType, SpaceKind, SpaceType } from "@app/types/space";
 import assert from "assert";
 import type {
   Attributes,
@@ -87,24 +90,52 @@ class SpaceGroupReference {
     });
   }
 
-  // A `reader` grant is read-only (viewer) access. It is held by the workspace global group on open
-  // spaces (attached as a viewer), and additionally by the member group on open *regular* spaces
-  // (where every group only reads — write comes from the role grants). Presence of any reader grant
-  // therefore means the space is open; such groups never confer membership by themselves.
+  // A `reader` grant is read-only (viewer) access. It is held by the workspace global group, and
+  // only by it, on open spaces — regular and project alike — where it is attached as a viewer.
+  // Presence of any reader grant therefore means the space is open; such groups never confer
+  // membership by themselves.
   isReader(): boolean {
     return this.grantType === "reader";
   }
 }
 
 // Space membership resolved from the caller's governance grants (see `SpaceResource.isMember`). The
-// membership verb differs by space kind because the grants `spaceGroupRoles` writes differ:
-// - Regular spaces grant `read` to every member — open spaces via the global group's `reader`,
-//   restricted spaces via their own groups' `member` — so holding `read` marks membership.
+// membership verb differs by space kind:
+// - Regular spaces treat everyone who can read as a member: on an open space that is the whole
+//   workspace, through the global group's `reader`. Membership there is about visibility, and the
+//   member group's `write` is a capability on top of it.
 // - Project (pod) spaces attach the workspace global group as a `reader` viewer on unrestricted
 //   projects, so `read` would count every workspace member as a member. `write` is held only by a
 //   project's editor (`admin`) and member (`member`) groups, so it is what marks an actual member.
 const REGULAR_SPACE_MEMBERSHIP_VERB: GrantVerb = "read";
 const POD_SPACE_MEMBERSHIP_VERB: GrantVerb = "write";
+
+// The instance-level space grant types that confer each kind's membership verb, resolved once from
+// the registry (the single source of truth). Used by the batch membership check so it mirrors
+// `isMember` — a member is whoever holds the space's membership verb — instead of reasoning about
+// grant types (reader/member/...) by hand.
+const REGULAR_MEMBERSHIP_GRANT_TYPES: ReadonlySet<GrantType> = new Set(
+  grantTypesForVerb("space", REGULAR_SPACE_MEMBERSHIP_VERB, "instance")
+);
+const POD_MEMBERSHIP_GRANT_TYPES: ReadonlySet<GrantType> = new Set(
+  grantTypesForVerb("space", POD_SPACE_MEMBERSHIP_VERB, "instance")
+);
+
+// The "no memberships" fallback used by batch membership resolution.
+const EMPTY_GROUP_MODEL_IDS: ReadonlySet<ModelId> = new Set();
+
+// A space's grant-derived serialization fields, loaded on demand from `group_permissions` (see
+// `listSpaceEnrichmentBySpaceModelId`) and passed to `toJSONEnriched`.
+type SpaceGrantEnrichment = {
+  groupIds: string[];
+  isRestricted: boolean;
+};
+
+// The enrichment for a space with no grants loaded (used as the fallback when serializing).
+const EMPTY_SPACE_GRANT_ENRICHMENT: SpaceGrantEnrichment = {
+  groupIds: [],
+  isRestricted: false,
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SpaceResource extends BaseResource<SpaceModel> {
@@ -976,6 +1007,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         | "user_not_member"
         | "user_already_member"
         | "group_requirements_not_met"
+        | "invalid_group_kind"
         | "system_or_global_group"
         | "invalid_id"
       >
@@ -1173,15 +1205,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         const groupIds = params.groupIds;
         const editorGroupIds = params.editorGroupIds;
 
-        // Remove existing provisioned associations, read straight from group_vaults rather than
-        // `this.groups` (now sourced from group_permissions). Switching to manual mode drops the
-        // provisioned grants but leaves the group_vaults rows, so `this.groups` would not list them
-        // and the re-insert below would hit the (vaultId, groupId) unique constraint.
+        // Remove the associations of every group the user can pick here (provisioned and manual
+        // alike), read straight from group_vaults rather than `this.groups` (now sourced from
+        // group_permissions). Switching to manual mode drops those grants but leaves the
+        // group_vaults rows, so `this.groups` would not list them and the re-insert below would hit
+        // the (vaultId, groupId) unique constraint. Clearing the whole selectable set is also what
+        // makes deselecting a group actually remove its access.
         await GroupSpaceModel.destroy({
           where: {
             vaultId: this.id,
             workspaceId: auth.getNonNullableWorkspace().id,
-            groupKind: "provisioned",
+            groupKind: { [Op.in]: [...MANAGEABLE_GROUP_KINDS] },
           },
           transaction: t,
         });
@@ -1197,6 +1231,23 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           return selectedGroupsResult;
         }
         const selectedGroups = selectedGroupsResult.value;
+        // `fetchByIds` only checks that the caller can read the groups, not what they are. Without
+        // this, any readable group could be attached: the global group (which would silently make
+        // the space open), another space's regular_auto group (two of those on one space breaks
+        // `fetchManualMemberGroup`), or an agent/skill editors group.
+        const unsupportedGroups = selectedGroups.filter(
+          (group) => !isManageableGroupKind(group.kind)
+        );
+        if (unsupportedGroups.length > 0) {
+          // The associations were already dropped above, so re-sync before bailing out.
+          await syncGroupPermissions();
+          return new Err(
+            new DustError(
+              "invalid_group_kind",
+              "Only provisioned and manual groups can be given access to a space."
+            )
+          );
+        }
         for (const selectedGroup of selectedGroups) {
           await GroupSpaceMemberResource.makeNew(auth, {
             group: selectedGroup,
@@ -1224,6 +1275,20 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             selectedEditorGroups.length > 0,
             "Pods must have at least one editor group."
           );
+          // Same as above: `GroupSpaceEditorResource.makeNew` asserts on the kind, which would be a
+          // 500 rather than a rejected request.
+          const unsupportedEditorGroups = selectedEditorGroups.filter(
+            (group) => !isManageableGroupKind(group.kind)
+          );
+          if (unsupportedEditorGroups.length > 0) {
+            await syncGroupPermissions();
+            return new Err(
+              new DustError(
+                "invalid_group_kind",
+                "Only provisioned and manual groups can be given access to a space."
+              )
+            );
+          }
           for (const selectedEditorGroup of selectedEditorGroups) {
             await GroupSpaceEditorResource.makeNew(auth, {
               group: selectedEditorGroup,
@@ -1748,9 +1813,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   // The groups that make up this space's membership: its member group and, for projects, its editor
   // group (regular_auto in manual mode, provisioned in group mode). Groups holding only a read-only
-  // (`reader`) grant are excluded — the workspace global group attached to open spaces as a viewer,
-  // and on open regular spaces the member group too, since an open space confers access to everyone
-  // rather than through a member group. Use this to list who actually belongs to the space.
+  // (`reader`) grant are excluded — that is the workspace global group attached to an open space as
+  // a viewer, which makes the space visible without making anyone a member. Use this to list who
+  // actually belongs to the space.
   async fetchMembershipGroups(
     auth: Authenticator,
     transaction?: Transaction
@@ -1784,7 +1849,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   isMember(auth: Authenticator): boolean {
     // Read membership from the caller's resolved space grants rather than raw group membership; the
-    // grants `spaceGroupRoles` writes mirror `isMemberByGroupPredicate` per kind (see the
+    // grants `spaceGroupRoles` writes mirror `isMemberFromGrants` per kind (see the
     // `*_SPACE_MEMBERSHIP_VERB` constants for why the verb differs between regular and project).
     switch (this.kind) {
       // The workspace-wide space: every member belongs to it.
@@ -1809,42 +1874,116 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   /**
-   * Same membership rule as {@link SpaceResource.isMember}, evaluated against a
-   * precomputed set of group model ids instead of an `Authenticator`. Lets
-   * callers check many users at once without building one `Authenticator` per
-   * user.
+   * For each of `userModelIds`, the subset of `spaces` they are a member of. Batches the spaces'
+   * grants and the users' group memberships into two queries, then applies the same per-kind rule
+   * as {@link SpaceResource.isMember}. Lets callers check many users and spaces at once without
+   * building one `Authenticator` per user.
    */
-  isMemberByGroupModelIds(groupModelIds: ReadonlySet<ModelId>): boolean {
-    return this.isMemberByGroupPredicate((groupModelId) =>
-      groupModelIds.has(groupModelId)
-    );
+  static async listMemberSpaceModelIdsByUser(
+    auth: Authenticator,
+    {
+      spaces,
+      userModelIds,
+    }: { spaces: SpaceResource[]; userModelIds: ModelId[] }
+  ): Promise<Map<ModelId, Set<ModelId>>> {
+    const memberSpaceModelIdsByUser = new Map<ModelId, Set<ModelId>>();
+    if (spaces.length === 0 || userModelIds.length === 0) {
+      return memberSpaceModelIdsByUser;
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    // group_permissions is the source of truth for space access: read every space's grants in one
+    // query rather than through the per-instance `this.groups`.
+    const grants = await GroupPermissionModel.findAll({
+      attributes: ["resourceId", "workspaceId", "groupId", "grantType"],
+      where: {
+        workspaceId: workspace.id,
+        resourceType: "space",
+        resourceId: spaces.map((space) => space.id),
+      },
+    });
+
+    const grantsBySpaceModelId = new Map<ModelId, SpaceGroupReference[]>();
+    for (const grant of grants) {
+      const ref = SpaceGroupReference.fromGrant(grant);
+      const refs = grantsBySpaceModelId.get(grant.resourceId);
+      if (refs) {
+        refs.push(ref);
+      } else {
+        grantsBySpaceModelId.set(grant.resourceId, [ref]);
+      }
+    }
+
+    // For each user, the groups they are an active member of among the spaces' grant groups. One
+    // query, whatever the number of users and spaces.
+    const groupModelIdsByUser =
+      await GroupResource.listGroupModelIdsByUserModelIdInWorkspace({
+        workspace,
+        userModelIds,
+        groupModelIds: [...new Set(grants.map((grant) => grant.groupId))],
+      });
+
+    // O(users × spaces) membership resolution over already-fetched data (no DB calls in the loop).
+    // Both arrays are small in practice: `spaces` is a caller-held set or a single workspace's
+    // spaces (tens, well under a few hundred) and `userModelIds` is a bounded set of users (skill
+    // editors, mentioned users, or an access-check request — tens to low hundreds). The inner
+    // `isMemberFromGrants` scan is bounded by a space's group count (typically < 10).
+    for (const userModelId of userModelIds) {
+      const userGroupModelIds =
+        groupModelIdsByUser.get(userModelId) ?? EMPTY_GROUP_MODEL_IDS;
+      const memberSpaceModelIds = new Set<ModelId>();
+      for (const space of spaces) {
+        if (
+          space.isMemberFromGrants(
+            grantsBySpaceModelId.get(space.id) ?? [],
+            userGroupModelIds
+          )
+        ) {
+          memberSpaceModelIds.add(space.id);
+        }
+      }
+      if (memberSpaceModelIds.size > 0) {
+        memberSpaceModelIdsByUser.set(userModelId, memberSpaceModelIds);
+      }
+    }
+
+    return memberSpaceModelIdsByUser;
   }
 
-  private isMemberByGroupPredicate(
-    hasGroup: (groupModelId: ModelId) => boolean
+  // Batched equivalent of `isMember`: a member is whoever holds the space's membership verb. Given a
+  // space's grant references and a precomputed set of the user's group model ids, the user is a
+  // member iff they belong to a group whose grant confers that verb (resolved through the registry,
+  // like `isMember`). Kept private and fed by `listMemberSpaceModelIdsByUser` so it needs neither an
+  // `Authenticator` nor `this.groups`.
+  private isMemberFromGrants(
+    grants: SpaceGroupReference[],
+    userGroupModelIds: ReadonlySet<ModelId>
   ): boolean {
-    // TODO(projects): update this method to check groups whose group_vaults relationship is
-    // to remove the complexity of checking the global group based on the space type.
-
-    const groups = this.groups;
-
     switch (this.kind) {
-      case "regular":
-        // An open regular space grants membership to every workspace member.
-        return this.isOpen() || groups.some((group) => hasGroup(group.groupId));
-      case "project":
-        // The global group is attached to open projects as a public viewer (a reader grant), which
-        // makes the project visible but does not make you a member; membership comes from the other
-        // groups.
-        return groups.some(
-          (group) => !group.isReader() && hasGroup(group.groupId)
-        );
+      // The workspace-wide space: every member belongs to it.
       case "global":
         return true;
+      // Not membership spaces (see `isMember`).
       case "conversations":
       case "system":
         return false;
-
+      // Regular spaces check `read`, projects check `write` (see the `*_SPACE_MEMBERSHIP_VERB`
+      // constants). Open spaces need no special-casing: their global-group `reader` grant confers
+      // `read`, so every workspace member is a member of an open regular space, while on projects
+      // that same `reader` grant does not confer `write` and therefore is not membership.
+      case "regular":
+      case "project": {
+        const membershipGrantTypes =
+          this.kind === "project"
+            ? POD_MEMBERSHIP_GRANT_TYPES
+            : REGULAR_MEMBERSHIP_GRANT_TYPES;
+        return grants.some(
+          (grant) =>
+            userGroupModelIds.has(grant.groupId) &&
+            membershipGrantTypes.has(grant.grantType)
+        );
+      }
       default:
         assertNever(this.kind);
     }
@@ -1891,36 +2030,23 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return [{ role: "admin", permissions: ["admin", "write"] }];
     }
 
-    // Global Workspace space and Conversations space.
-    if (this.isGlobal() || this.isConversations()) {
+    // Global Workspace space, Conversations space and open regular spaces. Read is not granted by
+    // role: all three attach the workspace global group with a `reader` grant, and every workspace
+    // member belongs to that group, so `group_permissions` already confers read on everyone. Write
+    // is the only thing the role still grants here, and the only remaining difference with a
+    // restricted regular space.
+    if (this.isGlobal() || this.isConversations() || this.isRegularAndOpen()) {
       return [
-        { role: "admin", permissions: ["admin", "read", "write"] },
+        { role: "admin", permissions: ["admin", "write"] },
         // TODO(governance): remove once manager is available for everyone
-        { role: "builder", permissions: ["read", "write"] },
-        { role: "manager", permissions: ["read", "write"] },
+        { role: "builder", permissions: ["write"] },
+        { role: "manager", permissions: ["write"] },
       ];
     }
 
-    // Open space.
-    if (this.isRegularAndOpen()) {
-      return [
-        { role: "admin", permissions: ["admin", "read", "write"] },
-        // TODO(governance): remove once manager is available for everyone
-        { role: "builder", permissions: ["read", "write"] },
-        { role: "manager", permissions: ["read", "write"] },
-        { role: "user", permissions: ["read"] },
-      ];
-    }
-
-    if (this.isProject()) {
-      return [
-        { role: "admin", permissions: ["admin"] },
-        { role: "manager", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
-        { role: "user", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
-      ];
-    }
-
-    // Restricted regular space.
+    // Projects and restricted regular spaces: the role only confers administration. Read and write
+    // come from the space's grants — including on an open project, where the global group's
+    // `reader` grant makes it visible to every workspace member.
     return [{ role: "admin", permissions: ["admin"] }];
   }
 
@@ -1958,20 +2084,26 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       }));
     }
 
-    // Provisioned groups do not carry grants on manually-managed spaces.
+    // A manually-managed space draws its access from its own auto-created groups, plus the
+    // workspace global group when it is open. The groups a user can pick in group mode —
+    // provisioned and manual alike — keep their `group_vaults` rows when the space switches back to
+    // manual, so they are filtered out here rather than granting in a mode that never selected them.
     const groups =
       this.managementMode === "manual"
-        ? associatedGroups.filter((group) => !group.isProvisioned())
+        ? associatedGroups.filter((group) => !isManageableGroupKind(group.kind))
         : associatedGroups;
 
     // A space is open when the workspace global group is one of its groups.
     const isOpen = associatedGroups.some((group) => group.isGlobal());
 
-    // Open regular space: every group only reads; write comes from the role grants.
+    // Open regular space: the workspace global group is attached as a viewer, so it must only read
+    // — conferring write would hand write on every open space to every workspace member. Every
+    // other group is a member group and reads and writes, exactly as on a restricted space; that is
+    // what makes a space's member list meaningful even when the space is open.
     if (this.isRegular() && isOpen) {
       return groups.map((group) => ({
         groupId: group.id,
-        grantType: "reader",
+        grantType: group.isGlobal() ? "reader" : "member",
       }));
     }
 
@@ -2191,6 +2323,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return this.isRegular() && this.isOpen();
   }
 
+  // Whether the space is restricted (its data is visible only to its members). Only regular and
+  // project spaces can be restricted; the unique kinds (`global`/`conversations` are workspace-wide,
+  // `system` is admin-only and not a membership space) are never "restricted" in this sense. Note
+  // this is NOT `!isOpen()`: a `system` space is not open but is not restricted either.
+  isRestricted() {
+    return this.isRegularAndRestricted() || this.isProjectAndRestricted();
+  }
+
   isOpen() {
     // A space is open when it has a reader (viewer) grant: the workspace global group is attached as
     // a viewer on open spaces (restricted spaces have no reader grant). See
@@ -2403,15 +2543,99 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   toJSON(): SpaceType {
     return {
       createdAt: this.createdAt.getTime(),
-      groupIds: this.groups.map((group) => group.groupSId),
-      isRestricted:
-        this.isRegularAndRestricted() || this.isProjectAndRestricted(),
-
       kind: this.kind,
       managementMode: this.managementMode,
       name: this.name,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
     };
+  }
+
+  // Serialize with the space's grant-derived fields (`groupIds` and `isRestricted`). Private: these
+  // are not carried on `toJSON` (that would force the eager `group_permissions` include on every
+  // space load), so callers go through the batched `batchToJSONEnriched` rather than pairing this
+  // with the loader themselves.
+  private toJSONEnriched({
+    groupIds,
+    isRestricted,
+  }: SpaceGrantEnrichment): EnrichedSpaceType {
+    return {
+      ...this.toJSON(),
+      groupIds,
+      isRestricted,
+    };
+  }
+
+  // Serialize each of `spaces` to `EnrichedSpaceType` (base fields + grant-derived `groupIds` and
+  // `isRestricted`), loading the grants in a single `group_permissions` query. This keeps the whole
+  // enrichment flow inside the resource: the public API, the space-management UI and poke go through
+  // here instead of wiring the loader + per-space fallback at each call site. The result preserves
+  // the order of `spaces`.
+  static async batchToJSONEnriched(
+    auth: Authenticator,
+    spaces: SpaceResource[]
+  ): Promise<EnrichedSpaceType[]> {
+    const enrichmentBySpaceModelId =
+      await this.listSpaceEnrichmentBySpaceModelId(auth, spaces);
+    return spaces.map((space) =>
+      space.toJSONEnriched(
+        enrichmentBySpaceModelId.get(space.id) ?? EMPTY_SPACE_GRANT_ENRICHMENT
+      )
+    );
+  }
+
+  // The grant-derived enrichment (`groupIds` + `isRestricted`) for each of `spaces`, keyed by space
+  // model id. One query against `group_permissions` (the source of truth), so `batchToJSONEnriched`
+  // can serialize without relying on the eagerly-loaded `this.groups`. `groupIds` mirrors `toJSON`'s
+  // former output (every grant group: members, editors, provisioned, and the open-space global
+  // reader); `isRestricted` mirrors `isRestricted()` (grant-based, without `this.groups`).
+  private static async listSpaceEnrichmentBySpaceModelId(
+    auth: Authenticator,
+    spaces: SpaceResource[]
+  ): Promise<Map<ModelId, SpaceGrantEnrichment>> {
+    const enrichmentBySpaceModelId = new Map<ModelId, SpaceGrantEnrichment>();
+    if (spaces.length === 0) {
+      return enrichmentBySpaceModelId;
+    }
+
+    const grants = await GroupPermissionModel.findAll({
+      attributes: ["resourceId", "workspaceId", "groupId", "grantType"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        resourceType: "space",
+        resourceId: spaces.map((space) => space.id),
+      },
+    });
+
+    const groupIdsBySpaceModelId = new Map<ModelId, string[]>();
+    const hasReaderGrantBySpaceModelId = new Map<ModelId, boolean>();
+    for (const grant of grants) {
+      const groupId = GroupResource.modelIdToSId({
+        id: grant.groupId,
+        workspaceId: grant.workspaceId,
+      });
+      const existing = groupIdsBySpaceModelId.get(grant.resourceId);
+      if (existing) {
+        existing.push(groupId);
+      } else {
+        groupIdsBySpaceModelId.set(grant.resourceId, [groupId]);
+      }
+      if (grant.grantType === "reader") {
+        hasReaderGrantBySpaceModelId.set(grant.resourceId, true);
+      }
+    }
+
+    for (const space of spaces) {
+      // A reader (viewer) grant means the workspace global group is attached: the space is open.
+      // Only regular and project spaces can be restricted (the unique kinds never are), matching
+      // `isRestricted()`.
+      const isOpen = hasReaderGrantBySpaceModelId.get(space.id) ?? false;
+      enrichmentBySpaceModelId.set(space.id, {
+        groupIds: groupIdsBySpaceModelId.get(space.id) ?? [],
+        isRestricted: (space.isRegular() || space.isProject()) && !isOpen,
+      });
+    }
+
+    return enrichmentBySpaceModelId;
   }
 }

@@ -1,11 +1,9 @@
-import { TableSelectionBanner } from "@app/components/shared/TableSelectionBanner";
-import { ContentMessageAction } from "@dust-tt/sparkle";
+import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
+import { Button } from "@dust-tt/sparkle";
 
 interface MembersSelectionBannerProps {
   selectedCount: number;
-  pageCount: number;
   totalCount: number;
-  isAllAcrossPagesSelected: boolean;
   hasMorePagesToSelect: boolean;
   onSelectAllAcrossPages: () => void;
   onClear: () => void;
@@ -17,9 +15,7 @@ interface MembersSelectionBannerProps {
 
 export function MembersSelectionBanner({
   selectedCount,
-  pageCount,
   totalCount,
-  isAllAcrossPagesSelected,
   hasMorePagesToSelect,
   onSelectAllAcrossPages,
   onClear,
@@ -28,31 +24,31 @@ export function MembersSelectionBanner({
   disabled = false,
 }: MembersSelectionBannerProps) {
   return (
-    <TableSelectionBanner
+    <BulkSelectionBar
       selectedCount={selectedCount}
-      pageCount={pageCount}
       totalCount={totalCount}
       itemLabel="member"
-      isAllAcrossPagesSelected={isAllAcrossPagesSelected}
-      hasMorePagesToSelect={hasMorePagesToSelect}
-      onSelectAllAcrossPages={onSelectAllAcrossPages}
+      canSelectAll={hasMorePagesToSelect}
+      onSelectAll={onSelectAllAcrossPages}
       onClear={onClear}
       disabled={disabled}
     >
       {onBatchChangeSeat && (
-        <ContentMessageAction
+        <Button
+          size="sm"
           variant="primary"
           label="Batch change seat"
           onClick={onBatchChangeSeat}
           disabled={disabled}
         />
       )}
-      <ContentMessageAction
+      <Button
+        size="sm"
         variant="primary"
         label="Batch edit spend limit"
         onClick={onBatchEditSpendLimit}
         disabled={disabled}
       />
-    </TableSelectionBanner>
+    </BulkSelectionBar>
   );
 }

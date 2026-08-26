@@ -7,11 +7,15 @@ import { isNonCreditPricedUserSpendLimitReached } from "@app/lib/api/users/spend
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { isUserBlocked } from "@app/lib/metronome/user_block";
+import type { ActivationPodKind } from "@app/lib/models/activation/activation_pod";
 import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { activationSkill } from "@app/lib/resources/skill/code_defined/global/activation";
+import { jobSkill } from "@app/lib/resources/skill/code_defined/global/job";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { serializeSkillTag } from "@app/lib/skills/format";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import {
   DEFAULT_ACTIVATION_NUDGE_FREQUENCY_CAP_DAYS,
@@ -23,10 +27,29 @@ import { ACTIVATION_NUDGE_ORIGIN } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import isNumber from "lodash/isNumber";
 
-const ACTIVATION_NUDGE_PROMPT = "Run the Dust Learning workflow.";
+function nudgeSkillForKind(kind: ActivationPodKind) {
+  switch (kind) {
+    case "learning":
+      return activationSkill;
+    case "goal":
+      return jobSkill;
+    default:
+      assertNever(kind);
+  }
+}
+
+function nudgePromptForKind(kind: ActivationPodKind): string {
+  const skill = nudgeSkillForKind(kind);
+  return serializeSkillTag({
+    id: skill.sId,
+    name: skill.name,
+    icon: skill.icon,
+  });
+}
 
 // A resource type that the activation nudge should drive the user toward
 export type ActivationNudgePushedResourceType = "skill" | "agent";
@@ -192,7 +215,13 @@ export async function isEligibleForNudge(
 // and never surface it.
 function buildActivationNudgeContent(
   agentConfiguration: AgentConfigurationType,
-  context: ActivationNudgeContext | undefined
+  {
+    kind,
+    context,
+  }: {
+    kind: ActivationPodKind;
+    context: ActivationNudgeContext | undefined;
+  }
 ): string {
   const contextLines = removeNulls([
     context?.sessionGoal ? `Session goal: ${context.sessionGoal}` : null,
@@ -206,7 +235,7 @@ function buildActivationNudgeContent(
   ]);
 
   const content =
-    serializeMention(agentConfiguration) + `\n\n${ACTIVATION_NUDGE_PROMPT}`;
+    serializeMention(agentConfiguration) + `\n\n${nudgePromptForKind(kind)}`;
   if (contextLines.length === 0) {
     return content;
   }
@@ -280,7 +309,10 @@ export async function postActivationNudge(
 
   const messageRes = await postUserMessage(userAuth, {
     conversationResource: conversation,
-    content: buildActivationNudgeContent(agentConfiguration, context),
+    content: buildActivationNudgeContent(agentConfiguration, {
+      kind: activationPod.kind,
+      context,
+    }),
     mentions: [{ configurationId: agentConfiguration.sId }],
     context: {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",

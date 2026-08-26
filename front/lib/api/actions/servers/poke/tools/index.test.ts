@@ -214,4 +214,113 @@ describe("poke tools - security gates", () => {
       vi.restoreAllMocks();
     });
   });
+  describe("list_global_agent_feedbacks", () => {
+    it("denies access to non-super-user", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceFactory.defaults(adminAuth);
+
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "admin" });
+
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      const tool = getToolByName("list_global_agent_feedbacks");
+      const result = await tool.handler({}, createTestExtra(auth));
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("super user privileges");
+      }
+    });
+
+    it("rejects an invalid since date", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceFactory.defaults(adminAuth);
+
+      const superUser = await UserFactory.superUser();
+      await MembershipFactory.associate(workspace, superUser, {
+        role: "admin",
+      });
+
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        superUser.sId,
+        workspace.sId
+      );
+
+      vi.stubEnv("PRODUCTION_DUST_WORKSPACE_ID", workspace.sId);
+      const authModule = await import("@app/lib/auth");
+      vi.spyOn(authModule, "getFeatureFlags").mockResolvedValueOnce([
+        "poke_mcp",
+      ]);
+
+      const tool = getToolByName("list_global_agent_feedbacks");
+      const result = await tool.handler(
+        { since: "not-a-date" },
+        createTestExtra(auth)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("Invalid since");
+      }
+
+      vi.unstubAllEnvs();
+      vi.restoreAllMocks();
+    });
+
+    it("returns an empty page when all security gates pass", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceFactory.defaults(adminAuth);
+
+      const superUser = await UserFactory.superUser();
+      await MembershipFactory.associate(workspace, superUser, {
+        role: "admin",
+      });
+
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        superUser.sId,
+        workspace.sId
+      );
+
+      vi.stubEnv("PRODUCTION_DUST_WORKSPACE_ID", workspace.sId);
+      vi.stubEnv("POKE_APP_URL", "http://localhost:3000");
+      const authModule = await import("@app/lib/auth");
+      vi.spyOn(authModule, "getFeatureFlags").mockResolvedValueOnce([
+        "poke_mcp",
+      ]);
+
+      const tool = getToolByName("list_global_agent_feedbacks");
+      const result = await tool.handler(
+        { since: "2026-08-01", limit: 10 },
+        createTestExtra(auth)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.feedbacks).toEqual([]);
+          expect(parsed.totalCount).toBe(0);
+          expect(parsed.nextPageCursor).toBeNull();
+        }
+      }
+
+      vi.unstubAllEnvs();
+      vi.restoreAllMocks();
+    });
+  });
 });

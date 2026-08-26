@@ -662,58 +662,74 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       stepContents: AgentStepContentResource[];
     }
   ): Promise<AgentMCPActionResource[]> {
-    if (stepContents.length === 0) {
+    const functionCallStepContents = stepContents.filter(
+      (
+        content
+      ): content is AgentStepContentResource & {
+        value: AgentFunctionCallContentType;
+      } => content.isFunctionCallContent()
+    );
+    if (functionCallStepContents.length === 0) {
       return [];
     }
 
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const agentStepContentToolExecutions =
-      await AgentStepContentToolExecutionModel.findAll({
-        where: {
-          workspaceId,
-          stepContentId: { [Op.in]: stepContents.map((content) => content.id) },
+    const toolExecutions = await AgentStepContentToolExecutionModel.findAll({
+      attributes: ["stepContentId", "agentMCPActionId"],
+      where: {
+        workspaceId,
+        stepContentId: {
+          [Op.in]: functionCallStepContents.map((content) => content.id),
         },
-        include: [
-          {
-            model: AgentMCPActionModel,
-            as: "agentMCPAction",
-            required: true,
-          },
-        ],
-      });
+      },
+    });
+    if (toolExecutions.length === 0) {
+      return [];
+    }
 
-    const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
-
-    // Sandbox-child actions share their parent's stepContent and must not
-    // surface as separate executions in the conversation timeline.
-    const visibleExecutions = agentStepContentToolExecutions.filter(
-      (row) =>
-        !isSandboxChildActionInfo(
-          row.agentMCPAction.stepContext.sandboxChildActionInfo
-        )
+    const actions = await AgentMCPActionModel.findAll({
+      where: {
+        workspaceId,
+        id: {
+          [Op.in]: toolExecutions.map(
+            (toolExecution) => toolExecution.agentMCPActionId
+          ),
+        },
+      },
+    });
+    const actionsById = new Map(actions.map((action) => [action.id, action]));
+    const stepContentsMap = new Map(
+      functionCallStepContents.map((content) => [content.id, content])
     );
 
-    return visibleExecutions.map((row) => {
-      const a = row.agentMCPAction;
-      const stepContent = stepContentsMap.get(row.stepContentId);
+    const resources: AgentMCPActionResource[] = [];
+    for (const toolExecution of toolExecutions) {
+      const action = actionsById.get(toolExecution.agentMCPActionId);
+      assert(action, "Action not found.");
 
-      // Each action must have a function call step content.
+      // Sandbox-child actions share their parent's stepContent and must not
+      // surface as separate executions in the conversation timeline.
+      if (isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)) {
+        continue;
+      }
+
+      const stepContent = stepContentsMap.get(toolExecution.stepContentId);
       assert(stepContent, "Step content not found.");
-      assert(
-        stepContent.isFunctionCallContent(),
-        "Step content is not a function call."
-      );
 
-      const internalMCPServerName = a.toolConfiguration.toolServerId
-        ? getInternalMCPServerNameFromSId(a.toolConfiguration.toolServerId)
+      const internalMCPServerName = action.toolConfiguration.toolServerId
+        ? getInternalMCPServerNameFromSId(action.toolConfiguration.toolServerId)
         : null;
 
-      return new this(this.model, a.get(), stepContent, {
-        internalMCPServerName,
-        mcpServerId: a.toolConfiguration.toolServerId,
-      });
-    });
+      resources.push(
+        new this(this.model, action.get(), stepContent, {
+          internalMCPServerName,
+          mcpServerId: action.toolConfiguration.toolServerId,
+        })
+      );
+    }
+
+    return resources;
   }
 
   static async listModelIdsByAgentMessageIds(
@@ -741,6 +757,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<AgentMCPActionResource[]> {
     return this.baseFetch(auth, {
       where: { agentMessageId: { [Op.in]: agentMessageIds } },
+      // Billing policies are applied chronologically. Model ids preserve action
+      // creation order and provide a deterministic tie-break for parallel calls.
+      order: [["id", "ASC"]],
     });
   }
 

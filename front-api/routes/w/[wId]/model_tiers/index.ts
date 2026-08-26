@@ -1,5 +1,5 @@
-import { listTiers } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { GetModelTiersResponseBody } from "@app/types/api/model_tiers";
+import { listTiers } from "@app/types/assistant/models/model_tiers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";

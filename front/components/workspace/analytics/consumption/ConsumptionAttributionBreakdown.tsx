@@ -1,8 +1,10 @@
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
-import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
+import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
+import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/types/api/analytics/consumption";
 import { Button, cn, LoadingBlock, ProgressBar } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import type { ConsumptionDimension } from "./consumptionDimensions";
@@ -52,6 +54,8 @@ export interface ConsumptionAttributionBreakdownColumnProps {
   dimension: BreakdownDimension;
   period: ConsumptionPeriodSelection;
   filter: ConsumptionScopeFilter;
+  analyticsScope?: ConsumptionAnalyticsScope;
+  disabled?: boolean;
   selectedRowName: string;
   onViewAll: () => void;
 }
@@ -130,6 +134,8 @@ function WorkspaceConsumptionAttributionBreakdownColumn({
   dimension,
   period,
   filter,
+  analyticsScope,
+  disabled,
   selectedRowName,
   onViewAll,
 }: ConsumptionAttributionBreakdownColumnProps) {
@@ -139,6 +145,8 @@ function WorkspaceConsumptionAttributionBreakdownColumn({
     period,
     limit: CONSUMPTION_ATTRIBUTION_BREAKDOWN_LIMIT,
     filter,
+    analyticsScope,
+    disabled,
   });
 
   return (
@@ -160,6 +168,8 @@ export interface ConsumptionAttributionBreakdownProps {
   selectedRow: ConsumptionTopRow;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  analyticsScope?: ConsumptionAnalyticsScope;
+  disabled?: boolean;
   onViewAll: (
     dimension: ConsumptionDimension,
     selectedRow: ConsumptionTopRow
@@ -177,6 +187,8 @@ export function ConsumptionAttributionBreakdownView({
   selectedRow,
   period,
   filter,
+  analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
+  disabled,
   onViewAll,
   BreakdownColumnComponent,
 }: ConsumptionAttributionBreakdownViewProps) {
@@ -185,7 +197,9 @@ export function ConsumptionAttributionBreakdownView({
     [CONSUMPTION_DIMENSION_FILTER_KEYS[selectedDimension]]: [selectedRow.id],
   };
   const visibleDimensions = BREAKDOWN_DIMENSIONS.filter(
-    (dimension) => dimension !== selectedDimension
+    (dimension) =>
+      dimension !== selectedDimension &&
+      (analyticsScope.kind !== "personal" || dimension !== "user")
   );
 
   return (
@@ -203,6 +217,8 @@ export function ConsumptionAttributionBreakdownView({
           dimension={dimension}
           period={period}
           filter={selectedFilter}
+          analyticsScope={analyticsScope}
+          disabled={disabled}
           selectedRowName={selectedRow.name}
           onViewAll={() => onViewAll(dimension, selectedRow)}
         />

@@ -1,12 +1,50 @@
+import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
   addUsageFilterFromAttributionRow,
+  EMPTY_FACET_OPTIONS,
+  getUsageFilterCategories,
   getUsageFilterSummaries,
   removeUsageFilterFromAttributionRow,
+  resolveUsageFilter,
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
-import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionScopeDimension } from "@app/types/api/analytics/consumption";
 import { describe, expect, it } from "vitest";
+
+describe("getUsageFilterCategories", () => {
+  it("selects the categories available to the analytics scope", () => {
+    expect(getUsageFilterCategories()).toEqual([
+      "agent",
+      "member",
+      "group",
+      "model",
+      "tool",
+      "skill",
+      "source",
+      "api_key",
+    ]);
+    expect(getUsageFilterCategories({ kind: "personal" })).toEqual([
+      "agent",
+      "model",
+      "tool",
+      "skill",
+      "source",
+      "api_key",
+    ]);
+    expect(
+      getUsageFilterCategories({ kind: "agent", agentId: "agent-1" })
+    ).toEqual([
+      "member",
+      "group",
+      "model",
+      "tool",
+      "skill",
+      "source",
+      "api_key",
+    ]);
+  });
+});
 
 describe("toConsumptionScopeFilter", () => {
   it("maps every selected facet to its consumption scope dimension", () => {
@@ -318,5 +356,64 @@ describe("removeUsageFilterFromAttributionRow", () => {
     const removed = removeUsageFilterFromAttributionRow(filter, "user", row);
 
     expect(removed).toEqual(filter);
+  });
+});
+
+describe("resolveUsageFilter", () => {
+  it("replaces url-hydrated options with their facet counterpart", () => {
+    const filter: UsageFilter = {
+      group: [
+        { id: "group-1", name: "group-1", disabled: false, kind: "group" },
+      ],
+    };
+
+    expect(
+      resolveUsageFilter(filter, {
+        ...EMPTY_FACET_OPTIONS,
+        group: [
+          {
+            id: "group-1",
+            name: "Engineering",
+            disabled: false,
+            kind: "group",
+          },
+        ],
+      })
+    ).toEqual({
+      group: [
+        { id: "group-1", name: "Engineering", disabled: false, kind: "group" },
+      ],
+    });
+  });
+
+  it("keeps options the facets do not cover", () => {
+    const filter: UsageFilter = {
+      member: [
+        {
+          id: "user-1",
+          name: "user-1",
+          disabled: false,
+          kind: "member",
+          image: null,
+        },
+      ],
+    };
+
+    expect(resolveUsageFilter(filter, EMPTY_FACET_OPTIONS)).toBe(filter);
+  });
+
+  it("returns the same filter when every option is already resolved", () => {
+    const filter: UsageFilter = {
+      group: [
+        { id: "group-1", name: "Engineering", disabled: false, kind: "group" },
+      ],
+    };
+
+    expect(
+      resolveUsageFilter(filter, {
+        ...EMPTY_FACET_OPTIONS,
+        group: filter.group ?? [],
+      })
+    ).toBe(filter);
   });
 });

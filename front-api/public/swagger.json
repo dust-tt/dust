@@ -6155,7 +6155,7 @@
     "/api/w/{wId}/analytics/consumption/facets": {
       "post": {
         "summary": "List consumption analytics facets",
-        "description": "Lists current workspace entities and historical indexed values present in the selected period for each consumption dimension. A facet is disabled when it has no indexed document in that period after applying every active filter except the facet's own dimension.",
+        "description": "Lists current entities and historical indexed values present in the selected period for each consumption dimension. The workspace route requires a manager; the /me route is restricted server-side to the authenticated member; the agent route is restricted server-side to the selected agent. A facet is disabled when it has no indexed document in that period after applying every active filter except the facet's own dimension.",
         "tags": [
           "Private Analytics"
         ],
@@ -6200,7 +6200,7 @@
                   },
                   "dimensions": {
                     "type": "array",
-                    "description": "Dimensions to compute facets for. Defaults to every dimension. Omitted dimensions come back as empty arrays.",
+                    "description": "Dimensions to compute facets for. Defaults to every dimension. Omitted dimensions come back as empty arrays. The personal route omits user and group dimensions, and the agent route omits the agent dimension.",
                     "items": {
                       "type": "string",
                       "enum": [
@@ -6381,13 +6381,19 @@
             "description": "Invalid request body"
           },
           "403": {
-            "description": "Manager role required"
+            "description": "Not authorized for this analytics view"
           },
           "500": {
             "description": "Failed to retrieve consumption facets"
           }
         }
       }
+    },
+    "/api/w/{wId}/me/analytics/consumption/facets": {
+      "$ref": "#/paths/~1api~1w~1{wId}~1analytics~1consumption~1facets"
+    },
+    "/api/w/{wId}/assistant/agent_configurations/{aId}/analytics/consumption/facets": {
+      "$ref": "#/paths/~1api~1w~1{wId}~1analytics~1consumption~1facets"
     },
     "/api/w/{wId}/assistant/agent_configurations": {
       "get": {
@@ -7329,7 +7335,7 @@
     "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/consumption": {
       "get": {
         "summary": "Get an agent message credit attribution",
-        "description": "Returns direct, recursively spawned sub-agent, and total billed credits, plus an additive attribution reconciled exclusively through model input rows.",
+        "description": "Returns direct and total billed credits. Run-agent tool rows combine invocation cost with the bill of their sub-agent subtree.",
         "tags": [
           "Private Messages"
         ],
@@ -7381,10 +7387,6 @@
                       "nullable": true,
                       "description": "Authoritative credits billed directly for this agent message, excluding sub-agents."
                     },
-                    "subAgentBilledCredits": {
-                      "type": "number",
-                      "description": "Credits billed by sub-agents recursively spawned from this message."
-                    },
                     "totalBilledCredits": {
                       "type": "number",
                       "description": "Total credits billed by this message and its recursively spawned sub-agents."
@@ -7392,7 +7394,7 @@
                     "details": {
                       "type": "object",
                       "nullable": true,
-                      "description": "Additive attribution reconciled to the bill through model input rows, using the newest complete stored attribution version. Null when no stored version is complete.",
+                      "description": "Additive attribution reconciled to totalBilledCredits through model input rows. Each run-agent tool row includes its sub-agent subtree's bill. Null when no stored version is complete.",
                       "required": [
                         "attributionVersion",
                         "agentWorkCredits",
@@ -7405,7 +7407,7 @@
                         },
                         "agentWorkCredits": {
                           "type": "number",
-                          "description": "Agent work after assigning billing reconciliation exclusively to model input rows."
+                          "description": "Non-tool work for the originating message after assigning billing reconciliation exclusively to model input rows."
                         },
                         "tools": {
                           "type": "array",
@@ -7436,7 +7438,7 @@
                               },
                               "attributedCredits": {
                                 "type": "number",
-                                "description": "Share of billed credits after input-only reconciliation."
+                                "description": "Share of total billed credits after input-only reconciliation. Run-agent tools include their sub-agent subtree's bill."
                               },
                               "directCredits": {
                                 "type": "number"
@@ -9839,6 +9841,15 @@
                         {
                           "type": "object",
                           "properties": {
+                            "groupIds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "isRestricted": {
+                              "type": "boolean"
+                            },
                             "categories": {
                               "type": "object",
                               "additionalProperties": {
@@ -12262,8 +12273,6 @@
           "sId",
           "name",
           "kind",
-          "groupIds",
-          "isRestricted",
           "managementMode"
         ],
         "properties": {
@@ -12282,15 +12291,6 @@
               "regular",
               "project"
             ]
-          },
-          "groupIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "isRestricted": {
-            "type": "boolean"
           },
           "managementMode": {
             "type": "string",
@@ -12317,6 +12317,15 @@
           {
             "type": "object",
             "properties": {
+              "groupIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "isRestricted": {
+                "type": "boolean"
+              },
               "description": {
                 "type": "string",
                 "nullable": true
@@ -14843,6 +14852,10 @@
               "type": "string"
             },
             "description": "List of group IDs that have access to the space"
+          },
+          "isRestricted": {
+            "type": "boolean",
+            "description": "Whether the space is restricted to specific groups"
           }
         }
       },

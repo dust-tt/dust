@@ -1,7 +1,9 @@
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import { fetchConsumptionOverview } from "@app/lib/api/analytics/consumption/overview";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -21,6 +23,7 @@ const OVERVIEW: GetConsumptionOverviewResponse = {
     endDate: "2026-07-13T00:00:00.000Z",
   },
   members: { active: 121, total: 130 },
+  messageCount: 34243,
   lastRecordAt: "2026-07-12T23:58:00.000Z",
   totalCredits: 7248,
   topAgent: { agentId: "agent1", name: "dust", credits: 2246 },
@@ -42,12 +45,35 @@ async function setupTest({
   return createPrivateApiMockRequest({ role });
 }
 
-function postOverviewRequest(wId: string, body: Record<string, unknown> = {}) {
-  return honoApp.request(`/api/w/${wId}/analytics/consumption/overview`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+function postOverviewRequest(
+  wId: string,
+  body: Record<string, unknown> = {},
+  personal = false
+) {
+  const analyticsPath = personal ? "me/analytics" : "analytics";
+  return honoApp.request(
+    `/api/w/${wId}/${analyticsPath}/consumption/overview`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+}
+
+function postAgentOverviewRequest(
+  workspaceId: string,
+  agentId: string,
+  body: Record<string, unknown> = {}
+) {
+  return honoApp.request(
+    `/api/w/${workspaceId}/assistant/agent_configurations/${agentId}/analytics/consumption/overview`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
 }
 
 describe("POST /api/w/:wId/analytics/consumption/overview", () => {
@@ -55,6 +81,73 @@ describe("POST /api/w/:wId/analytics/consumption/overview", () => {
     const { workspace } = await setupTest({ role: "user" });
 
     const response = await postOverviewRequest(workspace.sId);
+
+    expect(response.status).toBe(403);
+    expect(vi.mocked(fetchConsumptionOverview)).not.toHaveBeenCalled();
+  });
+
+  it("lets members read only their own consumption", async () => {
+    vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
+    const { workspace, user } = await setupTest({ role: "user" });
+
+    const response = await postOverviewRequest(
+      workspace.sId,
+      { filter: { users: ["another-user"], sources: ["slack"] } },
+      true
+    );
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionOverview)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        filter: { users: [user.sId], sources: ["slack"] },
+        includeWorkspaceContext: false,
+      })
+    );
+  });
+
+  it("lets editors read only the selected agent's consumption", async () => {
+    vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
+    const { auth, workspace } = await setupTest({ role: "user" });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const response = await postAgentOverviewRequest(workspace.sId, agent.sId, {
+      filter: { agents: ["another-agent"], sources: ["slack"] },
+    });
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionOverview)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        filter: { agents: [agent.sId], sources: ["slack"] },
+        includeWorkspaceContext: false,
+      })
+    );
+  });
+
+  it("refuses agent analytics to publishers who cannot edit the agent", async () => {
+    const ownerRequest = await setupTest({ role: "user" });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      ownerRequest.auth
+    );
+    const publisherRequest = await createPrivateApiMockRequest({
+      role: "user",
+      workspace: ownerRequest.workspace,
+    });
+    await grantWorkspacePermission(
+      ownerRequest.workspace,
+      publisherRequest.user,
+      {
+        grantType: "publish",
+        resourceType: "agent",
+      }
+    );
+    vi.mocked(fetchConsumptionOverview).mockClear();
+
+    const response = await postAgentOverviewRequest(
+      ownerRequest.workspace.sId,
+      agent.sId
+    );
 
     expect(response.status).toBe(403);
     expect(vi.mocked(fetchConsumptionOverview)).not.toHaveBeenCalled();
@@ -72,7 +165,7 @@ describe("POST /api/w/:wId/analytics/consumption/overview", () => {
       expect.anything(),
       expect.objectContaining({
         periodInput: { kind: "cycle" },
-        filter: undefined,
+        filter: {},
       })
     );
   });

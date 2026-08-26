@@ -353,10 +353,12 @@ async function fetchWorkspaceAgentConfigurationsForView(
   // Analytics counts credits for agents built on spaces a manager cannot read,
   // so the manager analytics view has to list them as well. The unrestricted manage view does the
   // same for admins, and is gated on the role by its caller.
+  // Archived is unrestricted for admins too, matching its documented admin/superuser-only contract.
   const skipPermissionFiltering =
     dangerouslySkipPermissionFiltering ||
     (agentsGetView === "analytics" && auth.isManager()) ||
-    agentsGetView === "manage_unrestricted";
+    agentsGetView === "manage_unrestricted" ||
+    (agentsGetView === "archived" && auth.isAdmin());
 
   const allowedAgentModels = skipPermissionFiltering
     ? agentModels

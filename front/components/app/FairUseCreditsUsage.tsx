@@ -75,7 +75,7 @@ export function FairUseCreditsUsage({ workspaceId }: FairUseCreditsUsageProps) {
       <div className="mx-3 mb-3">
         <CreditUsageCard
           label="Fair usage"
-          usedPercentage={percentage * 100}
+          usedPercentage={Math.round(percentage * 100)}
           tone={isCritical ? "critical" : "elevated"}
           variant="companion"
         >

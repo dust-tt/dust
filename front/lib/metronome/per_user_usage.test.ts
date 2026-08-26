@@ -1,4 +1,7 @@
-import { buildUsageQuerySegments } from "@app/lib/metronome/per_user_usage";
+import {
+  buildHourlyUsageQuerySegment,
+  buildUsageQuerySegments,
+} from "@app/lib/metronome/per_user_usage";
 import { describe, expect, it } from "vitest";
 
 describe("buildUsageQuerySegments", () => {
@@ -148,5 +151,32 @@ describe("buildUsageQuerySegments", () => {
     for (let i = 1; i < segments.length; i++) {
       expect(segments[i].startingOn).toBe(segments[i - 1].endingBefore);
     }
+  });
+});
+
+describe("buildHourlyUsageQuerySegment", () => {
+  it("covers the whole range with one midnight-aligned HOUR segment", () => {
+    expect(
+      buildHourlyUsageQuerySegment({
+        cycleStart: new Date("2026-06-15T15:00:00.000Z"),
+        requestEnd: new Date("2026-06-18T09:30:00.000Z"),
+      })
+    ).toEqual([
+      {
+        startingOn: "2026-06-15T00:00:00.000Z",
+        endingBefore: "2026-06-19T00:00:00.000Z",
+        windowSize: "HOUR",
+      },
+    ]);
+  });
+
+  it("returns no segment when requestEnd does not come after cycleStart", () => {
+    const sameInstant = new Date("2026-06-15T12:00:00.000Z");
+    expect(
+      buildHourlyUsageQuerySegment({
+        cycleStart: sameInstant,
+        requestEnd: sameInstant,
+      })
+    ).toEqual([]);
   });
 });

@@ -7,20 +7,28 @@ import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  deprecatePatch,
   patched,
+  checkCreditsActivity,
   finalizeErroredSandboxChildToolActivity,
   finalizeSuccessfulAgentLoopActivity,
   runToolActivity,
   runRetryableToolActivity,
+  runToolActivityWithExplicitCancellation,
+  runRetryableToolActivityWithExplicitCancellation,
   runModelAndCreateActionsActivity,
   runModelAndCreateActionsActivityWithExplicitCancellation,
   publishDeferredEventsActivity,
 } = vi.hoisted(() => ({
+  deprecatePatch: vi.fn(),
   patched: vi.fn(),
+  checkCreditsActivity: vi.fn(),
   finalizeErroredSandboxChildToolActivity: vi.fn(),
   finalizeSuccessfulAgentLoopActivity: vi.fn(),
   runToolActivity: vi.fn(),
   runRetryableToolActivity: vi.fn(),
+  runToolActivityWithExplicitCancellation: vi.fn(),
+  runRetryableToolActivityWithExplicitCancellation: vi.fn(),
   runModelAndCreateActionsActivity: vi.fn(),
   runModelAndCreateActionsActivityWithExplicitCancellation: vi.fn(),
   publishDeferredEventsActivity: vi.fn(),
@@ -45,12 +53,13 @@ vi.mock("@temporalio/workflow", () => {
       cancel() {}
     },
     defineSignal: (name: string) => name,
+    deprecatePatch,
     patched,
     proxyActivities: (options: {
       cancellationType?: unknown;
       retry?: { maximumAttempts?: number };
     }) => ({
-      checkCreditsActivity: unusedActivity,
+      checkCreditsActivity,
       compactionActivity: unusedActivity,
       compactionCleanupActivity: unusedActivity,
       ensureConversationTitleActivity: unusedActivity,
@@ -67,10 +76,13 @@ vi.mock("@temporalio/workflow", () => {
           ? runModelAndCreateActionsActivity
           : runModelAndCreateActionsActivityWithExplicitCancellation,
       runToolActivity:
-        options.cancellationType === undefined &&
-        options.retry?.maximumAttempts === 1
-          ? runToolActivity
-          : runRetryableToolActivity,
+        options.cancellationType === undefined
+          ? options.retry?.maximumAttempts === 1
+            ? runToolActivity
+            : runRetryableToolActivity
+          : options.retry?.maximumAttempts === 1
+            ? runToolActivityWithExplicitCancellation
+            : runRetryableToolActivityWithExplicitCancellation,
     }),
     proxySinks: () => ({
       metrics: {
@@ -221,42 +233,27 @@ describe("runSandboxChildToolWorkflow", () => {
   });
 });
 
-describe("agentLoopWorkflow model activity cancellation patch", () => {
+describe("agentLoopWorkflow activity cancellation patches", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    const modelResult = {
-      actionBlobs: [],
+    runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue({
+      actionBlobs: [
+        {
+          actionId: "action-1",
+          needsApproval: false,
+          retryPolicy: "no_retry",
+        },
+      ],
       runId: "run-1",
-    };
-    runModelAndCreateActionsActivity.mockResolvedValue(modelResult);
-    runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue(
-      modelResult
-    );
+    });
+    runToolActivityWithExplicitCancellation.mockResolvedValue({
+      deferredEvents: [],
+    });
+    checkCreditsActivity.mockResolvedValue({ shouldStop: true });
     finalizeSuccessfulAgentLoopActivity.mockResolvedValue(undefined);
   });
 
-  it("keeps the legacy model activity for old histories", async () => {
-    patched.mockImplementation(
-      (patchId: string) =>
-        patchId !== "wait-for-model-activity-before-finalization"
-    );
-
-    await agentLoopWorkflow({
-      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
-      authType,
-      initialStartTime: 0,
-      startStep: 0,
-    });
-
-    expect(runModelAndCreateActionsActivity).toHaveBeenCalledOnce();
-    expect(
-      runModelAndCreateActionsActivityWithExplicitCancellation
-    ).not.toHaveBeenCalled();
-  });
-
-  it("waits for explicit model activity cancellation for new histories", async () => {
-    patched.mockReturnValue(true);
-
+  it("deprecates both patches and always uses explicit cancellation", async () => {
     await agentLoopWorkflow({
       agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
       authType,
@@ -268,5 +265,13 @@ describe("agentLoopWorkflow model activity cancellation patch", () => {
       runModelAndCreateActionsActivityWithExplicitCancellation
     ).toHaveBeenCalledOnce();
     expect(runModelAndCreateActionsActivity).not.toHaveBeenCalled();
+    expect(runToolActivityWithExplicitCancellation).toHaveBeenCalledOnce();
+    expect(runToolActivity).not.toHaveBeenCalled();
+    expect(deprecatePatch).toHaveBeenCalledWith(
+      "wait-for-model-activity-before-finalization"
+    );
+    expect(deprecatePatch).toHaveBeenCalledWith(
+      "wait-for-all-tool-activities-before-finalization"
+    );
   });
 });

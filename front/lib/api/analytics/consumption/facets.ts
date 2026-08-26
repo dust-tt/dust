@@ -1,4 +1,7 @@
-import type { ConsumptionFacetCatalogEntry } from "@app/lib/api/analytics/consumption/facet_catalog";
+import type {
+  ConsumptionFacetCatalog,
+  ConsumptionFacetCatalogEntry,
+} from "@app/lib/api/analytics/consumption/facet_catalog";
 import { listConsumptionFacetCatalog } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
@@ -14,7 +17,6 @@ import {
   CONSUMPTION_SCOPE_DIMENSIONS,
   TRIGGER_ID_FIELD,
 } from "@app/lib/api/analytics/consumption/scope";
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
   bucketsToArray,
@@ -24,6 +26,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import tracer from "@app/logger/tracer";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -48,6 +51,17 @@ function facetScopeFilters(
       return assertNever(scope);
   }
 }
+
+const EMPTY_FACET_CATALOG: ConsumptionFacetCatalog = {
+  agent: [],
+  user: [],
+  api_key: [],
+  group: [],
+  model: [],
+  tool: [],
+  skill: [],
+  source: [],
+};
 
 export type ConsumptionFacet = {
   value: string;
@@ -111,6 +125,8 @@ type FetchDimensionFacetBucketsArgs = {
   auth: Authenticator;
   period: ConsumptionPeriod;
   filter: ConsumptionScopeFilter;
+  userId?: string;
+  agentId?: string;
   dimension: ConsumptionScopeDimension;
   scopeFilters: estypes.QueryDslQueryContainer[];
 };
@@ -139,11 +155,17 @@ async function fetchDimensionFacetBucketsWithoutTracing({
   auth,
   period,
   filter,
+  userId,
+  agentId,
   dimension,
   scopeFilters,
 }: FetchDimensionFacetBucketsArgs): Promise<
   Result<FacetBuckets, ElasticsearchError>
 > {
+  const scopeFilter = {
+    ...(userId ? { users: [userId] } : {}),
+    ...(agentId ? { agents: [agentId] } : {}),
+  };
   const contextual = new Map<string, number>();
   let afterKey: { value: string } | undefined;
 
@@ -156,6 +178,7 @@ async function fetchDimensionFacetBucketsWithoutTracing({
         auth,
         startDate: period.startDate,
         endDate: period.endDate,
+        filter: scopeFilter,
         extraFilters: scopeFilters,
       }),
       {
@@ -180,7 +203,10 @@ async function fetchDimensionFacetBucketsWithoutTracing({
                   auth,
                   startDate: period.startDate,
                   endDate: period.endDate,
-                  filter: filterWithoutDimension(filter, dimension),
+                  filter: {
+                    ...filterWithoutDimension(filter, dimension),
+                    ...scopeFilter,
+                  },
                   extraFilters: scopeFilters,
                 }),
               },
@@ -295,11 +321,15 @@ async function fetchConsumptionFacetsWithoutTracing(
     filter = {},
     scope = "all",
     dimensions,
+    userId,
+    agentId,
   }: {
     period: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
     scope?: ConsumptionFacetScope;
     dimensions?: ConsumptionScopeDimension[];
+    userId?: string;
+    agentId?: string;
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
   const requestedDimensions = dimensions ?? [...CONSUMPTION_SCOPE_DIMENSIONS];
@@ -312,6 +342,8 @@ async function fetchConsumptionFacetsWithoutTracing(
         auth,
         period,
         filter,
+        userId,
+        agentId,
         dimension,
         scopeFilters,
       }),
@@ -327,7 +359,10 @@ async function fetchConsumptionFacetsWithoutTracing(
     bucketsByDimension.set(dimension, result.value);
   }
 
-  const catalog = await listConsumptionFacetCatalog(auth, requestedDimensions);
+  const catalog =
+    userId || agentId
+      ? EMPTY_FACET_CATALOG
+      : await listConsumptionFacetCatalog(auth, requestedDimensions);
   // TODO(2026-08-11 OBSERVABILITY): Historical label resolution still reads
   // from several database-backed resources. Store the relevant labels in the
   // consumption index so these lookups can stay within Elasticsearch.
@@ -402,6 +437,8 @@ export async function fetchConsumptionFacets(
     filter?: ConsumptionScopeFilter;
     scope?: ConsumptionFacetScope;
     dimensions?: ConsumptionScopeDimension[];
+    userId?: string;
+    agentId?: string;
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
   return tracer.trace("analytics.consumption.facets", async (span) => {

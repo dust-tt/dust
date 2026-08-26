@@ -89,7 +89,9 @@ describe("deleteSpacesActivity", () => {
       SpaceResource.fetchById(auth, pod.sId, { includeDeleted: true })
     ).resolves.toBeNull();
     await expect(
-      ActivationWorkAreaResource.listByUserAndStatus(auth, {})
+      ActivationWorkAreaResource.listByActivationPods(auth, {
+        activationPods: [activationPod],
+      })
     ).resolves.toEqual([]);
   });
 });

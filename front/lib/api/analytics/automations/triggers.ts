@@ -113,19 +113,29 @@ export function median(values: number[]): number {
 }
 
 /**
- * Trigger kind isn't indexed in the consumption Elasticsearch documents, so
- * a kind filter is resolved to a concrete set of trigger ids up front and
- * applied as a terms filter on TRIGGER_ID_FIELD. Returns null when no kind
- * filter is requested (no restriction).
+ * Neither trigger kind nor execution mode is indexed in the consumption
+ * Elasticsearch documents, so those filters are resolved to a concrete set of
+ * trigger ids up front and applied as a terms filter on TRIGGER_ID_FIELD.
+ * Returns null when neither filter is requested (no restriction).
  */
-async function resolveTriggerIdsForKindFilter(
+async function resolveTriggerIdsForTriggerAttributeFilters(
   auth: Authenticator,
-  kinds: TriggerKind[] | undefined
+  {
+    kinds,
+    executionModes,
+  }: {
+    kinds: TriggerKind[] | undefined;
+    executionModes: TriggerExecutionMode[] | undefined;
+  }
 ): Promise<string[] | null> {
-  if (!kinds || kinds.length === 0) {
+  if (!kinds?.length && !executionModes?.length) {
     return null;
   }
-  const triggers = await TriggerResource.listByWorkspaceAndKinds(auth, kinds);
+  const triggers =
+    await TriggerResource.listByWorkspaceAndKindsAndExecutionModes(auth, {
+      kinds,
+      executionModes,
+    });
   return triggers.map((trigger) => trigger.sId);
 }
 
@@ -158,7 +168,7 @@ async function resolveTriggerIdsForSearch(
  * always compare against the full active set, never just the triggers
  * ranked ahead of it.
  */
-async function fetchTriggersRanking(
+export async function fetchTriggersRanking(
   auth: Authenticator,
   {
     period,
@@ -166,12 +176,14 @@ async function fetchTriggersRanking(
     offset,
     search,
     filter,
+    consumptionScopeFilter = {},
   }: {
     period: ConsumptionPeriod;
     limit: number;
     offset: number;
     search?: string;
     filter?: AutomationTriggersFilter;
+    consumptionScopeFilter?: ConsumptionScopeFilter;
   }
 ): Promise<
   Result<
@@ -184,7 +196,7 @@ async function fetchTriggersRanking(
     ElasticsearchError
   >
 > {
-  const scopeFilter: ConsumptionScopeFilter = {};
+  const scopeFilter: ConsumptionScopeFilter = { ...consumptionScopeFilter };
   if (filter?.agentIds?.length) {
     scopeFilter.agents = filter.agentIds;
   }
@@ -192,10 +204,11 @@ async function fetchTriggersRanking(
     scopeFilter.users = filter.editorIds;
   }
 
-  const triggerIdsForKindFilter = await resolveTriggerIdsForKindFilter(
-    auth,
-    filter?.kinds
-  );
+  const triggerIdsForAttributeFilters =
+    await resolveTriggerIdsForTriggerAttributeFilters(auth, {
+      kinds: filter?.kinds,
+      executionModes: filter?.executionModes,
+    });
   const triggerIdsForSearch = await resolveTriggerIdsForSearch(auth, search);
 
   const query = buildConsumptionScopeQuery({
@@ -204,8 +217,8 @@ async function fetchTriggersRanking(
     endDate: period.endDate,
     filter: scopeFilter,
     extraFilters:
-      triggerIdsForKindFilter !== null
-        ? [{ terms: { [TRIGGER_ID_FIELD]: triggerIdsForKindFilter } }]
+      triggerIdsForAttributeFilters !== null
+        ? [{ terms: { [TRIGGER_ID_FIELD]: triggerIdsForAttributeFilters } }]
         : [],
   });
 
@@ -241,7 +254,7 @@ async function fetchTriggersRanking(
   );
   const ranked = buckets.map((bucket) => ({
     triggerId: String(bucket.key),
-    runCount: Math.round(bucket[RUNS_AGG]?.value ?? 0),
+    runCount: bucket[RUNS_AGG]?.value ?? 0,
     credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
   }));
   // Triggers that never ran have nothing to compare a "how often" or "per

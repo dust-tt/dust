@@ -3,6 +3,7 @@ import {
   getAutomationsFilterSummaries,
   toAutomationsScopeFilter,
   toAutomationsTriggersFilter,
+  toUserAutomationsTriggersFilter,
 } from "@app/components/workspace/analytics/automationsFilter";
 import { describe, expect, it } from "vitest";
 
@@ -37,18 +38,32 @@ describe("toAutomationsTriggersFilter", () => {
           },
           { id: "webhook", name: "Webhook", category: "type", disabled: false },
         ],
+        pool: [
+          {
+            id: "workspace_pool",
+            name: "Workspace",
+            category: "pool",
+            disabled: false,
+          },
+        ],
       })
     ).toEqual({
       agentIds: ["agent-1"],
       editorIds: ["member-1"],
       kinds: ["schedule", "webhook"],
+      executionModes: ["workspace_pool"],
     });
   });
 
   it("omits empty selections", () => {
     expect(toAutomationsTriggersFilter({})).toEqual({});
     expect(
-      toAutomationsTriggersFilter({ agent: [], member: [], type: [] })
+      toAutomationsTriggersFilter({
+        agent: [],
+        member: [],
+        type: [],
+        pool: [],
+      })
     ).toEqual({});
   });
 
@@ -73,9 +88,61 @@ describe("toAutomationsTriggersFilter", () => {
     ).toEqual({ kinds: ["schedule"] });
   });
 
+  it("drops pool ids that are not valid execution modes", () => {
+    expect(
+      toAutomationsTriggersFilter({
+        pool: [
+          {
+            id: "user_pool",
+            name: "Member",
+            category: "pool",
+            disabled: false,
+          },
+          {
+            id: "not-a-pool",
+            name: "Unknown",
+            category: "pool",
+            disabled: false,
+          },
+        ],
+      })
+    ).toEqual({ executionModes: ["user_pool"] });
+  });
+
   it("only maps the selected categories, leaving the others out", () => {
     expect(toAutomationsTriggersFilter({ agent: [agentOption] })).toEqual({
       agentIds: ["agent-1"],
+    });
+  });
+});
+
+describe("toUserAutomationsTriggersFilter", () => {
+  it("keeps the agent, type and pool selections and drops the member one", () => {
+    expect(
+      toUserAutomationsTriggersFilter({
+        agent: [agentOption],
+        member: [memberOption],
+        type: [
+          {
+            id: "webhook",
+            name: "Webhook",
+            category: "type",
+            disabled: false,
+          },
+        ],
+        pool: [
+          {
+            id: "workspace_pool",
+            name: "Workspace",
+            category: "pool",
+            disabled: false,
+          },
+        ],
+      })
+    ).toEqual({
+      agentIds: ["agent-1"],
+      kinds: ["webhook"],
+      executionModes: ["workspace_pool"],
     });
   });
 });
@@ -93,7 +160,7 @@ describe("toAutomationsScopeFilter", () => {
     });
   });
 
-  it("drops the type category, which is not a consumption dimension", () => {
+  it("drops the type and pool categories, which are not consumption dimensions", () => {
     expect(
       toAutomationsScopeFilter({
         type: [
@@ -101,6 +168,14 @@ describe("toAutomationsScopeFilter", () => {
             id: "schedule",
             name: "Schedule",
             category: "type",
+            disabled: false,
+          },
+        ],
+        pool: [
+          {
+            id: "workspace_pool",
+            name: "Workspace",
+            category: "pool",
             disabled: false,
           },
         ],

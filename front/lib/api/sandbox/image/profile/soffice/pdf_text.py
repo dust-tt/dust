@@ -264,3 +264,44 @@ def self_overflows(words, shapes):
         {"sid": sid, "edge": edge, "over_in": over / EMU_PER_INCH, "word": word}
         for sid, (over, edge, word) in worst.items()
     ]
+
+
+# A shape must declare at least this many words before a shortfall means
+# anything: on a two-word label one unattributed word looks like 50% loss.
+CLIP_MIN_WORDS = 6
+# Below this share of its words actually rendered, the box is clipping its text.
+# Half, not three-quarters: when several shapes hold identical copy the word
+# attribution cannot split them cleanly, and a modest shortfall is that rather
+# than a clip. A box drawing under half its words - usually none of them - is
+# unambiguous.
+CLIP_RENDERED_RATIO = 0.5
+
+
+def clipped_shapes(words, shapes, declared_counts, page_has_text: bool = True):
+    """Shapes whose text the renderer did not draw in full: [{sid, declared,
+    rendered}].
+
+    Distinct from an overflow. When a box is too small for its copy the renderer
+    either spills the text outside the box - which `self_overflows` catches by
+    finding words beyond it - or CLIPS it, drawing nothing past the boundary. In
+    the clipped case there is no stray word to find and no overlap to flag: the
+    tail of the sentence simply is not on the slide, and every geometric check
+    reads the slide as fine. Counting the words that actually rendered against
+    the words the shape holds is the only thing that sees it.
+    """
+    if not words or not shapes or not page_has_text:
+        return []
+    rendered: dict = {}
+    for word in words:
+        sid, _strong = attribute_word(word, shapes)
+        if sid is not None:
+            rendered[sid] = rendered.get(sid, 0) + 1
+    out = []
+    for sid, _box, _tokens in shapes:
+        declared = declared_counts.get(sid, 0)
+        if declared < CLIP_MIN_WORDS:
+            continue
+        drawn = rendered.get(sid, 0)
+        if drawn < declared * CLIP_RENDERED_RATIO:
+            out.append({"sid": sid, "declared": declared, "rendered": drawn})
+    return out

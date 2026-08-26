@@ -13,33 +13,28 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import { Button, Chip, Spinner, Tooltip } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
-const WORK_AREA_ACTIONS = [
-  {
-    label: "Scan my sources",
-    message:
-      "This conversation is to update my work areas, then generate a new idea.\n\n" +
-      "1. Re-evaluate my work by scanning my connected sources and personal usage.\n" +
-      "2. Present the updated work areas and let me correct them if they're off.\n" +
-      "3. Once the work areas are settled, continue the regular flow: set a session goal from the updated work areas and generate a new recommendation (create_recommendation) so it appears on my Get Started page.\n\n" +
-      "Do not generate a recommendation until the work areas are settled.",
-  },
-  {
-    label: "Ask me questions",
-    message:
-      "This conversation is to update my work areas, then generate a new idea.\n\n" +
-      "1. Learn more about my work by asking me questions, interview style. Do this before generating a recommendation.\n" +
-      "2. Update my work areas based on what I tell you, and let me correct them if they're off.\n" +
-      "3. Once the work areas are settled, continue the regular flow: set a session goal from the updated work areas and generate a new recommendation (create_recommendation) so it appears on my Get Started page.\n\n" +
-      "Do not generate a recommendation until the work areas are settled.",
-  },
-] as const;
+export interface WorkAreaSectionCopy {
+  title: string;
+  description: string;
+  emptyState: string;
+  actionDescription: string;
+  runningBanner: string;
+}
+
+export interface WorkAreaSectionAction {
+  label: string;
+  message: string;
+}
 
 interface WorkAreaSectionProps {
   owner: WorkspaceType;
   user: UserType | null;
   podId: string | null;
   defaultAgentId: string | null;
+  copy: WorkAreaSectionCopy;
+  actions: readonly WorkAreaSectionAction[];
   disabled?: boolean;
+  skillTag?: string;
 }
 
 export function WorkAreaSection({
@@ -47,7 +42,10 @@ export function WorkAreaSection({
   user,
   podId,
   defaultAgentId,
+  copy,
+  actions,
   disabled,
+  skillTag,
 }: WorkAreaSectionProps) {
   const router = useAppRouter();
   const sendNotification = useSendNotification();
@@ -98,7 +96,7 @@ export function WorkAreaSection({
         : [];
       const res = await createConversationWithMessage({
         messageData: {
-          input: message,
+          input: skillTag ? `${skillTag}\n\n${message}` : message,
           mentions,
           contentFragments: { uploaded: [], contentNodes: [] },
         },
@@ -122,16 +120,17 @@ export function WorkAreaSection({
       owner.sId,
       router,
       sendNotification,
+      skillTag,
     ]
   );
 
   return (
     <div className="mt-12 rounded-2xl border border-border bg-background px-6 pb-4 pt-6 shadow-sm">
       <h2 className="text-xl font-semibold leading-7 tracking-tight text-foreground">
-        Your work
+        {copy.title}
       </h2>
       <p className="mt-1 text-sm leading-5 tracking-tight text-muted-foreground">
-        What you care about at work. Ideas below are based on this.
+        {copy.description}
       </p>
 
       <div className="mt-6 border-t border-border">
@@ -145,7 +144,7 @@ export function WorkAreaSection({
               <ActivationRunningBanner
                 owner={owner}
                 runningConversation={runningConversation}
-                message="An agent is actively learning about your work."
+                message={copy.runningBanner}
               />
             )}
             {hasContent ? (
@@ -162,16 +161,15 @@ export function WorkAreaSection({
             ) : (
               !runningConversation && (
                 <p className="text-sm leading-5 tracking-tight text-muted-foreground">
-                  We don't know what you care about yet.
+                  {copy.emptyState}
                 </p>
               )
             )}
             <p className="mt-4 text-sm leading-5 tracking-tight text-muted-foreground">
-              Select an option below to give us feedback. We'll update this and
-              suggest a new idea.
+              {copy.actionDescription}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
-              {WORK_AREA_ACTIONS.map((action) => (
+              {actions.map((action) => (
                 <Button
                   key={action.label}
                   variant="outline"

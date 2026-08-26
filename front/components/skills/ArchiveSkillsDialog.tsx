@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  Trash01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -45,10 +44,9 @@ export function ArchiveSkillsDialog({
     <Dialog>
       <DialogTrigger asChild>
         <Button
-          size="xs"
+          size="sm"
           variant="warning"
-          icon={Trash01}
-          label="Archive selection"
+          label="Archive"
           disabled={disabled}
         />
       </DialogTrigger>

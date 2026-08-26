@@ -2,7 +2,6 @@ import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
@@ -481,7 +480,6 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
     const body = scheduleTriggerBody(null);
@@ -506,7 +504,6 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
     const body = scheduleTriggerBody(null);
@@ -515,30 +512,6 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
     });
 
     expect(response.status).toBe(403);
-  });
-
-  it("ignores the requested pool when the feature flag is off", async () => {
-    const { workspace, user } = await createPrivateApiMockRequest({
-      method: "POST",
-      role: "admin",
-    });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
-
-    const body = scheduleTriggerBody(null);
-    const response = await postTriggers(workspace, agent.sId, {
-      triggers: [{ ...body.triggers[0], executionMode: "workspace_pool" }],
-    });
-
-    expect(response.status).toBe(204);
-    const triggers = await TriggerResource.listByAgentConfigurationId(
-      auth,
-      agent.sId
-    );
-    expect(triggers[0].executionMode).toBe("user_pool");
   });
 
   it("moves an existing trigger to the workspace pool on update", async () => {
@@ -550,7 +523,6 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const trigger = await createScheduleTrigger(workspace, agent.sId, null);
 
@@ -579,7 +551,6 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const trigger = await createScheduleTrigger(workspace, agent.sId, null);
 
@@ -608,7 +579,6 @@ describe("POST/PATCH /api/w/:wId/triggers (executionMode)", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "trigger_pool_choice");
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const trigger = await TriggerFactory.schedule(auth, {
       agentConfigurationId: agent.sId,

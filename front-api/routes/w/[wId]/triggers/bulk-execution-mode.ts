@@ -11,7 +11,6 @@ import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 import { z } from "zod";
 
 const BodySchema = z.object({
@@ -28,7 +27,6 @@ const app = workspaceApp();
 app.post(
   "/",
   ensureIsManager(),
-  withFeatureFlag("trigger_pool_choice"),
   validate("json", BodySchema),
   async (ctx): HandlerResult<BulkTriggerExecutionModeResponseBody> => {
     const auth = ctx.get("auth");

@@ -2,6 +2,7 @@ import type { ImportFormValues } from "@app/components/skills/import/formSchema"
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/github/import_skills";
+import { useAppRouter } from "@app/lib/platform";
 import type {
   DetectedSkillSummary,
   DetectSkillsResponseBody,
@@ -410,6 +411,7 @@ export function useUpdateSkillFavorite({
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
+  const router = useAppRouter();
 
   const { mutateSkills: mutateActiveSkills } = useSkills({
     owner,
@@ -443,7 +445,15 @@ export function useUpdateSkillFavorite({
             description: skill.name,
             action: {
               label: "View",
-              href: `${getManageSkillsRoute(owner.sId)}#?selectedTab=favorites`,
+              onClick: () => {
+                void router
+                  .push(
+                    `${getManageSkillsRoute(owner.sId)}#?selectedTab=favorites`
+                  )
+                  .then(() =>
+                    window.dispatchEvent(new HashChangeEvent("hashchange"))
+                  );
+              },
             },
           });
         }
@@ -464,6 +474,7 @@ export function useUpdateSkillFavorite({
       mutateActiveSkills,
       mutateActiveSkillsWithRelations,
       owner.sId,
+      router,
       sendNotification,
     ]
   );

@@ -3,7 +3,9 @@ import type { PokeListCreditsResponseBody } from "@app/types/api/poke/credits";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
+import apiKeysUsage from "./api-keys-usage";
 import awuPoolSummary from "./awu-pool-summary";
+import consumptionExport from "./consumption-export";
 import membersUsage from "./members-usage";
 import topUps from "./top-ups";
 
@@ -34,7 +36,9 @@ app.get("/", async (ctx): HandlerResult<PokeListCreditsResponseBody> => {
   });
 });
 
+app.route("/api-keys-usage", apiKeysUsage);
 app.route("/awu-pool-summary", awuPoolSummary);
+app.route("/consumption-export", consumptionExport);
 app.route("/members-usage", membersUsage);
 app.route("/top-ups", topUps);
 

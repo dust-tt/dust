@@ -61,7 +61,6 @@ import {
   Page,
   Plus,
   SearchInput,
-  Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -536,40 +535,34 @@ export function ManageSkillsPage() {
                 </div>
               </TabsList>
             </Tabs>
-            {isLoading ? (
-              <div className="mt-8 flex justify-center">
-                <Spinner size="lg" />
-              </div>
+            {!isLoading &&
+              activeTab === "active" &&
+              availabilityFilter === "all" &&
+              suggestedSkills.length > 0 && (
+                <SuggestedSkillsSection
+                  skills={sortSkillsByName(suggestedSkills)}
+                  onSkillClick={handleSkillSelect}
+                  owner={owner}
+                  user={user}
+                />
+              )}
+            {isLoading || !isActiveTabEmpty ? (
+              <SkillsTable
+                owner={owner}
+                skills={skillsByTab[activeTab]}
+                onSkillClick={handleSkillSelect}
+                onAgentClick={setAgentId}
+                onUsedBySkillClick={handleUsedBySkillSelect}
+                canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
+                enableSelection={isBatchEditionAvailable}
+                rowSelection={rowSelection}
+                setRowSelection={setRowSelection}
+                isBatchUpdating={isBatchUpdating}
+                onSelectAvailabilityAction={setPendingBatchAction}
+                isLoading={isLoading}
+              />
             ) : (
-              <>
-                {activeTab === "active" &&
-                  availabilityFilter === "all" &&
-                  suggestedSkills.length > 0 && (
-                    <SuggestedSkillsSection
-                      skills={sortSkillsByName(suggestedSkills)}
-                      onSkillClick={handleSkillSelect}
-                      owner={owner}
-                      user={user}
-                    />
-                  )}
-                {isActiveTabEmpty ? (
-                  <div className="pt-2">{renderEmptyTabState()}</div>
-                ) : (
-                  <SkillsTable
-                    owner={owner}
-                    skills={skillsByTab[activeTab]}
-                    onSkillClick={handleSkillSelect}
-                    onAgentClick={setAgentId}
-                    onUsedBySkillClick={handleUsedBySkillSelect}
-                    canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
-                    enableSelection={isBatchEditionAvailable}
-                    rowSelection={rowSelection}
-                    setRowSelection={setRowSelection}
-                    isBatchUpdating={isBatchUpdating}
-                    onSelectAvailabilityAction={setPendingBatchAction}
-                  />
-                )}
-              </>
+              <div className="pt-2">{renderEmptyTabState()}</div>
             )}
           </div>
         </Page.Vertical>

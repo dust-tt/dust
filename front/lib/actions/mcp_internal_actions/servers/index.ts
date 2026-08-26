@@ -87,7 +87,6 @@ import { default as valtownServer } from "@app/lib/api/actions/servers/val_town"
 import { default as vantaServer } from "@app/lib/api/actions/servers/vanta";
 import { default as wakeupsServer } from "@app/lib/api/actions/servers/wakeups";
 import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
-import { default as workdayServer } from "@app/lib/api/actions/servers/workday";
 import { default as workspaceAnalyticsServer } from "@app/lib/api/actions/servers/workspace_analytics";
 import { default as workspaceManagementServer } from "@app/lib/api/actions/servers/workspace_management";
 import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
@@ -298,8 +297,6 @@ export async function getInternalMCPServer(
       return wakeupsServer(auth, toolContext);
     case "plan_mode":
       return planModeServer(auth, toolContext);
-    case "workday":
-      return workdayServer(auth, toolContext);
     case "user_analytics":
       return userAnalyticsServer(auth, toolContext);
     case "user_memory":

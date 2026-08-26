@@ -3,7 +3,7 @@ import { CATEGORY_DETAILS, getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type { DataSourceViewType } from "@app/types/data_source_view";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
@@ -16,7 +16,7 @@ import React from "react";
 
 interface SpaceBreadcrumbProps {
   owner: LightWorkspaceType;
-  space: SpaceType;
+  space: EnrichedSpaceType;
   category?: DataSourceViewCategory;
   dataSourceView?: DataSourceViewType;
   parentId?: string;

@@ -37,6 +37,7 @@ import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversati
 interface CreditActionMinimalInput {
   toolName: string;
   internalMCPServerName: InternalMCPServerNameType | null;
+  mcpServerId?: string | null;
   status: ToolExecutionStatus;
 }
 
@@ -280,6 +281,7 @@ export async function computeAndStoreAgentMessageCredits(
     actions: actions.map((action) => ({
       toolName: getToolNameFromFunctionCallName(action.functionCallName),
       internalMCPServerName: action.metadata.internalMCPServerName,
+      mcpServerId: action.metadata.mcpServerId ?? null,
       status: action.status,
     })),
     contextOrigin: triggeringUserMessageOrigin,
@@ -303,11 +305,17 @@ export async function computeAndStoreAgentMessageCredits(
   const user = auth.user();
   const plan = auth.plan();
   const assistantLimits = plan?.limits.assistant;
+
+  // Feature flags gate the fair-use recording and the spend-cap backups below;
+  // fetch once when there is a delta to record.
+  const featureFlags = recordedCostDelta > 0 ? await getFeatureFlags(auth) : [];
+
   if (
     user &&
     assistantLimits &&
     recordedCostDelta > 0 &&
-    assistantLimits.maxAwuCredits !== -1
+    assistantLimits.maxAwuCredits !== -1 &&
+    !featureFlags.includes("disable_fair_use_awu_limit")
   ) {
     // The limit guard lives in isMessagesLimitReached (pre-message), which reads
     // the count via getRateLimiterCount and blocks the next message once the
@@ -329,7 +337,6 @@ export async function computeAndStoreAgentMessageCredits(
   // Record against the spend-cap backups (Redis fixed-window counters over the
   // contract billing cycle).
   if (recordedCostDelta > 0) {
-    const featureFlags = await getFeatureFlags(auth);
     if (featureFlags.includes("enforce_user_spend_limit_rate_cap")) {
       // Per-user cap.
       if (user) {

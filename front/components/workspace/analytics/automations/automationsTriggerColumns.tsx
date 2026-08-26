@@ -1,12 +1,15 @@
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { TriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
+import { POOL_OPTIONS } from "@app/components/workspace/analytics/automations/trigger_pool_options";
 import {
   AvatarNameCell,
   CreditsCell,
   EntityTooltipCard,
 } from "@app/components/workspace/analytics/creditsTableCells";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
+import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Avatar,
@@ -15,6 +18,10 @@ import {
   ChevronUp,
   Clock,
   DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Icon,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -83,6 +90,7 @@ export function nameColumn<T extends TriggerRowData>(): ColumnDef<T> {
     id: "name",
     accessorKey: "name",
     header: "Name",
+    enableSorting: false,
     meta: { className: "truncate", headerAlign: "left" },
     cell: (info) => (
       <DataTable.CellContent className="w-full justify-start text-left">
@@ -156,7 +164,7 @@ export function typeColumn<T extends TriggerRowData>(): ColumnDef<T> {
     id: "type",
     header: "Type",
     enableSorting: false,
-    meta: { className: "w-8" },
+    meta: { className: "w-8", headerAlign: "center" },
     cell: (info) => (
       <DataTable.CellContent className="w-full justify-center">
         <TypeCell trigger={info.row.original} />
@@ -206,5 +214,57 @@ export function detailsColumn<T extends TriggerRowData>(
         </DataTable.CellContent>
       );
     },
+  };
+}
+
+export interface PoolRowFields {
+  displayExecutionMode: TriggerExecutionMode;
+  isExecutionModePending: boolean;
+  onSetExecutionMode: (executionMode: TriggerExecutionMode) => void;
+}
+
+function PoolCell({ row }: { row: TriggerRowData & PoolRowFields }) {
+  const { hasPermission } = useWorkspacePermissions();
+  const isWorkspacePool = row.displayExecutionMode === "workspace_pool";
+  const canSetPool = hasPermission("use_workspace_pool", "trigger");
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="xs"
+          isSelect
+          disabled={row.isExecutionModePending || !canSetPool}
+          className={isWorkspacePool ? "text-highlight" : undefined}
+          label={isWorkspacePool ? "Workspace" : "Member"}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        {POOL_OPTIONS.map(({ value, label }) => (
+          <DropdownMenuItem
+            key={value}
+            label={label}
+            onClick={() => row.onSetExecutionMode(value)}
+          />
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function poolColumn<
+  T extends TriggerRowData & PoolRowFields,
+>(): ColumnDef<T> {
+  return {
+    id: "pool",
+    header: "Pool",
+    enableSorting: false,
+    meta: { className: "w-28" },
+    cell: (info) => (
+      <DataTable.CellContent className="w-full justify-start">
+        <PoolCell row={info.row.original} />
+      </DataTable.CellContent>
+    ),
   };
 }

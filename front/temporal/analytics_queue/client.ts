@@ -1,7 +1,7 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { getTmpWorkloadsBucket } from "@app/lib/file_storage";
 import {
   AgentMessageModel,
   MessageModel,
@@ -247,7 +247,7 @@ export async function launchConsumptionExportWorkflow(
 
   // Checked here rather than inside the workflow so a cache hit returns immediately,
   // without paying for a Temporal round-trip.
-  const [cached] = await getPrivateUploadBucket().file(gcsPath).exists();
+  const [cached] = await getTmpWorkloadsBucket().file(gcsPath).exists();
   if (cached) {
     return new Ok({ status: "cached", gcsPath });
   }

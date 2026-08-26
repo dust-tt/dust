@@ -1,9 +1,4 @@
 import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
-import {
-  getTierForModel,
-  STATIC_MODEL_TIERS,
-} from "@app/lib/api/assistant/token_pricing/tiers";
 import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -22,6 +17,11 @@ import {
   AUTO_MODEL_ID,
   MODEL_STREAMS,
 } from "@app/types/assistant/models/auto";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
+import {
+  getTierForModel,
+  STATIC_MODEL_TIERS,
+} from "@app/types/assistant/models/model_tiers";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type {
   ModelConfigurationType,

@@ -4,23 +4,28 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockOpenPanel, mockSidePanelContext, mockUseAgentMessageConsumption } =
-  vi.hoisted(() => {
-    const mockOpenPanel = vi.fn();
-    const mockSidePanelContext: {
-      currentPanel: "credits" | undefined;
-      openPanel: typeof mockOpenPanel;
-    } = {
-      currentPanel: undefined,
-      openPanel: mockOpenPanel,
-    };
+const {
+  mockOpenPanel,
+  mockSidePanelContext,
+  mockTrackEvent,
+  mockUseAgentMessageConsumption,
+} = vi.hoisted(() => {
+  const mockOpenPanel = vi.fn();
+  const mockSidePanelContext: {
+    currentPanel: "credits" | undefined;
+    openPanel: typeof mockOpenPanel;
+  } = {
+    currentPanel: undefined,
+    openPanel: mockOpenPanel,
+  };
 
-    return {
-      mockOpenPanel,
-      mockSidePanelContext,
-      mockUseAgentMessageConsumption: vi.fn(),
-    };
-  });
+  return {
+    mockOpenPanel,
+    mockSidePanelContext,
+    mockTrackEvent: vi.fn(),
+    mockUseAgentMessageConsumption: vi.fn(),
+  };
+});
 
 vi.mock(
   "@app/components/assistant/conversation/ConversationSidePanelContext",
@@ -32,6 +37,11 @@ vi.mock(
 vi.mock("@app/hooks/conversations/useAgentMessageConsumption", () => ({
   useAgentMessageConsumption: mockUseAgentMessageConsumption,
 }));
+
+vi.mock("@app/lib/tracking", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/tracking")>();
+  return { ...actual, trackEvent: mockTrackEvent };
+});
 
 vi.mock("@app/components/assistant/conversation/actions/inline/utils", () => ({
   getActionStepIcon: () => () => null,
@@ -103,6 +113,7 @@ describe("CreditCostPopover", () => {
   beforeEach(() => {
     mockOpenPanel.mockReset();
     mockSidePanelContext.currentPanel = undefined;
+    mockTrackEvent.mockReset();
     mockUseAgentMessageConsumption.mockReset();
   });
 
@@ -110,10 +121,17 @@ describe("CreditCostPopover", () => {
     mockUseAgentMessageConsumption.mockReturnValue({
       consumption: {
         billedCredits: 12,
+        totalBilledCredits: 30,
         details: {
           attributionVersion: 2,
           agentWorkCredits: 4,
           tools: [
+            makeTool("run_research", "Run Research agent", 12, {
+              internalMCPServerName: "run_agent",
+            }),
+            makeTool("run_writer", "Run Writer agent", 8, {
+              internalMCPServerName: "agent_delegation",
+            }),
             makeTool("files", "File tool", 2),
             makeTool("calendar", "Calendar tool", 7.06, { callCount: 2 }),
             makeTool("title", "Title tool", 1),
@@ -130,17 +148,19 @@ describe("CreditCostPopover", () => {
 
     expect(screen.getByText("Calendar tool")).toBeInTheDocument();
     expect(screen.getByText("7.1 credits")).toBeInTheDocument();
-    expect(screen.getByText("Search tool")).toBeInTheDocument();
-    expect(screen.getByText("Web tool")).toBeInTheDocument();
+    expect(screen.getByText("Run Research agent")).toBeInTheDocument();
+    expect(screen.getByText("Run Writer agent")).toBeInTheDocument();
+    expect(screen.queryByText("Search tool")).not.toBeInTheDocument();
+    expect(screen.queryByText("Web tool")).not.toBeInTheDocument();
     expect(screen.queryByText("File tool")).not.toBeInTheDocument();
     expect(screen.queryByText("Title tool")).not.toBeInTheDocument();
-    expect(screen.getByText("2 other tools")).toBeInTheDocument();
-    expect(screen.getAllByText("2 uses")).toHaveLength(2);
+    expect(screen.getByText("4 other tools")).toBeInTheDocument();
+    expect(screen.getByText("4 uses")).toBeInTheDocument();
     expect(screen.getByText("Message consumption")).toBeInTheDocument();
     expect(screen.getByText("Charged")).toBeInTheDocument();
-    expect(screen.getByText("15 credits")).toBeInTheDocument();
+    expect(screen.getByText("30 credits")).toBeInTheDocument();
     expect(screen.getByText("Context and reasoning")).toBeInTheDocument();
-    expect(screen.getByText("Sub-agents")).toBeInTheDocument();
+    expect(screen.queryByText("Sub-agents")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Credit usage" }));
 
@@ -173,16 +193,21 @@ describe("CreditCostPopover", () => {
     expect(screen.getByText("7 credits")).toBeInTheDocument();
   });
 
-  it("uses the authoritative sub-agent total returned by the endpoint", () => {
+  it("shows a sub-agent bill in its run-agent tool row", () => {
     mockUseAgentMessageConsumption.mockReturnValue({
       consumption: {
         billedCredits: 20,
-        subAgentBilledCredits: 282,
         totalBilledCredits: 302,
         details: {
           attributionVersion: 3,
-          agentWorkCredits: 20,
-          tools: [],
+          agentWorkCredits: 5,
+          tools: [
+            makeTool("run_dust", "Run dust", 295, {
+              internalMCPServerName: "run_agent",
+              callCount: 4,
+            }),
+            makeTool("publish", "Publish Frame", 2),
+          ],
         },
       },
       isConsumptionLoading: false,
@@ -192,7 +217,10 @@ describe("CreditCostPopover", () => {
     render(<CreditCostPopover {...defaultProps} subAgentCredits={0} />);
 
     expect(screen.getByText("302 credits")).toBeInTheDocument();
-    expect(screen.getByText("282 credits")).toBeInTheDocument();
+    expect(screen.getByText("Run dust")).toBeInTheDocument();
+    expect(screen.getByText("295 credits")).toBeInTheDocument();
+    expect(screen.getByText("4 uses")).toBeInTheDocument();
+    expect(screen.queryByText("Sub-agents")).not.toBeInTheDocument();
   });
 
   it("hides the credit usage button when the credits panel is open", () => {
@@ -242,15 +270,27 @@ describe("CreditCostPopover", () => {
     const openButton = screen.getByRole("button", {
       name: "Open credit details",
     });
+    expect(mockTrackEvent).not.toHaveBeenCalled();
     fireEvent.click(openButton);
 
     expect(mockUseAgentMessageConsumption).toHaveBeenLastCalledWith(
       expect.objectContaining({ disabled: false })
     );
     expect(mutateConsumption).not.toHaveBeenCalled();
+    expect(mockTrackEvent).toHaveBeenLastCalledWith({
+      area: "analytics",
+      object: "message_breakdown",
+      action: "view",
+      extra: {
+        workspace_id: "workspace_test",
+        conversation_id: "conversation_test",
+        message_id: "message_test",
+      },
+    });
 
     fireEvent.click(openButton);
 
     expect(mutateConsumption).toHaveBeenCalledOnce();
+    expect(mockTrackEvent).toHaveBeenCalledTimes(2);
   });
 });

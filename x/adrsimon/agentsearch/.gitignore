@@ -1,0 +1,10 @@
+# Workspace exports carry every agent's instructions and group-level usage.
+assets/agents_*.json
+!assets/agents_skeleton.json
+
+# Profile snapshots name a real person and their group/space memberships.
+assets/profile_*.json
+!assets/profile_skeleton.json
+
+# Generated eval query sets embed real agent names and descriptions.
+assets/eval_queries_*.json

@@ -1396,8 +1396,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     auditLog(
       {
         author,
-        userId: user.id,
-        workspaceId: workspace.id,
+        userId: user.sId,
+        workspaceId: workspace.sId,
         previousRole,
         newRole,
       },
@@ -1488,8 +1488,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     auditLog(
       {
         author,
-        userId: user.id,
-        workspaceId: workspace.id,
+        userId: user.sId,
+        workspaceId: workspace.sId,
         previousOrigin,
         newOrigin,
       },
@@ -1539,8 +1539,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     auditLog(
       {
         author,
-        userId: user.id,
-        workspaceId: workspace.id,
+        userId: user.sId,
+        workspaceId: workspace.sId,
         previousSeatType,
         newSeatType,
       },
@@ -1707,8 +1707,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     auditLog(
       {
         author,
-        userId: user.id,
-        workspaceId: workspace.id,
+        userId: user.sId,
+        workspaceId: workspace.sId,
         previousSeatType,
         newSeatType,
         scheduledAt: scheduledAt.toISOString(),
@@ -1748,7 +1748,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     auditLog(
       {
         author,
-        userId: user.id,
+        userId: user.sId,
         workspaceId: workspace.sId,
       },
       "Membership scheduled seat change cancelled"

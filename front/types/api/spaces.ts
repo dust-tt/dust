@@ -4,7 +4,7 @@ import {
   PodFrameTabsSchema,
   PodTabsOrderSchema,
 } from "@app/types/pod_frame_tab";
-import type { PodType, SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType, PodType, SpaceType } from "@app/types/space";
 import type { SpaceUserType } from "@app/types/user";
 import { z } from "zod";
 
@@ -79,7 +79,7 @@ export type PostSpaceRequestBodyType = z.infer<
 >;
 
 export type GetSpacesResponseBody = {
-  spaces: (SpaceType | PodType)[];
+  spaces: (EnrichedSpaceType | PodType)[];
 };
 
 export type PostSpacesResponseBody = {
@@ -91,7 +91,7 @@ export type SpaceCategoryInfo = {
   count: number;
 };
 
-export type RichSpaceType = SpaceType & {
+export type RichSpaceType = EnrichedSpaceType & {
   categories: { [key: string]: SpaceCategoryInfo };
   canWrite: boolean;
   canRead: boolean;

@@ -82,7 +82,11 @@ export const makeFairUseAwuCreditsRateLimitKeyForUser = (
   user: UserType,
   maxAwuCreditsTimeframe: MaxAwuCreditsTimeframeType
 ) => {
-  return `workspace:${owner.id}:user:${user.id}:fair_use_awu_credit_count:${maxAwuCreditsTimeframe}`;
+  // `:v2_microcredits` marks the switch to weighted amount-carrying entries
+  // (`<microCredits>:<uuid>`, summed on read). Bumping the key prevents summing
+  // the new entries together with legacy plain-uuid rows; the short rolling
+  // window makes the pre-existing key expire quickly after cutover.
+  return `workspace:${owner.id}:user:${user.id}:fair_use_awu_credit_count:${maxAwuCreditsTimeframe}:v2_microcredits`;
 };
 
 export const PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK = 25;
@@ -103,7 +107,7 @@ export const makeSpendLimitAwuCreditsRateLimitKeyForUser = (
   owner: LightWorkspaceType,
   user: UserType
 ) => {
-  return `workspace:${owner.id}:user:${user.id}:spend_limit_awu_credit_count`;
+  return `workspace:${owner.id}:user:${user.id}:spend_limit_awu_microcredit_count`;
 };
 
 // Fixed-window bounds for the per-user spend cap over a Metronome contract
@@ -127,7 +131,7 @@ export const makeSpendLimitCycleWindowBounds = (
 // Metronome contract billing cycle via `makeSpendLimitCycleWindowBounds`, like
 // the per-user key above.
 export const makeApiKeySpendLimitAwuCreditsRateLimitKey = (keyId: number) => {
-  return `api_key:${keyId}:spend_limit_awu_credit_count`;
+  return `api_key:${keyId}:spend_limit_awu_microcredit_count`;
 };
 
 // Fixed-window counter backing the workspace programmatic monthly spend cap
@@ -136,7 +140,7 @@ export const makeApiKeySpendLimitAwuCreditsRateLimitKey = (keyId: number) => {
 export const makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace = (
   owner: LightWorkspaceType
 ) => {
-  return `workspace:${owner.id}:programmatic_spend_limit_awu_credit_count`;
+  return `workspace:${owner.id}:programmatic_spend_limit_awu_microcredit_count`;
 };
 
 export const makeProgrammaticUsageRateLimitKeyForWorkspace = (

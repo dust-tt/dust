@@ -1,5 +1,6 @@
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runActivationSchedulerWorker } from "@app/temporal/activation_scheduler/worker";
+import { runAgentInactivityWorker } from "@app/temporal/agent_inactivity/worker";
 import {
   runAgentLoopBatchWorker,
   runAgentLoopInteractiveWorker,
@@ -35,6 +36,7 @@ import { runWorkOSEventsWorker } from "@app/temporal/workos_events_queue/worker"
 
 export type WorkerName =
   | "activation_scheduler"
+  | "agent_inactivity"
   | "agent_loop_batch"
   | "agent_loop_interactive"
   | "agent_loop_programmatic"
@@ -69,6 +71,7 @@ export type WorkerName =
 
 export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   activation_scheduler: runActivationSchedulerWorker,
+  agent_inactivity: runAgentInactivityWorker,
   agent_loop_batch: runAgentLoopBatchWorker,
   agent_loop_interactive: runAgentLoopInteractiveWorker,
   agent_loop_programmatic: runAgentLoopProgrammaticWorker,

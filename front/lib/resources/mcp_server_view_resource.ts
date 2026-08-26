@@ -219,9 +219,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
       resource.remoteMCPServer = remoteServer;
     } else if (blob.internalMCPServerId) {
+      // Creation is gated upstream (createInternalMCPServer); resolve the server
+      // even when restricted so an admin-installed view can still be built.
       const internalServer = await InternalMCPServerInMemoryResource.fetchById(
         auth,
-        blob.internalMCPServerId
+        blob.internalMCPServerId,
+        { includeRestricted: true }
       );
       if (!internalServer) {
         throw new DustError(
@@ -467,11 +470,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       includeMetadata = true,
       includeHeavyAttributes,
       isRestrictedToSkills,
+      includeRestricted = false,
       transaction,
     }: {
       includeMetadata?: boolean;
       includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
+      // Surface views whose internal server is gated behind a feature flag the
+      // workspace does not have. Defaults to `false` so restricted servers are
+      // not resolved into runnable tools; only admin management surfaces opt in.
+      includeRestricted?: boolean;
       transaction?: Transaction;
     } = {}
   ) {
@@ -514,7 +522,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       const internalServers =
         await InternalMCPServerInMemoryResource.fetchByIds(
           auth,
-          removeNulls(views.map((v) => v.internalMCPServerId))
+          removeNulls(views.map((v) => v.internalMCPServerId)),
+          { includeRestricted }
         );
       const internalServerMap = new Map(internalServers.map((s) => [s.id, s]));
 
@@ -624,6 +633,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     options?: ResourceFindOptions<MCPServerViewModel> & {
       includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
+      includeRestricted?: boolean;
     }
   ): Promise<MCPServerViewResource | null> {
     const [mcpServerView] = await this.fetchByIds(auth, [id], options);
@@ -637,11 +647,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     options?: ResourceFindOptions<MCPServerViewModel> & {
       includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
+      includeRestricted?: boolean;
     }
   ): Promise<MCPServerViewResource[]> {
     const viewModelIds = removeNulls(ids.map((id) => getResourceIdFromSId(id)));
-    const { includeHeavyAttributes, isRestrictedToSkills, ...findOptions } =
-      options ?? {};
+    const {
+      includeHeavyAttributes,
+      isRestrictedToSkills,
+      includeRestricted,
+      ...findOptions
+    } = options ?? {};
 
     const views = await this.baseFetch(
       auth,
@@ -654,7 +669,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           },
         },
       },
-      { includeHeavyAttributes, isRestrictedToSkills }
+      { includeHeavyAttributes, isRestrictedToSkills, includeRestricted }
     );
 
     return views ?? [];

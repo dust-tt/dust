@@ -42,11 +42,37 @@ import {
   Button,
   Card,
   Lightbulb04,
+  MOTION_EASINGS,
   Page,
   ScrollArea,
   XClose,
 } from "@dust-tt/sparkle";
+import type { Variants } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useCallback, useContext, useEffect, useState } from "react";
+
+const GREETING_WORD_OFFSET_PX = 10;
+const GREETING_WORD_DURATION_SECONDS = 0.42;
+const GREETING_WORD_STAGGER_SECONDS = 0.07;
+
+const GREETING_VARIANTS = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: GREETING_WORD_STAGGER_SECONDS },
+  },
+} satisfies Variants;
+
+const GREETING_WORD_VARIANTS = {
+  hidden: { opacity: 0, y: GREETING_WORD_OFFSET_PX },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: GREETING_WORD_DURATION_SECONDS,
+      ease: MOTION_EASINGS.emphasized,
+    },
+  },
+} satisfies Variants;
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -243,6 +269,8 @@ export function ConversationContainerVirtuoso({
     setGreeting(getRandomGreetingForName(user.firstName));
   }, [user]);
 
+  const shouldReduceMotion = useReducedMotion();
+
   const { startConversationRef } = useWelcomeTourGuide();
   const isMobile = useIsMobile();
 
@@ -269,14 +297,28 @@ export function ConversationContainerVirtuoso({
         <>
           <div
             id="agent-input-header"
-            className="flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4 md:min-h-[20vh]"
+            className="flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4 md:min-h-[36vh]"
             ref={startConversationRef}
           >
             <Page.Header
               title={
-                <h3 className="heading-3xl font-medium text-foreground">
-                  {greeting}
-                </h3>
+                <motion.h3
+                  key={greeting}
+                  className="heading-3xl font-medium text-foreground"
+                  variants={GREETING_VARIANTS}
+                  initial={shouldReduceMotion ? false : "hidden"}
+                  animate="visible"
+                >
+                  {greeting.split(" ").map((word, index) => (
+                    <motion.span
+                      key={`${index}-${word}`}
+                      className="inline-block whitespace-pre"
+                      variants={GREETING_WORD_VARIANTS}
+                    >
+                      {index === 0 ? word : ` ${word}`}
+                    </motion.span>
+                  ))}
+                </motion.h3>
               }
             />
           </div>

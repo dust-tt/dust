@@ -51,12 +51,16 @@ from pptx_typography import (
 
 from pptx_render_boxes import _annotate_boxes
 
+import pptx_contrast
 import pptx_grid
 import pptx_validate
 
 from pptx_audit import (
     BARE_MARGIN,
     BARE_RATE,
+    LEFTOVER_LISTED,
+    STRUCTURAL_KINDS,
+    STRUCTURAL_LABELS,
     CoverRect,
     DENSITY_TOLERANCE,
     DeckFidelity,
@@ -68,16 +72,29 @@ from pptx_audit import (
     _count_slides,
     _cover_candidates,
     _deck_fidelity,
-    _deck_structural_tally,
+    _deck_structural_audit,
+    _leading_break_audit,
     _drop_audit,
+    _empty_table_rows_audit,
+    _filler_audit,
+    _hole_audit,
     _effective_font_size_pt,
     _fit_tokens,
     _has_embedded_blip,
     _is_leftover_suspect,
+    _leftover_copy_audit,
+    untouched_slides,
+    _repeated_image_audit,
+    _repeated_text_audit,
     _listed_slide_count,
     _package_names,
     _shape_text_iter,
+    embedded_image,
     _shape_warning_markers,
+    _split_sentence_markers,
+    _void_markers,
+    occluded_words,
+    rendered_void,
     _slot_audit,
     slide_word_count,
 )
@@ -87,25 +104,26 @@ DEFAULT_MAX_SHAPES = 200
 
 
 USAGE = (
-    "pptx_inspect <file> [--qa N | --slide N | --layouts | --text | --media | "
-    "--render | --validate] [--grid [--grid-cols N]] [--compare FILE] "
+    "pptx_inspect <file> [--qa N [--boxes] | --slide N | --layouts | --text | "
+    "--media | --render [--grid [--grid-cols N]] | --validate] [--compare FILE] "
     "[--render-dir DIR] [--max-shapes N] [--offset N]"
 )
 
 HELP_TEXT = (
     "pptx_inspect <file> [mode]; default overview. N = 5 | 2,5,8 | 2,5,7-9.\n"
-    "--qa N: post-edit gate, #id text + boxed render to open\n"
+    "--qa N: post-edit gate, #id text + full render + defect list\n"
+    "--qa N --boxes: same, render relabelled with #id boxes\n"
     "--slide N: shapes, box, ph, type, fit, [!] OVERSET/HIDDEN\n"
     "--layouts: placeholders + type; static = master text\n"
     "--compare F: vs template F, ends [QA: PASS/FAIL]\n"
     "--validate: package integrity, does it open at all\n"
-    "--grid: one image per grid; --grid-cols N: 2, max 4\n"
+    "--grid: with --render only, tile slides into one image\n"
     "--text --media --render --render-dir --max-shapes --offset"
 )
 
 
 def picture_summary(shape: BaseShape) -> str:
-    image = getattr(shape, "image", None)
+    image = embedded_image(shape)
     if image is None:
         return ""
     parts: List[str] = []
@@ -833,6 +851,51 @@ def _collect_text(shape: BaseShape, indent: str = "  ") -> List[str]:
     return lines
 
 
+# Findings the deck-level `shapes:` line already reports, baselined against the
+# template. Naming them here keeps the roll-up to the checks that have no
+# deck-level equivalent (legibility, artwork, clipping, collisions, overset).
+_BASELINED_PHRASES = (
+    "zero-size box",
+    "extends past slide edge",
+    "image distorted",
+    "stacked with shape",
+)
+
+
+def _deck_slide_defects(file_path: str) -> Optional[List[Tuple[int, str]]]:
+    """Every `[!]` the per-slide QA gate would raise, across the deck, as
+    (slide_no, line). None when the deck could not be rendered.
+
+    Runs the SAME code path as `--qa` rather than a deck-level approximation, so
+    the final audit can never pass a slide the per-slide gate would fail. It used
+    to: collisions, clipping and the shape markers were computed only in `--qa`,
+    so a deck whose title slide was three headlines printed on top of each other
+    still ended in [QA: PASS] if nobody ran `--qa` on slide 1.
+
+    The four structural kinds are left out: `shapes:` above already reports them
+    against the template's own, and a deck that cloned an exemplar carrying five
+    zero-size boxes should not be billed for them twice - once baselined and
+    once not.
+
+    Rendered a page at a time so the soffice PDF the QA pass already wrote is
+    reused: after QA this costs a rasterization per slide, not a reconversion."""
+    try:
+        prs = Presentation(file_path)
+        out: List[Tuple[int, str]] = []
+        for slide_idx in range(1, len(prs.slides) + 1):
+            _image, digest = _annotate_slide(file_path, prs, slide_idx)
+            for line in digest:
+                stripped = line.strip()
+                if not stripped.startswith("[!]") or line.startswith("[!]"):
+                    continue
+                if any(phrase in stripped for phrase in _BASELINED_PHRASES):
+                    continue
+                out.append((slide_idx, stripped))
+        return out
+    except (ValueError, OSError, IndexError):
+        return None
+
+
 def print_compare(file_path: str, source_path: str) -> str:
     """Compare the edited deck (file_path) against its source/template
     (source_path) and gate the result. Surfaces the regressions that mean the
@@ -942,7 +1005,10 @@ def print_compare(file_path: str, source_path: str) -> str:
             lines.append(
                 f"    [!] imagery below template - {out_fid.imagery_slides}/"
                 f"{out_fid.total} output slides carry images vs "
-                f"{src_fid.imagery_slides}/{src_fid.total} in the template"
+                f"{src_fid.imagery_slides}/{src_fid.total} in the template. "
+                "Clone the template's own image-bearing slides for the points "
+                "that need one; do not paste the same picture onto every text "
+                "slide to raise the count."
             )
 
         # Bare canvas: slides hand-drawn with no template placeholders and no
@@ -991,16 +1057,33 @@ def print_compare(file_path: str, source_path: str) -> str:
                 "(template sets no ceiling - its slides carry no copy)"
             )
 
-        # Per-slide structural issues, rolled up (informational - some may be
-        # inherited from the template; the per-slide view judges each).
-        tally = _deck_structural_tally(file_path)
-        if tally:
-            total = tally["stacked"] + tally["distorted"] + tally["off_slide"]
-            lines.append(
-                f"  shapes:  {total} structural issue(s) across slides - "
-                f"stacked:{tally['stacked']} distorted-img:{tally['distorted']} "
-                f"off-slide:{tally['off_slide']}"
+        # Per-slide structural issues, rolled up and BASELINED against the
+        # template's own. Reporting these without gating on them was how a deck
+        # with five boxes off the slide edge and four stretched photos still
+        # read [QA: PASS]; baselining is what lets them gate without blaming the
+        # model for faults the template shipped with.
+        structural = _deck_structural_audit(file_path, source_path)
+        if structural is not None:
+            summary = " ".join(
+                f"{STRUCTURAL_LABELS[kind]}:"
+                f"{sum(1 for _, _, inh in structural[kind] if not inh)}"
+                f"(+{sum(1 for _, _, inh in structural[kind] if inh)} from template)"
+                for kind in STRUCTURAL_KINDS
             )
+            lines.append(f"  shapes:  {summary}")
+            for kind in STRUCTURAL_KINDS:
+                own = [(n, sid) for n, sid, inh in structural[kind] if not inh]
+                if not own:
+                    continue
+                blockers += len(own)
+                where = ", ".join(f"slide {n} #{sid}" for n, sid in own[:8])
+                more = (
+                    f" and {len(own) - 8} more" if len(own) > 8 else ""
+                )
+                lines.append(
+                    f"    [!] {len(own)} {STRUCTURAL_LABELS[kind]} shape(s) you "
+                    f"added or moved: {where}{more}."
+                )
 
     # Content-slot fidelity: text written into the template's interior spacer
     # paragraphs (the wrong-slot fill). Deterministic from the paragraph
@@ -1018,6 +1101,165 @@ def print_compare(file_path: str, source_path: str) -> str:
             lines.append(
                 f"    [!] slide {slide_no} #{sid}: filled spacer {filled}; "
                 f"template content slots {slots}"
+            )
+
+    # Legibility, measured on the render: text the same colour family as what
+    # ends up behind it. python-pptx cannot see this - a text box added outside
+    # a placeholder takes the presentation default, which is near-black whatever
+    # the slide looks like - and it is the most common way an edited deck ships
+    # slides nobody can read.
+    if out_fid is not None:
+        defects = _deck_slide_defects(file_path)
+        if defects is None:
+            lines.append(
+                "  defects: [i] could not render the deck; the per-slide checks "
+                "(legibility, collisions, clipping) did not run"
+            )
+        elif defects:
+            lines.append(
+                f"  defects: [!] {len(defects)} per-slide defect(s) - the same "
+                "ones --qa raises"
+            )
+            blockers += len(defects)
+            for slide_no, line in defects[:LEFTOVER_LISTED]:
+                lines.append(f"    [!] slide {slide_no}: {line[len('[!] '):]}")
+            if len(defects) > LEFTOVER_LISTED:
+                lines.append(
+                    f"    [!] ... and {len(defects) - LEFTOVER_LISTED} more; run "
+                    "--qa on each slide for its own list"
+                )
+        else:
+            lines.append("  defects: every slide passes the per-slide checks")
+
+    # Template filler still in the deck. No template needed and no judgment
+    # call: lorem or a bracketed prompt in a delivered deck is always a defect.
+    filler = _filler_audit(file_path)
+    if filler:
+        lines.append(
+            f"  filler:  [!] {len(filler)} shape(s) still hold template filler"
+        )
+        for slide_no, sid, text in filler[:LEFTOVER_LISTED]:
+            blockers += 1
+            lines.append(
+                f"    [!] slide {slide_no} #{sid}: {ellipsize(text, 60)!r}"
+            )
+        if len(filler) > LEFTOVER_LISTED:
+            blockers += len(filler) - LEFTOVER_LISTED
+            lines.append(
+                f"    [!] ... and {len(filler) - LEFTOVER_LISTED} more"
+            )
+
+    # Blank rows left at the foot of a cloned table.
+    blank_rows = _empty_table_rows_audit(file_path)
+    if blank_rows:
+        lines.append(
+            f"  tables:  [!] {len(blank_rows)} table(s) end in empty rows"
+        )
+        for slide_no, shape_id, trailing, total in blank_rows[:LEFTOVER_LISTED]:
+            blockers += 1
+            lines.append(
+                f"    [!] slide {slide_no} #{shape_id}: the last {trailing} of "
+                f"{total} rows are empty and still draw their fill. Delete the "
+                "surplus rows instead of blanking them."
+            )
+
+    # A line break at the start of a paragraph.
+    stranded = _leading_break_audit(file_path)
+    if stranded:
+        lines.append(
+            f"  breaks:  [!] {len(stranded)} paragraph(s) start with a line break"
+        )
+        for slide_no, shape_id, index, text in stranded[:LEFTOVER_LISTED]:
+            blockers += 1
+            lines.append(
+                f"    [!] slide {slide_no} #{shape_id} p[{index}]: "
+                f"{ellipsize(text, 46)!r} - starts on the second line of its "
+                "own paragraph, and a bulleted one strands its bullet above it. "
+                "Drop the leading break."
+            )
+        if len(stranded) > LEFTOVER_LISTED:
+            blockers += len(stranded) - LEFTOVER_LISTED
+            lines.append(
+                f"    [!] ... and {len(stranded) - LEFTOVER_LISTED} more"
+            )
+
+    # The same sentence on several slides. Padding to satisfy a gate looks
+    # exactly like this, and so does a template paragraph nobody rewrote.
+    repeated = _repeated_text_audit(file_path)
+    if repeated:
+        lines.append(
+            f"  repeats: [!] {len(repeated)} block(s) of copy appear more than "
+            "once"
+        )
+        for text, slides in repeated[:LEFTOVER_LISTED]:
+            blockers += 1
+            where = ",".join(str(n) for n in slides)
+            lines.append(
+                f"    [!] on slide(s) {where}: {ellipsize(text, 60)!r}"
+            )
+        if len(repeated) > LEFTOVER_LISTED:
+            blockers += len(repeated) - LEFTOVER_LISTED
+            lines.append(
+                f"    [!] ... and {len(repeated) - LEFTOVER_LISTED} more"
+            )
+
+    # One picture doing duty as the imagery of many slides.
+    padded = _repeated_image_audit(file_path, source_path)
+    if padded:
+        for _key, slides in padded[:LEFTOVER_LISTED]:
+            blockers += 1
+            where = ",".join(str(n) for n in slides)
+            lines.append(
+                f"  padding: [!] one picture is the content image of slides "
+                f"{where}. Give a slide the template's own image for what it "
+                "says, or leave it text-only."
+            )
+
+    # Cloned slides that came out mostly empty canvas. The shape-retention
+    # advisory below counts shapes; this measures the hole, which is what the
+    # reader sees - dropping one full-bleed photo keeps most of the shapes and
+    # loses most of the slide.
+    holes = _hole_audit(file_path, source_path)
+    if holes:
+        lines.append(
+            f"  canvas:  [!] {len(holes)} cloned slide(s) left mostly empty"
+        )
+        for out_no, src_no, cov, src_cov in holes[:LEFTOVER_LISTED]:
+            blockers += 1
+            lines.append(
+                f"    [!] slide {out_no} covers {cov:.0%} of the canvas; its "
+                f"exemplar (template slide {src_no}) covers {src_cov:.0%}. "
+                "Put the exemplar's content back, or clone a sparser one."
+            )
+
+    # Exemplar copy still on a cloned slide: the template's scaffolding words
+    # ("Pilot", "HOW", "01".."06", a stage label) shipped as if they were
+    # content. Advisory: revising the user's own deck legitimately keeps most of
+    # its copy, so the model judges each one.
+    leftovers = _leftover_copy_audit(file_path, source_path)
+    untouched = untouched_slides(leftovers, file_path)
+    if untouched:
+        lines.append(
+            f"  cloned:  [!] {len(untouched)} slide(s) are still the template's "
+            "slide, with their copy unchanged"
+        )
+        for slide_no, kept, total in untouched[:LEFTOVER_LISTED]:
+            blockers += 1
+            lines.append(
+                f"    [!] slide {slide_no}: {kept} of {total} text shapes still "
+                "hold the exemplar's copy. Write this slide, or delete it."
+            )
+    if leftovers:
+        lines.append(
+            f"  leftover: [i] {len(leftovers)} shape(s) still carry the "
+            "template's own copy - replace or delete the ones you cloned as a "
+            "layout, keep the ones you were asked to leave alone"
+        )
+        for slide_no, sid, text in leftovers[:LEFTOVER_LISTED]:
+            lines.append(f"    [i] slide {slide_no} #{sid}: {ellipsize(text, 60)!r}")
+        if len(leftovers) > LEFTOVER_LISTED:
+            lines.append(
+                f"    [i] ... and {len(leftovers) - LEFTOVER_LISTED} more"
             )
 
     # Shape retention: a cloned slide that dropped most of its exemplar's shapes
@@ -1085,14 +1327,15 @@ _VIEW_SUBDIR = ".pptx_render"
 
 
 def _collect_tokens(shape: BaseShape) -> set:
-    """Comparison tokens of a shape's text (group child text folded in), used to
-    attribute a rendered PDF word back to its source shape."""
+    """Comparison tokens of a shape's text (group child and table cell text
+    folded in), used to attribute a rendered PDF word back to its source shape.
+
+    Tables count: without them a table's rendered words fall through to the
+    nearest-box fallback and get charged to whatever text shape sits closest,
+    which mislabels the finding and drags that shape's contrast median with it."""
     tokens: set = set()
-    if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
-        for child in shape.shapes:
-            tokens |= _collect_tokens(child)
-    elif getattr(shape, "has_text_frame", False):
-        for word in (shape.text_frame.text or "").split():
+    for text in _shape_text_iter(shape):
+        for word in text.split():
             tok = pdf_text.norm_token(word)
             if tok:
                 tokens.add(tok)
@@ -1110,6 +1353,10 @@ def _shape_text_label(shape: BaseShape) -> str:
         return ""
     if getattr(shape, "has_text_frame", False):
         return ellipsize(flatten_text(shape.text_frame.text or "").strip(), 30)
+    for text in _shape_text_iter(shape):
+        stripped = flatten_text(text).strip()
+        if stripped:
+            return ellipsize(stripped, 30)
     return ""
 
 
@@ -1124,8 +1371,9 @@ def _autofit_off(shape: BaseShape) -> bool:
 
 def _text_shape_entries(slide: Slide):
     """Per top-level text-bearing shape: (id, declared_box_emu, token_set, label,
-    autofit_off). Feeds the cross-shape overprint detector (id, box, tokens) and
-    the digest wording (label, autofit)."""
+    autofit_off, declared_word_count). Feeds the cross-shape overprint detector
+    (id, box, tokens), the digest wording (label, autofit) and the clipped-text
+    check (declared_word_count)."""
     out = []
     for sh in slide.shapes:
         if None in (sh.left, sh.top, sh.width, sh.height):
@@ -1134,7 +1382,11 @@ def _text_shape_entries(slide: Slide):
         if not tokens:
             continue
         box = (sh.left, sh.top, sh.left + sh.width, sh.top + sh.height)
-        out.append((sh.shape_id, box, tokens, _shape_text_label(sh), _autofit_off(sh)))
+        declared = sum(len(text.split()) for text in _shape_text_iter(sh))
+        out.append((
+            sh.shape_id, box, tokens, _shape_text_label(sh), _autofit_off(sh),
+            declared,
+        ))
     return out
 
 
@@ -1151,6 +1403,9 @@ def _slide_findings_lines(
     idx: int,
     findings: dict,
     words: Optional[List[pdf_text.WordBox]],
+    contrasts: Optional[List[pptx_contrast.ShapeContrast]] = None,
+    shape_blockers: Optional[List[Tuple[int, str]]] = None,
+    slide_blockers: Optional[List[str]] = None,
 ) -> List[str]:
     """Format one slide's QA findings as a tiered, consequence-first block.
 
@@ -1181,6 +1436,22 @@ def _slide_findings_lines(
     advisory: List[str] = []
     n_severe = 0
     n_review = 0
+
+    for sid, marker in shape_blockers or []:
+        n_severe += 1
+        severe.append(f"  [!] {q(sid)} - {marker}.")
+
+    for marker in slide_blockers or []:
+        n_severe += 1
+        severe.append(f"  [!] {marker}.")
+
+    contrast_severe, contrast_review, n_contrast = pptx_contrast.contrast_lines(
+        contrasts or [], q
+    )
+    severe.extend(contrast_severe)
+    review.extend(contrast_review)
+    n_severe += n_contrast
+    n_review += len(contrast_review)
 
     if words:
         shapes = [(e[0], e[1], e[2]) for e in entries]
@@ -1236,6 +1507,17 @@ def _slide_findings_lines(
         # A shape whose own rendered words fall outside its own box: the box
         # doesn't contain its text, but the overflow lands in empty space (a
         # neighbour hit is a [!] collision above, so those shapes are skipped).
+        for f in pdf_text.clipped_shapes(
+            words, shapes, {e[0]: e[5] for e in entries}, page_has_text=True
+        ):
+            n_severe += 1
+            severe.append(
+                f"  [!] {q(f['sid'])} - text clipped: {f['rendered']} of "
+                f"{f['declared']} words rendered. The box cuts its copy off "
+                "instead of overflowing, so nothing looks wrong in the "
+                "geometry. Shorten the copy or grow the box."
+            )
+
         for f in pdf_text.self_overflows(words, shapes):
             if f["sid"] in confirmed_sids:
                 continue
@@ -1271,15 +1553,14 @@ def _slide_findings_lines(
 
     if severe:
         header = (
-            f"[!] slide {idx} - {n_severe} collision"
-            f"{'s' if n_severe != 1 else ''} "
-            f"(red wash in the slide {idx} render above):"
+            f"[!] slide {idx} - {n_severe} defect"
+            f"{'s' if n_severe != 1 else ''} to fix before delivery:"
         )
         return [header] + severe + review + advisory
     if review:
         header = (
-            f"[w] slide {idx} - {n_review} box"
-            f"{'es' if n_review != 1 else ''} that don't contain their text:"
+            f"[w] slide {idx} - {n_review} item"
+            f"{'s' if n_review != 1 else ''} to review:"
         )
         return [header] + review + advisory
     if advisory:
@@ -1287,13 +1568,78 @@ def _slide_findings_lines(
             f"[i] slide {idx} - {len(advisory)} item"
             f"{'s' if len(advisory) != 1 else ''} to review:"
         ] + advisory
-    return [f"[slide {idx}: no collisions in pre-check - open the render to QA]"]
+    return [
+        f"[slide {idx}: mechanical checks clean - the render is still the gate]"
+    ]
+
+
+def _slide_contrasts(
+    file_path: str,
+    prs: PresentationType,
+    slide,
+    slide_idx: int,
+    image_path: Path,
+    words,
+) -> List[pptx_contrast.ShapeContrast]:
+    entries = _text_shape_entries(slide)
+    return pptx_contrast.shape_contrasts(
+        image_path,
+        words,
+        [(e[0], e[1], e[2]) for e in entries],
+        prs.slide_width or 0,
+        prs.slide_height or 0,
+    )
+
+
+def _slide_shape_blockers(
+    file_path: str, prs: PresentationType, slide, slide_idx: int
+) -> List[Tuple[int, str]]:
+    """The `[!]` markers the --slide view prints for each shape, as (id, text).
+
+    The QA gate used to compute collisions only, so a box off the slide edge, a
+    stretched photo, a collapsed box and an unfilled placeholder all rendered a
+    clean "no collisions" while --slide flagged them - the model's post-edit
+    check could not see the defects that most often ship."""
+    ctx = SlideContext(
+        width_emu=prs.slide_width or 0, height_emu=prs.slide_height or 0
+    )
+    shapes = list(slide.shapes)
+    cover_candidates = _cover_candidates(shapes)
+    all_boxes: List[CoverRect] = [
+        (s.shape_id, s.left, s.top, s.width, s.height)
+        for s in shapes
+        if None not in (s.left, s.top, s.width, s.height)
+    ]
+    layout_chain = _resolve_layout_chain(file_path, slide)
+    out: List[Tuple[int, str]] = []
+    for shape in shapes:
+        text = flatten_text(" ".join(_shape_text_iter(shape))).strip()
+        if text and _is_leftover_suspect(text):
+            out.append(
+                (shape.shape_id, f"still holds template filler: {ellipsize(text, 50)!r}")
+            )
+        markers = _shape_warning_markers(
+            shape,
+            placeholder_type(shape),
+            ctx,
+            cover_candidates=cover_candidates,
+            all_boxes=all_boxes,
+        )
+        markers.extend(_fit_tokens(shape, layout_chain))
+        for marker in markers:
+            if marker.startswith("[!]"):
+                out.append((shape.shape_id, marker[len("[!] "):]))
+    return out
 
 
 def _annotate_slide(
-    file_path: str, prs: PresentationType, slide_idx: int
+    file_path: str, prs: PresentationType, slide_idx: int, boxes: bool = False
 ) -> Tuple[Path, List[str]]:
-    """Rasterize one slide with box overlay; returns image and digest."""
+    """Rasterize one slide and digest its defects; returns image and digest.
+
+    `boxes=False` (the QA default) renders the slide as it really looks, so the
+    render answers legibility and layout questions; `boxes=True` adds the
+    shape-id overlay for mapping a finding onto a box."""
     out_dir, rendered = render.render_via_soffice(
         file_path,
         out_root=Path("/tmp/pptx_render"),
@@ -1303,19 +1649,86 @@ def _annotate_slide(
     # The soffice PDF (cached beside the rasters) carries the renderer's exact
     # word positions; reading them lets the collision check confirm overprints
     # against where glyphs actually landed rather than estimated box geometry.
-    pdf_path = out_dir / f"{out_dir.name}.pdf"
+    pdf_path = out_dir / f"{Path(file_path).stem}.pdf"
     slide = prs.slides[slide_idx - 1]
     raw = rendered[0]
+    words = pdf_text.page_word_boxes(pdf_path, slide_idx)
+    contrasts = _slide_contrasts(
+        file_path, prs, slide, slide_idx, raw, words
+    )
+    shape_blockers = _slide_shape_blockers(file_path, prs, slide, slide_idx)
+    for sid, text in _split_sentence_markers(slide):
+        shape_blockers.append((
+            sid,
+            f"starts mid-sentence with {ellipsize(text, 40)!r}. One sentence is "
+            "split across two boxes, so each reads as a fragment. Give every box "
+            "a whole thought: a heading is a phrase of its own, a body is a "
+            "sentence of its own",
+        ))
+
+    for sid, gap, fill in _void_markers(
+        slide, _resolve_layout_chain(file_path, slide), prs.slide_height or 0
+    ):
+        shape_blockers.append((
+            sid,
+            f"leaves a {gap:.0%} band of empty slide under the title and then "
+            f"fills {fill:.0%} of its box. The exemplar's boxes are placed for "
+            "the copy it shipped with: clone one sized for the copy you have "
+            "(the same layout with column headings above the text usually is), "
+            "or move these boxes up under the title",
+        ))
+    for sid, pic_id, rows in pptx_contrast.text_over_artwork(
+        slide, lambda shape: getattr(embedded_image(shape), "blob", None)
+    ):
+        shape_blockers.append((
+            sid,
+            f"printed over picture #{pic_id}, which carries {rows} rows of its "
+            f"own text there. Clone a slide the template built to hold a title "
+            "and put your copy on that, or delete this picture. Do NOT paint "
+            "over the artwork or swap in a doctored copy of it - a patch shows "
+            "as a flat block - and do not solve it by writing no title, which "
+            "leaves the template's headline as yours",
+        ))
+    for sid, pic_id, word in occluded_words(slide, words):
+        shape_blockers.append((
+            sid,
+            f"has {word!r} buried under picture #{pic_id}, which is drawn on "
+            "top of it. The copy is all there in the file and fits its box, so "
+            "only the render shows it: move the text clear of the picture, or "
+            "move the picture",
+        ))
+
+    slide_blockers: List[str] = []
+    band = rendered_void(
+        slide, words, prs.slide_width or 0, prs.slide_height or 0
+    )
+    if band is not None:
+        slide_blockers.append(
+            f"a {band:.0%} band of this slide holds nothing at all. Every box "
+            "on it separately fits, because each one holds less copy than the "
+            "exemplar sized it for, so nothing else flags it - and the slide "
+            "ships with a hole. Nudging the boxes does not close it: move them "
+            "up under the title AND grow them to span the space, or clone a "
+            "layout built for the amount of copy you actually have"
+        )
     res = _annotate_boxes(
         raw, slide,
         prs.slide_width or 0, prs.slide_height or 0,
         effective_boxes=_text_extent_boxes(file_path, slide),
+        draw_boxes=boxes,
     )
     if not res:
-        return raw, []
+        return raw, _slide_findings_lines(
+            slide, slide_idx, {"overlaps": [], "markers": []}, words,
+            contrasts=contrasts, shape_blockers=shape_blockers,
+            slide_blockers=slide_blockers,
+        )
     annotated, findings = res
-    words = pdf_text.page_word_boxes(pdf_path, slide_idx)
-    return annotated, _slide_findings_lines(slide, slide_idx, findings, words)
+    return annotated, _slide_findings_lines(
+        slide, slide_idx, findings, words,
+        contrasts=contrasts, shape_blockers=shape_blockers,
+        slide_blockers=slide_blockers,
+    )
 
 
 def _boxed_render(
@@ -1323,16 +1736,17 @@ def _boxed_render(
     prs: PresentationType,
     slide_idx: int,
     render_dir: str = "/files/conversation",
+    boxes: bool = False,
 ) -> str:
-    """Render one slide with the bounding-box overlay + pixel-metrics digest -
-    the diagnostic half of QA. Reached via --qa, not exposed on its own."""
-    annotated, digest = _annotate_slide(file_path, prs, slide_idx)
+    """Render one slide + its defect digest - the diagnostic half of QA.
+    Reached via --qa, not exposed on its own."""
+    annotated, digest = _annotate_slide(file_path, prs, slide_idx, boxes=boxes)
     basename = os.path.splitext(os.path.basename(file_path))[0]
     published = render_publish.publish_renders(
         basename, [annotated], render_dir, _VIEW_SUBDIR
     )
-    plural = "" if len(published) == 1 else "s"
-    lines = [f"[Rendered {len(published)} slide{plural}, bbox overlay:]"]
+    overlay = " with the #id box overlay" if boxes else ""
+    lines = [f"[Slide {slide_idx} render{overlay}:]"]
     lines.extend(render_publish.render_view_lines(published))
 
     viewable = [scoped for _, scoped in published if scoped]
@@ -1348,18 +1762,24 @@ def _boxed_render(
         )
 
     if digest:
-        # These are structural/pixel pre-checks read off box geometry and the
-        # PDF's word positions - a useful filter, but NOT the visual pass. "No
-        # collisions" here does not mean the slide is right; only opening the
-        # render and reading each box back does.
+        # Mechanical checks read off box geometry, the rendered pixels and the
+        # PDF's word positions. They catch what a reader misses at a glance
+        # (2 pt of overprint, 1.4:1 contrast) but not what only a reader sees
+        # (wrong exemplar, copy that says nothing, a hole in the layout), so a
+        # clean digest is a filter passed, not a slide approved.
         lines.append(
-            "[Structural pre-checks - NOT a visual pass; open the render to QA. "
+            "[Mechanical checks - a filter, not the pass. "
             "[!] fix before delivery · [w] review · [i] FYI:]"
         )
         lines.extend(digest)
 
     if viewable:
-        lines.append("[Open each render above with files__cat: the gate is visual.]")
+        lines.append(
+            "[Open the render with files__cat and read it: every line legible "
+            "on its background, nothing clipped, nothing bunched. "
+            "--qa N --boxes relabels it with #id boxes if you need to place a "
+            "finding.]"
+        )
     return "\n".join(lines)
 
 
@@ -1438,7 +1858,7 @@ def print_render(
         )
         lines = [
             f"[Rendered {len(rendered)} slides into {len(grids)} grid(s), "
-            f"{grid_cols}/row @ 100 dpi:]"
+            f"{grid_cols}/row:]"
         ]
         lines.extend(pptx_grid.grid_lines(grids))
         return "\n".join(lines)
@@ -1448,53 +1868,9 @@ def print_render(
         basename, rendered, render_dir, _VIEW_SUBDIR
     )
     plural = "" if len(published) == 1 else "s"
-    lines = [f"[Rendered {len(published)} slide{plural} @ 100 dpi:]"]
+    lines = [f"[Rendered {len(published)} slide{plural}:]"]
     lines.extend(render_publish.render_view_lines(published))
     return "\n".join(lines)
-
-
-def _print_qa_grids(
-    file_path: str,
-    prs: PresentationType,
-    slide_nos: List[int],
-    render_dir: str,
-    grid_cols: int,
-) -> str:
-    """QA a batch with the renders tiled into grids."""
-    cells: List[Tuple[Path, str]] = []
-    blocks: List[str] = []
-    for slide_idx in slide_nos:
-        annotated, digest = _annotate_slide(file_path, prs, slide_idx)
-        cells.append((annotated, f"slide {slide_idx}"))
-        block = f"[QA slide {slide_idx} - #id text:]\n\n" + print_text(
-            prs, slide_idx
-        )
-        if digest:
-            block += (
-                "\n\n[Structural pre-checks - NOT a visual pass; open the grid "
-                "to QA. [!] fix before delivery · [w] review · [i] FYI:]\n"
-                + "\n".join(digest)
-            )
-        blocks.append(block)
-
-    grids = _publish_grids(file_path, cells, slide_nos, render_dir, grid_cols)
-    lines = [
-        f"[{len(cells)} slides in {len(grids)} grid(s), {grid_cols}/row, "
-        "bbox overlay:]"
-    ]
-    lines.extend(pptx_grid.grid_lines(grids))
-    if any(scoped is None for _, scoped, _ in grids):
-        lines.append(
-            "[!] grids NOT viewable (not on the conversation mount): QA is "
-            "INCOMPLETE. Run against a deck under /files/conversation."
-        )
-    else:
-        lines.append(
-            "[Open each grid with files__cat: the gate is visual. Cells are "
-            f"1/{grid_cols} width - re-run --qa N on any you cannot read.]"
-        )
-    blocks.append("\n".join(lines))
-    return "\n\n".join(blocks)
 
 
 def print_qa(
@@ -1502,16 +1878,19 @@ def print_qa(
     prs: PresentationType,
     slide_nos: List[int],
     render_dir: str = "/files/conversation",
-    grid_cols: Optional[int] = None,
+    boxes: bool = False,
 ) -> str:
     """QA gate - run after a round of edits. Accepts one slide or several (a
     pattern like `2,5,7-9`); for each, bundles the slide's authoritative text
-    (#id-tagged, to read back) with the boxed diagnostic render so they are
-    checked together. QA-ing several slides at once shares a single soffice
+    (#id-tagged, to read back) with a full-size render of the slide and its
+    defect digest. QA-ing several slides at once shares a single soffice
     conversion (the PDF is cached after the first render), so batching the
-    changed slides is much faster than one call per slide. Each slide's render is
-    published to the conversation (its scoped path is printed below the text);
-    with `grid_cols` the renders are tiled into grids instead."""
+    changed slides is much faster than one call per slide.
+
+    One image per slide, deliberately. Tiling the batch into a grid quarters
+    each slide's pixels, and a slide read at a quarter size hides exactly the
+    defects QA exists to catch: a caption the same colour as its background, a
+    word broken across a pill, half an inch of a box past the slide edge."""
     total_slides = len(prs.slides)
     for slide_idx in slide_nos:
         if slide_idx < 1 or slide_idx > total_slides:
@@ -1519,15 +1898,11 @@ def print_qa(
                 f"slide index out of range: {slide_idx} "
                 f"(deck has {total_slides} slides)"
             )
-    if grid_cols:
-        return _print_qa_grids(
-            file_path, prs, slide_nos, render_dir, grid_cols
-        )
     blocks = [
         f"[QA slide {slide_idx} - #id text + render path:]\n\n"
         + print_text(prs, slide_idx)
         + "\n\n"
-        + _boxed_render(file_path, prs, slide_idx, render_dir)
+        + _boxed_render(file_path, prs, slide_idx, render_dir, boxes=boxes)
         for slide_idx in slide_nos
     ]
     return "\n\n".join(blocks)
@@ -1547,6 +1922,7 @@ def main() -> int:
     parser.add_argument("--render", action="store_true")
     parser.add_argument("--qa", metavar="N[,N,...]")
     parser.add_argument("--grid", action="store_true")
+    parser.add_argument("--boxes", action="store_true")
     parser.add_argument(
         "--grid-cols",
         dest="grid_cols",
@@ -1615,8 +1991,13 @@ def main() -> int:
                 prs,
                 parse_slide_patterns(args.qa),
                 args.render_dir,
-                grid_cols,
+                boxes=args.boxes,
             )
+            if grid_cols:
+                body = (
+                    "[--grid is for --render browsing; QA renders one slide per "
+                    "image so nothing is too small to read.]\n" + body
+                )
         elif args.render:
             slide_nos = parse_slide_patterns(args.slide) if args.slide else None
             body = print_render(

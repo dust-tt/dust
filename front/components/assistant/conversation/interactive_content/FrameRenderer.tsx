@@ -1,7 +1,7 @@
 import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
-import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
+import { DEFAULT_FRAME_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
 import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
@@ -72,7 +72,7 @@ export function FrameRenderer({
     useDesktopNavigation();
   const [isLoading, setIsLoading] = useState(false);
   const isNavBarPrevOpenRef = useRef(isNavigationBarOpen);
-  const prevPanelSizeRef = useRef(DEFAULT_RIGHT_PANEL_SIZE);
+  const prevPanelSizeRef = useRef(DEFAULT_FRAME_PANEL_SIZE);
 
   const { spaceInfo: projectInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -201,7 +201,7 @@ export function FrameRenderer({
   const restoreLayout = useCallback(() => {
     if (panel) {
       setIsNavigationBarOpen(isNavBarPrevOpenRef.current ?? true);
-      panel.resize(prevPanelSizeRef.current ?? DEFAULT_RIGHT_PANEL_SIZE);
+      panel.resize(prevPanelSizeRef.current ?? DEFAULT_FRAME_PANEL_SIZE);
     }
   }, [panel, setIsNavigationBarOpen]);
 

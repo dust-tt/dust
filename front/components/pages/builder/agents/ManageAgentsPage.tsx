@@ -4,6 +4,7 @@ import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetail
 import type { AgentModelFilterType } from "@app/components/assistant/ModelsFilterMenu";
 import { ModelsFilterMenu } from "@app/components/assistant/ModelsFilterMenu";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
+import { NoArchivedAgentsCTA } from "@app/components/assistant/manager/NoArchivedAgentsCTA";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { getModelLogoByModelId } from "@app/components/providers/types";
@@ -34,7 +35,6 @@ import {
   Page,
   Plus,
   SearchInput,
-  Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -141,6 +141,7 @@ export function ManageAgentsPage() {
   const {
     agentConfigurations: archivedAgentConfigurations,
     isAgentConfigurationsLoading: isArchivedAgentConfigurationsLoading,
+    mutateRegardlessOfQueryParams: mutateArchivedAgentConfigurations,
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "archived",
@@ -294,6 +295,9 @@ export function ManageAgentsPage() {
   useSetContentWidth("wide");
   useSetNavChildren(navChildren);
 
+  const isLoading =
+    isAgentConfigurationsLoading || isArchivedAgentConfigurationsLoading;
+
   return (
     <>
       <AgentDetailsSheet
@@ -387,7 +391,7 @@ export function ManageAgentsPage() {
                     counterValue={`${agentsByTab[tab.id].length}`}
                   />
                 ))}
-                {canShowHiddenAgents && (
+                {canShowHiddenAgents && activeTab === "all_custom" && (
                   <span className="ml-auto flex gap-1 self-center text-sm text-muted-foreground">
                     <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
                       <Checkbox
@@ -408,19 +412,7 @@ export function ManageAgentsPage() {
                 )}
               </TabsList>
             </Tabs>
-            {isAgentConfigurationsLoading ||
-            isArchivedAgentConfigurationsLoading ? (
-              <div className="mt-8 flex justify-center">
-                <Spinner size="lg" />
-              </div>
-            ) : isFilterActive && agentsByTab[activeTab].length === 0 ? (
-              <div className="pt-2">
-                <EmptyCTA
-                  message="No agent matches your search or filters."
-                  action={null}
-                />
-              </div>
-            ) : agentsByTab[activeTab].length > 0 ? (
+            {isLoading || agentsByTab[activeTab].length > 0 ? (
               <AssistantsTable
                 selection={selection}
                 setSelection={setSelection}
@@ -433,7 +425,24 @@ export function ManageAgentsPage() {
                   setShowDisabledFreeWorkspacePopup
                 }
                 mutateAgentConfigurations={mutateAgentConfigurations}
+                isLoading={isLoading}
               />
+            ) : isFilterActive ? (
+              <div className="pt-2">
+                <EmptyCTA
+                  message="No agent matches your search or filters."
+                  action={null}
+                />
+              </div>
+            ) : activeTab === "archived" ? (
+              <div className="pt-2">
+                <NoArchivedAgentsCTA
+                  owner={owner}
+                  onArchived={() => {
+                    void mutateArchivedAgentConfigurations();
+                  }}
+                />
+              </div>
             ) : (
               canCreateAgent && (
                 <div className="pt-2">

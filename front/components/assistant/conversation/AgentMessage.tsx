@@ -56,6 +56,7 @@ import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { premiumModelUsageAnalyticsHref } from "@app/lib/analytics/view_params";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -66,6 +67,7 @@ import { FILE_ID_PATTERN } from "@app/lib/files";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
+import { LinkWrapper } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
@@ -140,7 +142,7 @@ import { mutate } from "swr";
 interface MessageInfoChipProps {
   children: ReactNode;
   label: string;
-  title: string;
+  title?: string | null;
 }
 
 // Popover, not Tooltip: on touch there is no hover, and links inside must stay reachable.
@@ -164,7 +166,7 @@ function MessageInfoChip({ children, label, title }: MessageInfoChipProps) {
         align="start"
         className="flex w-[min(24rem,calc(100vw-1.5rem))] flex-col gap-2"
       >
-        <div className="font-semibold">{title}</div>
+        {title && <div className="font-semibold">{title}</div>}
         <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground">
           {children}
         </div>
@@ -174,20 +176,29 @@ function MessageInfoChip({ children, label, title }: MessageInfoChipProps) {
 }
 
 interface PremiumDowngradeChipProps {
-  modelName: string | null;
+  workspaceId: string;
+  userId: string;
 }
 
-function PremiumDowngradeChip({ modelName }: PremiumDowngradeChipProps) {
+function PremiumDowngradeChip({
+  workspaceId,
+  userId,
+}: PremiumDowngradeChipProps) {
   return (
-    <MessageInfoChip
-      label="Premium limit reached"
-      title={modelName ? `Ran on ${modelName}` : "Ran on a Standard model"}
-    >
+    <MessageInfoChip label="Auto-switched to Standard">
       <p>
-        You have reached your limit of premium messages for the current 7 day
-        window.
+        You have reached your Premium model limit for the current 7-day window,
+        so Dust ran this message on a Standard model instead.
       </p>
-      <p>Credit-based plans have no such limit.</p>
+      <p>
+        <LinkWrapper
+          href={premiumModelUsageAnalyticsHref(workspaceId, userId)}
+          className="underline hover:text-foreground"
+        >
+          View your Premium model usage in Analytics
+        </LinkWrapper>
+        .
+      </p>
     </MessageInfoChip>
   );
 }
@@ -1029,9 +1040,6 @@ export function AgentMessage({
 
   const isFairUseDowngrade =
     agentMessage.modelResolutionMethod === "fair_use_downgrade";
-  const downgradedModelName = agentMessage.resolvedModel
-    ? (getSupportedModelConfig(agentMessage.resolvedModel)?.displayName ?? null)
-    : null;
 
   const renderName = useCallback(
     () => (
@@ -1159,7 +1167,10 @@ export function AgentMessage({
             timestamp={timestamp}
             infoChip={
               isFairUseDowngrade ? (
-                <PremiumDowngradeChip modelName={downgradedModelName} />
+                <PremiumDowngradeChip
+                  workspaceId={owner.sId}
+                  userId={user.sId}
+                />
               ) : agentMessage.prunedContext ? (
                 <PrunedContextChip />
               ) : undefined

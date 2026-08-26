@@ -634,6 +634,7 @@ export function convertToOldEvent(
           message: event.content.message,
           isRetryable,
           originalError: event.content.originalError,
+          errorSource: event.content.errorSource,
         },
         metadata
       );

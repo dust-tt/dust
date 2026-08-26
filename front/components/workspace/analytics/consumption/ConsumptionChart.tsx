@@ -9,7 +9,7 @@ import {
   findPartialTimestamp,
   formatConsumptionDate,
 } from "@app/lib/analytics/consumption_period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type {
   ConsumptionTimeseriesGroup,
   ConsumptionTimeseriesMode,
@@ -17,6 +17,7 @@ import type {
   GetConsumptionTimeseriesResponse,
 } from "@app/lib/api/analytics/consumption/timeseries";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
+import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import { ButtonsSwitch, ButtonsSwitchList, cn } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -351,6 +352,9 @@ export interface ConsumptionChartProps {
   period: ConsumptionPeriodSelection;
   dimension: ConsumptionDimension;
   filter?: ConsumptionScopeFilter;
+  analyticsScope?: ConsumptionAnalyticsScope;
+  disabled?: boolean;
+  onModeChange?: (mode: ConsumptionTimeseriesMode) => void;
 }
 
 function WorkspaceConsumptionDailyChart({
@@ -358,6 +362,8 @@ function WorkspaceConsumptionDailyChart({
   period,
   dimension,
   filter,
+  analyticsScope,
+  disabled,
 }: ConsumptionChartProps) {
   const { timeseries, isTimeseriesLoading, isTimeseriesError } =
     useConsumptionTimeseries({
@@ -367,6 +373,8 @@ function WorkspaceConsumptionDailyChart({
       breakdownBy: dimension,
       breakdownCount: CONSUMPTION_CHART_BREAKDOWN_COUNT,
       filter,
+      analyticsScope,
+      disabled,
     });
 
   return (
@@ -386,11 +394,15 @@ function WorkspaceConsumptionBurnUpChart({
   workspaceId,
   period,
   filter,
+  analyticsScope,
+  disabled,
 }: WorkspaceConsumptionBurnUpChartProps) {
   const { overview } = useConsumptionOverview({
     workspaceId,
     period,
     filter,
+    analyticsScope,
+    disabled,
   });
   const isFiltered = Object.values(filter ?? {}).some(
     (values) => values.length > 0
@@ -410,6 +422,8 @@ function WorkspaceConsumptionBurnUpChart({
       period,
       mode: "cumulative",
       filter,
+      analyticsScope,
+      disabled,
     });
 
   return (
@@ -428,8 +442,16 @@ export function ConsumptionChart({
   period,
   dimension,
   filter,
+  analyticsScope,
+  disabled,
+  onModeChange,
 }: ConsumptionChartProps) {
   const [mode, setMode] = useState<ConsumptionTimeseriesMode>("daily");
+
+  const handleModeChange = (nextMode: ConsumptionTimeseriesMode) => {
+    onModeChange?.(nextMode);
+    setMode(nextMode);
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -439,12 +461,12 @@ export function ConsumptionChart({
           <ButtonsSwitch
             value="daily"
             label="Daily"
-            onClick={() => setMode("daily")}
+            onClick={() => handleModeChange("daily")}
           />
           <ButtonsSwitch
             value="cumulative"
             label="Cumulative"
-            onClick={() => setMode("cumulative")}
+            onClick={() => handleModeChange("cumulative")}
           />
         </ButtonsSwitchList>
       </div>
@@ -453,6 +475,8 @@ export function ConsumptionChart({
           workspaceId={workspaceId}
           period={period}
           filter={filter}
+          analyticsScope={analyticsScope}
+          disabled={disabled}
         />
       ) : (
         <WorkspaceConsumptionDailyChart
@@ -460,6 +484,8 @@ export function ConsumptionChart({
           period={period}
           dimension={dimension}
           filter={filter}
+          analyticsScope={analyticsScope}
+          disabled={disabled}
         />
       )}
     </div>

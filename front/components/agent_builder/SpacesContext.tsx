@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type { PodType, SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType, PodType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -8,7 +8,7 @@ import React, { createContext, useContext, useEffect, useMemo } from "react";
 
 interface SpacesContextType {
   owner: LightWorkspaceType;
-  spaces: (SpaceType | PodType)[];
+  spaces: (EnrichedSpaceType | PodType)[];
   isSpacesLoading: boolean;
   isSpacesError: boolean;
 }

@@ -736,6 +736,11 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
 
     const openSpace = await SpaceFactory.regular(workspace);
     await GroupSpaceFactory.associate(openSpace, globalGroup);
+    // An open space confers read through the global group's `reader` grant, and an Authenticator
+    // resolves its grants once, at construction. `requestUserAuth` predates the space, so refresh
+    // it before reading a skill that requests it — `SkillResource` drops skills whose spaces it
+    // cannot read.
+    await requestUserAuth.refresh();
 
     const response = await patchSkill(workspace, skill.sId, {
       name: skill.name,
