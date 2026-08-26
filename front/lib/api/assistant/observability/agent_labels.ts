@@ -14,7 +14,7 @@ export type AnalyticsAgentLabel = {
   modelId: string;
   modelDisplayName: string;
   description: string;
-  scope?: AgentConfigurationScope;
+  scope: AgentConfigurationScope;
 };
 
 const PRIVATE_AGENT_DESCRIPTION = "Private agent: description unavailable";
@@ -96,6 +96,7 @@ export async function resolveAnalyticsAgentLabels(
         description: privateAgentDescription(
           authorEmailByModelId.get(fallback.authorModelId)
         ),
+        scope: fallback.scope,
       });
     }
   }
