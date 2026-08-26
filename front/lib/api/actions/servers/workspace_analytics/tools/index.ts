@@ -110,8 +110,18 @@ function renderExecutionSeries<
   ]);
 }
 
+// Placeholder for the consumption tools declared at the bottom of this object.
+// They are shaped and documented but not wired yet, so they refuse rather than
+// return numbers that look real. Delete once each is implemented.
+async function notImplementedYet(): Promise<ToolHandlerResult> {
+  return new Err(
+    new MCPError("This tool is not implemented yet.", { tracked: false })
+  );
+}
+
 const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
-  get_top_agents: async (
+  // -> terms `agent.attributed_id` | order distinct `agent_message_id` | + `user.id` cardinality
+  get_top_agents_by_message_count: async (
     {
       limit,
       period,
@@ -180,7 +190,8 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     ]);
   },
 
-  get_top_users: async (
+  // -> terms `user.id` | order distinct `agent_message_id` | + `agent.attributed_id` cardinality
+  get_top_users_by_message_count: async (
     {
       limit,
       period,
@@ -249,7 +260,8 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     ]);
   },
 
-  get_top_agent_tags: async (
+  // -> terms `agent.tag_ids` | + TagResource labels
+  get_top_agent_tags_by_message_count: async (
     {
       limit,
       period,
@@ -318,7 +330,8 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     ]);
   },
 
-  get_top_models: async (
+  // -> terms `model.model_id` | order distinct `agent_message_id` | `model.provider_id` indexed
+  get_top_models_by_message_count: async (
     {
       limit,
       period,
@@ -390,6 +403,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     ]);
   },
 
+  // -> no ES, Postgres agent config | nothing to migrate
   get_agent_details: async ({ agentId }, { auth }) => {
     const denied = workspaceManagerGuard(auth);
     if (denied) {
@@ -447,7 +461,8 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     ]);
   },
 
-  get_top_skills: async (
+  // -> BLOCKED | consumption knows skills only via tool calls, tool-less skills vanish
+  get_top_skills_by_execution_count: async (
     {
       limit,
       period,
@@ -514,7 +529,8 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     ]);
   },
 
-  get_top_tools: async (
+  // -> terms `tool.server_name` | order `_count` (1 doc = 1 call)
+  get_top_tools_by_execution_count: async (
     {
       limit,
       period,
@@ -590,7 +606,8 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     ]);
   },
 
-  get_source_breakdown: async (
+  // -> terms `normalized_origin` | order distinct `agent_message_id`
+  get_top_sources_by_message_count: async (
     {
       period,
       startDate,
@@ -657,6 +674,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     ]);
   },
 
+  // -> `fetchConsumptionTopGroups` (groups + scoped total) | credits become billed, not estimates
   get_credit_usage: async (
     {
       limit,
@@ -739,6 +757,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     ]);
   },
 
+  // -> `fetchConsumptionTimeseries` | needs `timezone` param (hardcodes UTC)
   get_credit_timeseries: async (
     {
       granularity,
@@ -876,7 +895,8 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     ]);
   },
 
-  get_usage_timeseries: async (
+  // -> fields exist | needs count metrics + multi-metric (timeseries is credits-only)
+  get_activity_timeseries: async (
     {
       metric,
       granularity,
@@ -974,6 +994,40 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
         return assertNever(selectedMetric);
     }
   },
+
+  // ---------------------------------------------------------------------------
+  // STUBS — consumption ("by credits") tools.
+  //
+  // Each maps 1:1 onto an existing `lib/api/analytics/consumption/*` fetcher
+  // that already ranks by billed credits over the consumption index, so these
+  // are thin adapters rather than new aggregations. The shared work each needs:
+  // build a `ConsumptionPeriod` ({startDate, endDate}) from the resolved time
+  // window, map the tool's filters onto `ConsumptionScopeFilter`, and route
+  // `agentTagIds` through `extraFilters` (no tag scope dimension exists).
+  // ---------------------------------------------------------------------------
+
+  // → fetchConsumptionTopAgents
+  get_top_agents_by_credits: notImplementedYet,
+  // → fetchConsumptionTopUsers
+  get_top_users_by_credits: notImplementedYet,
+  // → fetchConsumptionTopModels
+  get_top_models_by_credits: notImplementedYet,
+  // → fetchConsumptionTopSkills
+  get_top_skills_by_credits: notImplementedYet,
+  // → fetchConsumptionTopTools
+  get_top_tools_by_credits: notImplementedYet,
+  // → fetchConsumptionTopSources
+  get_top_sources_by_credits: notImplementedYet,
+  // → fetchConsumptionTopApiKeys
+  get_top_api_keys_by_credits: notImplementedYet,
+  // → fetchConsumptionTopGroups (top_groups.ts, not the generic one in top.ts)
+  get_top_groups_by_credits: notImplementedYet,
+  // → fetchConsumptionTopConversations
+  get_top_conversations_by_credits: notImplementedYet,
+  // → fetchConsumptionOverview. Note it takes a ConsumptionPeriodInput
+  // ("cycle" | "days"), not a period, so an arbitrary start/end range needs a
+  // small change there.
+  get_consumption_overview: notImplementedYet,
 };
 
 export const TOOLS = buildTools(WORKSPACE_ANALYTICS_TOOLS_METADATA, handlers);

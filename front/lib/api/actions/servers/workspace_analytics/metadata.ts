@@ -43,7 +43,7 @@ const getAgentDetailsSchema = {
   agentId: z
     .string()
     .describe(
-      "The agent's id (sId), as returned by get_top_agents or other tools."
+      "The agent's id (sId), as returned by get_top_agents_by_message_count or other tools."
     ),
 };
 
@@ -117,9 +117,32 @@ const getUsageTimeseriesSchema = {
     ),
 };
 
+// Consumption ("by credits") tools mirror the workspace Analytics page, which
+// ranks every dimension by billed credits. They take the same window/filter
+// inputs as the activity tools so a model can pivot between the two views.
+const byCreditsSchema = (entityPlural: string) => ({
+  ...timeWindowSchemaShape,
+  ...usageFilterSchema,
+  limit: z
+    .number()
+    .int()
+    .positive()
+    .max(MAX_RESULTS)
+    .optional()
+    .describe(
+      `Maximum number of ${entityPlural} to return ` +
+        `(default ${DEFAULT_RESULTS}, max ${MAX_RESULTS}).`
+    ),
+});
+
+const getConsumptionOverviewSchema = {
+  ...timeWindowSchemaShape,
+  ...usageFilterSchema,
+};
+
 export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
   {
-    name: "get_top_agents",
+    name: "get_top_agents_by_message_count",
     description:
       "Return the workspace's most-used and most active agents over a time " +
       "window (defaults to the current calendar month), ranked by message " +
@@ -136,7 +159,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     freeUsage: false,
   },
   {
-    name: "get_top_users",
+    name: "get_top_users_by_message_count",
     description:
       "Return the workspace's most active users and members over a time " +
       "window (defaults to the current calendar month), ranked by number of " +
@@ -153,7 +176,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     freeUsage: false,
   },
   {
-    name: "get_top_agent_tags",
+    name: "get_top_agent_tags_by_message_count",
     description:
       "List the agent tags applied across the workspace over a time window " +
       "(defaults to the current calendar month), ranked by message volume, " +
@@ -173,7 +196,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     freeUsage: false,
   },
   {
-    name: "get_top_models",
+    name: "get_top_models_by_message_count",
     description:
       "List which LLM models (Claude, GPT, Gemini, ...) answered messages over " +
       "a time window (defaults to the current calendar month), ranked by " +
@@ -209,7 +232,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     freeUsage: false,
   },
   {
-    name: "get_top_skills",
+    name: "get_top_skills_by_execution_count",
     description:
       "Return the workspace's most-used skills over a time window (defaults " +
       "to the current calendar month), ranked by execution count. Optionally " +
@@ -225,7 +248,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     freeUsage: false,
   },
   {
-    name: "get_top_tools",
+    name: "get_top_tools_by_execution_count",
     description:
       "Return the workspace's most-used MCP tools and integrations over a " +
       "time window (defaults to the current calendar month), ranked by " +
@@ -243,7 +266,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     freeUsage: false,
   },
   {
-    name: "get_source_breakdown",
+    name: "get_top_sources_by_message_count",
     description:
       "Return the workspace's message volume broken down by source — where " +
       "messages originate (Conversation, Slack, API, Trigger, extension, and " +
@@ -310,7 +333,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     freeUsage: false,
   },
   {
-    name: "get_usage_timeseries",
+    name: "get_activity_timeseries",
     description:
       "Return a usage time series over a window (defaults to the last 30 " +
       "days). Plot message volume (messages, conversations, active users), " +
@@ -322,6 +345,174 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     displayLabels: {
       running: "Retrieving usage time series",
       done: "Retrieved usage time series",
+    },
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
+  // ---------------------------------------------------------------------------
+  // STUBS — consumption ("by credits") tools.
+  //
+  // These mirror the workspace Analytics page 1:1: every one maps to an existing
+  // `lib/api/analytics/consumption/*` fetcher, all of which already rank by
+  // billed credits over the consumption index. Implementing them is a thin
+  // adapter, not new aggregation work. Handlers are not wired yet.
+  // ---------------------------------------------------------------------------
+  {
+    name: "get_top_agents_by_credits",
+    description:
+      "Return the agents that consumed the most credits over a time window, " +
+      "with each agent's message count and average credits per message. This " +
+      "is the ranking the workspace Analytics page shows. Use this for spend " +
+      "questions; use get_top_agents_by_message_count for volume. Admin-only.",
+    schema: byCreditsSchema("agents"),
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top agents by credits",
+      done: "Retrieved top agents by credits",
+    },
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
+  {
+    name: "get_top_users_by_credits",
+    description:
+      "Return the members who consumed the most credits over a time window, " +
+      "with each member's message count and average credits per message. " +
+      "Consumption with no member behind it (programmatic runs, triggers) " +
+      "carries no user, so rows do not add up to the workspace total. " +
+      "Admin-only.",
+    schema: byCreditsSchema("members"),
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top members by credits",
+      done: "Retrieved top members by credits",
+    },
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
+  {
+    name: "get_top_models_by_credits",
+    description:
+      "Return the LLM models that consumed the most credits over a time " +
+      "window, with each model's message count and average credits per " +
+      "message. A message can pass through several models, so per-model " +
+      "message counts overlap. Admin-only.",
+    schema: byCreditsSchema("models"),
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top models by credits",
+      done: "Retrieved top models by credits",
+    },
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
+  {
+    name: "get_top_skills_by_credits",
+    description:
+      "Return the skills that consumed the most credits over a time window, " +
+      "with each skill's tool-call count and average credits per call. A tool " +
+      "call attributed to several skills is credited to each, so rows can " +
+      "exceed the total. Admin-only.",
+    schema: byCreditsSchema("skills"),
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top skills by credits",
+      done: "Retrieved top skills by credits",
+    },
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
+  {
+    name: "get_top_tools_by_credits",
+    description:
+      "Return the MCP tools and integrations that consumed the most credits " +
+      "over a time window, with each tool's call count and average credits " +
+      "per call. Tool credits cover the direct charge and the result's " +
+      "context footprint, not the surrounding model work, so they do not sum " +
+      "to the workspace total. Admin-only.",
+    schema: byCreditsSchema("tools"),
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top tools by credits",
+      done: "Retrieved top tools by credits",
+    },
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
+  {
+    name: "get_top_sources_by_credits",
+    description:
+      "Return the sources (Conversation, Slack, API, Trigger, and more) that " +
+      "consumed the most credits over a time window, with each source's " +
+      "message count. The source value on each row is exactly what the " +
+      "`source` filter of the other tools takes. Admin-only.",
+    schema: byCreditsSchema("sources"),
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top sources by credits",
+      done: "Retrieved top sources by credits",
+    },
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
+  {
+    name: "get_top_api_keys_by_credits",
+    description:
+      "Return the API keys that consumed the most credits over a time " +
+      "window, with each key's message count. Use this to attribute " +
+      "programmatic spend to a specific integration. Admin-only.",
+    schema: byCreditsSchema("API keys"),
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top API keys by credits",
+      done: "Retrieved top API keys by credits",
+    },
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
+  {
+    name: "get_top_groups_by_credits",
+    description:
+      "Return the member groups that consumed the most credits over a time " +
+      "window, with each group's message count. A member can belong to " +
+      "several groups, so per-group figures overlap. Admin-only.",
+    schema: byCreditsSchema("groups"),
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top groups by credits",
+      done: "Retrieved top groups by credits",
+    },
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
+  {
+    name: "get_top_conversations_by_credits",
+    description:
+      "Return the conversations that consumed the most credits over a time " +
+      "window, with each conversation's title. Use this to find unusually " +
+      "expensive individual conversations. Admin-only.",
+    schema: byCreditsSchema("conversations"),
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top conversations by credits",
+      done: "Retrieved top conversations by credits",
+    },
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
+  {
+    name: "get_consumption_overview",
+    description:
+      "Return the workspace's headline consumption figures for a time " +
+      "window: total credits, active and total members, the top agent, and " +
+      "the credit cap status. This is the summary shown at the top of the " +
+      "workspace Analytics page. Use this to answer 'how are we doing this " +
+      "month' in one call. Admin-only.",
+    schema: getConsumptionOverviewSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving consumption overview",
+      done: "Retrieved consumption overview",
     },
     toolCostCategory: "basic",
     freeUsage: false,
