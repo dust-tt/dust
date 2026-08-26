@@ -78,6 +78,8 @@ export type ConsumptionAgentFacet = ConsumptionFacet & {
 
 export type ConsumptionModelFacet = ConsumptionFacet & {
   maker?: ModelMakerIdType;
+  // TODO(2026-08-26 aubin): Remove after clients with the model-tier filter UI
+  // have cycled out.
   tier?: ModelsTierName;
 };
 
