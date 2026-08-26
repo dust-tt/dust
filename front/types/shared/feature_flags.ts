@@ -8,6 +8,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   frames_v2: {
     description: "Enable Frames v2",
     stage: "dust_only",
+    owner: "fontanierh",
   },
   allow_sso: {
     description:
