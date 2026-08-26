@@ -46,15 +46,15 @@ app.get("/", async (ctx): HandlerResult<GetExtensionConfigResponseBody> => {
   const origin = ctx.req.header("origin");
   if (origin?.startsWith("chrome-extension://")) {
     await auth
-      .getNonNullableUser()
-      .setMetadata(
+      .user()
+      ?.setMetadata(
         CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY,
         new Date().toISOString()
       );
   } else if (origin?.startsWith("moz-extension://")) {
     await auth
-      .getNonNullableUser()
-      .setMetadata(
+      .user()
+      ?.setMetadata(
         FIREFOX_EXTENSION_LAST_USED_AT_METADATA_KEY,
         new Date().toISOString()
       );
