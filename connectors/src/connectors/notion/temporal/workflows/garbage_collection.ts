@@ -10,7 +10,6 @@ import { performUpserts } from "@connectors/connectors/notion/temporal/workflows
 import type { ModelId } from "@connectors/types";
 import {
   continueAsNew,
-  deprecatePatch,
   proxyActivities,
   sleep,
   workflowInfo,
@@ -82,7 +81,6 @@ export async function notionGarbageCollectionWorkflow({
   // Set (in redis) when the previous run continued-as-new in the middle of the batch-deletion
   // phase to reset the event history. Not a workflow param: branching on a new input would break
   // replay determinism for histories produced by other deploys.
-  deprecatePatch("gc-batch-deletion-continue-as-new");
   const batchResumeState = await getGarbageCollectionBatchResumeState({
     connectorId,
   });
