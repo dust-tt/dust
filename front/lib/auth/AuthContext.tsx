@@ -28,7 +28,6 @@ export interface AuthContextValue {
   subscription: SubscriptionType;
   isAdmin: boolean;
   isManager: boolean;
-  canViewWorkspaceConsumptionAnalytics: boolean;
   featureFlags: WhitelistableFeature[];
   vizUrl: string;
   providersHealth: ProvidersHealth | null;

@@ -1,6 +1,8 @@
-import { canViewWorkspaceConsumptionAnalytics } from "@app/lib/api/analytics/consumption/access";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { ensureIsUser } from "@front-api/middlewares/ensure_role";
+import {
+  ensureIsManager,
+  ensureIsUser,
+} from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -38,22 +40,7 @@ function mountSharedConsumptionRoutes(
 
 export function createWorkspaceConsumptionRoutes() {
   const app = consumptionAnalyticsApp();
-  app.use(async (ctx, next) => {
-    const auth = ctx.get("auth");
-
-    if (!(await canViewWorkspaceConsumptionAnalytics(auth))) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message:
-            "Only managers and skill or agent editors can access workspace consumption analytics.",
-        },
-      });
-    }
-
-    await next();
-  });
+  app.use(ensureIsManager());
 
   mountSharedConsumptionRoutes(app);
   app.route("/export-raw", exportRawRoute);

@@ -18,24 +18,18 @@ function automationNavItem(owner: WorkspaceType) {
     featureFlags: [],
     subscription: SUBSCRIPTION,
     hasPermission: () => false,
-    canViewWorkspaceConsumptionAnalytics: false,
   });
   const section = nav.find((s) => s.id === "api");
   return section?.menus.find((menu) => menu.id === "automations");
 }
 
-function workspaceNavItems(
-  owner: WorkspaceType,
-  currentRoute: string,
-  canViewWorkspaceConsumptionAnalytics = false
-) {
+function workspaceNavItems(owner: WorkspaceType, currentRoute: string) {
   const nav = subNavigationAdmin({
     owner,
     currentRoute,
     featureFlags: [],
     subscription: SUBSCRIPTION,
     hasPermission: () => false,
-    canViewWorkspaceConsumptionAnalytics,
   });
 
   return nav.find((section) => section.id === "workspace")?.menus ?? [];
@@ -59,20 +53,6 @@ describe("subNavigationAdmin automation entry", () => {
 });
 
 describe("subNavigationAdmin analytics entry", () => {
-  it("is available to users who edit a skill or agent", () => {
-    const items = workspaceNavItems(
-      ownerWithRole("user"),
-      "/w/ws_1/analytics/consumption",
-      true
-    );
-
-    expect(items.find((item) => item.id === "analytics")).toMatchObject({
-      current: true,
-      disabled: false,
-      href: expect.stringMatching(/\/analytics\/consumption$/),
-    });
-  });
-
   it("links to consumption analytics without a feature flag", () => {
     const items = workspaceNavItems(
       ownerWithRole("manager"),

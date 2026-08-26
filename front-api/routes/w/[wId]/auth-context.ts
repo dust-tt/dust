@@ -1,4 +1,3 @@
-import { canViewWorkspaceConsumptionAnalytics as getCanViewWorkspaceConsumptionAnalytics } from "@app/lib/api/analytics/consumption/access";
 import config from "@app/lib/api/config";
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -68,15 +67,9 @@ app.get(
       ? await isWorkspaceEligibleForTrial(auth)
       : false;
 
-    const [
-      featureFlags,
-      workspacePermissions,
-      canViewWorkspaceConsumptionAnalytics,
-    ] = await Promise.all([
-      getFeatureFlags(auth),
-      auth.getWorkspacePermissions(),
-      getCanViewWorkspaceConsumptionAnalytics(auth),
-    ]);
+    const featureFlags = await getFeatureFlags(auth);
+
+    const workspacePermissions = await auth.getWorkspacePermissions();
 
     return ctx.json({
       user: user.toJSON(),
@@ -84,7 +77,6 @@ app.get(
       subscription,
       isAdmin: auth.isAdmin(),
       isManager: auth.isManager(),
-      canViewWorkspaceConsumptionAnalytics,
       featureFlags,
       ...(isEligibleForTrial !== undefined && { isEligibleForTrial }),
       vizUrl: config.getVizPublicUrl(),

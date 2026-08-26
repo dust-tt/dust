@@ -32,7 +32,7 @@ function cycleElapsedPercent({
 export interface ConsumptionSummaryProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
-  usageHref?: string | null;
+  usageHref?: string;
   usageLinkLabel?: string;
   analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
@@ -73,7 +73,7 @@ interface ConsumptionSummaryData {
 }
 
 interface ConsumptionSummaryViewProps extends ConsumptionSummaryData {
-  usageHref: string | null;
+  usageHref: string;
   usageLinkLabel: string;
   responsiveLayout?: boolean;
   analyticsScope?: ConsumptionAnalyticsScope;
@@ -149,15 +149,13 @@ export function ConsumptionSummaryView({
               {cycleElapsedPercent(overview.period)}% of the cycle elapsed
             </span>
           </div>
-          {usageHref && (
-            <Button
-              label={usageLinkLabel}
-              variant="highlight-ghost"
-              size="xs"
-              iconRight={ArrowUpRight}
-              href={usageHref}
-            />
-          )}
+          <Button
+            label={usageLinkLabel}
+            variant="highlight-ghost"
+            size="xs"
+            iconRight={ArrowUpRight}
+            href={usageHref}
+          />
         </div>
       )}
       <div

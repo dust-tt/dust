@@ -15,7 +15,6 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
-import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
@@ -24,6 +23,7 @@ import type { TriggerType } from "@app/types/assistant/triggers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   ArrowLeft,
   Avatar,
@@ -164,8 +164,6 @@ export function AgentDetailsSheet({
     !isTriggersTabActive
   );
 
-  const { hasPermission } = useWorkspacePermissions();
-
   const handleAddTrigger = useCallback(() => {
     setTriggerEditMode({ type: "add" });
   }, []);
@@ -211,8 +209,7 @@ export function AgentDetailsSheet({
   );
 
   const showInsightsTabs =
-    agentId != null &&
-    (hasPermission("publish", "agent") || agentConfiguration?.canEdit);
+    agentId != null && (agentConfiguration?.canEdit || isAdmin(owner));
 
   const DescriptionSection = () => {
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];

@@ -4,7 +4,6 @@ import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -85,34 +84,6 @@ describe("POST /api/w/:wId/analytics/consumption/overview", () => {
 
     expect(response.status).toBe(403);
     expect(vi.mocked(fetchConsumptionOverview)).not.toHaveBeenCalled();
-  });
-
-  it("lets agent editors read workspace consumption", async () => {
-    vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
-    const { auth, workspace } = await setupTest({ role: "user" });
-    await AgentConfigurationFactory.createTestAgent(auth);
-
-    const response = await postOverviewRequest(workspace.sId);
-
-    expect(response.status).toBe(200);
-    expect(vi.mocked(fetchConsumptionOverview)).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ includeWorkspaceContext: true })
-    );
-  });
-
-  it("lets skill editors read workspace consumption", async () => {
-    vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
-    const { auth, workspace } = await setupTest({ role: "user" });
-    await SkillFactory.create(auth);
-
-    const response = await postOverviewRequest(workspace.sId);
-
-    expect(response.status).toBe(200);
-    expect(vi.mocked(fetchConsumptionOverview)).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ includeWorkspaceContext: true })
-    );
   });
 
   it("lets members read only their own consumption", async () => {
