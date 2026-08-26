@@ -161,7 +161,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
-    stage: "self_serve",
+    stage: "ask_owner",
     owner: "PopDaph",
   },
   self_created_slack_app_connector_rollout: {
