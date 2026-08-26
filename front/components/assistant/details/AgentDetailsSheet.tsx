@@ -23,7 +23,7 @@ import type { TriggerType } from "@app/types/assistant/triggers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
+import { isManager } from "@app/types/user";
 import {
   ArrowLeft,
   Avatar,
@@ -209,7 +209,7 @@ export function AgentDetailsSheet({
   );
 
   const showInsightsTabs =
-    agentId != null && (agentConfiguration?.canEdit || isAdmin(owner));
+    agentId != null && (agentConfiguration?.canEdit || isManager(owner));
 
   const DescriptionSection = () => {
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];

@@ -99,12 +99,13 @@ export function createAgentConsumptionRoutes() {
       });
     }
 
-    if (!agent.canEdit && !auth.isAdmin()) {
+    if (!agent.canEdit && !auth.isManager()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
-          message: "Only agent editors can access its consumption analytics.",
+          message:
+            "Only workspace managers and editors of this agent can access its consumption analytics.",
         },
       });
     }
