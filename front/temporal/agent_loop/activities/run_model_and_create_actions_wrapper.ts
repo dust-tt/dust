@@ -16,6 +16,7 @@ import {
   finalizeUnavailableAgentLoop,
   updateResourceAndPublishEvent,
 } from "@app/temporal/agent_loop/activities/common";
+import { recordExecutionStarted } from "@app/temporal/agent_loop/activities/consumption";
 import {
   AGENT_LOOP_COST_HARD_CAP_USD,
   AGENT_LOOP_SUBAGENT_HARD_CAP,
@@ -158,6 +159,12 @@ async function _runModelAndCreateActionsActivity({
   const contextProvider = contextProviderRes.value;
   const runAgentData = contextProvider.runtimeData;
   const isRootAgentMessage = !runAgentData.userMessage.agenticMessageData;
+
+  if (step === (runAgentArgs.startStep ?? 0)) {
+    await recordExecutionStarted(auth, runAgentArgs, {
+      startStep: runAgentArgs.startStep ?? 0,
+    });
+  }
 
   // Intentionally check at step start (not step end) to early exit if dollar amount too high.
   // This can miss thresholds crossed on the final step.
