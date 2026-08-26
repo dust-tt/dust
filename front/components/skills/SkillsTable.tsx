@@ -37,7 +37,7 @@ import { useMemo, useState } from "react";
 // skill can only be batch-edited by someone who can make skills auto-discoverable.
 export function isSkillSelectable(
   skill: { editedBy: number | null; availability: SkillAvailability },
-  canMakeSkillAutoDiscoverable: boolean,
+  canMakeSkillAutoDiscoverable: boolean
 ): boolean {
   return (
     !isDustProvidedSkill(skill) &&
@@ -77,7 +77,7 @@ const SKILLS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
     createdAt: null,
     onClick: () => undefined,
     menuItems: [],
-  }),
+  })
 );
 
 function renderSkillsTableSkeletonCell(columnId: string, rowIndex: number) {
@@ -98,7 +98,7 @@ function renderSkillsTableSkeletonCell(columnId: string, rowIndex: number) {
                 <LoadingBlock
                   className={classNames(
                     "h-3 max-w-full",
-                    ["w-32", "w-40", "w-28", "w-36", "w-44"][rowIndex],
+                    ["w-32", "w-40", "w-28", "w-36", "w-44"][rowIndex]
                   )}
                 />
               </div>
@@ -106,7 +106,7 @@ function renderSkillsTableSkeletonCell(columnId: string, rowIndex: number) {
                 <LoadingBlock
                   className={classNames(
                     "h-3 max-w-full",
-                    ["w-56", "w-64", "w-48", "w-60", "w-52"][rowIndex],
+                    ["w-56", "w-64", "w-48", "w-60", "w-52"][rowIndex]
                   )}
                 />
               </div>
@@ -120,7 +120,7 @@ function renderSkillsTableSkeletonCell(columnId: string, rowIndex: number) {
           <LoadingBlock
             className={classNames(
               "h-6 rounded-[9px]",
-              ["w-20", "w-28", "w-24", "w-28", "w-20"][rowIndex],
+              ["w-20", "w-28", "w-24", "w-28", "w-20"][rowIndex]
             )}
           />
         </DataTable.CellContent>
@@ -131,7 +131,7 @@ function renderSkillsTableSkeletonCell(columnId: string, rowIndex: number) {
           <LoadingBlock
             className={classNames(
               "h-5 rounded-md",
-              ["w-14", "w-16", "w-12", "w-20", "w-14"][rowIndex],
+              ["w-14", "w-16", "w-12", "w-20", "w-14"][rowIndex]
             )}
           />
         </div>
@@ -142,7 +142,7 @@ function renderSkillsTableSkeletonCell(columnId: string, rowIndex: number) {
           <LoadingBlock
             className={classNames(
               "h-3",
-              ["w-7", "w-9", "w-6", "w-8", "w-10"][rowIndex],
+              ["w-7", "w-9", "w-6", "w-8", "w-10"][rowIndex]
             )}
           />
         </DataTable.CellContent>
@@ -166,7 +166,7 @@ function renderSkillsTableSkeletonCell(columnId: string, rowIndex: number) {
           <LoadingBlock
             className={classNames(
               "h-3",
-              ["w-14", "w-16", "w-20", "w-16", "w-14"][rowIndex],
+              ["w-14", "w-16", "w-20", "w-16", "w-14"][rowIndex]
             )}
           />
         </DataTable.CellContent>
@@ -281,7 +281,7 @@ const editorsColumn = {
 
 const usedByColumn = (
   onAgentClick: (agentId: string) => void,
-  onUsedBySkillClick: (skillId: string) => void,
+  onUsedBySkillClick: (skillId: string) => void
 ): ColumnDef<RowData, number> => ({
   id: "usedBy",
   header: () => <div className="flex w-full justify-center">Used by</div>,
@@ -354,7 +354,7 @@ const selectionColumn = {
   header: (info: HeaderContext<RowData, boolean>) => {
     const areAllPageRowsSelected = info.table.getIsAllPageRowsSelected();
     const hasSelection = Object.values(info.table.getState().rowSelection).some(
-      (isSelected) => isSelected,
+      (isSelected) => isSelected
     );
 
     return (
@@ -454,7 +454,7 @@ type SkillsTableProps = {
   skills: GetSkillsWithRelationsResponseBody["skills"];
   owner: LightWorkspaceType;
   onSkillClick: (
-    skill: GetSkillsWithRelationsResponseBody["skills"][number],
+    skill: GetSkillsWithRelationsResponseBody["skills"][number]
   ) => void;
   onAgentClick: (agentId: string) => void;
   onUsedBySkillClick: (skillId: string) => void;
@@ -496,7 +496,7 @@ export function SkillsTable({
         onUsedBySkillClick,
         enableSelection,
       }),
-    [onAgentClick, onUsedBySkillClick, enableSelection],
+    [onAgentClick, onUsedBySkillClick, enableSelection]
   );
   const skeletonColumns = useMemo(
     () =>
@@ -505,7 +505,7 @@ export function SkillsTable({
         cell: (info: CellContext<RowData, unknown>) =>
           renderSkillsTableSkeletonCell(info.column.id, info.row.index),
       })),
-    [columns],
+    [columns]
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -536,7 +536,7 @@ export function SkillsTable({
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
                     void router.push(
-                      getSkillBuilderRoute(owner.sId, skill.sId),
+                      getSkillBuilderRoute(owner.sId, skill.sId)
                     );
                   },
                   kind: "item" as const,
@@ -565,12 +565,12 @@ export function SkillsTable({
             : [],
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not stable, mutating the skills list which prevent pagination to work
-    [skills, onSkillClick, owner.sId],
+    [skills, onSkillClick, owner.sId]
   );
 
   const selectionSet = useMemo(
     () => new Set(Object.keys(rowSelection)),
-    [rowSelection],
+    [rowSelection]
   );
 
   const selectableRowIds = useMemo(
@@ -578,13 +578,13 @@ export function SkillsTable({
       rows
         .filter((row) => isSkillSelectable(row, canMakeSkillAutoDiscoverable))
         .map((row) => row.sId),
-    [rows, canMakeSkillAutoDiscoverable],
+    [rows, canMakeSkillAutoDiscoverable]
   );
   const totalSelectableCount = selectableRowIds.length;
 
   const skillsBySId = useMemo(
     () => new Map(skills.map((skill) => [skill.sId, skill])),
-    [skills],
+    [skills]
   );
 
   const selectedSkills = useMemo(
@@ -593,9 +593,9 @@ export function SkillsTable({
         .filter((sId) => selectionSet.has(sId))
         .map((sId) => skillsBySId.get(sId))
         .filter(
-          (s): s is GetSkillsWithRelationsResponseBody["skills"][number] => !!s,
+          (s): s is GetSkillsWithRelationsResponseBody["skills"][number] => !!s
         ),
-    [selectableRowIds, selectionSet, skillsBySId],
+    [selectableRowIds, selectionSet, skillsBySId]
   );
 
   if (!isLoading && rows.length === 0) {
@@ -651,7 +651,7 @@ export function SkillsTable({
                   enableRowSelection: (row: Row<RowData>) =>
                     isSkillSelectable(
                       row.original,
-                      canMakeSkillAutoDiscoverable,
+                      canMakeSkillAutoDiscoverable
                     ),
                   getRowId: (row: RowData) => row.sId,
                 }
@@ -669,7 +669,7 @@ export function SkillsTable({
           onClear={() => setRowSelection({})}
           onSelectAll={() =>
             setRowSelection(
-              Object.fromEntries(selectableRowIds.map((sId) => [sId, true])),
+              Object.fromEntries(selectableRowIds.map((sId) => [sId, true]))
             )
           }
           onSelectAction={onSelectAvailabilityAction}
