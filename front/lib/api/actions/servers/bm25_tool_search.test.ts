@@ -1779,15 +1779,15 @@ const QUERIES: LabeledQuery[] = [
   },
   // --- shopify ---
   {
-    query: "list the products in my shopify store",
+    query: "list the products in the connected shopify store",
     expected: "shopify.list_products",
   },
   {
-    query: "list the customers in my shopify store",
+    query: "list the customers in the connected shopify store",
     expected: "shopify.list_customers",
   },
   {
-    query: "list the orders in my shopify store",
+    query: "list the orders in the connected shopify store",
     expected: "shopify.list_orders",
   },
 ];
