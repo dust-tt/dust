@@ -74,6 +74,27 @@ const WORKSPACE_CONSUMPTION_COMPONENTS: AnalyticsConsumptionComponents = {
   UsageFilterPanel,
 };
 
+function trackAnalyticsClick(
+  workspaceId: string | null,
+  clickTarget: string,
+  extra?: TrackingExtra
+) {
+  if (!workspaceId) {
+    return;
+  }
+
+  trackEvent({
+    area: TRACKING_AREAS.ANALYTICS,
+    object: "analytics_page",
+    action: TRACKING_ACTIONS.CLICK,
+    extra: {
+      ...extra,
+      workspace_id: workspaceId,
+      click_target: clickTarget,
+    },
+  });
+}
+
 interface ChartFallbackProps {
   controlsInCard?: boolean;
 }
@@ -186,33 +207,19 @@ export function AnalyticsConsumptionContent({
     Summary: SummaryComponent,
     UsageFilterPanel: UsageFilterPanelComponent,
   } = components;
-
-  function trackAnalyticsClick(clickTarget: string, extra?: TrackingExtra) {
-    if (embedded) {
-      return;
-    }
-
-    trackEvent({
-      area: TRACKING_AREAS.ANALYTICS,
-      object: "analytics_page",
-      action: TRACKING_ACTIONS.CLICK,
-      extra: {
-        ...extra,
-        workspace_id: owner.sId,
-        click_target: clickTarget,
-      },
-    });
-  }
+  const trackingWorkspaceId = embedded ? null : owner.sId;
 
   const handlePeriodChange = (nextPeriod: ConsumptionPeriodSelection) => {
-    trackAnalyticsClick("period_selector", {
+    trackAnalyticsClick(trackingWorkspaceId, "period_selector", {
       period: consumptionPeriodKey(nextPeriod),
     });
     setPeriod(nextPeriod);
   };
 
   const handleFilterChange = (nextFilter: UsageFilter) => {
-    trackAnalyticsClick("filter", { filter_action: "apply" });
+    trackAnalyticsClick(trackingWorkspaceId, "filter", {
+      filter_action: "apply",
+    });
     setFilter(nextFilter);
   };
 
@@ -267,7 +274,9 @@ export function AnalyticsConsumptionContent({
               onFilterChange={handleFilterChange}
               onOpenChange={(open) => {
                 if (open) {
-                  trackAnalyticsClick("filter", { filter_action: "open" });
+                  trackAnalyticsClick(trackingWorkspaceId, "filter", {
+                    filter_action: "open",
+                  });
                 }
               }}
               showMemberGroupFilter={showMemberGroupFilter}
@@ -276,7 +285,9 @@ export function AnalyticsConsumptionContent({
           <UsageFilterSummary
             filter={filter}
             onFilterChange={(nextFilter) => {
-              trackAnalyticsClick("filter", { filter_action: "clear" });
+              trackAnalyticsClick(trackingWorkspaceId, "filter", {
+                filter_action: "clear",
+              });
               setFilter(nextFilter);
             }}
           />
@@ -296,7 +307,9 @@ export function AnalyticsConsumptionContent({
                 dimension={dimension}
                 filter={scopeFilter}
                 onModeChange={(mode) => {
-                  trackAnalyticsClick("chart_mode", { mode });
+                  trackAnalyticsClick(trackingWorkspaceId, "chart_mode", {
+                    mode,
+                  });
                 }}
               />
             </SafeSuspense>
@@ -309,7 +322,7 @@ export function AnalyticsConsumptionContent({
         period={period}
         filter={scopeFilter}
         onAddFilter={(selectedRow) => {
-          trackAnalyticsClick("attribution_filter", {
+          trackAnalyticsClick(trackingWorkspaceId, "attribution_filter", {
             dimension,
             filter_action: "add",
           });
@@ -318,7 +331,7 @@ export function AnalyticsConsumptionContent({
           );
         }}
         onRemoveFilter={(selectedRow) => {
-          trackAnalyticsClick("attribution_filter", {
+          trackAnalyticsClick(trackingWorkspaceId, "attribution_filter", {
             dimension,
             filter_action: "remove",
           });
@@ -328,11 +341,13 @@ export function AnalyticsConsumptionContent({
         }}
         dimension={dimension}
         onDimensionChange={(nextDimension) => {
-          trackAnalyticsClick("attribution_tab", { dimension: nextDimension });
+          trackAnalyticsClick(trackingWorkspaceId, "attribution_tab", {
+            dimension: nextDimension,
+          });
           handleDimensionChange(nextDimension);
         }}
         onViewAll={(nextDimension, selectedRow) => {
-          trackAnalyticsClick("attribution_view_all", {
+          trackAnalyticsClick(trackingWorkspaceId, "attribution_view_all", {
             dimension: nextDimension,
           });
           setFilter((current) =>
