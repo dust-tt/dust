@@ -1,3 +1,4 @@
+import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import { buildUsageEvents } from "@app/lib/metronome/events";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { describe, expect, it } from "vitest";
@@ -113,6 +114,63 @@ describe("Metronome usage event adapter", () => {
     expect(props["usage_type"]).toBe("user");
     expect(props["model_id"]).toBe("aggregate");
     expect(props["origin"]).toBe("web");
+  });
+
+  it("matches the pre-merge cost: per-model LLM rounding, then flat tool addition excluding free/capped", () => {
+    const perAwu = MODEL_COST_MICRO_USD_PER_AWU_CREDIT;
+
+    const events = buildUsageEvents({
+      ...commonEventInput,
+      runUsages: [
+        // openai/gpt-4o group: two usages summed (1 + 1 = 2 µUSD) THEN rounded.
+        usage({ costMicroUsd: 1 }),
+        usage({ costMicroUsd: 1 }),
+        // anthropic group: a separate model, rounded on its own.
+        usage({
+          costMicroUsd: perAwu + 1,
+          modelId: "claude-opus-4-8",
+          providerId: "anthropic",
+        }),
+      ],
+      // 8 external "advanced" (3 AWU) calls on one server: the 20-credit
+      // per-server cap is reached after 7 (21 credits), so the 8th is waived.
+      actions: [
+        ...Array.from({ length: 8 }, () => ({
+          toolName: "custom_tool",
+          mcpServerId: "mcp_server",
+          internalMCPServerName: null,
+          status: "succeeded" as const,
+          shouldEmit: true,
+        })),
+        // A denied call is unbillable and must not contribute either.
+        {
+          toolName: "custom_tool",
+          mcpServerId: "mcp_server",
+          internalMCPServerName: null,
+          status: "denied" as const,
+          shouldEmit: true,
+        },
+      ],
+    });
+
+    // Reference computed exactly as billing did before the merge:
+    // LLM cost is the SUM of per-(provider, model) ceilings — never a single
+    // ceiling over the combined micro-USD.
+    const expectedLlmCredits =
+      Math.ceil(2 / perAwu) + Math.ceil((perAwu + 1) / perAwu); // 1 + 2 = 3
+    // Tool cost is the flat sum of the rated weights of the BILLED calls only
+    // (7 × 3); the capped 8th call and the denied call add nothing.
+    const expectedToolCredits = 21;
+    const expectedCostAwu = expectedLlmCredits + expectedToolCredits; // 24
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.properties["cost_awu"]).toBe(expectedCostAwu);
+
+    // Guard against a regression to "round once at the end": collapsing the
+    // per-model ceilings into a single ceiling over the combined micro-USD would
+    // undercount here (ceil((2 + perAwu + 1) / perAwu) = 2, not 3).
+    const roundOnceLlmCredits = Math.ceil((2 + perAwu + 1) / perAwu);
+    expect(roundOnceLlmCredits).not.toBe(expectedLlmCredits);
   });
 
   it("emits an LLM-only event when there are no tool actions", () => {
