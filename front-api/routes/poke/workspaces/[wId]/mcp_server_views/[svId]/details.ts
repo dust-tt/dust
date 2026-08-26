@@ -29,6 +29,8 @@ app.get(
         "lastError",
         "sharedSecret",
       ],
+      // Poke admin surface: surface a restricted server's view too.
+      includeRestricted: true,
     });
     if (!mcpServerView) {
       return apiError(ctx, {

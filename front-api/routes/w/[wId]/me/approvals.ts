@@ -39,9 +39,12 @@ app.get("/", async (ctx): HandlerResult<GetUserApprovalsResponseBody> => {
       const { serverType } = getServerTypeAndIdFromSId(validation.mcpServerId);
 
       if (serverType === "internal") {
+        // Display-only: resolve the server name even if its flag is now off so
+        // an existing approval still shows a meaningful label.
         const server = await InternalMCPServerInMemoryResource.fetchById(
           auth,
-          validation.mcpServerId
+          validation.mcpServerId,
+          { includeRestricted: true }
         );
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         serverName = server?.toJSON().name || "Unknown Internal Server";

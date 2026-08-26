@@ -311,15 +311,25 @@ export class InternalMCPServerInMemoryResource {
     return new Ok(1);
   }
 
-  static async fetchById(auth: Authenticator, id: string) {
-    const results = await this.fetchByIds(auth, [id]);
+  static async fetchById(
+    auth: Authenticator,
+    id: string,
+    { includeRestricted = false }: { includeRestricted?: boolean } = {}
+  ) {
+    const results = await this.fetchByIds(auth, [id], { includeRestricted });
 
     return results[0] ?? null;
   }
 
+  // `includeRestricted` opts into surfacing servers gated behind a feature flag
+  // the workspace does not have. It defaults to `false` so a leftover or
+  // force-created view for a restricted server cannot be resolved into runnable
+  // tools (agent loop, skill/action resolution). Only admin management surfaces
+  // that must display an installed-but-restricted server pass `true`.
   static async fetchByIds(
     auth: Authenticator,
-    ids: string[]
+    ids: string[],
+    { includeRestricted = false }: { includeRestricted?: boolean } = {}
   ): Promise<InternalMCPServerInMemoryResource[]> {
     if (ids.length === 0) {
       return [];
@@ -371,16 +381,21 @@ export class InternalMCPServerInMemoryResource {
       })
     );
 
-    // Filter out the names of the servers that are not enabled (e.g. gated behind a feature flag that is not enabled).
+    // Drop servers gated behind a feature flag the workspace does not have
+    // (e.g. a leftover or force-created view for a restricted server), unless
+    // the caller explicitly opts into surfacing them for admin management.
     const enabledServerNames = await this.computeEnabledServerNames(
       auth,
       resolvedIds.map(({ name }) => name)
     );
+    const permittedIds = includeRestricted
+      ? resolvedIds
+      : resolvedIds.filter(({ name }) => enabledServerNames.has(name));
 
     // Fetch the credentials (API keys, headers) for MCP servers that have some.
     const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
       auth,
-      resolvedIds.map(({ id }) => id)
+      permittedIds.map(({ id }) => id)
     );
     const credentialsById = new Map(
       decryptedCredentials.map((credential) => [
@@ -392,14 +407,14 @@ export class InternalMCPServerInMemoryResource {
       ])
     );
 
-    return resolvedIds.map(({ id, name }) => {
-      if (!enabledServerNames.has(name)) {
+    return permittedIds.map(({ id, name }) => {
+      if (includeRestricted && !enabledServerNames.has(name)) {
         logger.info(
           {
             workspaceId: auth.getNonNullableWorkspace().sId,
             serverName: name,
           },
-          "Initializing restricted internal MCP server from existing view"
+          "Surfacing restricted internal MCP server for admin management"
         );
       }
 
