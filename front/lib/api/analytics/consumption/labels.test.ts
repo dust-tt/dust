@@ -13,6 +13,8 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { getTierForModel } from "@app/types/assistant/models/model_tiers";
+import { getModelMaker } from "@app/types/assistant/models/providers";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("resolveDimensionDisplayNames", () => {
@@ -126,6 +128,36 @@ describe("resolveDimensionLabels", () => {
       description: "Answers analytics questions",
       modelId: agent.model.modelId,
       modelDisplayName: getAgentModelDisplayName(agent.model),
+      scope: agent.scope,
+    });
+  });
+
+  it("labels models with their maker and tier", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const model = getSupportedModelConfigs().find(
+      (config) =>
+        getTierForModel(config.modelId, config.defaultReasoningEffort) !== null
+    );
+    expect(model).toBeDefined();
+    if (!model) {
+      return;
+    }
+    const tier = getTierForModel(model.modelId, model.defaultReasoningEffort);
+    expect(tier).not.toBeNull();
+    if (!tier) {
+      return;
+    }
+
+    const labels = await resolveDimensionLabels(authenticator, "model", [
+      model.modelId,
+    ]);
+
+    expect(labels.get(model.modelId)).toEqual({
+      name: model.displayName,
+      pictureUrl: null,
+      description: null,
+      maker: getModelMaker(model),
+      tier,
     });
   });
 

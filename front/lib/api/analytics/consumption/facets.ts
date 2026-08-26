@@ -254,7 +254,7 @@ async function resolveFacets(
   const missingCatalogValues = historicalValues.filter(
     (value) => !catalogByValue.has(value)
   );
-  const historicalLabels = await tracer.trace(
+  const resolvedLabels = await tracer.trace(
     "analytics.consumption.facets.resolve_labels",
     { resource: dimension },
     async (span) => {
@@ -268,11 +268,18 @@ async function resolveFacets(
   );
   const entries = [
     ...catalogEntries,
-    ...missingCatalogValues.map((value) => ({
-      value,
-      label: historicalLabels.get(value)?.name ?? value,
-      pictureUrl: historicalLabels.get(value)?.pictureUrl ?? null,
-    })),
+    ...missingCatalogValues.map((value) => {
+      const resolved = resolvedLabels.get(value);
+      return {
+        value,
+        label: resolved?.name ?? value,
+        pictureUrl: resolved?.pictureUrl ?? null,
+        ...(resolved?.icon !== undefined ? { icon: resolved.icon } : {}),
+        ...(resolved?.scope ? { scope: resolved.scope } : {}),
+        ...(resolved?.maker ? { maker: resolved.maker } : {}),
+        ...(resolved?.tier ? { tier: resolved.tier } : {}),
+      };
+    }),
   ];
 
   return entries
@@ -359,9 +366,13 @@ async function fetchConsumptionFacetsWithoutTracing(
     bucketsByDimension.set(dimension, result.value);
   }
 
-  const catalog = userId
-    ? EMPTY_FACET_CATALOG
-    : await listConsumptionFacetCatalog(auth, requestedDimensions);
+  // Scoped views are available to non-managers. Keep their option universe to
+  // values found in their Elasticsearch buckets instead of appending unrelated
+  // current workspace entities from the catalog.
+  const catalog =
+    userId || agentId
+      ? EMPTY_FACET_CATALOG
+      : await listConsumptionFacetCatalog(auth, requestedDimensions);
   // TODO(2026-08-11 OBSERVABILITY): Historical label resolution still reads
   // from several database-backed resources. Store the relevant labels in the
   // consumption index so these lookups can stay within Elasticsearch.
