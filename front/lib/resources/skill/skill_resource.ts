@@ -260,6 +260,11 @@ export interface SkillResource
 // The grant a skill's editors hold on the skill. Its verbs live in ROLE_REGISTRY.skill.
 const SKILL_EDITOR_GRANT_TYPE = "editor" as const;
 
+// The grant that makes a skill readable. Every skill gives it to the workspace global group, so
+// every workspace member can read every skill — the same reach the role grants have today, but
+// expressed as a group grant so readership can later be narrowed per skill.
+export const SKILL_READER_GRANT_TYPE = "reader" as const;
+
 const SKILL_ROLE_GRANTS: RoleGrant[] = [
   { role: "admin", permissions: ["read", "admin"] },
   { role: "manager", permissions: ["read"] },
@@ -480,7 +485,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     // Use a transaction to ensure all creations succeed or all are rolled back.
-    return withTransaction(async (transaction) => {
+    const skillResource = await withTransaction(async (transaction) => {
       const skill = await this.model.create(
         {
           ...blob,
@@ -495,6 +500,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       if (addCurrentUserAsEditor) {
         await this.grantCreatorAsEditor(auth, skill, { transaction });
       }
+
+      await this.grantGlobalGroupAsReader(auth, skill, { transaction });
 
       // MCP server configurations for the skill.
       await SkillMCPServerConfigurationModel.bulkCreate(
@@ -542,6 +549,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       return skillResource;
     });
+
+    // Creating the skill wrote `group_permissions` (the global group's `reader` grant, and the
+    // creator's `editor` grant), so the grants `auth` resolved at construction are now stale and
+    // the caller could not even read the skill they just created. Refresh the snapshot now that the
+    // write has committed, as space creation does.
+    await auth.refresh();
+
+    return skillResource;
   }
 
   static async makeSuggestion(
@@ -589,6 +604,35 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     return new Ok(createdSuggestedSkill);
+  }
+
+  /**
+   * Gives the workspace global group the skill's `reader` grant: every workspace member is in that
+   * group, so this is what makes the skill readable (see `canRead`).
+   */
+  private static async grantGlobalGroupAsReader(
+    auth: Authenticator,
+    skill: SkillConfigurationModel,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    assert(
+      skill.workspaceId === workspace.id,
+      "Unexpected: skill and workspace mismatch"
+    );
+
+    const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    // Without the grant nobody could read the skill, so let the creation transaction roll back.
+    assert(globalGroupRes.isOk(), "Failed to fetch the global group.");
+
+    await GroupPermissionResource.grant(auth, {
+      group: globalGroupRes.value,
+      grantType: SKILL_READER_GRANT_TYPE,
+      resourceType: "skill",
+      resourceId: skill.id,
+      transaction,
+    });
   }
 
   /**
@@ -681,12 +725,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         : [];
     const spaceById = new Map(spaces.map((s) => [s.id, s]));
 
-    // A missing/deleted requested space is treated as not readable (see `canReadRequestedSpaces`),
-    // so skills referencing one are dropped here too.
+    // Two checks, both required: the caller must be able to read the skill itself (see `canRead`)
+    // and every space it requests. A missing/deleted requested space is treated as not readable
+    // (see `canReadRequestedSpaces`), so skills referencing one are dropped here too.
     const allowedCustomSkills = dangerouslySkipPermissionFiltering
       ? customSkills
-      : customSkills.filter((skill) =>
-          canReadRequestedSpaces(auth, spaceById, skill.requestedSpaceIds)
+      : customSkills.filter(
+          (skill) =>
+            this.canReadRow(auth, skill) &&
+            canReadRequestedSpaces(auth, spaceById, skill.requestedSpaceIds)
         );
     const allowedCustomSkillIds = allowedCustomSkills.map((skill) => skill.id);
 
@@ -2153,6 +2200,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
+  canRead(auth: Authenticator): boolean {
+    // See canWrite: API keys hold no skill grant, so any key reads any skill.
+    if (auth.isKey()) {
+      return true;
+    }
+
+    // Read comes from the role grants and from the groups holding a `read` verb on the skill: the
+    // global group's `reader` grant (see `grantGlobalGroupAsReader`) and the editors' `editor`
+    // grant. Global skills declare their own role grants and carry no instance grant.
+    return auth.hasPermission("read", this);
+  }
+
   canWrite(auth: Authenticator): boolean {
     // TODO(governance): cleanup once we'll be able to grant API keys editorship on a skill.
     // TODO(@jd): Revisit this shortcircuit with our current ACLs stack.
@@ -2193,13 +2252,40 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ];
     }
 
+    return SkillResource.customSkillAccessControlLists(auth, this);
+  }
+
+  // The ACL of a custom skill, from its row: what `getAccessControlLists` serves for a fetched
+  // resource, and what `canReadRow` evaluates in the fetch path, which filters rows before it has
+  // resources.
+  private static customSkillAccessControlLists(
+    auth: Authenticator,
+    skill: { id: ModelId; workspaceId: ModelId }
+  ): AccessControlList[] {
     return [
       {
         roles: SKILL_ROLE_GRANTS,
-        grantedVerbs: auth.getGrantedVerbs("skill", this.id),
-        workspaceId: this.workspaceId,
+        grantedVerbs: auth.getGrantedVerbs("skill", skill.id),
+        workspaceId: skill.workspaceId,
       },
     ];
+  }
+
+  // `canRead` against a custom skill's row: the fetch path filters before building resources, so a
+  // skill the caller cannot read is never hydrated.
+  private static canReadRow(
+    auth: Authenticator,
+    skill: SkillConfigurationModel
+  ): boolean {
+    // See canWrite: API keys hold no skill grant, so any key reads any skill.
+    if (auth.isKey()) {
+      return true;
+    }
+
+    return auth.hasPermissionForAcls(
+      "read",
+      this.customSkillAccessControlLists(auth, skill)
+    );
   }
 
   private async listActiveAgents(

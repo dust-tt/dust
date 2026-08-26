@@ -67,6 +67,49 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("read grants", () => {
+    it("gives the global group the reader grant on creation", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With A Read Grant",
+      });
+
+      const grants = await GroupPermissionResource.listForResource(
+        testContext.authenticator,
+        { resourceType: "skill", resourceId: skill.id }
+      );
+
+      expect(
+        grants.some(
+          (grant) =>
+            grant.groupId === testContext.globalGroup.id &&
+            grant.grantType === "reader"
+        )
+      ).toBe(true);
+    });
+
+    it("lets any workspace member read a skill they did not create", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill Read By Anyone",
+      });
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, otherUser, {
+        role: "user",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        testContext.workspace.sId
+      );
+
+      // Not an editor, so no `editor` grant: read comes from the global group's `reader` grant.
+      expect(skill.canRead(otherAuth)).toBe(true);
+      expect(skill.canWrite(otherAuth)).toBe(false);
+
+      const fetched = await SkillResource.fetchById(otherAuth, skill.sId);
+      expect(fetched?.sId).toBe(skill.sId);
+    });
+  });
+
   describe("editor grants", () => {
     // The per-user grants on a skill, straight from the table.
     async function fetchSkillGrants(skillModelId: ModelId) {

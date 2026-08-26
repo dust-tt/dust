@@ -61,6 +61,7 @@ export const ROLE_REGISTRY: Record<
     publish: { verbs: ["publish"], levels: ["type"] },
   },
   skill: {
+    reader: { verbs: ["read"], levels: ["instance"] },
     editor: { verbs: ["read", "write", "admin"], levels: ["instance"] },
     create: { verbs: ["create"], levels: ["type"] },
     publish: { verbs: ["publish"], levels: ["type"] },
