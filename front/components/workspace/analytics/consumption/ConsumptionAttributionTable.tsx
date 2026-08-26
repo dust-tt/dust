@@ -21,6 +21,8 @@ import {
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
 import { formatCredits } from "@app/lib/client/credits";
 import { LinkWrapper } from "@app/lib/platform";
@@ -332,7 +334,7 @@ function buildColumns({
       accessorFn: (row) => (totalCredits > 0 ? row.credits / totalCredits : 0),
       header: "Consumption share",
       enableSorting: true,
-      meta: { sizeRatio: 20, headerAlign: "left" },
+      meta: { className: "w-36", sizeRatio: 20, headerAlign: "left" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-start">
           <CostShareCell
@@ -372,7 +374,7 @@ function buildColumns({
       id: "vsPrev",
       header: "vs prev",
       enableSorting: false,
-      meta: { sizeRatio: 18, headerAlign: "right" },
+      meta: { className: "w-16", sizeRatio: 18, headerAlign: "right" },
       cell: (info) => (
         <VsPrevCell
           credits={info.row.original.credits}
@@ -447,7 +449,7 @@ export interface ConsumptionAttributionRowsProps {
   dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
-  personal?: boolean;
+  analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
   onAddFilter: (row: ConsumptionTopRow) => void;
   onRemoveFilter: (row: ConsumptionTopRow) => void;
@@ -525,7 +527,7 @@ export function ConsumptionAttributionRowsView({
   dimension,
   period,
   filter,
-  personal,
+  analyticsScope,
   disabled,
   onAddFilter,
   onRemoveFilter,
@@ -622,7 +624,7 @@ export function ConsumptionAttributionRowsView({
             dimension={dimension}
             period={period}
             filter={filter}
-            personal={personal}
+            analyticsScope={analyticsScope}
             disabled={disabled}
             onViewAll={onViewAll}
             expandedRowId={expandedRowId}
@@ -659,7 +661,7 @@ export function ConsumptionAttributionRowsView({
               dimension={dimension}
               period={period}
               filter={filter}
-              personal={personal}
+              analyticsScope={analyticsScope}
               disabled={disabled}
               onViewAll={onViewAll}
               expandedRowId={expandedRowId}
@@ -711,7 +713,7 @@ function WorkspaceConsumptionAttributionRows(
     offset: queryState.pagination.pageIndex * queryState.pagination.pageSize,
     search: props.search,
     filter: props.filter,
-    personal: props.personal,
+    analyticsScope: props.analyticsScope,
     sortOrder: queryState.sortOrder,
     disabled: props.disabled,
   });
@@ -738,7 +740,7 @@ export interface ConsumptionAttributionTableProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
-  personal?: boolean;
+  analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
   onAddFilter: (row: ConsumptionTopRow) => void;
   onRemoveFilter: (row: ConsumptionTopRow) => void;
@@ -762,7 +764,7 @@ export function ConsumptionAttributionTableView({
   workspaceId,
   period,
   filter,
-  personal,
+  analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
   disabled,
   onAddFilter,
   onRemoveFilter,
@@ -777,12 +779,13 @@ export function ConsumptionAttributionTableView({
     delay: SEARCH_DEBOUNCE_DELAY_MS,
   });
   const [isConversationSelected, setIsConversationSelected] = useState(false);
+  const isPersonal = analyticsScope.kind === "personal";
   const activeDimension =
-    personal && (dimension === "user" || dimension === "group")
+    isPersonal && (dimension === "user" || dimension === "group")
       ? DEFAULT_CONSUMPTION_DIMENSION
       : dimension;
   const attributionDimension: ConsumptionAttributionDimension =
-    personal && isConversationSelected ? "conversation" : activeDimension;
+    isPersonal && isConversationSelected ? "conversation" : activeDimension;
   const pendingPointerDimension =
     useRef<ConsumptionAttributionDimension | null>(null);
   const [transition, setTransition] = useState<AttributionTransition>({
@@ -794,7 +797,7 @@ export function ConsumptionAttributionTableView({
     shouldReduceMotion || transition.target !== attributionDimension
       ? 0
       : transition.direction;
-  const visibleDimensions = getConsumptionAttributionDimensions({ personal });
+  const visibleDimensions = getConsumptionAttributionDimensions(analyticsScope);
 
   const exportBody: ConsumptionExportBody = {
     period: period.kind,
@@ -807,7 +810,7 @@ export function ConsumptionAttributionTableView({
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-base font-semibold text-foreground">Attribution</h3>
-        {showExport && !personal && (
+        {showExport && analyticsScope.kind === "workspace" && (
           <ConsumptionExportPanel
             workspaceId={workspaceId}
             exportBody={exportBody}
@@ -886,6 +889,7 @@ export function ConsumptionAttributionTableView({
                   animate="animate"
                   exit="exit"
                 >
+                  {/* Reset table state whenever its dataset or local search changes. */}
                   {attributionDimension === "conversation" ? (
                     <ConsumptionConversationAttribution
                       workspaceId={workspaceId}
@@ -905,7 +909,7 @@ export function ConsumptionAttributionTableView({
                       dimension={attributionDimension}
                       period={period}
                       filter={filter}
-                      personal={personal}
+                      analyticsScope={analyticsScope}
                       disabled={disabled}
                       onAddFilter={onAddFilter}
                       onRemoveFilter={onRemoveFilter}

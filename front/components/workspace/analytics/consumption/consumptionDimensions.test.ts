@@ -31,10 +31,10 @@ describe("consumption dimension URL state", () => {
   });
 
   it("selects the dimensions available to the analytics scope", () => {
-    expect(getConsumptionAttributionDimensions({ personal: false })).toEqual(
+    expect(getConsumptionAttributionDimensions()).toEqual(
       CONSUMPTION_DIMENSIONS
     );
-    expect(getConsumptionAttributionDimensions({ personal: true })).toEqual([
+    expect(getConsumptionAttributionDimensions({ kind: "personal" })).toEqual([
       "agent",
       "model",
       "tool",
@@ -43,6 +43,12 @@ describe("consumption dimension URL state", () => {
       "api_key",
       "conversation",
     ]);
+    expect(
+      getConsumptionAttributionDimensions({
+        kind: "agent",
+        agentId: "agent-1",
+      })
+    ).toEqual(["user", "group", "model", "tool", "skill", "source", "api_key"]);
   });
 
   it("adds conversations only to attribution tabs", () => {

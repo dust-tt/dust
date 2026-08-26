@@ -13,6 +13,7 @@ import {
   getUsageFilterCategories,
   toConsumptionScopeFilter,
   USAGE_FILTER_AGENT_SCOPES,
+  USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
@@ -25,6 +26,8 @@ import type { ConsumptionFacetOptions } from "@app/hooks/useConsumptionFacets";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import { useGroups } from "@app/lib/swr/groups";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
@@ -45,7 +48,7 @@ export interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
   period: ConsumptionPeriodSelection;
   filter: UsageFilter;
-  personal?: boolean;
+  analyticsScope?: ConsumptionAnalyticsScope;
   onFilterChange: (next: UsageFilter) => void;
   showMemberGroupFilter?: boolean;
 }
@@ -54,15 +57,18 @@ export function UsageFilterPanel({
   owner,
   period,
   filter,
-  personal,
+  analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
   onFilterChange,
   showMemberGroupFilter = true,
 }: UsageFilterPanelProps) {
-  const shouldShowMemberGroupFilter = showMemberGroupFilter && !personal;
+  const categories = getUsageFilterCategories(analyticsScope);
+  const shouldShowMemberGroupFilter =
+    showMemberGroupFilter && analyticsScope.kind !== "personal";
   const state = useUsageFilterPanelState({
     owner,
     filter,
     showMemberGroupFilter: shouldShowMemberGroupFilter,
+    categories,
   });
   const {
     options: categoryOptions,
@@ -73,16 +79,16 @@ export function UsageFilterPanel({
     workspaceId: owner.sId,
     period,
     filter: state.draftScopeFilter,
-    personal,
+    analyticsScope,
     disabled: !state.isOpen,
   });
 
   return (
     <UsageFilterPanelView
       filter={filter}
-      personal={personal}
       onFilterChange={onFilterChange}
       showMemberGroupFilter={shouldShowMemberGroupFilter}
+      categories={categories}
       state={state}
       categoryOptions={categoryOptions}
       isFacetsLoading={isFacetsLoading}
@@ -96,12 +102,14 @@ interface UseUsageFilterPanelStateParams {
   owner: LightWorkspaceType;
   filter: UsageFilter;
   showMemberGroupFilter: boolean;
+  categories?: readonly UsageFilterCategory[];
 }
 
 export function useUsageFilterPanelState({
   owner,
   filter,
   showMemberGroupFilter,
+  categories = USAGE_FILTER_CATEGORIES,
 }: UseUsageFilterPanelStateParams) {
   const [isOpen, setIsOpen] = useState(false);
   // Selections are staged while the panel is open and only propagated when
@@ -115,8 +123,9 @@ export function useUsageFilterPanelState({
     removeOption,
     selectAllFiltered,
   } = useUsageFilter(filter);
-  const [activeCategory, setActiveCategory] =
-    useState<UsageFilterCategory>("agent");
+  const [activeCategory, setActiveCategory] = useState<UsageFilterCategory>(
+    categories[0] ?? "agent"
+  );
   const [activeScope, setActiveScope] = useState<UsageFilterAgentScope>("all");
   const [activeTier, setActiveTier] =
     useState<ModelsTierName>(DEFAULT_MODEL_TIER);
@@ -175,9 +184,9 @@ export function useUsageFilterPanelState({
 
 interface UsageFilterPanelViewProps {
   filter: UsageFilter;
-  personal?: boolean;
   onFilterChange: (next: UsageFilter) => void;
   showMemberGroupFilter: boolean;
+  categories?: readonly UsageFilterCategory[];
   state: ReturnType<typeof useUsageFilterPanelState>;
   categoryOptions: ConsumptionFacetOptions;
   isFacetsLoading: boolean;
@@ -187,9 +196,9 @@ interface UsageFilterPanelViewProps {
 
 export function UsageFilterPanelView({
   filter,
-  personal,
   onFilterChange,
   showMemberGroupFilter,
+  categories = USAGE_FILTER_CATEGORIES,
   state,
   categoryOptions,
   isFacetsLoading,
@@ -220,11 +229,9 @@ export function UsageFilterPanelView({
     groups,
   } = state;
 
-  const visibleCategories = getUsageFilterCategories({ personal });
-  const activeCategory =
-    personal && (selectedCategory === "member" || selectedCategory === "group")
-      ? "agent"
-      : selectedCategory;
+  const activeCategory = categories.includes(selectedCategory)
+    ? selectedCategory
+    : (categories[0] ?? "agent");
 
   const activeOptions = categoryOptions[activeCategory];
   const filteredOptions = useMemo(() => {
@@ -272,24 +279,22 @@ export function UsageFilterPanelView({
     (option) => !selectedIdsForActiveCategory.has(option.id)
   );
 
-  const appliedSelectionCount = visibleCategories.reduce(
+  const appliedSelectionCount = categories.reduce(
     (count, category) => count + (filter[category]?.length ?? 0),
     0
   );
   const categoriesWithSelection = useMemo(
     () =>
-      visibleCategories.filter(
-        (category) => (draftFilter[category]?.length ?? 0) > 0
-      ),
-    [draftFilter, visibleCategories]
+      categories.filter((category) => (draftFilter[category]?.length ?? 0) > 0),
+    [categories, draftFilter]
   );
   const categorySelectionCounts = useMemo(() => {
     const counts: Partial<Record<UsageFilterCategory, number>> = {};
-    for (const category of visibleCategories) {
+    for (const category of categories) {
       counts[category] = draftFilter[category]?.length ?? 0;
     }
     return counts;
-  }, [draftFilter, visibleCategories]);
+  }, [categories, draftFilter]);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -334,7 +339,7 @@ export function UsageFilterPanelView({
       <PopoverContent fullWidth align="end" className="w-auto rounded-2xl p-0">
         <div className="flex h-96 flex-row divide-x divide-border">
           <FilterCategoryNav
-            categories={visibleCategories}
+            categories={categories}
             categoryLabels={USAGE_FILTER_CATEGORY_LABEL}
             selectionCounts={categorySelectionCounts}
             activeCategory={activeCategory}

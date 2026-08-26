@@ -17,6 +17,7 @@ import {
 } from "@app/components/workspace/analytics/usageFilter";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
+import { PERSONAL_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -59,7 +60,7 @@ export function UserAnalyticsPopover({
             <ConsumptionOverview
               workspaceId={owner.sId}
               period={period}
-              personal
+              analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}
               disabled={!open}
             />
           </div>
@@ -92,7 +93,7 @@ export function UserAnalyticsPopover({
           <ConsumptionSummary
             workspaceId={owner.sId}
             period={period}
-            personal
+            analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}
             disabled={!open}
           />
 
@@ -106,7 +107,7 @@ export function UserAnalyticsPopover({
                   owner={owner}
                   period={period}
                   filter={filter}
-                  personal
+                  analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}
                   onFilterChange={setFilter}
                   showMemberGroupFilter={false}
                 />
@@ -124,7 +125,7 @@ export function UserAnalyticsPopover({
                   period={period}
                   dimension={dimension}
                   filter={scopeFilter}
-                  personal
+                  analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}
                   disabled={!open}
                 />
               </m.div>
@@ -135,7 +136,7 @@ export function UserAnalyticsPopover({
             workspaceId={owner.sId}
             period={period}
             filter={scopeFilter}
-            personal
+            analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}
             disabled={!open}
             onConversationNavigate={onClose}
             onAddFilter={(selectedRow) => {

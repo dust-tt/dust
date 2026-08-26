@@ -19,6 +19,7 @@ import {
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionFacetsResponse } from "@app/lib/api/analytics/consumption/facets";
 import type { ConsumptionFacetsBody } from "@app/lib/api/analytics/consumption/schema";
 import type {
@@ -50,7 +51,7 @@ export interface UseConsumptionFacetsParams {
   filter?: ConsumptionScopeFilter;
   scope?: ConsumptionFacetScope;
   dimensions?: ConsumptionScopeDimension[];
-  personal?: boolean;
+  analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
 }
 
@@ -121,12 +122,12 @@ export function useConsumptionFacets({
   filter,
   scope = "all",
   dimensions,
-  personal,
+  analyticsScope,
   disabled,
 }: UseConsumptionFacetsParams) {
   const url = getConsumptionAnalyticsUrl({
     workspaceId,
-    personal,
+    analyticsScope,
     endpoint: "facets",
   });
   const body: ConsumptionFacetsBody = {

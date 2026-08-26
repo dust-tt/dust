@@ -1,3 +1,5 @@
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { ConsumptionBreakdownDimension } from "@app/lib/api/analytics/consumption/timeseries";
 
 export type ConsumptionDimension = ConsumptionBreakdownDimension;
@@ -38,14 +40,21 @@ const PERSONAL_CONSUMPTION_ATTRIBUTION_DIMENSIONS =
     (dimension) => dimension !== "user" && dimension !== "group"
   );
 
-export function getConsumptionAttributionDimensions({
-  personal,
-}: {
-  personal?: boolean;
-}): readonly ConsumptionAttributionDimension[] {
-  return personal
-    ? PERSONAL_CONSUMPTION_ATTRIBUTION_DIMENSIONS
-    : CONSUMPTION_DIMENSIONS;
+const AGENT_CONSUMPTION_ATTRIBUTION_DIMENSIONS = CONSUMPTION_DIMENSIONS.filter(
+  (dimension) => dimension !== "agent"
+);
+
+export function getConsumptionAttributionDimensions(
+  analyticsScope: ConsumptionAnalyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE
+): readonly ConsumptionAttributionDimension[] {
+  switch (analyticsScope.kind) {
+    case "personal":
+      return PERSONAL_CONSUMPTION_ATTRIBUTION_DIMENSIONS;
+    case "agent":
+      return AGENT_CONSUMPTION_ATTRIBUTION_DIMENSIONS;
+    case "workspace":
+      return CONSUMPTION_DIMENSIONS;
+  }
 }
 
 interface ConsumptionDimensionConfig {

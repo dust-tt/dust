@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 
 describe("getUsageFilterCategories", () => {
   it("selects the categories available to the analytics scope", () => {
-    expect(getUsageFilterCategories({ personal: false })).toEqual([
+    expect(getUsageFilterCategories()).toEqual([
       "agent",
       "member",
       "group",
@@ -21,8 +21,19 @@ describe("getUsageFilterCategories", () => {
       "source",
       "api_key",
     ]);
-    expect(getUsageFilterCategories({ personal: true })).toEqual([
+    expect(getUsageFilterCategories({ kind: "personal" })).toEqual([
       "agent",
+      "model",
+      "tool",
+      "skill",
+      "source",
+      "api_key",
+    ]);
+    expect(
+      getUsageFilterCategories({ kind: "agent", agentId: "agent-1" })
+    ).toEqual([
+      "member",
+      "group",
       "model",
       "tool",
       "skill",

@@ -1,6 +1,8 @@
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/types/api/analytics/consumption";
 import { Button, cn, LoadingBlock, ProgressBar } from "@dust-tt/sparkle";
@@ -52,7 +54,7 @@ export interface ConsumptionAttributionBreakdownColumnProps {
   dimension: BreakdownDimension;
   period: ConsumptionPeriodSelection;
   filter: ConsumptionScopeFilter;
-  personal?: boolean;
+  analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
   selectedRowName: string;
   onViewAll: () => void;
@@ -132,7 +134,7 @@ function WorkspaceConsumptionAttributionBreakdownColumn({
   dimension,
   period,
   filter,
-  personal,
+  analyticsScope,
   disabled,
   selectedRowName,
   onViewAll,
@@ -143,7 +145,7 @@ function WorkspaceConsumptionAttributionBreakdownColumn({
     period,
     limit: CONSUMPTION_ATTRIBUTION_BREAKDOWN_LIMIT,
     filter,
-    personal,
+    analyticsScope,
     disabled,
   });
 
@@ -166,7 +168,7 @@ export interface ConsumptionAttributionBreakdownProps {
   selectedRow: ConsumptionTopRow;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
-  personal?: boolean;
+  analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
   onViewAll: (
     dimension: ConsumptionDimension,
@@ -185,7 +187,7 @@ export function ConsumptionAttributionBreakdownView({
   selectedRow,
   period,
   filter,
-  personal,
+  analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
   disabled,
   onViewAll,
   BreakdownColumnComponent,
@@ -196,7 +198,8 @@ export function ConsumptionAttributionBreakdownView({
   };
   const visibleDimensions = BREAKDOWN_DIMENSIONS.filter(
     (dimension) =>
-      dimension !== selectedDimension && (!personal || dimension !== "user")
+      dimension !== selectedDimension &&
+      (analyticsScope.kind !== "personal" || dimension !== "user")
   );
 
   return (
@@ -214,7 +217,7 @@ export function ConsumptionAttributionBreakdownView({
           dimension={dimension}
           period={period}
           filter={selectedFilter}
-          personal={personal}
+          analyticsScope={analyticsScope}
           disabled={disabled}
           selectedRowName={selectedRow.name}
           onViewAll={() => onViewAll(dimension, selectedRow)}

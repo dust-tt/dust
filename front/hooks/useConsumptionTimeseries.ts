@@ -7,6 +7,7 @@ import {
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
 import type {
   ConsumptionBreakdownDimension,
@@ -29,7 +30,7 @@ export interface UseConsumptionTimeseriesParams {
   breakdownBy?: ConsumptionBreakdownDimension;
   breakdownCount?: number;
   filter?: ConsumptionScopeFilter;
-  personal?: boolean;
+  analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
 }
 
@@ -40,12 +41,12 @@ export function useConsumptionTimeseries({
   breakdownBy,
   breakdownCount,
   filter,
-  personal,
+  analyticsScope,
   disabled,
 }: UseConsumptionTimeseriesParams) {
   const url = getConsumptionAnalyticsUrl({
     workspaceId,
-    personal,
+    analyticsScope,
     endpoint: "timeseries",
   });
   const body: ConsumptionTimeseriesBody = {

@@ -1,6 +1,8 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { formatCredits } from "@app/lib/client/credits";
@@ -32,7 +34,7 @@ export interface ConsumptionSummaryProps {
   period: ConsumptionPeriodSelection;
   usageHref?: string;
   usageLinkLabel?: string;
-  personal?: boolean;
+  analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
 }
 
@@ -41,14 +43,14 @@ export function ConsumptionSummary({
   period: periodSelection,
   usageHref = `/w/${workspaceId}/usage`,
   usageLinkLabel = "Manage in Usage",
-  personal,
+  analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
   disabled,
 }: ConsumptionSummaryProps) {
   const { overview, isOverviewLoading, isOverviewError } =
     useConsumptionOverview({
       workspaceId,
       period: periodSelection,
-      personal,
+      analyticsScope,
       disabled,
     });
 
@@ -59,7 +61,7 @@ export function ConsumptionSummary({
       isOverviewError={Boolean(isOverviewError)}
       usageHref={usageHref}
       usageLinkLabel={usageLinkLabel}
-      personal={personal}
+      analyticsScope={analyticsScope}
     />
   );
 }
@@ -71,7 +73,7 @@ interface ConsumptionSummaryViewProps {
   usageHref: string;
   usageLinkLabel: string;
   responsiveLayout?: boolean;
-  personal?: boolean;
+  analyticsScope?: ConsumptionAnalyticsScope;
 }
 
 export function ConsumptionSummaryView({
@@ -81,7 +83,7 @@ export function ConsumptionSummaryView({
   usageHref,
   usageLinkLabel,
   responsiveLayout = false,
-  personal,
+  analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
 }: ConsumptionSummaryViewProps) {
   if (isOverviewLoading) {
     return (
@@ -111,7 +113,8 @@ export function ConsumptionSummaryView({
   }
 
   const { topAgent, totalCredits } = overview;
-  const creditUsage = personal ? null : overview.creditUsage;
+  const creditUsage =
+    analyticsScope.kind === "workspace" ? overview.creditUsage : null;
 
   return (
     <div className="flex flex-col gap-4">
