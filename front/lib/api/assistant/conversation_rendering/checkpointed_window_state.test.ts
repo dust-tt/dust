@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 
 function withTokens<T extends ModelMessageTypeMultiActions>(
   message: T,
-  tokenCount: number,
+  tokenCount: number
 ): T & { tokenCount: number } {
   return { ...message, tokenCount };
 }
@@ -21,7 +21,7 @@ function userMessage(name: string, tokenCount: number) {
       name: "user",
       content: [{ type: "text" as const, text: name }],
     },
-    tokenCount,
+    tokenCount
   );
 }
 
@@ -33,7 +33,28 @@ function assistantMessage(name: string, tokenCount = 10) {
       content: name,
       contents: [{ type: "text_content" as const, value: name }],
     },
-    tokenCount,
+    tokenCount
+  );
+}
+
+function reasoningMessage(reasoningTokens: number, tokenCount = 10) {
+  return withTokens(
+    {
+      role: "assistant" as const,
+      name: "assistant",
+      contents: [
+        {
+          type: "reasoning" as const,
+          value: {
+            reasoning: "reasoning",
+            metadata: "{}",
+            tokens: reasoningTokens,
+            provider: "openai" as const,
+          },
+        },
+      ],
+    },
+    tokenCount
   );
 }
 
@@ -45,12 +66,12 @@ function functionMessage(name: string, tokenCount: number) {
       function_call_id: `${name}_call`,
       content: `${name}_result`,
     },
-    tokenCount,
+    tokenCount
   );
 }
 
 function interaction(
-  messages: InteractionWithTokens["messages"],
+  messages: InteractionWithTokens["messages"]
 ): InteractionWithTokens {
   return { messages };
 }
@@ -113,7 +134,7 @@ describe("CheckpointedConversationWindowState", () => {
         .renderedInteractions()
         .flatMap((item) => item.messages)
         .filter((message) => message.role === "user")
-        .map((message) => message.content[0]),
+        .map((message) => message.content[0])
     ).toEqual([
       { type: "text", text: "first" },
       { type: "text", text: "second" },
@@ -160,7 +181,7 @@ describe("CheckpointedConversationWindowState", () => {
     expect(
       input.messages
         .filter((message) => message.role === "function")
-        .map((message) => message.content),
+        .map((message) => message.content)
     ).toEqual([
       "first_result",
       "second_result",
@@ -188,12 +209,12 @@ describe("CheckpointedConversationWindowState", () => {
         functionMessage("second", 11_000),
         assistantMessage("call_third"),
         functionMessage("third", 11_000),
-      ]),
+      ])
     );
     state.append(interaction([userMessage("follow_up", 10)]));
 
     expect(
-      toolResults(state).some((message) => isPruned(message.content)),
+      toolResults(state).some((message) => isPruned(message.content))
     ).toBe(true);
     const result = state.fit();
     expect(result.isOk()).toBe(true);
@@ -213,18 +234,18 @@ describe("CheckpointedConversationWindowState", () => {
         functionMessage("first", 10_100),
         assistantMessage("call_second"),
         functionMessage("second", 10_100),
-      ]),
+      ])
     );
 
     expect(
-      toolResults(state).every((message) => !isPruned(message.content)),
+      toolResults(state).every((message) => !isPruned(message.content))
     ).toBe(true);
 
     state.append(
       interaction([
         assistantMessage("call_third"),
         functionMessage("third", 1_000),
-      ]),
+      ])
     );
 
     const results = toolResults(state);
@@ -246,7 +267,7 @@ describe("CheckpointedConversationWindowState", () => {
         // Pruning retains a 24-token placeholder, so this yields exactly the minimum savings.
         functionMessage("result", MINIMUM_PRUNING_BATCH_TOKENS + 24),
         assistantMessage("answer"),
-      ]),
+      ])
     );
     state.append(interaction([userMessage("follow_up", 10)]));
 
@@ -265,7 +286,7 @@ describe("CheckpointedConversationWindowState", () => {
         assistantMessage("call_tool"),
         functionMessage("result", MINIMUM_PRUNING_BATCH_TOKENS + 24 - 1),
         assistantMessage("answer"),
-      ]),
+      ])
     );
     state.append(interaction([userMessage("follow_up", 10)]));
 
@@ -284,7 +305,7 @@ describe("CheckpointedConversationWindowState", () => {
         assistantMessage("call_tool"),
         functionMessage("result", MINIMUM_PRUNING_BATCH_TOKENS + 1_000 + 24),
         assistantMessage("answer"),
-      ]),
+      ])
     );
     state.append(interaction([userMessage("follow_up", 10)]));
 
@@ -310,7 +331,7 @@ describe("CheckpointedConversationWindowState", () => {
       interaction([
         assistantMessage("call_fourth"),
         functionMessage("fourth", 1_000),
-      ]),
+      ])
     );
 
     const prefixResults = toolResults(prefixState);
@@ -321,7 +342,7 @@ describe("CheckpointedConversationWindowState", () => {
       false,
     ]);
     expect(
-      extendedResults.slice(0, 3).map((message) => isPruned(message.content)),
+      extendedResults.slice(0, 3).map((message) => isPruned(message.content))
     ).toEqual([true, true, false]);
   });
 
@@ -344,7 +365,7 @@ describe("CheckpointedConversationWindowState", () => {
     const checkpointed = makeState({ pruningBudget: 15_000 });
     checkpointed.append(interaction(prefix));
     const serializedSnapshot: unknown = JSON.parse(
-      JSON.stringify(checkpointed.snapshot()),
+      JSON.stringify(checkpointed.snapshot())
     );
     const parsedSnapshot =
       ConversationWindowStateSnapshotSchema.safeParse(serializedSnapshot);
@@ -359,7 +380,7 @@ describe("CheckpointedConversationWindowState", () => {
         pruningBudget: 15_000,
         budgetForInteractions: 100_000,
         logDetails: {},
-      },
+      }
     );
     restored.appendToLatestInteraction(interaction(continuation));
 
@@ -397,7 +418,27 @@ describe("CheckpointedConversationWindowState", () => {
     };
 
     expect(
-      ConversationWindowStateSnapshotSchema.safeParse(snapshot).success,
+      ConversationWindowStateSnapshotSchema.safeParse(snapshot).success
+    ).toBe(false);
+  });
+
+  it("rejects fractional reasoning token counts", () => {
+    const state = makeState();
+    state.append(interaction([reasoningMessage(1.5)]));
+
+    expect(
+      ConversationWindowStateSnapshotSchema.safeParse(state.snapshot()).success
+    ).toBe(false);
+  });
+
+  it("rejects fractional message token counts even when their total is an integer", () => {
+    const state = makeState();
+    state.append(
+      interaction([userMessage("first", 0.5), userMessage("second", 0.5)])
+    );
+
+    expect(
+      ConversationWindowStateSnapshotSchema.safeParse(state.snapshot()).success
     ).toBe(false);
   });
 });

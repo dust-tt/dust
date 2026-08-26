@@ -91,7 +91,7 @@ const assistantContentSchema = z.discriminatedUnion("type", [
         .object({
           reasoning: z.string().optional(),
           metadata: z.string(),
-          tokens: z.number().finite().nonnegative(),
+          tokens: z.number().int().nonnegative(),
           provider: z.string(),
           region: z.string().nullable().optional(),
         })
@@ -109,7 +109,7 @@ const assistantContentSchema = z.discriminatedUnion("type", [
     .strict(),
 ]);
 
-const tokenCountSchema = z.number().finite().nonnegative();
+const tokenCountSchema = z.number().int().nonnegative();
 const persistedMessageBaseSchema = z.discriminatedUnion("role", [
   z
     .object({
