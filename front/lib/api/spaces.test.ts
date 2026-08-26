@@ -9,12 +9,11 @@ import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -192,14 +191,14 @@ describe("createSpaceAndGroup", () => {
         expect(space.managementMode).toBe("group");
         expect(space.isRegularAndRestricted()).toBe(true);
 
-        // Verify groups were associated
-        const groupSpaces = await GroupSpaceModel.findAll({
-          where: {
-            vaultId: space.id,
-            workspaceId: workspace.id,
-          },
-        });
-        const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
+        // Verify groups were associated (from the space's group_permissions grants).
+        const reloadedSpace = await SpaceResource.fetchById(
+          adminAuth,
+          space.sId
+        );
+        const associatedGroupIds = reloadedSpace!.groups.map(
+          (group) => group.groupId
+        );
         expect(associatedGroupIds).toContain(provisionedGroup.id);
       }
     });
@@ -422,14 +421,10 @@ describe("createSpaceAndGroup", () => {
         expect(reloadedSpace).not.toBeNull();
         expect(reloadedSpace!.isRegularAndRestricted()).toBe(false);
 
-        // Verify global group was added
-        const groupSpaces = await GroupSpaceModel.findAll({
-          where: {
-            vaultId: reloadedSpace!.id,
-            workspaceId: workspace.id,
-          },
-        });
-        const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
+        // Verify global group was added (from the space's group_permissions grants).
+        const associatedGroupIds = reloadedSpace!.groups.map(
+          (group) => group.groupId
+        );
         expect(associatedGroupIds).toContain(globalGroup.id);
       }
     });
@@ -491,14 +486,8 @@ describe("createSpaceAndGroup", () => {
         const space = result.value;
         expect(space.isRegularAndRestricted()).toBe(true);
 
-        // Verify global group was NOT added
-        const groupSpaces = await GroupSpaceModel.findAll({
-          where: {
-            vaultId: space.id,
-            workspaceId: workspace.id,
-          },
-        });
-        const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
+        // Verify global group was NOT added (from the space's group_permissions grants).
+        const associatedGroupIds = space.groups.map((group) => group.groupId);
         expect(associatedGroupIds).not.toContain(globalGroup.id);
       }
     });
@@ -913,19 +902,19 @@ describe("createSpaceAndGroup", () => {
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         const space = result.value;
-        const groupSpaces = await GroupSpaceModel.findAll({
-          where: {
-            vaultId: space.id,
-            workspaceId: workspace.id,
-          },
-        });
-        const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
+        const reloadedSpace = await SpaceResource.fetchById(
+          adminAuth,
+          space.sId
+        );
+        const associatedGroupIds = reloadedSpace!.groups.map(
+          (group) => group.groupId
+        );
         expect(associatedGroupIds).toContain(provisionedGroup1.id);
         expect(associatedGroupIds).toContain(provisionedGroup2.id);
       }
     });
 
-    it("should set global group kind to 'member' for unrestricted regular spaces", async () => {
+    it("should grant the global group reader on unrestricted regular spaces", async () => {
       const result = await createSpaceAndGroup(adminAuth, {
         name: "Test Unrestricted Regular Space",
         isRestricted: false,
@@ -943,16 +932,18 @@ describe("createSpaceAndGroup", () => {
         );
         expect(reloadedSpace!.isOpen()).toBe(true);
 
-        // Verify global group was added with kind "member"
-        const groupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-          space: reloadedSpace!,
-        });
-        expect(groupSpaces.length).toBeGreaterThan(0);
-        expect(groupSpaces.some((gs) => gs.group.kind === "global")).toBe(true);
+        // Verify the global group holds a reader grant on the space (open regular space).
+        const grants = await GroupPermissionResource.listForResource(
+          adminAuth,
+          { resourceType: "space", resourceId: reloadedSpace!.id }
+        );
+        const globalGrant = grants.find((g) => g.groupId === globalGroup.id);
+        expect(globalGrant).toBeDefined();
+        expect(globalGrant?.grantType).toBe("reader");
       }
     });
 
-    it("should set global group kind to 'project_viewer' for unrestricted project spaces", async () => {
+    it("should grant the global group reader on unrestricted project spaces", async () => {
       vi.spyOn(
         await import("@app/lib/api/projects/connector"),
         "createDataSourceAndConnectorForProject"
@@ -976,16 +967,14 @@ describe("createSpaceAndGroup", () => {
         expect(reloadedSpace!.kind).toBe("project");
         expect(reloadedSpace!.isOpen()).toBe(true);
 
-        // Verify global group was added with kind "project_viewer"
-        const groupSpace = await GroupSpaceModel.findOne({
-          where: {
-            vaultId: reloadedSpace!.id,
-            workspaceId: workspace.id,
-            groupId: globalGroup.id,
-          },
-        });
-        expect(groupSpace).toBeDefined();
-        expect(groupSpace?.kind).toBe("project_viewer");
+        // Verify the global group holds a reader grant on the project (attached as viewer).
+        const grants = await GroupPermissionResource.listForResource(
+          adminAuth,
+          { resourceType: "space", resourceId: reloadedSpace!.id }
+        );
+        const globalGrant = grants.find((g) => g.groupId === globalGroup.id);
+        expect(globalGrant).toBeDefined();
+        expect(globalGrant?.grantType).toBe("reader");
       }
     });
   });
