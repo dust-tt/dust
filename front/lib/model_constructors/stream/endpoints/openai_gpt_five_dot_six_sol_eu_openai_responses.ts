@@ -7,13 +7,14 @@ import { EUROPE } from "@app/lib/model_constructors/types/regions";
 export class OpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream extends WithOpenAIGptFiveDotSixSolConfig(
   OpenAIResponsesStream
 ) {
-  // https://developers.openai.com/api/docs/models/gpt-5.6-sol
+  // Verified 2026-08-26: https://developers.openai.com/api/docs/pricing
+  // Promotional pricing is available at least through 2026-11-21; re-verify after that date.
   // Regional (data residency) endpoints are charged a 10% uplift for models
   // released on or after March 5, 2026.
   static readonly tokenPricing = {
-    cacheHit: 0.55,
-    standardInput: 5.5,
-    standardOutput: 33.0,
+    cacheHit: 0.44,
+    standardInput: 4.4,
+    standardOutput: 22.0,
   };
 
   static readonly region = EUROPE;
