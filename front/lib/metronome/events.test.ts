@@ -5,6 +5,7 @@ import {
   buildToolUseEvents,
   buildUsageEvents,
 } from "@app/lib/metronome/events";
+import type { MetronomeEvent } from "@app/lib/metronome/types";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { describe, expect, it } from "vitest";
 
@@ -311,5 +312,46 @@ describe("Aggregated usage event (shadow) and legacy cost parity", () => {
     );
     expect(newCostAwu).toBe(0);
     expect(billedCostAwuFromEvents(legacyEvents)).toBe(0);
+  });
+
+  it("counts only user/programmatic usage types, skipping any other value", () => {
+    const events: MetronomeEvent[] = [
+      {
+        transaction_id: "a",
+        customer_id: "c",
+        event_type: "llm_usage_v3",
+        timestamp: "2026-08-05T12:00:00.000Z",
+        properties: { cost_awu: 5, usage_type: "user" },
+      },
+      {
+        transaction_id: "b",
+        customer_id: "c",
+        event_type: "llm_usage_v3",
+        timestamp: "2026-08-05T12:00:00.000Z",
+        properties: { cost_awu: 7, usage_type: "programmatic" },
+      },
+      {
+        transaction_id: "c",
+        customer_id: "c",
+        event_type: "llm_usage_v3",
+        timestamp: "2026-08-05T12:00:00.000Z",
+        properties: { cost_awu: 11, usage_type: "free" },
+      },
+      // An unknown usage_type is entitled at 0 in the rate card — skip it.
+      {
+        transaction_id: "d",
+        customer_id: "c",
+        event_type: "tool_use_v3",
+        timestamp: "2026-08-05T12:00:00.000Z",
+        properties: {
+          count: 4,
+          tool_category: "advanced",
+          usage_type: "other",
+        },
+      },
+    ];
+
+    // Only the "user" (5) and "programmatic" (7) events count.
+    expect(billedCostAwuFromEvents(events)).toBe(12);
   });
 });

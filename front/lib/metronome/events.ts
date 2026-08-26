@@ -575,7 +575,13 @@ export function buildUsageEvents({
  */
 export function billedCostAwuFromEvents(events: MetronomeEvent[]): number {
   return events.reduce((total, event) => {
-    if (event.properties[USAGE_TYPE_GROUP_KEY] === USAGE_TYPE_FREE) {
+    // The rate card only prices the paid usage types; "free" and any other
+    // value are entitled at 0, so only count "user" and "programmatic".
+    const usageType = event.properties[USAGE_TYPE_GROUP_KEY];
+    if (
+      usageType !== USAGE_TYPE_USER &&
+      usageType !== USAGE_TYPE_PROGRAMMATIC
+    ) {
       return total;
     }
     if (event.event_type === "tool_use_v3") {
