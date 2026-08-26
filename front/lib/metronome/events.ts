@@ -595,8 +595,10 @@ export function billedCostAwuFromEvents(events: MetronomeEvent[]): number {
         return total + count * TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
       }
       return total;
+    } else if (event.event_type === "llm_usage_v3") {
+      const costAwu = event.properties["cost_awu"];
+      return total + (typeof costAwu === "number" ? costAwu : 0);
     }
-    const costAwu = event.properties["cost_awu"];
-    return total + (typeof costAwu === "number" ? costAwu : 0);
+    return total;
   }, 0);
 }
