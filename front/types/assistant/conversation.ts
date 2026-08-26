@@ -859,7 +859,7 @@ type BaseConversationMCPServerViewType = {
   workspaceId: ModelId;
   conversationId: ModelId;
   mcpServerViewId: ModelId;
-  userId: ModelId;
+  userId: ModelId | null;
   enabled: boolean;
   createdAt: Date;
   updatedAt: Date;
