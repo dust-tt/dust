@@ -3,6 +3,8 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   buildAgentMessageBillingPlan,
   isFreeOrigin,
+  isToolCostCategory,
+  TOOL_COST_CATEGORY_AWU_WEIGHTS,
 } from "@app/lib/credits/agent_message_billing";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
@@ -405,4 +407,198 @@ export function buildToolUseEvents({
       },
     };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Aggregated usage event (shadow — not yet ingested)
+// ---------------------------------------------------------------------------
+
+/**
+ * Build the single aggregated Metronome llm_usage_v3 event for one agent-message
+ * execution: LLM (intelligence) and tool (platform action) costs are computed on
+ * our side and summed into one `cost_awu`.
+ *
+ * This is the target shape that will eventually replace the per-model
+ * `buildLlmUsageEvents` + per-tool `buildToolUseEvents` events. For now it is
+ * only used to shadow-compute the aggregated amount for a parity log, so its
+ * result is NOT ingested.
+ *
+ * `cost_awu` is the net billed credits: free origins, the per-server tool cap
+ * and free tools are already waived in the number, so Metronome would price it
+ * as a flat multiply on the shared AWU rate. Only actions belonging to this
+ * execution (`shouldEmit`) contribute; prior-execution actions are still fed to
+ * the billing plan so the per-server cap is applied across the whole message.
+ *
+ * transaction_id pattern: usage3-{workspaceId}-{conversationId}-{agentMessageId}-{runKey}
+ */
+export function buildUsageEvents({
+  workspaceId,
+  isByok,
+  conversationId,
+  userId,
+  isFreeSeatedUser,
+  agentMessageId,
+  agentId,
+  subAgentId,
+  parentAgentMessageId,
+  runKey,
+  runUsages,
+  actions,
+  origin,
+  usageType,
+  authMethod,
+  apiKeyName,
+  messageStatus,
+  isSubAgentMessage,
+  timestamp,
+}: {
+  workspaceId: string;
+  isByok: boolean;
+  conversationId: string;
+  userId: string | null;
+  isFreeSeatedUser: boolean;
+  agentMessageId: string;
+  agentId: string | null;
+  subAgentId: string | null;
+  parentAgentMessageId: string | null;
+  runKey: string;
+  runUsages: RunUsageType[];
+  actions: ToolAction[];
+  origin: UserMessageOrigin;
+  usageType: UsageType;
+  authMethod: string | null;
+  apiKeyName: string | null;
+  messageStatus: string;
+  isSubAgentMessage: boolean;
+  timestamp: string;
+}): MetronomeEvent[] {
+  const billingPlan = buildAgentMessageBillingPlan({
+    actions,
+    contextOrigin: origin,
+    runUsages: runUsages.map((usage) => ({ ...usage, runKey })),
+  });
+
+  // Only actions belonging to this execution are billed here — prior-execution
+  // actions were billed by their own event but are kept in the plan so the
+  // per-server cap sees the whole message.
+  const emittedToolLines = billingPlan.tools.filter(
+    (line) => line.action.shouldEmit
+  );
+  const toolBilledCredits = emittedToolLines.reduce(
+    (total, line) => total + line.billedCredits,
+    0
+  );
+
+  // Nothing to attribute for this execution (e.g. a resume that only replays
+  // prior actions): emit no event.
+  if (billingPlan.llm.length === 0 && emittedToolLines.length === 0) {
+    return [];
+  }
+
+  const costAwu = billingPlan.totals.llmBilledCredits + toolBilledCredits;
+
+  // Aggregate token counts across models for observability only — the billable
+  // metric sums `cost_awu` and ignores these.
+  const tokenTotals = billingPlan.llm.reduce(
+    (totals, group) => ({
+      promptTokens: totals.promptTokens + group.promptTokensCount,
+      completionTokens: totals.completionTokens + group.completionTokensCount,
+      cachedTokens: totals.cachedTokens + group.cachedTokensCount,
+      cacheCreationTokens:
+        totals.cacheCreationTokens + group.cacheCreationTokensCount,
+      costMicroUsd: totals.costMicroUsd + group.providerCostMicroUsd,
+    }),
+    {
+      promptTokens: 0,
+      completionTokens: 0,
+      cachedTokens: 0,
+      cacheCreationTokens: 0,
+      costMicroUsd: 0,
+    }
+  );
+
+  return [
+    {
+      transaction_id: truncateTransactionId(
+        `usage3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}`
+      ),
+      customer_id: getMetronomeIngestAlias(workspaceId),
+      event_type: "llm_usage_v3",
+      timestamp,
+      properties: {
+        workspace_id: workspaceId,
+        user_id: userId
+          ? isFreeSeatedUser
+            ? toFreeMetronomeUserId(userId)
+            : userId
+          : "unknown",
+        is_byok: isByok ? "true" : "false",
+        agent_message_id: agentMessageId,
+        conversation_id: conversationId,
+        agent_id: agentId ?? "unknown",
+        sub_agent_id: subAgentId ?? "none",
+        parent_agent_message_id: parentAgentMessageId ?? "none",
+        // Required by the billable metric but intentionally not granular: LLM and
+        // tool cost are aggregated into this single event.
+        provider_id: "aggregate",
+        model_id: "aggregate",
+        prompt_tokens: tokenTotals.promptTokens,
+        completion_tokens: tokenTotals.completionTokens,
+        cached_tokens: tokenTotals.cachedTokens,
+        cache_creation_tokens: tokenTotals.cacheCreationTokens,
+        // Provider cost without markup — observability only. 1 AWU = $0.0085.
+        cost_micro_usd: tokenTotals.costMicroUsd,
+        // Net billed credits (LLM + tools) computed on our side; waivers already
+        // applied, so Metronome prices this as a flat multiply on the AWU rate.
+        cost_awu: costAwu,
+        // TODO: Remove is_programmatic_usage & is_free_usage, this is replaced by single property "usage type"
+        is_programmatic_usage:
+          usageType === USAGE_TYPE_PROGRAMMATIC ? "true" : "false",
+        is_free_usage: usageType === USAGE_TYPE_FREE ? "true" : "false",
+        [USAGE_TYPE_GROUP_KEY]: usageType,
+        auth_method: authMethod ?? "unknown",
+        api_key_name: apiKeyName ?? "unknown",
+        message_status: messageStatus,
+        is_sub_agent_message: isSubAgentMessage ? "true" : "false",
+        origin,
+      },
+    },
+  ];
+}
+
+/**
+ * Sum the AWU that Metronome will bill from a set of legacy usage events:
+ * `llm_usage_v3` → `cost_awu`; `tool_use_v3` → `count` × the tool category
+ * weight. Events tagged `usage_type: free` are priced at 0 and contribute
+ * nothing. Used to shadow-compare the legacy per-model/per-tool events against
+ * the aggregated `buildUsageEvents` cost before switching over.
+ */
+export function billedCostAwuFromEvents(events: MetronomeEvent[]): number {
+  return events.reduce((total, event) => {
+    // The rate card only prices the paid usage types; "free" and any other
+    // value are entitled at 0, so only count "user" and "programmatic".
+    const usageType = event.properties[USAGE_TYPE_GROUP_KEY];
+    if (
+      usageType !== USAGE_TYPE_USER &&
+      usageType !== USAGE_TYPE_PROGRAMMATIC
+    ) {
+      return total;
+    }
+    if (event.event_type === "tool_use_v3") {
+      const category = event.properties["tool_category"];
+      const count = event.properties["count"];
+      if (
+        typeof category === "string" &&
+        isToolCostCategory(category) &&
+        typeof count === "number"
+      ) {
+        return total + count * TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
+      }
+      return total;
+    } else if (event.event_type === "llm_usage_v3") {
+      const costAwu = event.properties["cost_awu"];
+      return total + (typeof costAwu === "number" ? costAwu : 0);
+    }
+    return total;
+  }, 0);
 }

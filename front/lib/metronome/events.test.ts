@@ -1,7 +1,11 @@
+import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import {
+  billedCostAwuFromEvents,
   buildLlmUsageEvents,
   buildToolUseEvents,
+  buildUsageEvents,
 } from "@app/lib/metronome/events";
+import type { MetronomeEvent } from "@app/lib/metronome/types";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { describe, expect, it } from "vitest";
 
@@ -177,5 +181,177 @@ describe("Metronome billing event adapters", () => {
       count: 1,
       usage_type: "free",
     });
+  });
+});
+
+describe("Aggregated usage event (shadow) and legacy cost parity", () => {
+  const aggregatedInput = { ...commonEventInput, isByok: false };
+
+  it("aggregates LLM and tool cost into a single llm_usage_v3 event", () => {
+    const events = buildUsageEvents({
+      ...aggregatedInput,
+      runUsages: [usage({ costMicroUsd: 1 })],
+      actions: [
+        {
+          toolName: "websearch",
+          mcpServerId: null,
+          internalMCPServerName: "web_search_&_browse",
+          status: "succeeded",
+          executionDurationMs: 10,
+          shouldEmit: true,
+        },
+      ],
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.event_type).toBe("llm_usage_v3");
+    expect(events[0]?.properties).toMatchObject({
+      model_id: "aggregate",
+      // LLM ceil(1/µ) = 1 + one "basic" (1 AWU) tool = 2.
+      cost_awu: 2,
+      usage_type: "user",
+    });
+  });
+
+  it("matches the legacy events' billed cost on a mixed message", () => {
+    const perAwu = MODEL_COST_MICRO_USD_PER_AWU_CREDIT;
+
+    const runUsages = [
+      // openai group: two usages summed (1 + 1 µUSD) THEN rounded → 1 credit.
+      usage({ costMicroUsd: 1 }),
+      usage({ costMicroUsd: 1 }),
+      // anthropic group: rounded on its own → 2 credits.
+      usage({
+        costMicroUsd: perAwu + 1,
+        modelId: "claude-opus-4-8",
+        providerId: "anthropic",
+      }),
+    ];
+    const actions = [
+      // 8 external "advanced" (3 AWU) calls: 7 billed (21) + 1 capped (free).
+      ...Array.from({ length: 8 }, () => ({
+        toolName: "custom_tool",
+        mcpServerId: "mcp_server",
+        internalMCPServerName: null,
+        status: "succeeded" as const,
+        executionDurationMs: 10,
+        shouldEmit: true,
+      })),
+      // One internal "basic" (1 AWU) billed call.
+      {
+        toolName: "websearch",
+        mcpServerId: null,
+        internalMCPServerName: "web_search_&_browse" as const,
+        status: "succeeded" as const,
+        executionDurationMs: 5,
+        shouldEmit: true,
+      },
+      // A denied call: unbillable, must not contribute on either side.
+      {
+        toolName: "custom_tool",
+        mcpServerId: null,
+        internalMCPServerName: null,
+        status: "denied" as const,
+        executionDurationMs: null,
+        shouldEmit: true,
+      },
+    ];
+
+    const legacyEvents = [
+      ...buildLlmUsageEvents({ ...aggregatedInput, runUsages }),
+      ...buildToolUseEvents({ ...commonEventInput, actions }),
+    ];
+    const aggregatedEvents = buildUsageEvents({
+      ...aggregatedInput,
+      runUsages,
+      actions,
+    });
+
+    // LLM 3 (1 + 2, per-model rounding) + tools 22 (7×3 capped + 1 basic) = 25.
+    const newCostAwu = Number(aggregatedEvents[0]?.properties["cost_awu"]);
+    expect(newCostAwu).toBe(25);
+    expect(billedCostAwuFromEvents(legacyEvents)).toBe(newCostAwu);
+  });
+
+  it("matches (both zero) for free-origin messages", () => {
+    const runUsages = [usage({ costMicroUsd: 1_000_000 })];
+    const actions = [
+      {
+        toolName: "custom_tool",
+        mcpServerId: "mcp_server",
+        internalMCPServerName: null,
+        status: "succeeded" as const,
+        executionDurationMs: 10,
+        shouldEmit: true,
+      },
+    ];
+    const freeInput = {
+      ...aggregatedInput,
+      usageType: "free" as const,
+      origin: "agent_sidekick" as const,
+    };
+
+    const legacyEvents = [
+      ...buildLlmUsageEvents({ ...freeInput, runUsages }),
+      ...buildToolUseEvents({
+        ...commonEventInput,
+        usageType: "free" as const,
+        origin: "agent_sidekick" as const,
+        actions,
+      }),
+    ];
+    const aggregatedEvents = buildUsageEvents({
+      ...freeInput,
+      runUsages,
+      actions,
+    });
+
+    const newCostAwu = aggregatedEvents.reduce(
+      (total, event) => total + Number(event.properties["cost_awu"] ?? 0),
+      0
+    );
+    expect(newCostAwu).toBe(0);
+    expect(billedCostAwuFromEvents(legacyEvents)).toBe(0);
+  });
+
+  it("counts only user/programmatic usage types, skipping any other value", () => {
+    const events: MetronomeEvent[] = [
+      {
+        transaction_id: "a",
+        customer_id: "c",
+        event_type: "llm_usage_v3",
+        timestamp: "2026-08-05T12:00:00.000Z",
+        properties: { cost_awu: 5, usage_type: "user" },
+      },
+      {
+        transaction_id: "b",
+        customer_id: "c",
+        event_type: "llm_usage_v3",
+        timestamp: "2026-08-05T12:00:00.000Z",
+        properties: { cost_awu: 7, usage_type: "programmatic" },
+      },
+      {
+        transaction_id: "c",
+        customer_id: "c",
+        event_type: "llm_usage_v3",
+        timestamp: "2026-08-05T12:00:00.000Z",
+        properties: { cost_awu: 11, usage_type: "free" },
+      },
+      // An unknown usage_type is entitled at 0 in the rate card — skip it.
+      {
+        transaction_id: "d",
+        customer_id: "c",
+        event_type: "tool_use_v3",
+        timestamp: "2026-08-05T12:00:00.000Z",
+        properties: {
+          count: 4,
+          tool_category: "advanced",
+          usage_type: "other",
+        },
+      },
+    ];
+
+    // Only the "user" (5) and "programmatic" (7) events count.
+    expect(billedCostAwuFromEvents(events)).toBe(12);
   });
 });

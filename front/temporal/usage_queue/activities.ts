@@ -8,8 +8,10 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
+  billedCostAwuFromEvents,
   buildLlmUsageEvents,
   buildToolUseEvents,
+  buildUsageEvents,
   computeRunKey,
   getUsageType,
 } from "@app/lib/metronome/events";
@@ -430,6 +432,48 @@ export async function emitMetronomeUsageEventsActivity(
   });
 
   await ingestMetronomeEvents([...llmEvents, ...toolEvents]);
+
+  // Shadow the upcoming single aggregated event and log its cost against the
+  // legacy events' cost, so we can confirm parity on real traffic before
+  // switching over. The aggregated event is NOT ingested yet.
+  const aggregatedUsageEvents = buildUsageEvents({
+    workspaceId: workspace.sId,
+    isByok,
+    conversationId,
+    userId,
+    isFreeSeatedUser,
+    agentMessageId,
+    agentId,
+    subAgentId,
+    parentAgentMessageId,
+    runKey,
+    runUsages,
+    actions: toolActions,
+    origin: userMessageOrigin,
+    usageType,
+    authMethod,
+    apiKeyName,
+    messageStatus,
+    isSubAgentMessage,
+    timestamp,
+  });
+  const newCostAwu = aggregatedUsageEvents.reduce((total, event) => {
+    const costAwu = event.properties["cost_awu"];
+    return total + (typeof costAwu === "number" ? costAwu : 0);
+  }, 0);
+  const oldCostAwu = billedCostAwuFromEvents([...llmEvents, ...toolEvents]);
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      conversationId,
+      agentMessageId,
+      runKey,
+      newCostAwu,
+      oldCostAwu,
+      costMatches: newCostAwu === oldCostAwu,
+    },
+    "[UsageQueue] Metronome usage event cost parity check."
+  );
 
   // Per-key cap enforcement is pull-based: Metronome spend alerts can't
   // attribute spend by `api_key_name` (it's not the products' presentation
