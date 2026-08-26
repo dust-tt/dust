@@ -359,10 +359,9 @@ async function fetchConsumptionFacetsWithoutTracing(
     bucketsByDimension.set(dimension, result.value);
   }
 
-  const catalog =
-    userId || agentId
-      ? EMPTY_FACET_CATALOG
-      : await listConsumptionFacetCatalog(auth, requestedDimensions);
+  const catalog = userId
+    ? EMPTY_FACET_CATALOG
+    : await listConsumptionFacetCatalog(auth, requestedDimensions);
   // TODO(2026-08-11 OBSERVABILITY): Historical label resolution still reads
   // from several database-backed resources. Store the relevant labels in the
   // consumption index so these lookups can stay within Elasticsearch.

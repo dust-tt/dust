@@ -469,6 +469,58 @@ describe("fetchConsumptionFacets", () => {
     ).toContainEqual({ term: { "user.id": user.sId } });
   });
 
+  it("merges the current catalog into agent-scoped facets", async () => {
+    const { authenticator } = await createResourceTest({ role: "manager" });
+    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
+      agent: [],
+      user: [],
+      api_key: [],
+      group: [],
+      model: [
+        {
+          value: "current-model",
+          label: "Current model",
+          pictureUrl: null,
+          maker: "openai",
+          tier: "balanced",
+        },
+      ],
+      tool: [],
+      skill: [],
+      source: [],
+    });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({ values: { buckets: [] } })
+    );
+
+    const result = await fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+      agentId: "agent_1",
+      dimensions: ["model"],
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.facets.model).toEqual([
+      {
+        value: "current-model",
+        label: "Current model",
+        pictureUrl: null,
+        maker: "openai",
+        tier: "balanced",
+        documentCount: 0,
+        disabled: true,
+      },
+    ]);
+
+    const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(query.bool?.filter).toContainEqual({
+      term: { "agent.attributed_id": "agent_1" },
+    });
+  });
+
   it("returns the Elasticsearch failure before resolving historical labels", async () => {
     const { authenticator } = await createResourceTest({ role: "manager" });
     const error = new ElasticsearchError("query_error", "query failed");
