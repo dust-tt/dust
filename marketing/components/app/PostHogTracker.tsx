@@ -14,7 +14,6 @@ import {
   MARKETING_PARAMS,
 } from "@marketing/lib/utils/utm";
 import { isString } from "@marketing/types/shared/utils/general";
-import { useServerPageView } from "@marketing/hooks/useServerPageView";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { useEffect, useMemo, useRef } from "react";
@@ -66,8 +65,6 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
   const router = useAppRouter();
   const [cookies] = useCookies([DUST_COOKIES_ACCEPTED]);
 
-  useServerPageView();
-
   const { wId } = router.query;
   const workspaceId = isString(wId) ? wId : undefined;
 
@@ -105,7 +102,6 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
   const hasInitialized = useRef(false);
   const hasUpgradedPersistence = useRef(false);
   const lastIdentifiedUserId = useRef<string | null>(null);
-  const lastPageviewPathnameRef = useRef<string | null>(null);
 
   // Phase 1: Initialize PostHog with memory-only persistence (no cookies).
   // This captures events for all visitors including anonymous ad traffic,
@@ -141,7 +137,11 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
       // subdomains so the same identity persists through dust.tt → signin →
       // app.dust.tt. Takes effect when persistence upgrades to cookie in Phase 2.
       ...(cookieDomain ? { cookie_domain: cookieDomain } : {}),
-      capture_pageview: true,
+      // "history_change" lets posthog-js capture client-side navigations
+      // itself, by patching pushState/replaceState and listening to popstate.
+      // It only emits when the pathname changes, so query-only updates don't
+      // produce a new $pageview. The initial page load is still captured.
+      capture_pageview: "history_change",
       capture_pageleave: false,
       autocapture: false,
       disable_session_recording: true,
@@ -383,42 +383,6 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     isAdmin,
     currentWorkspace?.role,
   ]);
-
-  // Track pageviews on client navigations when the pathname changes. Shallow
-  // query updates (e.g. space search `?q=`) still fire routeChangeComplete but
-  // must not emit a new $pageview.
-  useEffect(() => {
-    if (!posthog.__loaded || !isTrackablePage) {
-      return;
-    }
-
-    lastPageviewPathnameRef.current = router.pathname;
-
-    const handleRouteChange = () => {
-      const pathname = router.pathname;
-
-      if (pathname === lastPageviewPathnameRef.current) {
-        return;
-      }
-
-      lastPageviewPathnameRef.current = pathname;
-
-      // Don't track pageviews on conversation pages (/conversation/[cId]), but track /conversation/new.
-      const isConversationPage = /\/conversation\/(?!new$)[^/]+$/.test(
-        pathname
-      );
-      if (isConversationPage) {
-        return;
-      }
-
-      posthog.capture("$pageview");
-    };
-
-    router.events.on("routeChangeComplete", handleRouteChange);
-    return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
-    };
-  }, [router.events, router.pathname, isTrackablePage]);
 
   return null;
 }

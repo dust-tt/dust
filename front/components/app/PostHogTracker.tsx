@@ -146,7 +146,6 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
   const hasInitialized = useRef(false);
   const hasUpgradedPersistence = useRef(false);
   const lastIdentifiedUserId = useRef<string | null>(null);
-  const lastPageviewPathnameRef = useRef<string | null>(null);
 
   // Phase 1: Initialize PostHog with memory-only persistence (no cookies).
   // This captures events for all visitors including anonymous ad traffic,
@@ -180,7 +179,8 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
       // subdomains so the same identity persists through dust.tt → signin →
       // app.dust.tt. Takes effect when persistence upgrades to cookie in Phase 2.
       ...(cookieDomain ? { cookie_domain: cookieDomain } : {}),
-      capture_pageview: true,
+      // Capture client-side navigations, inclusive of initial load, but exclusive of superficial updates (ex: ?q=):
+      capture_pageview: "history_change",
       capture_pageleave: false,
       autocapture: false,
       disable_session_recording: true,
@@ -422,34 +422,6 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     isAdmin,
     currentWorkspace?.role,
   ]);
-
-  // Track pageviews on client navigations when the pathname changes. Shallow
-  // query updates (e.g. space search `?q=`) still fire routeChangeComplete but
-  // must not emit a new $pageview.
-  useEffect(() => {
-    if (!posthog.__loaded || !isTrackablePage) {
-      return;
-    }
-
-    lastPageviewPathnameRef.current = router.pathname;
-
-    const handleRouteChange = () => {
-      const pathname = router.pathname;
-
-      if (pathname === lastPageviewPathnameRef.current) {
-        return;
-      }
-
-      lastPageviewPathnameRef.current = pathname;
-
-      posthog.capture("$pageview");
-    };
-
-    router.events.on("routeChangeComplete", handleRouteChange);
-    return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
-    };
-  }, [router.events, router.pathname, isTrackablePage]);
 
   return null;
 }
