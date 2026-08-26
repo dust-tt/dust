@@ -85,25 +85,27 @@ export function ConsumptionSummaryView({
   responsiveLayout = false,
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
 }: ConsumptionSummaryViewProps) {
+  const isAgentScoped = analyticsScope.kind === "agent";
+  const cardRowClassName = responsiveLayout
+    ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+    : "flex items-stretch gap-6";
+  const loadingCardClassName = responsiveLayout
+    ? "h-24 rounded-xl"
+    : "h-24 flex-1 rounded-xl";
+
   if (isOverviewLoading) {
     return (
-      <div
-        className={
-          responsiveLayout
-            ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
-            : "flex items-stretch gap-6"
-        }
-      >
-        <LoadingBlock
-          className={
-            responsiveLayout ? "h-24 rounded-xl" : "h-24 flex-1 rounded-xl"
-          }
-        />
-        <LoadingBlock
-          className={
-            responsiveLayout ? "h-24 rounded-xl" : "h-24 flex-1 rounded-xl"
-          }
-        />
+      <div className="flex flex-col gap-4">
+        {isAgentScoped && (
+          <div className={cardRowClassName}>
+            <LoadingBlock className={loadingCardClassName} />
+            <LoadingBlock className={loadingCardClassName} />
+          </div>
+        )}
+        <div className={cardRowClassName}>
+          <LoadingBlock className={loadingCardClassName} />
+          <LoadingBlock className={loadingCardClassName} />
+        </div>
       </div>
     );
   }
@@ -115,6 +117,16 @@ export function ConsumptionSummaryView({
   const { topAgent, totalCredits } = overview;
   const creditUsage =
     analyticsScope.kind === "workspace" ? overview.creditUsage : null;
+  const messagesPerActiveUser =
+    overview.messageCount === undefined
+      ? null
+      : overview.members.active > 0
+        ? Math.round(overview.messageCount / overview.members.active)
+        : 0;
+  const averageCostPerMessage =
+    overview.messageCount !== undefined && overview.messageCount > 0
+      ? totalCredits / overview.messageCount
+      : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -146,31 +158,60 @@ export function ConsumptionSummaryView({
           />
         </div>
       )}
-      <div
-        className={
-          responsiveLayout
-            ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
-            : "flex items-stretch gap-6"
-        }
-      >
-        <SummaryCard
-          label="Used this period"
-          value={formatCredits(totalCredits)}
-          hint={
-            creditUsage
-              ? `${creditUsage.status.usedPercentage}% of ${formatCredits(creditUsage.capCredits)} cap`
-              : null
-          }
-        />
-        <SummaryCard
-          label="Top agent"
-          value={topAgent?.name ?? "—"}
-          hint={
-            topAgent && totalCredits > 0
-              ? `${Math.round((topAgent.credits / totalCredits) * 100)}% of total consumption`
-              : null
-          }
-        />
+      {isAgentScoped && (
+        <div className={cardRowClassName}>
+          <SummaryCard
+            label="Active Users"
+            value={overview.members.active.toLocaleString()}
+            hint={null}
+          />
+          <SummaryCard
+            label="Messages / active user"
+            value={messagesPerActiveUser?.toLocaleString() ?? "—"}
+            hint={null}
+          />
+        </div>
+      )}
+      <div className={cardRowClassName}>
+        {isAgentScoped ? (
+          <>
+            <SummaryCard
+              label="Total cost"
+              value={`${formatCredits(totalCredits)} credits`}
+              hint={null}
+            />
+            <SummaryCard
+              label="Avg. cost/msg"
+              value={
+                averageCostPerMessage === null
+                  ? "—"
+                  : `${formatCredits(averageCostPerMessage)} credits`
+              }
+              hint={null}
+            />
+          </>
+        ) : (
+          <>
+            <SummaryCard
+              label="Used this period"
+              value={formatCredits(totalCredits)}
+              hint={
+                creditUsage
+                  ? `${creditUsage.status.usedPercentage}% of ${formatCredits(creditUsage.capCredits)} cap`
+                  : null
+              }
+            />
+            <SummaryCard
+              label="Top agent"
+              value={topAgent?.name ?? "—"}
+              hint={
+                topAgent && totalCredits > 0
+                  ? `${Math.round((topAgent.credits / totalCredits) * 100)}% of total consumption`
+                  : null
+              }
+            />
+          </>
+        )}
       </div>
     </div>
   );
