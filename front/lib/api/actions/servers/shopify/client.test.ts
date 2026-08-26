@@ -7,6 +7,7 @@ import type {
   ShopifyProduct,
 } from "@app/lib/api/actions/servers/shopify/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 const mocks = vi.hoisted(() => ({
   untrustedFetch: vi.fn(),
@@ -15,6 +16,23 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@app/lib/egress/server", () => ({
   untrustedFetch: mocks.untrustedFetch,
 }));
+
+const ShopifyRequestBodySchema = z.object({
+  query: z.string(),
+  variables: z.object({
+    first: z.number(),
+    after: z.string().nullable(),
+    query: z.string().nullable(),
+  }),
+});
+
+function parseRequestBody(init: RequestInit) {
+  if (typeof init.body !== "string") {
+    throw new Error("Expected Shopify request body to be a string.");
+  }
+
+  return ShopifyRequestBodySchema.parse(JSON.parse(init.body));
+}
 
 function customer(id: number): ShopifyCustomer {
   return {
@@ -129,7 +147,7 @@ describe("ShopifyClient.listCustomers", () => {
     expect(firstUrl).toBe(
       "https://my-store.myshopify.com/admin/api/2026-07/graphql.json"
     );
-    const firstBody = JSON.parse(firstInit.body as string);
+    const firstBody = parseRequestBody(firstInit);
     expect(firstBody.query).toContain("query ListCustomers");
     expect(firstBody.variables).toEqual({
       first: 3,
@@ -138,9 +156,7 @@ describe("ShopifyClient.listCustomers", () => {
         "state:ENABLED email:'jane.o\\'reilly@example.com' tag:'VIP Customers' country:FR",
     });
 
-    const secondBody = JSON.parse(
-      mocks.untrustedFetch.mock.calls[1][1].body as string
-    );
+    const secondBody = parseRequestBody(mocks.untrustedFetch.mock.calls[1][1]);
     expect(secondBody.variables).toMatchObject({
       first: 1,
       after: "cursor-2",
@@ -201,16 +217,14 @@ describe("ShopifyClient.listProducts", () => {
     expect(firstUrl).toBe(
       "https://my-store.myshopify.com/admin/api/2026-07/graphql.json"
     );
-    const firstBody = JSON.parse(firstInit.body as string);
+    const firstBody = parseRequestBody(firstInit);
     expect(firstBody.variables).toEqual({
       first: 3,
       after: null,
       query: "status:active vendor:'O\\'Reilly' tag:sale",
     });
 
-    const secondBody = JSON.parse(
-      mocks.untrustedFetch.mock.calls[1][1].body as string
-    );
+    const secondBody = parseRequestBody(mocks.untrustedFetch.mock.calls[1][1]);
     expect(secondBody.variables).toMatchObject({
       first: 1,
       after: "cursor-2",
