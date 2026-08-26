@@ -19,7 +19,6 @@ import {
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
 import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls";
-import { UsageFilterModelComplexityControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterModelComplexityControls";
 import { UsageFilterOptionIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionIcon";
 import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
@@ -29,7 +28,6 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import { useGroups } from "@app/lib/swr/groups";
-import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -41,8 +39,6 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
-
-const DEFAULT_MODEL_TIER: ModelsTierName = "balanced";
 
 export interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
@@ -130,8 +126,6 @@ export function useUsageFilterPanelState({
     categories[0] ?? "agent"
   );
   const [activeScope, setActiveScope] = useState<UsageFilterAgentScope>("all");
-  const [activeTier, setActiveTier] =
-    useState<ModelsTierName>(DEFAULT_MODEL_TIER);
   const [searchText, setSearchText] = useState("");
   const [contentScrollContainer, setContentScrollContainer] =
     useState<HTMLDivElement | null>(null);
@@ -173,8 +167,6 @@ export function useUsageFilterPanelState({
     setActiveCategory,
     activeScope,
     setActiveScope,
-    activeTier,
-    setActiveTier,
     searchText,
     setSearchText,
     contentScrollContainer,
@@ -224,8 +216,6 @@ export function UsageFilterPanelView({
     setActiveCategory,
     activeScope,
     setActiveScope,
-    activeTier,
-    setActiveTier,
     searchText,
     setSearchText,
     contentScrollContainer,
@@ -254,9 +244,6 @@ export function UsageFilterPanelView({
       ) {
         return false;
       }
-      if (option.kind === "model" && option.tier !== activeTier) {
-        return false;
-      }
       if (selectedGroupMemberIds && !selectedGroupMemberIds.has(option.id)) {
         return false;
       }
@@ -266,12 +253,11 @@ export function UsageFilterPanelView({
     activeOptions,
     searchText,
     activeScope,
-    activeTier,
     activeCategory,
     selectedGroups.items,
   ]);
 
-  const optionListKey = `${isOpen}|${activeCategory}|${searchText}|${activeScope}|${activeTier}`;
+  const optionListKey = `${isOpen}|${activeCategory}|${searchText}|${activeScope}`;
   const selectedIdsForActiveCategory = useMemo(
     () =>
       new Set((draftFilter[activeCategory] ?? []).map((option) => option.id)),
@@ -384,18 +370,6 @@ export function UsageFilterPanelView({
                   selectedGroups={selectedGroups.items}
                   onAddGroup={selectedGroups.add}
                   onRemoveGroup={selectedGroups.remove}
-                />
-              )}
-              {activeCategory === "model" && (
-                <UsageFilterModelComplexityControls
-                  moreModelsCatalog={categoryOptions.model}
-                  selectedModelIds={selectedIdsForActiveCategory}
-                  onToggleModel={(model) => toggleOption("model", model)}
-                  activeTier={activeTier}
-                  onTierChange={(tier) => {
-                    setActiveTier(tier);
-                    resetContentScroll();
-                  }}
                 />
               )}
               {activeCategory === "agent" && (
