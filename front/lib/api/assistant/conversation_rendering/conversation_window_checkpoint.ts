@@ -26,28 +26,40 @@ const SIGNED_URL_EXPIRY_SAFETY_MARGIN_MS = 5 * 60 * 1000;
 const MAX_STORED_CHECKPOINT_SIZE_BYTES = 8 * 1024 * 1024;
 const MAX_EXPANDED_CHECKPOINT_SIZE_BYTES = 64 * 1024 * 1024;
 
-export type ConversationWindowCheckpointIdentity = {
-  workspaceId: string;
-  conversationId: string;
-  agentMessageId: string;
-  agentMessageVersion: number;
-  step: number;
-};
+const checkpointIdentitySchema = z
+  .object({
+    workspaceId: z.string(),
+    conversationId: z.string(),
+    agentMessageId: z.string(),
+    agentMessageVersion: z.number().int().nonnegative(),
+    step: z.number().int().nonnegative(),
+  })
+  .strict();
 
-export type ConversationWindowCheckpoint = {
-  version: typeof CONVERSATION_WINDOW_CHECKPOINT_VERSION;
-  // Reserved for invalidating cross-message checkpoints after earlier context changes.
-  // Same-agent-message schema v1 has no such mutation signal, so the epoch remains zero.
-  contextEpoch: 0;
-  identity: ConversationWindowCheckpointIdentity;
-  profileHash: string;
-  createdAtMs: number;
-  validUntilMs: number;
-  promptTokens: number;
-  toolDefinitionTokens: number;
-  missingActionCatcherFunctionCallIds: string[];
-  state: ConversationWindowStateSnapshot;
-};
+export type ConversationWindowCheckpointIdentity = z.infer<
+  typeof checkpointIdentitySchema
+>;
+
+const conversationWindowCheckpointSchema = z
+  .object({
+    version: z.literal(CONVERSATION_WINDOW_CHECKPOINT_VERSION),
+    // Reserved for invalidating cross-message checkpoints after earlier context changes.
+    // Same-agent-message schema v1 has no such mutation signal, so the epoch remains zero.
+    contextEpoch: z.literal(0),
+    identity: checkpointIdentitySchema,
+    profileHash: z.string(),
+    createdAtMs: z.number().int().nonnegative(),
+    validUntilMs: z.number().int().nonnegative(),
+    promptTokens: z.number().int().nonnegative(),
+    toolDefinitionTokens: z.number().int().nonnegative(),
+    missingActionCatcherFunctionCallIds: z.array(z.string()),
+    state: ConversationWindowStateSnapshotSchema,
+  })
+  .strict();
+
+export type ConversationWindowCheckpoint = z.infer<
+  typeof conversationWindowCheckpointSchema
+>;
 
 function checkpointPath(
   identity: ConversationWindowCheckpointIdentity
@@ -97,32 +109,6 @@ const checkpointEnvelopeSchema = z
     payload: z.string(),
   })
   .strict();
-
-const checkpointIdentitySchema = z
-  .object({
-    workspaceId: z.string(),
-    conversationId: z.string(),
-    agentMessageId: z.string(),
-    agentMessageVersion: z.number().int().nonnegative(),
-    step: z.number().int().nonnegative(),
-  })
-  .strict();
-
-const conversationWindowCheckpointSchema: z.ZodType<ConversationWindowCheckpoint> =
-  z
-    .object({
-      version: z.literal(CONVERSATION_WINDOW_CHECKPOINT_VERSION),
-      contextEpoch: z.literal(0),
-      identity: checkpointIdentitySchema,
-      profileHash: z.string(),
-      createdAtMs: z.number().int().nonnegative(),
-      validUntilMs: z.number().int().nonnegative(),
-      promptTokens: z.number().int().nonnegative(),
-      toolDefinitionTokens: z.number().int().nonnegative(),
-      missingActionCatcherFunctionCallIds: z.array(z.string()),
-      state: ConversationWindowStateSnapshotSchema,
-    })
-    .strict();
 
 function decodeCheckpoint(
   content: string
