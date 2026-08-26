@@ -3,6 +3,7 @@ import { FilterFooter } from "@app/components/workspace/analytics/filterPanel/Fi
 import { FilterOptionCheckboxList } from "@app/components/workspace/analytics/filterPanel/FilterOptionCheckboxList";
 import { FilterSelectionSummary } from "@app/components/workspace/analytics/filterPanel/FilterSelectionSummary";
 import type {
+  ConsumptionFacetOptions,
   UsageFilter,
   UsageFilterAgentScope,
   UsageFilterCategory,
@@ -22,7 +23,6 @@ import { UsageFilterModelComplexityControls } from "@app/components/workspace/an
 import { UsageFilterOptionIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionIcon";
 import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
-import type { ConsumptionFacetOptions } from "@app/hooks/useConsumptionFacets";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";

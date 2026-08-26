@@ -168,6 +168,21 @@ export type UsageFilterIds = Partial<
   Record<ConsumptionScopeDimension, string[]>
 >;
 
+export type ConsumptionFacetOptions = {
+  [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
+};
+
+export const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
+  agent: [],
+  member: [],
+  group: [],
+  model: [],
+  tool: [],
+  skill: [],
+  source: [],
+  api_key: [],
+};
+
 // URL filters only carry ids. Keep that transport shape at the boundary and
 // use minimal options until the user replaces them from the filter panel.
 export function usageFilterFromIds(ids: UsageFilterIds): UsageFilter {
@@ -186,6 +201,54 @@ export function usageFilterFromIds(ids: UsageFilterIds): UsageFilter {
   }
 
   return filter;
+}
+
+function resolveCategory<C extends UsageFilterCategory>(
+  selected: UsageFilterOptionForCategory<C>[] | undefined,
+  facetOptions: UsageFilterOptionForCategory<C>[]
+): UsageFilterOptionForCategory<C>[] | undefined {
+  if (!selected?.length || facetOptions.length === 0) {
+    return selected;
+  }
+
+  const facetOptionById = new Map(
+    facetOptions.map((option) => [option.id, option])
+  );
+  const resolved = selected.map(
+    (option) => facetOptionById.get(option.id) ?? option
+  );
+
+  return resolved.every((option, index) => option === selected[index])
+    ? selected
+    : resolved;
+}
+
+export function hasUnresolvedUsageFilterNames(filter: UsageFilter): boolean {
+  return USAGE_FILTER_CATEGORIES.flatMap(
+    (category): UsageFilterOption[] => filter[category] ?? []
+  ).some((option) => option.name === option.id);
+}
+
+export function resolveUsageFilter(
+  filter: UsageFilter,
+  facetOptions: ConsumptionFacetOptions
+): UsageFilter {
+  const resolved: UsageFilter = {
+    agent: resolveCategory(filter.agent, facetOptions.agent),
+    member: resolveCategory(filter.member, facetOptions.member),
+    group: resolveCategory(filter.group, facetOptions.group),
+    model: resolveCategory(filter.model, facetOptions.model),
+    tool: resolveCategory(filter.tool, facetOptions.tool),
+    skill: resolveCategory(filter.skill, facetOptions.skill),
+    source: resolveCategory(filter.source, facetOptions.source),
+    api_key: resolveCategory(filter.api_key, facetOptions.api_key),
+  };
+
+  return USAGE_FILTER_CATEGORIES.every(
+    (category) => resolved[category] === filter[category]
+  )
+    ? filter
+    : resolved;
 }
 
 export function usageFilterToIds(filter: UsageFilter): UsageFilterIds {

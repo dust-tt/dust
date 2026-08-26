@@ -1,15 +1,15 @@
 import type {
+  ConsumptionFacetOptions,
   UsageFilterAgentOption,
   UsageFilterApiKeyOption,
-  UsageFilterCategory,
   UsageFilterGroupOption,
   UsageFilterMemberOption,
   UsageFilterModelOption,
-  UsageFilterOptionForCategory,
   UsageFilterSkillOption,
   UsageFilterSourceOption,
   UsageFilterToolOption,
 } from "@app/components/workspace/analytics/usageFilter";
+import { EMPTY_FACET_OPTIONS } from "@app/components/workspace/analytics/usageFilter";
 import {
   getConsumptionAnalyticsUrl,
   useConsumptionQuery,
@@ -29,21 +29,6 @@ import type {
 } from "@app/types/api/analytics/consumption";
 import { isConnectorProvider } from "@app/types/data_source";
 import { useMemo } from "react";
-
-export type ConsumptionFacetOptions = {
-  [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
-};
-
-const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
-  agent: [],
-  member: [],
-  group: [],
-  model: [],
-  tool: [],
-  skill: [],
-  source: [],
-  api_key: [],
-};
 
 export interface UseConsumptionFacetsParams {
   workspaceId: string;
