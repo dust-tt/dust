@@ -31,6 +31,7 @@ import { NotionOAuthProvider } from "@app/lib/api/oauth/providers/notion";
 import { ProductboardOAuthProvider } from "@app/lib/api/oauth/providers/productboard";
 import { SalesforceOAuthProvider } from "@app/lib/api/oauth/providers/salesforce";
 import { ServiceNowOAuthProvider } from "@app/lib/api/oauth/providers/servicenow";
+import { ShopifyOAuthProvider } from "@app/lib/api/oauth/providers/shopify";
 import { SlackOAuthProvider } from "@app/lib/api/oauth/providers/slack";
 import { SlackToolsOAuthProvider } from "@app/lib/api/oauth/providers/slack_tools";
 import { SnowflakeOAuthProvider } from "@app/lib/api/oauth/providers/snowflake";
@@ -89,6 +90,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   notion: new NotionOAuthProvider(),
   productboard: new ProductboardOAuthProvider(),
   salesforce: new SalesforceOAuthProvider(),
+  shopify: new ShopifyOAuthProvider(),
   servicenow: new ServiceNowOAuthProvider(),
   slack: new SlackOAuthProvider(),
   slack_tools: new SlackToolsOAuthProvider(),
@@ -320,6 +322,20 @@ export async function finalizeConnection(
     return new Err({
       code: "connection_finalization_failed",
       message: `Failed to finalize ${provider} connection: connection not found in query`,
+    });
+  }
+
+  if (
+    providerStrategy.isCallbackQueryValid &&
+    !providerStrategy.isCallbackQueryValid(query)
+  ) {
+    logger.error(
+      { provider, connectionId, step: "callback_validation" },
+      "OAuth: Failed to finalize connection"
+    );
+    return new Err({
+      code: "connection_finalization_failed",
+      message: `Failed to finalize ${provider} connection: invalid callback signature`,
     });
   }
 
