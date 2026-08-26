@@ -41,7 +41,7 @@ app.delete(
       });
     }
 
-    if (space.managementMode === "group" || space.isOpen()) {
+    if (space.managementMode === "group" || (await space.isOpen(auth))) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

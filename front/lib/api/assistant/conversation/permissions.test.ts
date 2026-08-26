@@ -239,7 +239,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
       }
 
       expect(openProjectHydrated.isProject()).toBe(true);
-      expect(openProjectHydrated.isOpen()).toBe(true);
+      expect(await openProjectHydrated.isOpen(auth)).toBe(true);
 
       const manualMembers =
         await openProjectHydrated.fetchDistinctActiveManualGroupMembers(auth);

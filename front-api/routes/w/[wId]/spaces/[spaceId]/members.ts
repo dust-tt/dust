@@ -52,7 +52,7 @@ app.patch(
     const owner = auth.getNonNullableWorkspace();
 
     if (
-      space.isProjectAndRestricted() &&
+      (await space.isProjectAndRestricted(auth)) &&
       !body.isRestricted &&
       !areOpenPodsAllowed(owner)
     ) {

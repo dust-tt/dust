@@ -89,7 +89,7 @@ export function withSpace(options: WithSpaceOptions) {
       });
     }
 
-    if (space.isRestricted()) {
+    if (await space.isRestricted(auth)) {
       void emitAuditLogEvent({
         auth,
         action: "space.accessed",

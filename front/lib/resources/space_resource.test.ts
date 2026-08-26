@@ -1609,7 +1609,7 @@ describe("SpaceResource", () => {
     const refetchIsOpen = async (space: SpaceResource): Promise<boolean> => {
       const refetched = await SpaceResource.fetchById(adminAuth, space.sId);
       expect(refetched).not.toBeNull();
-      return refetched!.isOpen();
+      return refetched!.isOpen(adminAuth);
     };
 
     it("is false for a restricted space and true once opened", async () => {
@@ -2637,7 +2637,7 @@ describe("SpaceResource group_permissions enforcement", () => {
     // Refetched, not reused: `space` holds the grant snapshot from before the update.
     const openSpace = await SpaceResource.fetchById(adminAuth, space.sId);
     expect(openSpace).not.toBeNull();
-    expect(openSpace!.isOpen()).toBe(true);
+    expect(await openSpace!.isOpen(adminAuth)).toBe(true);
 
     // The member group confers write; the global group's `reader` grant only confers read.
     expect(openSpace!.canRead(memberAuth)).toBe(true);
@@ -2792,7 +2792,7 @@ describe("SpaceResource group_permissions enforcement", () => {
     // Refetched, not reused: `space` holds the grant snapshot from before the update.
     const openSpace = await SpaceResource.fetchById(adminAuth, space.sId);
     expect(openSpace).not.toBeNull();
-    expect(openSpace!.isOpen()).toBe(true);
+    expect(await openSpace!.isOpen(adminAuth)).toBe(true);
 
     // In group management mode the provisioned group is the space's member group, so it is what
     // carries write.

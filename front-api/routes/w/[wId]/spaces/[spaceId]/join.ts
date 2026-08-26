@@ -29,7 +29,7 @@ app.post(
       });
     }
 
-    if (space.isProjectAndRestricted()) {
+    if (await space.isProjectAndRestricted(auth)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

@@ -72,8 +72,13 @@ export async function findSkillEditorsWithoutSpaceAccess(
     return null;
   }
 
-  const restrictedSpaces = requestedSpaces.filter((space) =>
-    space.isRestricted()
+  const openIds = await SpaceResource.listOpenSpaceModelIds(
+    auth,
+    requestedSpaces
+  );
+  const restrictedSpaces = requestedSpaces.filter(
+    (space) =>
+      (space.isRegular() || space.isProject()) && !openIds.has(space.id)
   );
 
   const editorsWithoutAccess = await listUsersWithoutAccessToSpaceResources(
