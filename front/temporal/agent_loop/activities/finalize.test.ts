@@ -3,7 +3,9 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import logger from "@app/logger/logger";
 import { creditsExhaustedMessage } from "@app/temporal/agent_loop/activities/common";
 import { logStuckToolsForErroredAgentMessage } from "@app/temporal/agent_loop/activities/finalize";
-import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("creditsExhaustedMessage", () => {
@@ -23,36 +25,44 @@ describe("creditsExhaustedMessage", () => {
 });
 
 describe("logStuckToolsForErroredAgentMessage", () => {
-  const auth = {
-    getNonNullableWorkspace: () => ({ sId: "workspace-1" }),
-  } as unknown as Authenticator;
-  const agentLoopArgs = {
-    conversationId: "conversation-1",
-    agentMessageId: "message-1",
-    agentMessageVersion: 0,
-  } as AgentLoopArgs;
   const error = { message: "Activity task timed out", name: "ActivityFailure" };
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("logs the non-final actions as stuck tools", async () => {
-    vi.spyOn(
-      AgentMCPActionResource,
-      "listNonFinalActionsForAgentMessage"
-    ).mockResolvedValue([
-      {
-        id: 42,
+  async function setup() {
+    const { workspace, authenticator: auth } = await createResourceTest({});
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+    const { agentMessage, action } =
+      await AgentMCPActionFactory.createWithAgentMessage(auth, {
+        workspace,
+        conversation,
         status: "running",
-        toolConfiguration: { name: "notion-search", mcpServerName: "notion" },
+      });
+
+    return {
+      auth,
+      action,
+      agentLoopArgs: {
+        conversationId: conversation.sId,
+        agentMessageId: agentMessage.sId,
       },
-    ] as unknown as AgentMCPActionResource[]);
+      agentMessageModelId: agentMessage.agentMessageId,
+    };
+  }
+
+  it("logs the non-final actions as stuck tools", async () => {
+    const { auth, action, agentLoopArgs, agentMessageModelId } = await setup();
     const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => true);
 
     await logStuckToolsForErroredAgentMessage(auth, {
       agentLoopArgs,
-      agentMessageModelId: 1,
+      agentMessageModelId,
       error,
     });
 
@@ -61,10 +71,10 @@ describe("logStuckToolsForErroredAgentMessage", () => {
         workflowErrorName: "ActivityFailure",
         stuckTools: [
           {
-            actionModelId: 42,
+            actionModelId: action.id,
             status: "running",
-            toolName: "notion-search",
-            mcpServerName: "notion",
+            toolName: action.toolConfiguration.name,
+            mcpServerName: action.toolConfiguration.mcpServerName,
           },
         ],
       }),
@@ -73,6 +83,7 @@ describe("logStuckToolsForErroredAgentMessage", () => {
   });
 
   it("does not throw when the actions query fails, and still logs the failure cause", async () => {
+    const { auth, agentLoopArgs, agentMessageModelId } = await setup();
     vi.spyOn(
       AgentMCPActionResource,
       "listNonFinalActionsForAgentMessage"
@@ -83,7 +94,7 @@ describe("logStuckToolsForErroredAgentMessage", () => {
     await expect(
       logStuckToolsForErroredAgentMessage(auth, {
         agentLoopArgs,
-        agentMessageModelId: 1,
+        agentMessageModelId,
         error,
       })
     ).resolves.toBeUndefined();

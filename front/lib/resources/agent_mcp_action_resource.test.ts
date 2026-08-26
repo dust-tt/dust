@@ -507,7 +507,7 @@ describe("listNonFinalActionsForAgentMessage", () => {
 
     const actions =
       await AgentMCPActionResource.listNonFinalActionsForAgentMessage(auth, {
-        agentMessageId: agentMessage.agentMessageId,
+        agentMessageModelId: agentMessage.agentMessageId,
       });
 
     expect(actions.map((a) => a.id).sort()).toEqual(
@@ -523,7 +523,7 @@ describe("listNonFinalActionsForAgentMessage", () => {
 
     const actions =
       await AgentMCPActionResource.listNonFinalActionsForAgentMessage(auth, {
-        agentMessageId: agentMessage.agentMessageId,
+        agentMessageModelId: agentMessage.agentMessageId,
       });
 
     expect(actions).toEqual([]);

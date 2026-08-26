@@ -186,7 +186,7 @@ export async function logStuckToolsForErroredAgentMessage(
     agentMessageModelId,
     error,
   }: {
-    agentLoopArgs: AgentLoopArgs;
+    agentLoopArgs: Pick<AgentLoopArgs, "conversationId" | "agentMessageId">;
     agentMessageModelId: ModelId;
     error: { message: string; name: string };
   }
@@ -200,7 +200,7 @@ export async function logStuckToolsForErroredAgentMessage(
   try {
     const actions =
       await AgentMCPActionResource.listNonFinalActionsForAgentMessage(auth, {
-        agentMessageId: agentMessageModelId,
+        agentMessageModelId,
       });
     stuckTools = actions.map((action) => ({
       actionModelId: action.id,

@@ -990,11 +990,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   // interaction (blocked_*). Callers discriminate on `status`.
   static async listNonFinalActionsForAgentMessage(
     auth: Authenticator,
-    { agentMessageId }: { agentMessageId: ModelId }
+    { agentMessageModelId }: { agentMessageModelId: ModelId }
   ): Promise<AgentMCPActionResource[]> {
     return this.baseFetch(auth, {
       where: {
-        agentMessageId,
+        agentMessageId: agentMessageModelId,
         status: {
           [Op.notIn]: TOOL_EXECUTION_FINAL_STATUSES,
         },
