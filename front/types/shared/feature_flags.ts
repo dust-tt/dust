@@ -259,7 +259,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   allow_old_notion_mcp: {
     description:
       "Allow individual workspaces to keep using the old internal Notion MCP server alongside the official one",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   use_dust_keys: {
     description:
