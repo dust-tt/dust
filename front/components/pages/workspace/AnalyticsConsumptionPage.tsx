@@ -129,7 +129,7 @@ export function AnalyticsConsumptionPage() {
   useEffect(() => {
     trackEvent({
       area: TRACKING_AREAS.ANALYTICS,
-      object: "consumption_page",
+      object: "analytics_page",
       action: TRACKING_ACTIONS.VIEW,
       extra: { workspace_id: owner.sId },
     });
