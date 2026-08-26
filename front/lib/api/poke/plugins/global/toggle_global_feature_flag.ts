@@ -62,7 +62,7 @@ export const toggleGlobalFeatureFlagPlugin = createPlugin({
         const globalLabel =
           globalPct !== undefined ? ` [Global: ${globalPct}%]` : "";
         return {
-          label: `[${FEATURE_FLAG_STAGE_LABELS[config.stage]}] ${feature}${globalLabel}`,
+          label: `[${FEATURE_FLAG_STAGE_LABELS[config.stage]}] ${feature} (@${config.owner})${globalLabel}`,
           value: feature,
         };
       }),
