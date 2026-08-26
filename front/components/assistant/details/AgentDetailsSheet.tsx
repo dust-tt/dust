@@ -382,12 +382,14 @@ export function AgentDetailsSheet({
                           owner={owner}
                         />
                       </TabsContent>
-                      <TabsContent value="insights">
-                        <AgentInsightsTab
-                          owner={owner}
-                          agentConfiguration={agentConfiguration}
-                        />
-                      </TabsContent>
+                      {showInsightsTabs && (
+                        <TabsContent value="insights">
+                          <AgentInsightsTab
+                            owner={owner}
+                            agentConfiguration={agentConfiguration}
+                          />
+                        </TabsContent>
+                      )}
                       <TabsContent value="triggers">
                         <AgentTriggersTab
                           agentConfiguration={agentConfiguration}
