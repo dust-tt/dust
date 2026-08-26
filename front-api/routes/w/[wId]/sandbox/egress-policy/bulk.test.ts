@@ -286,6 +286,21 @@ describe("POST /api/w/:wId/sandbox/egress-policy/bulk", () => {
     });
   });
 
+  it("returns 400 when no scope is selected", async () => {
+    const { workspace } = await setupTest();
+
+    const response = await postBulk(workspace.sId, {
+      includeWorkspace: false,
+      podIds: [],
+      operation: { operation: "add", domain: "api.github.com" },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: { type: "invalid_request_error" },
+    });
+  });
+
   it("collapses a workspace add to the workspace alone, skipping selected pods", async () => {
     const { workspace, podA, podB } = await setupTest();
 
@@ -305,8 +320,12 @@ describe("POST /api/w/:wId/sandbox/egress-policy/bulk", () => {
       "api.github.com",
     ]);
     // The selected pod policies are left untouched.
-    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podA.sId))).toEqual([]);
-    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podB.sId))).toEqual([]);
+    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podA.sId))).toEqual(
+      []
+    );
+    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podB.sId))).toEqual(
+      []
+    );
 
     // Only the workspace audit event fires (no space_id, no per-pod events).
     expect(mockEmitAuditLogEvent).toHaveBeenCalledTimes(1);

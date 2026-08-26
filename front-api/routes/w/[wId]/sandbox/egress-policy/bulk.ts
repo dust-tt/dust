@@ -26,14 +26,21 @@ const app = workspaceApp();
 
 app.use("*", withFeatureFlag("sandbox_functions"));
 
-const PostBulkEgressPolicyBodySchema = z.object({
-  includeWorkspace: z.boolean(),
-  podIds: z.array(z.string()).max(100),
-  operation: z.discriminatedUnion("operation", [
-    z.object({ operation: z.literal("add"), domain: z.string().min(1) }),
-    z.object({ operation: z.literal("remove"), domain: z.string().min(1) }),
-  ]),
-});
+const PostBulkEgressPolicyBodySchema = z
+  .object({
+    includeWorkspace: z.boolean(),
+    podIds: z.array(z.string()).max(100),
+    operation: z.discriminatedUnion("operation", [
+      z.object({ operation: z.literal("add"), domain: z.string().min(1) }),
+      z.object({ operation: z.literal("remove"), domain: z.string().min(1) }),
+    ]),
+  })
+  // A bulk write must target at least one scope: the workspace, some Pods, or
+  // both.
+  .refine((body) => body.includeWorkspace || body.podIds.length > 0, {
+    message: "Provide includeWorkspace or at least one podId.",
+    path: ["podIds"],
+  });
 
 /** @ignoreswagger */
 app.get(
