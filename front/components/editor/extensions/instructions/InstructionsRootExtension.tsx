@@ -3,7 +3,9 @@ import { Node } from "@tiptap/core";
 
 import { BLOCK_ID_ATTRIBUTE } from "./BlockIdExtension";
 
-export const INSTRUCTIONS_ROOT_NODE_NAME = "instructionsRoot";
+import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/lib/editor/node_constants";
+
+export { INSTRUCTIONS_ROOT_NODE_NAME };
 
 // Wrapper node that sits between doc and the block-level content.
 // Carries a stable block-id so the sidekick can target it to replace

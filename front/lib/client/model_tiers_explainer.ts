@@ -1,4 +1,3 @@
-import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import { getTierIndex } from "@app/lib/model_tiers/tier_order";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
@@ -10,6 +9,7 @@ import {
 import { isStaticModelId } from "@app/types/assistant/models/models";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
+import { USED_MODEL_CONFIGS } from "@app/types/assistant/models/used_model_configs";
 
 export interface ModelTierExplainerEntry {
   displayName: string;

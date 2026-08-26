@@ -16,7 +16,9 @@ export type SkillNodeAttributes = {
   skillUnavailable?: boolean;
 };
 
-export const SKILL_NODE_TYPE = "skill";
+import { SKILL_NODE_TYPE } from "@app/lib/editor/node_constants";
+
+export { SKILL_NODE_TYPE };
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -138,10 +140,10 @@ export const SkillNode = Node.create({
     start: (src) => {
       const skillTagStart = src.indexOf(`<${SKILL_TAG_NAME}`);
       const unavailableSkillTagStart = src.indexOf(
-        `<${UNAVAILABLE_SKILL_TAG_NAME}`
+        `<${UNAVAILABLE_SKILL_TAG_NAME}`,
       );
       const starts = [skillTagStart, unavailableSkillTagStart].filter(
-        (start) => start >= 0
+        (start) => start >= 0,
       );
 
       return starts.length > 0 ? Math.min(...starts) : -1;

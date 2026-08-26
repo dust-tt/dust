@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
-import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { getCustomerPaymentStatus } from "@app/lib/credits/free";
+import { getBillingCycleFromDay } from "@app/lib/plans/billing_cycle";
 import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { isEnterpriseSubscription } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";

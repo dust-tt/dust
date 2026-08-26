@@ -1,5 +1,5 @@
-import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { buildDaysConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/period";
+import { DEFAULT_PERIOD_DAYS } from "@app/lib/api/analytics/observability_constants";
 import {
   fetchUserExportRows,
   USER_EXPORT_HEADERS,

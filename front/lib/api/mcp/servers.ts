@@ -1,4 +1,3 @@
-import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import {
@@ -28,6 +27,7 @@ import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_r
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
+import { isCustomResourceIconType } from "@app/types/resources_icon_names";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";

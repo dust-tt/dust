@@ -1,4 +1,3 @@
-import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
@@ -23,6 +22,7 @@ import type {
   AgentMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
+import { USED_MODEL_CONFIGS } from "@app/types/assistant/models/used_model_configs";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

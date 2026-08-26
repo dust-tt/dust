@@ -1,6 +1,6 @@
 "use client";
 
-import { appendUTMParams } from "@app/lib/utils/utm";
+import { appendUTMParams } from "@app/lib/utils/utm_client";
 import type { RegularButtonProps } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 

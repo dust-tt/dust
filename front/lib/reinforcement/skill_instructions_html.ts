@@ -1,26 +1,61 @@
+import { KNOWLEDGE_TAG_REGEX } from "@app/lib/editor/knowledge_node_constants";
 import {
   BLOCK_ID_ATTRIBUTE,
   BLOCK_ID_UNIQUE_ID_NODE_TYPES,
-} from "@app/components/editor/extensions/instructions/BlockIdExtension";
-import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
-import { KNOWLEDGE_TAG_REGEX } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeConstants";
-import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/SkillNode";
-import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
-import { buildSkillInstructionsExtensionsForServer } from "@app/lib/editor/build_skill_instructions_extensions_server";
+  INSTRUCTIONS_ROOT_NODE_NAME,
+  SKILL_NODE_TYPE,
+  TOOL_NODE_TYPE,
+} from "@app/lib/editor/node_constants";
 import { preprocessMarkdownForEditor } from "@app/lib/editor/skill_instructions_preprocessing";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import { parseSkillReferenceTag } from "@app/lib/skills/format";
 import { parseToolTag } from "@app/lib/tools/format";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { JSONContent } from "@tiptap/core";
-import { MarkdownManager } from "@tiptap/markdown";
-import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
-import * as cheerio from "cheerio";
+import type { MarkdownManager } from "@tiptap/markdown";
+import type { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
 
-const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensionsForServer();
-const MARKDOWN_MANAGER = new MarkdownManager({
-  extensions: SKILL_EDITOR_EXTENSIONS,
-});
+// The editor schema, tiptap, prosemirror and cheerio are only needed once
+// instructions are actually converted, and building the extension list runs
+// every node definition. Resolved on first use so front-api does not pay for it
+// at boot; the exported helpers are synchronous, hence require over import().
+export interface MarkdownPipeline {
+  extensions: ReturnType<
+    typeof import("@app/lib/editor/build_skill_instructions_extensions_server").buildSkillInstructionsExtensionsForServer
+  >;
+  markdownManager: MarkdownManager;
+  renderToHTMLString: typeof renderToHTMLString;
+  cheerio: typeof import("cheerio");
+}
+
+let markdownPipeline: MarkdownPipeline | undefined;
+
+export function setMarkdownPipelineForTesting(
+  pipeline: MarkdownPipeline
+): void {
+  markdownPipeline = pipeline;
+}
+
+function getMarkdownPipeline(): MarkdownPipeline {
+  if (!markdownPipeline) {
+    const { buildSkillInstructionsExtensionsForServer } =
+      require("@app/lib/editor/build_skill_instructions_extensions_server") as typeof import("@app/lib/editor/build_skill_instructions_extensions_server");
+    const { MarkdownManager } =
+      require("@tiptap/markdown") as typeof import("@tiptap/markdown");
+    const extensions = buildSkillInstructionsExtensionsForServer();
+
+    markdownPipeline = {
+      extensions,
+      markdownManager: new MarkdownManager({ extensions }),
+      renderToHTMLString: (
+        require("@tiptap/static-renderer/pm/html-string") as typeof import("@tiptap/static-renderer/pm/html-string")
+      ).renderToHTMLString,
+      cheerio: require("cheerio") as typeof import("cheerio"),
+    };
+  }
+
+  return markdownPipeline;
+}
 const NODE_TYPES_WITH_BLOCK_ID = new Set<string>([
   ...BLOCK_ID_UNIQUE_ID_NODE_TYPES,
   INSTRUCTIONS_ROOT_NODE_NAME,
@@ -80,7 +115,7 @@ function addBlockIds(node: JSONContent | undefined): void {
  * Strip presentation attributes from HTML so it is not permanently stored.
  */
 function stripPresentationAttributes(html: string): string {
-  const $ = cheerio.load(html, { xmlMode: false }, false);
+  const $ = getMarkdownPipeline().cheerio.load(html, { xmlMode: false }, false);
   // Strip class from all elements except <code>. The codeBlock extension
   // stores the fenced-code language as class="language-typescript", which is
   // the round-trip mechanism for recovering the language on generateJSON
@@ -179,8 +214,9 @@ function recoverCustomInlineNodes(node: JSONContent): JSONContent {
  */
 export function convertMarkdownToBlockHtml(markdown: string): string {
   const preprocessed = preprocessMarkdownForEditor(markdown);
+  const pipeline = getMarkdownPipeline();
   const parsedDoc = preprocessed.trim()
-    ? MARKDOWN_MANAGER.parse(preprocessed)
+    ? pipeline.markdownManager.parse(preprocessed)
     : null;
 
   const rawContent = parsedDoc?.content ?? [{ type: "paragraph" }];
@@ -197,9 +233,9 @@ export function convertMarkdownToBlockHtml(markdown: string): string {
 
   addBlockIds(json);
 
-  const rendered = renderToHTMLString({
+  const rendered = pipeline.renderToHTMLString({
     content: prepareNodesForStaticRenderer(json),
-    extensions: SKILL_EDITOR_EXTENSIONS,
+    extensions: pipeline.extensions,
   });
 
   return stripPresentationAttributes(rendered);

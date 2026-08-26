@@ -1,17 +1,14 @@
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
+import {
+  BLOCK_ID_ATTRIBUTE,
+  BLOCK_ID_UNIQUE_ID_NODE_TYPES,
+} from "@app/lib/editor/node_constants";
 import UniqueID from "@tiptap/extension-unique-id";
 
-export const BLOCK_ID_ATTRIBUTE = "block-id";
-
-// Node types that receive block IDs
-export const BLOCK_ID_UNIQUE_ID_NODE_TYPES = [
-  "codeBlock",
-  "heading",
-  "instructionBlock",
-  "orderedList",
-  "paragraph",
-  "bulletList",
-] as const;
+export {
+  BLOCK_ID_ATTRIBUTE,
+  BLOCK_ID_UNIQUE_ID_NODE_TYPES,
+} from "@app/lib/editor/node_constants";
 
 /**
  * Block ID extension that adds unique IDs to block-level nodes

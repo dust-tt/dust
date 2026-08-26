@@ -1,4 +1,4 @@
-import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import { DEFAULT_PERIOD_DAYS } from "@app/lib/api/analytics/observability_constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { fetchFeedbackDistribution } from "@app/lib/api/assistant/observability/feedback_distribution";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";

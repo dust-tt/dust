@@ -1,4 +1,3 @@
-import { isMessageUnread } from "@app/components/assistant/conversation/utils";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -31,6 +30,7 @@ import {
   getConversationDisplayTitle,
   isCompactionMessageType,
   isLightAgentMessageType,
+  isMessageUnread,
   isPodConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";

@@ -1,7 +1,6 @@
 import type { ImportFormValues } from "@app/components/skills/import/formSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/github/import_skills";
 import { useAppRouter } from "@app/lib/platform";
 import type {
   DetectedSkillSummary,
@@ -18,6 +17,7 @@ import type {
   GetSkillWithRelationsResponseBody,
 } from "@app/types/api/skills";
 import type { GetSimilarSkillsResponseBody } from "@app/types/api/skills/existing_skill_checker";
+import type { ImportSkillsResponseBody } from "@app/types/api/skills/detection/github/import_skills";
 import type {
   SkillAvailability,
   SkillReinforcementMode,

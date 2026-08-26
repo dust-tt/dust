@@ -8,7 +8,9 @@ import {
 import { isString } from "@app/types/shared/utils/general";
 import { Node } from "@tiptap/core";
 
-export const TOOL_NODE_TYPE = "toolNode";
+import { TOOL_NODE_TYPE } from "@app/lib/editor/node_constants";
+
+export { TOOL_NODE_TYPE };
 
 const TOOL_CHIP_CLASS =
   "inline-flex items-center gap-0.5 border border-current/40 rounded px-0.5 text-xs leading-tight";

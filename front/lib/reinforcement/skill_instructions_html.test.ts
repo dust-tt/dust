@@ -1,8 +1,24 @@
-import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
+import { buildSkillInstructionsExtensionsForServer } from "@app/lib/editor/build_skill_instructions_extensions_server";
+import {
+  convertMarkdownToBlockHtml,
+  setMarkdownPipelineForTesting,
+} from "@app/lib/reinforcement/skill_instructions_html";
 import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import { MarkdownManager } from "@tiptap/markdown";
+import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
 import * as cheerio from "cheerio";
 import { describe, expect, it } from "vitest";
+
+// Production loads these dependencies lazily through require(). Vitest cannot
+// resolve @app aliases through native require, so inject the same real pipeline.
+const extensions = buildSkillInstructionsExtensionsForServer();
+setMarkdownPipelineForTesting({
+  extensions,
+  markdownManager: new MarkdownManager({ extensions }),
+  renderToHTMLString,
+  cheerio,
+});
 
 const HEX_BLOCK_ID = /^[a-f0-9]{8}$/;
 

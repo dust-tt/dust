@@ -1,7 +1,7 @@
 import { makeSpendLimitCycleWindowBounds } from "@app/lib/api/assistant/rate_limits";
 import type { Authenticator } from "@app/lib/auth";
-import type { BillingCycle } from "@app/lib/client/subscription";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
+import type { BillingCycle } from "@app/lib/plans/billing_cycle";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { isCreditPricedPlan } from "@app/types/plan";

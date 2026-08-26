@@ -6,13 +6,6 @@
  */
 
 import {
-  CP_ENTERPRISE_BASIS,
-  CP_MAX_SEAT_COST_MONTHLY,
-  CP_MAX_SEAT_COST_YEARLY,
-  CP_PRO_SEAT_COST_MONTHLY,
-  CP_PRO_SEAT_COST_YEARLY,
-} from "@app/lib/client/subscription";
-import {
   TOOL_COST_CATEGORIES,
   TOOL_COST_CATEGORY_AWU_WEIGHTS,
 } from "@app/lib/credits/agent_message_billing";
@@ -61,6 +54,13 @@ import {
   BUSINESS_USD_PACKAGE_ALIAS,
   DEFAULT_AWU_EXCESS_RECURRING_AMOUNT,
 } from "@app/lib/metronome/types";
+import {
+  CP_ENTERPRISE_BASIS,
+  CP_MAX_SEAT_COST_MONTHLY,
+  CP_MAX_SEAT_COST_YEARLY,
+  CP_PRO_SEAT_COST_MONTHLY,
+  CP_PRO_SEAT_COST_YEARLY,
+} from "@app/lib/plans/pricing";
 
 export const NEW_METRICS: MetricDef[] = [
   // Tool invocation metric — counts tool uses, group keys cover both user and

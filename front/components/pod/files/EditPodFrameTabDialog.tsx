@@ -1,4 +1,3 @@
-import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { usePodFrameTabs } from "@app/hooks/usePodFrameTabs";
 import type { PodFrameTab, PodNavVisibility } from "@app/types/pod_frame_tab";
@@ -8,6 +7,7 @@ import {
   DEFAULT_POD_NAV_VISIBILITY,
   MAX_POD_FRAME_TAB_TITLE_LENGTH,
 } from "@app/types/pod_frame_tab";
+import { isCustomResourceIconType } from "@app/types/resources_icon_names";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionIcons,

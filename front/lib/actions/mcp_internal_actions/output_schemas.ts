@@ -1,7 +1,3 @@
-import {
-  CUSTOM_RESOURCE_ALLOWED,
-  INTERNAL_ALLOWED_ICONS,
-} from "@app/components/resources/resources_icon_names";
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { UserQuestionSchema } from "@app/lib/actions/types";
 import type {
@@ -15,6 +11,10 @@ import {
 import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { ALL_FILE_FORMATS } from "@app/types/files";
+import {
+  CUSTOM_RESOURCE_ALLOWED,
+  INTERNAL_ALLOWED_ICONS,
+} from "@app/types/resources_icon_names";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type {
   CallToolResult,

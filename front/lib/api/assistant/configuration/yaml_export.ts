@@ -1,11 +1,11 @@
 import {
-  convertActionsForFormData,
-  transformAgentConfigurationToFormData,
-} from "@app/components/agent_builder/transformAgentConfiguration";
-import {
   buildInitialActions,
   getAccessibleSourcesAndAppsForActions,
 } from "@app/lib/agent_builder/server_side_props_helpers";
+import {
+  convertActionsForFormData,
+  transformAgentConfigurationToFormData,
+} from "@app/lib/agent_builder/transform_agent_configuration";
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
 import type { AgentYAMLConfig } from "@app/lib/agent_yaml_converter/schemas";
 import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
