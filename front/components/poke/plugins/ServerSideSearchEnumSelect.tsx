@@ -18,8 +18,9 @@ import {
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
+  Spinner,
 } from "@dust-tt/sparkle";
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 import React from "react";
 
 function formatMemberLabel(member: PokeSearchWorkspaceMember) {
@@ -169,7 +170,7 @@ export function ServerSideSearchEnumSelect({
           <PokeCommandList>
             {isLoading ? (
               <div className="flex items-center gap-2 px-2 py-3 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Spinner size="xs" />
                 Searching members…
               </div>
             ) : isError ? (
