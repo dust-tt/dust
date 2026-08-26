@@ -3,8 +3,6 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -156,24 +154,12 @@ makeScript(
   async ({ wId, execute }, logger) => {
     logger.info("Starting open regular space member reset");
 
-    if (wId) {
-      const workspace = await WorkspaceResource.fetchById(wId);
-      if (!workspace) {
-        throw new Error(`Workspace not found: ${wId}`);
-      }
-      await resetWorkspaceOpenSpaceMembers(
-        execute,
-        logger,
-        renderLightWorkspaceType({ workspace })
-      );
-    } else {
-      await runOnAllWorkspaces(
-        async (workspace) => {
-          await resetWorkspaceOpenSpaceMembers(execute, logger, workspace);
-        },
-        { concurrency: 4 }
-      );
-    }
+    await runOnAllWorkspaces(
+      async (workspace) => {
+        await resetWorkspaceOpenSpaceMembers(execute, logger, workspace);
+      },
+      { concurrency: 4, wId }
+    );
 
     logger.info("Open regular space member reset completed");
   }

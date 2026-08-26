@@ -2030,12 +2030,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return [{ role: "admin", permissions: ["admin", "write"] }];
     }
 
-    // Global Workspace space, Conversations space and open regular spaces. Read is not granted by
-    // role: all three attach the workspace global group with a `reader` grant, and every workspace
-    // member belongs to that group, so `group_permissions` already confers read on everyone. Write
-    // is the only thing the role still grants here, and the only remaining difference with a
-    // restricted regular space.
-    if (this.isGlobal() || this.isConversations() || this.isRegularAndOpen()) {
+    // Global Workspace space and Conversations space. Read is not granted by role: both attach the
+    // workspace global group with a `reader` grant, and every workspace member belongs to that
+    // group, so `group_permissions` already confers read on everyone.
+    if (this.isGlobal() || this.isConversations()) {
       return [
         { role: "admin", permissions: ["admin", "write"] },
         // TODO(governance): remove once manager is available for everyone
@@ -2044,9 +2042,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ];
     }
 
-    // Projects and restricted regular spaces: the role only confers administration. Read and write
-    // come from the space's grants — including on an open project, where the global group's
-    // `reader` grant makes it visible to every workspace member.
+    // Regular spaces and projects: the role only confers administration, never read or write, and
+    // an open space is treated exactly like a restricted one. Read and write come from the space's
+    // grants — on an open space the global group's `reader` grant makes it visible to every
+    // workspace member, and its member groups are the only source of write.
     return [{ role: "admin", permissions: ["admin"] }];
   }
 
