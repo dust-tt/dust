@@ -1,7 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { MAX_EXPORT_ITEMS } from "@app/lib/api/actions/servers/shopify/helpers";
 import type {
-  ProductExportResult,
+  ProductListResult,
   ShopifyProduct,
 } from "@app/lib/api/actions/servers/shopify/types";
 import { ProductNodeSchema } from "@app/lib/api/actions/servers/shopify/types";
@@ -169,7 +169,7 @@ export class ShopifyClient {
     });
   }
 
-  async exportProducts({
+  async listProducts({
     status,
     vendor,
     searchQuery,
@@ -179,7 +179,7 @@ export class ShopifyClient {
     vendor?: string;
     searchQuery?: string;
     limit: number;
-  }): Promise<Result<ProductExportResult, MCPError>> {
+  }): Promise<Result<ProductListResult, MCPError>> {
     const cap = Math.min(limit, MAX_EXPORT_ITEMS);
     const filters: string[] = [];
     if (status) {

@@ -14,9 +14,9 @@ const limitSchema = (noun: string) =>
 
 export const SHOPIFY_TOOLS_METADATA = [
   {
-    name: "export_products",
+    name: "list_products",
     description:
-      "Export the Shopify product catalog with title, status, vendor, type, inventory, and price range.",
+      "List the Shopify product catalog with title, status, vendor, type, inventory, and price range.",
     schema: {
       status: z
         .enum(["ACTIVE", "DRAFT", "ARCHIVED", "UNLISTED"])
@@ -31,8 +31,8 @@ export const SHOPIFY_TOOLS_METADATA = [
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Exporting Shopify products",
-      done: "Export Shopify products",
+      running: "Listing Shopify products",
+      done: "List Shopify products",
     },
     toolCostCategory: "advanced",
     freeUsage: false,

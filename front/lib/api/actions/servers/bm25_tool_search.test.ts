@@ -1780,7 +1780,7 @@ const QUERIES: LabeledQuery[] = [
   // --- shopify ---
   {
     query: "list the products in my shopify store",
-    expected: "shopify.export_products",
+    expected: "shopify.list_products",
   },
 ];
 

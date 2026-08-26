@@ -45,7 +45,7 @@ function pageResponse(
   );
 }
 
-describe("ShopifyClient.exportProducts", () => {
+describe("ShopifyClient.listProducts", () => {
   beforeEach(() => {
     mocks.untrustedFetch.mockReset();
   });
@@ -66,7 +66,7 @@ describe("ShopifyClient.exportProducts", () => {
       );
     const client = new ShopifyClient("access-token", "my-store.myshopify.com");
 
-    const result = await client.exportProducts({
+    const result = await client.listProducts({
       status: "ACTIVE",
       vendor: "O'Reilly",
       searchQuery: "tag:sale",
@@ -113,7 +113,7 @@ describe("ShopifyClient.exportProducts", () => {
     );
     const client = new ShopifyClient("access-token", "my-store.myshopify.com");
 
-    const result = await client.exportProducts({ limit: 10 });
+    const result = await client.listProducts({ limit: 10 });
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {

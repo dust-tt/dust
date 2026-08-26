@@ -4,7 +4,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { createShopifyClient } from "@app/lib/api/actions/servers/shopify/client";
 import { MAX_EXPORT_ITEMS } from "@app/lib/api/actions/servers/shopify/helpers";
 import { SHOPIFY_TOOLS_METADATA } from "@app/lib/api/actions/servers/shopify/metadata";
-import { renderProductExport } from "@app/lib/api/actions/servers/shopify/rendering";
+import { renderProductList } from "@app/lib/api/actions/servers/shopify/rendering";
 import { Err, Ok } from "@app/types/shared/result";
 
 // The remaining export contracts stay registered for the preview but return a
@@ -13,7 +13,7 @@ const notImplemented = () =>
   Promise.resolve(new Err(new MCPError("Shopify tool not yet implemented.")));
 
 const handlers: ToolHandlers<typeof SHOPIFY_TOOLS_METADATA> = {
-  export_products: async (
+  list_products: async (
     { status, vendor, searchQuery, limit },
     { authInfo }
   ) => {
@@ -21,7 +21,7 @@ const handlers: ToolHandlers<typeof SHOPIFY_TOOLS_METADATA> = {
     if (client.isErr()) {
       return client;
     }
-    const products = await client.value.exportProducts({
+    const products = await client.value.listProducts({
       status,
       vendor,
       searchQuery,
@@ -30,7 +30,7 @@ const handlers: ToolHandlers<typeof SHOPIFY_TOOLS_METADATA> = {
     if (products.isErr()) {
       return products;
     }
-    return new Ok(renderProductExport(products.value));
+    return new Ok(renderProductList(products.value));
   },
   export_customer_ltv: notImplemented,
   export_sales: notImplemented,

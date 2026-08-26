@@ -23,7 +23,7 @@ export const ProductNodeSchema = z.object({
 
 export type ShopifyProduct = z.infer<typeof ProductNodeSchema>;
 
-export interface ProductExportResult {
+export interface ProductListResult {
   products: ShopifyProduct[];
   truncated: boolean;
 }
