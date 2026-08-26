@@ -12,6 +12,8 @@ import {
   DEFAULT_RESULTS,
   resolveTimeWindow,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import { fetchAnalystCreditUsage } from "@app/lib/api/analytics/analyst/credits";
+import { buildAnalystScope } from "@app/lib/api/analytics/analyst/scope";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import {
   fetchContextOriginBreakdown,
@@ -20,7 +22,6 @@ import {
 import {
   fetchCreditTimeseries,
   fetchCreditTimeseriesBreakdown,
-  fetchCreditUsage,
 } from "@app/lib/api/assistant/observability/credit_usage";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import {
@@ -684,21 +685,26 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     }
 
     const selectedGroupBy = groupBy ?? "none";
-    const result = await fetchCreditUsage(auth, {
+    const scope = buildAnalystScope({
       startDate: window.value.startDate,
       endDate: window.value.endDate,
-      limit: limit ?? DEFAULT_RESULTS,
-      groupBy: selectedGroupBy,
-      contextOrigin: source,
+      timezone: window.value.timezone,
+      source,
       agentIds,
       userIds,
       agentTagIds,
       modelIds,
     });
+    const result = await fetchAnalystCreditUsage({
+      auth,
+      scope,
+      groupBy: selectedGroupBy,
+      limit: limit ?? DEFAULT_RESULTS,
+    });
 
     if (result.isErr()) {
       return new Err(
-        new MCPError(`Failed to estimate credit usage: ${result.error.message}`)
+        new MCPError(`Failed to retrieve credit usage: ${result.error.message}`)
       );
     }
 
@@ -715,9 +721,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     }
 
     const header =
-      `Estimated credit usage for ${label} (${tz}): ${totalCredits} credits. ` +
-      "These are estimates — point the user to the workspace Usage page for " +
-      "exact billed credits.";
+      `Credit usage for ${label} (${tz}): ${totalCredits} credits. These ` +
+      "are the workspace's reconciled billed credits, the same ones the " +
+      "Usage page shows; very recent activity may still be settling.";
 
     if (selectedGroupBy === "none" || rows.length === 0) {
       return new Ok([{ type: "text" as const, text: header }]);
@@ -733,8 +739,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       {
         type: "text" as const,
         text:
-          `${header}\nTop ${selectedGroupBy}s by estimated credits:\n` +
-          lines.join("\n"),
+          `${header}\nTop ${selectedGroupBy}s by credits:\n` + lines.join("\n"),
       },
     ]);
   },

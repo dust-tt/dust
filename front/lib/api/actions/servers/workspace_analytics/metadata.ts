@@ -267,21 +267,20 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
   {
     name: "get_credit_usage",
     description:
-      "Estimate AWU credit consumption over a time window (defaults to the " +
+      "Return AWU credit consumption over a time window (defaults to the " +
       "current calendar month), optionally broken down by the top agents, " +
       "users or models. Credits combine model compute and tool usage, " +
-      "mirroring how billing computes them. IMPORTANT: these figures are " +
-      "ESTIMATES derived from usage logs — always tell the user they are " +
-      "approximate and point them to the workspace Usage page for exact, " +
-      "billed credit amounts. Optionally filter by source (context_origin), " +
-      "agent, user, tag, or model — e.g. filter by tag to attribute credits " +
-      "to all agents with a given tag, or group by model to see which models " +
-      "drive spend. Admin-only.",
+      "mirroring how billing computes them — these are the same reconciled, " +
+      "billed credits the workspace Usage page reports; recent activity can " +
+      "lag by a few minutes. Free platform usage is excluded. Optionally " +
+      "filter by source (context_origin), agent, user, tag, or model — e.g. " +
+      "filter by tag to attribute credits to all agents with a given tag, or " +
+      "group by model to see which models drive spend. Admin-only.",
     schema: getCreditUsageSchema,
     stake: "never_ask",
     displayLabels: {
-      running: "Estimating credit usage",
-      done: "Estimated credit usage",
+      running: "Retrieving credit usage",
+      done: "Retrieved credit usage",
     },
     toolCostCategory: "basic",
     freeUsage: false,
