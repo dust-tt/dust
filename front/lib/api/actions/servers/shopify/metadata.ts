@@ -141,8 +141,7 @@ export const SHOPIFY_SERVER = {
       supported_use_cases: ["platform_actions"] as const,
     },
     icon: "ActionTableIcon",
-    documentationUrl:
-      "https://shopify.dev/docs/api/admin-graphql/latest/queries/products",
+    documentationUrl: null,
   },
   tools: SHOPIFY_TOOLS_METADATA,
 } as const satisfies ServerMetadata;
