@@ -249,6 +249,7 @@ describe("ConversationResource", () => {
 
       expect(result).toBe(0);
     });
+
   });
 
   describe("fetchByModelIds", () => {

@@ -7,6 +7,7 @@ import { AGENT_MESSAGE_STATUSES } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { CreationOptional } from "sequelize";
+import { Op } from "sequelize";
 
 const ENABLED_CONSUMPTION_MODES = [
   "shadow",
@@ -160,8 +161,20 @@ AgentMessageConsumptionEventModel.init(
       },
       {
         concurrently: true,
+        fields: ["id", "workspaceId", "runKey"],
+        where: { processedAt: null },
+        name: "agent_message_consumption_events_pending_by_id",
+      },
+      {
+        concurrently: true,
         fields: ["workspaceId", "agentMessageId", "id"],
         name: "agent_message_consumption_events_workspace_message_id",
+      },
+      {
+        concurrently: true,
+        fields: ["createdAt", "id"],
+        where: { processedAt: { [Op.not]: null } },
+        name: "agent_message_consumption_events_processed_created_at",
       },
     ],
     validate: {

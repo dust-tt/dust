@@ -12,6 +12,9 @@ const {
   checkCreditsActivity,
   finalizeErroredSandboxChildToolActivity,
   finalizeSuccessfulAgentLoopActivity,
+  initializeConsumptionExecutionActivity,
+  recordModelCallConsumptionActivity,
+  recordToolCompletionConsumptionActivity,
   runToolActivity,
   runRetryableToolActivity,
   runToolActivityWithExplicitCancellation,
@@ -26,6 +29,9 @@ const {
   checkCreditsActivity: vi.fn(),
   finalizeErroredSandboxChildToolActivity: vi.fn(),
   finalizeSuccessfulAgentLoopActivity: vi.fn(),
+  initializeConsumptionExecutionActivity: vi.fn(),
+  recordModelCallConsumptionActivity: vi.fn(),
+  recordToolCompletionConsumptionActivity: vi.fn(),
   runToolActivity: vi.fn(),
   runRetryableToolActivity: vi.fn(),
   runToolActivityWithExplicitCancellation: vi.fn(),
@@ -75,6 +81,9 @@ vi.mock("@temporalio/workflow", () => {
       finalizeGracefullyStoppedAgentLoopActivity: unusedActivity,
       finalizeInterruptedAgentLoopActivity: unusedActivity,
       finalizeSuccessfulAgentLoopActivity,
+      initializeConsumptionExecutionActivity,
+      recordModelCallConsumptionActivity,
+      recordToolCompletionConsumptionActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity:
         options.cancellationType === undefined
@@ -147,7 +156,7 @@ describe("runSandboxChildToolWorkflow", () => {
 
     expect(runToolActivity).toHaveBeenCalledOnce();
     expect(runRetryableToolActivity).not.toHaveBeenCalled();
-    expect(patched).not.toHaveBeenCalled();
+    expect(patched).not.toHaveBeenCalledWith("sandbox-child-tool-retry-policy");
   });
 
   it("uses the single-attempt activity for no_retry", async () => {
@@ -271,6 +280,7 @@ describe("runSandboxChildToolWorkflow", () => {
 describe("agentLoopWorkflow activity cancellation patches", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    patched.mockReturnValue(true);
     runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue({
       actionBlobs: [
         {
@@ -307,6 +317,132 @@ describe("agentLoopWorkflow activity cancellation patches", () => {
     );
     expect(deprecatePatch).toHaveBeenCalledWith(
       "wait-for-all-tool-activities-before-finalization"
+    );
+  });
+});
+
+describe("agentLoopWorkflow consumption context patch", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue({
+      actionBlobs: [],
+      runId: "run-1",
+    });
+    finalizeSuccessfulAgentLoopActivity.mockResolvedValue(undefined);
+  });
+
+  it("initializes and propagates consumption context for new histories", async () => {
+    const consumptionContext = {
+      mode: "live",
+      rootAgentMessageId: 123,
+      runKey: "execution",
+    } as const;
+    patched.mockReturnValue(true);
+    initializeConsumptionExecutionActivity.mockResolvedValue(
+      consumptionContext
+    );
+    runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue({
+      actionBlobs: [
+        {
+          actionId: 123,
+          needsApproval: false,
+          retryPolicy: "no_retry",
+        },
+      ],
+      runId: "run-1",
+    });
+    runToolActivityWithExplicitCancellation.mockResolvedValue({
+      deferredEvents: [],
+      shouldPauseAgentLoop: true,
+    });
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType,
+      initialStartTime: 0,
+      runKey: "execution",
+      startStep: 0,
+    });
+
+    expect(patched).toHaveBeenCalledWith("agent-loop-consumption-context");
+    expect(initializeConsumptionExecutionActivity).toHaveBeenCalledWith(
+      authType,
+      {
+        agentMessageId: "am123",
+        runKey: "execution",
+        startStep: 0,
+      }
+    );
+    expect(
+      runModelAndCreateActionsActivityWithExplicitCancellation
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        consumptionContext,
+        recordConsumptionInline: false,
+      })
+    );
+    expect(recordModelCallConsumptionActivity).toHaveBeenCalledWith(authType, {
+      agentMessageId: "am123",
+      consumptionContext,
+      conversationId: "c123",
+      dustRunId: "run-1",
+      emittedActionModelIds: [123],
+    });
+    expect(runToolActivityWithExplicitCancellation).toHaveBeenCalledWith(
+      authType,
+      expect.objectContaining({
+        consumptionContext,
+        recordConsumptionInline: false,
+      })
+    );
+    expect(recordToolCompletionConsumptionActivity).toHaveBeenCalledWith(
+      authType,
+      {
+        actionModelId: 123,
+        agentMessageId: "am123",
+        consumptionContext,
+      }
+    );
+    expect(finalizeSuccessfulAgentLoopActivity).toHaveBeenCalledWith(
+      authType,
+      expect.objectContaining({ agentMessageId: "am123" }),
+      consumptionContext
+    );
+  });
+
+  it("keeps the previous command payload for pre-patch histories", async () => {
+    const legacyAgentLoopArgs = {
+      ...agentLoopArgs,
+      conversationTitle: "Existing",
+      rootAgentMessageId: 123,
+      runKey: "execution",
+    };
+
+    await agentLoopWorkflow({
+      agentLoopArgs: legacyAgentLoopArgs,
+      authType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(patched).not.toHaveBeenCalledWith("agent-loop-consumption-context");
+    expect(initializeConsumptionExecutionActivity).not.toHaveBeenCalled();
+    const [modelActivityArgs] =
+      runModelAndCreateActionsActivityWithExplicitCancellation.mock.calls[0];
+    expect(modelActivityArgs).not.toHaveProperty("consumptionContext");
+    expect(modelActivityArgs).toMatchObject({
+      authType,
+      checkForResume: true,
+      forceDisableToolUse: false,
+      runAgentArgs: {
+        ...legacyAgentLoopArgs,
+        initialStartTime: 0,
+      },
+      step: 0,
+    });
+    expect(finalizeSuccessfulAgentLoopActivity).toHaveBeenCalledWith(
+      authType,
+      expect.objectContaining({ agentMessageId: "am123" })
     );
   });
 });

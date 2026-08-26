@@ -431,11 +431,13 @@ describe("fixed-window counters", () => {
   beforeAll(async () => {
     const redisModule = await import("@app/lib/api/redis");
     const rateLimiterModule = await import("@app/lib/utils/rate_limiter");
+    const statsModule = await import("@app/lib/utils/statsd");
 
     closeRedisClients = redisModule.closeRedisClients;
     runOnRedis = redisModule.runOnRedis;
     addFixedWindowCount = rateLimiterModule.addFixedWindowCount;
     getFixedWindowCount = rateLimiterModule.getFixedWindowCount;
+    statsDMetrics = statsModule.statsDMetrics;
   });
 
   afterEach(async () => {
@@ -480,6 +482,30 @@ describe("fixed-window counters", () => {
     });
 
     expect(count.isOk() && count.value).toBe(0);
+  });
+
+  it("applies an idempotent fixed-window increment only once", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    const bounds = boundsFor("idempotent");
+    redisKeysToDelete.add(`rate_limiter:${key}:${bounds.label}`);
+    redisKeysToDelete.add(`rate_limiter:${key}:${bounds.label}:idempotency`);
+
+    for (const incrementBy of [2_500_000, 9_000_000]) {
+      await addFixedWindowCount({
+        key,
+        bounds,
+        incrementBy,
+        idempotencyKey: "execution-x",
+        logger,
+      });
+    }
+
+    const count = await getFixedWindowCount({ key, bounds });
+    expect(count.isOk() && count.value).toBe(2_500_000);
+    expect(statsDMetrics.distribution).toHaveBeenCalledWith(
+      "ratelimiter.fixed_window_idempotency_fields",
+      1
+    );
   });
 
   it("keeps separate counts per window label", async () => {

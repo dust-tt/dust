@@ -500,7 +500,7 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare completedAt: Date | null;
   declare prunedContext: boolean | null;
   declare costCredits: number | null;
-  declare consumptionMode: AgentMessageConsumptionMode | null;
+  declare consumptionRolloutMode: AgentMessageConsumptionMode | null;
 
   // "paused": loop stopped after crossing the spend checkpoint, waiting on the user.
   // Declining sets the message status to "gracefully_stopped"
@@ -611,9 +611,8 @@ AgentMessageModel.init(
       allowNull: true,
       defaultValue: null,
     },
-    consumptionMode: {
+    consumptionRolloutMode: {
       type: DataTypes.STRING(16),
-      field: "consumptionRolloutMode",
       allowNull: true,
       defaultValue: null,
       validate: { isIn: [["off", "shadow", "live"]] },

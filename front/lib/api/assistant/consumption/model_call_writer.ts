@@ -16,6 +16,8 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { signalConsumptionEventsAppended } from "@app/temporal/consumption/client";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 type ModelCallConsumptionContext = {
   agentMessageModelId: ModelId;
@@ -34,8 +36,8 @@ export async function recordModelCallConsumption(
     context: ModelCallConsumptionContext;
     dustRunId: string;
     emittedActions: AgentMCPActionResource[];
-  }
-): Promise<void> {
+  },
+): Promise<Result<void, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const [run] = await RunResource.listByDustRunIds(auth, {
@@ -44,27 +46,29 @@ export async function recordModelCallConsumption(
   if (!run) {
     logger.warn(
       { workspaceId, dustRunId },
-      "[Consumption] Reported model call has no run."
+      "[Consumption] Reported model call has no run.",
     );
-    return;
+    return new Err(new Error(`Run ${dustRunId} was not found`));
   }
 
   const usages = await RunResource.listRunUsagesForRuns(auth, { runs: [run] });
+  if (usages.length === 0) {
+    return new Err(new Error(`Run ${dustRunId} has no reported usage`));
+  }
   for (const [index, usage] of usages.entries()) {
-    await recordRunUsageConsumption(auth, {
+    const result = await recordRunUsageConsumption(auth, {
       context,
       emittedActions: index === 0 ? emittedActions : [],
       usage,
     });
-  }
-  if (usages.length > 0) {
-    const signalRes = await signalConsumptionEventsAppended(auth.toJSON(), {
-      runKey: context.runKey,
-    });
-    if (signalRes.isErr()) {
-      throw signalRes.error;
+    if (result.isErr()) {
+      return result;
     }
   }
+  await signalConsumptionEventsAppended(auth.toJSON(), {
+    runKey: context.runKey,
+  });
+  return new Ok(undefined);
 }
 
 async function recordRunUsageConsumption(
@@ -77,24 +81,28 @@ async function recordRunUsageConsumption(
     context: ModelCallConsumptionContext;
     emittedActions: AgentMCPActionResource[];
     usage: RunUsageWithRunKeyType;
-  }
-): Promise<void> {
+  },
+): Promise<Result<void, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const modelVisibleActions = emittedActions.filter(
     (action) =>
-      !isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
+      !isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo),
   );
-  const callFootprints = await measureCallFootprints(auth, {
+  const callFootprintsRes = await measureCallFootprints(auth, {
     actions: modelVisibleActions,
     modelId: usage.modelId,
   });
+  if (callFootprintsRes.isErr()) {
+    return callFootprintsRes;
+  }
+  const callFootprints = callFootprintsRes.value;
 
   await withTransaction(async (transaction) => {
     const consumedToolRows =
       await AgentMessageConsumptionItemResource.listConsumptionToolResultsPendingConsumption(
         auth,
-        { agentMessageModelId: context.agentMessageModelId, transaction }
+        { agentMessageModelId: context.agentMessageModelId, transaction },
       );
 
     const consumption = buildModelCallConsumption({
@@ -195,10 +203,11 @@ async function recordRunUsageConsumption(
           runKey: context.runKey,
           runUsageModelId: usage.runUsageModelId,
         },
-        "[Consumption] Cached input below the tool results it carried."
+        "[Consumption] Cached input below the tool results it carried.",
       );
     }
   });
+  return new Ok(undefined);
 }
 
 async function measureCallFootprints(
@@ -209,10 +218,10 @@ async function measureCallFootprints(
   }: {
     actions: AgentMCPActionResource[];
     modelId: string;
-  }
-): Promise<number[]> {
+  },
+): Promise<Result<number[], Error>> {
   if (actions.length === 0) {
-    return [];
+    return new Ok([]);
   }
 
   const footprintsRes = await measureToolCallOutputFootprints(auth, {
@@ -222,9 +231,5 @@ async function measureCallFootprints(
       functionCallArguments: action.functionCallArguments,
     })),
   });
-  if (footprintsRes.isErr()) {
-    throw footprintsRes.error;
-  }
-
-  return footprintsRes.value;
+  return footprintsRes;
 }

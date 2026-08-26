@@ -8,6 +8,7 @@ import {
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -56,8 +57,8 @@ export async function indexAgentMessageConsumptionSnapshot(
     agentMessageModelId,
     eventModelId,
   }: {
-    agentMessageModelId: number;
-    eventModelId: number;
+    agentMessageModelId: ModelId;
+    eventModelId: ModelId;
   }
 ): Promise<
   Result<

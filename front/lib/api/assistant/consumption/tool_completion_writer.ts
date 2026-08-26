@@ -7,7 +7,6 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   getMCPServerBillingKey,
   getToolBillingInfo,
-  isFreeOrigin,
   MCP_SERVER_AGENT_MESSAGE_TOOL_AWU_CAP,
   TOOL_COST_CATEGORY_AWU_WEIGHTS,
 } from "@app/lib/credits/agent_message_billing";
@@ -23,6 +22,8 @@ import logger from "@app/logger/logger";
 import { signalConsumptionEventsAppended } from "@app/temporal/consumption/client";
 import { isTerminalAgentMessageStatus } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 type ToolCompletionConsumptionContext = {
   agentMessageId: string;
@@ -48,8 +49,8 @@ export async function recordToolCompletionConsumption(
   }: {
     context: ToolCompletionConsumptionContext;
     action: AgentMCPActionResource;
-  }
-): Promise<void> {
+  },
+): Promise<Result<void, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const ownToolCallRow =
@@ -57,13 +58,13 @@ export async function recordToolCompletionConsumption(
       auth,
       {
         agentMCPActionModelId: action.id,
-      }
+      },
     );
   const sandboxChildInfo = action.stepContext.sandboxChildActionInfo;
   const parentAction = isSandboxChildActionInfo(sandboxChildInfo)
     ? await AgentMCPActionResource.fetchById(
         auth,
-        sandboxChildInfo.parentActionId
+        sandboxChildInfo.parentActionId,
       )
     : null;
   const toolCallRow =
@@ -73,11 +74,17 @@ export async function recordToolCompletionConsumption(
           auth,
           {
             agentMCPActionModelId: parentAction.id,
-          }
+          },
         )
       : null);
   if (!toolCallRow) {
-    return;
+    logger.warn(
+      { workspaceId, actionId: action.sId },
+      "Tool completion has no consumption call posting",
+    );
+    return new Err(
+      new Error(`Tool action ${action.sId} has no consumption call posting`),
+    );
   }
 
   const existingDirectRow =
@@ -85,14 +92,13 @@ export async function recordToolCompletionConsumption(
       auth,
       {
         agentMCPActionModelId: action.id,
-      }
+      },
     );
   if (existingDirectRow) {
-    await signalAffectedExecutions(
-      auth,
-      new Set([existingDirectRow.runKey ?? context.runKey])
-    );
-    return;
+    if (existingDirectRow.runKey) {
+      await signalAffectedExecutions(auth, [existingDirectRow.runKey]);
+    }
+    return new Ok(undefined);
   }
 
   let resultTokensCount = 0;
@@ -103,15 +109,21 @@ export async function recordToolCompletionConsumption(
     if (!emittingUsage) {
       logger.warn(
         { workspaceId, actionId: action.sId },
-        "[Consumption] Tool row has no emitting run usage."
+        "[Consumption] Tool row has no emitting run usage.",
       );
-      return;
+      return new Err(
+        new Error(`Tool action ${action.sId} has no emitting run usage`),
+      );
     }
-    resultTokensCount = await measureResultFootprint(auth, {
+    const resultFootprintRes = await measureResultFootprint(auth, {
       action,
       conversationModelId: toolCallRow.conversationId,
       usage: emittingUsage,
     });
+    if (resultFootprintRes.isErr()) {
+      return resultFootprintRes;
+    }
+    resultTokensCount = resultFootprintRes.value;
   }
   const chargeMicro = await rateToolCharge(auth, {
     action,
@@ -131,7 +143,7 @@ export async function recordToolCompletionConsumption(
           runKey: context.runKey,
           runUsageModelId: toolCallRow.runUsageId,
           transaction,
-        }
+        },
       );
     if (!insertedRow) {
       return null;
@@ -151,8 +163,6 @@ export async function recordToolCompletionConsumption(
     return { chargeMicro };
   });
 
-  await signalAffectedExecutions(auth, new Set([context.runKey]));
-
   if (settlement) {
     logger.info(
       {
@@ -162,22 +172,21 @@ export async function recordToolCompletionConsumption(
         chargeMicro: settlement.chargeMicro,
         resultTokensCount,
       },
-      "[Consumption] Recorded a tool completion posting."
+      "[Consumption] Recorded a tool completion posting.",
     );
   }
+  await signalAffectedExecutions(auth, [context.runKey]);
+  return new Ok(undefined);
 }
 
 async function signalAffectedExecutions(
   auth: Authenticator,
-  runKeys: Set<string>
+  runKeys: string[],
 ): Promise<void> {
-  for (const runKey of runKeys) {
-    const signalRes = await signalConsumptionEventsAppended(auth.toJSON(), {
+  for (const runKey of new Set(runKeys)) {
+    await signalConsumptionEventsAppended(auth.toJSON(), {
       runKey,
     });
-    if (signalRes.isErr()) {
-      throw signalRes.error;
-    }
   }
 }
 
@@ -191,7 +200,7 @@ async function rateToolCharge(
     action: AgentMCPActionResource;
     agentMessageId: string;
     agentMessageModelId: ModelId;
-  }
+  },
 ): Promise<number> {
   if (!isToolExecutionStatusBillable(action.status)) {
     return 0;
@@ -201,25 +210,21 @@ async function rateToolCharge(
     await ConversationResource.fetchAgentMessageCreditContext(auth, {
       agentMessageId,
     });
-  if (
-    !creditContext ||
-    isTerminalAgentMessageStatus(creditContext.status) ||
-    isFreeOrigin(creditContext.triggeringUserMessageOrigin)
-  ) {
+  if (!creditContext || isTerminalAgentMessageStatus(creditContext.status)) {
     return 0;
   }
 
   const billingAction = billingActionOf(action);
   const { toolCostCategory, freeUsage } = getToolBillingInfo(
     billingAction.internalMCPServerName,
-    billingAction.toolName
+    billingAction.toolName,
   );
   if (freeUsage) {
     return 0;
   }
 
   const ratedCreditAmountMicro = roundCreditsToMicroCredits(
-    TOOL_COST_CATEGORY_AWU_WEIGHTS[toolCostCategory]
+    TOOL_COST_CATEGORY_AWU_WEIGHTS[toolCostCategory],
   );
   const mcpServerBillingKey = getMCPServerBillingKey(billingAction);
   if (mcpServerBillingKey === null) {
@@ -245,7 +250,7 @@ async function chargedCreditsForMCPServer(
   }: {
     agentMessageModelId: ModelId;
     mcpServerBillingKey: string;
-  }
+  },
 ): Promise<number> {
   const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
     agentMessageModelId,
@@ -255,16 +260,16 @@ async function chargedCreditsForMCPServer(
       auth,
       {
         agentMessageModelId,
-      }
+      },
     );
   const actionModelIdsOfServer = new Set(
     actions
       .filter(
         (candidate) =>
           getMCPServerBillingKey(billingActionOf(candidate)) ===
-          mcpServerBillingKey
+          mcpServerBillingKey,
       )
-      .map((candidate) => candidate.id)
+      .map((candidate) => candidate.id),
   );
 
   return chargedRows.reduce(
@@ -272,7 +277,7 @@ async function chargedCreditsForMCPServer(
       actionModelIdsOfServer.has(row.agentMCPActionId)
         ? total + (row.directCreditAmountMicro ?? 0)
         : total,
-    0
+    0,
   );
 }
 
@@ -286,16 +291,18 @@ async function measureResultFootprint(
     action: AgentMCPActionResource;
     conversationModelId: ModelId;
     usage: RunUsageWithRunKeyType;
-  }
-): Promise<number> {
+  },
+): Promise<Result<number, Error>> {
   const [conversation] = await ConversationResource.fetchByModelIds(
     auth,
     [conversationModelId],
-    { includeDeleted: true }
+    { includeDeleted: true },
   );
   if (!conversation) {
-    throw new Error(
-      `[Consumption] Conversation ${conversationModelId} not found while measuring a tool result.`
+    return new Err(
+      new Error(
+        `Conversation ${conversationModelId} not found while measuring a tool result`,
+      ),
     );
   }
   const capabilities = await getAttachmentCapabilityContext(auth, conversation);
@@ -306,7 +313,7 @@ async function measureResultFootprint(
       ignoreContent: false,
     });
   if (!enrichedAction) {
-    return 0;
+    return new Ok(0);
   }
 
   const footprintsRes = await measureToolCallFootprints(auth, {
@@ -320,8 +327,7 @@ async function measureResultFootprint(
     ],
   });
   if (footprintsRes.isErr()) {
-    throw footprintsRes.error;
+    return footprintsRes;
   }
-
-  return footprintsRes.value[0]?.inputTokensCount ?? 0;
+  return new Ok(footprintsRes.value[0]?.inputTokensCount ?? 0);
 }

@@ -18,6 +18,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok } from "@app/types/shared/result";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/provider_credentials", () => ({
@@ -37,13 +38,13 @@ const RUN_KEY_Y = "execution-y";
 
 const EXTERNAL_TOOL_CHARGE_MICRO = 3 * MICRO_CREDITS_PER_CREDIT;
 
-async function setupToolCall() {
+async function setupToolCall({ origin }: { origin?: UserMessageOrigin } = {}) {
   const { authenticator: auth, workspace } = await createResourceTest({
     role: "admin",
   });
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
     auth,
-    { name: `Consumption ${generateRandomModelSId()}` }
+    { name: `Consumption ${generateRandomModelSId()}` },
   );
   const conversation = await ConversationFactory.create(auth, {
     agentConfigurationId: agentConfiguration.sId,
@@ -53,10 +54,21 @@ async function setupToolCall() {
     inputTokens: INPUT_TOKENS_COUNT,
     outputTokens: OUTPUT_TOKENS_COUNT,
   });
+  const triggeringMessage = origin
+    ? await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Run the tool",
+        origin,
+      })
+    : null;
   const { agentMessage } = await ConversationFactory.createAgentMessage(auth, {
     workspace,
     conversation,
     agentConfig: agentConfiguration,
+    parentMessageModelId: triggeringMessage?.messageRow.id,
+    rank: triggeringMessage ? 1 : 0,
     runIds: [run.dustRunId],
   });
   const { action } = await AgentMCPActionFactory.create(auth, {
@@ -86,7 +98,7 @@ async function setupToolCall() {
 
 async function listConsumptionItems(
   auth: Authenticator,
-  agentMessageModelId: ModelId
+  agentMessageModelId: ModelId,
 ) {
   const items =
     await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
@@ -96,19 +108,19 @@ async function listConsumptionItems(
 
   return items.filter(
     (item) =>
-      item.attributionVersion === INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION
+      item.attributionVersion === INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
   );
 }
 
 function sumReconciled(
   items: AgentMessageConsumptionItemResource[],
-  runKey?: string
+  runKey?: string,
 ): number {
   return items
     .filter((item) => runKey === undefined || item.runKey === runKey)
     .reduce(
       (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
-      0
+      0,
     );
 }
 
@@ -116,7 +128,7 @@ describe("recordToolCompletionConsumption", () => {
   beforeEach(() => {
     vi.mocked(getLlmCredentials).mockResolvedValue({} as never);
     vi.mocked(tokenCountForTexts).mockImplementation(
-      async (texts) => new Ok(texts.map(() => TOKENS_PER_FOOTPRINT))
+      async (texts) => new Ok(texts.map(() => TOKENS_PER_FOOTPRINT)),
     );
   });
 
@@ -125,13 +137,16 @@ describe("recordToolCompletionConsumption", () => {
     await action.markAsSucceeded({ executionDurationMs: 10 });
     const settledAction = await AgentMCPActionResource.fetchByModelIdWithAuth(
       auth,
-      action.id
+      action.id,
     );
 
-    await recordToolCompletionConsumption(auth, {
+    const result = await recordToolCompletionConsumption(auth, {
       action: settledAction!,
       context,
     });
+    expect(result.isOk(), result.isErr() ? result.error.message : "").toBe(
+      true,
+    );
 
     const items = await listConsumptionItems(auth, context.agentMessageModelId);
     const toolRow = items.find((item) => item.itemType === "tool_direct");
@@ -147,12 +162,12 @@ describe("recordToolCompletionConsumption", () => {
     });
     expect(sumReconciled(items, RUN_KEY_X)).toBe(
       creditAmountMicroFromCostMicroUsd(usage.costMicroUsd) +
-        EXTERNAL_TOOL_CHARGE_MICRO
+        EXTERNAL_TOOL_CHARGE_MICRO,
     );
     await expect(
       AgentMessageConsumptionEventResource.fetchByEventKey(auth, {
         eventKey: `tool-completion:${action.id}:${RUN_KEY_X}`,
-      })
+      }),
     ).resolves.not.toBeNull();
   });
 
@@ -161,7 +176,7 @@ describe("recordToolCompletionConsumption", () => {
     await action.markAsSucceeded({ executionDurationMs: 10 });
     const settledAction = await AgentMCPActionResource.fetchByModelIdWithAuth(
       auth,
-      action.id
+      action.id,
     );
 
     await recordToolCompletionConsumption(auth, {
@@ -170,7 +185,7 @@ describe("recordToolCompletionConsumption", () => {
     });
     const firstPass = await listConsumptionItems(
       auth,
-      context.agentMessageModelId
+      context.agentMessageModelId,
     );
 
     await recordToolCompletionConsumption(auth, {
@@ -179,14 +194,14 @@ describe("recordToolCompletionConsumption", () => {
     });
     const secondPass = await listConsumptionItems(
       auth,
-      context.agentMessageModelId
+      context.agentMessageModelId,
     );
 
     expect(sumReconciled(secondPass)).toBe(sumReconciled(firstPass));
     await expect(
       AgentMessageConsumptionEventResource.fetchByEventKey(auth, {
         eventKey: `tool-completion:${action.id}:${RUN_KEY_X}`,
-      })
+      }),
     ).resolves.not.toBeNull();
   });
 
@@ -195,7 +210,7 @@ describe("recordToolCompletionConsumption", () => {
     await action.markAsSucceeded({ executionDurationMs: 10 });
     const settledAction = await AgentMCPActionResource.fetchByModelIdWithAuth(
       auth,
-      action.id
+      action.id,
     );
     await recordToolCompletionConsumption(auth, {
       action: settledAction!,
@@ -225,7 +240,7 @@ describe("recordToolCompletionConsumption", () => {
       runs: [consumingRun],
     });
     expect(sumReconciled(items, RUN_KEY_Y)).toBe(
-      creditAmountMicroFromCostMicroUsd(usage.costMicroUsd)
+      creditAmountMicroFromCostMicroUsd(usage.costMicroUsd),
     );
   });
 
@@ -233,10 +248,10 @@ describe("recordToolCompletionConsumption", () => {
     const { auth, action, context, run } = await setupToolCall();
     const beforeItems = await listConsumptionItems(
       auth,
-      context.agentMessageModelId
+      context.agentMessageModelId,
     );
     const emittedToolRow = beforeItems.find(
-      (item) => item.itemType === "tool_call"
+      (item) => item.itemType === "tool_call",
     );
     const callCreditAmountMicro =
       emittedToolRow?.reconciledCreditAmountMicro ?? 0;
@@ -245,13 +260,13 @@ describe("recordToolCompletionConsumption", () => {
       runs: [run],
     });
     const exactCreditAmountMicro = creditAmountMicroFromCostMicroUsd(
-      usage.costMicroUsd
+      usage.costMicroUsd,
     );
 
     await action.markAsSucceeded({ executionDurationMs: 10 });
     const settledAction = await AgentMCPActionResource.fetchByModelIdWithAuth(
       auth,
-      action.id
+      action.id,
     );
     await recordToolCompletionConsumption(auth, {
       action: settledAction!,
@@ -266,19 +281,19 @@ describe("recordToolCompletionConsumption", () => {
     expect(callRow?.reconciledCreditAmountMicro).toBe(callCreditAmountMicro);
     expect(directRow?.runKey).toBe(RUN_KEY_Y);
     expect(directRow?.reconciledCreditAmountMicro).toBe(
-      EXTERNAL_TOOL_CHARGE_MICRO
+      EXTERNAL_TOOL_CHARGE_MICRO,
     );
     expect(sumReconciled(items, RUN_KEY_X)).toBe(exactCreditAmountMicro);
     expect(sumReconciled(items, RUN_KEY_Y)).toBe(EXTERNAL_TOOL_CHARGE_MICRO);
     await expect(
       AgentMessageConsumptionEventResource.fetchByEventKey(auth, {
         eventKey: `tool-compensation:${action.id}:${RUN_KEY_X}`,
-      })
+      }),
     ).resolves.toBeNull();
     await expect(
       AgentMessageConsumptionEventResource.fetchByEventKey(auth, {
         eventKey: `tool-completion:${action.id}:${RUN_KEY_Y}`,
-      })
+      }),
     ).resolves.not.toBeNull();
   });
 
@@ -287,7 +302,7 @@ describe("recordToolCompletionConsumption", () => {
     await action.updateStatus("denied");
     const settledAction = await AgentMCPActionResource.fetchByModelIdWithAuth(
       auth,
-      action.id
+      action.id,
     );
 
     await recordToolCompletionConsumption(auth, {
@@ -302,6 +317,29 @@ describe("recordToolCompletionConsumption", () => {
       directCreditAmountMicro: 0,
       inputTokensCount: TOKENS_PER_FOOTPRINT,
     });
+  });
+
+  it("records the rated tool amount before a free-origin bill waives it", async () => {
+    const { auth, action, context } = await setupToolCall({
+      origin: "agent_sidekick",
+    });
+    await action.markAsSucceeded({ executionDurationMs: 10 });
+    const settledAction = await AgentMCPActionResource.fetchByModelIdWithAuth(
+      auth,
+      action.id,
+    );
+
+    const result = await recordToolCompletionConsumption(auth, {
+      action: settledAction!,
+      context,
+    });
+
+    expect(result.isOk()).toBe(true);
+    const items = await listConsumptionItems(auth, context.agentMessageModelId);
+    expect(
+      items.find((item) => item.itemType === "tool_direct")
+        ?.directCreditAmountMicro,
+    ).toBe(EXTERNAL_TOOL_CHARGE_MICRO);
   });
 
   it("records a sandbox child as a charge-only posting anchored to its parent call", async () => {
@@ -325,7 +363,7 @@ describe("recordToolCompletionConsumption", () => {
     await childAction.markAsSucceeded({ executionDurationMs: 10 });
     const settledChild = await AgentMCPActionResource.fetchByModelIdWithAuth(
       auth,
-      childAction.id
+      childAction.id,
     );
 
     await recordToolCompletionConsumption(auth, {
@@ -337,10 +375,10 @@ describe("recordToolCompletionConsumption", () => {
     const parentCall = items.find(
       (item) =>
         item.itemType === "tool_call" &&
-        item.agentMCPActionId === parentAction.id
+        item.agentMCPActionId === parentAction.id,
     );
     const childRows = items.filter(
-      (item) => item.agentMCPActionId === childAction.id
+      (item) => item.agentMCPActionId === childAction.id,
     );
     expect(childRows).toHaveLength(1);
     expect(childRows[0]).toMatchObject({
@@ -383,7 +421,7 @@ describe("recordToolCompletionConsumption", () => {
       await action.markAsSucceeded({ executionDurationMs: 1 });
       const settledAction = await AgentMCPActionResource.fetchByModelIdWithAuth(
         auth,
-        action.id
+        action.id,
       );
       await recordToolCompletionConsumption(auth, {
         action: settledAction!,
@@ -395,7 +433,7 @@ describe("recordToolCompletionConsumption", () => {
           auth,
           {
             agentMCPActionModelId: action.id,
-          }
+          },
         );
       chargedAmountsMicro.push(row?.directCreditAmountMicro ?? 0);
     }
