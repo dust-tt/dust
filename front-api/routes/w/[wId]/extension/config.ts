@@ -15,7 +15,7 @@ const app = workspaceApp();
  * /api/w/{wId}/extension/config:
  *   get:
  *     summary: Get extension configuration
- *     description: Returns the extension configuration for the workspace, including blacklisted domains, and records browser extension activity.
+ *     description: Returns the extension configuration for the workspace, including blacklisted domains.
  *     tags:
  *       - Private Extension
  *     parameters:
