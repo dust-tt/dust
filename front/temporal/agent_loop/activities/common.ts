@@ -25,7 +25,7 @@ import type {
 } from "@app/types/assistant/agent";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
-  getAgentLoopData,
+  getAgentLoopRuntimeData,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type {
@@ -629,7 +629,10 @@ export async function finalizeCancellation(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  const runAgentDataRes = await getAgentLoopRuntimeData(
+    authType,
+    agentLoopArgs
+  );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       logger.info(
@@ -696,7 +699,10 @@ export async function finalizeInterruption(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  const runAgentDataRes = await getAgentLoopRuntimeData(
+    authType,
+    agentLoopArgs
+  );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       logger.info(
@@ -780,7 +786,10 @@ export async function finalizeGracefulStop(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  const runAgentDataRes = await getAgentLoopRuntimeData(
+    authType,
+    agentLoopArgs
+  );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       logger.info(
@@ -841,7 +850,10 @@ export async function finalizeCreditStop(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  const runAgentDataRes = await getAgentLoopRuntimeData(
+    authType,
+    agentLoopArgs
+  );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       logger.info(

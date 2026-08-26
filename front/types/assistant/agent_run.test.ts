@@ -1,11 +1,11 @@
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { getAgentLoopDataWithAuth } from "@app/types/assistant/agent_run";
+import { getAgentLoopRuntimeDataWithAuth } from "@app/types/assistant/agent_run";
 import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { describe, expect, it } from "vitest";
 
-describe("getAgentLoopDataWithAuth", () => {
+describe("getAgentLoopRuntimeDataWithAuth", () => {
   it("resolves an auto stream for a legacy message without a stored model", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
@@ -38,7 +38,7 @@ describe("getAgentLoopDataWithAuth", () => {
 
     expect(agentMessage.resolvedModel).toBeNull();
 
-    const result = await getAgentLoopDataWithAuth(auth, {
+    const result = await getAgentLoopRuntimeDataWithAuth(auth, {
       agentMessageId: agentMessage.sId,
       agentMessageVersion: agentMessage.version,
       conversationId: conversation.sId,
@@ -53,6 +53,7 @@ describe("getAgentLoopDataWithAuth", () => {
     }
 
     expect(result.value.agentMessage.resolvedModel).toBeNull();
+    expect("content" in result.value.conversation).toBe(false);
     expect(result.value.modelInfo.endpoint.modelConfig.modelId).not.toBe(
       AUTO_MODEL_ID
     );

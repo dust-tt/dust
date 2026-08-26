@@ -10,10 +10,9 @@ import type {
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type { AgentLoopRuntimeData } from "@app/types/assistant/agent_run";
 import type {
   AgentMessageType,
-  ConversationType,
   ConversationWithoutContentType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
@@ -40,7 +39,7 @@ export type GetOutputRequestParams = {
     modelConversation: ModelConversationTypeMultiActions;
     tokensUsed: number;
   }>;
-  conversation: ConversationType;
+  conversation: AgentLoopRuntimeData["conversation"];
   // When true, the Anthropic client defers non-eager tools behind tool search.
   // Provider-agnostic signal: clients without tool-search support ignore it.
   toolSearchEnabled: boolean;
@@ -55,8 +54,8 @@ export type GetOutputRequestParams = {
   flushParserTokens: () => Promise<void>;
   contentParser: AgentMessageContentParser;
   step: number;
-  agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
-  agentMessage: AgentLoopExecutionData["agentMessage"];
+  agentConfiguration: AgentLoopRuntimeData["agentConfiguration"];
+  agentMessage: AgentLoopRuntimeData["agentMessage"];
   model: ModelConfigurationType;
   activityTimeoutDeadlineMs: number;
   publishAgentError: (error: {

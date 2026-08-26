@@ -4,6 +4,7 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { resolveModel } from "@app/lib/api/assistant/resolve_model";
 import { getStaticReplyForUserMessage } from "@app/lib/api/assistant/static_reply";
 import { legacyModelIdToModel } from "@app/lib/api/llm";
@@ -39,7 +40,7 @@ import { isGlobalAgentId } from "./assistant";
 import { ConversationError } from "./conversation";
 
 /**
- * Error types for getAgentLoopData that indicate deleted or unavailable resources.
+ * Error types for getAgentLoopRuntimeData that indicate deleted or unavailable resources.
  * These are safe to ignore in callers since retrying won't make the data available.
  */
 const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
@@ -77,7 +78,7 @@ export type ConversationCaching =
   | { useCachedGetConversation: true; unicitySuffix: string; ttlMs: number };
 
 // Throws on error because cacheWithRedis expects functions that throw (not Result types).
-// Errors are caught and converted back to Result in getAgentLoopData.
+// Errors are caught and converted back to Result in getFullAgentLoopDataWithAuth.
 async function getConversationForAgentLoop(
   auth: Authenticator,
   conversationId: string,
@@ -158,37 +159,127 @@ export type AgentLoopExecutionData = {
   userMessage: UserMessageType;
 };
 
+export type AgentLoopRuntimeData = Omit<
+  AgentLoopExecutionData,
+  "conversation"
+> & {
+  conversation: Omit<ConversationType, "content">;
+};
+
+export type AgentLoopRuntimeDataWithAuth = AgentLoopRuntimeData & {
+  auth: Authenticator;
+};
+
+export type FullAgentLoopDataWithAuth = AgentLoopExecutionData & {
+  auth: Authenticator;
+};
+
 export type AgentLoopArgsWithTiming = AgentLoopArgs & {
   initialStartTime: number;
 };
 
-export async function getAgentLoopData(
+export async function getAgentLoopRuntimeData(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
-): Promise<
-  Result<
-    AgentLoopExecutionData & { auth: Authenticator },
-    AgentLoopDataError | Error
-  >
-> {
+): Promise<Result<AgentLoopRuntimeDataWithAuth, AgentLoopDataError | Error>> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
-  return getAgentLoopDataWithAuth(auth, agentLoopArgs);
+  return getAgentLoopRuntimeDataWithAuth(auth, agentLoopArgs);
 }
 
 /**
- * Same as getAgentLoopData but accepts a pre-built Authenticator, avoiding redundant
+ * Same as getAgentLoopRuntimeData but accepts a pre-built Authenticator, avoiding redundant
  * Authenticator.fromJSON calls when the caller already has a valid auth.
  */
-export async function getAgentLoopDataWithAuth(
+export async function getAgentLoopRuntimeDataWithAuth(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
-): Promise<
-  Result<
-    AgentLoopExecutionData & { auth: Authenticator },
-    AgentLoopDataError | Error
-  >
-> {
+): Promise<Result<AgentLoopRuntimeDataWithAuth, AgentLoopDataError | Error>> {
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    agentLoopArgs.conversationId,
+    { includeDeleted: true, includeForkingData: true }
+  );
+  if (!conversation || conversation.visibility === "deleted") {
+    return new Err(new AgentLoopDataError("conversation_deleted"));
+  }
+
+  const messageRows = await ConversationResource.getMessageByIds(
+    auth,
+    conversation,
+    [agentLoopArgs.agentMessageId, agentLoopArgs.userMessageId]
+  );
+  const agentMessageRow = messageRows.find(
+    (message) =>
+      message.sId === agentLoopArgs.agentMessageId &&
+      message.version === agentLoopArgs.agentMessageVersion &&
+      message.agentMessage
+  );
+  if (!agentMessageRow) {
+    return new Err(new Error("Agent message not found"));
+  }
+  if (agentMessageRow.visibility === "deleted") {
+    return new Err(new AgentLoopDataError("agent_message_deleted"));
+  }
+
+  const userMessageRow = messageRows.find(
+    (message) =>
+      message.sId === agentLoopArgs.userMessageId &&
+      message.version === agentLoopArgs.userMessageVersion &&
+      message.userMessage
+  );
+  if (!userMessageRow) {
+    return new Err(new Error("Unexpected: User message not found"));
+  }
+  if (userMessageRow.visibility === "deleted") {
+    return new Err(new AgentLoopDataError("user_message_deleted"));
+  }
+
+  const renderedMessages = await batchRenderMessages(
+    auth,
+    conversation,
+    [userMessageRow, agentMessageRow],
+    "full"
+  );
+  if (renderedMessages.isErr()) {
+    return renderedMessages;
+  }
+
+  const agentMessage = renderedMessages.value.find(
+    (message) =>
+      isAgentMessageType(message) &&
+      message.sId === agentLoopArgs.agentMessageId &&
+      message.version === agentLoopArgs.agentMessageVersion
+  );
+  if (!agentMessage || !isAgentMessageType(agentMessage)) {
+    return new Err(new Error("Agent message not found after rendering"));
+  }
+
+  const userMessage = renderedMessages.value.find(
+    (message) =>
+      isUserMessageType(message) &&
+      message.sId === agentLoopArgs.userMessageId &&
+      message.version === agentLoopArgs.userMessageVersion
+  );
+  if (!userMessage || !isUserMessageType(userMessage)) {
+    return new Err(new Error("User message not found after rendering"));
+  }
+
+  return buildAgentLoopRuntimeData(auth, agentLoopArgs, {
+    agentMessage,
+    conversation: {
+      ...conversation.toJSON(),
+      owner: auth.getNonNullableWorkspace(),
+      visibility: conversation.visibility,
+    },
+    userMessage,
+  });
+}
+
+export async function getFullAgentLoopDataWithAuth(
+  auth: Authenticator,
+  agentLoopArgs: AgentLoopArgs
+): Promise<Result<FullAgentLoopDataWithAuth, AgentLoopDataError | Error>> {
   const {
     agentMessageId,
     agentMessageVersion,
@@ -301,6 +392,36 @@ export async function getAgentLoopDataWithAuth(
   if (userMessage.visibility === "deleted") {
     return new Err(new AgentLoopDataError("user_message_deleted"));
   }
+
+  const runtimeData = await buildAgentLoopRuntimeData(auth, agentLoopArgs, {
+    agentMessage,
+    conversation,
+    userMessage,
+  });
+  if (runtimeData.isErr()) {
+    return runtimeData;
+  }
+
+  return new Ok({
+    ...runtimeData.value,
+    conversation,
+  });
+}
+
+async function buildAgentLoopRuntimeData(
+  auth: Authenticator,
+  agentLoopArgs: AgentLoopArgs,
+  {
+    agentMessage,
+    conversation,
+    userMessage,
+  }: {
+    agentMessage: AgentMessageType;
+    conversation: Omit<ConversationType, "content">;
+    userMessage: UserMessageType;
+  }
+): Promise<Result<AgentLoopRuntimeDataWithAuth, Error>> {
+  const { agentMessageId, agentMessageVersion } = agentLoopArgs;
 
   const agentId = agentMessage.configuration.sId;
 

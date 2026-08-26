@@ -8,7 +8,10 @@ import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandb
 import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { FileModel } from "@app/lib/resources/storage/models/files";
 import type { AgentConfigurationWithoutModelType } from "@app/types/assistant/agent";
-import type { StreamModelInfo } from "@app/types/assistant/agent_run";
+import type {
+  AgentLoopRuntimeData,
+  StreamModelInfo,
+} from "@app/types/assistant/agent_run";
 import type {
   AgentMessageType,
   ConversationType,
@@ -180,7 +183,7 @@ export type AgentLoopListToolsContext = {
   agentConfiguration: AgentConfigurationWithoutModelType;
   agentActionConfiguration: MCPServerConfigurationType;
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
-  conversation: ConversationType;
+  conversation: AgentLoopRuntimeData["conversation"];
   agentMessage: AgentMessageType;
   // Needed at listing time to know whether a person wrote the message this run
   // answers: servers an admin scoped to personal credentials are not listed for
