@@ -11,12 +11,10 @@ import type { MembershipInvitationType } from "@app/types/membership_invitation"
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
-  Avatar,
   Button,
-  ChevronRight,
   Chip,
-  cn,
   DataTable,
+  DataTableLoadingSkeleton,
   Mail01,
   Page,
 } from "@dust-tt/sparkle";
@@ -145,28 +143,7 @@ export function InvitationsList({
       />
       <div className="flex flex-col gap-1 pt-2">
         {isInvitationsLoading && (
-          <div className="flex flex-col gap-2">
-            <div
-              className={cn(
-                "flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t py-2 text-xs sm:text-sm",
-                "border-border-dark bg-background"
-              )}
-            >
-              <div className="hidden sm:block">
-                <Avatar size="xs" isRounded />
-              </div>
-              <div className="copy-base flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-                <div className="font-semibold text-foreground">Loading...</div>
-                <div className="grow text-muted-foreground"></div>
-              </div>
-              <div>
-                <Chip size="xs">Loading...</Chip>
-              </div>
-              <div className="hidden sm:block">
-                <ChevronRight />
-              </div>
-            </div>
-          </div>
+          <DataTableLoadingSkeleton showSelectionColumn={false} rows={3} />
         )}
         {!isInvitationsLoading && invitations.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center">
