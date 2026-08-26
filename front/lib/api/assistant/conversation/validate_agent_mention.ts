@@ -15,8 +15,8 @@ import {
 import { enforcePremiumModelLimit } from "@app/lib/api/assistant/premium_model_limit";
 import { publishMessageEventsOnMessagePostOrEdit } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
-import { MentionModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MentionResource } from "@app/lib/resources/mention_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { auditLog } from "@app/logger/logger";
 import type {
@@ -124,15 +124,12 @@ export async function validateAgentMention(
   }
 
   if (!isApproval) {
-    const mentionModels = await MentionModel.findAll({
-      where: {
-        workspaceId: conversation.owner.id,
-        messageId: message.id,
-        agentConfigurationId,
-        status: "agent_restricted_by_space_usage",
-      },
+    const mentions = await MentionResource.listByMessageModelIds(auth, {
+      messageModelIds: [message.id],
+      agentConfigurationId,
+      status: "agent_restricted_by_space_usage",
     });
-    if (mentionModels.length === 0) {
+    if (mentions.length === 0) {
       return new Err({
         status_code: 404,
         api_error: {
@@ -144,7 +141,7 @@ export async function validateAgentMention(
     // Instance updates avoid Sequelize bulk-update validation that requires
     // userId/agentConfigurationId on the partial payload.
     await Promise.all(
-      mentionModels.map((m) => m.update({ status: "rejected" }))
+      mentions.map((m) => m.updateStatus(auth, { status: "rejected" }))
     );
 
     const newRichMentions = message.richMentions.map((m) =>
@@ -253,21 +250,18 @@ export async function validateAgentMention(
     const created = await withTransaction(async (t) => {
       await getConversationRankVersionLock(auth, conversation, t);
 
-      const mentionModels = await MentionModel.findAll({
-        where: {
-          workspaceId: conversation.owner.id,
-          messageId: message.id,
-          agentConfigurationId,
-          status: "agent_restricted_by_space_usage",
-        },
+      const mentions = await MentionResource.listByMessageModelIds(auth, {
+        messageModelIds: [message.id],
+        agentConfigurationId,
+        status: "agent_restricted_by_space_usage",
         transaction: t,
-        lock: t.LOCK.UPDATE,
+        forUpdate: true,
       });
-      if (mentionModels.length === 0) {
+      if (mentions.length === 0) {
         throw new Error("Restricted agent mention not found");
       }
 
-      const [primaryMention, ...duplicateMentions] = mentionModels;
+      const [primaryMention, ...duplicateMentions] = mentions;
 
       const nextMessageRank = await getNextConversationMessageRank(auth, {
         conversation,
@@ -295,7 +289,7 @@ export async function validateAgentMention(
         // userId/agentConfigurationId on the partial payload.
         await Promise.all(
           duplicateMentions.map((m) =>
-            m.update({ status: "approved" }, { transaction: t })
+            m.updateStatus(auth, { status: "approved", transaction: t })
           )
         );
       }

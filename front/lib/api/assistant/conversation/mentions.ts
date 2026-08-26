@@ -15,10 +15,10 @@ import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { extractFromString } from "@app/lib/mentions/format";
 import type { MentionStatusType } from "@app/lib/models/agent/conversation";
-import { MentionModel } from "@app/lib/models/agent/conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MentionResource } from "@app/lib/resources/mention_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -208,13 +208,13 @@ export const createUserMentions = async (
   }
 ): Promise<RichMentionWithStatus[]> => {
   const usersById = new Map<ModelId, UserType>();
-  const mentionModels: MentionModel[] = [];
+  const mentions: MentionResource[] = [];
 
   for (const { user, isParticipant, status } of resolvedMentions) {
     usersById.set(user.id, user);
 
-    mentionModels.push(
-      await MentionModel.create(
+    mentions.push(
+      await MentionResource.makeNew(
         {
           messageId: message.id,
           userId: user.id,
@@ -238,7 +238,7 @@ export const createUserMentions = async (
 
   return getRichMentionsWithStatusForMessage(
     message.id,
-    mentionModels,
+    mentions,
     usersById,
     new Map() // No agent configurations in the users mentions.
   );
@@ -431,17 +431,14 @@ export async function validateUserMention(
         (m) => isPendingStatus(m.status) && m.id === userId
       )
     ) {
-      const mentionModel = await MentionModel.findOne({
-        where: {
-          workspaceId: conversation.owner.id,
-          messageId: latestMessage.id,
-          userId: user.id,
-        },
+      const mention = await MentionResource.findByMessagesAndUser(auth, {
+        messageModelIds: [latestMessage.id],
+        userModelId: user.id,
       });
-      if (!mentionModel) {
+      if (!mention) {
         continue;
       }
-      await mentionModel.update({ status: mentionStatus });
+      await mention.updateStatus(auth, { status: mentionStatus });
       const newRichMentions = latestMessage.richMentions.map((m) =>
         isRichUserMention(m) && m.id === userId
           ? {
@@ -644,29 +641,24 @@ export async function dismissMention(
       !isCompactionMessageType(latestMessage) &&
       latestMessage.richMentions.some(predicate)
     ) {
-      const mentionModels = await MentionModel.findAll({
-        where: {
-          workspaceId: conversation.owner.id,
-          messageId: latestMessage.id,
-          ...(type === "user"
-            ? {
-                userId: userIdForQuery,
-                status: "user_restricted_by_conversation_access",
-              }
-            : {
-                agentConfigurationId: id,
-                status: "agent_restricted_by_space_usage",
-              }),
-        },
+      const mentions = await MentionResource.listByMessageModelIds(auth, {
+        messageModelIds: [latestMessage.id],
+        ...(type === "user"
+          ? {
+              userModelId: userIdForQuery,
+              status: "user_restricted_by_conversation_access",
+            }
+          : {
+              agentConfigurationId: id,
+              status: "agent_restricted_by_space_usage",
+            }),
       });
-      if (mentionModels.length === 0) {
+      if (mentions.length === 0) {
         continue;
       }
       // Instance updates avoid Sequelize bulk-update validation that requires
       // userId/agentConfigurationId on the partial payload.
-      await Promise.all(
-        mentionModels.map((m) => m.update({ dismissed: true }))
-      );
+      await Promise.all(mentions.map((m) => m.dismiss(auth)));
       const newRichMentions = latestMessage.richMentions.map((m) =>
         predicate(m)
           ? {

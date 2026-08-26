@@ -7,7 +7,6 @@ import {
   AgentMessageFeedbackModel,
   AgentMessageModel,
   CompactionMessageModel,
-  MentionModel,
   MessageModel,
   MessageReactionModel,
   UserMessageModel,
@@ -25,6 +24,7 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { MentionResource } from "@app/lib/resources/mention_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import {
   ProjectTaskConversationModel,
@@ -88,11 +88,8 @@ async function destroyMessageRelatedResources(
       messageId: messageIds,
     },
   });
-  await MentionModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      messageId: messageIds,
-    },
+  await MentionResource.deleteByMessageModelIds(auth, {
+    messageModelIds: messageIds,
   });
   // TODO: We should also destroy the parent message
   await MessageModel.destroy({

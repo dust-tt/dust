@@ -1,9 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
+import type { MentionStatusType } from "@app/lib/models/agent/conversation";
 import { MentionModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import logger from "@app/logger/logger";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type {
@@ -13,7 +15,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { QueryTypes } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 export interface AgentIdleRow {
   agentId: string;
@@ -34,6 +36,33 @@ function isAgentIdleRow(row: unknown): row is AgentIdleRow {
     typeof row.agentId === "string" &&
     (row.lastMentionedAt === null || row.lastMentionedAt instanceof Date)
   );
+}
+
+export interface FindMentionByUserParams {
+  messageModelIds: ModelId[];
+  userModelId: ModelId;
+  status?: MentionStatusType;
+  transaction?: Transaction;
+}
+
+export interface ListMentionsByMessagesParams {
+  messageModelIds: ModelId[];
+  userModelId?: ModelId;
+  agentConfigurationId?: string;
+  status?: MentionStatusType;
+  transaction?: Transaction;
+  // Takes a `FOR UPDATE` lock on the matched rows. Requires a transaction.
+  forUpdate?: boolean;
+}
+
+export interface UpdateMentionStatusParams {
+  status: MentionStatusType;
+  transaction?: Transaction;
+}
+
+export interface DeleteMentionsByMessagesParams {
+  messageModelIds: ModelId[];
+  transaction?: Transaction;
 }
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -57,6 +86,69 @@ export class MentionResource extends BaseResource<MentionModel> {
     const mention = await this.model.create(blob, { transaction });
 
     return new this(this.model, mention.get());
+  }
+
+  /**
+   * The mention of this user across the given messages, optionally narrowed to one status, or null.
+   */
+  static async findByMessagesAndUser(
+    auth: Authenticator,
+    {
+      messageModelIds,
+      userModelId,
+      status,
+      transaction,
+    }: FindMentionByUserParams
+  ): Promise<MentionResource | null> {
+    if (messageModelIds.length === 0) {
+      return null;
+    }
+
+    const mention = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        messageId: { [Op.in]: messageModelIds },
+        userId: userModelId,
+        ...(status ? { status } : {}),
+      },
+      transaction,
+    });
+
+    return mention ? new this(this.model, mention.get()) : null;
+  }
+
+  /**
+   * The mentions carried by the given messages, optionally narrowed to one user, one agent, and/or
+   * one status.
+   */
+  static async listByMessageModelIds(
+    auth: Authenticator,
+    {
+      messageModelIds,
+      userModelId,
+      agentConfigurationId,
+      status,
+      transaction,
+      forUpdate,
+    }: ListMentionsByMessagesParams
+  ): Promise<MentionResource[]> {
+    if (messageModelIds.length === 0) {
+      return [];
+    }
+
+    const mentions = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        messageId: { [Op.in]: messageModelIds },
+        ...(userModelId !== undefined ? { userId: userModelId } : {}),
+        ...(agentConfigurationId !== undefined ? { agentConfigurationId } : {}),
+        ...(status ? { status } : {}),
+      },
+      transaction,
+      ...(transaction && forUpdate ? { lock: transaction.LOCK.UPDATE } : {}),
+    });
+
+    return mentions.map((mention) => new this(this.model, mention.get()));
   }
 
   /**
@@ -112,6 +204,72 @@ export class MentionResource extends BaseResource<MentionModel> {
     }
 
     return agents;
+  }
+
+  /**
+   * Moves this mention to `status`. The payload restates this mention's own `userId` /
+   * `agentConfigurationId`: the model's `beforeValidate` hook requires exactly one of them non-null,
+   * and Sequelize validates against the payload alone, even for a single-row update.
+   */
+  async updateStatus(
+    auth: Authenticator,
+    { status, transaction }: UpdateMentionStatusParams
+  ): Promise<void> {
+    await this.applyUpdate(auth, { status }, transaction);
+
+    // Keep the in-memory attributes in step with the row, as `BaseResource.update` does: callers
+    // render the mention off this instance right after moving its status.
+    Object.assign(this, { status });
+  }
+
+  /**
+   * Hides a restricted mention from the conversation without resolving it either way.
+   */
+  async dismiss(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await this.applyUpdate(auth, { dismissed: true }, transaction);
+
+    Object.assign(this, { dismissed: true });
+  }
+
+  private async applyUpdate(
+    auth: Authenticator,
+    values: Partial<Attributes<MentionModel>>,
+    transaction: Transaction | undefined
+  ): Promise<void> {
+    await MentionResource.model.update(
+      {
+        ...values,
+        userId: this.userId,
+        agentConfigurationId: this.agentConfigurationId,
+      },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: this.id,
+        },
+        transaction,
+      }
+    );
+  }
+
+  static async deleteByMessageModelIds(
+    auth: Authenticator,
+    { messageModelIds, transaction }: DeleteMentionsByMessagesParams
+  ): Promise<number> {
+    if (messageModelIds.length === 0) {
+      return 0;
+    }
+
+    return this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        messageId: { [Op.in]: messageModelIds },
+      },
+      transaction,
+    });
   }
 
   async delete(

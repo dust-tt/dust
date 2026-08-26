@@ -2,10 +2,10 @@ import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
-  MentionModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MentionResource } from "@app/lib/resources/mention_resource";
 import type {
   ConversationWithoutContentType,
   LightConversationType,
@@ -189,14 +189,10 @@ export async function getUnreadNotificationFlags(
     return { hasUnreadMessages: true, hasUnreadMentions: false };
   }
 
-  const unreadMention = await MentionModel.findOne({
-    attributes: ["id"],
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      userId: user.id,
-      status: "approved",
-      messageId: { [Op.in]: unreadMessageIds },
-    },
+  const unreadMention = await MentionResource.findByMessagesAndUser(auth, {
+    messageModelIds: unreadMessageIds,
+    userModelId: user.id,
+    status: "approved",
   });
 
   return {

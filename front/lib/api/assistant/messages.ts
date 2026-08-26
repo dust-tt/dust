@@ -8,7 +8,6 @@ import {
 import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  MentionModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
@@ -16,6 +15,7 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MentionResource } from "@app/lib/resources/mention_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -114,7 +114,7 @@ export function getCompletionDuration(
 
 export function getRichMentionsWithStatusForMessage(
   messageId: ModelId,
-  mentionRows: MentionModel[],
+  mentionRows: MentionResource[],
   usersById: Map<ModelId, UserType>,
   agentConfigurationsById: Map<string, LightAgentConfigurationType>
 ): RichMentionWithStatus[] {
@@ -231,7 +231,7 @@ function renderUserMessage(
 async function batchRenderUserMessages(
   auth: Authenticator,
   messages: MessageModel[],
-  mentionsByMessageId?: Map<ModelId, MentionModel[]>
+  mentionsByMessageId?: Map<ModelId, MentionResource[]>
 ): Promise<UserMessageType[]> {
   const userMessages = messages.filter(
     (m) => m.userMessage !== null && m.userMessage !== undefined
@@ -243,11 +243,8 @@ async function batchRenderUserMessages(
 
   const mentionRows = mentionsByMessageId
     ? userMessages.flatMap((m) => mentionsByMessageId.get(m.id) ?? [])
-    : await MentionModel.findAll({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          messageId: userMessages.map((message) => message.id),
-        },
+    : await MentionResource.listByMessageModelIds(auth, {
+        messageModelIds: userMessages.map((message) => message.id),
       });
 
   const userIds = [
@@ -356,7 +353,7 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   messages: MessageModel[],
   viewType: V,
   messagesWithToolOutputContent: Set<ModelId> | null = null,
-  mentionsByMessageId: Map<ModelId, MentionModel[]>,
+  mentionsByMessageId: Map<ModelId, MentionResource[]>,
   textContentOnly: boolean = false
 ): Promise<
   Result<
@@ -671,7 +668,7 @@ type RenderSingleAgentMessageContext = {
   allMessagesById: Map<ModelId, MessageModel>;
   auth: Authenticator;
   handoverOriginMessagesBySId: Map<string, Pick<MessageModel, "sId">>;
-  mentionsByMessageId: Map<ModelId, MentionModel[]>;
+  mentionsByMessageId: Map<ModelId, MentionResource[]>;
   reactionsByMessageId: Record<ModelId, MessageReactionType[]>;
   stepContentsByMessageId: Record<string, AgentStepContentResource[]>;
   subAgentCostCredits: number | null;
@@ -907,17 +904,14 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
     ConversationError
   >
 > {
-  const mentionsByMessageId = new Map<ModelId, MentionModel[]>();
+  const mentionsByMessageId = new Map<ModelId, MentionResource[]>();
   const mentionableMessageIds = messages
     .filter((message) => message.userMessage || message.agentMessage)
     .map((message) => message.id);
 
   if (mentionableMessageIds.length > 0) {
-    const mentionRows = await MentionModel.findAll({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        messageId: mentionableMessageIds,
-      },
+    const mentionRows = await MentionResource.listByMessageModelIds(auth, {
+      messageModelIds: mentionableMessageIds,
     });
 
     for (const mentionRow of mentionRows) {
