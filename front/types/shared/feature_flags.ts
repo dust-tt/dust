@@ -104,11 +104,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "pmilliotte",
   },
-  dev_mcp_actions: {
-    description: "MCP tools currently in development",
-    stage: "dust_only",
-    owner: "adrsimon",
-  },
   exa_people_and_company: {
     description: "Access to Exa MCP server (search_people, search_companies)",
     stage: "dust_only",

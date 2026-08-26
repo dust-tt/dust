@@ -1294,12 +1294,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
   },
-  "jit_testing": {
-    "jit_all_optionals_and_defaults": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-  },
   "luma": {
     "add_guests": {
       "freeUsage": false,
@@ -1943,16 +1937,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
     "search_workspaces": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-  },
-  "primitive_types_debugger": {
-    "pass_through": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "tool_without_user_config": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
@@ -3077,9 +3061,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "update_issue": "low",
     "upload_attachment": "low",
   },
-  "jit_testing": {
-    "jit_all_optionals_and_defaults": "high",
-  },
   "luma": {
     "add_guests": "low",
     "create_event": "high",
@@ -3261,10 +3242,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_workspace_groups": "low",
     "list_workspace_skills": "low",
     "search_workspaces": "low",
-  },
-  "primitive_types_debugger": {
-    "pass_through": "high",
-    "tool_without_user_config": "high",
   },
   "productboard": {
     "create_entity": "low",

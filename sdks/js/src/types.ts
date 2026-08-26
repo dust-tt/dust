@@ -752,7 +752,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_fable_5_feature"
   | "databricks_tool"
   | "deepseek_feature"
-  | "dev_mcp_actions"
   | "exa_people_and_company"
   | "disable_computer_feature"
   | "disable_formatting_prompt"

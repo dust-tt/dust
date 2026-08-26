@@ -63,10 +63,10 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/mcp_views/:svId", () => {
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    await FeatureFlagFactory.basic(auth, "dev_mcp_actions");
+    await FeatureFlagFactory.basic(auth, "http_client_tool");
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(
       auth,
-      { name: "primitive_types_debugger", useCase: null }
+      { name: "http_client", useCase: null }
     );
     const serverView = await MCPServerViewFactory.create(
       workspace,
@@ -102,11 +102,11 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/mcp_views/:svId", () => {
     await memberGroup.dangerouslyAddMember(adminAuth, {
       user: user.toJSON(),
     });
-    await FeatureFlagFactory.basic(adminAuth, "dev_mcp_actions");
+    await FeatureFlagFactory.basic(adminAuth, "http_client_tool");
 
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(
       adminAuth,
-      { name: "primitive_types_debugger", useCase: null }
+      { name: "http_client", useCase: null }
     );
     const serverView = await MCPServerViewFactory.create(
       workspace,
