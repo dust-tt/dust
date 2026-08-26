@@ -3,30 +3,30 @@ import { useFetcher } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
-export type WorkflowAlertThresholdDecision = "continue" | "decline";
+export type SpendCheckpointDecision = "continue" | "decline";
 
-interface UseResolveWorkflowAlertThresholdPauseParams {
+interface UseResolveSpendCheckpointPauseParams {
   owner: LightWorkspaceType;
   conversationId: string;
   messageId: string;
 }
 
-export function useResolveWorkflowAlertThresholdPause({
+export function useResolveSpendCheckpointPause({
   owner,
   conversationId,
   messageId,
-}: UseResolveWorkflowAlertThresholdPauseParams) {
+}: UseResolveSpendCheckpointPauseParams) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const [submittingDecision, setSubmittingDecision] =
-    useState<WorkflowAlertThresholdDecision | null>(null);
+    useState<SpendCheckpointDecision | null>(null);
 
   const resolve = useCallback(
-    async (decision: WorkflowAlertThresholdDecision) => {
+    async (decision: SpendCheckpointDecision) => {
       setSubmittingDecision(decision);
       try {
         await fetcher(
-          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/workflow-alert-threshold`,
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/spend-checkpoint`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

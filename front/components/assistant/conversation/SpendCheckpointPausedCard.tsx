@@ -1,4 +1,4 @@
-import type { WorkflowAlertThresholdDecision } from "@app/lib/swr/workflow_alert_threshold";
+import type { SpendCheckpointDecision } from "@app/lib/swr/spend_checkpoint";
 import {
   Avatar,
   Button,
@@ -8,21 +8,21 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 
-interface WorkflowAlertThresholdPausedCardProps {
+interface SpendCheckpointPausedCardProps {
   // Only known right after the stream event that triggered the pause; not persisted, so it's
   // absent after a page refresh. The card still works without it (see the fallback copy below).
   thresholdAwuCredits: number | null;
-  submittingDecision: WorkflowAlertThresholdDecision | null;
+  submittingDecision: SpendCheckpointDecision | null;
   onContinue: () => void;
   onDecline: () => void;
 }
 
-export function WorkflowAlertThresholdPausedCard({
+export function SpendCheckpointPausedCard({
   thresholdAwuCredits,
   submittingDecision,
   onContinue,
   onDecline,
-}: WorkflowAlertThresholdPausedCardProps) {
+}: SpendCheckpointPausedCardProps) {
   const isSubmitting = submittingDecision !== null;
 
   return (

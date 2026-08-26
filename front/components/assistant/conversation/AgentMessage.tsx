@@ -14,6 +14,7 @@ import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessag
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { SpendCheckpointPausedCard } from "@app/components/assistant/conversation/SpendCheckpointPausedCard";
 import type {
   AgentMessageStateWithControlEvent,
   AgentMessageWithStreaming,
@@ -28,7 +29,6 @@ import {
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import { useAutoOpenSidePanel } from "@app/components/assistant/conversation/useAutoOpenSidePanel";
-import { WorkflowAlertThresholdPausedCard } from "@app/components/assistant/conversation/WorkflowAlertThresholdPausedCard";
 import { ConfirmContext } from "@app/components/Confirm";
 import { getActionCardPlugin } from "@app/components/markdown/ActionCardDirective";
 import {
@@ -70,7 +70,7 @@ import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
 import { LinkWrapper } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
-import { useResolveWorkflowAlertThresholdPause } from "@app/lib/swr/workflow_alert_threshold";
+import { useResolveSpendCheckpointPause } from "@app/lib/swr/spend_checkpoint";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -1255,43 +1255,40 @@ function AgentMessageContent({
 
   // The persisted flag survives a refresh; the streamed one is only there for instant feedback
   // right when the pause happens, ahead of the persisted flag catching up.
-  const [workflowAlertThresholdResolved, setWorkflowAlertThresholdResolved] =
-    useState(false);
-  const showWorkflowAlertThresholdPausedCard =
-    !workflowAlertThresholdResolved &&
-    (agentMessage.pausedAtWorkflowAlertThreshold ||
-      !!agentMessage.workflowAlertThresholdCrossed) &&
+  const [spendCheckpointResolved, setSpendCheckpointResolved] = useState(false);
+  const showSpendCheckpointPausedCard =
+    !spendCheckpointResolved &&
+    (agentMessage.pausedAtSpendCheckpoint ||
+      !!agentMessage.spendCheckpointCrossed) &&
     agentMessage.status === "created";
 
-  const { resolve: resolveWorkflowAlertThreshold, submittingDecision } =
-    useResolveWorkflowAlertThresholdPause({
+  const { resolve: resolveSpendCheckpoint, submittingDecision } =
+    useResolveSpendCheckpointPause({
       owner,
       conversationId,
       messageId: sId,
     });
 
-  const handleResolveWorkflowAlertThreshold = useCallback(
+  const handleResolveSpendCheckpoint = useCallback(
     async (decision: "continue" | "decline") => {
-      const { success } = await resolveWorkflowAlertThreshold(decision);
+      const { success } = await resolveSpendCheckpoint(decision);
       if (success) {
-        setWorkflowAlertThresholdResolved(true);
+        setSpendCheckpointResolved(true);
       }
     },
-    [resolveWorkflowAlertThreshold]
+    [resolveSpendCheckpoint]
   );
 
-  const workflowAlertThresholdPausedElement =
-    showWorkflowAlertThresholdPausedCard ? (
-      <WorkflowAlertThresholdPausedCard
-        thresholdAwuCredits={
-          agentMessage.workflowAlertThresholdCrossed?.thresholdAwuCredits ??
-          null
-        }
-        submittingDecision={submittingDecision}
-        onContinue={() => void handleResolveWorkflowAlertThreshold("continue")}
-        onDecline={() => void handleResolveWorkflowAlertThreshold("decline")}
-      />
-    ) : null;
+  const spendCheckpointPausedElement = showSpendCheckpointPausedCard ? (
+    <SpendCheckpointPausedCard
+      thresholdAwuCredits={
+        agentMessage.spendCheckpointCrossed?.thresholdAwuCredits ?? null
+      }
+      submittingDecision={submittingDecision}
+      onContinue={() => void handleResolveSpendCheckpoint("continue")}
+      onDecline={() => void handleResolveSpendCheckpoint("decline")}
+    />
+  ) : null;
 
   const retryHandlerWithResetState = useCallback(
     // Conversation and message might be different than the current ones in case of subagents.
@@ -1508,7 +1505,7 @@ function AgentMessageContent({
           isLastMessage={isLastMessage}
         />
         {blockedActionElement}
-        {workflowAlertThresholdPausedElement}
+        {spendCheckpointPausedElement}
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
           collapsible={uiView === "compact"}
