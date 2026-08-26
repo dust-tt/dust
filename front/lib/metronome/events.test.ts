@@ -230,6 +230,32 @@ describe("Metronome usage event adapter", () => {
     expect(events[0]?.properties).toMatchObject({ cost_awu: 21 });
   });
 
+  it("applies the free_mcp_server_cap per server, not globally", () => {
+    // Two different servers, 8 "advanced" (3 AWU) calls each. The 20-credit cap
+    // is applied independently per server, so each server bills 7 calls (21) and
+    // waives its own 8th. A global cap would waive far more and undercount.
+    const serverActions = (mcpServerId: string) =>
+      Array.from({ length: 8 }, () => ({
+        toolName: "custom_tool",
+        mcpServerId,
+        internalMCPServerName: null,
+        status: "succeeded" as const,
+        shouldEmit: true,
+      }));
+
+    const events = buildUsageEvents({
+      ...commonEventInput,
+      actions: [
+        ...serverActions("mcp_server_a"),
+        ...serverActions("mcp_server_b"),
+      ],
+    });
+
+    // 21 (server A) + 21 (server B) = 42.
+    expect(events).toHaveLength(1);
+    expect(events[0]?.properties).toMatchObject({ cost_awu: 42 });
+  });
+
   it("does not re-bill prior-execution actions", () => {
     const events = buildUsageEvents({
       ...commonEventInput,
