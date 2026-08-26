@@ -94,3 +94,9 @@ jobs:
       - name: Build
         working-directory: front-api
         run: npm run build
+      - name: Check no browser-only package loads at boot
+        working-directory: front-api
+        env:
+          NODE_ENV: production
+          PORT: "3999"
+        run: npm run check:boot

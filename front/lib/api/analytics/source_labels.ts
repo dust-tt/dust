@@ -72,6 +72,12 @@ function isAnalyticsVisibleOrigin(
   return origin in SOURCE_ORIGIN_LABELS;
 }
 
+export function isUserMessageOrigin(
+  origin?: string | null
+): origin is AnalyticsVisibleOrigin {
+  return !!origin && isAnalyticsVisibleOrigin(origin);
+}
+
 export function sourceLabelForOrigin(origin: string): string | undefined {
   return isAnalyticsVisibleOrigin(origin)
     ? SOURCE_ORIGIN_LABELS[origin]

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "tsx esbuild.dev.ts",
     "build": "tsx esbuild.production.ts",
+    "check:boot": "node --require ./scripts/boot-check.cjs dist/server.js",
     "test": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI REDIS_URI=$TEST_REDIS_URI REDIS_CACHE_URI=$TEST_REDIS_URI vitest --run",
     "test:ci": "vitest --watch=false --test-timeout=30000",
     "lint:swagger-annotations": "BAD_FILES=$(grep -rlE 'app\\.(get|post|patch|put|delete)\\(' routes --include='*.ts' | grep -v '\\.test\\.ts$' | xargs grep -rL '@swagger\\|@ignoreswagger'); if [ -n \"$BAD_FILES\" ]; then echo \"Error: The following API route files register a handler but are missing the @swagger or @ignoreswagger annotation:\"; echo \"$BAD_FILES\"; exit 1; else echo \"Swagger annotation check: OK.\"; exit 0; fi",
