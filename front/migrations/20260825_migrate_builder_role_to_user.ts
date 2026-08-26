@@ -21,19 +21,15 @@ import type { LightWorkspaceType } from "@app/types/user";
  */
 
 // A sliding-window limiter caps the pace of `updateMembershipRole` invocations. We can't meter the
-// individual WorkOS calls it makes internally (one list + one update/create per invocation), so we
-// gate the invocations instead: at 50/10s that is at most ~100 WorkOS requests/10s — 20% of the
-// tightest limit (500 writes/10s; also well under 1,000 reads/10s and 6,000 requests/60s), leaving
-// headroom for live traffic sharing the API key.
+// individual WorkOS calls it makes internally, so we gate the invocations instead. Each invocation
+// makes two WorkOS requests that hit separate rate-limit buckets: one read and one write. 
+// At 50 invocations/10s that is 50 reads/10s (5% of the 1,000 reads/10s bucket), 
+// 50 writes/10s (10% of the 500 writes/10s bucket), and 100 requests/10s = 600/60s (10% of the 6,000 requests/60s general limit).
 const MAX_MIGRATIONS_PER_WINDOW = 50;
 const RATE_LIMIT_WINDOW_MS = 10_000;
 // Keeps the limiter fed even when WorkOS is slow; the limiter, not concurrency, sets the pace.
 const MIGRATION_CONCURRENCY = 8;
 
-// `migrated`: role flipped builder -> user (DB + WorkOS). `already-user`: role was already `user` by
-// the time we ran (raced). `skipped`: `updateMembershipRole` declined for a non-fatal reason
-// (not_found / terminated / last_admin) or the row's user/workspace couldn't be resolved.
-// `failed`: `updateMembershipRole` threw (e.g. the search-index workflow failed to launch).
 type Outcome = "migrated" | "already-user" | "skipped" | "failed";
 
 /**
@@ -105,10 +101,6 @@ async function migrateMembership(
       user,
       workspace,
       newRole: "user",
-      // Never create a new membership: this backfill only flips existing active builders in place.
-      // With `allowTerminated: false`, a membership revoked in the race window between our query and
-      // now returns `membership_already_terminated` instead of taking `updateMembershipRole`'s
-      // create-a-fresh-membership branch (which only runs when `allowTerminated` is true).
       allowTerminated: false,
       author: "no-author",
     });
