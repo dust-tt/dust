@@ -19,6 +19,7 @@ import {
   Button,
   ContentMessage,
   Hoverable,
+  LoadingBlock,
   Page,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
@@ -136,8 +137,8 @@ function UsageSection({
   if (isLoading) {
     return (
       <div className="flex flex-col gap-6 rounded-lg border border-border p-6">
-        <div className="h-8 w-32 animate-pulse rounded bg-muted-foreground/20" />
-        <div className="h-24 w-full animate-pulse rounded bg-muted-foreground/20" />
+        <LoadingBlock className="h-8 w-32" />
+        <LoadingBlock className="h-24 w-full" />
       </div>
     );
   }
@@ -452,7 +453,7 @@ export function CreditsUsagePage() {
 
         {/* Usage Graph */}
         {isCreditPurchaseInfoLoading ? (
-          <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
+          <LoadingBlock className="h-64" />
         ) : (
           <ProgrammaticCostChart
             workspaceId={owner.sId}
