@@ -697,6 +697,144 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     );
   }
 
+  static async fetchConsumptionToolRow(
+    auth: Authenticator,
+    {
+      agentMCPActionModelId,
+      transaction,
+    }: {
+      agentMCPActionModelId: ModelId;
+      transaction?: Transaction;
+    }
+  ): Promise<AgentMessageToolConsumptionItemResource | null> {
+    const row = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        agentMCPActionId: agentMCPActionModelId,
+        itemType: "tool",
+      },
+      transaction,
+    });
+    if (!row) {
+      return null;
+    }
+
+    const item = new this(this.model, row.get());
+    return item.isToolItem() ? item : null;
+  }
+
+  static async fetchConsumptionModelRow(
+    auth: Authenticator,
+    {
+      runUsageModelId,
+      itemType,
+      transaction,
+    }: {
+      runUsageModelId: ModelId;
+      itemType: "input" | "output" | "reasoning";
+      transaction?: Transaction;
+    }
+  ): Promise<AgentMessageConsumptionItemResource | null> {
+    const row = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        runUsageId: runUsageModelId,
+        itemType,
+        agentMCPActionId: null,
+      },
+      transaction,
+    });
+
+    return row ? new this(this.model, row.get()) : null;
+  }
+
+  static async listConsumptionChargedToolRows(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      transaction,
+    }: {
+      agentMessageModelId: ModelId;
+      transaction?: Transaction;
+    }
+  ): Promise<AgentMessageToolConsumptionItemResource[]> {
+    const rows = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentMessageId: agentMessageModelId,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        itemType: "tool",
+        directCreditAmountMicro: { [Op.gt]: 0 },
+      },
+      order: [["completedAt", "ASC"]],
+      transaction,
+    });
+
+    return rows.flatMap((row) => {
+      const item = new this(this.model, row.get());
+      return item.isToolItem() ? [item] : [];
+    });
+  }
+
+  static async completeConsumptionToolRow(
+    auth: Authenticator,
+    {
+      consumptionItemId,
+      runKey,
+      inputTokensCount,
+      grossCreditAmountMicroDelta,
+      reconciledCreditAmountMicroDelta,
+      directCreditAmountMicro,
+      transaction,
+    }: {
+      consumptionItemId: ModelId;
+      runKey: string;
+      inputTokensCount: number;
+      grossCreditAmountMicroDelta: number;
+      reconciledCreditAmountMicroDelta: number;
+      directCreditAmountMicro: number;
+      transaction?: Transaction;
+    }
+  ): Promise<boolean> {
+    // biome-ignore lint/plugin/noRawSql: the row's own amounts are the base of the update.
+    const [, affectedCount] = await frontSequelize.query(
+      `
+        UPDATE agent_message_consumption_items
+        SET
+          "completedAt" = $now,
+          "updatedAt" = $now,
+          "runKey" = $runKey,
+          "inputTokensCount" = $inputTokensCount,
+          "directCreditAmountMicro" = $directCreditAmountMicro,
+          "grossAttributedCreditAmountMicro" =
+            "grossAttributedCreditAmountMicro" + $grossCreditAmountMicroDelta,
+          "reconciledCreditAmountMicro" =
+            COALESCE("reconciledCreditAmountMicro", 0) + $reconciledCreditAmountMicroDelta
+        WHERE id = $consumptionItemId
+          AND "workspaceId" = $workspaceModelId
+          AND "completedAt" IS NULL
+      `,
+      {
+        bind: {
+          directCreditAmountMicro,
+          grossCreditAmountMicroDelta,
+          inputTokensCount,
+          consumptionItemId,
+          now: new Date(),
+          reconciledCreditAmountMicroDelta,
+          runKey,
+          workspaceModelId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+        type: QueryTypes.UPDATE,
+      }
+    );
+
+    return affectedCount === 1;
+  }
+
   static async listConsumptionToolResultsPendingConsumption(
     auth: Authenticator,
     {
