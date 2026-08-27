@@ -13,6 +13,7 @@ import { slackWorkflowErrorToApiError } from "@front-api/routes/slack_workflow_e
 import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
 
+import overview from "./overview";
 import { ensureSlackWorkflowsPlan } from "./plan_gate";
 
 export type { GetSlackWorkflowsResponseBody };
@@ -28,6 +29,8 @@ const DeleteBodySchema = z.object({
 
 // Mounted at /api/w/:wId/slack-workflows.
 const app = workspaceApp();
+
+app.route("/overview", overview);
 
 /** @ignoreswagger */
 app.get(
