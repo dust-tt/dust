@@ -118,6 +118,59 @@ describe("conversation window checkpoints", () => {
     );
   });
 
+  it("round-trips text content with LLM provenance metadata", async () => {
+    const metadata = {
+      phase: "final_answer" as const,
+      region: "us",
+      modelId: "gpt-5.1",
+      clientId: "openai",
+      inferenceRegion: "global",
+      inferenceProvider: "openai-responses",
+    };
+    const state: ConversationWindowStateSnapshot = {
+      version: 1,
+      interactions: [
+        {
+          messages: [
+            {
+              kind: "message",
+              message: {
+                role: "assistant",
+                name: "assistant",
+                contents: [
+                  {
+                    type: "text_content",
+                    value: "Hello",
+                    metadata,
+                  },
+                ],
+                tokenCount: 10,
+              },
+            },
+          ],
+        },
+      ],
+      retainedTokens: 10,
+      totalTokensBefore: 10,
+      prunedTokens: 0,
+    };
+    const checkpoint = makeConversationWindowCheckpoint({
+      identity,
+      profileHash: "profile",
+      promptTokens: 20,
+      toolDefinitionTokens: 30,
+      state,
+    });
+
+    await publishOrThrow(checkpoint);
+    const loaded = await loadConversationWindowCheckpoint(identity);
+    if (loaded.isErr()) {
+      throw loaded.error;
+    }
+
+    expect(loaded.value).toEqual(checkpoint);
+  });
+
   it("ignores an expired checkpoint", async () => {
     const checkpoint = makeConversationWindowCheckpoint({
       identity,
