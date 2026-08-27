@@ -8,17 +8,38 @@ import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/types/api/analytics/cons
 import { Button, cn, LoadingBlock, ProgressBar } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import type { ConsumptionDimension } from "./consumptionDimensions";
-import { CONSUMPTION_DIMENSION_CONFIG } from "./consumptionDimensions";
 
 export const CONSUMPTION_ATTRIBUTION_BREAKDOWN_LIMIT = 3;
 
 const BREAKDOWN_DIMENSIONS = ["model", "tool", "user"] as const;
-type BreakdownDimension = (typeof BREAKDOWN_DIMENSIONS)[number];
+type BreakdownDimension =
+  | (typeof BREAKDOWN_DIMENSIONS)[number]
+  | "reasoning_effort";
+
+function getBreakdownDimensions(
+  selectedDimension: ConsumptionDimension
+): BreakdownDimension[] {
+  const breakdownDimensions = BREAKDOWN_DIMENSIONS.filter(
+    (dimension) => dimension !== selectedDimension
+  );
+
+  return selectedDimension === "model"
+    ? ["reasoning_effort", ...breakdownDimensions]
+    : breakdownDimensions;
+}
 
 const BREAKDOWN_LABELS: Record<BreakdownDimension, string> = {
   model: "By model",
+  reasoning_effort: "By reasoning effort",
   tool: "By tools",
   user: "By users",
+};
+
+const BREAKDOWN_VIEW_ALL_LABELS: Record<BreakdownDimension, string> = {
+  model: "models",
+  reasoning_effort: "reasoning effort",
+  tool: "tools",
+  user: "members",
 };
 
 function BreakdownColumnSkeleton() {
@@ -57,17 +78,17 @@ export interface ConsumptionAttributionBreakdownColumnProps {
   analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
   selectedRowName: string;
-  onViewAll: () => void;
+  onViewAll?: () => void;
 }
 
 interface ConsumptionAttributionBreakdownColumnViewProps {
   dimension: BreakdownDimension;
   selectedRowName: string;
-  onViewAll: () => void;
   rows: ConsumptionTopRow[];
   totalCredits: number;
   isTopLoading: boolean;
   isTopError: boolean;
+  onViewAll?: () => void;
 }
 
 export function ConsumptionAttributionBreakdownColumnView({
@@ -85,13 +106,15 @@ export function ConsumptionAttributionBreakdownColumnView({
         <h4 className="text-sm font-medium text-muted-foreground">
           {BREAKDOWN_LABELS[dimension]}
         </h4>
-        <Button
-          label="View all"
-          variant="highlight-ghost"
-          size="xs"
-          aria-label={`View all ${CONSUMPTION_DIMENSION_CONFIG[dimension].label.toLowerCase()} for ${selectedRowName}`}
-          onClick={onViewAll}
-        />
+        {onViewAll && (
+          <Button
+            label="View all"
+            variant="highlight-ghost"
+            size="xs"
+            aria-label={`View all ${BREAKDOWN_VIEW_ALL_LABELS[dimension]} for ${selectedRowName}`}
+            onClick={onViewAll}
+          />
+        )}
       </div>
       {isTopLoading ? (
         <BreakdownColumnSkeleton />
@@ -196,10 +219,8 @@ export function ConsumptionAttributionBreakdownView({
     ...filter,
     [CONSUMPTION_DIMENSION_FILTER_KEYS[selectedDimension]]: [selectedRow.id],
   };
-  const visibleDimensions = BREAKDOWN_DIMENSIONS.filter(
-    (dimension) =>
-      dimension !== selectedDimension &&
-      (analyticsScope.kind !== "personal" || dimension !== "user")
+  const visibleDimensions = getBreakdownDimensions(selectedDimension).filter(
+    (dimension) => analyticsScope.kind !== "personal" || dimension !== "user"
   );
 
   return (
@@ -220,7 +241,11 @@ export function ConsumptionAttributionBreakdownView({
           analyticsScope={analyticsScope}
           disabled={disabled}
           selectedRowName={selectedRow.name}
-          onViewAll={() => onViewAll(dimension, selectedRow)}
+          onViewAll={
+            dimension === "reasoning_effort"
+              ? undefined
+              : () => onViewAll(dimension, selectedRow)
+          }
         />
       ))}
     </div>
