@@ -1,4 +1,6 @@
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { CHART_HEIGHT } from "@app/components/charts/constants";
+import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { AnalyticsExportPanel } from "@app/components/workspace/analytics/AnalyticsExportPanel";
 import type { ConsumptionAttributionTableProps } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
@@ -28,7 +30,7 @@ import {
   consumptionPeriodKey,
   DEFAULT_CONSUMPTION_PERIOD,
 } from "@app/lib/analytics/consumption_period";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import type { TrackingExtra } from "@app/lib/tracking";
 import {
@@ -144,6 +146,9 @@ function ChartFallback({ controlsInCard = false }: ChartFallbackProps) {
 
 export function AnalyticsConsumptionPage() {
   const owner = useWorkspace();
+  const { user } = useAuth();
+  const [agentDetailsId, setAgentDetailsId] = useState<string | null>(null);
+  const [skillDetailsId, setSkillDetailsId] = useState<string | null>(null);
   const state = useAnalyticsConsumptionState(useAnalyticsViewState());
   const filter = useResolvedUsageFilter({
     workspaceId: owner.sId,
@@ -161,7 +166,26 @@ export function AnalyticsConsumptionPage() {
   }, [owner.sId]);
 
   return (
-    <AnalyticsConsumptionContent owner={owner} state={{ ...state, filter }} />
+    <>
+      <AgentDetailsSheet
+        owner={owner}
+        user={user}
+        agentId={agentDetailsId}
+        onClose={() => setAgentDetailsId(null)}
+      />
+      <SkillDetailsSheetById
+        owner={owner}
+        user={user}
+        skillId={skillDetailsId}
+        onClose={() => setSkillDetailsId(null)}
+      />
+      <AnalyticsConsumptionContent
+        owner={owner}
+        state={{ ...state, filter }}
+        onAgentClick={setAgentDetailsId}
+        onSkillClick={setSkillDetailsId}
+      />
+    </>
   );
 }
 
@@ -169,6 +193,8 @@ interface AnalyticsConsumptionContentProps {
   components?: AnalyticsConsumptionComponents;
   embedded?: boolean;
   owner: LightWorkspaceType;
+  onAgentClick?: (agentId: string) => void;
+  onSkillClick?: (skillId: string) => void;
   showExport?: boolean;
   showMemberGroupFilter?: boolean;
   showOverviewError?: boolean;
@@ -182,6 +208,8 @@ export function AnalyticsConsumptionContent({
   components = WORKSPACE_CONSUMPTION_COMPONENTS,
   embedded = false,
   owner,
+  onAgentClick,
+  onSkillClick,
   showExport = true,
   showMemberGroupFilter = true,
   showOverviewError = false,
@@ -330,6 +358,7 @@ export function AnalyticsConsumptionContent({
             addUsageFilterFromAttributionRow(current, dimension, selectedRow)
           );
         }}
+        onAgentClick={onAgentClick}
         onRemoveFilter={(selectedRow) => {
           trackAnalyticsClick(trackingWorkspaceId, "attribution_filter", {
             dimension,
@@ -339,6 +368,7 @@ export function AnalyticsConsumptionContent({
             removeUsageFilterFromAttributionRow(current, dimension, selectedRow)
           );
         }}
+        onSkillClick={onSkillClick}
         dimension={dimension}
         onDimensionChange={(nextDimension) => {
           trackAnalyticsClick(trackingWorkspaceId, "attribution_tab", {

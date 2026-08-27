@@ -292,19 +292,31 @@ function buildColumns({
           ) : (
             <span className="truncate text-sm">{name}</span>
           );
+        const interactiveClassName = cn(
+          "inline-flex min-h-11 min-w-11 max-w-full items-center rounded-sm text-left",
+          "text-highlight-500 outline-hidden ring-offset-background",
+          "pointer-fine:hover:text-highlight-600 pointer-fine:hover:underline",
+          "focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
+        );
         const interactiveContent = row.detailsHref ? (
           <LinkWrapper
             href={row.detailsHref}
-            className={cn(
-              "inline-flex min-h-11 min-w-11 max-w-full items-center rounded-sm",
-              "text-highlight-500 outline-hidden ring-offset-background",
-              "pointer-fine:hover:text-highlight-600 pointer-fine:hover:underline",
-              "focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
-            )}
+            className={interactiveClassName}
             onClick={(event) => event.stopPropagation()}
           >
             {content}
           </LinkWrapper>
+        ) : row.onNameClick ? (
+          <button
+            type="button"
+            className={cn(interactiveClassName, "cursor-pointer")}
+            onClick={(event) => {
+              event.stopPropagation();
+              row.onNameClick?.();
+            }}
+          >
+            {content}
+          </button>
         ) : (
           content
         );
@@ -452,7 +464,9 @@ export interface ConsumptionAttributionRowsProps {
   analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
   onAddFilter: (row: ConsumptionTopRow) => void;
+  onAgentClick?: (agentId: string) => void;
   onRemoveFilter: (row: ConsumptionTopRow) => void;
+  onSkillClick?: (skillId: string) => void;
   search: string;
   onViewAll: (
     dimension: ConsumptionDimension,
@@ -530,7 +544,9 @@ export function ConsumptionAttributionRowsView({
   analyticsScope,
   disabled,
   onAddFilter,
+  onAgentClick,
   onRemoveFilter,
+  onSkillClick,
   search,
   onViewAll,
   emptyMessage,
@@ -580,14 +596,29 @@ export function ConsumptionAttributionRowsView({
 
   const data = useMemo<AttributionRowData[]>(
     () =>
-      rows.map((row) => ({
-        ...row,
-        onClick: () =>
-          setExpandedRowId((current) => (current === row.id ? null : row.id)),
-        onAddFilter: () => onAddFilter(row),
-        onRemoveFilter: () => onRemoveFilter(row),
-      })),
-    [rows, onAddFilter, onRemoveFilter]
+      rows.map((row) => {
+        let onNameClick: (() => void) | undefined;
+
+        if (dimension === "agent" && row.modelId && onAgentClick) {
+          onNameClick = () => onAgentClick(row.id);
+        } else if (
+          dimension === "skill" &&
+          row.name !== row.id &&
+          onSkillClick
+        ) {
+          onNameClick = () => onSkillClick(row.id);
+        }
+
+        return {
+          ...row,
+          onClick: () =>
+            setExpandedRowId((current) => (current === row.id ? null : row.id)),
+          onAddFilter: () => onAddFilter(row),
+          onNameClick,
+          onRemoveFilter: () => onRemoveFilter(row),
+        };
+      }),
+    [dimension, rows, onAddFilter, onAgentClick, onRemoveFilter, onSkillClick]
   );
   const isLoading = isTopLoading;
   const skeletonRowCount =
@@ -743,7 +774,9 @@ export interface ConsumptionAttributionTableProps {
   analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
   onAddFilter: (row: ConsumptionTopRow) => void;
+  onAgentClick?: (agentId: string) => void;
   onRemoveFilter: (row: ConsumptionTopRow) => void;
+  onSkillClick?: (skillId: string) => void;
   // Owned by the page: the selected tab also drives the chart's breakdown.
   dimension: ConsumptionDimension;
   onDimensionChange: (dimension: ConsumptionDimension) => void;
@@ -767,7 +800,9 @@ export function ConsumptionAttributionTableView({
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
   disabled,
   onAddFilter,
+  onAgentClick,
   onRemoveFilter,
+  onSkillClick,
   dimension,
   onDimensionChange,
   onViewAll,
@@ -912,7 +947,9 @@ export function ConsumptionAttributionTableView({
                       analyticsScope={analyticsScope}
                       disabled={disabled}
                       onAddFilter={onAddFilter}
+                      onAgentClick={onAgentClick}
                       onRemoveFilter={onRemoveFilter}
+                      onSkillClick={onSkillClick}
                       search={debouncedValue}
                       onViewAll={onViewAll}
                     />
