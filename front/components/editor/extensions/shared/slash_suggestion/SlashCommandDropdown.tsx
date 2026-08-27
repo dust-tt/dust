@@ -45,12 +45,69 @@ const DEFAULT_EMPTY_MESSAGE = "No commands found";
 const DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME =
   SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME;
 
+const SKILL_NAME_TOOLTIP_DELAY_MS = 1000;
+
 function SlashCommandDropdownLoadingState({ message }: { message: string }) {
   return (
     <div className="flex h-14 items-center justify-center">
       <Spinner size="sm" />
       <span className="ml-2 text-sm text-muted-foreground">{message}</span>
     </div>
+  );
+}
+
+function SlashCommandNameTooltip({
+  label,
+  trigger,
+}: {
+  label: string;
+  trigger: React.ReactElement;
+}) {
+  const triggerRef = useRef<HTMLSpanElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useEffect(() => {
+    const labelElement =
+      triggerRef.current?.querySelector<HTMLElement>("span.truncate");
+
+    if (!labelElement || labelElement.textContent !== label) {
+      return;
+    }
+
+    const checkTruncation = () => {
+      const isOverflowing = labelElement.scrollWidth > labelElement.clientWidth;
+      setIsTruncated(isOverflowing);
+    };
+
+    checkTruncation();
+
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const observer = new ResizeObserver(checkTruncation);
+    observer.observe(labelElement);
+
+    return () => observer.disconnect();
+  }, [label]);
+
+  const triggerElement = (
+    <span ref={triggerRef} className="block w-full">
+      {trigger}
+    </span>
+  );
+
+  if (!isTruncated) {
+    return triggerElement;
+  }
+
+  return (
+    <Tooltip
+      delayDuration={SKILL_NAME_TOOLTIP_DELAY_MS}
+      label={label}
+      tooltipTriggerAsChild
+      trigger={triggerElement}
+    />
   );
 }
 
@@ -376,12 +433,9 @@ export const SlashCommandDropdown = forwardRef<
                     );
 
                     const itemContent = item.tooltipLabel ? (
-                      <Tooltip
+                      <SlashCommandNameTooltip
                         label={item.tooltipLabel}
-                        tooltipTriggerAsChild
-                        trigger={
-                          <span className="block w-full">{menuItem}</span>
-                        }
+                        trigger={menuItem}
                       />
                     ) : item.tooltip ? (
                       <DropdownTooltipTrigger
@@ -472,10 +526,9 @@ export const SlashCommandDropdown = forwardRef<
                   );
 
                   const itemContent = item.tooltipLabel ? (
-                    <Tooltip
+                    <SlashCommandNameTooltip
                       label={item.tooltipLabel}
-                      tooltipTriggerAsChild
-                      trigger={<span className="block w-full">{menuItem}</span>}
+                      trigger={menuItem}
                     />
                   ) : item.tooltip ? (
                     <DropdownTooltipTrigger
