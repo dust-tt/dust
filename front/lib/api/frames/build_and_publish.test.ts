@@ -102,6 +102,10 @@ async function setup(): Promise<{
     baseImage: "dust-base",
     version: "0.0.0-test",
   });
+  vi.spyOn(sandbox, "writeFile").mockResolvedValue(new Ok(undefined));
+  vi.spyOn(sandbox, "exec").mockResolvedValue(
+    new Ok({ exitCode: 0, stdout: "", stderr: "" })
+  );
   vi.mocked(ensureConversationSandboxReadyWithScope).mockResolvedValue(
     new Ok({ sandbox, freshlyCreated: false, scope: { spaceId: null } })
   );
@@ -146,17 +150,19 @@ describe("buildAndPublishFramePublication", () => {
       conversation,
       frame,
       manifest,
-      sourceDirectoryPath: `pod-${space.sId}/TaskList`,
       sourceFiles,
     });
 
     expect(result.isOk()).toBe(true);
+    expect(sandbox.writeFile).toHaveBeenCalledTimes(sourceFiles.length);
     expect(buildSandboxFunctionOnReadySandbox).toHaveBeenNthCalledWith(
       1,
       auth,
       {
         sandbox,
-        srcSandboxPath: `/files/pod-${space.sId}/TaskList/functions/add_task.ts`,
+        srcSandboxPath: expect.stringMatching(
+          /^\/tmp\/dust-frame-publication-builds\/[^/]+\/functions\/add_task\.ts$/
+        ),
       }
     );
     expect(buildSandboxFunctionOnReadySandbox).toHaveBeenNthCalledWith(
@@ -164,8 +170,17 @@ describe("buildAndPublishFramePublication", () => {
       auth,
       {
         sandbox,
-        srcSandboxPath: `/files/pod-${space.sId}/TaskList/functions/list_tasks.ts`,
+        srcSandboxPath: expect.stringMatching(
+          /^\/tmp\/dust-frame-publication-builds\/[^/]+\/functions\/list_tasks\.ts$/
+        ),
       }
+    );
+    expect(sandbox.exec).toHaveBeenCalledWith(
+      auth,
+      expect.stringMatching(
+        /^rm -rf -- '\/tmp\/dust-frame-publication-builds\/[^/]+'$/
+      ),
+      { user: "agent-proxied" }
     );
     expect(ensureConversationSandboxReadyWithScope).toHaveBeenCalledOnce();
     expect(
@@ -190,7 +205,6 @@ describe("buildAndPublishFramePublication", () => {
       conversation,
       frame,
       manifest,
-      sourceDirectoryPath: `conversation-${conversation.sId}/TaskList`,
       sourceFiles,
     });
 
@@ -206,21 +220,28 @@ describe("buildAndPublishFramePublication", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBeUndefined();
   });
 
-  it("rejects source outside the resolved conversation filesystem before building", async () => {
-    const { auth, conversation, frame } = await setup();
+  it("rejects an unsafe snapshot path before staging or building", async () => {
+    const { auth, conversation, frame, sandbox } = await setup();
 
     const result = await buildAndPublishFramePublication(auth, {
       conversation,
       frame,
       manifest,
-      sourceDirectoryPath: "conversation-other/TaskList",
-      sourceFiles,
+      sourceFiles: [
+        ...sourceFiles,
+        {
+          relativePath: "../outside.ts",
+          content: Buffer.from("export const outside = true;"),
+          contentType: "text/typescript",
+        },
+      ],
     });
 
     expect(result.isErr() && result.error).toMatchObject({
-      code: "invalid_path",
+      code: "invalid_source",
     });
-    expect(ensureConversationSandboxReadyWithScope).toHaveBeenCalledOnce();
+    expect(ensureConversationSandboxReadyWithScope).not.toHaveBeenCalled();
+    expect(sandbox.writeFile).not.toHaveBeenCalled();
     expect(buildSandboxFunctionOnReadySandbox).not.toHaveBeenCalled();
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });

@@ -1,26 +1,33 @@
+import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type {
-  FramePublicationError,
   FramePublicationFunctionArtifact,
   FramePublicationSourceFile,
 } from "@app/lib/api/frames/publication_storage";
-import { publishFramePublication } from "@app/lib/api/frames/publication_storage";
+import {
+  FramePublicationError,
+  publishFramePublication,
+} from "@app/lib/api/frames/publication_storage";
 import { ensureConversationSandboxReadyWithScope } from "@app/lib/api/sandbox/lifecycle";
+import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
+import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 
+const FRAME_BUILD_STAGING_ROOT = "/tmp/dust-frame-publication-builds";
+const FRAME_BUILD_STAGING_CONCURRENCY = 8;
+
 /**
- * Build every function declared by a Frame manifest, then atomically publish the source and built
- * artifacts in the invoking conversation's DSBX. The conversation filesystem may expose source
- * from the conversation itself or its Pod. No publication storage is touched until every path has
- * resolved and every build has succeeded.
+ * Stage one captured source snapshot in the invoking conversation's DSBX, build every function
+ * declared by the manifest from that snapshot, then atomically publish the source and artifacts.
+ * No publication storage is touched until every build has succeeded.
  */
 export async function buildAndPublishFramePublication(
   auth: Authenticator,
@@ -28,13 +35,11 @@ export async function buildAndPublishFramePublication(
     conversation,
     frame,
     manifest,
-    sourceDirectoryPath,
     sourceFiles,
   }: {
     conversation: ConversationType;
     frame: FileResource;
     manifest: FrameManifest;
-    sourceDirectoryPath: string;
     sourceFiles: FramePublicationSourceFile[];
   }
 ): Promise<
@@ -52,6 +57,22 @@ export async function buildAndPublishFramePublication(
     });
   }
 
+  const seenSourcePaths = new Set<string>();
+  for (const sourceFile of sourceFiles) {
+    if (
+      !isSafeFrameRelativePath(sourceFile.relativePath) ||
+      seenSourcePaths.has(sourceFile.relativePath)
+    ) {
+      return new Err(
+        new FramePublicationError(
+          "invalid_source",
+          `Invalid Frame source path: ${sourceFile.relativePath}`
+        )
+      );
+    }
+    seenSourcePaths.add(sourceFile.relativePath);
+  }
+
   const ensureResult = await ensureConversationSandboxReadyWithScope(
     auth,
     conversation
@@ -64,54 +85,57 @@ export async function buildAndPublishFramePublication(
       )
     );
   }
+  const sandbox = ensureResult.value.sandbox;
+  const stagingDirectory = path.posix.join(
+    FRAME_BUILD_STAGING_ROOT,
+    randomUUID()
+  );
 
-  const fsResult = await DustFileSystem.forConversation(auth, {
-    ...conversation,
-    spaceId: ensureResult.value.scope.spaceId,
-  });
-  if (fsResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError("invalid_path", fsResult.error.message)
+  try {
+    const stagingResults = await concurrentExecutor(
+      sourceFiles,
+      (sourceFile) =>
+        sandbox.writeFile(
+          auth,
+          path.posix.join(stagingDirectory, sourceFile.relativePath),
+          Uint8Array.from(sourceFile.content).buffer
+        ),
+      { concurrency: FRAME_BUILD_STAGING_CONCURRENCY }
     );
-  }
-
-  const buildInputs: { name: string; srcSandboxPath: string }[] = [];
-  for (const fn of manifest.functions) {
-    const sourcePath = path.posix.join(sourceDirectoryPath, fn.entryPoint);
-    const srcResult = fsResult.value.toSandboxPath(sourcePath);
-    if (srcResult.isErr()) {
+    const stagingError = stagingResults.find((result) => result.isErr());
+    if (stagingError?.isErr()) {
       return new Err(
-        new SandboxFunctionError(
-          "invalid_path",
-          `Invalid entry point for Frame function "${fn.name}": ${srcResult.error.message}`
-        )
+        new SandboxFunctionError("internal", stagingError.error.message)
       );
     }
-    buildInputs.push({ name: fn.name, srcSandboxPath: srcResult.value });
-  }
 
-  const functionArtifacts: FramePublicationFunctionArtifact[] = [];
-  for (const { name, srcSandboxPath } of buildInputs) {
-    const buildResult = await buildSandboxFunctionOnReadySandbox(auth, {
-      sandbox: ensureResult.value.sandbox,
-      srcSandboxPath,
+    const functionArtifacts: FramePublicationFunctionArtifact[] = [];
+    for (const fn of manifest.functions) {
+      const buildResult = await buildSandboxFunctionOnReadySandbox(auth, {
+        sandbox,
+        srcSandboxPath: path.posix.join(stagingDirectory, fn.entryPoint),
+      });
+      if (buildResult.isErr()) {
+        return new Err(
+          new SandboxFunctionError(
+            buildResult.error.code,
+            `Failed to build Frame function "${fn.name}": ${buildResult.error.message}`
+          )
+        );
+      }
+
+      functionArtifacts.push({ name: fn.name, ...buildResult.value });
+    }
+
+    return publishFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest,
+      sourceFiles,
     });
-    if (buildResult.isErr()) {
-      return new Err(
-        new SandboxFunctionError(
-          buildResult.error.code,
-          `Failed to build Frame function "${name}": ${buildResult.error.message}`
-        )
-      );
-    }
-
-    functionArtifacts.push({ name, ...buildResult.value });
+  } finally {
+    await sandbox.exec(auth, `rm -rf -- ${shellEscape(stagingDirectory)}`, {
+      user: "agent-proxied",
+    });
   }
-
-  return publishFramePublication(auth, {
-    frame,
-    functionArtifacts,
-    manifest,
-    sourceFiles,
-  });
 }

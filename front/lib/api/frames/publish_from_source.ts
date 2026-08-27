@@ -1,0 +1,211 @@
+import path from "node:path";
+
+import { DustFileSystem } from "@app/lib/api/file_system";
+import { buildAndPublishFramePublication } from "@app/lib/api/frames/build_and_publish";
+import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication_storage";
+import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
+import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import type { Authenticator } from "@app/lib/auth";
+import type { FileResource } from "@app/lib/resources/file_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  FRAME_MANIFEST_FILE,
+  isSafeFrameRelativePath,
+  parseFrameManifest,
+} from "@app/types/api/frame_manifest";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import {
+  isAllSupportedFileContentType,
+  normalizeMimeType,
+} from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
+
+const FRAME_SOURCE_READ_CONCURRENCY = 8;
+const MAX_FRAME_SOURCE_FILE_COUNT = 1024;
+const MAX_FRAME_SOURCE_BYTES = 100 * 1024 * 1024;
+
+function frameError(code: FramePublicationError["code"], message: string) {
+  return new Err(new FramePublicationError(code, message));
+}
+
+/**
+ * Publish a Frames v2 FileResource from its current source folder. The FileResource path is the
+ * authority: callers cannot point a Frame identity at a different manifest or source tree.
+ */
+export async function publishFrameV2FromSource(
+  auth: Authenticator,
+  {
+    conversation,
+    frame,
+    manifestPath,
+  }: {
+    conversation: ConversationType;
+    frame: FileResource;
+    manifestPath: string;
+  }
+): Promise<
+  Result<
+    { publicationId: string },
+    FramePublicationError | SandboxFunctionError
+  >
+> {
+  if (!frame.isFrameV2) {
+    return frameError(
+      "invalid_frame",
+      `File '${frame.sId}' is not a Frames v2 manifest.`
+    );
+  }
+
+  const canonicalManifestPath = frame.toScopedPath(auth);
+  if (
+    !canonicalManifestPath ||
+    path.posix.basename(canonicalManifestPath) !== FRAME_MANIFEST_FILE
+  ) {
+    return frameError(
+      "invalid_source",
+      `Frame '${frame.sId}' has no canonical ${FRAME_MANIFEST_FILE} path.`
+    );
+  }
+
+  if (
+    DustFileSystem.normalizeScopedPath(manifestPath) !== canonicalManifestPath
+  ) {
+    return frameError(
+      "invalid_source",
+      `Frame '${frame.sId}' must be published from '${canonicalManifestPath}'.`
+    );
+  }
+
+  const fsResult = await DustFileSystem.fromScopedPath(
+    auth,
+    canonicalManifestPath
+  );
+  if (fsResult.isErr()) {
+    return frameError("invalid_source", fsResult.error.message);
+  }
+  const dustFs = fsResult.value;
+
+  const writeAccess = dustFs.checkWriteAccess(canonicalManifestPath);
+  if (writeAccess.isErr()) {
+    return frameError("unauthorized", writeAccess.error.message);
+  }
+
+  const manifestBufferResult = await dustFs.readBuffer(canonicalManifestPath);
+  if (manifestBufferResult.isErr()) {
+    return frameError("invalid_source", manifestBufferResult.error.message);
+  }
+  if (manifestBufferResult.value === null) {
+    return frameError(
+      "invalid_source",
+      `Frame manifest not found: ${canonicalManifestPath}`
+    );
+  }
+  const manifestBuffer = manifestBufferResult.value;
+
+  const manifestResult = parseFrameManifest(manifestBuffer);
+  if (manifestResult.isErr()) {
+    return frameError("invalid_manifest", manifestResult.error);
+  }
+
+  const sourceDirectoryPath = path.posix.dirname(canonicalManifestPath);
+  const listResult = await dustFs.list(sourceDirectoryPath, {
+    maxFiles: MAX_FRAME_SOURCE_FILE_COUNT + 1,
+  });
+  if (listResult.isErr()) {
+    return frameError("invalid_source", listResult.error.message);
+  }
+  if (listResult.value.length > MAX_FRAME_SOURCE_FILE_COUNT) {
+    return frameError(
+      "invalid_source",
+      "Frame source exceeds the publication file count limit."
+    );
+  }
+
+  const sourceEntries: Array<{
+    path: string;
+    relativePath: string;
+    contentType: FramePublicationSourceFile["contentType"];
+  }> = [];
+  for (const entry of listResult.value) {
+    if (entry.isDirectory) {
+      continue;
+    }
+
+    const relativePath = path.posix.relative(sourceDirectoryPath, entry.path);
+    if (!isSafeFrameRelativePath(relativePath)) {
+      return frameError(
+        "invalid_source",
+        `Invalid Frame source path: ${entry.path}`
+      );
+    }
+
+    const contentType = normalizeMimeType(entry.contentType);
+    if (!isAllSupportedFileContentType(contentType)) {
+      return frameError(
+        "invalid_source",
+        `Unsupported content type '${entry.contentType}' for Frame source '${relativePath}'.`
+      );
+    }
+
+    sourceEntries.push({ path: entry.path, relativePath, contentType });
+  }
+
+  const totalSizeBytes = listResult.value.reduce(
+    (total, entry) => total + entry.sizeBytes,
+    0
+  );
+  if (
+    sourceEntries.length > MAX_FRAME_SOURCE_FILE_COUNT ||
+    totalSizeBytes > MAX_FRAME_SOURCE_BYTES
+  ) {
+    return frameError(
+      "invalid_source",
+      "Frame source exceeds the publication size limit."
+    );
+  }
+  if (!sourceEntries.some((entry) => entry.path === canonicalManifestPath)) {
+    return frameError(
+      "invalid_source",
+      `Frame manifest not found in source folder: ${canonicalManifestPath}`
+    );
+  }
+
+  const sourceFileResults = await concurrentExecutor(
+    sourceEntries,
+    async (entry) => ({
+      ...entry,
+      content:
+        entry.path === canonicalManifestPath
+          ? manifestBuffer
+          : await dustFs.readBuffer(entry.path),
+    }),
+    { concurrency: FRAME_SOURCE_READ_CONCURRENCY }
+  );
+
+  const sourceFiles: FramePublicationSourceFile[] = [];
+  for (const sourceFileResult of sourceFileResults) {
+    const { content, contentType, relativePath } = sourceFileResult;
+    if (Buffer.isBuffer(content)) {
+      sourceFiles.push({ content, contentType, relativePath });
+      continue;
+    }
+    if (content.isErr()) {
+      return frameError("invalid_source", content.error.message);
+    }
+    if (content.value === null) {
+      return frameError(
+        "invalid_source",
+        `Frame source file not found: ${relativePath}`
+      );
+    }
+    sourceFiles.push({ content: content.value, contentType, relativePath });
+  }
+
+  return buildAndPublishFramePublication(auth, {
+    conversation,
+    frame,
+    manifest: manifestResult.value,
+    sourceFiles,
+  });
+}
