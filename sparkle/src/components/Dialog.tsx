@@ -100,7 +100,10 @@ const dialogVariants = cva(
     "rounded-2xl flex flex-col w-full max-w-[calc(100vw-2rem)] border border shadow-lg",
     "bg-modal-background",
     "border-border",
-    "max-h-[90vh]"
+    "max-h-[90vh]",
+    // Radix focuses the panel itself when nothing tabbable is inside or on
+    // background clicks; suppress the UA focus ring on the panel.
+    "focus:outline-none"
   ),
   {
     variants: {
