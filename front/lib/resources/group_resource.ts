@@ -1106,55 +1106,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.filter((group) => group.canRead(auth));
   }
 
-  static async listForSpaceById(
-    auth: Authenticator,
-    spaceId: string,
-    options: { groupKinds?: GroupKind[] } = {}
-  ): Promise<GroupResource[]> {
-    const workspace = auth.getNonNullableWorkspace();
-    const spaceModelId = getResourceIdFromSId(spaceId);
-
-    if (!spaceModelId) {
-      return [];
-    }
-
-    // Find groups associated with the space through its group_permissions grants.
-    const spaceGrants = await GroupPermissionModel.findAll({
-      where: {
-        resourceType: "space",
-        resourceId: spaceModelId,
-        workspaceId: workspace.id,
-      },
-      attributes: ["groupId"],
-    });
-
-    if (spaceGrants.length === 0) {
-      return [];
-    }
-
-    const groupIds = [...new Set(spaceGrants.map((grant) => grant.groupId))];
-    const { groupKinds } = options;
-
-    const whereClause: WhereOptions<GroupModel> = {
-      id: {
-        [Op.in]: groupIds,
-      },
-    };
-
-    // Apply groupKinds filter if provided
-    if (groupKinds && groupKinds.length > 0) {
-      whereClause.kind = {
-        [Op.in]: groupKinds,
-      };
-    }
-
-    const groups = await this.baseFetch(auth, {
-      where: whereClause,
-    });
-
-    return groups.filter((group) => group.canRead(auth));
-  }
-
   /**
    * Group model ids the user was a member of at `at`, defaulting to now.
    *

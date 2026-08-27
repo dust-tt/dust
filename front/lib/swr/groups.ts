@@ -23,13 +23,11 @@ import { z } from "zod";
 export function useGroups({
   owner,
   kinds,
-  spaceId,
   withMembers,
   disabled,
 }: {
   owner: LightWorkspaceType;
   kinds?: readonly GroupKind[];
-  spaceId?: string;
   // Also resolves each group's member sIds (one extra batched query
   // server-side) instead of just its memberCount.
   withMembers?: boolean;
@@ -41,15 +39,12 @@ export function useGroups({
     if (kinds && kinds.length > 0) {
       kinds.forEach((k) => params.append("kind", k));
     }
-    if (spaceId) {
-      params.append("spaceId", spaceId);
-    }
     if (withMembers) {
       params.append("withMembers", "true");
     }
     const queryString = params.toString();
     return `/api/w/${owner.sId}/groups${queryString ? `?${queryString}` : ""}`;
-  }, [owner.sId, kinds, spaceId, withMembers]);
+  }, [owner.sId, kinds, withMembers]);
 
   const groupsFetcher: Fetcher<GetGroupsResponseBody> = fetcher;
 
