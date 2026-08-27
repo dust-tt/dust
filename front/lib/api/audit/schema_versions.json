@@ -33,6 +33,7 @@
   "frame.deleted_admin": 1,
   "frame.email_grant_added": 2,
   "frame.email_grant_revoked": 3,
+  "frame.publication_activated": 1,
   "frame.share_scope_updated": 2,
   "group.advanced_model_access_updated": 1,
   "group.member_added": 1,

@@ -671,6 +671,15 @@ export class FileResource extends BaseResource<FileModel> {
     return this.contentType === frameV2ContentType;
   }
 
+  async setActiveFramePublication(publicationId: string) {
+    return this.update({
+      useCaseMetadata: {
+        ...this.useCaseMetadata,
+        activePublicationId: publicationId,
+      },
+    });
+  }
+
   // Content access logic.
   //
   // Files may have a "processed" version (text extraction, image resize, audio transcription) or
