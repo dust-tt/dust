@@ -1,3 +1,4 @@
+import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { USAGE_TYPE_FREE, USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -62,6 +63,88 @@ describe("RunResource reasoning token usage", () => {
     const usages = await run.listRunUsages(auth);
 
     expect(usages[0]?.reasoningTokens).toBeNull();
+  });
+});
+
+describe("RunResource service tier usage", () => {
+  it("persists the provider-reported tier that priced the tokens", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const { run, runUsageModelId } = await RunResource.makeNewWithPendingUsage(
+      {
+        appId: null,
+        dustRunId: generateRandomModelSId(),
+        runType: "deploy",
+        useWorkspaceCredentials: false,
+        workspaceId: workspace.id,
+      },
+      {
+        inferenceProvider: "openai-responses",
+        modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+        providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+        region: "global",
+        usageType: USAGE_TYPE_USER,
+      }
+    );
+
+    // The pending attempt predates the provider response, so no tier is known yet.
+    expect(await run.listRunUsageAttempts(auth)).toMatchObject([
+      { serviceTier: null, usageState: "pending" },
+    ]);
+
+    const costMicroUsd = await run.finalizePendingTokenUsage(
+      auth,
+      runUsageModelId,
+      {
+        inputTokens: 1_000,
+        totalOutputTokens: 300,
+        totalTokens: 1_300,
+        serviceTier: "flex",
+      },
+      GPT_5_MINI_MODEL_CONFIG.modelId
+    );
+
+    const usages = await run.listRunUsages(auth);
+    expect(usages).toHaveLength(1);
+    expect(usages[0]).toMatchObject({ serviceTier: "flex" });
+
+    // The persisted tier is the one the cost was computed with.
+    expect(usages[0]?.costMicroUsd).toBe(costMicroUsd);
+    expect(costMicroUsd).toBe(
+      Math.round(
+        computeTokensCostForUsageInMicroUsd({
+          modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+          promptTokens: 1_000,
+          completionTokens: 300,
+          cachedTokens: null,
+          serviceTier: "flex",
+        })
+      )
+    );
+  });
+
+  it("stores null when the provider does not report a tier", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const run = await RunResource.makeNew({
+      appId: null,
+      dustRunId: generateRandomModelSId(),
+      runType: "deploy",
+      useWorkspaceCredentials: false,
+      workspaceId: workspace.id,
+    });
+
+    await run.recordTokenUsage(
+      auth,
+      {
+        inputTokens: 1_000,
+        totalOutputTokens: 100,
+        totalTokens: 1_100,
+      },
+      GPT_5_MINI_MODEL_CONFIG.modelId,
+      { usageType: USAGE_TYPE_USER }
+    );
+
+    const usages = await run.listRunUsages(auth);
+    expect(usages[0]?.serviceTier).toBeNull();
   });
 });
 
