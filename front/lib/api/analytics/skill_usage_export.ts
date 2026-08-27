@@ -12,7 +12,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 
 type SkillDateBucket = {
@@ -83,7 +83,7 @@ export async function fetchSkillUsageExportRows(
   );
 
   if (result.isErr()) {
-    return new Err(new Error(result.error.message));
+    return result;
   }
 
   const skillBuckets = bucketsToArray<SkillBucket>(
