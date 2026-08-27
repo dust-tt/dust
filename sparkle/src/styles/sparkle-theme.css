@@ -38,6 +38,12 @@
 @utility h-2xl {
   height: 1024px;
 }
+@utility h-3xl {
+  height: 1280px;
+}
+@utility h-4xl {
+  height: 1536px;
+}
 
 /* Rainbow gradient background (was theme.extend.backgroundImage). */
 @utility bg-rainbow-gradient {
