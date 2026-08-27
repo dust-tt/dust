@@ -42,19 +42,10 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
-const DIALOG_SIZES = [
-  "md",
-  "lg",
-  "xl",
-  "2xl",
-  "3xl",
-  "4xl",
-  "full",
-  "fit",
-] as const;
+const DIALOG_SIZES = ["md", "lg", "xl", "2xl", "3xl", "full", "fit"] as const;
 type DialogSizeType = (typeof DIALOG_SIZES)[number];
 
-const DIALOG_HEIGHTS = ["md", "lg", "xl", "2xl", "3xl", "4xl", "full"] as const;
+const DIALOG_HEIGHTS = ["md", "lg", "xl", "2xl", "3xl", "full"] as const;
 type DialogHeightType = (typeof DIALOG_HEIGHTS)[number];
 
 const sizeClasses: Record<DialogSizeType, string> = {
@@ -63,7 +54,6 @@ const sizeClasses: Record<DialogSizeType, string> = {
   xl: "sm:max-w-3xl",
   "2xl": "sm:max-w-5xl",
   "3xl": "sm:max-w-6xl",
-  "4xl": "sm:max-w-7xl",
   full: "sm:max-w-full sm:h-full",
   fit: "sm:max-w-[90vw] w-fit",
 };
@@ -74,7 +64,6 @@ const heightClasses: Record<DialogHeightType, string> = {
   xl: "sm:h-xl",
   "2xl": "sm:h-2xl",
   "3xl": "sm:h-3xl",
-  "4xl": "sm:h-4xl",
   full: "h-dvh max-h-none",
 };
 
@@ -128,9 +117,9 @@ const dialogVariants = cva(
 
 interface DialogContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
-  /** Max width of the dialog: "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "full" (full screen) | "fit" (content width). */
+  /** Max width of the dialog: "md" | "lg" | "xl" | "2xl" | "3xl" | "full" (full screen) | "fit" (content width). */
   size?: DialogSizeType;
-  /** Fixed height of the dialog: "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "full" (viewport height; combined with size="full" the dialog covers the whole screen); unset grows with content up to 90vh (which also caps the fixed heights). */
+  /** Fixed height of the dialog: "md" | "lg" | "xl" | "2xl" | "3xl" | "full" (viewport height; combined with size="full" the dialog covers the whole screen); unset grows with content up to 90vh (which also caps the fixed heights). */
   height?: DialogHeightType;
   /** "default" centers vertically; "command" pins near the top with a slide-in (command-palette style). */
   variant?: DialogVariantType;
