@@ -739,6 +739,74 @@ describe("ConsumptionAttributionTable", () => {
     expect(onAddFilter).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    {
+      dimension: "agent" as const,
+      row: {
+        id: "agent-id",
+        name: "Research agent",
+        pictureUrl: null,
+        description: null,
+        icon: null,
+        modelId: "model-id",
+        modelDisplayName: "Model",
+        credits: 100,
+        avgCredits: 10,
+        previousCredits: null,
+      },
+    },
+    {
+      dimension: "skill" as const,
+      row: {
+        id: "skill-id",
+        name: "Research skill",
+        pictureUrl: null,
+        description: null,
+        icon: null,
+        modelId: null,
+        modelDisplayName: null,
+        credits: 100,
+        avgCredits: 10,
+        previousCredits: null,
+      },
+    },
+  ])("opens the $dimension info page from its name", ({ dimension, row }) => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [row],
+      totalCredits: 100,
+      totalCount: 1,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+    const onAgentClick = vi.fn();
+    const onSkillClick = vi.fn();
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension={dimension}
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onAgentClick={onAgentClick}
+        onRemoveFilter={vi.fn()}
+        onSkillClick={onSkillClick}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByText(row.name));
+
+    expect(
+      dimension === "agent" ? onAgentClick : onSkillClick
+    ).toHaveBeenCalledWith(row.id);
+    expect(
+      dimension === "agent" ? onSkillClick : onAgentClick
+    ).not.toHaveBeenCalled();
+  });
+
   it("renders the skill identity and description without a model", () => {
     mockUseConsumptionTop.mockReturnValue({
       rows: [
