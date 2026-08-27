@@ -17,8 +17,8 @@ export const BUBBLE_MENU_STYLE = { zIndex: 60 };
 // acts on. 150ms ease-out keeps it in the popover band and reads as an
 // instant response to the selection.
 export const BUBBLE_MENU_TOOLBAR_MOTION_CLASSES =
-  "origin-bottom transition-[opacity,transform] duration-150 ease-out-cubic motion-reduce:transition-none";
-export const BUBBLE_MENU_TOOLBAR_HIDDEN_CLASSES = "scale-[0.97] opacity-0";
+  "origin-bottom transition-[opacity,transform] duration-100 ease-out-quart motion-reduce:transition-none";
+export const BUBBLE_MENU_TOOLBAR_HIDDEN_CLASSES = "scale-[0.98] opacity-0";
 
 /**
  * Options for Tiptap's BubbleMenu plus an `isPositioned` flag to gate the
