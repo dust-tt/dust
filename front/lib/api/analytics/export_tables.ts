@@ -546,6 +546,7 @@ async function exportToolUsage({
   const baseQuery = buildExportConsumptionScopeQuery(auth, {
     startDate,
     endDate,
+    timezone,
   });
 
   const result = await fetchToolUsageExportRows(baseQuery, timezone);
