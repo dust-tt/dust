@@ -250,24 +250,33 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
   const handleItemSelect = useCallback(
     (item: CommandPaletteItem) => {
-      if (item.kind === "command") {
-        close();
-        if (item.command.id === "toggle_theme") {
-          setTheme(nextTheme);
-        }
-        return;
-      }
-      if (item.kind === "pod") {
-        close();
-        void router.push(getPodRoute(owner.sId, item.pod.sId));
-        return;
-      }
-      // Skills without administration access have only one action (view details).
-      if (item.kind === "skill" && !item.skill.canAdministrate) {
-        executeAction(item, "view_details");
-      } else {
-        setSelectedItem(item);
-        setPhase("action");
+      switch (item.kind) {
+        case "command":
+          close();
+          if (item.command.id === "toggle_theme") {
+            setTheme(nextTheme);
+          }
+          return;
+        case "pod":
+          close();
+          void router.push(getPodRoute(owner.sId, item.pod.sId));
+          return;
+        case "agent":
+          setSelectedItem(item);
+          setPhase("action");
+          return;
+        case "skill":
+          // Skills without administration access have only one action
+          // (view details).
+          if (!item.skill.canAdministrate) {
+            executeAction(item, "view_details");
+          } else {
+            setSelectedItem(item);
+            setPhase("action");
+          }
+          return;
+        default:
+          assertNever(item);
       }
     },
     [close, executeAction, nextTheme, owner.sId, router, setTheme]
