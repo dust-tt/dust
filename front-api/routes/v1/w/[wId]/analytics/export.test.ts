@@ -85,9 +85,8 @@ vi.mock("@app/lib/api/analytics/skills_export", async () => ({
   ),
 }));
 
-vi.mock("@app/lib/api/assistant/observability/skill_usage", async () => ({
-  fetchAvailableSkills: vi.fn(async () => new Ok([])),
-  fetchSkillUsageMetrics: vi.fn(async () => new Ok([])),
+vi.mock("@app/lib/api/analytics/skill_usage_export", async () => ({
+  fetchSkillUsageExportRows: vi.fn(async () => new Ok([])),
 }));
 
 vi.mock("@app/lib/api/assistant/observability/tool_usage", async () => ({
