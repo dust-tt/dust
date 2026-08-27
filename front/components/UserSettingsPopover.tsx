@@ -10,6 +10,7 @@ import {
 } from "@app/components/me/SoundNotificationPreferences";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useChatWithVisibility } from "@app/hooks/useChatWithVisibility";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -283,6 +284,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 function CustomizationSection() {
   const { theme: currentTheme, setTheme } = useTheme();
   const isMac = useIsMac();
+  const { isChatWithVisible, setChatWithVisible } = useChatWithVisibility();
 
   const modEnterLabel = useMemo(
     () => (isMac ? "Cmd + Enter (⌘ + ↵)" : "Ctrl + Enter"),
@@ -411,6 +413,21 @@ function CustomizationSection() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+      </div>
+
+      <div className="flex items-start justify-between gap-4 rounded-2xl border border-border dark:border-border-dark p-4">
+        <div className="flex flex-col gap-1">
+          <span className="heading-base text-foreground">
+            Show "Chat with..." on home
+          </span>
+          <span className="copy-sm text-muted-foreground">
+            Display the agent search and suggestions on the home page.
+          </span>
+        </div>
+        <SliderToggle
+          selected={isChatWithVisible}
+          onClick={() => setChatWithVisible(!isChatWithVisible)}
+        />
       </div>
     </SectionContent>
   );
