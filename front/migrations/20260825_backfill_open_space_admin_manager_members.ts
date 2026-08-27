@@ -25,8 +25,12 @@ async function backfillWorkspaceOpenSpaceMembers(
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   const spaces = await SpaceResource.listWorkspaceSpaces(auth);
+  const openIds = await SpaceResource.listOpenSpaceModelIds(auth, spaces);
   const targets = spaces.filter(
-    (space) => space.isRegularAndOpen() && space.managementMode === "manual"
+    (space) =>
+      space.isRegular() &&
+      openIds.has(space.id) &&
+      space.managementMode === "manual"
   );
 
   // Counts for every stage, logged once: a run that adds nothing has to say which stage came up

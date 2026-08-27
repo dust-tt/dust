@@ -144,9 +144,14 @@ export async function listPodsForScope(
     );
     const metadataMap = new Map(metadatas.map((m) => [m.spaceId, m]));
 
+    const openIds = await SpaceResource.listOpenSpaceModelIds(
+      auth,
+      page.spaces
+    );
+
     for (const space of page.spaces) {
       if (
-        space.isOpen() &&
+        openIds.has(space.id) &&
         metadataMap.get(space.id)?.archivedAt === null &&
         podNameMatches(q, space.name)
       ) {

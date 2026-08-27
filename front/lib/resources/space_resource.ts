@@ -2104,7 +2104,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // Users can add themselves to open projects; otherwise managing a space's members requires
     // administration rights (held by workspace admins and a project's editors) — a project's plain
     // members hold `write` but must not be able to add others, so this gates on `canAdministrate`.
-    if (this.isProject() && this.isOpen()) {
+    if (this.isProject() && (await this.isOpen(auth))) {
       const currentUser = auth.getNonNullableUser();
       if (userId === currentUser.sId) {
         return true;
@@ -2152,35 +2152,53 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   isRegular() {
     return this.kind === "regular";
   }
+
   isProject() {
     return this.kind === "project";
   }
 
-  isRegularAndRestricted() {
-    return this.isRegular() && !this.isOpen();
+  // A space is open when the workspace global group holds a `reader` grant on it (that grant is what
+  // makes the space visible to every workspace member). Resolved from `group_permissions` so it does
+  // not depend on the eagerly-loaded `this.groups`. Prefer `listOpenSpaceModelIds` when checking
+  // several spaces to avoid one query per space.
+  async isOpen(auth: Authenticator): Promise<boolean> {
+    return (await SpaceResource.listOpenSpaceModelIds(auth, [this])).has(
+      this.id
+    );
   }
 
-  isProjectAndRestricted() {
-    return this.isProject() && !this.isOpen();
-  }
+  // The model ids of the `spaces` that are open (the workspace global group holds a `reader` grant).
+  // One `group_permissions` query (plus the global group lookup) for the whole batch.
+  static async listOpenSpaceModelIds(
+    auth: Authenticator,
+    spaces: SpaceResource[]
+  ): Promise<Set<ModelId>> {
+    const openSpaceModelIds = new Set<ModelId>();
+    if (spaces.length === 0) {
+      return openSpaceModelIds;
+    }
 
-  isRegularAndOpen() {
-    return this.isRegular() && this.isOpen();
-  }
+    const globalGroupModelId = await auth.getGlobalGroupModelId();
+    if (globalGroupModelId === null) {
+      return openSpaceModelIds;
+    }
 
-  // Whether the space is restricted (its data is visible only to its members). Only regular and
-  // project spaces can be restricted; the unique kinds (`global`/`conversations` are workspace-wide,
-  // `system` is admin-only and not a membership space) are never "restricted" in this sense. Note
-  // this is NOT `!isOpen()`: a `system` space is not open but is not restricted either.
-  isRestricted() {
-    return this.isRegularAndRestricted() || this.isProjectAndRestricted();
-  }
+    const readerGrants = await GroupPermissionModel.findAll({
+      attributes: ["resourceId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        resourceType: "space",
+        resourceId: spaces.map((space) => space.id),
+        groupId: globalGroupModelId,
+        grantType: "reader",
+      },
+    });
 
-  isOpen() {
-    // A space is open when it has a reader (viewer) grant: the workspace global group is attached as
-    // a viewer on open spaces (restricted spaces have no reader grant). See
-    // `SpaceGroupReference.isReader`.
-    return this.groups.some((group) => group.isReader());
+    for (const grant of readerGrants) {
+      openSpaceModelIds.add(grant.resourceId);
+    }
+
+    return openSpaceModelIds;
   }
 
   isDeletable() {

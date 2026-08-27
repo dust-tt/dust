@@ -27,10 +27,13 @@ async function resetWorkspaceOpenSpaceMembers(
 ): Promise<void> {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-  // `isRegularAndOpen` is the predicate this targets: a regular space whose groups include the
-  // workspace global group as a `reader` viewer. Soft-deleted spaces are left out (default scope).
+  // This targets regular spaces that are open: a regular space whose groups include the workspace
+  // global group as a `reader` viewer. Soft-deleted spaces are left out (default scope).
   const spaces = await SpaceResource.listWorkspaceSpaces(auth);
-  const openRegularSpaces = spaces.filter((space) => space.isRegularAndOpen());
+  const openIds = await SpaceResource.listOpenSpaceModelIds(auth, spaces);
+  const openRegularSpaces = spaces.filter(
+    (space) => space.isRegular() && openIds.has(space.id)
+  );
   // Counts for every stage, logged once at the end: a run that removes nothing has to say which
   // stage came up empty, or a no-op is indistinguishable from a bug.
   const counts = {

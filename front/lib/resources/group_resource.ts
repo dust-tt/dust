@@ -183,7 +183,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   }: {
     user: { id: ModelId };
     workspace: { id: ModelId };
-  }) => `groups:user:${user.id}:workspace:${workspace.id}`;
+  }) => `groups:v2:user:${user.id}:workspace:${workspace.id}`;
 
   private static async dangerouslyListUserGroupsForAuthUncached({
     user,
@@ -193,7 +193,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     user: UserResource;
     workspace: LightWorkspaceType;
     transaction?: Transaction;
-  }): Promise<ModelId[]> {
+  }): Promise<{
+    globalGroupModelId: ModelId | null;
+    groupModelIds: ModelId[];
+  }> {
     return GroupResource.listUserGroupModelIdsInWorkspace({
       user,
       workspace,
@@ -275,7 +278,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     user: UserResource;
     workspace: LightWorkspaceType;
     transaction?: Transaction;
-  }): Promise<ModelId[]> {
+  }): Promise<{
+    globalGroupModelId: ModelId | null;
+    groupModelIds: ModelId[];
+  }> {
     if (transaction) {
       logger.info(
         {
@@ -1171,7 +1177,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     transaction?: Transaction;
     dangerouslySkipMembershipCheck?: boolean;
     at?: Date;
-  }): Promise<ModelId[]> {
+  }): Promise<{
+    globalGroupModelId: ModelId | null;
+    groupModelIds: ModelId[];
+  }> {
     if (!dangerouslySkipMembershipCheck) {
       const workspaceMembership =
         await MembershipResource.getActiveMembershipOfUserInWorkspace({
@@ -1181,7 +1190,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           at,
         });
       if (!workspaceMembership) {
-        return [];
+        return { globalGroupModelId: null, groupModelIds: [] };
       }
     }
 
@@ -1221,11 +1230,16 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
     );
 
-    if (includeGlobal && !groups.some((g) => g.kind === "global")) {
+    const globalGroupModelId =
+      groups.find((g) => g.kind === "global")?.id ?? null;
+    if (includeGlobal && globalGroupModelId === null) {
       throw new Error("Global group not found.");
     }
 
-    return groups.map((group) => group.id);
+    return {
+      globalGroupModelId,
+      groupModelIds: groups.map((group) => group.id),
+    };
   }
 
   // Warning, this function can be very memory hungry if there are a lot of groups (such as a workspace with a lot of agents and editors groups).
@@ -1243,7 +1257,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     transaction?: Transaction;
     at?: Date;
   }): Promise<GroupResource[]> {
-    const groupIds = await this.listUserGroupModelIdsInWorkspace({
+    const { groupModelIds } = await this.listUserGroupModelIdsInWorkspace({
       user,
       workspace,
       groupKinds,
@@ -1254,7 +1268,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const groups = await GroupModel.findAll({
       where: {
         id: {
-          [Op.in]: groupIds,
+          [Op.in]: groupModelIds,
         },
         workspaceId: workspace.id,
       },
