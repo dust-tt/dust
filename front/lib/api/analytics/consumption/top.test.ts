@@ -329,7 +329,7 @@ describe("consumption top rankings", () => {
     expect(termsClauses[1]?.terms?.["agent.attributed_id"]).toHaveLength(1);
   });
 
-  it("counts tool invocations as documents, with no message sub-agg", async () => {
+  it("filters skill management from the tool response", async () => {
     const { auth } = await setup();
     vi.mocked(resolveDimensionLabels).mockResolvedValue(
       new Map([
@@ -347,11 +347,17 @@ describe("consumption top rankings", () => {
     mockAggs({
       buckets: [
         {
+          key: "skill_management",
+          doc_count: 5,
+          credit_micro: { value: 3_000_000 },
+        },
+        {
           key: "web_search_browse",
           doc_count: 4,
           credit_micro: { value: 2_000_000 },
         },
       ],
+      totalCount: 2,
       totalMicro: 10_000_000,
     });
 
@@ -376,10 +382,17 @@ describe("consumption top rankings", () => {
         avgCreditsPerInvocation: 0.5,
       },
     ]);
-    // The tools are a slice of the period, not all of it.
-    expect(result.value.totalCredits).toBe(10);
+    // Only the hidden tool's credits are removed from the share denominator.
+    expect(result.value.totalCredits).toBe(7);
 
-    const [, options] = lastSearchCall();
+    const [query] = rankingSearchCall();
+    expect(query.bool?.filter).not.toContainEqual({
+      bool: {
+        must_not: [{ terms: { "tool.server_name": ["skill_management"] } }],
+      },
+    });
+
+    const [, options] = rankingSearchCall();
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
       field: "tool.server_name",
     });
