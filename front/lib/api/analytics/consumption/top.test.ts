@@ -382,8 +382,8 @@ describe("consumption top rankings", () => {
         avgCreditsPerInvocation: 0.5,
       },
     ]);
-    // The tools are a slice of the period, not all of it.
-    expect(result.value.totalCredits).toBe(10);
+    // Only the hidden tool's credits are removed from the share denominator.
+    expect(result.value.totalCredits).toBe(7);
 
     const [query] = rankingSearchCall();
     expect(query.bool?.filter).not.toContainEqual({

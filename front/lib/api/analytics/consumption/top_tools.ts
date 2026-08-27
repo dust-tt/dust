@@ -82,11 +82,14 @@ export async function fetchConsumptionTopTools(
   const visibleGroups = groups.filter(
     (group) => group.key !== SKILL_MANAGEMENT_SERVER_NAME
   );
+  const skillManagementCredits =
+    groups.find((group) => group.key === SKILL_MANAGEMENT_SERVER_NAME)
+      ?.credits ?? 0;
   const rows = await resolveConsumptionGroupLabels(auth, "tool", visibleGroups);
 
   return new Ok({
     period,
-    totalCredits,
+    totalCredits: totalCredits - skillManagementCredits,
     hasMore,
     totalCount,
     tools: rows.map((row) => ({
