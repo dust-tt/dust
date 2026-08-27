@@ -22,7 +22,8 @@
 }
 
 /* Fixed heights (was theme.extend.height). Defined as `@utility` because v4's
-   `h-*` utilities are otherwise driven by the dynamic spacing scale. */
+   `h-*` utilities are otherwise driven by the dynamic spacing scale, plus
+   matching min-height floors for Dialog `grow`. */
 @utility h-175 {
   height: 700px;
 }

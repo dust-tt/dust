@@ -120,7 +120,7 @@ interface DialogContentProps
   size?: DialogSizeType;
   /** Fixed height of the dialog: "md" | "lg" | "xl" | "2xl"; unset grows with content up to 90vh. */
   height?: DialogHeightType;
-  /** Lets the dialog grow beyond its fixed `height` when the content needs it, up to the existing 90vh cap — the height becomes a minimum. No effect without `height`. */
+  /** Lets the dialog grow beyond its fixed `height` when the content needs it, up to the existing 90vh cap: the height becomes a minimum. No effect without `height`. */
   grow?: boolean;
   /** "default" centers vertically; "command" pins near the top with a slide-in (command-palette style). */
   variant?: DialogVariantType;
@@ -173,6 +173,7 @@ const DialogContent = React.forwardRef<
           <DialogPrimitive.Content
             ref={ref}
             className={cn(
+              // grow replaces the fixed height with a floor.
               dialogVariants({
                 size,
                 height: grow ? undefined : height,
