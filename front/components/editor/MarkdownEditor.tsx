@@ -15,6 +15,7 @@ import { useEffect, useMemo, useRef } from "react";
 const DEFAULT_MARKDOWN_EDITOR_DEBOUNCE_MS = 250;
 /** Default classes for the TipTap editable surface (scroll + max height). */
 const DEFAULT_MARKDOWN_EDITOR_CLASSNAME = "max-h-96";
+
 const editorVariants = cva(
   [
     "overflow-auto p-2 resize-y min-h-60",
