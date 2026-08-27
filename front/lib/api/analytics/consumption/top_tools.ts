@@ -78,7 +78,8 @@ export async function fetchConsumptionTopTools(
   }
   const { groups, hasMore, totalCount, totalCredits } = result.value;
 
-  // Skill enablement is orchestration rather than a user-facing tool to analyze.
+  // Enabling a skill is an internal setup step, so do not show it as a tool in
+  // consumption analytics.
   const visibleGroups = groups.filter(
     (group) => group.key !== SKILL_MANAGEMENT_SERVER_NAME
   );
