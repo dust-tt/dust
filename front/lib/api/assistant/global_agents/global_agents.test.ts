@@ -280,6 +280,8 @@ describe("getGlobalAgents custom model agents", () => {
       "custom_model_feature",
     ]);
 
+    // The hiding comes from the sId filter in getGlobalAgents, not from the
+    // dust-next getter, which falls back to a concrete model on its own.
     const removed = mockCustomModels.configs.splice(0);
     try {
       const agents = await getGlobalAgents(

@@ -1106,9 +1106,10 @@ export function _getDustNextHighGlobalAgent(
 // pistache, chalom). Their eval models were removed from the infra custom-models
 // config (GCS), so they no longer resolve to a custom model. They remain callable for past
 // conversations via a concrete fallback model and are listed in
-// RETIRED_GLOBAL_AGENTS_SID (see global_agents.ts). We may revive them as
-// custom-model agents in the future by moving them back into
-// CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.
+// RETIRED_GLOBAL_AGENTS_SID (see global_agents.ts). Reviving one as a
+// custom-model agent requires moving it back into
+// CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS and restoring
+// _getCustomModelDustLikeGlobalAgent and its switch cases (removed in #31262).
 type RetiredDustGlobalAgentConfig = {
   name: string;
   preferredReasoningEffort: ReasoningEffort;
