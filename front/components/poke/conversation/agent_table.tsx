@@ -5,7 +5,7 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { usePokeAgentConversations } from "@app/poke/swr/conversation";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Chip, IconButton, LinkWrapper } from "@dust-tt/sparkle";
+import { Button, Chip, IconButton, Input, LinkWrapper } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
@@ -103,13 +103,62 @@ export function ConversationAgentDataTable({
   agentId,
 }: ConversationAgentDataTableProps) {
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+
+  // A narrower window makes the rows already loaded meaningless, so start over.
+  const handleFromChange = (value: string) => {
+    setFrom(value);
+    setLimit(PAGE_SIZE);
+  };
+
+  const handleToChange = (value: string) => {
+    setTo(value);
+    setLimit(PAGE_SIZE);
+  };
+
+  const handleClearDates = () => {
+    setFrom("");
+    setTo("");
+    setLimit(PAGE_SIZE);
+  };
+
   const useConversationsWithAgent = (props: PokeConditionalFetchProps) =>
-    usePokeAgentConversations({ ...props, agentId, limit });
+    usePokeAgentConversations({
+      ...props,
+      agentId,
+      limit,
+      from: from || undefined,
+      to: to || undefined,
+    });
 
   return (
     <PokeDataTableConditionalFetch
       header="Conversations"
       owner={owner}
+      globalActions={
+        <div className="flex items-end gap-2">
+          <Input
+            label="Created from"
+            name="from"
+            type="date"
+            value={from}
+            max={to || undefined}
+            onChange={(e) => handleFromChange(e.target.value)}
+          />
+          <Input
+            label="to"
+            name="to"
+            type="date"
+            value={to}
+            min={from || undefined}
+            onChange={(e) => handleToChange(e.target.value)}
+          />
+          {(from || to) && (
+            <Button variant="ghost" label="Clear" onClick={handleClearDates} />
+          )}
+        </div>
+      }
       useSWRHook={useConversationsWithAgent}
     >
       {({ conversations, hasMore, isLoadingMore }) => (

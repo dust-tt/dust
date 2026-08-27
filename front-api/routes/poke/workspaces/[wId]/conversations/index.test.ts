@@ -66,6 +66,111 @@ describe("GET /api/poke/workspaces/:wId/conversations", () => {
     ).not.toContain(otherAgentConversation.sId);
   });
 
+  it("restricts the agent conversations to the created-at window", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      isSuperUser: true,
+      role: "admin",
+    });
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const januaryConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date("2026-01-15T12:00:00.000Z")],
+      conversationCreatedAt: new Date("2026-01-15T12:00:00.000Z"),
+    });
+    const februaryConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date("2026-02-20T12:00:00.000Z")],
+      conversationCreatedAt: new Date("2026-02-20T12:00:00.000Z"),
+    });
+    const marchConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date("2026-03-10T12:00:00.000Z")],
+      conversationCreatedAt: new Date("2026-03-10T12:00:00.000Z"),
+    });
+
+    const url = `/api/poke/workspaces/${workspace.sId}/conversations?agentId=${agent.sId}`;
+
+    const rangeResponse = await honoApp.request(
+      `${url}&from=2026-02-01&to=2026-02-28`
+    );
+    expect(rangeResponse.status).toBe(200);
+    const range = await rangeResponse.json();
+    expect(range.conversations.map((c: { sId: string }) => c.sId)).toEqual([
+      februaryConversation.sId,
+    ]);
+
+    const fromOnlyResponse = await honoApp.request(`${url}&from=2026-02-01`);
+    expect(fromOnlyResponse.status).toBe(200);
+    const fromOnly = await fromOnlyResponse.json();
+    expect(fromOnly.conversations.map((c: { sId: string }) => c.sId)).toEqual([
+      marchConversation.sId,
+      februaryConversation.sId,
+    ]);
+
+    const toOnlyResponse = await honoApp.request(`${url}&to=2026-02-20`);
+    expect(toOnlyResponse.status).toBe(200);
+    const toOnly = await toOnlyResponse.json();
+    // `to` is inclusive, so the conversation created during that day is kept.
+    expect(toOnly.conversations.map((c: { sId: string }) => c.sId)).toEqual([
+      februaryConversation.sId,
+      januaryConversation.sId,
+    ]);
+  });
+
+  it("pages within the created-at window", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      isSuperUser: true,
+      role: "admin",
+    });
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date("2026-01-10T12:00:00.000Z")],
+      conversationCreatedAt: new Date("2026-01-10T12:00:00.000Z"),
+    });
+    const newerInWindow = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date("2026-01-20T12:00:00.000Z")],
+      conversationCreatedAt: new Date("2026-01-20T12:00:00.000Z"),
+    });
+    // Outside the window, and newer than everything in it.
+    await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date("2026-05-01T12:00:00.000Z")],
+      conversationCreatedAt: new Date("2026-05-01T12:00:00.000Z"),
+    });
+
+    const response = await honoApp.request(
+      `/api/poke/workspaces/${workspace.sId}/conversations?agentId=${agent.sId}&from=2026-01-01&to=2026-01-31&limit=1`
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.conversations.map((c: { sId: string }) => c.sId)).toEqual([
+      newerInWindow.sId,
+    ]);
+    expect(body.hasMore).toBe(true);
+  });
+
+  it("rejects a malformed date bound", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      isSuperUser: true,
+      role: "admin",
+    });
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const response = await honoApp.request(
+      `/api/poke/workspaces/${workspace.sId}/conversations?agentId=${agent.sId}&from=not-a-date`
+    );
+
+    expect(response.status).toBe(400);
+  });
+
   it("defaults the limit when none is provided", async () => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       isSuperUser: true,

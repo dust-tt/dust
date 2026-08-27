@@ -44,19 +44,32 @@ export function usePokeConversations({
 interface UsePokeAgentConversationsProps extends PokeConditionalFetchProps {
   agentId: string;
   limit: number;
+  // Inclusive `createdAt` day bounds, as YYYY-MM-DD.
+  from?: string;
+  to?: string;
 }
 
 export function usePokeAgentConversations({
   agentId,
   disabled,
+  from,
   limit,
   owner,
+  to,
 }: UsePokeAgentConversationsProps) {
   const { fetcher } = useFetcher();
   const conversationsFetcher: Fetcher<PokeListConversations> = fetcher;
 
+  const params = new URLSearchParams({ agentId, limit: limit.toString() });
+  if (from) {
+    params.set("from", from);
+  }
+  if (to) {
+    params.set("to", to);
+  }
+
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/conversations?agentId=${agentId}&limit=${limit}`,
+    `/api/poke/workspaces/${owner.sId}/conversations?${params.toString()}`,
     conversationsFetcher,
     { disabled, keepPreviousData: true }
   );

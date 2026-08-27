@@ -1707,9 +1707,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   /**
    * Page of the conversations in which `agentConfigurationId` produced at least one
-   * message, newest first. Paging happens in SQL: an active agent's conversation set is
-   * unbounded, so neither its conversation ids nor the hydrated conversations can be
-   * materialized in full.
+   * message, newest first, optionally restricted to a `createdAt` window
+   * (`createdAfter` inclusive, `createdBefore` exclusive). Paging happens in SQL: an
+   * active agent's conversation set is unbounded, so neither its conversation ids nor
+   * the hydrated conversations can be materialized in full.
    *
    * `hasMore` is computed before visibility and permission filtering, so a page can hold
    * fewer than `limit` conversations while still reporting that more can be loaded.
@@ -1719,13 +1720,23 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       agentConfigurationId,
       limit,
+      createdAfter,
+      createdBefore,
     }: {
       agentConfigurationId: string;
       limit: number;
+      createdAfter?: Date;
+      createdBefore?: Date;
     },
     options?: FetchConversationOptions
   ): Promise<{ conversations: ConversationResource[]; hasMore: boolean }> {
     const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Static fragments, so the window stays out of the plan entirely when unbounded.
+    const windowConditions = [
+      createdAfter ? `AND c."createdAt" >= :createdAfter` : "",
+      createdBefore ? `AND c."createdAt" < :createdBefore` : "",
+    ].join("\n       ");
 
     // `agent_messages` carries `conversationId` since the side-table denormalization, so
     // the agent's conversations resolve without joining `messages`.
@@ -1741,6 +1752,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       JOIN conversations c
         ON c."id" = ac."conversationId"
        AND c."workspaceId" = :workspaceId
+       ${windowConditions}
       ORDER BY c."createdAt" DESC, c."id" DESC
       LIMIT :limit
     `;
@@ -1753,6 +1765,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         agentConfigurationId,
         // One extra row tells us whether another page exists.
         limit: limit + 1,
+        ...(createdAfter && { createdAfter }),
+        ...(createdBefore && { createdBefore }),
       },
     });
 
