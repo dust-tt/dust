@@ -48,7 +48,6 @@ describe("getModelTierAccessErrorForAgentConfiguration", () => {
     return getModelTierAccessErrorForAgentConfiguration(auth, {
       agentName: "test-agent",
       model: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
-      featureFlags: ["models_picker"],
       agentScope,
     });
   }
@@ -88,19 +87,6 @@ describe("getModelTierAccessErrorForAgentConfiguration", () => {
     expect(error?.code).toBe("model_tier_not_enabled");
   });
 
-  it("does not block when models_picker is disabled", async () => {
-    const auth = await restrictedUserAuth();
-
-    const error = await getModelTierAccessErrorForAgentConfiguration(auth, {
-      agentName: "test-agent",
-      model: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
-      featureFlags: [],
-      agentScope: "visible",
-    });
-
-    expect(error).toBeNull();
-  });
-
   // A stream only ever resolves to a candidate within the member's cap, so
   // checking the resolved model alone would let a member run a stream above it.
   it.each([
@@ -115,7 +101,6 @@ describe("getModelTierAccessErrorForAgentConfiguration", () => {
       // Haiku 4.5 is cost_efficient at every effort: a plausible candidate for
       // any stream, and always within a `balanced` member's cap.
       model: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-      featureFlags: ["models_picker"],
       modelResolutionMethod,
     });
 

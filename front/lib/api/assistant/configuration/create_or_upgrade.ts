@@ -12,7 +12,6 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -165,7 +164,6 @@ export async function createOrUpgradeAgentConfiguration({
     );
   }
 
-  const featureFlags = await getFeatureFlags(auth);
   const modelConfig = getSupportedModelConfig(assistant.model);
   if (!modelConfig) {
     return new Err(
@@ -180,7 +178,6 @@ export async function createOrUpgradeAgentConfiguration({
     agentName: assistant.name,
     model: modelConfig,
     reasoningEffort: assistant.model.reasoningEffort,
-    featureFlags,
   });
   if (accessError) {
     return new Err(new Error(accessError.message));

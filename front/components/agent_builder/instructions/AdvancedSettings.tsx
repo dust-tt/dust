@@ -1,17 +1,11 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ModelSelectionSubmenu } from "@app/components/agent_builder/instructions/ModelSelectionSubmenu";
-import { ReasoningEffortSubmenu } from "@app/components/agent_builder/instructions/ReasoningEffortSubmenu";
 import { ModelPicker } from "@app/components/model_picker/ModelPicker";
 import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { useModels } from "@app/lib/swr/models";
 import { isSupportingResponseFormat } from "@app/types/assistant/assistant";
-import { isModelStreamId } from "@app/types/assistant/models/auto";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
-import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   cn,
@@ -22,15 +16,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   File04,
 } from "@dust-tt/sparkle";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 import { useController } from "react-hook-form";
 
 function getResponseFormatError(value: string): string | null {
@@ -152,67 +140,8 @@ function StructuredResponseFormatDialog({
   );
 }
 
-function AdvancedSettingsLegacy({
-  owner,
-  setIsResponseFormatDialogOpen,
-}: {
-  owner: LightWorkspaceType;
-  setIsResponseFormatDialogOpen: (open: boolean) => void;
-}) {
-  const { models: allModels } = useModels({ owner });
-
-  // Filter out the auto models and get the rest
-  const [_, models] = useMemo(() => {
-    return [[], allModels.filter((m) => !isModelStreamId(m.modelId))];
-  }, [allModels]);
-
-  const { field: modelSettingsField } = useController<
-    AgentBuilderFormData,
-    "generationSettings.modelSettings"
-  >({
-    name: "generationSettings.modelSettings",
-  });
-
-  if (!models) {
-    return null;
-  }
-
-  const supportsResponseFormat =
-    modelSettingsField.value &&
-    isSupportingResponseFormat(modelSettingsField.value.modelId);
-  return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button label="Advanced" variant="outline" size="sm" isSelect />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuLabel label="Model selection" />
-          <ModelSelectionSubmenu models={models} />
-          <ReasoningEffortSubmenu models={models} />
-          {supportsResponseFormat && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                label="Structured response format"
-                onSelect={() => {
-                  setTimeout(() => {
-                    setIsResponseFormatDialogOpen(true);
-                  }, 0);
-                }}
-              />
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </>
-  );
-}
-
 export function AdvancedSettings() {
   const { owner } = useAgentBuilderContext();
-  const { hasFeature } = useFeatureFlags();
-  const hasModelsPicker = hasFeature("models_picker");
 
   const [isResponseFormatDialogOpen, setIsResponseFormatDialogOpen] =
     React.useState(false);
@@ -261,66 +190,51 @@ export function AdvancedSettings() {
       generationSettingsField.value.modelSettings.modelId
     );
 
-  if (hasModelsPicker) {
-    return (
-      <>
-        <StructuredResponseFormatDialog
-          isOpen={isResponseFormatDialogOpen}
-          onOpenChange={setIsResponseFormatDialogOpen}
-        />
-        <ModelPicker
-          // Set these 2 as we are in the context of the agent builder, not a conversation
-          agentId={null}
-          agentModel={null}
-          // Use what is in the agent builder form
-          lastRequestedModel={modelSelection ?? null}
-          owner={owner}
-          buttonSize="sm"
-          buttonVariant="outline"
-          showLabel={true}
-          side="top"
-          disabled={false}
-          onSelectionChange={(newModelSelection) => {
-            // Keep both in sync to avoid extra re-renders
-            setModelSelection(newModelSelection);
-            generationSettingsField.onChange({
-              ...generationSettingsField.value,
-              reasoningEffort: newModelSelection?.reasoningEffort,
-              modelSettings: {
-                modelId: newModelSelection?.modelId,
-                providerId: newModelSelection?.providerId,
-              },
-            });
-          }}
-        />
-        <Button
-          label="JSON Response"
-          variant="outline"
-          size="sm"
-          disabled={!supportsResponseFormat}
-          tooltip={
-            !supportsResponseFormat
-              ? "Pick a specific model that supports structured response format (JSON schema)"
-              : "Will constrain the model to a specific JSON schema"
-          }
-          onClick={() => {
-            setIsResponseFormatDialogOpen(true);
-          }}
-        />
-      </>
-    );
-  } else {
-    return (
-      <>
-        <StructuredResponseFormatDialog
-          isOpen={isResponseFormatDialogOpen}
-          onOpenChange={setIsResponseFormatDialogOpen}
-        />
-        <AdvancedSettingsLegacy
-          owner={owner}
-          setIsResponseFormatDialogOpen={setIsResponseFormatDialogOpen}
-        />
-      </>
-    );
-  }
+  return (
+    <>
+      <StructuredResponseFormatDialog
+        isOpen={isResponseFormatDialogOpen}
+        onOpenChange={setIsResponseFormatDialogOpen}
+      />
+      <ModelPicker
+        // Set these 2 as we are in the context of the agent builder, not a conversation
+        agentId={null}
+        agentModel={null}
+        // Use what is in the agent builder form
+        lastRequestedModel={modelSelection ?? null}
+        owner={owner}
+        buttonSize="sm"
+        buttonVariant="outline"
+        showLabel={true}
+        side="top"
+        disabled={false}
+        onSelectionChange={(newModelSelection) => {
+          // Keep both in sync to avoid extra re-renders
+          setModelSelection(newModelSelection);
+          generationSettingsField.onChange({
+            ...generationSettingsField.value,
+            reasoningEffort: newModelSelection?.reasoningEffort,
+            modelSettings: {
+              modelId: newModelSelection?.modelId,
+              providerId: newModelSelection?.providerId,
+            },
+          });
+        }}
+      />
+      <Button
+        label="JSON Response"
+        variant="outline"
+        size="sm"
+        disabled={!supportsResponseFormat}
+        tooltip={
+          !supportsResponseFormat
+            ? "Pick a specific model that supports structured response format (JSON schema)"
+            : "Will constrain the model to a specific JSON schema"
+        }
+        onClick={() => {
+          setIsResponseFormatDialogOpen(true);
+        }}
+      />
+    </>
+  );
 }

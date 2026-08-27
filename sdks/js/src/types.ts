@@ -773,7 +773,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
   | "legacy_dust_apps"
-  | "models_picker"
   | "netsuite_mcp"
   | "noop_model_feature"
   | "notion_private_integration"

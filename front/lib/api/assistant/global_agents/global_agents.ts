@@ -1085,7 +1085,7 @@ export async function getGlobalAgents(
     );
   }
 
-  if (agentIds === undefined && flags.includes("models_picker")) {
+  if (agentIds === undefined) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) =>
         !isGlobalAgentId(sId) || !MODEL_ONLY_GLOBAL_AGENTS_SID.includes(sId)
@@ -1194,9 +1194,7 @@ export async function getGlobalAgents(
       ? await buildSidekickContext(auth, agentsIdsToFetch)
       : null;
 
-  const autoDefaultModelConfig = flags.includes("models_picker")
-    ? await getDefaultStreamConfigForAuth(auth)
-    : null;
+  const autoDefaultModelConfig = await getDefaultStreamConfigForAuth(auth);
 
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not

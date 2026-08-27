@@ -1,5 +1,4 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { TRACKING_AREAS, trackEvent, withTracking } from "@app/lib/tracking";
 import { Button, XClose } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
@@ -120,7 +119,6 @@ interface StackedInAppBannersProps {
 export function StackedInAppBanners({
   owner: _owner,
 }: StackedInAppBannersProps) {
-  const { hasFeature } = useFeatureFlags();
   const [showModelPickerBanner, setShowModelPickerBanner] = useState(
     () => localStorage.getItem(MODEL_PICKER_BANNER_LOCAL_STORAGE_KEY) !== "true"
   );
@@ -129,9 +127,7 @@ export function StackedInAppBanners({
     <AnimatePresence>
       <ModelPickerBanner
         key="model-picker-banner"
-        showModelPickerBanner={
-          showModelPickerBanner && hasFeature("models_picker")
-        }
+        showModelPickerBanner={showModelPickerBanner}
         onShowModelPickerBanner={setShowModelPickerBanner}
       />
     </AnimatePresence>

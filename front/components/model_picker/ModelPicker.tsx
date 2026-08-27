@@ -97,7 +97,6 @@ export function ModelPicker({
 }: ModelPickerProps) {
   const { hasFeature } = useFeatureFlags();
   const clientType = useClientType();
-  const hasModelsPicker = hasFeature("models_picker");
   const { subscription } = useAuth();
   const canSelectPremiumModels =
     isCreditPricedPlan(subscription.plan) ||
@@ -118,10 +117,7 @@ export function ModelPicker({
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
-  const { models, streams } = useModels({
-    owner,
-    disabled: !hasModelsPicker,
-  });
+  const { models, streams } = useModels({ owner });
 
   const { shown: baseSelection, agentDefault } = useMemo(
     () =>
@@ -153,7 +149,7 @@ export function ModelPicker({
   // resolution where the user didn't pick anything. Mutating a ref during
   // render is fine and avoids any parent re-render.
   if (selectionRef) {
-    selectionRef.current = hasModelsPicker ? shownModelSelection : undefined;
+    selectionRef.current = shownModelSelection;
   }
 
   const canRevert = !isSameSelection(shown.display, agentDefault.display);
@@ -317,10 +313,6 @@ export function ModelPicker({
       });
     }
   };
-
-  if (!hasModelsPicker) {
-    return null;
-  }
 
   const buttonIcon =
     shown.display.kind === "tier"
