@@ -35,13 +35,19 @@ function skillExposesAction(
 
 function skillIdsAttributedToAction(
   skills: SkillResource[],
-  action: AgentMCPActionResource
+  action: AgentMCPActionResource,
+  enabledSkillIds: string[]
 ): string[] {
-  // Attribute every skill that exposes the tool. The tool document keeps its full credit amount
-  // instead of splitting it across these skills.
-  return skills
-    .filter((skill) => skillExposesAction(skill, action))
-    .map((skill) => skill.sId);
+  // Attribute every skill that exposes the tool and any skill enabled by the action.
+  // The tool document keeps its full credit amount instead of splitting it across these skills.
+  return [
+    ...new Set([
+      ...skills
+        .filter((skill) => skillExposesAction(skill, action))
+        .map((skill) => skill.sId),
+      ...enabledSkillIds,
+    ]),
+  ];
 }
 
 function serverNameForAction(action: AgentMCPActionResource): string {
@@ -96,6 +102,7 @@ function summarizeToolConsumptionItem({
 function buildToolConsumptionDocument({
   action,
   allocation,
+  enabledSkillIds,
   input,
   item,
   parentAction,
@@ -103,6 +110,7 @@ function buildToolConsumptionDocument({
 }: {
   action: AgentMCPActionResource;
   allocation: MessageConsumptionAllocation<BilledRunUsage>;
+  enabledSkillIds: string[];
   input: AgentMessageConsumptionAnalyticsInput;
   item: AgentMessageToolConsumptionItemResource;
   parentAction: AgentMCPActionResource | undefined;
@@ -128,7 +136,11 @@ function buildToolConsumptionDocument({
       server_name: serverNameForAction(action),
       parent_server_name: parentAction ? serverNameForAction(parentAction) : "",
       action_id: action.sId,
-      attributed_skill_ids: skillIdsAttributedToAction(input.skills, action),
+      attributed_skill_ids: skillIdsAttributedToAction(
+        input.skills,
+        action,
+        enabledSkillIds
+      ),
     },
   };
 }
@@ -164,6 +176,7 @@ export function buildToolConsumptionDocuments(
       buildToolConsumptionDocument({
         action,
         allocation,
+        enabledSkillIds: input.enabledSkillIdsByActionId.get(action.sId) ?? [],
         input,
         item,
         parentAction: parentActionId
