@@ -11,7 +11,7 @@ import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideP
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { useChatWithVisibility } from "@app/hooks/useChatWithVisibility";
+import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibility";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -157,7 +157,7 @@ export function ConversationContainerVirtuoso({
     ? getWorkspaceDefaultAgentId(owner)
     : null;
 
-  const { isChatWithVisible } = useChatWithVisibility();
+  const { isAgentsSectionVisible } = useAgentsSectionVisibility();
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
@@ -416,7 +416,7 @@ export function ConversationContainerVirtuoso({
               </Card>
             </div>
           )}
-          {isChatWithVisible && (
+          {isAgentsSectionVisible && (
             <AgentBrowserContainer
               onAgentConfigurationClick={(agent) => {
                 setSelectedSingleAgent(toRichAgentMentionType(agent));
