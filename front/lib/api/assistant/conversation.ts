@@ -523,7 +523,7 @@ export function isUserMessageContextValid(
 }
 
 export async function postUserMessage(
-  auth: Authenticator,
+  requestAuth: Authenticator,
   {
     conversationResource,
     content,
@@ -554,10 +554,19 @@ export async function postUserMessage(
     APIErrorWithContentfulStatusCode
   >
 > {
-  const user = auth.user();
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
+  const user = requestAuth.user();
+  const owner = requestAuth.workspace();
+  const subscription = requestAuth.subscription();
   const plan = subscription?.plan;
+
+  // Internal sub-agent posts (`run_agent` and `agent_handover`) reach us through the public API
+  // with a system key impersonating the user, which caps the role at "user". Restore the user's
+  // real workspace role so role-gated global agents (e.g. `@analyst`) resolve here, in
+  // `runAgentLoopWorkflow` below, and in the child's own agent loop -- which all fetch the agent
+  // configuration again. The role comes from the active membership, never from the caller.
+  const auth = agenticMessageData
+    ? await requestAuth.withUserWorkspaceRole()
+    : requestAuth;
 
   const conversation: ConversationWithoutContentType =
     conversationResource.toJSON();

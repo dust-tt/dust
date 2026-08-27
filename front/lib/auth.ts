@@ -1236,6 +1236,47 @@ export class Authenticator {
     });
   }
 
+  /**
+   * Returns a copy of this authenticator carrying the user's actual workspace role.
+   *
+   * `exchangeSystemKeyForUserAuthByEmail` deliberately caps impersonated authenticators at the
+   * "user" role. The internal sub-agent path (`run_agent` / `agent_handover`) needs the real role
+   * so that role-gated global agents (e.g. `@analyst`, audience `managers`) stay resolvable both
+   * when the child message is posted and in the child's own agent loop.
+   *
+   * The role is read from the user's active membership, never from the caller, so this can never
+   * grant more than the user already has in the workspace.
+   */
+  async withUserWorkspaceRole(): Promise<Authenticator> {
+    const user = this._user;
+    if (!user || !this._workspace) {
+      return this;
+    }
+
+    const role = await MembershipResource.getActiveRoleForUserInWorkspace({
+      user,
+      workspace: this.getNonNullableWorkspace(),
+    });
+    if (role === "none" || role === this._role) {
+      return this;
+    }
+
+    return new Authenticator({
+      authMethod: this.authMethod(),
+      key: this._key,
+      attributionKey: this._attributionKey,
+      role,
+      groupModelIds: this._groupModelIds,
+      user,
+      subscription: this._subscription,
+      workspace: this._workspace,
+      clientIp: this._clientIp,
+      providersHealth: this._providersHealth,
+      // Groups are unchanged and permissions do not depend on the role.
+      permissions: this._permissions,
+    });
+  }
+
   exchangeKey(key: KeyAuthType) {
     return new Authenticator({
       authMethod: this.authMethod(),

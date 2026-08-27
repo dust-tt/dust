@@ -6,8 +6,14 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CLAUDE_OPUS_4_8_MODEL_ID } from "@app/types/assistant/models/anthropic";
+import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/temporal/agent_loop/client", () => ({
+  launchAgentLoopWorkflow: vi.fn(),
+  launchCompactionWorkflow: vi.fn(),
+}));
 
 vi.mock("@app/lib/api/programmatic_usage/tracking", () => ({
   isProgrammaticUsage: () => false,
@@ -32,6 +38,49 @@ function postMessage(
       },
       body: JSON.stringify(body),
     }
+  );
+}
+
+// `@analyst` is a global agent gated on the `managers` audience, so it only resolves for an
+// authenticator carrying an admin or manager role.
+async function postAnalystMention(
+  workspace: { sId: string },
+  key: { secret: string },
+  { role, asSubAgent }: { role: MembershipRoleType; asSubAgent: boolean }
+) {
+  const user = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, user, { role });
+  const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
+  const conversation = await ConversationFactory.create(userAuth, {
+    agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+    messagesCreatedAt: [],
+  });
+
+  return postMessage(
+    workspace,
+    conversation.sId,
+    key,
+    {
+      content: "Hello",
+      mentions: [{ configurationId: GLOBAL_AGENTS_SID.ANALYST }],
+      context: {
+        username: "sub-agent",
+        timezone: "Europe/Paris",
+        origin: "api",
+      },
+      ...(asSubAgent
+        ? {
+            agenticMessageData: {
+              type: "run_agent",
+              originMessageId: "msg_parent",
+            },
+          }
+        : {}),
+    },
+    { "x-api-user-email": user.email }
   );
 }
 
@@ -278,5 +327,51 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.message.user).toBeNull();
+  });
+  it("resolves a role-gated agent for a sub-agent post from an admin", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      method: "POST",
+      systemKey: true,
+    });
+
+    const response = await postAnalystMention(workspace, key, {
+      role: "admin",
+      asSubAgent: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).agentMessages).toHaveLength(1);
+  });
+
+  it("keeps a role-gated agent out of reach of a sub-agent post from a regular member", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      method: "POST",
+      systemKey: true,
+    });
+
+    const response = await postAnalystMention(workspace, key, {
+      role: "user",
+      asSubAgent: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).agentMessages).toHaveLength(0);
+  });
+
+  it("leaves impersonated posts outside the sub-agent path capped at the user role", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      method: "POST",
+      systemKey: true,
+    });
+
+    // No `agenticMessageData`: this is the Slack/Teams/Discord shape, which stays capped at
+    // "user" even for an admin.
+    const response = await postAnalystMention(workspace, key, {
+      role: "admin",
+      asSubAgent: false,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).agentMessages).toHaveLength(0);
   });
 });
