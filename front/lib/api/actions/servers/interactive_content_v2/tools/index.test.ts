@@ -1,11 +1,12 @@
-import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolContext } from "@app/lib/actions/types";
 import { PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { createInteractiveContentV2Tools } from "@app/lib/api/actions/servers/interactive_content_v2/tools";
 import { publishFrame } from "@app/lib/api/viz/publish_frame";
-import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import {
+  makeExtra,
+  setupPlainConversation,
+} from "@app/tests/utils/conversation_test_factories";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { frameContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { Ok } from "@app/types/shared/result";
@@ -20,11 +21,8 @@ vi.mock("@app/lib/api/viz/publish_frame", async (importOriginal) => {
 
 describe("createInteractiveContentV2Tools", () => {
   it("keeps legacy Frame publishing backward-compatible", async () => {
-    const { authenticator: auth, workspace } = await createResourceTest({});
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: "test-agent",
-      messagesCreatedAt: [],
-    });
+    const { auth, conversation } = await setupPlainConversation();
+    const owner = auth.getNonNullableWorkspace();
     const framePath = `conversation-${conversation.sId}/Legacy.tsx`;
     const frame = await FileFactory.create(auth, null, {
       contentType: frameContentType,
@@ -34,13 +32,12 @@ describe("createInteractiveContentV2Tools", () => {
       useCase: "conversation",
       useCaseMetadata: { conversationId: conversation.sId },
       mountFilePath: `${getConversationFilesBasePath({
-        workspaceId: workspace.sId,
+        workspaceId: owner.sId,
         conversationId: conversation.sId,
       })}Legacy.tsx`,
     });
-    const toolContext = {
-      runContext: { contextType: "agent_loop", conversation },
-    } as unknown as ToolContext;
+    const extra = makeExtra(auth, conversation);
+    const toolContext: ToolContext = { runContext: extra.runContext };
     const tools = await createInteractiveContentV2Tools(auth, toolContext);
     const publishTool = tools.find(
       (tool) => tool.name === PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME
@@ -50,12 +47,7 @@ describe("createInteractiveContentV2Tools", () => {
 
     const result = await publishTool.handler(
       { file_id: frame.sId, path: framePath },
-      {
-        auth,
-        runContext: toolContext.runContext,
-        sendNotification: vi.fn(),
-        signal: new AbortController().signal,
-      } as unknown as ToolHandlerExtra
+      extra
     );
 
     expect(result.isOk()).toBe(true);

@@ -6,7 +6,6 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { getFramePublicationSourcePath } from "@app/types/api/frame_storage";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import { frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
 import assert from "assert";
@@ -77,7 +76,7 @@ describe("publishFrameV2FromSource", () => {
       await setup();
 
     const result = await publishFrameV2FromSource(auth, {
-      conversation: conversation as ConversationType,
+      conversation,
       frame,
       manifestPath,
     });
@@ -115,7 +114,7 @@ describe("publishFrameV2FromSource", () => {
     const { auth, conversation, frame } = await setup();
 
     const result = await publishFrameV2FromSource(auth, {
-      conversation: conversation as ConversationType,
+      conversation,
       frame,
       manifestPath: `conversation-${conversation.sId}/Other/manifest.json`,
     });
