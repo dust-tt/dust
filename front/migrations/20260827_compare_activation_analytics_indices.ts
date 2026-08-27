@@ -305,14 +305,6 @@ function activationByUser(cells: UserDayCell[]) {
   );
 }
 
-function parseEndDate(endDate: string | undefined): Date {
-  const parsed = endDate ? new Date(endDate) : new Date();
-  if (Number.isNaN(parsed.getTime())) {
-    throw new Error(`Invalid endDate: ${endDate}`);
-  }
-  return parsed;
-}
-
 makeScript(
   {
     workspaceId: {
@@ -326,10 +318,6 @@ makeScript(
       description: "Trailing window size in days.",
       type: "number" as const,
     },
-    endDate: {
-      description: "Exclusive ISO end date. Defaults to now.",
-      type: "string" as const,
-    },
     userIds: {
       default: [],
       description: "Optional user sIds to restrict the comparison.",
@@ -341,7 +329,7 @@ makeScript(
       type: "number" as const,
     },
   },
-  async ({ days, endDate, maxDifferences, userIds, workspaceId }, logger) => {
+  async ({ days, maxDifferences, userIds, workspaceId }, logger) => {
     if (!Number.isInteger(days) || days <= 0) {
       throw new Error("days must be a positive integer");
     }
@@ -349,7 +337,7 @@ makeScript(
       throw new Error("maxDifferences must be a non-negative integer");
     }
 
-    const windowEnd = parseEndDate(endDate);
+    const windowEnd = new Date();
     const windowStart = subDays(windowEnd, days);
     const queryArgs = { userIds, windowEnd, windowStart, workspaceId };
     const legacyCells = await fetchLegacyUserDayCells(queryArgs);
