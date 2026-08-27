@@ -139,6 +139,11 @@ function narrowToKnownSlashCommand(
 }
 
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
+// Stable references: the BubbleMenu plugin re-runs its update effect whenever
+// `appendTo`/`options` change identity, so inline literals here would cause
+// an infinite render loop.
+const BUBBLE_MENU_APPEND_TO = () => document.body;
+const BUBBLE_MENU_OPTIONS = { strategy: "fixed" as const };
 const EMPTY_SPACE_IDS: string[] = [];
 const EMPTY_SELECTABLE_SPACES: SelectableConversationSpaceType[] = [];
 const acceptSelectedSpaceIds = async (spaceIds: string[]) => spaceIds;
@@ -1745,8 +1750,8 @@ const InputBarContainer = ({
           <BubbleMenu
             editor={editor ?? undefined}
             className={cn("flex", isMobile && "hidden")}
-            options={{ strategy: "fixed" }}
-            appendTo={() => document.body}
+            options={BUBBLE_MENU_OPTIONS}
+            appendTo={BUBBLE_MENU_APPEND_TO}
           >
             {editor && (
               <Toolbar className={cn("inline-flex", isMobile && "hidden")}>

@@ -15,6 +15,11 @@ import { useEffect, useMemo, useRef } from "react";
 const DEFAULT_MARKDOWN_EDITOR_DEBOUNCE_MS = 250;
 /** Default classes for the TipTap editable surface (scroll + max height). */
 const DEFAULT_MARKDOWN_EDITOR_CLASSNAME = "max-h-96";
+// Stable references: the BubbleMenu plugin re-runs its update effect whenever
+// `appendTo`/`options` change identity, so inline literals here would cause
+// an infinite render loop.
+const BUBBLE_MENU_APPEND_TO = () => document.body;
+const BUBBLE_MENU_OPTIONS = { strategy: "fixed" as const };
 
 const editorVariants = cva(
   [
@@ -305,8 +310,8 @@ export function MarkdownEditor({
           <BubbleMenu
             editor={editor}
             className={cn("flex", isMobile && "hidden")}
-            options={{ strategy: "fixed" }}
-            appendTo={() => document.body}
+            options={BUBBLE_MENU_OPTIONS}
+            appendTo={BUBBLE_MENU_APPEND_TO}
           >
             <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
               <ToolBarContent editor={editor} />

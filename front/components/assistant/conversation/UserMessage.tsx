@@ -61,6 +61,12 @@ import { cva } from "class-variance-authority";
 import type React from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
 
+// Stable references: the BubbleMenu plugin re-runs its update effect whenever
+// `appendTo`/`options` change identity, so inline literals here would cause
+// an infinite render loop.
+const BUBBLE_MENU_APPEND_TO = () => document.body;
+const BUBBLE_MENU_OPTIONS = { strategy: "fixed" as const };
+
 interface UserMessageEditorProps {
   editor: Editor | null;
   editorService: EditorService;
@@ -101,8 +107,8 @@ function UserMessageEditor({
       <BubbleMenu
         editor={editor}
         className={cn("flex", isMobile && "hidden")}
-        options={{ strategy: "fixed" }}
-        appendTo={() => document.body}
+        options={BUBBLE_MENU_OPTIONS}
+        appendTo={BUBBLE_MENU_APPEND_TO}
       >
         {editor && (
           <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
