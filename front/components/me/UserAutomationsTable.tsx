@@ -455,13 +455,13 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
                 <div className="flex items-center gap-2">
                   <Button
                     label="Learn about triggers"
-                    variant="outline"
+                    variant="ghost-secondary"
                     href={TRIGGERS_DOC_URL}
                     target="_blank"
                   />
                   <Button
                     label="Learn about wakeups"
-                    variant="outline"
+                    variant="ghost-secondary"
                     href={WAKEUPS_DOC_URL}
                     target="_blank"
                   />
