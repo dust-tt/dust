@@ -43,25 +43,19 @@ interface CommandPaletteProps {
 
 type Theme = "dark" | "light" | "system";
 
+const THEME_ORDER: Theme[] = ["system", "light", "dark"];
+
 const THEME_ICONS: Record<Theme, typeof Sun> = {
   system: Monitor01,
   light: Sun,
   dark: Moon01,
 };
 
-// Cycle: system -> light -> dark -> system.
-function getNextTheme(theme: Theme): Theme {
-  switch (theme) {
-    case "system":
-      return "light";
-    case "light":
-      return "dark";
-    case "dark":
-      return "system";
-    default:
-      return assertNever(theme);
-  }
-}
+const THEME_LABELS: Record<Theme, string> = {
+  system: "Switch to system appearance",
+  light: "Switch to light appearance",
+  dark: "Switch to dark appearance",
+};
 
 export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const { isOpen, close } = useCommandPalette();
@@ -132,17 +126,15 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const MAX_DISPLAYED_PODS = 5;
   const MAX_DISPLAYED_SKILLS = 5;
 
-  const nextTheme = getNextTheme(theme);
-
+  // Offer the two themes the workspace isn't currently using.
   const allCommands: CommandPaletteCommand[] = useMemo(
-    () => [
-      {
-        id: "toggle_theme",
-        label: `Switch to ${nextTheme} appearance`,
-        icon: THEME_ICONS[nextTheme],
-      },
-    ],
-    [nextTheme]
+    () =>
+      THEME_ORDER.filter((t) => t !== theme).map((t) => ({
+        id: t,
+        label: THEME_LABELS[t],
+        icon: THEME_ICONS[t],
+      })),
+    [theme]
   );
 
   const filteredCommands = useMemo(() => {
@@ -253,9 +245,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
       switch (item.kind) {
         case "command":
           close();
-          if (item.command.id === "toggle_theme") {
-            setTheme(nextTheme);
-          }
+          setTheme(item.command.id);
           return;
         case "pod":
           close();
@@ -279,7 +269,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
           assertNever(item);
       }
     },
-    [close, executeAction, nextTheme, owner.sId, router, setTheme]
+    [close, executeAction, owner.sId, router, setTheme]
   );
 
   const handleBack = useCallback(() => {

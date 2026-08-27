@@ -14,7 +14,8 @@ import { Avatar, cn, Icon, LoadingBlock, SearchInput } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
 export interface CommandPaletteCommand {
-  id: "toggle_theme";
+  // The theme this command switches to when selected.
+  id: "light" | "dark" | "system";
   label: string;
   icon: typeof Sun;
 }
