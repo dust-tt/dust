@@ -21,6 +21,7 @@ import {
   fetchSkillExportRows,
   SKILL_EXPORT_HEADERS,
 } from "@app/lib/api/analytics/skills_export";
+import { fetchUsageMetricsExportRows } from "@app/lib/api/analytics/usage_metrics_export";
 import type { UserExportRow } from "@app/lib/api/analytics/users_export";
 import {
   fetchUserExportRows,
@@ -28,7 +29,6 @@ import {
 } from "@app/lib/api/analytics/users_export";
 import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
 import { fetchContextOriginDailyBreakdown } from "@app/lib/api/assistant/observability/context_origin";
-import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import {
   fetchAvailableSkills,
   fetchSkillUsageMetrics,
@@ -38,7 +38,6 @@ import {
   fetchToolUsageMetrics,
 } from "@app/lib/api/assistant/observability/tool_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
-import { formatDateFromMillis } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
@@ -199,7 +198,7 @@ export async function exportTable({
 }): Promise<Result<ExportTableData, Error>> {
   switch (table) {
     case "usage_metrics":
-      return exportUsageMetrics({ startDate, endDate, timezone, owner });
+      return exportUsageMetrics({ auth, startDate, endDate, timezone });
     case "active_users":
       return exportActiveUsers({ startDate, endDate, timezone, owner });
     case "source":
@@ -209,6 +208,7 @@ export async function exportTable({
         auth,
         startDate,
         endDate,
+        timezone,
         includeHiddenAgents,
       });
     case "users":
@@ -255,49 +255,56 @@ export function stringifyExportTableAsCsv(data: ExportTableData): string {
   }
 }
 
-// exportTable's startDate/endDate are inclusive calendar days ("YYYY-MM-DD"),
-// while the consumption index's completed_at range is half-open ([startDate,
-// endDate)); bump the upper bound to the start of the following day so the
-// whole endDate day is included.
+// exportTable's startDate/endDate are inclusive calendar days ("YYYY-MM-DD")
+// in the requested timezone, while the consumption index's completed_at
+// range is a half-open range of instants. Resolving bare date strings
+// directly (as UTC midnight) would disagree with the date_histogram
+// aggregations the export rows are built from, which bucket by calendar day
+// in that same timezone — so bounds are resolved to timezone-local instants
+// here too, mirroring exportUsers' membership-window resolution below.
 function buildExportConsumptionScopeQuery(
   auth: Authenticator,
-  { startDate, endDate }: { startDate: string; endDate: string }
+  {
+    startDate,
+    endDate,
+    timezone,
+  }: { startDate: string; endDate: string; timezone: string }
 ): estypes.QueryDslQueryContainer {
-  const exclusiveEndDate = moment
-    .utc(endDate)
+  const startInstant = moment
+    .tz(startDate, timezone)
+    .startOf("day")
+    .toISOString();
+  const exclusiveEndInstant = moment
+    .tz(endDate, timezone)
     .add(1, "day")
-    .format("YYYY-MM-DD");
+    .startOf("day")
+    .toISOString();
 
   return buildConsumptionScopeQuery({
     auth,
-    startDate,
-    endDate: exclusiveEndDate,
+    startDate: startInstant,
+    endDate: exclusiveEndInstant,
   });
 }
 
 async function exportUsageMetrics({
+  auth,
   startDate,
   endDate,
   timezone,
-  owner,
 }: {
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
-  owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
+  const baseQuery = buildExportConsumptionScopeQuery(auth, {
     startDate,
     endDate,
+    timezone,
   });
 
-  const result = await fetchMessageMetrics(
-    baseQuery,
-    "day",
-    ["conversations", "activeUsers"] as const,
-    timezone
-  );
+  const result = await fetchUsageMetricsExportRows(baseQuery, timezone);
 
   if (result.isErr()) {
     return new Err(
@@ -305,17 +312,10 @@ async function exportUsageMetrics({
     );
   }
 
-  const rows: UsageMetricsRow[] = result.value.map((point) => ({
-    date: formatDateFromMillis(point.timestamp, timezone),
-    messages: point.count,
-    conversations: point.conversations,
-    activeUsers: point.activeUsers,
-  }));
-
   return new Ok({
     table: "usage_metrics",
     headers: USAGE_METRICS_HEADERS,
-    rows,
+    rows: result.value,
   });
 }
 
@@ -373,6 +373,7 @@ async function exportSource({
   const baseQuery = buildExportConsumptionScopeQuery(auth, {
     startDate,
     endDate,
+    timezone,
   });
 
   const result = await fetchContextOriginDailyBreakdown(baseQuery, timezone);
@@ -404,16 +405,19 @@ async function exportAgents({
   auth,
   startDate,
   endDate,
+  timezone,
   includeHiddenAgents,
 }: {
   auth: Authenticator;
   startDate: string;
   endDate: string;
+  timezone: string;
   includeHiddenAgents: boolean;
 }): Promise<Result<ExportTableData, Error>> {
   const baseQuery = buildExportConsumptionScopeQuery(auth, {
     startDate,
     endDate,
+    timezone,
   });
 
   const result = await fetchAgentExportRows(
@@ -451,6 +455,7 @@ async function exportUsers({
   const baseQuery = buildExportConsumptionScopeQuery(auth, {
     startDate,
     endDate,
+    timezone,
   });
 
   // `startDate` / `endDate` are plain YYYY-MM-DD days. Elasticsearch rounds a
@@ -493,6 +498,7 @@ async function exportSkills({
   const baseQuery = buildExportConsumptionScopeQuery(auth, {
     startDate,
     endDate,
+    timezone,
   });
 
   const result = await fetchSkillExportRows(auth, baseQuery, timezone);
