@@ -449,6 +449,87 @@ describe("listBlockedActionsForConversation", () => {
   });
 });
 
+describe("listNonFinalActionsForAgentMessage", () => {
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
+  let conversation: ConversationType;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    workspace = setup.workspace;
+    auth = setup.authenticator;
+
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+  });
+
+  it("should return only the message's non-final actions", async () => {
+    const { agentMessage } = await AgentMCPActionFactory.createWithAgentMessage(
+      auth,
+      { workspace, conversation, status: "succeeded" }
+    );
+
+    const { action: runningAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "running",
+    });
+    const { action: blockedAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "blocked_validation_required",
+    });
+
+    // Non-final action on another agent message: must not be returned.
+    const otherAgentConfig = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      { name: "Other Agent" }
+    );
+    const { agentMessage: otherAgentMessage } =
+      await ConversationFactory.createAgentMessage(auth, {
+        workspace,
+        conversation,
+        agentConfig: otherAgentConfig,
+        // The first agent message of the test occupies rank 0.
+        rank: 1,
+      });
+    await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: otherAgentMessage.agentMessageId,
+      status: "running",
+    });
+
+    const actions =
+      await AgentMCPActionResource.listNonFinalActionsForAgentMessage(auth, {
+        agentMessageModelId: agentMessage.agentMessageId,
+      });
+
+    expect(actions.map((a) => a.id).sort()).toEqual(
+      [runningAction.id, blockedAction.id].sort()
+    );
+  });
+
+  it("should return an empty array when every action is final", async () => {
+    const { agentMessage } = await AgentMCPActionFactory.createWithAgentMessage(
+      auth,
+      { workspace, conversation, status: "errored" }
+    );
+
+    const actions =
+      await AgentMCPActionResource.listNonFinalActionsForAgentMessage(auth, {
+        agentMessageModelId: agentMessage.agentMessageId,
+      });
+
+    expect(actions).toEqual([]);
+  });
+});
+
 describe("Output items with GCS storage", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;

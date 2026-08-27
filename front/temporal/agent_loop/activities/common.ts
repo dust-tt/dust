@@ -33,6 +33,7 @@ import type {
   AgentMessageType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import maxBy from "lodash/maxBy";
 import type { InferAttributes, WhereOptions } from "sequelize";
@@ -525,11 +526,14 @@ function toUserFriendlyMessage(error: {
   return error.message;
 }
 
+// Returns the errored agent message's model id (already resolved here) so the caller can
+// attribute the failure without refetching the conversation, or null when the conversation is
+// gone.
 export async function notifyWorkflowError(
   authType: AuthenticatorType,
   { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
   error: { message: string; name: string }
-): Promise<void> {
+): Promise<ModelId | null> {
   const auth = await AuthenticatorClass.fromJsonWithRefrehedGroups(authType);
 
   const conversation = await ConversationResource.fetchById(
@@ -537,7 +541,7 @@ export async function notifyWorkflowError(
     conversationId
   );
   if (!conversation) {
-    return;
+    return null;
   }
 
   // Fetch the agent message using the proper API function
@@ -620,6 +624,8 @@ export async function notifyWorkflowError(
     conversation: conversation.toJSON(),
     step: 0, // Workflow-level error, not tied to a specific step
   });
+
+  return messageRow.agentMessage.id;
 }
 
 /**
