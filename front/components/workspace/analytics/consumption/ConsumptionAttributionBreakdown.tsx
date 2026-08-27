@@ -8,7 +8,6 @@ import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/types/api/analytics/cons
 import { Button, cn, LoadingBlock, ProgressBar } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import type { ConsumptionDimension } from "./consumptionDimensions";
-import { CONSUMPTION_DIMENSION_CONFIG } from "./consumptionDimensions";
 
 export const CONSUMPTION_ATTRIBUTION_BREAKDOWN_LIMIT = 3;
 
@@ -22,6 +21,13 @@ const BREAKDOWN_LABELS: Record<BreakdownDimension, string> = {
   reasoning_effort: "By reasoning effort",
   tool: "By tools",
   user: "By users",
+};
+
+const BREAKDOWN_VIEW_ALL_LABELS: Record<BreakdownDimension, string> = {
+  model: "models",
+  reasoning_effort: "reasoning effort",
+  tool: "tools",
+  user: "members",
 };
 
 function BreakdownColumnSkeleton() {
@@ -88,12 +94,12 @@ export function ConsumptionAttributionBreakdownColumnView({
         <h4 className="text-sm font-medium text-muted-foreground">
           {BREAKDOWN_LABELS[dimension]}
         </h4>
-        {dimension !== "reasoning_effort" && onViewAll && (
+        {onViewAll && (
           <Button
             label="View all"
             variant="highlight-ghost"
             size="xs"
-            aria-label={`View all ${CONSUMPTION_DIMENSION_CONFIG[dimension].label.toLowerCase()} for ${selectedRowName}`}
+            aria-label={`View all ${BREAKDOWN_VIEW_ALL_LABELS[dimension]} for ${selectedRowName}`}
             onClick={onViewAll}
           />
         )}

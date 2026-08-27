@@ -80,7 +80,7 @@ describe("ConsumptionAttributionBreakdown", () => {
     expect(screen.queryByText("reasoning_effort")).not.toBeInTheDocument();
   });
 
-  it("renders reasoning effort shares without a view-all button", () => {
+  it("renders the provided view-all action for reasoning effort", () => {
     render(
       <ConsumptionAttributionBreakdownColumnView
         dimension="reasoning_effort"
@@ -96,6 +96,10 @@ describe("ConsumptionAttributionBreakdown", () => {
     expect(screen.getByText("By reasoning effort")).toBeInTheDocument();
     expect(screen.getByText("High")).toBeInTheDocument();
     expect(screen.getByText("60%")).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "View all reasoning effort for Claude Sonnet 4.6",
+      })
+    ).toBeInTheDocument();
   });
 });
