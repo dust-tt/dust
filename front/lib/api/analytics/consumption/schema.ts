@@ -29,6 +29,8 @@ export const ConsumptionPeriodSchema = z.object({
     .default(DEFAULT_CONSUMPTION_PERIOD_DAYS),
 });
 
+export type ConsumptionPeriodBody = z.infer<typeof ConsumptionPeriodSchema>;
+
 // Every consumption endpoint takes at least this body: the period and the
 // filter (a map of dimension to selected ids). All of them are POST so the
 // filter can travel in the JSON body instead of a URL, which would cap the
