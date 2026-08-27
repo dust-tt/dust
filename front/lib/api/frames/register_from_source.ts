@@ -37,8 +37,7 @@ function registrationFileSystemError({
 
 async function existingFrameAtMountPath(
   auth: Authenticator,
-  mountFilePath: string,
-  fileSize: number
+  mountFilePath: string
 ): Promise<Result<FileResource | null, FramePublicationError>> {
   const [existing] = await FileResource.fetchByMountFilePaths(auth, [
     mountFilePath,
@@ -52,7 +51,6 @@ async function existingFrameAtMountPath(
     );
   }
 
-  await existing.update({ fileSize });
   await existing.markAsReady(auth);
   return new Ok(existing);
 }
@@ -130,11 +128,7 @@ export async function registerFrameV2FromSource(
     return registrationError(`Invalid Frame source path: ${normalizedPath}`);
   }
 
-  const existingResult = await existingFrameAtMountPath(
-    auth,
-    mountFilePath,
-    manifestBuffer.length
-  );
+  const existingResult = await existingFrameAtMountPath(auth, mountFilePath);
   if (existingResult.isErr()) {
     return existingResult;
   }
@@ -166,11 +160,7 @@ export async function registerFrameV2FromSource(
       throw error;
     }
 
-    const concurrent = await existingFrameAtMountPath(
-      auth,
-      mountFilePath,
-      manifestBuffer.length
-    );
+    const concurrent = await existingFrameAtMountPath(auth, mountFilePath);
     if (concurrent.isErr()) {
       return concurrent;
     }
