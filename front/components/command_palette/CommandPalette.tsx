@@ -5,9 +5,13 @@ import type {
 } from "@app/components/command_palette/CommandPaletteActionPhase";
 import { CommandPaletteActionPhase } from "@app/components/command_palette/CommandPaletteActionPhase";
 import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
-import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
+import type {
+  CommandPaletteCommand,
+  CommandPaletteItem,
+} from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { CommandPaletteSearchPhase } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSkills } from "@app/lib/swr/skill_configurations";
@@ -22,7 +26,7 @@ import {
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import { isProjectType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { Dialog, DialogContent } from "@dust-tt/sparkle";
+import { Dialog, DialogContent, Moon01, Sun } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface CommandPaletteProps {
@@ -33,6 +37,7 @@ interface CommandPaletteProps {
 export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const { isOpen, close } = useCommandPalette();
   const router = useAppRouter();
+  const { isDark, setTheme } = useTheme();
 
   // Dialog state.
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,6 +102,29 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const MAX_DISPLAYED_AGENTS = 5;
   const MAX_DISPLAYED_PODS = 5;
   const MAX_DISPLAYED_SKILLS = 5;
+
+  const allCommands: CommandPaletteCommand[] = useMemo(
+    () => [
+      {
+        id: "toggle_theme",
+        label: isDark
+          ? "Switch to light appearance"
+          : "Switch to dark appearance",
+        icon: isDark ? Sun : Moon01,
+      },
+    ],
+    [isDark]
+  );
+
+  const filteredCommands = useMemo(() => {
+    if (!debouncedQuery) {
+      return allCommands;
+    }
+    const lowerQuery = debouncedQuery.toLowerCase();
+    return allCommands.filter((c) =>
+      subFilter(lowerQuery, c.label.toLowerCase())
+    );
+  }, [allCommands, debouncedQuery]);
 
   const allFilteredAgents = useMemo(
     () =>
@@ -193,6 +221,13 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
   const handleItemSelect = useCallback(
     (item: CommandPaletteItem) => {
+      if (item.kind === "command") {
+        close();
+        if (item.command.id === "toggle_theme") {
+          setTheme(isDark ? "light" : "dark");
+        }
+        return;
+      }
       if (item.kind === "pod") {
         close();
         void router.push(getPodRoute(owner.sId, item.pod.sId));
@@ -206,7 +241,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         setPhase("action");
       }
     },
-    [close, executeAction, owner.sId, router]
+    [close, executeAction, isDark, owner.sId, router, setTheme]
   );
 
   const handleBack = useCallback(() => {
@@ -240,6 +275,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
             <CommandPaletteSearchPhase
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
+              commands={filteredCommands}
               agents={filteredAgents}
               pods={filteredPods}
               skills={filteredSkills}

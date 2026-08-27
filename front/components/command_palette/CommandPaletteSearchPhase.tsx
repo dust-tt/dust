@@ -9,10 +9,18 @@ import { getSpaceIcon } from "@app/lib/spaces";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { PodType } from "@app/types/space";
+import type { Sun } from "@dust-tt/sparkle";
 import { Avatar, cn, Icon, LoadingBlock, SearchInput } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
+export interface CommandPaletteCommand {
+  id: "toggle_theme";
+  label: string;
+  icon: typeof Sun;
+}
+
 export type CommandPaletteItem =
+  | { kind: "command"; command: CommandPaletteCommand }
   | { kind: "agent"; agent: LightAgentConfigurationType }
   | { kind: "pod"; pod: PodType }
   | { kind: "skill"; skill: SkillWithoutInstructionsAndToolsType };
@@ -20,6 +28,7 @@ export type CommandPaletteItem =
 interface CommandPaletteSearchPhaseProps {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
+  commands: CommandPaletteCommand[];
   agents: LightAgentConfigurationType[];
   pods: PodType[];
   skills: SkillWithoutInstructionsAndToolsType[];
@@ -34,11 +43,15 @@ interface CommandPaletteSearchPhaseProps {
 }
 
 function getFlatItems(
+  commands: CommandPaletteCommand[],
   agents: LightAgentConfigurationType[],
   pods: PodType[],
   skills: SkillWithoutInstructionsAndToolsType[]
 ): CommandPaletteItem[] {
   return [
+    ...commands.map(
+      (command): CommandPaletteItem => ({ kind: "command", command })
+    ),
     ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
     ...pods.map((pod): CommandPaletteItem => ({ kind: "pod", pod })),
     ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
@@ -48,6 +61,7 @@ function getFlatItems(
 export function CommandPaletteSearchPhase({
   searchQuery,
   onSearchQueryChange,
+  commands,
   agents,
   pods,
   skills,
@@ -61,8 +75,8 @@ export function CommandPaletteSearchPhase({
   onClose,
 }: CommandPaletteSearchPhaseProps) {
   const flatItems = useMemo(
-    () => getFlatItems(agents, pods, skills),
-    [agents, pods, skills]
+    () => getFlatItems(commands, agents, pods, skills),
+    [commands, agents, pods, skills]
   );
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -85,11 +99,17 @@ export function CommandPaletteSearchPhase({
   }, [selectedIndex, flatItems.length]);
 
   // Reset selection and trim stale refs when the number of results changes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: agents.length, pods.length and skills.length are intentional triggers
+  // biome-ignore lint/correctness/useExhaustiveDependencies: commands.length, agents.length, pods.length and skills.length are intentional triggers
   useEffect(() => {
     itemRefs.current.length = flatItems.length;
     onSelectedIndexChange(0);
-  }, [agents.length, pods.length, skills.length, onSelectedIndexChange]);
+  }, [
+    commands.length,
+    agents.length,
+    pods.length,
+    skills.length,
+    onSelectedIndexChange,
+  ]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     const totalItems = flatItems.length;
@@ -164,29 +184,52 @@ export function CommandPaletteSearchPhase({
           </ItemEmptyState>
         )}
 
-        {agents.length > 0 && (
+        {commands.length > 0 && (
           <div>
-            <ItemTitle>Agents</ItemTitle>
-            {agents.map((agent, i) => (
+            <ItemTitle>Commands</ItemTitle>
+            {commands.map((command, i) => (
               <ItemRow
-                key={agent.sId}
+                key={command.id}
                 ref={(el) => {
                   itemRefs.current[i] = el;
                 }}
                 isSelected={selectedIndex === i}
-                onClick={() => onItemSelect({ kind: "agent", agent })}
+                onClick={() => onItemSelect({ kind: "command", command })}
                 onMouseMove={() => onSelectedIndexChange(i)}
               >
-                <Avatar visual={agent.pictureUrl} size="xs" />
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="shrink-0 font-medium">{agent.name}</span>
-                  <span className="shrink-0 text-muted-foreground">-</span>
-                  <span className="min-w-0 truncate text-muted-foreground">
-                    {agent.description}
-                  </span>
-                </div>
+                <Icon visual={command.icon} size="xs" />
+                <span className="font-medium">{command.label}</span>
               </ItemRow>
             ))}
+          </div>
+        )}
+
+        {agents.length > 0 && (
+          <div>
+            <ItemTitle>Agents</ItemTitle>
+            {agents.map((agent, i) => {
+              const globalIndex = commands.length + i;
+              return (
+                <ItemRow
+                  key={agent.sId}
+                  ref={(el) => {
+                    itemRefs.current[globalIndex] = el;
+                  }}
+                  isSelected={selectedIndex === globalIndex}
+                  onClick={() => onItemSelect({ kind: "agent", agent })}
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                >
+                  <Avatar visual={agent.pictureUrl} size="xs" />
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="shrink-0 font-medium">{agent.name}</span>
+                    <span className="shrink-0 text-muted-foreground">-</span>
+                    <span className="min-w-0 truncate text-muted-foreground">
+                      {agent.description}
+                    </span>
+                  </div>
+                </ItemRow>
+              );
+            })}
             {hasMoreAgents && (
               <div className="px-3 py-2 text-xs text-muted-foreground">
                 More agents available. Type to filter.
@@ -199,7 +242,7 @@ export function CommandPaletteSearchPhase({
           <div>
             <ItemTitle>Pods</ItemTitle>
             {pods.map((pod, i) => {
-              const globalIndex = agents.length + i;
+              const globalIndex = commands.length + agents.length + i;
               return (
                 <ItemRow
                   key={pod.sId}
@@ -239,7 +282,8 @@ export function CommandPaletteSearchPhase({
           <div>
             <ItemTitle>Skills</ItemTitle>
             {skills.map((skill, i) => {
-              const globalIndex = agents.length + pods.length + i;
+              const globalIndex =
+                commands.length + agents.length + pods.length + i;
               const SkillAvatar = getSkillAvatarIcon(skill);
               return (
                 <ItemRow
