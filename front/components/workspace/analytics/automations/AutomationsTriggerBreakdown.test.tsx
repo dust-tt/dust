@@ -23,7 +23,7 @@ const TRIGGER: AutomationTriggerRow = {
     modelId: null,
     modelDisplayName: null,
   },
-  editor: { name: "Nic Siegle", email: null, pictureUrl: null },
+  owner: { name: "Nic Siegle", email: null, pictureUrl: null },
   scheduleDescription: "Every day at 9:00",
   webhookSourceName: null,
   webhookSourceRestricted: false,
