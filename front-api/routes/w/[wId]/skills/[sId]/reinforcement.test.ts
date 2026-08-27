@@ -90,6 +90,29 @@ function patch(workspace: { sId: string }, sId: string, body: unknown) {
 }
 
 describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
+  it("refuses to change the reinforcement of an archived skill", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    await skill.archive(requestUserAuth);
+
+    const response = await patch(workspace, skill.sId, {
+      reinforcement: "off",
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "An archived skill cannot be updated. Restore it first.",
+      },
+    });
+
+    const untouched = await SkillResource.fetchById(requestUserAuth, skill.sId);
+    expect(untouched?.reinforcement).toBe("on");
+  });
+
   it("updates the reinforcement field", async () => {
     const { workspace, skill, requestUserAuth } = await setupTest({
       requestUserRole: "admin",
