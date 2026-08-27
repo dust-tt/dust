@@ -120,12 +120,7 @@ export const ConversationMessageContent = React.forwardRef<
             )}
             {...props}
           >
-            <div
-              className={cn(
-                "min-w-0 break-words text-base text-foreground",
-                type === "user" && "text-balance"
-              )}
-            >
+            <div className="min-w-0 break-words text-base text-foreground">
               {children}
             </div>
             {type === "agent" && citations && citations.length > 0 && (
