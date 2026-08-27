@@ -68,7 +68,10 @@ export function UserAnalyticsPopover({
   }, [open, owner.sId]);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    // min-h-0 + content-sized children (grow, not flex-1) let the dialog size
+    // itself on the content: it grows past its min height and only scrolls
+    // inside once the dialog hits its 90vh cap.
+    <div className="flex min-h-0 flex-col overflow-hidden">
       <DialogHeader hideButton className="p-5 sm:p-6">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-4 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
           <div className="flex min-w-0 flex-col gap-1 overflow-hidden">
@@ -98,7 +101,7 @@ export function UserAnalyticsPopover({
         </div>
       </DialogHeader>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8 pt-1 sm:px-6">
+      <div className="min-h-0 grow overflow-y-auto px-5 pb-8 pt-1 sm:px-6">
         <Page.Vertical align="stretch" gap="xl">
           <PersonalUsageCard
             owner={owner}
