@@ -28,12 +28,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "tdraier",
   },
-  live_speech_to_text: {
-    description:
-      "Enable real-time speech-to-text in the input bar via ElevenLabs WebSocket streaming",
-    stage: "dust_only",
-    owner: "adrsimon",
-  },
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",
