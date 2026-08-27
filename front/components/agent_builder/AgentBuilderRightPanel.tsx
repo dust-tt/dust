@@ -1,10 +1,12 @@
-import { AgentBuilderInsights } from "@app/components/agent_builder/AgentBuilderInsights";
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { AgentBuilderSidekick } from "@app/components/agent_builder/AgentBuilderSidekick";
 import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
+import { AgentInsightsTab } from "@app/components/assistant/details/tabs/AgentInsightsTab";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import {
   BarChart01,
   Beaker02,
@@ -135,14 +137,16 @@ function CollapsedTabs({
 interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
   isSidekickDisabled: boolean;
-  agentConfigurationId?: string;
+  agentConfiguration?: AgentConfigurationType;
 }
 
 function ExpandedContent({
   selectedTab,
   isSidekickDisabled,
-  agentConfigurationId,
+  agentConfiguration,
 }: ExpandedContentProps) {
+  const { owner } = useAgentBuilderContext();
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {selectedTab === "sidekick" && !isSidekickDisabled && (
@@ -156,8 +160,13 @@ function ExpandedContent({
         </div>
       )}
       {selectedTab === "insights" &&
-        (agentConfigurationId ? (
-          <AgentBuilderInsights agentConfigurationId={agentConfigurationId} />
+        (agentConfiguration ? (
+          <section className="flex h-full flex-col overflow-y-auto p-4">
+            <AgentInsightsTab
+              owner={owner}
+              agentConfiguration={agentConfiguration}
+            />
+          </section>
         ) : (
           <TabContentLayout title="Insights">
             <EmptyPlaceholder
@@ -172,12 +181,12 @@ function ExpandedContent({
 }
 
 interface AgentBuilderRightPanelProps {
-  agentConfigurationId?: string;
+  agentConfiguration?: AgentConfigurationType;
   isSidekickDisabled?: boolean;
 }
 
 export function AgentBuilderRightPanel({
-  agentConfigurationId,
+  agentConfiguration,
   isSidekickDisabled = false,
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
@@ -224,7 +233,7 @@ export function AgentBuilderRightPanel({
         <ExpandedContent
           selectedTab={activeTab}
           isSidekickDisabled={isSidekickDisabled}
-          agentConfigurationId={agentConfigurationId}
+          agentConfiguration={agentConfiguration}
         />
       ) : (
         <CollapsedTabs
