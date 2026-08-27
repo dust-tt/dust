@@ -63,7 +63,7 @@ export function AgentBrowserContainer({
     >
       {!isMobileOrExtension && (
         <div id="agents-list-header">
-          <Page.SectionHeader title="Agents" />
+          <Page.SectionHeader title="Chat with..." />
         </div>
       )}
       <AgentBrowser

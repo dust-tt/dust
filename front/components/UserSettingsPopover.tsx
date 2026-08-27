@@ -424,7 +424,7 @@ function CustomizationSection() {
       <div className="flex items-start justify-between gap-4 rounded-2xl border border-border dark:border-border-dark p-4">
         <div className="flex flex-col gap-1">
           <span className="heading-base text-foreground">
-            Show agents on home
+            Show "Chat with..." on home
           </span>
           <span className="copy-sm text-muted-foreground">
             Display your favorite and most used agents, and the agent search, on
