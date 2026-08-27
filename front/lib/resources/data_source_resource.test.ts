@@ -282,7 +282,9 @@ describe("DataSourceResource cross-workspace fetch", () => {
 
     expect(dataSource).not.toBeNull();
     expect(dataSource?.space.id).toBe(spaceA.id);
-    expect(dataSource?.space.groups.length).toBeGreaterThan(0);
+    expect(
+      (await dataSource?.space.fetchGrantReferences())?.length
+    ).toBeGreaterThan(0);
   });
 
   it("unsafeFetchByDustAPIProjectId filters out other-workspace resources for non super users", async () => {
@@ -338,10 +340,12 @@ describe("DataSourceResource cross-workspace fetch", () => {
 
     expect(dataSource).not.toBeNull();
     expect(dataSource?.space.workspaceId).toBe(dataSource?.workspaceId);
-    expect(dataSource?.space.groups.length).toBeGreaterThan(0);
     expect(
-      dataSource?.space.groups.every(
-        (group) => group.workspaceId === dataSource.workspaceId
+      (await dataSource?.space.fetchGrantReferences())?.length
+    ).toBeGreaterThan(0);
+    expect(
+      (await dataSource?.space.fetchGrantReferences())?.every(
+        (group) => group.workspaceId === dataSource!.workspaceId
       )
     ).toBe(true);
   });

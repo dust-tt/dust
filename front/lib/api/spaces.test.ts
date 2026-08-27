@@ -196,9 +196,9 @@ describe("createSpaceAndGroup", () => {
           adminAuth,
           space.sId
         );
-        const associatedGroupIds = reloadedSpace!.groups.map(
-          (group) => group.groupId
-        );
+        const associatedGroupIds = (
+          await reloadedSpace!.fetchGrantReferences()
+        ).map((group) => group.groupId);
         expect(associatedGroupIds).toContain(provisionedGroup.id);
       }
     });
@@ -422,9 +422,9 @@ describe("createSpaceAndGroup", () => {
         expect(await reloadedSpace!.isOpen(adminAuth)).toBe(true);
 
         // Verify global group was added (from the space's group_permissions grants).
-        const associatedGroupIds = reloadedSpace!.groups.map(
-          (group) => group.groupId
-        );
+        const associatedGroupIds = (
+          await reloadedSpace!.fetchGrantReferences()
+        ).map((group) => group.groupId);
         expect(associatedGroupIds).toContain(globalGroup.id);
       }
     });
@@ -487,7 +487,9 @@ describe("createSpaceAndGroup", () => {
         expect(await space.isOpen(adminAuth)).toBe(false);
 
         // Verify global group was NOT added (from the space's group_permissions grants).
-        const associatedGroupIds = space.groups.map((group) => group.groupId);
+        const associatedGroupIds = (await space.fetchGrantReferences()).map(
+          (group) => group.groupId
+        );
         expect(associatedGroupIds).not.toContain(globalGroup.id);
       }
     });
@@ -906,9 +908,9 @@ describe("createSpaceAndGroup", () => {
           adminAuth,
           space.sId
         );
-        const associatedGroupIds = reloadedSpace!.groups.map(
-          (group) => group.groupId
-        );
+        const associatedGroupIds = (
+          await reloadedSpace!.fetchGrantReferences()
+        ).map((group) => group.groupId);
         expect(associatedGroupIds).toContain(provisionedGroup1.id);
         expect(associatedGroupIds).toContain(provisionedGroup2.id);
       }
@@ -1245,7 +1247,11 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           space.sId
         );
         // Verify the space has the global group
-        expect(reloadedSpace!.groups.some((g) => g.isReader())).toBe(true);
+        expect(
+          (await reloadedSpace!.fetchGrantReferences()).some((g) =>
+            g.isReader()
+          )
+        ).toBe(true);
 
         // Create an active API key for the global group
         await KeyFactory.regular(globalGroup);
@@ -1282,7 +1288,11 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           space.sId
         );
         // Verify the space has the global group
-        expect(reloadedSpace!.groups.some((g) => g.isReader())).toBe(true);
+        expect(
+          (await reloadedSpace!.fetchGrantReferences()).some((g) =>
+            g.isReader()
+          )
+        ).toBe(true);
 
         // Create an active API key for the global group
         await KeyFactory.regular(globalGroup);
