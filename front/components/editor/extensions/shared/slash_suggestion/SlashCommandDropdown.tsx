@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
   Spinner,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import type React from "react";
@@ -65,6 +66,7 @@ export interface SlashCommand {
   id: string;
   label: string;
   tooltip?: SlashCommandTooltip;
+  tooltipLabel?: string;
 }
 
 interface SlashCommandSubMenuNavigation {
@@ -373,7 +375,15 @@ export const SlashCommandDropdown = forwardRef<
                       />
                     );
 
-                    const itemContent = item.tooltip ? (
+                    const itemContent = item.tooltipLabel ? (
+                      <Tooltip
+                        label={item.tooltipLabel}
+                        tooltipTriggerAsChild
+                        trigger={
+                          <span className="block w-full">{menuItem}</span>
+                        }
+                      />
+                    ) : item.tooltip ? (
                       <DropdownTooltipTrigger
                         description={item.tooltip.description}
                         media={item.tooltip.media}
@@ -461,7 +471,13 @@ export const SlashCommandDropdown = forwardRef<
                     />
                   );
 
-                  const itemContent = item.tooltip ? (
+                  const itemContent = item.tooltipLabel ? (
+                    <Tooltip
+                      label={item.tooltipLabel}
+                      tooltipTriggerAsChild
+                      trigger={<span className="block w-full">{menuItem}</span>}
+                    />
+                  ) : item.tooltip ? (
                     <DropdownTooltipTrigger
                       description={item.tooltip.description}
                       media={item.tooltip.media}

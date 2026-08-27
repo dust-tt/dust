@@ -344,7 +344,7 @@ describe("getSkillSlashCommandItem", () => {
       hasDetails: true,
       id: "skill_create_memo",
       label: "Create memo",
-      tooltip: { description: "Create memo" },
+      tooltipLabel: "Create memo",
     });
   });
 });
