@@ -64,7 +64,7 @@ const heightClasses: Record<DialogHeightType, string> = {
   xl: "sm:h-xl",
   "2xl": "sm:h-2xl",
   "3xl": "sm:h-3xl",
-  full: "h-dvh max-h-none",
+  full: "h-full",
 };
 
 const DIALOG_VARIANTS = ["default", "command"] as const;
@@ -92,7 +92,8 @@ const dialogVariants = cva(
     "rounded-2xl flex flex-col w-full max-w-[calc(100vw-2rem)] border border shadow-lg",
     "bg-modal-background",
     "border-border",
-    "max-h-[90vh]"
+    "max-h-[90vh]",
+    "focus:outline-none"
   ),
   {
     variants: {
@@ -105,7 +106,7 @@ const dialogVariants = cva(
       {
         size: "full",
         height: "full",
-        class: "max-w-none rounded-none border-none focus:outline-none",
+        class: "h-dvh max-h-none max-w-none rounded-none border-none",
       },
     ],
     defaultVariants: {
@@ -119,7 +120,7 @@ interface DialogContentProps
   extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   /** Max width of the dialog: "md" | "lg" | "xl" | "2xl" | "3xl" | "full" (full screen) | "fit" (content width). */
   size?: DialogSizeType;
-  /** Fixed height of the dialog: "md" | "lg" | "xl" | "2xl" | "3xl" | "full" (viewport height; combined with size="full" the dialog covers the whole screen); unset grows with content up to 90vh (which also caps the fixed heights). */
+  /** Fixed height of the dialog: "md" | "lg" | "xl" | "2xl" | "3xl" | "full" (fills the available height, capped at 90vh; combined with size="full" the dialog covers the whole screen); unset grows with content up to 90vh (which also caps the fixed heights). */
   height?: DialogHeightType;
   /** "default" centers vertically; "command" pins near the top with a slide-in (command-palette style). */
   variant?: DialogVariantType;
