@@ -7633,3 +7633,125 @@ describe("filterVisibleConversations", () => {
     expect(visible).toHaveLength(0);
   });
 });
+
+describe("getContextFromLatestNonWakeUpUserMessage", () => {
+  async function setupConversation() {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Wake-up context agent",
+      description: "agent",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+    const resource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    assert(resource);
+
+    return { auth, workspace, conversation, resource };
+  }
+
+  it("returns the client-side MCP servers and requested model of the last user turn", async () => {
+    const { auth, workspace, conversation, resource } =
+      await setupConversation();
+
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "first",
+      rank: 0,
+      clientSideMCPServerIds: ["ims_old"],
+      requestedModel: {
+        providerId: "openai",
+        modelId: "gpt-5",
+        reasoningEffort: "medium",
+      },
+    });
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "second",
+      rank: 1,
+      clientSideMCPServerIds: ["ims_latest"],
+      requestedModel: {
+        providerId: "anthropic",
+        modelId: "claude-haiku-4-5-20251001",
+        reasoningEffort: "light",
+      },
+    });
+
+    const context =
+      await resource.getContextFromLatestNonWakeUpUserMessage(auth);
+
+    expect(context).toEqual({
+      clientSideMCPServerIds: ["ims_latest"],
+      requestedProviderId: "anthropic",
+      requestedModelId: "claude-haiku-4-5-20251001",
+      requestedReasoningEffort: "light",
+    });
+  });
+
+  it("ignores wake-up user messages", async () => {
+    const { auth, workspace, conversation, resource } =
+      await setupConversation();
+
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "human turn",
+      rank: 0,
+      requestedModel: {
+        providerId: "openai",
+        modelId: "gpt-5",
+        reasoningEffort: "medium",
+      },
+    });
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "wake-up turn",
+      rank: 1,
+      origin: "wakeup",
+      requestedModel: null,
+    });
+
+    const context =
+      await resource.getContextFromLatestNonWakeUpUserMessage(auth);
+
+    expect(context.requestedProviderId).toBe("openai");
+    expect(context.requestedModelId).toBe("gpt-5");
+    expect(context.requestedReasoningEffort).toBe("medium");
+  });
+
+  it("returns nulls when no model was requested", async () => {
+    const { auth, workspace, conversation, resource } =
+      await setupConversation();
+
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "human turn",
+      rank: 0,
+    });
+
+    const context =
+      await resource.getContextFromLatestNonWakeUpUserMessage(auth);
+
+    expect(context).toEqual({
+      clientSideMCPServerIds: [],
+      requestedProviderId: null,
+      requestedModelId: null,
+      requestedReasoningEffort: null,
+    });
+  });
+});

@@ -3568,27 +3568,40 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
-   * Returns `clientSideMCPServerIds` from the most recent user message (latest
-   * version per rank) whose origin is not `wakeup`. Used when posting wake-up
-   * messages to inherit the previous human turn's client-side MCP selection.
+   * Returns the context to carry over to a wake-up run: the client-side MCP servers and the
+   * model explicitly requested on the latest non wake-up user message of the conversation. This
+   * anchors wake-ups on the last human turn so they keep running with the model the user picked
+   * rather than falling back to the agent's configured model.
    */
-  async getClientSideMCPServerIdsFromLatestNonWakeUpUserMessage(
+  async getContextFromLatestNonWakeUpUserMessage(
     auth: Authenticator,
     {
       transaction,
     }: {
       transaction?: Transaction;
     } = {}
-  ): Promise<string[]> {
+  ): Promise<{
+    clientSideMCPServerIds: string[];
+    requestedProviderId: string | null;
+    requestedModelId: string | null;
+    requestedReasoningEffort: string | null;
+  }> {
     const owner = auth.getNonNullableWorkspace();
 
     const query = `
-      SELECT latest."clientSideMCPServerIds"
+      SELECT
+        latest."clientSideMCPServerIds",
+        latest."requestedProviderId",
+        latest."requestedModelId",
+        latest."requestedReasoningEffort"
       FROM (
         SELECT DISTINCT ON (m.rank)
           m.rank,
           um."userContextOrigin",
-          um."clientSideMCPServerIds"
+          um."clientSideMCPServerIds",
+          um."requestedProviderId",
+          um."requestedModelId",
+          um."requestedReasoningEffort"
         FROM messages m
         INNER JOIN user_messages um
           ON um.id = m."userMessageId"
@@ -3608,6 +3621,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // biome-ignore lint/plugin/noRawSql: DISTINCT ON subquery with LIMIT 1
     const [result] = await frontSequelize.query<{
       clientSideMCPServerIds: string[] | null;
+      requestedProviderId: string | null;
+      requestedModelId: string | null;
+      requestedReasoningEffort: string | null;
     }>(query, {
       type: QueryTypes.SELECT,
       replacements: {
@@ -3617,7 +3633,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
     });
 
-    return result?.clientSideMCPServerIds ?? [];
+    return {
+      clientSideMCPServerIds: result?.clientSideMCPServerIds ?? [],
+      requestedProviderId: result?.requestedProviderId ?? null,
+      requestedModelId: result?.requestedModelId ?? null,
+      requestedReasoningEffort: result?.requestedReasoningEffort ?? null,
+    };
   }
 
   /**
