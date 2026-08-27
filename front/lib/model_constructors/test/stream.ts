@@ -22,6 +22,7 @@ export async function* runStream(
       type: "input_configuration_error",
       message: "Configuration is invalid.",
       originalError: configValidationResult.error.format(),
+      errorSource: "dust",
     });
     return;
   }

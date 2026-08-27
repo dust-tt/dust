@@ -51,7 +51,7 @@ describe("GET /api/w/:wId/governance-permissions", () => {
     const { governancePermissions }: GetGovernancePermissionsResponseBody =
       await response.json();
 
-    // Admin sees every domain: agent/skill/frame plus the admin-only billing/identity.
+    // Admin sees every domain: agent/skill/frame/trigger plus the admin-only billing/identity.
     expect(governancePermissions).toEqual({
       "create:agent": adminsOnly("create", "agent"),
       "publish:agent": adminsOnly("publish", "agent"),
@@ -60,6 +60,7 @@ describe("GET /api/w/:wId/governance-permissions", () => {
       "make_discoverable:skill": adminsOnly("make_discoverable", "skill"),
       "invite:frame": adminsOnly("invite", "frame"),
       "publish:frame": adminsOnly("publish", "frame"),
+      "use_workspace_pool:trigger": adminsOnly("use_workspace_pool", "trigger"),
       "admin:billing": adminsOnly("admin", "billing"),
       "admin:security": adminsOnly("admin", "security"),
     });
@@ -77,7 +78,7 @@ describe("GET /api/w/:wId/governance-permissions", () => {
     const { governancePermissions }: GetGovernancePermissionsResponseBody =
       await response.json();
 
-    // Manager sees agent/skill/frame but never the admin-only billing/identity.
+    // Manager sees agent/skill/frame/trigger but never the admin-only billing/identity.
     expect(governancePermissions).toEqual({
       "create:agent": adminsOnly("create", "agent"),
       "publish:agent": adminsOnly("publish", "agent"),
@@ -86,6 +87,7 @@ describe("GET /api/w/:wId/governance-permissions", () => {
       "make_discoverable:skill": adminsOnly("make_discoverable", "skill"),
       "invite:frame": adminsOnly("invite", "frame"),
       "publish:frame": adminsOnly("publish", "frame"),
+      "use_workspace_pool:trigger": adminsOnly("use_workspace_pool", "trigger"),
     });
   });
 

@@ -1,9 +1,11 @@
 import { activationManagementPlugin } from "@app/lib/api/poke/plugins/spaces/activation_management";
 import { Authenticator } from "@app/lib/auth";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
+import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
@@ -11,16 +13,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockListActivationPodsByUser,
+  mockPostActivationNudge,
   mockStartActivationWorkspaceSchedule,
   mockStartActivationWorkspaceWorkflow,
 } = vi.hoisted(() => ({
   mockListActivationPodsByUser: vi.fn(),
+  mockPostActivationNudge: vi.fn(),
   mockStartActivationWorkspaceSchedule: vi.fn(),
   mockStartActivationWorkspaceWorkflow: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/activation/pods", () => ({
   listActivationPodsByUser: mockListActivationPodsByUser,
+}));
+
+vi.mock("@app/lib/api/activation/nudge", () => ({
+  postActivationNudge: mockPostActivationNudge,
 }));
 
 vi.mock("@app/temporal/activation_scheduler/client", () => ({
@@ -30,11 +38,13 @@ vi.mock("@app/temporal/activation_scheduler/client", () => ({
 
 beforeEach(async () => {
   mockListActivationPodsByUser.mockReset();
+  mockPostActivationNudge.mockReset();
   mockStartActivationWorkspaceSchedule.mockReset();
   mockStartActivationWorkspaceWorkflow.mockReset();
 
   // No user has a pod yet, so every target is provisioned fresh.
   mockListActivationPodsByUser.mockResolvedValue(new Map());
+  mockPostActivationNudge.mockResolvedValue(new Ok(undefined));
   mockStartActivationWorkspaceSchedule.mockResolvedValue(new Ok(undefined));
   mockStartActivationWorkspaceWorkflow.mockResolvedValue(
     new Ok("activation-workspace-test-manual-1")
@@ -42,8 +52,11 @@ beforeEach(async () => {
 
   // The canonical ActivationPod row is orthogonal to the schedule lifecycle
   // under test. Stub it out.
-  vi.spyOn(ActivationPodResource, "makeNew").mockResolvedValue(
-    {} as ActivationPodResource
+  vi.spyOn(ActivationPodResource, "makeNew").mockResolvedValue({
+    id: 123,
+  } as ActivationPodResource);
+  vi.spyOn(ActivationWorkAreaResource, "makeNew").mockResolvedValue(
+    {} as ActivationWorkAreaResource
   );
 
   // Pod creation kicks off a real (external) dust_project connector; stub it
@@ -81,6 +94,8 @@ async function makeWorkspaceWithEditor({
 }
 
 const pluginArgs = {
+  podType: ["learning"] as string[],
+  goal: "",
   groupId: [] as string[],
   sessionGoal: "",
   pushedResource: [] as string[],
@@ -92,6 +107,13 @@ const pluginArgs = {
   pctNotActivated: 0,
   forceRecreate: false,
   overrideChecks: false,
+};
+
+const goalPluginArgs = {
+  ...pluginArgs,
+  podType: ["goal"],
+  goal: "Beat the quarterly revenue plan",
+  guidance: ["none"],
 };
 
 describe("activationManagementPlugin.execute", () => {
@@ -197,5 +219,77 @@ describe("activationManagementPlugin.execute", () => {
       expect(result.error.message).toContain("temporal unavailable");
     }
     expect(mockStartActivationWorkspaceWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("provisions a fresh Goal Pod and queues it into Temporal", async () => {
+    const { workspace, adminAuth, editor } = await makeWorkspaceWithEditor();
+    const goal = "Beat the quarterly revenue plan";
+
+    const result = await activationManagementPlugin.execute(adminAuth, null, {
+      ...goalPluginArgs,
+      goal,
+      targetUserIds: [editor.sId],
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockListActivationPodsByUser).toHaveBeenCalledWith(
+      expect.anything(),
+      { kind: "goal" }
+    );
+    expect(ActivationPodResource.makeNew).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ kind: "goal" })
+    );
+    expect(ActivationWorkAreaResource.makeNew).not.toHaveBeenCalled();
+    expect(mockPostActivationNudge).not.toHaveBeenCalled();
+    expect(mockStartActivationWorkspaceWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: workspace.sId,
+        userIds: [editor.sId],
+        context: expect.objectContaining({
+          workAreas: goal,
+          sessionGoal: expect.stringContaining("job contract"),
+        }),
+      })
+    );
+  });
+
+  it("reuses an existing Goal Pod and queues it when Force recreate is off", async () => {
+    const { workspace, adminAuth, editor } = await makeWorkspaceWithEditor();
+    const existingPod = await SpaceFactory.project(
+      adminAuth.getNonNullableWorkspace(),
+      editor.id,
+      { name: "Existing Goal Pod" }
+    );
+    mockListActivationPodsByUser.mockResolvedValue(
+      new Map([
+        [
+          editor.id,
+          {
+            pod: existingPod,
+            activationPod: { id: 99 } as ActivationPodResource,
+          },
+        ],
+      ])
+    );
+    vi.mocked(ActivationPodResource.makeNew).mockClear();
+
+    const result = await activationManagementPlugin.execute(adminAuth, null, {
+      ...goalPluginArgs,
+      targetUserIds: [editor.sId],
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(ActivationPodResource.makeNew).not.toHaveBeenCalled();
+    expect(mockPostActivationNudge).not.toHaveBeenCalled();
+    expect(mockStartActivationWorkspaceWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceId: workspace.sId,
+        userIds: [editor.sId],
+        context: expect.objectContaining({
+          workAreas: goalPluginArgs.goal,
+        }),
+      })
+    );
   });
 });

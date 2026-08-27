@@ -1,6 +1,7 @@
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import {
   ArrowDown,
   ArrowUp,
@@ -109,6 +110,8 @@ export interface ConsumptionAttributionRowsTableProps {
   dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  analyticsScope?: ConsumptionAnalyticsScope;
+  disabled?: boolean;
   onViewAll: (
     dimension: ConsumptionDimension,
     selectedRow: ConsumptionTopRow
@@ -134,6 +137,8 @@ export function ConsumptionAttributionRowsTableView({
   dimension,
   period,
   filter,
+  analyticsScope,
+  disabled,
   onViewAll,
   expandedRowId,
   isLoading = false,
@@ -257,6 +262,8 @@ export function ConsumptionAttributionRowsTableView({
                           selectedRow={row.original}
                           period={period}
                           filter={filter}
+                          analyticsScope={analyticsScope}
+                          disabled={disabled}
                           onViewAll={onViewAll}
                         />
                       </CollapsibleContent>

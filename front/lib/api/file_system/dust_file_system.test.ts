@@ -284,7 +284,7 @@ describe("DustFileSystem.forUser", () => {
 
   it("returns Err(unauthorized) when there is no authenticated user", async () => {
     const { workspace } = await createResourceTest({});
-    const noUserAuth = await Authenticator.internalBuilderForWorkspace(
+    const noUserAuth = await Authenticator.internalUserForWorkspace(
       workspace.sId
     );
     expect(noUserAuth.user()).toBeNull();
@@ -863,7 +863,6 @@ describe("DustFileSystem.forAgentLoop", () => {
       await MembershipFactory.associate(workspace, regularUser, {
         role: "user",
       });
-      const userSessionAuth = await sessionAuthForUser(regularUser, workspace);
 
       const openProjectRes = await createSpaceAndGroup(adminAuth, {
         name: `open pod ${Date.now()}`,
@@ -882,13 +881,16 @@ describe("DustFileSystem.forAgentLoop", () => {
         user.sId,
         workspace.sId
       );
+      // Built after the pod exists: an open pod confers read through the global group's `reader`
+      // grant, and an Authenticator resolves its grants once, at construction.
+      const userSessionAuth = await sessionAuthForUser(regularUser, workspace);
 
       const openProject = await SpaceResource.fetchById(
         refreshedAdminAuth,
         openProjectRes.value.sId
       );
       assert(openProject, "Open project not found after creation");
-      expect(openProject.isOpen()).toBe(true);
+      expect(await openProject.isOpen(adminAuth)).toBe(true);
 
       const podConversation = await ConversationFactory.create(
         refreshedAdminAuth,
@@ -943,7 +945,7 @@ describe("DustFileSystem.forAgentLoop", () => {
       const userSessionAuth = await sessionAuthForUser(regularUser, workspace);
 
       const restrictedProject = await SpaceFactory.project(workspace, user.id);
-      expect(restrictedProject.isOpen()).toBe(false);
+      expect(await restrictedProject.isOpen(userSessionAuth)).toBe(false);
 
       const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
         user.sId,

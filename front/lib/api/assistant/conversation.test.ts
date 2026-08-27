@@ -89,7 +89,6 @@ import { runOnRedis } from "@app/lib/api/redis";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
-import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -118,14 +117,8 @@ async function fetchRegularAutoGroup(
   space: SpaceResource,
   auth: Authenticator
 ) {
-  const groupReference = space.groups.find((group) => group.isRegularAuto());
-  if (!groupReference) {
-    return null;
-  }
-  const [group] = await space.fetchGroupResources(auth, {
-    groupReferences: [groupReference],
-  });
-  return group;
+  const [group] = await space.fetchRegularAutoGroups(auth);
+  return group ?? null;
 }
 
 async function createActiveProgrammaticCredit(
@@ -2583,7 +2576,7 @@ describe("postUserMessage", () => {
     });
 
     it("should reject posting a message without an auth user to a restricted Pod even when user association is disabled", async () => {
-      expect(projectSpace.isOpen()).toBe(false);
+      expect(await projectSpace.isOpen(auth)).toBe(false);
 
       const apiKey = await KeyFactory.regular(globalGroup);
       const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
@@ -2597,7 +2590,7 @@ describe("postUserMessage", () => {
         projectSpace.sId
       );
       expect(restrictedPod).not.toBeNull();
-      expect(restrictedPod?.isOpen()).toBe(false);
+      expect(await restrictedPod?.isOpen(apiKeyAuth)).toBe(false);
 
       const result = await postUserMessage(apiKeyAuth, {
         conversationResource: projectConversationResource,
@@ -2626,13 +2619,11 @@ describe("postUserMessage", () => {
     });
 
     it("should allow posting a message without an auth user to an open Pod when user association is disabled", async () => {
-      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
+      await SpaceFactory.attachGroup(
+        projectSpace,
+        globalGroup,
+        "project_viewer"
       );
-      await GroupSpaceViewerResource.makeNew(internalAdminAuth, {
-        group: globalGroup,
-        space: projectSpace,
-      });
 
       const apiKey = await KeyFactory.regular(globalGroup);
       const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
@@ -2646,7 +2637,7 @@ describe("postUserMessage", () => {
         projectSpace.sId
       );
       expect(openPod).not.toBeNull();
-      expect(openPod?.isOpen()).toBe(true);
+      expect(await openPod?.isOpen(apiKeyAuth)).toBe(true);
 
       const result = await postUserMessage(apiKeyAuth, {
         conversationResource: projectConversationResource,
@@ -2674,13 +2665,11 @@ describe("postUserMessage", () => {
     });
 
     it("should reject posting a message without an auth user to an open Pod when user association is enabled", async () => {
-      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
+      await SpaceFactory.attachGroup(
+        projectSpace,
+        globalGroup,
+        "project_viewer"
       );
-      await GroupSpaceViewerResource.makeNew(internalAdminAuth, {
-        group: globalGroup,
-        space: projectSpace,
-      });
 
       const apiKey = await KeyFactory.regular(globalGroup);
       const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
@@ -2694,7 +2683,7 @@ describe("postUserMessage", () => {
         projectSpace.sId
       );
       expect(openPod).not.toBeNull();
-      expect(openPod?.isOpen()).toBe(true);
+      expect(await openPod?.isOpen(apiKeyAuth)).toBe(true);
 
       const result = await postUserMessage(apiKeyAuth, {
         conversationResource: projectConversationResource,

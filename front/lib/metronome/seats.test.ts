@@ -1012,13 +1012,62 @@ describe("computeSeatCreditTransfers", () => {
     ).toEqual([]);
   });
 
-  it("is idempotent: skips an already-emptied origin credit", () => {
-    // After a prior transfer the old credit is at 0 → nothing to carry over.
+  it("carries the full allocation when the origin was fully consumed (remaining 0)", () => {
+    // 8000/8000 spent on pro → the whole allocation must carry over so max ends
+    // at 8000/40000 (remaining 32000), NOT a fresh 40000 on top of the 8000
+    // already spent (which would let the user spend 48000). A zero balance is a
+    // fully-consumed origin, not a signal to skip.
+    const transfers = computeSeatCreditTransfers({
+      metronomeSeatByUser: new Map([["u1", "pro"]]),
+      desiredSeatByUser: new Map([["u1", "max"]]),
+      balanceByUser: new Map([["u1", 0]]),
+      allocationBySeatType: ALLOCATIONS,
+    });
+    expect(transfers).toEqual([
+      {
+        userSId: "u1",
+        oldSeatType: "pro",
+        newSeatType: "max",
+        oldCreditName: PRO_SEAT_CREDIT_NAME,
+        newCreditName: MAX_SEAT_CREDIT_NAME,
+        remaining: 0,
+        consumed: 8000,
+      },
+    ]);
+  });
+
+  it("carries an overdrawn origin (negative remaining)", () => {
+    // Overspent pro by 500 (remaining -500) → consumed is 8500, so max ends at
+    // 40000 − 8500 = 31500.
+    const transfers = computeSeatCreditTransfers({
+      metronomeSeatByUser: new Map([["u1", "pro"]]),
+      desiredSeatByUser: new Map([["u1", "max"]]),
+      balanceByUser: new Map([["u1", -500]]),
+      allocationBySeatType: ALLOCATIONS,
+    });
+    expect(transfers).toEqual([
+      {
+        userSId: "u1",
+        oldSeatType: "pro",
+        newSeatType: "max",
+        oldCreditName: PRO_SEAT_CREDIT_NAME,
+        newCreditName: MAX_SEAT_CREDIT_NAME,
+        remaining: -500,
+        consumed: 8500,
+      },
+    ]);
+  });
+
+  it("skips a user with no balance reading (undefined): consumption can't be derived", () => {
+    // Idempotency lives in seat reassignment + the absolute destination
+    // reconcile, so a genuinely already-transferred move is caught by the
+    // seat-match check above — not by the balance. An undefined balance is the
+    // only case we skip here, because we cannot compute `consumed`.
     expect(
       computeSeatCreditTransfers({
         metronomeSeatByUser: new Map([["u1", "pro"]]),
         desiredSeatByUser: new Map([["u1", "max"]]),
-        balanceByUser: new Map([["u1", 0]]),
+        balanceByUser: new Map(),
         allocationBySeatType: ALLOCATIONS,
       })
     ).toEqual([]);

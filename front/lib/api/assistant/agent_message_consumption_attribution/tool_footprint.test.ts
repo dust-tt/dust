@@ -8,9 +8,15 @@ import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import {
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
+import { GEMINI_3_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { STATIC_MODEL_IDS } from "@app/types/assistant/models/models";
 import {
   GPT_4_1_MODEL_CONFIG,
+  GPT_4O_20240806_MODEL_CONFIG,
   GPT_5_6_SOL_MODEL_ID,
   GPT_5_MODEL_ID,
 } from "@app/types/assistant/models/openai";
@@ -210,9 +216,27 @@ describe("measureToolCallFootprints", () => {
     expect(tokenCountForTexts).not.toHaveBeenCalled();
   });
 
-  it("tokenizes historical runs whose model is no longer served", async () => {
+  // Static IDs are retained for stored runs and pricing after serving retirement. This contract
+  // fails when a model leaves SUPPORTED_MODEL_CONFIGS without joining the historical allowlist.
+  it.each(
+    STATIC_MODEL_IDS
+  )("keeps a tool-footprint tokenizer configuration for static model %s", async (modelId) => {
     const res = await measureToolCallFootprints(auth, {
-      modelId: GPT_4_1_MODEL_CONFIG.modelId,
+      modelId,
+      toolCalls: [footprintInput(makeAction())],
+    });
+
+    expect(res.isOk()).toBe(true);
+  });
+
+  it.each([
+    GPT_4_1_MODEL_CONFIG,
+    GPT_4O_20240806_MODEL_CONFIG,
+    CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+    GEMINI_3_FLASH_MODEL_CONFIG,
+  ])("tokenizes historical $modelId runs whose model is no longer served", async (modelConfig) => {
+    const res = await measureToolCallFootprints(auth, {
+      modelId: modelConfig.modelId,
       toolCalls: [footprintInput(makeAction())],
     });
 
@@ -220,8 +244,8 @@ describe("measureToolCallFootprints", () => {
     expect(tokenCountForTexts).toHaveBeenCalledWith(
       expect.any(Array),
       {
-        ...GPT_4_1_MODEL_CONFIG,
-        tokenCountAdjustment: 1,
+        ...modelConfig,
+        tokenCountAdjustment: modelConfig.tokenCountAdjustment ?? 1,
       },
       expect.anything()
     );

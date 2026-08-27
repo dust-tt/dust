@@ -34,8 +34,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-class TriggerNonRetryableError extends Error {}
-
 async function createConversationForAgentConfiguration({
   auth,
   agentConfiguration,
@@ -54,7 +52,7 @@ async function createConversationForAgentConfiguration({
   let spaceModelId: ModelId | null = null;
   if (trigger.spaceId) {
     const pod = await SpaceResource.fetchById(auth, trigger.spaceId);
-    if (pod && pod.isProject() && (pod.isOpen() || pod.isMember(auth))) {
+    if (pod && pod.isProject() && pod.canRead(auth)) {
       spaceModelId = pod.id;
     } else {
       logger.warn(
@@ -191,23 +189,32 @@ export async function runTriggeredAgentsActivity({
     workspaceId
   );
 
+  // Expected terminal states (workspace, user, trigger or agent gone by the
+  // time the schedule or webhook fires): there is nothing left to run, so the
+  // activity logs and returns instead of failing the workflow.
   if (!auth.workspace() || !auth.user()) {
-    throw new TriggerNonRetryableError(
+    logger.info(
+      { triggerId, userId, workspaceId },
       "Invalid authentication. Missing workspaceId or userId."
     );
+    return;
   }
 
   if (!auth.isUser()) {
-    throw new TriggerNonRetryableError(
+    logger.info(
+      { triggerId, userId, workspaceId },
       "Invalid authentication. Missing user permissions."
     );
+    return;
   }
 
   const triggerResource = await TriggerResource.fetchById(auth, triggerId);
   if (!triggerResource) {
-    throw new TriggerNonRetryableError(
+    logger.info(
+      { triggerId, workspaceId },
       `Trigger with ID ${triggerId} not found.`
     );
+    return;
   }
 
   const trigger = triggerResource.toJSON();
@@ -227,9 +234,7 @@ export async function runTriggeredAgentsActivity({
       "Disabling trigger: agent configuration not found."
     );
     await triggerResource.disable(auth);
-    throw new TriggerNonRetryableError(
-      `Agent configuration with ID ${trigger.agentConfigurationId} not found in workspace ${auth.getNonNullableWorkspace().id}.`
-    );
+    return;
   }
 
   void emitAuditLogEvent({

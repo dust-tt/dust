@@ -69,6 +69,7 @@ export abstract class GoogleAiStudioBatch extends WithGoogleGenAIInputConverter(
     if (result.error) {
       return [
         buildErrorEvent({
+          errorSource: "provider",
           metadata: this.metadata(),
           type: "server_error",
           message:
@@ -80,6 +81,7 @@ export abstract class GoogleAiStudioBatch extends WithGoogleGenAIInputConverter(
     if (!result.response) {
       return [
         buildErrorEvent({
+          errorSource: "provider",
           metadata: this.metadata(),
           type: "unknown_error",
           message:

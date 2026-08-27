@@ -1,4 +1,3 @@
-import { getTierForModel } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { Authenticator } from "@app/lib/auth";
 import { resolveAllowedTierNames } from "@app/lib/model_tiers/allowed_tiers";
 import type {
@@ -6,6 +5,7 @@ import type {
   GenericErrorContent,
 } from "@app/types/assistant/agent";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
+import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import type {
   ModelConfigurationType,
   ModelResolutionMethodType,

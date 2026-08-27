@@ -19,7 +19,7 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type { AgentActionsEvent } from "@app/types/assistant/agent";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type { AgentLoopRuntimeData } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
@@ -52,7 +52,7 @@ export async function createToolActionsActivity(
     step,
     runIds,
   }: {
-    runAgentData: AgentLoopExecutionData;
+    runAgentData: AgentLoopRuntimeData;
     actions: AgentActionsEvent["actions"];
     stepContexts: StepContext[];
     functionCallStepContentIds: Record<string, ModelId>;
@@ -163,7 +163,7 @@ async function createActionForTool(
     runIds,
   }: {
     preparedAction: PreparedToolAction;
-    runAgentData: AgentLoopExecutionData;
+    runAgentData: AgentLoopRuntimeData;
     stepRequiresApproval: boolean;
     step: number;
     runIds: string[];

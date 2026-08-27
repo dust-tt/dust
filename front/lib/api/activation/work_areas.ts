@@ -33,23 +33,26 @@ export async function listActivationWorkAreasForUser(
     podId?: string;
   } = {}
 ): Promise<ActivationWorkAreaForUserType[]> {
-  let activationPodModelId;
+  let activationPods: ActivationPodResource[];
+
   if (podId !== undefined) {
     const space = await SpaceResource.fetchById(auth, podId);
-    if (!space) {
+    if (!space || !space.canAdministrate(auth)) {
       return [];
     }
 
-    const activationPod = await ActivationPodResource.fetchByUser(auth);
-    if (!activationPod || activationPod.spaceId !== space.id) {
+    const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
+    if (!activationPod) {
       return [];
     }
-    activationPodModelId = activationPod.id;
+    activationPods = [activationPod];
+  } else {
+    activationPods = await ActivationPodResource.listByUser(auth);
   }
 
-  const rows = await ActivationWorkAreaResource.listByUserAndStatus(auth, {
+  const rows = await ActivationWorkAreaResource.listByActivationPods(auth, {
+    activationPods,
     status,
-    activationPodModelId,
   });
 
   return rows.map((r) => r.toJSON());
@@ -71,11 +74,17 @@ export async function updateActivationWorkAreaForUser(
 ): Promise<Result<undefined, DustError<"activation_work_area_not_found">>> {
   const row = await ActivationWorkAreaResource.fetchById(auth, workAreaId);
 
-  // fetchById only scopes to the workspace, so also enforce ownership: a work
-  // area may only be updated by the user it belongs to. Return "not_found"
-  // rather than a distinct error so we don't leak the existence of another
-  // user's work area.
-  if (!row || row.userId !== auth.getNonNullableUser().id) {
+  // fetchById only scopes to the workspace. Authorize like other Pod edits:
+  // the caller must be a pod editor or workspace admin. Return "not_found"
+  // rather than a distinct error so we don't leak the existence of a work
+  // area the caller cannot manage.
+  const [activationPod] = row
+    ? await ActivationPodResource.fetchByModelIds(auth, [row.podId])
+    : [];
+  const [space] = activationPod
+    ? await SpaceResource.fetchByModelIds(auth, [activationPod.spaceId])
+    : [];
+  if (!row || !space || !space.canAdministrate(auth)) {
     return new Err(
       new DustError("activation_work_area_not_found", "Work area not found.")
     );

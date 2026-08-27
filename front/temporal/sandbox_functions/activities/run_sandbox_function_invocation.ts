@@ -1,3 +1,4 @@
+import { isSandboxExecTimeoutError } from "@app/lib/api/sandbox/provider";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -40,6 +41,12 @@ export async function runSandboxFunctionInvocationActivity(
   const executionResult = await invocation.execute(auth);
   if (executionResult.isErr()) {
     await invocation.fail(executionResult.error);
+    // A function running past its exec ceiling is an expected outcome, not a workflow
+    // failure: fail() above recorded it and listeners settled. Rethrow everything else
+    // so real problems keep failing the workflow.
+    if (isSandboxExecTimeoutError(executionResult.error)) {
+      return;
+    }
     throw executionResult.error;
   }
 }

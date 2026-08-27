@@ -5,6 +5,7 @@ import { previousConsumptionPeriod } from "@app/lib/api/analytics/consumption/pe
 import type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
+  ConsumptionTopDimension,
   ConsumptionTopSortOrder,
   ConsumptionTopUnit,
 } from "@app/lib/api/analytics/consumption/scope";
@@ -13,7 +14,8 @@ import {
   buildConsumptionScopeQuery,
   CARDINALITY_PRECISION_THRESHOLD,
   CONSUMPTION_DIMENSION_FIELDS,
-  CONSUMPTION_DIMENSION_UNIT,
+  CONSUMPTION_TOP_DIMENSION_FIELDS,
+  CONSUMPTION_TOP_DIMENSION_UNIT,
   CREDIT_MICRO_FIELD,
 } from "@app/lib/api/analytics/consumption/scope";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
@@ -145,10 +147,14 @@ async function resolveConsumptionTopSearchFilter(
     dimension,
     search,
   }: {
-    dimension: ConsumptionScopeDimension;
+    dimension: ConsumptionTopDimension;
     search?: string;
   }
 ): Promise<estypes.QueryDslQueryContainer | null> {
+  if (dimension === "conversation") {
+    return null;
+  }
+
   const normalizedSearch = search?.trim().toLowerCase();
   if (!normalizedSearch) {
     return null;
@@ -174,14 +180,14 @@ function buildConsumptionTopAggregations({
   searchFilter,
   sortOrder,
 }: {
-  dimension: ConsumptionScopeDimension;
+  dimension: ConsumptionTopDimension;
   bucketCount: number;
   excludedKeys: string[];
   searchFilter: estypes.QueryDslQueryContainer | null;
   sortOrder: ConsumptionTopSortOrder;
 }): Record<string, estypes.AggregationsAggregationContainer> {
-  const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
-  const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
+  const unit = CONSUMPTION_TOP_DIMENSION_UNIT[dimension];
+  const dimensionField = CONSUMPTION_TOP_DIMENSION_FIELDS[dimension];
 
   const rankingAggregations = {
     by_group: {
@@ -231,7 +237,7 @@ async function fetchConsumptionPreviousCredits(
     filter,
     keys,
   }: {
-    dimension: ConsumptionScopeDimension;
+    dimension: ConsumptionTopDimension;
     previousPeriod: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
     keys: string[];
@@ -254,7 +260,7 @@ async function fetchConsumptionPreviousCredits(
       aggregations: {
         by_group: {
           terms: {
-            field: CONSUMPTION_DIMENSION_FIELDS[dimension],
+            field: CONSUMPTION_TOP_DIMENSION_FIELDS[dimension],
             include: keys,
             size: keys.length,
           },
@@ -298,7 +304,7 @@ export async function fetchConsumptionTopGroups(
     filter,
     sortOrder = "desc",
   }: {
-    dimension: ConsumptionScopeDimension;
+    dimension: ConsumptionTopDimension;
     period: ConsumptionPeriod;
     limit: number;
     offset?: number;
@@ -358,7 +364,10 @@ export async function fetchConsumptionTopGroups(
       ...buckets.map((bucket) => ({
         key: String(bucket.key),
         credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
-        count: countFromBucket(bucket, CONSUMPTION_DIMENSION_UNIT[dimension]),
+        count: countFromBucket(
+          bucket,
+          CONSUMPTION_TOP_DIMENSION_UNIT[dimension]
+        ),
       }))
     );
     totalCredits = microCreditsToCredits(

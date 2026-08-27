@@ -1,5 +1,9 @@
 import type { GetExtensionConfigResponseBody } from "@app/lib/resources/extension";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import {
+  CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY,
+  FIREFOX_EXTENSION_LAST_USED_AT_METADATA_KEY,
+} from "@app/types/extension";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
@@ -38,6 +42,23 @@ app.get("/", async (ctx): HandlerResult<GetExtensionConfigResponseBody> => {
   const auth = ctx.get("auth");
 
   const config = await ExtensionConfigurationResource.fetchForWorkspace(auth);
+
+  const origin = ctx.req.header("origin");
+  if (origin?.startsWith("chrome-extension://")) {
+    await auth
+      .user()
+      ?.setMetadata(
+        CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY,
+        new Date().toISOString()
+      );
+  } else if (origin?.startsWith("moz-extension://")) {
+    await auth
+      .user()
+      ?.setMetadata(
+        FIREFOX_EXTENSION_LAST_USED_AT_METADATA_KEY,
+        new Date().toISOString()
+      );
+  }
 
   return ctx.json({
     blacklistedDomains: config?.blacklistedDomains ?? [],

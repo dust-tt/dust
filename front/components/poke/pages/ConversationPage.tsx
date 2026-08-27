@@ -1,3 +1,4 @@
+import { PokeConversationConsumptionInspector } from "@app/components/poke/conversation/consumption_inspectors";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import type { AgentMessageCreditsToolBreakdown } from "@app/lib/api/assistant/credit_cost";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -1282,55 +1283,63 @@ export function ConversationPage() {
               )}
             </div>
           )}
-          <div className="flex w-full flex-1 flex-col justify-start gap-8 py-4">
-            {conversation.content.map((messages, i) => {
-              return (
-                <div key={`messages-${i}`} className="flex flex-col gap-4">
-                  {messages.map((m, j) => {
-                    switch (m.type) {
-                      case "agent_message": {
-                        return (
-                          <AgentMessageView
-                            key={`message-${i}-${j}`}
-                            message={m}
-                            useMarkdown={useMarkdown}
-                            owner={owner}
-                            langfuseUiBaseUrl={langfuseUiBaseUrl}
-                          />
-                        );
+          <div className="grid w-full grid-cols-1 gap-6 py-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <aside className="xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start">
+              <PokeConversationConsumptionInspector
+                conversationId={conversationId}
+                workspaceId={owner.sId}
+              />
+            </aside>
+            <div className="flex min-w-0 flex-col justify-start gap-8 xl:col-start-1 xl:row-start-1">
+              {conversation.content.map((messages, i) => {
+                return (
+                  <div key={`messages-${i}`} className="flex flex-col gap-4">
+                    {messages.map((m, j) => {
+                      switch (m.type) {
+                        case "agent_message": {
+                          return (
+                            <AgentMessageView
+                              key={`message-${i}-${j}`}
+                              message={m}
+                              useMarkdown={useMarkdown}
+                              owner={owner}
+                              langfuseUiBaseUrl={langfuseUiBaseUrl}
+                            />
+                          );
+                        }
+                        case "user_message": {
+                          return (
+                            <UserMessageView
+                              message={m}
+                              key={`message-${i}-${j}`}
+                              useMarkdown={useMarkdown}
+                            />
+                          );
+                        }
+                        case "content_fragment": {
+                          return (
+                            <ContentFragmentView
+                              message={m}
+                              key={`message-${i}-${j}`}
+                            />
+                          );
+                        }
+                        case "compaction_message": {
+                          return (
+                            <CompactionMessageView
+                              message={m}
+                              key={`message-${i}-${j}`}
+                            />
+                          );
+                        }
+                        default:
+                          assertNeverAndIgnore(m);
                       }
-                      case "user_message": {
-                        return (
-                          <UserMessageView
-                            message={m}
-                            key={`message-${i}-${j}`}
-                            useMarkdown={useMarkdown}
-                          />
-                        );
-                      }
-                      case "content_fragment": {
-                        return (
-                          <ContentFragmentView
-                            message={m}
-                            key={`message-${i}-${j}`}
-                          />
-                        );
-                      }
-                      case "compaction_message": {
-                        return (
-                          <CompactionMessageView
-                            message={m}
-                            key={`message-${i}-${j}`}
-                          />
-                        );
-                      }
-                      default:
-                        assertNeverAndIgnore(m);
-                    }
-                  })}
-                </div>
-              );
-            })}
+                    })}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </Page.Vertical>
       </div>

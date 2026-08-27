@@ -37,7 +37,7 @@ export const AssistantCardMore = React.forwardRef<
   AssistantCardMore
 >(({ ...props }, ref) => {
   return (
-    <CardActionButton size="icon" ref={ref} icon={DotsHorizontal} {...props} />
+    <CardActionButton size="xs" ref={ref} icon={DotsHorizontal} {...props} />
   );
 });
 AssistantCardMore.displayName = "AssistantCardMore";
@@ -86,7 +86,7 @@ export const AssistantCard = React.forwardRef<
         action={action}
         variant={variant}
       >
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <Avatar visual={pictureUrl} size={iconSize} />
           <div className={cn("-mt-0.5 flex flex-col", action && "pr-8")}>
             <h3>
@@ -100,7 +100,7 @@ export const AssistantCard = React.forwardRef<
             <p
               className={cn(
                 "line-clamp-1 overflow-hidden text-ellipsis text-xs",
-                "text-muted-foreground"
+                "text-faint dark:text-muted-foreground"
               )}
             >
               {subtitle}
@@ -111,7 +111,7 @@ export const AssistantCard = React.forwardRef<
           <TruncatedText
             lineClamp={descriptionLineClamp}
             className={cn(
-              "overflow-hidden text-ellipsis pb-1 text-sm",
+              "overflow-hidden text-ellipsis pb-1 text-xs",
               "text-muted-foreground"
             )}
           >

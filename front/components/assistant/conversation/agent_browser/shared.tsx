@@ -199,6 +199,7 @@ export const AgentGrid = ({
               // Force a re-render of the last item to trigger the intersection observer
               key={isLastItem ? `${agent.sId}-${itemsPage}` : agent.sId}
               ref={isLastItem ? ref : undefined}
+              variant="secondary"
               title={agent.name}
               pictureUrl={agent.pictureUrl}
               subtitle={agent.lastAuthors?.join(", ") ?? ""}

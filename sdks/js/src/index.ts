@@ -924,37 +924,6 @@ export class DustAPI {
     return new Ok(r.value.message);
   }
 
-  async postConversationTools({
-    conversationId,
-    action,
-    mcpServerViewId,
-    agentConfigurationId,
-  }: {
-    conversationId: string;
-    action: "add" | "delete";
-    mcpServerViewId: string;
-    agentConfigurationId?: string;
-  }) {
-    const res = await this.request({
-      method: "POST",
-      path: `assistant/conversations/${conversationId}/tools`,
-      body: {
-        action,
-        mcp_server_view_id: mcpServerViewId,
-        agent_configuration_id: agentConfigurationId,
-      },
-    });
-
-    const r = await this._resultFromResponse(
-      PatchConversationResponseSchema,
-      res
-    );
-    if (r.isErr()) {
-      return r;
-    }
-    return new Ok(r.value);
-  }
-
   // Wait for the parent user message to move to `visible` when the agent message is not direclty
   // found in the conversation. This provides natural suoport for steering through the SDK.
   async waitForAgentMessage({

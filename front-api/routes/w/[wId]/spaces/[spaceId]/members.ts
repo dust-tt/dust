@@ -5,7 +5,6 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { PatchSpaceMembersRequestBodySchema } from "@app/lib/api/spaces/members";
 import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
-import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import { auditLog } from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -53,9 +52,10 @@ app.patch(
     const owner = auth.getNonNullableWorkspace();
 
     if (
-      space.isProjectAndRestricted() &&
+      space.isProject() &&
       !body.isRestricted &&
-      !areOpenPodsAllowed(owner)
+      !areOpenPodsAllowed(owner) &&
+      !(await space.isOpen(auth))
     ) {
       return apiError(ctx, {
         status_code: 403,
@@ -70,15 +70,9 @@ app.patch(
     // Track current members before update to identify newly added ones.
     let currentMemberIds: Set<string> | undefined;
     if (space.isProject() && body.managementMode === "manual") {
-      const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-        space,
-        filterOnManagementMode: true,
-      });
-      if (memberGroupSpaces.length === 1) {
-        const currentMembers =
-          await memberGroupSpaces[0].group.getActiveMembers(auth);
-        currentMemberIds = new Set(currentMembers.map((m) => m.sId));
-      }
+      const memberGroup = await space.fetchManualMemberGroup(auth);
+      const currentMembers = await memberGroup.getActiveMembers(auth);
+      currentMemberIds = new Set(currentMembers.map((m) => m.sId));
     }
 
     const updateRes = await space.updatePermissions(auth, body);
@@ -140,6 +134,15 @@ app.patch(
               type: "workspace_auth_error",
               message:
                 "Some users have insufficient role privilege to be added to the space.",
+            },
+          });
+        case "invalid_group_kind":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Only provisioned and manual groups can be given access to a space.",
             },
           });
         case "system_or_global_group":

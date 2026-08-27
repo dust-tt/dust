@@ -5,7 +5,7 @@ import {
   toAgentExportCsvRow,
 } from "@app/lib/api/analytics/agents_export";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -20,7 +20,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@app/lib/api/elasticsearch", async (importActual) => {
   const actual =
     await importActual<typeof import("@app/lib/api/elasticsearch")>();
-  return { ...actual, searchAnalytics: vi.fn() };
+  return { ...actual, searchConsumptionAnalytics: vi.fn() };
 });
 
 // The export reads from the read replica; in tests there is no replica so point
@@ -35,7 +35,7 @@ vi.mock("@app/lib/resources/storage", async (importActual) => {
 });
 
 function mockEmptyEsMetrics() {
-  vi.mocked(searchAnalytics).mockResolvedValue(
+  vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
     new Ok({
       took: 1,
       timed_out: false,

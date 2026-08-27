@@ -11,7 +11,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
-  getAgentLoopData,
+  getAgentLoopRuntimeData,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type {
@@ -66,7 +66,10 @@ export async function ensureConversationTitleFromAgentLoop(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<string | null> {
-  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  const runAgentDataRes = await getAgentLoopRuntimeData(
+    authType,
+    agentLoopArgs
+  );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       logger.info(

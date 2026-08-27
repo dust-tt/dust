@@ -1,14 +1,51 @@
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import {
   expireWakeUpActivity,
+  runTriggeredAgentsActivity,
   runWakeUpActivity,
 } from "@app/temporal/triggers/activities";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 const MISSING_WAKE_UP_MODEL_ID = 9_000_000_000;
+const MISSING_TRIGGER_MODEL_ID = 9_000_000_000;
+
+describe("runTriggeredAgentsActivity", () => {
+  it("skips missing triggers without failing the activity", async () => {
+    const { user, workspace } = await createResourceTest({ role: "builder" });
+    const triggerId = TriggerResource.modelIdToSId({
+      id: MISSING_TRIGGER_MODEL_ID,
+      workspaceId: workspace.id,
+    });
+
+    await expect(
+      runTriggeredAgentsActivity({
+        userId: user.sId,
+        workspaceId: workspace.sId,
+        triggerId,
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it("skips missing users without failing the activity", async () => {
+    const { workspace } = await createResourceTest({ role: "builder" });
+    const triggerId = TriggerResource.modelIdToSId({
+      id: MISSING_TRIGGER_MODEL_ID,
+      workspaceId: workspace.id,
+    });
+
+    await expect(
+      runTriggeredAgentsActivity({
+        userId: "usr_missing",
+        workspaceId: workspace.sId,
+        triggerId,
+      })
+    ).resolves.toBeUndefined();
+  });
+});
 
 describe("wake-up activities", () => {
   it("skips terminal wake-ups without failing the activity", async () => {

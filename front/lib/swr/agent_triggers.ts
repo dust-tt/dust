@@ -11,7 +11,6 @@ import {
 import type { GetTriggerEstimationResponseBody } from "@app/lib/triggers/trigger_usage_estimation";
 import type {
   GetTriggersResponseBody,
-  GetUserTriggersResponseBody,
   PatchTriggerExecutionModeRequestBody,
   PatchTriggerStatusRequestBody,
   PatchTriggersRequestBody,
@@ -51,7 +50,7 @@ export function useAgentTriggers({
 
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
     agentConfigurationId
-      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers`
+      ? `/api/w/${workspaceId}/triggers?aId=${agentConfigurationId}`
       : null,
     triggersFetcher,
     { disabled }
@@ -60,31 +59,6 @@ export function useAgentTriggers({
   return {
     triggers: data?.triggers ?? emptyArray(),
     isTriggersLoading: !!agentConfigurationId && !error && !data && !disabled,
-    isTriggersError: error,
-    isTriggersValidating: isValidating,
-    mutateTriggers: mutate,
-  };
-}
-
-export function useUserTriggers({
-  workspaceId,
-  disabled,
-}: {
-  workspaceId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const userTriggersFetcher: Fetcher<GetUserTriggersResponseBody> = fetcher;
-
-  const { data, error, mutate, isValidating } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/me/triggers`,
-    userTriggersFetcher,
-    { disabled }
-  );
-
-  return {
-    triggers: data?.triggers ?? emptyArray(),
-    isTriggersLoading: !error && !data && !disabled,
     isTriggersError: error,
     isTriggersValidating: isValidating,
     mutateTriggers: mutate,
@@ -108,7 +82,7 @@ export function useDeleteTrigger({
     async (triggerId: string): Promise<boolean> => {
       try {
         const response = await clientFetch(
-          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+          `/api/w/${workspaceId}/triggers?aId=${agentConfigurationId}`,
           {
             method: "DELETE",
             headers: {
@@ -154,7 +128,7 @@ export function useCreateTrigger({
     ): Promise<boolean> => {
       try {
         const response = await clientFetch(
-          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+          `/api/w/${workspaceId}/triggers?aId=${agentConfigurationId}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -214,7 +188,7 @@ export function useUpdateTrigger({
     ): Promise<boolean> => {
       try {
         const response = await clientFetch(
-          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+          `/api/w/${workspaceId}/triggers?aId=${agentConfigurationId}`,
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -273,7 +247,7 @@ export function useUpdateTriggerStatus({
     }): Promise<boolean> => {
       try {
         const response = await clientFetch(
-          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/status`,
+          `/api/w/${workspaceId}/triggers/${triggerId}/status`,
           {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -334,7 +308,7 @@ export function useUpdateTriggerExecutionMode({
       executionMode: TriggerExecutionMode;
     }): Promise<boolean> => {
       const response = await clientFetch(
-        `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/execution_mode`,
+        `/api/w/${workspaceId}/triggers/${triggerId}/execution_mode`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },

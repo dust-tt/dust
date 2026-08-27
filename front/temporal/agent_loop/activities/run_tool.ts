@@ -25,7 +25,7 @@ import type {
   AgentLoopExecutionData,
 } from "@app/types/assistant/agent_run";
 import {
-  getAgentLoopDataWithAuth,
+  getFullAgentLoopDataWithAuth,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -120,7 +120,7 @@ export async function runToolActivity(
           Promise.all([
             // Cache conversation fetches to reduce DB load when multiple tool activities run in parallel
             // during the same step. Each tool would otherwise fetch the same conversation independently.
-            getAgentLoopDataWithAuth(auth, {
+            getFullAgentLoopDataWithAuth(auth, {
               ...runAgentArgs,
               caching: {
                 useCachedGetConversation: true,
@@ -168,6 +168,23 @@ export async function runToolActivity(
 
   // Heartbeating here as retrieving the agent loop data takes some time.
   heartbeat();
+
+  // Identify the tool as early as possible: activities that die past this point (worker killed,
+  // stall in the pre-execution phases) leave no tool-level log otherwise, making heartbeat
+  // timeout failures unattributable to a tool.
+  logger.info(
+    {
+      actionId,
+      attempt: Context.current().info.attempt,
+      conversationId: runAgentArgs.conversationId,
+      agentMessageId: runAgentArgs.agentMessageId,
+      step,
+      workspaceId: authType.workspaceId,
+      toolName: action.toolConfiguration.name,
+      mcpServerName: action.toolConfiguration.mcpServerName,
+    },
+    "Tool activity starting execution"
+  );
 
   const {
     agentConfiguration,

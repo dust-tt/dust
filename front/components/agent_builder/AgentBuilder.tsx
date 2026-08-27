@@ -966,7 +966,7 @@ function AgentBuilderContent({
           >
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel
-                agentConfigurationId={agentConfiguration?.sId}
+                agentConfiguration={agentConfiguration}
                 isSidekickDisabled={isEditorLocked}
               />
             </ConversationSidePanelProvider>

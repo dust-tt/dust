@@ -4,6 +4,11 @@
 import type { RateLimit } from "@connectors/lib/throttle";
 
 export const RATE_LIMITS = {
+  // Tier 2 methods (20/min) - apply conservative limit to avoid bursts
+  "conversations.list": {
+    limit: 15,
+    windowInMs: 60 * 1000,
+  },
   // Tier 3 methods (50/min) - apply conservative limit to avoid bursts
   "chat.update": {
     limit: 50,

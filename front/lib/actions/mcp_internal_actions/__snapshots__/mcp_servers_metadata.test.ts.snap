@@ -1294,12 +1294,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
   },
-  "jit_testing": {
-    "jit_all_optionals_and_defaults": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-  },
   "luma": {
     "add_guests": {
       "freeUsage": false,
@@ -1926,6 +1920,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "list_global_agent_feedbacks": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "list_workspace_agents": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -1939,16 +1937,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
     "search_workspaces": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-  },
-  "primitive_types_debugger": {
-    "pass_through": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "tool_without_user_config": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
@@ -2138,19 +2126,15 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
     },
   },
   "shopify": {
-    "export_customer_ltv": {
+    "list_customers": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
-    "export_products": {
+    "list_orders": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
-    "export_sales": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
-    "export_top_customers_by_period": {
+    "list_products": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -2601,12 +2585,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
   },
-  "workday": {
-    "get_workers": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
-  },
   "workspace_analytics": {
     "get_agent_details": {
       "freeUsage": false,
@@ -2653,7 +2631,23 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
   },
-  "workspace_people": {
+  "workspace_management": {
+    "get_agent_details": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_skill_details": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_agents": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_skills": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "list_workspace_members": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -3067,9 +3061,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "update_issue": "low",
     "upload_attachment": "low",
   },
-  "jit_testing": {
-    "jit_all_optionals_and_defaults": "high",
-  },
   "luma": {
     "add_guests": "low",
     "create_event": "high",
@@ -3246,14 +3237,11 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_workspace_skill": "low",
     "get_workspace_spaces": "low",
     "list_data_sources": "low",
+    "list_global_agent_feedbacks": "low",
     "list_workspace_agents": "low",
     "list_workspace_groups": "low",
     "list_workspace_skills": "low",
     "search_workspaces": "low",
-  },
-  "primitive_types_debugger": {
-    "pass_through": "high",
-    "tool_without_user_config": "high",
   },
   "productboard": {
     "create_entity": "low",
@@ -3317,10 +3305,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "update_incident": "low",
   },
   "shopify": {
-    "export_customer_ltv": "never_ask",
-    "export_products": "never_ask",
-    "export_sales": "never_ask",
-    "export_top_customers_by_period": "never_ask",
+    "list_customers": "never_ask",
+    "list_orders": "never_ask",
+    "list_products": "never_ask",
   },
   "skill_authoring": {
     "create_skill": "high",
@@ -3462,9 +3449,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "webbrowser": "never_ask",
     "websearch": "never_ask",
   },
-  "workday": {
-    "get_workers": "never_ask",
-  },
   "workspace_analytics": {
     "get_agent_details": "never_ask",
     "get_credit_timeseries": "never_ask",
@@ -3478,7 +3462,11 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_top_users": "never_ask",
     "get_usage_timeseries": "never_ask",
   },
-  "workspace_people": {
+  "workspace_management": {
+    "get_agent_details": "never_ask",
+    "get_skill_details": "never_ask",
+    "list_agents": "never_ask",
+    "list_skills": "never_ask",
     "list_workspace_members": "never_ask",
   },
   "zendesk": {

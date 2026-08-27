@@ -1,7 +1,11 @@
+import { Authenticator } from "@app/lib/auth";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { Err } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -59,6 +63,42 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
         tagToAdd.sId,
       ]);
     }
+  });
+
+  it("tags an unpublished agent of another member built on a restricted space", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    // The agent is authored and edited by another member, is unpublished, and requires a space the
+    // acting admin is not a member of: exactly what "Show hidden agents" surfaces.
+    const agentOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, agentOwner, {
+      role: "builder",
+    });
+    const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      agentOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      {
+        name: "Hidden agent",
+        scope: "hidden",
+        requestedSpaceIds: [restrictedSpace.id],
+      }
+    );
+    const tag = await TagFactory.create(workspace, { name: "governance" });
+
+    const response = await batchUpdateTags(workspace, {
+      agentIds: [agent.sId],
+      addTagIds: [tag.sId],
+    });
+
+    expect(response.status).toBe(200);
+    const tagsByAgent = await TagResource.listForAgents(auth, [agent.id]);
+    expect(tagsByAgent[agent.id]?.map((t) => t.sId)).toEqual([tag.sId]);
   });
 
   it("returns 400 when adding tags fails", async () => {

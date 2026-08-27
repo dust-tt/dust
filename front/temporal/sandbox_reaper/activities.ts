@@ -82,9 +82,9 @@ type ReaperAuthMaps = {
 
 /**
  * Build workspace-scoped authenticators for each owner kind touched by the
- * batch. Conversation lifecycle calls retain builder auth. Pod lifecycle calls
- * need the workspace's project groups so their pre-sleep filesystem flush can
- * access restricted projects.
+ * batch. Conversation lifecycle calls use a plain user auth (global group
+ * only). Pod lifecycle calls need the workspace's project groups so their
+ * pre-sleep filesystem flush can access restricted projects.
  */
 async function fetchAuthMaps(
   sandboxes: SandboxResource[],
@@ -119,7 +119,7 @@ async function fetchAuthMaps(
         workspaceModelIdsByOwnerKind.conversation.has(workspace.id)
       ),
       async (workspace) => {
-        const authenticator = await Authenticator.internalBuilderForWorkspace(
+        const authenticator = await Authenticator.internalUserForWorkspace(
           workspace.sId
         );
         return [workspace.id, authenticator] as const;

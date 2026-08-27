@@ -13,6 +13,8 @@ export type PlanAttributes = Omit<
   "id" | "createdAt" | "updatedAt"
 >;
 
+const LEGACY_PRO_FAIR_USE_AWU_CREDITS = 20_000;
+
 /**
  * We have 3 categories of plans:
  * - Free: plans with no paid subscription.
@@ -36,8 +38,8 @@ if (isDevelopment() || isTest()) {
     name: "Pro",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
-    maxAwuCredits: -1,
-    maxAwuCreditsTimeframe: "lifetime",
+    maxAwuCredits: LEGACY_PRO_FAIR_USE_AWU_CREDITS,
+    maxAwuCreditsTimeframe: "week",
     isDeepDiveAllowed: true,
     maxImagesPerWeek: 100,
     maxUsersInWorkspace: 1000,

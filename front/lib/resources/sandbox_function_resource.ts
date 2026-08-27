@@ -347,9 +347,10 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       auth,
       Array.from(
         new Set(
-          sandboxFunctions.map(
-            (sandboxFunction) => sandboxFunction.get().spaceId
-          )
+          sandboxFunctions.flatMap((sandboxFunction) => {
+            const { spaceId } = sandboxFunction.get();
+            return spaceId === null ? [] : [spaceId];
+          })
         )
       ),
       { includeDeleted: includeDeletedSpace }
@@ -380,6 +381,10 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     return sandboxFunctions.flatMap((sandboxFunction) => {
       const blob = sandboxFunction.get();
+      if (blob.spaceId === null) {
+        return [];
+      }
+
       const space =
         accessibleSpacesById.get(blob.spaceId) ?? spacesById?.get(blob.spaceId);
       const file = filesById.get(blob.fileId);

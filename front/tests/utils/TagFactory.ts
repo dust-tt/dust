@@ -9,7 +9,7 @@ export class TagFactory {
       name: string;
     }
   ) {
-    const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
+    const auth = await Authenticator.internalUserForWorkspace(workspace.sId);
     return TagResource.makeNew(auth, {
       name: params.name,
       kind: "standard",

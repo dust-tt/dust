@@ -34,6 +34,31 @@ describe("ActivationPodResource", () => {
     projectSpace = await SpaceFactory.project(workspace);
   });
 
+  describe("kind", () => {
+    it("defaults to learning", async () => {
+      const user = await UserFactory.basic();
+
+      const pod = await makeActivationPod(auth, projectSpace, user);
+
+      expect(pod.kind).toBe("learning");
+    });
+
+    it("stores goal Pods explicitly", async () => {
+      const user = await UserFactory.basic();
+      await ProjectMetadataResource.makeNew(auth, projectSpace, {
+        description: null,
+      });
+
+      const pod = await ActivationPodResource.makeNew(auth, {
+        pod: projectSpace,
+        user,
+        kind: "goal",
+      });
+
+      expect(pod.kind).toBe("goal");
+    });
+  });
+
   describe("listWorkspaceModelIdsWithActivationPods", () => {
     it("returns the workspace of an activation pod", async () => {
       const user = await UserFactory.basic();

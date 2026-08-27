@@ -367,11 +367,21 @@ app.post(
     }
 
     if (newConversation.depth === 0) {
+      const lastReadAt = new Date();
       await ConversationResource.upsertParticipation(auth, {
         conversation: newConversation,
         action: "subscribed",
         user: user.toJSON(),
+        lastReadAt,
       });
+
+      // The serialization above predates the read-record write: reflect it so the sidebar
+      // does not flash the freshly created conversation as unread for its creator.
+      newConversation = {
+        ...newConversation,
+        unread: false,
+        lastReadMs: lastReadAt.getTime(),
+      };
     }
 
     const newContentFragments: ContentFragmentType[] = [];

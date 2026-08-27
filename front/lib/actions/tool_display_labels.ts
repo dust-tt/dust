@@ -1096,10 +1096,8 @@ function getDynamicToolDisplayLabels({
     case "missing_action_catcher":
     case "monday":
     case "openai_usage":
-    case "primitive_types_debugger":
     case "productboard":
     case "common_utilities":
-    case "jit_testing":
     case "run_dust_app":
     case "salesloft":
     case "servicenow":

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { fn } from "storybook/test";
 
 import {
   NotificationContent,
@@ -32,7 +33,7 @@ export default meta;
 /**
  * Notification shown inline (no toast) for design iteration: every `type`
  * variant of the underlying NotificationContent card, plus one with an
- * `action` link.
+ * `action` button.
  * @summary All notification types rendered inline.
  */
 export const Inline: StoryObj = {
@@ -67,7 +68,7 @@ export const Inline: StoryObj = {
         type="success"
         title="Added to favorites"
         description="Research assistant"
-        action={{ label: "View", href: "#favorites" }}
+        action={{ label: "View", onClick: fn() }}
       />
     </div>
   ),

@@ -20,13 +20,13 @@ import assert from "assert";
 // Where a capability's grant should land for a workspace.
 type CapabilityTarget = "everyone" | "builders" | "admins_only";
 
-interface CapabilitySeeder {
+export interface CapabilitySeeder {
   capability: CapabilitySpec;
   // Decides the target for the workspace behind `auth`.
   resolveTarget: (auth: Authenticator) => Promise<CapabilityTarget>;
 }
 
-const CAPABILITY_SEEDERS: CapabilitySeeder[] = [
+export const CAPABILITY_SEEDERS: CapabilitySeeder[] = [
   {
     capability: { grantType: "create", resourceType: "agent" },
     resolveTarget: async (_auth) => "everyone",
@@ -34,6 +34,11 @@ const CAPABILITY_SEEDERS: CapabilitySeeder[] = [
   {
     capability: { grantType: "create", resourceType: "skill" },
     resolveTarget: async (_auth) => "builders",
+  },
+  // The workspace global group holds `reader` on every skill.
+  {
+    capability: { grantType: "reader", resourceType: "skill" },
+    resolveTarget: async (_auth) => "everyone",
   },
   // it's safe to set them to "everyone" because there is another workspace level permission check
   // if inviting/publishing is allowed or not. We only check permission table if the feature itself is enabled
@@ -90,7 +95,7 @@ async function resolveEffectiveTarget(
 }
 
 // Applies an already-resolved target for one capability on the workspace behind `auth`.
-async function applyCapabilityTarget(
+export async function applyCapabilityTarget(
   auth: Authenticator,
   capability: CapabilitySpec,
   target: CapabilityTarget

@@ -3,9 +3,15 @@ import { ConversationSidePanelHeader } from "@app/components/assistant/conversat
 import { ConversationCreditUsageBreakdown } from "@app/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown";
 import { useConversationConsumption } from "@app/hooks/conversations/useConversationConsumption";
 import { formatCreditValue } from "@app/lib/client/credits";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { CoinsStacked01, Spinner } from "@dust-tt/sparkle";
+import { useEffect } from "react";
 
 interface ConversationCreditUsagePanelProps {
   conversation: ConversationWithoutContentType;
@@ -23,6 +29,18 @@ export function ConversationCreditUsagePanel({
       workspaceId: owner.sId,
     });
   const hasNoCreditUsage = !consumption || consumption.billedCredits <= 0;
+
+  useEffect(() => {
+    trackEvent({
+      area: TRACKING_AREAS.ANALYTICS,
+      object: "conversation_breakdown",
+      action: TRACKING_ACTIONS.VIEW,
+      extra: {
+        workspace_id: owner.sId,
+        conversation_id: conversation.sId,
+      },
+    });
+  }, [conversation.sId, owner.sId]);
 
   return (
     <div className="flex h-panel flex-col">

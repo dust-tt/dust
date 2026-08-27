@@ -1,4 +1,8 @@
 import {
+  microCreditsToCredits,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
+import {
   afterAll,
   afterEach,
   beforeAll,
@@ -36,6 +40,9 @@ let runOnRedis: RedisModule["runOnRedis"];
 let addRateLimiterCount: RateLimiterModule["addRateLimiterCount"];
 let expireRateLimiterKey: RateLimiterModule["expireRateLimiterKey"];
 let getRateLimiterCount: RateLimiterModule["getRateLimiterCount"];
+let getRateLimiterTimestamps: RateLimiterModule["getRateLimiterTimestamps"];
+let getWeightedRateLimiterCount: RateLimiterModule["getWeightedRateLimiterCount"];
+let getWeightedRateLimiterUsage: RateLimiterModule["getWeightedRateLimiterUsage"];
 let rateLimiter: RateLimiterModule["rateLimiter"];
 let RATE_LIMITER_PREFIX: RateLimiterModule["RATE_LIMITER_PREFIX"];
 
@@ -54,6 +61,7 @@ describe("rateLimiter", () => {
     addRateLimiterCount = rateLimiterModule.addRateLimiterCount;
     expireRateLimiterKey = rateLimiterModule.expireRateLimiterKey;
     getRateLimiterCount = rateLimiterModule.getRateLimiterCount;
+    getRateLimiterTimestamps = rateLimiterModule.getRateLimiterTimestamps;
     RATE_LIMITER_PREFIX = rateLimiterModule.RATE_LIMITER_PREFIX;
     rateLimiter = rateLimiterModule.rateLimiter;
   });
@@ -217,6 +225,31 @@ describe("rateLimiter", () => {
       expect(count.value).toBe(1);
     }
   });
+
+  it("returns timestamps inside the rolling window", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    await expireTestKey(key);
+    const redisKey = `${RATE_LIMITER_PREFIX}:${key}`;
+    const nowMs = Date.now();
+    const recentTimestampMs = nowMs - 30_000;
+
+    await runOnRedis({ origin: "rate_limiter" }, async (redis) =>
+      redis.zAdd(redisKey, [
+        { score: nowMs - 90_000, value: crypto.randomUUID() },
+        { score: recentTimestampMs, value: crypto.randomUUID() },
+      ])
+    );
+
+    const timestamps = await getRateLimiterTimestamps({
+      key,
+      timeframeSeconds: 60,
+    });
+
+    expect(timestamps.isOk()).toBe(true);
+    if (timestamps.isOk()) {
+      expect(timestamps.value).toEqual([recentTimestampMs]);
+    }
+  });
 });
 
 describe("addRateLimiterCount", () => {
@@ -225,9 +258,12 @@ describe("addRateLimiterCount", () => {
     const rateLimiterModule = await import("@app/lib/utils/rate_limiter");
 
     closeRedisClients = redisModule.closeRedisClients;
+    runOnRedis = redisModule.runOnRedis;
     addRateLimiterCount = rateLimiterModule.addRateLimiterCount;
     expireRateLimiterKey = rateLimiterModule.expireRateLimiterKey;
-    getRateLimiterCount = rateLimiterModule.getRateLimiterCount;
+    getWeightedRateLimiterCount = rateLimiterModule.getWeightedRateLimiterCount;
+    getWeightedRateLimiterUsage = rateLimiterModule.getWeightedRateLimiterUsage;
+    RATE_LIMITER_PREFIX = rateLimiterModule.RATE_LIMITER_PREFIX;
   });
 
   afterEach(async () => {
@@ -241,7 +277,28 @@ describe("addRateLimiterCount", () => {
     await closeRedisClients();
   });
 
-  it("records the full amount even when it overshoots what a limit-guarded write would allow", async () => {
+  it("stores a fractional credit amount as integer microCredits", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    await expireTestKey(key);
+
+    await addRateLimiterCount({
+      key,
+      timeframeSeconds: 60,
+      incrementBy: 2.5,
+      logger,
+    });
+
+    const count = await getWeightedRateLimiterCount({
+      key,
+      timeframeSeconds: 60,
+    });
+    expect(count.isOk()).toBe(true);
+    if (count.isOk()) {
+      expect(count.value).toBe(2_500_000);
+    }
+  });
+
+  it("sums the amount of multiple entries, even past what a limit-guarded write would allow", async () => {
     const key = `test:${crypto.randomUUID()}`;
     await expireTestKey(key);
 
@@ -257,38 +314,79 @@ describe("addRateLimiterCount", () => {
     await addRateLimiterCount({
       key,
       timeframeSeconds: 60,
-      incrementBy: 2,
+      incrementBy: 2.5,
       logger,
     });
 
-    const count = await getRateLimiterCount({
+    const count = await getWeightedRateLimiterCount({
       key,
       timeframeSeconds: 60,
     });
     expect(count.isOk()).toBe(true);
     if (count.isOk()) {
-      expect(count.value).toBe(11);
+      expect(count.value).toBe(11_500_000);
     }
   });
 
-  it("is counted correctly by getRateLimiterCount alongside plain rateLimiter writes", async () => {
+  it("excludes entries outside the rolling window from the sum", async () => {
     const key = `test:${crypto.randomUUID()}`;
     await expireTestKey(key);
+    const redisKey = `${RATE_LIMITER_PREFIX}:${key}`;
 
+    // A recent entry (inside a 60s window) and a stale one (2 hours old, outside
+    // it). Stale entries are written directly with an old score so the sum can
+    // be asserted deterministically.
     await addRateLimiterCount({
       key,
       timeframeSeconds: 60,
       incrementBy: 3,
       logger,
     });
+    await runOnRedis({ origin: "rate_limiter" }, async (redis) =>
+      redis.zAdd(redisKey, {
+        score: Date.now() - 2 * 60 * 60 * 1000,
+        value: `5000000:${crypto.randomUUID()}`,
+      })
+    );
 
-    const count = await getRateLimiterCount({
+    const count = await getWeightedRateLimiterCount({
       key,
       timeframeSeconds: 60,
     });
     expect(count.isOk()).toBe(true);
     if (count.isOk()) {
-      expect(count.value).toBe(3);
+      expect(count.value).toBe(3_000_000);
+    }
+  });
+
+  it("returns the oldest timestamp still inside the rolling window", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    await expireTestKey(key);
+    const redisKey = `${RATE_LIMITER_PREFIX}:${key}`;
+    const nowMs = Date.now();
+    const oldestTimestampMs = nowMs - 30_000;
+
+    await runOnRedis({ origin: "rate_limiter" }, async (redis) => {
+      await redis.zAdd(redisKey, {
+        score: oldestTimestampMs,
+        value: `2000000:${crypto.randomUUID()}`,
+      });
+      await redis.zAdd(redisKey, {
+        score: nowMs - 10_000,
+        value: `3000000:${crypto.randomUUID()}`,
+      });
+    });
+
+    const usage = await getWeightedRateLimiterUsage({
+      key,
+      timeframeSeconds: 60,
+    });
+    expect(usage.isOk()).toBe(true);
+    if (usage.isOk()) {
+      expect(usage.value).toEqual({
+        count: 5_000_000,
+        oldestTimestampMs,
+      });
     }
   });
 });
@@ -369,5 +467,54 @@ describe("fixed-window counter", () => {
     const countB = await getFixedWindowCount({ key, bounds: windowB });
     expect(countA.isOk() && countA.value).toBe(4);
     expect(countB.isOk() && countB.value).toBe(7);
+  });
+
+  // Mirrors the spend-cap recorder/enforcer: the counter stores microCredits
+  // (credits × 1e6) so it survives a switch to fractional credits. Recording a
+  // fractional 2.5-credit delta must land as 2_500_000 microCredits, and
+  // enforcement blocks once the counter reaches the cap scaled up the same way
+  // (cap × 1e6).
+  it("stores fractional credits as integer microCredits and enforces caps at the microCredit scale", async () => {
+    const key = `test:${crypto.randomUUID()}`;
+    const bounds = boundsFor("microcredits");
+    fixedWindowKeysToExpire.add(`${key}:${bounds.label}`);
+
+    const capCredits = 5;
+
+    // First fractional delta: 2.5 credits recorded as microCredits.
+    await addFixedWindowCount({
+      key,
+      bounds,
+      incrementBy: roundCreditsToMicroCredits(2.5),
+      logger,
+    });
+
+    const afterFirst = await getFixedWindowCount({ key, bounds });
+    expect(afterFirst.isOk() && afterFirst.value).toBe(2_500_000);
+    // 2.5 < 5 credits: enforcement does not block yet.
+    expect(
+      afterFirst.isOk() &&
+        afterFirst.value >= roundCreditsToMicroCredits(capCredits)
+    ).toBe(false);
+
+    // Second fractional delta brings the total to exactly the cap.
+    await addFixedWindowCount({
+      key,
+      bounds,
+      incrementBy: roundCreditsToMicroCredits(2.5),
+      logger,
+    });
+
+    const afterSecond = await getFixedWindowCount({ key, bounds });
+    expect(afterSecond.isOk() && afterSecond.value).toBe(5_000_000);
+    // Reached cap × 1e6: enforcement blocks.
+    expect(
+      afterSecond.isOk() &&
+        afterSecond.value >= roundCreditsToMicroCredits(capCredits)
+    ).toBe(true);
+    // The poke read converts the counter back to whole credits.
+    expect(afterSecond.isOk() && microCreditsToCredits(afterSecond.value)).toBe(
+      5
+    );
   });
 });

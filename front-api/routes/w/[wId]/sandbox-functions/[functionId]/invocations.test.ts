@@ -12,7 +12,6 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -142,9 +141,7 @@ async function setupSandboxFunction({
     workspace,
   });
   if (addCallerToSpace) {
-    const [memberGroup] = await space.fetchGroupResources(adminAuth, {
-      groupReferences: space.groups.filter((group) => group.isRegularAuto()),
-    });
+    const [memberGroup] = await space.fetchRegularAutoGroups(adminAuth);
     if (!memberGroup) {
       throw new Error("Expected the project member group to exist.");
     }
@@ -559,7 +556,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
       await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
     expect(globalGroupResult.isOk()).toBe(true);
     if (globalGroupResult.isOk()) {
-      await GroupSpaceFactory.associate(space, globalGroupResult.value);
+      await SpaceFactory.attachGroup(space, globalGroupResult.value);
     }
 
     const response = await postInvocation({

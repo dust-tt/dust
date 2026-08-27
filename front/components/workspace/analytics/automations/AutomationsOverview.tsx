@@ -3,6 +3,7 @@ import { useAutomationsOverview } from "@app/hooks/useAutomationsOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
 import type { LightWorkspaceType } from "@app/types/user";
+import { LoadingBlock } from "@dust-tt/sparkle";
 
 interface AutomationsOverviewProps {
   owner: LightWorkspaceType;
@@ -17,9 +18,7 @@ export function AutomationsOverview({
     useAutomationsOverview({ workspaceId: owner.sId, period });
 
   if (isOverviewLoading) {
-    return (
-      <div className="h-24 w-full animate-pulse rounded-xl bg-muted-background" />
-    );
+    return <LoadingBlock className="h-24 w-full rounded-xl" />;
   }
 
   if (isOverviewError || !overview) {
@@ -28,6 +27,7 @@ export function AutomationsOverview({
 
   const { automationCredits, workspaceTotalCredits, triggers } = overview;
   const disabledCount = triggers.total - triggers.enabled;
+  const memberPoolCount = triggers.total - triggers.workspacePool;
 
   return (
     <div className="flex items-stretch gap-6">
@@ -44,6 +44,11 @@ export function AutomationsOverview({
         label="Triggers enabled"
         value={`${triggers.enabled.toLocaleString()} / ${triggers.total.toLocaleString()}`}
         hint={disabledCount > 0 ? `${disabledCount} disabled` : null}
+      />
+      <SummaryCard
+        label="Workspace pool"
+        value={`${triggers.workspacePool.toLocaleString()} / ${triggers.total.toLocaleString()}`}
+        hint={memberPoolCount > 0 ? `${memberPoolCount} on member pool` : null}
       />
     </div>
   );

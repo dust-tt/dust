@@ -207,10 +207,12 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     auth: Authenticator,
     {
       agentMessageIds,
+      step,
       transaction,
       textContentOnly = false,
     }: {
       agentMessageIds: ModelId[];
+      step?: number;
       transaction?: Transaction;
       textContentOnly?: boolean;
     }
@@ -230,6 +232,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           where: {
             workspaceId: owner.id,
             ...(textContentOnly ? { type: "text_content" } : {}),
+            ...(step !== undefined ? { step } : {}),
             agentMessageId: {
               [Op.any]: Sequelize.literal("$agentMessageIds::bigint[]"),
             },
@@ -422,6 +425,48 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         a.step - b.step ||
         a.index - b.index
     );
+  }
+
+  /**
+   * Fetches one completed step without hydrating the whole-message cache.
+   */
+  static async fetchByAgentMessageModelIdsAtStep(
+    auth: Authenticator,
+    {
+      agentMessageModelIds,
+      step,
+      textContentOnly = false,
+    }: {
+      agentMessageModelIds: ModelId[];
+      step: number;
+      textContentOnly?: boolean;
+    }
+  ): Promise<AgentStepContentResource[]> {
+    return this.fetchByAgentMessagesFromPostgres(auth, {
+      agentMessageIds: agentMessageModelIds,
+      step,
+      textContentOnly,
+    });
+  }
+
+  /**
+   * Fetches the canonical function calls for each agent message.
+   *
+   * Filtering happens after resolving the latest row for each step and index so function calls
+   * from superseded Temporal attempts cannot reappear in rendered context.
+   */
+  static async fetchLatestFunctionCallsByAgentMessageModelIds(
+    auth: Authenticator,
+    agentMessageModelIds: ModelId[]
+  ): Promise<AgentStepContentResource[]> {
+    const latestMetadata = await this.fetchLatestMetadataByAgentMessages(auth, {
+      agentMessageIds: agentMessageModelIds,
+    });
+    const functionCallModelIds = latestMetadata
+      .filter(({ type }) => type === "function_call")
+      .map(({ id }) => id);
+
+    return this.fetchByModelIds(auth, functionCallModelIds);
   }
 
   isFunctionCallContent(): this is AgentStepContentResource & {

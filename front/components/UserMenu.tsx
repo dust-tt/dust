@@ -2,13 +2,16 @@ import type { CreditUsageState } from "@app/components/app/CreditUsage";
 import { CreditUsage } from "@app/components/app/CreditUsage";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
-import { UserToolsAndTriggersDialog } from "@app/components/me/UserToolsAndTriggersDialog";
+import { UserAutomationsDialog } from "@app/components/me/UserAutomationsDialog";
+import { UserToolsDialog } from "@app/components/me/UserToolsDialog";
+import { UserAnalyticsPopover } from "@app/components/UserAnalyticsPopover";
 import { UserSettingsPopover } from "@app/components/UserSettingsPopover";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useDevMode } from "@app/hooks/useDevMode";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
+import { OPEN_USER_ANALYTICS_EVENT } from "@app/lib/analytics/events";
 import config from "@app/lib/api/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -20,10 +23,17 @@ import {
 import { serializeMention } from "@app/lib/mentions/format";
 import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
+import { useUserMetadata } from "@app/lib/swr/user";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
+import {
+  CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY,
+  FIREFOX_EXTENSION_LAST_USED_AT_METADATA_KEY,
+  shouldShowExtensionMenu,
+} from "@app/types/extension";
 import type { SubscriptionType } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
@@ -31,11 +41,15 @@ import { isOnlyAdmin, isOnlyManager, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
+  BarChart01,
   Beaker02,
   BookOpen01,
   ChevronDown,
   ChromeLogo,
+  Clock,
   cn,
+  Dialog,
+  DialogContent,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -62,13 +76,21 @@ import {
   Terminal,
   User01,
 } from "@dust-tt/sparkle";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 interface UserMenuProps {
   user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
   subscription: SubscriptionType | null;
   creditUsageState?: CreditUsageState | null;
+}
+
+function trackUserMenuEvent(item: string) {
+  trackEvent({
+    area: TRACKING_AREAS.NAVIGATION,
+    object: "user_menu_item",
+    extra: { item },
+  });
 }
 
 export function UserMenu({
@@ -80,7 +102,30 @@ export function UserMenu({
   const router = useAppRouter();
   const { featureFlags } = useFeatureFlags();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toolsAndTriggersOpen, setToolsAndTriggersOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [automationsOpen, setAutomationsOpen] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  const isFirefox =
+    typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
+  const extensionLastUsedAtMetadataKey = isFirefox
+    ? FIREFOX_EXTENSION_LAST_USED_AT_METADATA_KEY
+    : CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY;
+  const {
+    metadata: extensionLastUsedAt,
+    isMetadataLoading: isExtensionLastUsedAtLoading,
+  } = useUserMetadata(extensionLastUsedAtMetadataKey);
+  const showExtensionMenu =
+    !isExtensionLastUsedAtLoading &&
+    shouldShowExtensionMenu(extensionLastUsedAt?.value);
+
+  useEffect(() => {
+    const openAnalytics = () => setAnalyticsOpen(true);
+    window.addEventListener(OPEN_USER_ANALYTICS_EVENT, openAnalytics);
+    return () =>
+      window.removeEventListener(OPEN_USER_ANALYTICS_EVENT, openAnalytics);
+  }, []);
 
   const sendNotification = useSendNotification();
   const devMode = useDevMode();
@@ -167,9 +212,6 @@ export function UserMenu({
     )
   );
 
-  const isFirefox =
-    typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
-
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "admin" | "manager") => {
       const result = await forceUserRole(user, owner, role, featureFlags);
@@ -238,12 +280,27 @@ export function UserMenu({
         onOpenChange={setSettingsOpen}
         owner={owner}
       />
-      <UserToolsAndTriggersDialog
-        open={toolsAndTriggersOpen}
-        onOpenChange={setToolsAndTriggersOpen}
+      <UserToolsDialog
+        open={toolsOpen}
+        onOpenChange={setToolsOpen}
         owner={owner}
       />
-      <DropdownMenu>
+      <UserAutomationsDialog
+        open={automationsOpen}
+        onOpenChange={setAutomationsOpen}
+        owner={owner}
+      />
+      <Dialog open={analyticsOpen} onOpenChange={setAnalyticsOpen}>
+        <DialogContent size="2xl" height="xl" grow>
+          <UserAnalyticsPopover
+            key={owner.sId}
+            open={analyticsOpen}
+            owner={owner}
+            onClose={() => setAnalyticsOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+      <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
         <DropdownMenuTrigger className="hover:bg-hover data-[state=open]:bg-selected rounded-xl p-2 m-2">
           <div className="group flex cursor-pointer items-center justify-between gap-2">
             <span className="sr-only">Open user menu</span>
@@ -288,9 +345,17 @@ export function UserMenu({
           sideOffset={8}
           className="w-64"
         >
-          {creditUsageState && (
+          {subscription?.plan.limits.canUseProduct && creditUsageState && (
             <>
-              <CreditUsage state={creditUsageState} variant="profile_menu" />
+              <CreditUsage
+                state={creditUsageState}
+                variant="profile_menu"
+                onLearnMore={() => {
+                  trackUserMenuEvent("credit_usage_learn_more");
+                  setUserMenuOpen(false);
+                  setAnalyticsOpen(true);
+                }}
+              />
               <Separator className="my-1" />
             </>
           )}
@@ -313,42 +378,52 @@ export function UserMenu({
                   icon={BookOpen01}
                   href="https://docs.dust.tt"
                   target="_blank"
+                  onClick={() =>
+                    trackUserMenuEvent("help_guides_documentation")
+                  }
                 />
                 <DropdownMenuItem
                   label="Join the Slack Community"
                   icon={SlackLogo}
                   href="https://dust-community.tightknit.community/join"
                   target="_blank"
+                  onClick={() => trackUserMenuEvent("help_slack_community")}
                 />
                 <DropdownMenuLabel label="Ask questions" />
                 <DropdownMenuItem
                   label="Ask @help"
                   icon={MessageChatCircle}
-                  onClick={() => void handleAskHelp()}
+                  onClick={() => {
+                    trackUserMenuEvent("help_ask");
+                    handleAskHelp();
+                  }}
                 />
                 <DropdownMenuItem
                   label="How do I invite new users?"
                   icon={MessageTextCircle01}
-                  onClick={() =>
-                    void handleHelpSubmit("How do I invite new users?", [])
-                  }
+                  onClick={() => {
+                    trackUserMenuEvent("help_invite_users_question");
+                    void handleHelpSubmit("How do I invite new users?", []);
+                  }}
                 />
                 <DropdownMenuItem
                   label="How do I use agents in Slack workflow?"
                   icon={MessageTextCircle01}
-                  onClick={() =>
+                  onClick={() => {
+                    trackUserMenuEvent("help_slack_workflow_question");
                     void handleHelpSubmit(
                       "How do I use agents in Slack workflow?",
                       []
-                    )
-                  }
+                    );
+                  }}
                 />
                 <DropdownMenuItem
                   label="How do I manage billing?"
                   icon={MessageTextCircle01}
-                  onClick={() =>
-                    void handleHelpSubmit("How do I manage billing?", [])
-                  }
+                  onClick={() => {
+                    trackUserMenuEvent("help_billing_question");
+                    void handleHelpSubmit("How do I manage billing?", []);
+                  }}
                 />
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
@@ -358,23 +433,27 @@ export function UserMenu({
             icon={BookOpen01}
             href="https://dust.tt/academy"
             target="_blank"
+            onClick={() => trackUserMenuEvent("dust_academy")}
           />
 
-          {isFirefox ? (
-            <DropdownMenuItem
-              label="Firefox extension"
-              icon={FirefoxLogo}
-              href="https://addons.mozilla.org/firefox/addon/dust/"
-              target="_blank"
-            />
-          ) : (
-            <DropdownMenuItem
-              label="Chrome extension"
-              icon={ChromeLogo}
-              href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
-              target="_blank"
-            />
-          )}
+          {showExtensionMenu &&
+            (isFirefox ? (
+              <DropdownMenuItem
+                label="Firefox extension"
+                icon={FirefoxLogo}
+                href="https://addons.mozilla.org/firefox/addon/dust/"
+                target="_blank"
+                onClick={() => trackUserMenuEvent("firefox_extension")}
+              />
+            ) : (
+              <DropdownMenuItem
+                label="Chrome extension"
+                icon={ChromeLogo}
+                href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
+                target="_blank"
+                onClick={() => trackUserMenuEvent("chrome_extension")}
+              />
+            ))}
 
           {subscription?.plan.limits.canUseProduct && (
             <>
@@ -382,6 +461,7 @@ export function UserMenu({
                 label="Exploratory features"
                 icon={Beaker02}
                 href={`/w/${owner.sId}/labs`}
+                onClick={() => trackUserMenuEvent("exploratory_features")}
               />
               <Separator className="my-1" />
             </>
@@ -393,13 +473,38 @@ export function UserMenu({
               <DropdownMenuItem
                 label="Personal Settings"
                 icon={User01}
-                onSelect={() => setSettingsOpen(true)}
+                onSelect={() => {
+                  trackUserMenuEvent("personal_settings");
+                  setSettingsOpen(true);
+                }}
               />
               <DropdownMenuItem
-                label="Tools and Triggers"
+                label="Tools"
                 icon={ShapesPlus}
-                onSelect={() => setToolsAndTriggersOpen(true)}
+                onSelect={() => {
+                  trackUserMenuEvent("tools");
+                  setToolsOpen(true);
+                }}
               />
+              <DropdownMenuItem
+                label="Automations"
+                icon={Clock}
+                onSelect={() => {
+                  trackUserMenuEvent("automations");
+                  setAutomationsOpen(true);
+                }}
+              />
+              {/* The credit usage card is the analytics entry point when shown; keep exactly one. */}
+              {!creditUsageState && (
+                <DropdownMenuItem
+                  label="Analytics"
+                  icon={BarChart01}
+                  onSelect={() => {
+                    trackUserMenuEvent("analytics");
+                    setAnalyticsOpen(true);
+                  }}
+                />
+              )}
             </>
           )}
 
@@ -407,6 +512,8 @@ export function UserMenu({
             label="Sign&nbsp;out"
             icon={LogOut01}
             onClick={() => {
+              trackUserMenuEvent("sign_out");
+
               // Clear all conversation drafts for this user.
               clearAllDraftsFromUser();
 

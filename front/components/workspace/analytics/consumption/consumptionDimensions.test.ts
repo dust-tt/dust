@@ -1,7 +1,9 @@
 import {
+  CONSUMPTION_ATTRIBUTION_DIMENSIONS,
   CONSUMPTION_DIMENSION_CONFIG,
   CONSUMPTION_DIMENSIONS,
   consumptionDimensionFromQueryParam,
+  getConsumptionAttributionDimensions,
 } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { describe, expect, it } from "vitest";
 
@@ -9,6 +11,7 @@ describe("consumption dimension URL state", () => {
   it("reads valid dimensions and falls back to agents", () => {
     expect(consumptionDimensionFromQueryParam("user")).toBe("user");
     expect(consumptionDimensionFromQueryParam("api_key")).toBe("api_key");
+    expect(consumptionDimensionFromQueryParam("conversation")).toBe("agent");
     expect(consumptionDimensionFromQueryParam("invalid")).toBe("agent");
     expect(consumptionDimensionFromQueryParam(undefined)).toBe("agent");
   });
@@ -25,5 +28,41 @@ describe("consumption dimension URL state", () => {
       "api_key",
     ]);
     expect(CONSUMPTION_DIMENSION_CONFIG.api_key.label).toBe("API keys");
+  });
+
+  it("selects the dimensions available to the analytics scope", () => {
+    expect(getConsumptionAttributionDimensions()).toEqual(
+      CONSUMPTION_DIMENSIONS
+    );
+    expect(getConsumptionAttributionDimensions({ kind: "personal" })).toEqual([
+      "agent",
+      "model",
+      "tool",
+      "skill",
+      "source",
+      "api_key",
+      "conversation",
+    ]);
+    expect(
+      getConsumptionAttributionDimensions({
+        kind: "agent",
+        agentId: "agent-1",
+      })
+    ).toEqual(["user", "group", "model", "tool", "skill", "source", "api_key"]);
+  });
+
+  it("adds conversations only to attribution tabs", () => {
+    expect(CONSUMPTION_ATTRIBUTION_DIMENSIONS).toEqual([
+      "agent",
+      "user",
+      "group",
+      "model",
+      "tool",
+      "skill",
+      "source",
+      "api_key",
+      "conversation",
+    ]);
+    expect(CONSUMPTION_DIMENSIONS).not.toContain("conversation");
   });
 });

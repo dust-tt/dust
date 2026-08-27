@@ -58,10 +58,7 @@ const withEditableSpace = createMiddleware<
     });
   }
 
-  if (
-    space.managementMode === "group" ||
-    space.groups.some((group) => group.isGlobal())
-  ) {
+  if (space.managementMode === "group" || (await space.isOpen(auth))) {
     return apiError(ctx, {
       status_code: 404,
       api_error: {
@@ -196,8 +193,12 @@ app.post(
       });
     }
 
+    const [enrichedSpace] = await SpaceResource.batchToJSONEnriched(auth, [
+      space,
+    ]);
+
     return ctx.json({
-      space: space.toJSON(),
+      space: enrichedSpace,
       users: usersJson.map((userJson) => ({
         sId: userJson.sId,
         id: userJson.id,

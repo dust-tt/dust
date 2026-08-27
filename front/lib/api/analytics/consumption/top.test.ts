@@ -3,6 +3,7 @@ import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/label
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
 import { fetchConsumptionTopApiKeys } from "@app/lib/api/analytics/consumption/top_api_keys";
+import { fetchConsumptionTopConversations } from "@app/lib/api/analytics/consumption/top_conversations";
 import { fetchConsumptionTopGroups } from "@app/lib/api/analytics/consumption/top_groups";
 import { fetchConsumptionTopModels } from "@app/lib/api/analytics/consumption/top_models";
 import { fetchConsumptionTopSkills } from "@app/lib/api/analytics/consumption/top_skills";
@@ -14,6 +15,7 @@ import {
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -327,7 +329,7 @@ describe("consumption top rankings", () => {
     expect(termsClauses[1]?.terms?.["agent.attributed_id"]).toHaveLength(1);
   });
 
-  it("counts tool invocations as documents, with no message sub-agg", async () => {
+  it("filters skill management from the tool response", async () => {
     const { auth } = await setup();
     vi.mocked(resolveDimensionLabels).mockResolvedValue(
       new Map([
@@ -345,11 +347,17 @@ describe("consumption top rankings", () => {
     mockAggs({
       buckets: [
         {
+          key: "skill_management",
+          doc_count: 5,
+          credit_micro: { value: 3_000_000 },
+        },
+        {
           key: "web_search_browse",
           doc_count: 4,
           credit_micro: { value: 2_000_000 },
         },
       ],
+      totalCount: 2,
       totalMicro: 10_000_000,
     });
 
@@ -374,10 +382,17 @@ describe("consumption top rankings", () => {
         avgCreditsPerInvocation: 0.5,
       },
     ]);
-    // The tools are a slice of the period, not all of it.
-    expect(result.value.totalCredits).toBe(10);
+    // Only the hidden tool's credits are removed from the share denominator.
+    expect(result.value.totalCredits).toBe(7);
 
-    const [, options] = lastSearchCall();
+    const [query] = rankingSearchCall();
+    expect(query.bool?.filter).not.toContainEqual({
+      bool: {
+        must_not: [{ terms: { "tool.server_name": ["skill_management"] } }],
+      },
+    });
+
+    const [, options] = rankingSearchCall();
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
       field: "tool.server_name",
     });
@@ -614,6 +629,56 @@ describe("consumption top rankings", () => {
     expect(lastSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject({
       field: "normalized_origin",
     });
+  });
+
+  it("ranks deleted conversations from the consumption index", async () => {
+    const { auth } = await setup();
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "unused",
+      messagesCreatedAt: [],
+      visibility: "deleted",
+    });
+    mockAggs({
+      buckets: [
+        {
+          key: conversation.sId,
+          doc_count: 4,
+          credit_micro: { value: 6_000_000 },
+          messages: { value: 2 },
+        },
+      ],
+      totalMicro: 6_000_000,
+    });
+
+    const result = await fetchConsumptionTopConversations(auth, {
+      period: PERIOD,
+      limit: 10,
+      filter: { users: ["user1"] },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.conversations).toEqual([
+      {
+        conversationId: conversation.sId,
+        title: "Test Conversation",
+        totalCredits: 6,
+      },
+    ]);
+
+    const [query, options] = rankingSearchCall();
+    expect(query.bool?.filter).toContainEqual({
+      term: { "user.id": "user1" },
+    });
+    expect(options?.aggregations?.by_group?.terms).toMatchObject({
+      field: "conversation_id",
+      order: { credit_micro: "desc" },
+    });
+    expect(
+      options?.aggregations?.by_group?.aggs?.messages?.cardinality?.field
+    ).toBe("agent_message_id");
   });
 
   it("narrows the scope with the requested filter", async () => {

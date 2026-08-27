@@ -130,7 +130,7 @@ describe("governance seed script integration test", () => {
 
     // The restricted space holds the current user and Bob.
     expect(restrictedSpace).toBeDefined();
-    expect(restrictedSpace!.isRegularAndRestricted()).toBe(true);
+    expect(await restrictedSpace!.isOpen(authenticator)).toBe(false);
     const spaceMembers =
       await restrictedSpace!.fetchDistinctActiveManualGroupMembers(
         authenticator
@@ -142,8 +142,7 @@ describe("governance seed script integration test", () => {
     // The current user's skill requires the restricted space and has Bob and Alfred as editors.
     // Alfred is not a member of the space, which is what the skill builder warns about.
     expect(currentUserSkill!.requestedSpaceIds).toEqual([restrictedSpace!.id]);
-    const skillEditors =
-      await currentUserSkill!.editorGroup!.getActiveMembers(authenticator);
+    const skillEditors = (await currentUserSkill!.listEditors(authenticator))!;
     expect(new Set(skillEditors.map((e) => e.sId))).toEqual(
       new Set([user.sId, bob!.sId, alfred!.sId])
     );
@@ -178,7 +177,7 @@ describe("governance seed script integration test", () => {
 
     // The private space holds Alfred only: the current user is not a member.
     expect(privateSpace).toBeDefined();
-    expect(privateSpace!.isRegularAndRestricted()).toBe(true);
+    expect(await privateSpace!.isOpen(authenticator)).toBe(false);
     const privateSpaceMembers =
       await privateSpace!.fetchDistinctActiveManualGroupMembers(authenticator);
     expect(new Set(privateSpaceMembers.map((m) => m.sId))).toEqual(

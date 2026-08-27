@@ -22,9 +22,16 @@ import assert from "assert";
  *
  * A role is a named bundle of verbs, valid at one or more levels. Instance-level roles bundle the
  * verbs the product grants and revokes as a unit (e.g. a space `member` is `read` + `write`).
- * Type-level capability roles are singletons — their name equals their single verb — because the
- * Governance page toggles capabilities one verb at a time; a multi-verb type-level role would make
- * a single toggle revoke verbs it did not touch.
+ * Type-level roles are singletons — one verb — because the Governance page toggles capabilities one
+ * verb at a time; a multi-verb type-level role would make a single toggle revoke verbs it did not
+ * touch.
+ *
+ * Naming follows what the role is for. A role named after its verb (`create`, `publish`, `invite`,
+ * `use`, `make_discoverable`, `use_workspace_pool`) is a governance capability: an action that is
+ * inherently workspace-wide, stays type-level, and is never granted per instance — which is why the
+ * name and the verb can be the same word. A role named for what its holder is (`reader`, `member`,
+ * `editor`, `admin`) describes access to a resource; it may be granted type-wide today and per
+ * instance later, so it keeps a role name even when its only level is `type`.
  *
  * A grant row stores the role name (see `@app/types/group_permissions`); `assertValidGrant` checks
  * a grant type is a role defined for its resource type at the required level. Translating a
@@ -61,6 +68,10 @@ export const ROLE_REGISTRY: Record<
     publish: { verbs: ["publish"], levels: ["type"] },
   },
   skill: {
+    // Type-level for now — the workspace global group holds it on `skill:-1`, which is what makes
+    // every skill readable — but named as a role rather than after its verb: unlike a governance
+    // capability, readership is expected to become per-skill.
+    reader: { verbs: ["read"], levels: ["type"] },
     editor: { verbs: ["read", "write", "admin"], levels: ["instance"] },
     create: { verbs: ["create"], levels: ["type"] },
     publish: { verbs: ["publish"], levels: ["type"] },

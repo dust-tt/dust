@@ -1,7 +1,9 @@
 import { listConsumptionFacetCatalog } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { fetchConsumptionFacets } from "@app/lib/api/analytics/consumption/facets";
+import type { DimensionLabel } from "@app/lib/api/analytics/consumption/labels";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import {
   ElasticsearchError,
   searchConsumptionAnalytics,
@@ -323,6 +325,265 @@ describe("fetchConsumptionFacets", () => {
     const result = await facetsPromise;
     expect(result.isOk()).toBe(true);
     expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(8);
+  });
+
+  it("restricts the automations scope to trigger-originated documents", async () => {
+    const { authenticator } = await createResourceTest({ role: "manager" });
+    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
+      agent: [],
+      user: [],
+      api_key: [],
+      group: [],
+      model: [],
+      tool: [],
+      skill: [],
+      source: [],
+    });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({ values: { buckets: [] } })
+    );
+
+    const result = await fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+      filter: { users: ["user_1"] },
+      scope: "automations",
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const triggerExists = { exists: { field: "trigger_id" } };
+    for (const [query, options] of vi.mocked(searchConsumptionAnalytics).mock
+      .calls) {
+      // Both the value enumeration and the availability count must be scoped.
+      expect(query.bool?.filter).toContainEqual(triggerExists);
+      expect(
+        options?.aggregations?.values?.aggs?.contextual?.filter?.bool?.filter
+      ).toContainEqual(triggerExists);
+    }
+  });
+
+  it("leaves documents unscoped by default", async () => {
+    const { authenticator } = await createResourceTest({ role: "manager" });
+    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
+      agent: [],
+      user: [],
+      api_key: [],
+      group: [],
+      model: [],
+      tool: [],
+      skill: [],
+      source: [],
+    });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({ values: { buckets: [] } })
+    );
+
+    const result = await fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+    });
+
+    expect(result.isOk()).toBe(true);
+    for (const [query] of vi.mocked(searchConsumptionAnalytics).mock.calls) {
+      expect(query.bool?.filter).not.toContainEqual({
+        exists: { field: "trigger_id" },
+      });
+    }
+  });
+
+  it("sweeps and resolves only the requested dimensions", async () => {
+    const { authenticator } = await createResourceTest({ role: "manager" });
+    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
+      agent: [{ value: "agent-1", label: "Agent one", pictureUrl: null }],
+      user: [{ value: "user-1", label: "User one", pictureUrl: null }],
+      api_key: [],
+      group: [],
+      model: [],
+      tool: [],
+      skill: [],
+      source: [],
+    });
+    vi.mocked(resolveDimensionLabels).mockResolvedValue(new Map());
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({ values: { buckets: [] } })
+    );
+
+    const result = await fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+      dimensions: ["agent", "user"],
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(2);
+    expect(listConsumptionFacetCatalog).toHaveBeenCalledWith(authenticator, [
+      "agent",
+      "user",
+    ]);
+
+    const sweptFields = vi
+      .mocked(searchConsumptionAnalytics)
+      .mock.calls.map(
+        ([, options]) =>
+          options?.aggregations?.values?.composite?.sources?.[0]?.value?.terms
+            ?.field
+      );
+    expect(sweptFields.sort()).toEqual(["agent.attributed_id", "user.id"]);
+
+    if (result.isOk()) {
+      expect(result.value.facets.agent).toHaveLength(1);
+      expect(result.value.facets.user).toHaveLength(1);
+      expect(result.value.facets.model).toEqual([]);
+      expect(result.value.facets.tool).toEqual([]);
+    }
+  });
+
+  it("preserves metadata on personal bucket facets", async () => {
+    const { authenticator, user } = await createResourceTest({ role: "user" });
+    const valuesByField: Record<string, string> = {
+      "agent.attributed_id": "used-agent",
+      "model.model_id": "used-model",
+      "tool.server_name": "used-tool",
+      "tool.attributed_skill_ids": "used-skill",
+    };
+    vi.mocked(searchConsumptionAnalytics).mockImplementation(
+      async (_query, options) => {
+        const field =
+          options?.aggregations?.values?.composite?.sources?.[0]?.value?.terms
+            ?.field;
+        const value = field ? valuesByField[field] : undefined;
+        return esResponse({
+          values: {
+            buckets: value
+              ? [{ key: { value }, contextual: { doc_count: 1 } }]
+              : [],
+          },
+        });
+      }
+    );
+    const labels: Partial<Record<ConsumptionScopeDimension, DimensionLabel>> = {
+      agent: {
+        name: "Used agent",
+        pictureUrl: "https://example.com/agent.png",
+        description: null,
+        scope: "visible",
+      },
+      model: {
+        name: "Used model",
+        pictureUrl: null,
+        description: null,
+        maker: "openai",
+        tier: "balanced",
+      },
+      tool: {
+        name: "Used tool",
+        pictureUrl: null,
+        description: null,
+        icon: "tool-icon",
+      },
+      skill: {
+        name: "Used skill",
+        pictureUrl: null,
+        description: null,
+        icon: "skill-icon",
+      },
+    };
+    vi.mocked(resolveDimensionLabels).mockImplementation(
+      async (_auth, dimension, values) => {
+        const label = labels[dimension];
+        return new Map(label ? values.map((value) => [value, label]) : []);
+      }
+    );
+
+    const result = await fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+      userId: user.sId,
+      dimensions: ["agent", "model", "tool", "skill"],
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(listConsumptionFacetCatalog).not.toHaveBeenCalled();
+    expect(result.value.facets.agent).toEqual([
+      expect.objectContaining({
+        value: "used-agent",
+        pictureUrl: "https://example.com/agent.png",
+        scope: "visible",
+      }),
+    ]);
+    expect(result.value.facets.model).toEqual([
+      expect.objectContaining({
+        value: "used-model",
+        maker: "openai",
+        tier: "balanced",
+      }),
+    ]);
+    expect(result.value.facets.tool).toEqual([
+      expect.objectContaining({ value: "used-tool", icon: "tool-icon" }),
+    ]);
+    expect(result.value.facets.skill).toEqual([
+      expect.objectContaining({ value: "used-skill", icon: "skill-icon" }),
+    ]);
+
+    for (const [query] of vi.mocked(searchConsumptionAnalytics).mock.calls) {
+      expect(query.bool?.filter).toContainEqual({
+        term: { "user.id": user.sId },
+      });
+    }
+  });
+
+  it("returns model metadata for agent-scoped bucket facets", async () => {
+    const { authenticator } = await createResourceTest({ role: "manager" });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({
+        values: {
+          buckets: [
+            {
+              key: { value: "used-model" },
+              contextual: { doc_count: 1 },
+            },
+          ],
+        },
+      })
+    );
+    vi.mocked(resolveDimensionLabels).mockResolvedValue(
+      new Map([
+        [
+          "used-model",
+          {
+            name: "Used model",
+            pictureUrl: null,
+            description: null,
+            maker: "anthropic",
+            tier: "premium",
+          },
+        ],
+      ])
+    );
+
+    const result = await fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+      agentId: "agent_1",
+      dimensions: ["model"],
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.facets.model).toEqual([
+      expect.objectContaining({
+        value: "used-model",
+        maker: "anthropic",
+        tier: "premium",
+      }),
+    ]);
+    expect(listConsumptionFacetCatalog).not.toHaveBeenCalled();
+
+    const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(query.bool?.filter).toContainEqual({
+      term: { "agent.attributed_id": "agent_1" },
+    });
   });
 
   it("returns the Elasticsearch failure before resolving historical labels", async () => {

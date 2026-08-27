@@ -55,13 +55,13 @@ export function MembersDataTable({
   const { runBatchUpdate } = useBatchUpdateMembers({ owner });
 
   // Per-row mutations run the same "batch-update-members" plugin as the bulk
-  // toolbar, just with a single email.
+  // toolbar, just with a single user ID.
   const applyToMember = async (
     m: MemberDisplayType,
     update: BatchMemberUpdate,
     context: string
   ) => {
-    const res = await runBatchUpdate(update, [m.email]);
+    const res = await runBatchUpdate(update, [m.sId]);
     if (res.isErr()) {
       window.alert(`An error occurred while ${context}: ${res.error}`);
       return;
@@ -123,7 +123,7 @@ export function MembersDataTable({
 
   return (
     <>
-      <div className="border-material-200 my-4 flex w-full flex-col rounded-lg border p-4">
+      <div className="my-4 flex w-full flex-col rounded-lg border p-4">
         <div className="flex justify-between gap-3">
           <h2 className="text-md mb-4 font-bold">
             {groupName ? `"${groupName}" Members:` : "Members:"}

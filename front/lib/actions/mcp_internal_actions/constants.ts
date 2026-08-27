@@ -47,7 +47,6 @@ import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_gene
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
-import { JIT_TESTING_SERVER } from "@app/lib/api/actions/servers/jit_testing/metadata";
 import { LUMA_SERVER } from "@app/lib/api/actions/servers/luma/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { MICROSOFT_EXCEL_SERVER } from "@app/lib/api/actions/servers/microsoft_excel/metadata";
@@ -62,7 +61,6 @@ import { PLAN_MODE_SERVER } from "@app/lib/api/actions/servers/plan_mode/metadat
 import { POD_MANAGER_SERVER } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import { POD_TASKS_SERVER } from "@app/lib/api/actions/servers/pod_tasks/metadata";
 import { POKE_SERVER } from "@app/lib/api/actions/servers/poke/metadata";
-import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
 import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/metadata";
 import {
   QUERY_TABLES_V2_SERVER,
@@ -102,9 +100,8 @@ import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
-import { WORKDAY_SERVER } from "@app/lib/api/actions/servers/workday/metadata";
 import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
-import { WORKSPACE_PEOPLE_SERVER } from "@app/lib/api/actions/servers/workspace_people/metadata";
+import { WORKSPACE_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type {
   InternalMCPServerDefinitionType,
@@ -154,7 +151,10 @@ export const ASHBY_SERVER_NAME = "ashby";
 
 // IDs of internal MCP servers that are no longer present.
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
-export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4, 28];
+// 1047 was workspace_people, folded into workspace_management as list_workspace_members.
+export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [
+  4, 28, 1004, 1016, 1047,
+];
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
@@ -205,10 +205,8 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "openai_usage",
   "outlook_calendar",
   "outlook",
-  "primitive_types_debugger",
   "productboard",
   "common_utilities",
-  "jit_testing",
   "run_agent",
   "run_dust_app",
   "salesforce",
@@ -227,7 +225,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "user_mentions",
   "val_town",
   "vanta",
-  "workday",
   "front",
   "web_search_&_browse",
   "zendesk",
@@ -245,8 +242,8 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "wakeups",
   "plan_mode",
   "workspace_analytics",
+  "workspace_management",
   "activation_recommendations",
-  "workspace_people",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -869,19 +866,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     timeoutMs: undefined,
     metadata: GONG_SERVER,
   },
-  primitive_types_debugger: {
-    id: 1004,
-    availability: "manual",
-    allowMultipleInstances: false,
-    isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("dev_mcp_actions");
-    },
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: PRIMITIVE_TYPES_DEBUGGER_SERVER,
-  },
   [SEARCH_SERVER_NAME]: {
     id: 1006,
     availability: "auto",
@@ -961,19 +945,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: VAL_TOWN_SERVER,
-  },
-  jit_testing: {
-    id: 1016,
-    availability: "manual",
-    allowMultipleInstances: false,
-    isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("dev_mcp_actions");
-    },
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: JIT_TESTING_SERVER,
   },
   common_utilities: {
     id: 1017,
@@ -1210,6 +1181,17 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     timeoutMs: undefined,
     metadata: WORKSPACE_ANALYTICS_SERVER,
   },
+  workspace_management: {
+    id: 1048,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: WORKSPACE_MANAGEMENT_SERVER,
+  },
   exa_people_and_company: {
     id: 1036,
     availability: "auto",
@@ -1221,17 +1203,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: EXA_SERVER,
-  },
-  workday: {
-    id: 1038,
-    availability: "manual",
-    allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => !featureFlags.includes("workday_mcp"),
-    isPreview: true,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: WORKDAY_SERVER,
   },
   user_analytics: {
     id: 1039,
@@ -1254,17 +1225,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: ACTIVATION_RECOMMENDATIONS_SERVER,
-  },
-  workspace_people: {
-    id: 1047,
-    availability: "auto_hidden_builder",
-    allowMultipleInstances: false,
-    isRestricted: undefined,
-    isPreview: false,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: WORKSPACE_PEOPLE_SERVER,
   },
   agent_templates: {
     id: 1041,
@@ -1298,9 +1258,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
       return !featureFlags.includes("shopify_tool");
     },
     isPreview: true,
-    // no Shopify OAuth provider yet (preview), so auth uses requiresBearerToken
-    // (we are using an access token from a client as bearer + shop domain via X-Shopify-Shop header)
-    requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,

@@ -101,7 +101,7 @@ export function SkillDetailsPage() {
       </div>
 
       <div className="mt-4 flex flex-row gap-4">
-        <div className="border-material-200 flex-1 rounded-lg border p-4">
+        <div className="flex-1 rounded-lg border p-4">
           <h2 className="text-md pb-4 font-bold">User-facing description</h2>
           <TextArea
             value={skill.userFacingDescription}
@@ -111,7 +111,7 @@ export function SkillDetailsPage() {
             isDisplay
           />
         </div>
-        <div className="border-material-200 flex-1 rounded-lg border p-4">
+        <div className="flex-1 rounded-lg border p-4">
           <h2 className="text-md pb-4 font-bold">Agent-facing description</h2>
           <TextArea
             value={skill.agentFacingDescription}
@@ -124,7 +124,7 @@ export function SkillDetailsPage() {
       </div>
 
       <div className="mt-4">
-        <div className="border-material-200 rounded-lg border p-4">
+        <div className="rounded-lg border p-4">
           <h2 className="text-md pb-4 font-bold">Instructions</h2>
           <TextArea
             value={skill.instructions ?? ""}
@@ -136,7 +136,7 @@ export function SkillDetailsPage() {
       </div>
 
       <div className="mt-4">
-        <div className="border-material-200 rounded-lg border p-4">
+        <div className="rounded-lg border p-4">
           <h2 className="text-md pb-4 font-bold">Instructions HTML</h2>
           <TextArea
             value={skill.instructionsHtml ?? ""}
@@ -148,7 +148,7 @@ export function SkillDetailsPage() {
       </div>
 
       <div className="mt-4">
-        <div className="border-material-200 rounded-lg border p-4">
+        <div className="rounded-lg border p-4">
           <h2 className="text-md pb-4 font-bold">
             Tools ({skill.tools.length})
           </h2>
@@ -167,7 +167,7 @@ export function SkillDetailsPage() {
       </div>
 
       <div className="mt-4">
-        <div className="border-material-200 rounded-lg border p-4">
+        <div className="rounded-lg border p-4">
           <Collapsible defaultOpen={false}>
             <CollapsibleTrigger>
               <h2 className="text-md font-bold">
@@ -236,7 +236,7 @@ export function SkillDetailsPage() {
       <SkillSuggestionDataTable owner={owner} skillId={sId} />
 
       <div className="mt-4">
-        <div className="border-material-200 rounded-lg border p-4">
+        <div className="rounded-lg border p-4">
           <Collapsible defaultOpen={false}>
             <CollapsibleTrigger>
               <h2 className="text-md font-bold">
@@ -257,7 +257,7 @@ export function SkillDetailsPage() {
                   {versions.map((version) => (
                     <div
                       key={version.version}
-                      className="border-material-200 rounded-lg border p-4"
+                      className="rounded-lg border p-4"
                     >
                       <div className="mb-2 flex items-center gap-2">
                         <span className="font-bold">v{version.version}</span>

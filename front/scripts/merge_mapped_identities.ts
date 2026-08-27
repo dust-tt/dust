@@ -2,7 +2,6 @@ import { userIdentityMergePlugin } from "@app/lib/api/poke/plugins/workspaces/us
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { promises as fs } from "fs";
@@ -121,7 +120,6 @@ function buildPairs(
   memberById: Map<string, Member>,
   primaryByEmail: Map<string, Member>,
   duplicateEmails: Set<string>,
-  triggerCountByEditor: Map<number, number>,
   ssoUserIds: Set<string>,
   activeAdminCount: number
 ) {
@@ -132,9 +130,6 @@ function buildPairs(
   for (const record of records) {
     const oldUser = memberById.get(record.oldUserId);
     const primaryUser = primaryByEmail.get(record.primaryEmail);
-    const triggerCount = oldUser
-      ? triggerCountByEditor.get(oldUser.id)
-      : undefined;
     const oldMembership = oldUser?.workspaces[0];
     const primaryMembership = primaryUser?.workspaces[0];
     let reason: string | null = null;
@@ -170,8 +165,6 @@ function buildPairs(
       activeAdminCount < MIN_ADMINS_FOR_REVOCATION
     ) {
       reason = "Old user is the workspace's last active admin.";
-    } else if (triggerCount && triggerCount > 0) {
-      reason = "Old user owns triggers that revocation would delete.";
     }
 
     if (reason) {
@@ -211,23 +204,12 @@ async function preflight(auth: Authenticator, records: MergeRecord[]) {
       .filter((primaryUser) => primaryUser.workOSUserId)
       .map((primaryUser) => primaryUser.sId)
   );
-  // Fetch once for the workspace so trigger checks do not add one query per mapping.
-  const triggers = await TriggerResource.listByWorkspace(auth);
-  const triggerCountByEditor = new Map<number, number>();
-  for (const trigger of triggers) {
-    const triggerCount = triggerCountByEditor.get(trigger.editor);
-    triggerCountByEditor.set(
-      trigger.editor,
-      triggerCount ? triggerCount + 1 : 1
-    );
-  }
 
   const { pairs, blocked } = buildPairs(
     records,
     memberById,
     primaryByEmail,
     duplicateEmails,
-    triggerCountByEditor,
     ssoUserIds,
     activeAdminCount
   );

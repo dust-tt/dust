@@ -1,7 +1,6 @@
 import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
-import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
@@ -22,8 +21,7 @@ export class ActivationWorkAreaModel extends WorkspaceAwareModel<ActivationWorkA
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare userId: ForeignKey<UserModel["id"]>;
-  declare podId: ForeignKey<ActivationPodModel["id"]> | null;
+  declare podId: ForeignKey<ActivationPodModel["id"]>;
 
   declare title: string;
   declare description: string;
@@ -58,26 +56,14 @@ ActivationWorkAreaModel.init(
   {
     modelName: "activation_work_area",
     sequelize: frontSequelize,
-    indexes: [
-      { fields: ["userId"], concurrently: true },
-      { fields: ["podId"], concurrently: true },
-      { fields: ["workspaceId", "userId", "status"], concurrently: true },
-    ],
+    indexes: [{ fields: ["podId"], concurrently: true }],
   }
 );
 
-ActivationWorkAreaModel.belongsTo(UserModel, {
-  foreignKey: { name: "userId", allowNull: false },
-  onDelete: "RESTRICT",
-});
-UserModel.hasMany(ActivationWorkAreaModel, {
-  foreignKey: { name: "userId", allowNull: false },
-});
-
 ActivationWorkAreaModel.belongsTo(ActivationPodModel, {
-  foreignKey: { name: "podId", allowNull: true },
+  foreignKey: { name: "podId", allowNull: false },
   onDelete: "RESTRICT",
 });
 ActivationPodModel.hasMany(ActivationWorkAreaModel, {
-  foreignKey: { name: "podId", allowNull: true },
+  foreignKey: { name: "podId", allowNull: false },
 });

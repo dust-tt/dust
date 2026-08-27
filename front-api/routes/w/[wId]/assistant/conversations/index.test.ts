@@ -134,6 +134,50 @@ describe("POST /api/w/:wId/assistant/conversations", () => {
     ).toBe(true);
   });
 
+  it("returns the created conversation as read for its creator", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/assistant/conversations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: null,
+          visibility: "unlisted",
+          spaceId: null,
+          message: null,
+          contentFragments: [],
+        }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+
+    const responseData = await response.json();
+    // The sidebar prepends this conversation to its list: reporting it unread would flash
+    // it in the inbox while the creator is on it.
+    expect(responseData.conversation.unread).toBe(false);
+    expect(responseData.conversation.lastReadMs).not.toBeNull();
+
+    // Also assert the persisted read record, not just the response: the list endpoint must
+    // agree, otherwise the next sidebar refresh would flash the conversation as unread.
+    const listResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/assistant/conversations`,
+      { method: "GET" }
+    );
+    expect(listResponse.status).toBe(200);
+    const listData = await listResponse.json();
+    const created = listData.conversations.find(
+      (c: { sId: string }) => c.sId === responseData.conversation.sId
+    );
+    expect(created).toBeDefined();
+    expect(created.unread).toBe(false);
+  });
+
   it("requires the database filesystem flag for a standalone conversation", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",

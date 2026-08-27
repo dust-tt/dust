@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["es2023"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "scripts/eval.ts",
+    "scripts/generate_queries.ts",
+    "scripts/ingest.ts",
+    "scripts/search.ts",
+    "scripts/test_permissions.ts",
+    "scripts/sweep_bm25.ts"
+  ]
+}

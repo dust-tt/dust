@@ -73,6 +73,7 @@ export function streamErrorToErrorEvent(
     switch (status) {
       case 400:
         return buildErrorEvent({
+          errorSource: "dust",
           metadata,
           type: "invalid_request_error",
           message: `Invalid request to Mistral: ${error.message}`,
@@ -80,6 +81,7 @@ export function streamErrorToErrorEvent(
         });
       case 401:
         return buildErrorEvent({
+          errorSource: "dust",
           metadata,
           type: "authentication_error",
           message: `Authentication failed for Mistral: ${error.message}`,
@@ -87,6 +89,7 @@ export function streamErrorToErrorEvent(
         });
       case 403:
         return buildErrorEvent({
+          errorSource: "dust",
           metadata,
           type: "permission_error",
           message: `Permission denied for Mistral: ${error.message}`,
@@ -94,6 +97,7 @@ export function streamErrorToErrorEvent(
         });
       case 404:
         return buildErrorEvent({
+          errorSource: "dust",
           metadata,
           type: "not_found_error",
           message: `Resource not found for Mistral: ${error.message}`,
@@ -101,6 +105,7 @@ export function streamErrorToErrorEvent(
         });
       case 429:
         return buildErrorEvent({
+          errorSource: "dust",
           metadata,
           type: "rate_limit_error",
           message: `Rate limit exceeded for Mistral/${metadata.model}: ${error.message}`,
@@ -109,6 +114,7 @@ export function streamErrorToErrorEvent(
       default:
         if (status >= 500 && status < 600) {
           return buildErrorEvent({
+            errorSource: "provider",
             metadata,
             type: "server_error",
             message: `Server error from Mistral (${status}): ${error.message}`,
@@ -116,6 +122,7 @@ export function streamErrorToErrorEvent(
           });
         }
         return buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "unknown_error",
           message: `Error from Mistral (${status}): ${error.message}`,
@@ -124,6 +131,7 @@ export function streamErrorToErrorEvent(
     }
   }
   return buildErrorEvent({
+    errorSource: "provider",
     metadata,
     type: "unknown_error",
     message: `Unknown error from Mistral: ${normalizeError(error).message}`,
@@ -318,6 +326,7 @@ export async function* rawOutputToEvents(
     switch (finishReason) {
       case CompletionResponseStreamChoiceFinishReason.Length:
         yield buildErrorEvent({
+          errorSource: "dust",
           metadata,
           type: "stop_error",
           message: "The maximum response length was reached.",
@@ -325,6 +334,7 @@ export async function* rawOutputToEvents(
         return;
       case CompletionResponseStreamChoiceFinishReason.Error:
         yield buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "server_error",
           message: "Mistral reported an error during completion.",
@@ -367,12 +377,14 @@ function finishReasonToErrorEvent(
     case ChatCompletionChoiceFinishReason.Length:
     case ChatCompletionChoiceFinishReason.ModelLength:
       return buildErrorEvent({
+        errorSource: "dust",
         metadata,
         type: "stop_error",
         message: "The maximum response length was reached.",
       });
     case ChatCompletionChoiceFinishReason.Error:
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "server_error",
         message: "Mistral reported an error during completion.",

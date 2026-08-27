@@ -1,17 +1,24 @@
 import { cn } from "@dust-tt/sparkle";
 
 interface SummaryCardProps {
+  className?: string;
   label: string;
   value: string;
   hint: string | null;
 }
 
-export function SummaryCard({ label, value, hint }: SummaryCardProps) {
+export function SummaryCard({
+  className,
+  label,
+  value,
+  hint,
+}: SummaryCardProps) {
   return (
     <div
       className={cn(
         "flex flex-1 flex-col justify-center h-24 gap-1 rounded-xl",
-        "border border-border bg-panel-background p-4"
+        "border border-border bg-panel-background p-4",
+        className
       )}
     >
       <span className="text-xs font-semibold text-muted-foreground">

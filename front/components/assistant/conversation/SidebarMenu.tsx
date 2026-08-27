@@ -1738,9 +1738,10 @@ function NavigationListWithInbox({
   } = useMemo(() => {
     return getGroupConversationsByUnreadAndActionRequired(
       conversations,
-      titleFilter
+      titleFilter,
+      activeConversationId
     );
-  }, [conversations, titleFilter]);
+  }, [conversations, titleFilter, activeConversationId]);
 
   const { markAllAsRead } = useMarkAllConversationsAsRead({
     owner,

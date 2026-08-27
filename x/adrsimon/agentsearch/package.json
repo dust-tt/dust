@@ -1,0 +1,21 @@
+{
+  "name": "agentsearch",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "es:up": "docker compose up -d",
+    "es:down": "docker compose down",
+    "es:reset": "docker compose down -v && docker compose up -d",
+    "ingest": "tsx scripts/ingest.ts",
+    "search": "tsx scripts/search.ts",
+    "test:permissions": "tsx scripts/test_permissions.ts",
+    "typecheck": "tsgo --noEmit -p .",
+    "gen:queries": "tsx scripts/generate_queries.ts",
+    "eval": "tsx scripts/eval.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

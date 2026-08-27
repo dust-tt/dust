@@ -15,39 +15,11 @@ export const USAGE_METRICS_PALETTE = {
   activeUsers: "text-violet-500",
 } as const;
 
-export const USAGE_METRICS_LEGEND = [
-  { key: "messages", label: "Messages" },
-  { key: "conversations", label: "Conversations" },
-  { key: "activeUsers", label: "Active users" },
-] as const;
-
 export const ACTIVE_USERS_PALETTE = {
   dau: "text-blue-500",
   wau: "text-violet-500",
   mau: "text-golden-500",
 } as const;
-
-export const LATENCY_PALETTE = {
-  average: "text-blue-500",
-  median: "text-violet-500",
-} as const;
-
-export const LATENCY_LEGEND = [
-  { key: "average", label: "Average" },
-  { key: "median", label: "Median" },
-] as const;
-
-export const TOOL_EXECUTION_TIME_PALETTE = {
-  avgLatencyMs: "text-blue-500",
-  p50LatencyMs: "text-violet-500",
-  p95LatencyMs: "text-orange-500",
-} as const;
-
-export const TOOL_EXECUTION_TIME_LEGEND = [
-  { key: "avgLatencyMs", label: "Average" },
-  { key: "p50LatencyMs", label: "P50" },
-  { key: "p95LatencyMs", label: "P95" },
-] as const;
 
 export const COST_PALETTE = {
   costMicroUsd: "text-blue-400",
@@ -80,8 +52,6 @@ export const INDEXED_COLORS = INDEXED_SHADES.flatMap((shade) =>
 );
 
 export const CONVERSATION_FILES_AGGREGATE_KEY = "__conversation_files__";
-
-export const MAX_TOOLS_DISPLAYED = 5;
 
 export const OTHER_LABEL = {
   key: "others",

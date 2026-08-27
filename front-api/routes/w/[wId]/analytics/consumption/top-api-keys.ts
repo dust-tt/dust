@@ -6,23 +6,25 @@ import {
 import type { GetConsumptionTopApiKeysResponse } from "@app/lib/api/analytics/consumption/top_api_keys";
 import { fetchConsumptionTopApiKeys } from "@app/lib/api/analytics/consumption/top_api_keys";
 import logger from "@app/logger/logger";
-import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { consumptionAnalyticsApp } from "./context";
 
 export type { GetConsumptionTopApiKeysResponse };
 
 // Mounted at /api/w/:wId/analytics/consumption/top-api-keys.
-const app = workspaceApp();
+// Also mounted at /api/w/:wId/me/analytics/consumption/top-api-keys.
+// Also mounted at /api/w/:wId/assistant/agent_configurations/:aId/analytics/consumption/top-api-keys.
+const app = consumptionAnalyticsApp();
 
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsManager(),
   validate("json", ConsumptionTopBodySchema),
   async (ctx): HandlerResult<GetConsumptionTopApiKeysResponse> => {
     const auth = ctx.get("auth");
+    const userId = ctx.get("consumptionUserId");
+    const agentId = ctx.get("consumptionAgentId");
     const { limit, offset, search, filter, sortOrder, ...periodQuery } =
       ctx.req.valid("json");
 
@@ -36,7 +38,11 @@ app.post(
       limit,
       offset,
       search,
-      filter,
+      filter: {
+        ...filter,
+        ...(userId ? { users: [userId] } : {}),
+        ...(agentId ? { agents: [agentId] } : {}),
+      },
       sortOrder,
     });
     if (result.isErr()) {

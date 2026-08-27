@@ -26,7 +26,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.86";
+const DUST_BASE_IMAGE_VERSION = "0.8.98";
 const DSBX_CLI_VERSION = "0.1.51";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
@@ -99,6 +99,11 @@ const PYTHON_LIBRARIES: PythonLibrary[] = [
     description: "HTML/XML parsing",
   },
   { name: "lxml", version: "6.0.2", description: "XML processing" },
+  {
+    name: "fonttools",
+    version: "4.63.0",
+    description: "Font file inspection and rewriting",
+  },
   { name: "pillow", version: "12.1.1", description: "Image processing" },
   { name: "sympy", version: "1.14.0", description: "Symbolic mathematics" },
   {
@@ -362,9 +367,11 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   // fallback. Without these, a Calibri/Cambria deck (the PowerPoint defaults)
   // reflows under a non-metric fallback and the QA misses real text collisions.
   // fc-cache rebuilds the fontconfig cache so the new fonts resolve at runtime.
+  // libeot decodes the EOT fonts PowerPoint embeds in a deck, which pptx_fonts
+  // extracts; libreoffice-core already depends on it, this pins it as ours.
   .runCmd(
     "apt-get update && apt-get install -y jq pandoc imagemagick ffmpeg unzip file " +
-      "sqlite3 libreoffice poppler-utils qpdf " +
+      "sqlite3 libreoffice libeot0 poppler-utils qpdf " +
       "fonts-crosextra-carlito fonts-crosextra-caladea fonts-liberation2 " +
       "fonts-noto-core && fc-cache -f",
     { user: "root" }
@@ -847,6 +854,16 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     usage:
       "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
     returns: "A one-line summary of the change and the deck's new slide count",
+    runtime: "system",
+    isDustTool: true,
+  })
+  // --- pptx_fonts: install the faces a deck actually asks for ---
+  .registerTool({
+    name: "pptx_fonts",
+    description:
+      "Report the fonts a .pptx needs and install them: the faces embedded in the deck first, Google Fonts for the rest. A substituted face is ~10% off, so the render and the fit warnings both mislead",
+    usage: "pptx_fonts <file> [--install]",
+    returns: "One line per family: extracted, fetched, or still substituted",
     runtime: "system",
     isDustTool: true,
   })

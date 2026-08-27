@@ -1,3 +1,4 @@
+import { SlackWorkflowsTable } from "@app/components/poke/data_sources/slack/workflows_table";
 import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
@@ -148,7 +149,7 @@ function FolderDisplay({
         </div>
       </div>
 
-      <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+      <div className="mb-4 flex flex-grow flex-col rounded-lg border p-4">
         {documents.length > 0 ? (
           <ContextItem.List>
             {documents.map((d) => (
@@ -235,7 +236,7 @@ function FolderDisplay({
         </div>
       </div>
 
-      <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+      <div className="mb-4 flex flex-grow flex-col rounded-lg border p-4">
         {tables.length > 0 ? (
           <ContextItem.List>
             {tables.map((t) => (
@@ -1143,13 +1144,16 @@ export function DataSourcePage() {
           {["slack", "slack_bot"].includes(
             dataSource.connectorProvider ?? ""
           ) && (
-            <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+            <div className="mb-4 flex flex-grow flex-col rounded-lg border p-4">
               <SlackChannelPatternInput
                 initialValues={features.autoReadChannelPatterns || ""}
                 owner={owner}
                 dataSource={dataSource}
               />
             </div>
+          )}
+          {dataSource.connectorProvider === "slack_bot" && (
+            <SlackWorkflowsTable owner={owner} />
           )}
           {!dataSource.connectorId ? (
             <FolderDisplay

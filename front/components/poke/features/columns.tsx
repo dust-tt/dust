@@ -1,17 +1,17 @@
+import { FeatureFlagStageChip } from "@app/components/poke/features/stage_chip";
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import type {
   FeatureFlagStage,
   WhitelistableFeature,
 } from "@app/types/shared/feature_flags";
-import { FEATURE_FLAG_STAGE_LABELS } from "@app/types/shared/feature_flags";
 import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
-import { Chip } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 type FeatureFlagsDisplayType = {
   name: WhitelistableFeature;
   description: string;
   stage: FeatureFlagStage;
+  owner: string;
   enabled: boolean;
   enabledAt: string | null;
 };
@@ -29,19 +29,23 @@ export function makeColumnsForFeatureFlags(): ColumnDef<FeatureFlagsDisplayType>
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Stage" />
       ),
-      cell: ({ row }) => {
-        const { stage } = row.original;
-        const warningStages: FeatureFlagStage[] = ["dust_only", "rolling_out"];
-
-        return (
-          <Chip
-            color={warningStages.includes(stage) ? "warning" : "highlight"}
-            size="xs"
-          >
-            {FEATURE_FLAG_STAGE_LABELS[stage]}
-          </Chip>
-        );
-      },
+      cell: ({ row }) => <FeatureFlagStageChip flagName={row.original.name} />,
+    },
+    {
+      accessorKey: "owner",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Owner" />
+      ),
+      cell: ({ row }) => (
+        <a
+          href={`https://github.com/${row.original.owner}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-highlight-600 hover:underline"
+        >
+          @{row.original.owner}
+        </a>
+      ),
     },
     {
       accessorKey: "description",

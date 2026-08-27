@@ -22,12 +22,13 @@
 //
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { runOnRedis } from "@app/lib/api/redis";
+import { microCreditsToCredits } from "@app/lib/credits/units";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
-  getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
+  getWeightedRateLimiterUsage,
 } from "@app/lib/utils/rate_limiter";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -58,12 +59,14 @@ export type FairUseAwuCreditsStatus = {
   limit: number;
   timeframe: MaxAwuCreditsTimeframeType;
   count: number;
+  nextResetAt?: string | null;
 };
 
 const DEFAULT_FAIR_USE_AWU_CREDITS_STATUS: FairUseAwuCreditsStatus = {
   limit: -1,
   timeframe: "lifetime",
   count: 0,
+  nextResetAt: null,
 };
 
 export type GetWorkspaceUsageStatusResponseBody = {
@@ -250,12 +253,14 @@ export async function getFairUseAwuCreditsStatus({
       limit,
       timeframe,
       count: 0,
+      nextResetAt: null,
     };
   }
 
-  const result = await getRateLimiterCount({
+  const timeframeSeconds = getTimeframeSecondsFromLiteral(timeframe);
+  const result = await getWeightedRateLimiterUsage({
     key: makeFairUseAwuCreditsRateLimitKeyForUser(workspace, user, timeframe),
-    timeframeSeconds: getTimeframeSecondsFromLiteral(timeframe),
+    timeframeSeconds,
   });
 
   if (result.isErr()) {
@@ -272,13 +277,22 @@ export async function getFairUseAwuCreditsStatus({
       limit,
       timeframe,
       count: 0,
+      nextResetAt: null,
     };
   }
 
+  // The counter stores microCredits; the status stays credit-denominated (with
+  // decimals), so convert before capping against the credit limit.
   return {
     limit,
     timeframe,
-    count: Math.min(result.value, limit),
+    count: Math.min(microCreditsToCredits(result.value.count), limit),
+    nextResetAt:
+      result.value.oldestTimestampMs === null
+        ? null
+        : new Date(
+            result.value.oldestTimestampMs + timeframeSeconds * 1000
+          ).toISOString(),
   };
 }
 

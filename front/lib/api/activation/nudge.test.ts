@@ -404,6 +404,53 @@ describe("isEligibleForNudge", () => {
     ).toBe(false);
   });
 
+  it("stops after two unanswered nudges by default", async () => {
+    const { authenticator, workspace, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
+    const activationPod = await createActivationPod(authenticator, globalSpace);
+
+    await createNudge(authenticator, {
+      workspace,
+      pod: globalSpace,
+      nudgedAt: new Date(Date.now() - 10 * DAY_MS),
+    });
+    await createNudge(authenticator, {
+      workspace,
+      pod: globalSpace,
+      nudgedAt: new Date(Date.now() - 5 * DAY_MS),
+    });
+
+    expect(
+      await isEligibleForNudge(authenticator, {
+        pod: globalSpace,
+        activationPod,
+        user: null,
+      })
+    ).toBe(false);
+  });
+
+  it("is still eligible after a single unanswered nudge outside the cap window", async () => {
+    const { authenticator, workspace, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
+    const activationPod = await createActivationPod(authenticator, globalSpace);
+
+    await createNudge(authenticator, {
+      workspace,
+      pod: globalSpace,
+      nudgedAt: new Date(Date.now() - 5 * DAY_MS),
+    });
+
+    expect(
+      await isEligibleForNudge(authenticator, {
+        pod: globalSpace,
+        activationPod,
+        user: null,
+      })
+    ).toBe(true);
+  });
+
   it("is eligible again once the user replies after the most recent nudge", async () => {
     const { workspace, user, globalSpace } = await createResourceTest({
       role: "admin",

@@ -1659,16 +1659,6 @@ const QUERIES: LabeledQuery[] = [
     maxRank: 4,
   },
 
-  // --- workday ---
-  {
-    query: "list workers from Workday",
-    expected: "workday.get_workers",
-  },
-  {
-    query: "list workers in Workday",
-    expected: "workday.get_workers",
-  },
-
   // --- sound_studio ---
   {
     query: "generate a sound effect from a text description",
@@ -1786,6 +1776,19 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "show active incidents on the status page",
     expected: "statuspage.list_incidents",
+  },
+  // --- shopify ---
+  {
+    query: "list products in Shopify store",
+    expected: "shopify.list_products",
+  },
+  {
+    query: "list customers in Shopify store",
+    expected: "shopify.list_customers",
+  },
+  {
+    query: "list orders in Shopify store",
+    expected: "shopify.list_orders",
   },
 ];
 

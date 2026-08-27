@@ -1,3 +1,4 @@
+import { deleteConversationWindowCheckpoints } from "@app/lib/api/assistant/conversation_rendering/conversation_window_checkpoint";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
 import type { Authenticator } from "@app/lib/auth";
@@ -7,7 +8,6 @@ import {
   AgentMessageFeedbackModel,
   AgentMessageModel,
   CompactionMessageModel,
-  MentionModel,
   MessageModel,
   MessageReactionModel,
   UserMessageModel,
@@ -25,6 +25,7 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { MentionResource } from "@app/lib/resources/mention_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import {
   ProjectTaskConversationModel,
@@ -88,11 +89,8 @@ async function destroyMessageRelatedResources(
       messageId: messageIds,
     },
   });
-  await MentionModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      messageId: messageIds,
-    },
+  await MentionResource.deleteByMessageModelIds(auth, {
+    messageModelIds: messageIds,
   });
   // TODO: We should also destroy the parent message
   await MessageModel.destroy({
@@ -257,6 +255,10 @@ export async function destroyConversation(
     await getPrivateUploadBucket().deleteByPrefix(
       `${getContentFragmentBaseCloudStorageForWorkspace(owner.sId)}${conversation.sId}/`
     );
+    await deleteConversationWindowCheckpoints({
+      workspaceId: owner.sId,
+      conversationId: conversation.sId,
+    });
 
     const messages = await MessageModel.findAll({
       attributes: [

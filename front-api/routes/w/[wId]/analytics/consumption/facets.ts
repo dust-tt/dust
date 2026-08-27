@@ -2,23 +2,24 @@ import type { GetConsumptionFacetsResponse } from "@app/lib/api/analytics/consum
 import { fetchConsumptionFacets } from "@app/lib/api/analytics/consumption/facets";
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import {
-  ConsumptionBodySchema,
+  ConsumptionFacetsBodySchema,
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
-import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
+import { CONSUMPTION_SCOPE_DIMENSIONS } from "@app/lib/api/analytics/consumption/scope";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { consumptionAnalyticsApp } from "./context";
 
 // Mounted at /api/w/:wId/analytics/consumption/facets.
-const app = workspaceApp();
+// Also mounted at /api/w/:wId/me/analytics/consumption/facets.
+const app = consumptionAnalyticsApp();
 
 /**
  * @swagger
  * /api/w/{wId}/analytics/consumption/facets:
  *   post:
  *     summary: List consumption analytics facets
- *     description: Lists current workspace entities and historical indexed values present in the selected period for each consumption dimension. A facet is disabled when it has no indexed document in that period after applying every active filter except the facet's own dimension.
+ *     description: Lists current entities and historical indexed values present in the selected period for each consumption dimension. The workspace route requires a manager; the /me route is restricted server-side to the authenticated member; the agent route is restricted server-side to workspace managers and editors of the selected agent. A facet is disabled when it has no indexed document in that period after applying every active filter except the facet's own dimension.
  *     tags:
  *       - Private Analytics
  *     parameters:
@@ -42,6 +43,17 @@ const app = workspaceApp();
  *                 type: integer
  *                 minimum: 1
  *                 default: 30
+ *               scope:
+ *                 type: string
+ *                 enum: [all, automations]
+ *                 default: all
+ *                 description: Restricts which documents the facets are computed over. `automations` counts only trigger-originated runs.
+ *               dimensions:
+ *                 type: array
+ *                 description: Dimensions to compute facets for. Defaults to every dimension. Omitted dimensions come back as empty arrays. The personal route omits user and group dimensions, and the agent route omits the agent dimension.
+ *                 items:
+ *                   type: string
+ *                   enum: [agent, user, api_key, group, model, tool, skill, source]
  *               filter:
  *                 type: object
  *                 description: Map of consumption dimensions to selected values.
@@ -137,25 +149,49 @@ const app = workspaceApp();
  *                       items:
  *                         $ref: '#/components/schemas/PrivateConsumptionFacet'
  *       403:
- *         description: Manager role required
+ *         description: Not authorized for this analytics view
  *       400:
  *         description: Invalid request body
  *       500:
  *         description: Failed to retrieve consumption facets
+ * /api/w/{wId}/me/analytics/consumption/facets:
+ *   $ref: '#/paths/~1api~1w~1{wId}~1analytics~1consumption~1facets'
+ * /api/w/{wId}/assistant/agent_configurations/{aId}/analytics/consumption/facets:
+ *   $ref: '#/paths/~1api~1w~1{wId}~1analytics~1consumption~1facets'
  */
 app.post(
   "/",
-  ensureIsManager(),
-  validate("json", ConsumptionBodySchema),
+  validate("json", ConsumptionFacetsBodySchema),
   async (ctx): HandlerResult<GetConsumptionFacetsResponse> => {
     const auth = ctx.get("auth");
-    const { filter, ...periodInput } = ctx.req.valid("json");
+    const userId = ctx.get("consumptionUserId");
+    const agentId = ctx.get("consumptionAgentId");
+    const { filter, scope, dimensions, ...periodInput } = ctx.req.valid("json");
     const period = await resolveConsumptionPeriod(
       auth,
       toConsumptionPeriodInput(periodInput)
     );
 
-    const result = await fetchConsumptionFacets(auth, { period, filter });
+    const result = await fetchConsumptionFacets(auth, {
+      period,
+      filter: {
+        ...filter,
+        ...(userId ? { users: [userId] } : {}),
+        ...(agentId ? { agents: [agentId] } : {}),
+      },
+      scope,
+      dimensions: userId
+        ? (dimensions ?? CONSUMPTION_SCOPE_DIMENSIONS).filter(
+            (dimension) => dimension !== "user" && dimension !== "group"
+          )
+        : agentId
+          ? (dimensions ?? CONSUMPTION_SCOPE_DIMENSIONS).filter(
+              (dimension) => dimension !== "agent"
+            )
+          : dimensions,
+      userId,
+      agentId,
+    });
     if (result.isErr()) {
       return apiError(
         ctx,

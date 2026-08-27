@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import type { ActivationPodKind } from "@app/lib/models/activation/activation_pod";
 import type { ActivationRecommendationStatus } from "@app/lib/models/activation/activation_recommendation";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
@@ -27,21 +28,39 @@ export interface GetActivationRecommendationsResponseBody {
 
 export interface GetActivationPodResponseBody {
   podId: string | null;
+  kind: ActivationPodKind | null;
 }
 
 export async function getActivationPodInfo(
-  auth: Authenticator
+  auth: Authenticator,
+  { podId }: { podId?: string } = {}
 ): Promise<GetActivationPodResponseBody> {
-  const activationPod = await ActivationPodResource.fetchByUser(auth);
-  if (!activationPod) {
-    return { podId: null };
+  if (podId) {
+    const space = await SpaceResource.fetchById(auth, podId);
+    if (!space) {
+      return { podId: null, kind: null };
+    }
+    const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
+    return {
+      podId: activationPod ? space.sId : null,
+      kind: activationPod?.kind ?? null,
+    };
   }
 
+  const allPods = await ActivationPodResource.listByUser(auth);
+  const learningPod = allPods.find((p) => p.kind === "learning") ?? null;
+  if (!learningPod) {
+    return { podId: null, kind: null };
+  }
+  const [pod] = await SpaceResource.fetchByModelIds(auth, [
+    learningPod.spaceId,
+  ]);
+  if (!pod) {
+    return { podId: null, kind: null };
+  }
   return {
-    podId: SpaceResource.modelIdToSId({
-      id: activationPod.spaceId,
-      workspaceId: activationPod.workspaceId,
-    }),
+    podId: pod.sId,
+    kind: "learning",
   };
 }
 
@@ -57,12 +76,18 @@ export async function listActivationRecommendationsForUser(
   }: { podId?: string; status?: ActivationRecommendationStatus } = {}
 ): Promise<ActivationRecommendationForUserType[]> {
   let spaceModelId: number | undefined;
+  let activationPodModelId: number | undefined;
   if (podId !== undefined) {
     const space = await SpaceResource.fetchById(auth, podId);
     if (!space) {
       return [];
     }
     spaceModelId = space.id;
+    const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
+    if (!activationPod) {
+      return [];
+    }
+    activationPodModelId = activationPod.id;
   }
 
   const recs = await ActivationRecommendationResource.listByUserAndStatus(
@@ -72,6 +97,7 @@ export async function listActivationRecommendationsForUser(
       limit: status === "executed" ? EXECUTED_LIMIT : SUGGESTED_LIMIT,
       sinceDaysAgo: NEXT_STEPS_WINDOW_DAYS,
       spaceModelId,
+      activationPodModelId,
     }
   );
 
@@ -103,11 +129,20 @@ export async function updateActivationRecommendationForUser(
     auth,
     recommendationId
   );
-  // fetchById only scopes to the workspace, so also enforce ownership: a
-  // recommendation may only be updated by the user it belongs to. Return
-  // "not_found" rather than a distinct error so we don't leak the existence of
-  // another user's recommendation.
-  if (!rec || rec.userId !== auth.getNonNullableUser().id) {
+  if (!rec) {
+    return "not_found";
+  }
+
+  const [activationPod] = rec.activationPodId
+    ? await ActivationPodResource.fetchByModelIds(auth, [rec.activationPodId])
+    : [];
+  const [space] = activationPod
+    ? await SpaceResource.fetchByModelIds(auth, [activationPod.spaceId])
+    : [];
+  const canUpdate = rec.activationPodId
+    ? Boolean(space?.canAdministrate(auth))
+    : rec.userId === auth.getNonNullableUser().id;
+  if (!canUpdate) {
     return "not_found";
   }
 

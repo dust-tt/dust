@@ -21,12 +21,10 @@ import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversati
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
@@ -43,6 +41,7 @@ import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
 import type { SpaceCategoryInfo } from "@app/types/api/spaces";
 import { SKILL_STATUSES } from "@app/types/assistant/skill_configuration";
 import {
+  isManageableGroupKind,
   PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
   SPACE_GROUP_PREFIX,
@@ -578,14 +577,9 @@ export async function hardDeleteSpace(
   }
 
   await withTransaction(async (t) => {
-    // Delete all spaces groups.
-    const groupReferences = space.groups.filter(
-      (group) => !space.isRegular() || !group.isGlobal()
-    );
-    const groups = await space.fetchGroupResources(auth, {
-      groupReferences,
-      transaction: t,
-    });
+    // Delete only the space's own auto-created (regular_auto) groups. The workspace global group and
+    // provisioned (IdP-owned) groups are shared and must never be deleted with a space.
+    const groups = await space.fetchRegularAutoGroups(auth, t);
     for (const group of groups) {
       const res = await group.delete(auth, { transaction: t });
       if (res.isErr()) {
@@ -689,14 +683,6 @@ export async function createSpaceAndGroup(
       );
     }
 
-    // Trim the name to prevent issues with leading/trailing whitespace
-    if (spaceKind === "regular" && !isRestricted) {
-      assert(
-        managementMode === "manual",
-        "Unrestricted regular spaces must use manual management mode."
-      );
-    }
-
     const nameAvailable = await SpaceResource.isNameAvailable(auth, name, t);
     if (!nameAvailable) {
       return new Err(
@@ -774,21 +760,10 @@ export async function createSpaceAndGroup(
     const memberGroups: GroupResource[] = [membersGroup];
 
     if (!isRestricted) {
-      // Set the global group as viewer for non-restricted project spaces
+      // Include the global group so the space's grants mark it as open (viewer for projects,
+      // member for regular spaces); the grant is written by `writeGroupPermissions` below.
       assert(globalGroup, "Global group must exist");
       memberGroups.push(globalGroup);
-      await GroupSpaceModel.create(
-        {
-          kind: space.isProject() ? "project_viewer" : "member",
-          groupId: globalGroup.id,
-          groupKind: globalGroup.kind,
-          vaultId: space.id,
-          workspaceId: owner.id,
-        },
-        {
-          transaction: t,
-        }
-      );
     }
 
     // Handle member-based space creation
@@ -852,14 +827,18 @@ export async function createSpaceAndGroup(
           }
 
           const selectedGroups = selectedGroupsResult.value;
-          memberGroups.push(...selectedGroups);
-          for (const selectedGroup of selectedGroups) {
-            await GroupSpaceMemberResource.makeNew(auth, {
-              group: selectedGroup,
-              space,
-              transaction: t,
-            });
+          // `fetchByIds` only checks that the caller can read the groups, not what they are. Keep
+          // internal groups (global, system, another space's regular_auto, agent/skill editors) out
+          // of a space's group-managed access.
+          if (selectedGroups.some((g) => !isManageableGroupKind(g.kind))) {
+            return new Err(
+              new DustError(
+                "invalid_request_error",
+                "Only provisioned and manual groups can be given access to a space."
+              )
+            );
           }
+          memberGroups.push(...selectedGroups);
         }
         break;
       default:

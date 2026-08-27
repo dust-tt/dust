@@ -15,14 +15,18 @@ export type BatchMemberUpdate =
   | { action: "revoke" };
 
 interface BatchMemberResultRow {
-  email: string;
+  identifier: string;
+  email?: string;
   status: string;
   error?: string;
 }
 
 function isResultRow(row: unknown): row is BatchMemberResultRow {
   return (
-    typeof row === "object" && row !== null && "email" in row && "status" in row
+    typeof row === "object" &&
+    row !== null &&
+    "identifier" in row &&
+    "status" in row
   );
 }
 
@@ -36,17 +40,18 @@ export function useBatchUpdateMembers({ owner }: { owner: WorkspaceType }) {
     },
   });
 
-  // Runs the plugin for the given emails and returns the per-member outcomes,
-  // or an Err with the plugin-level error message.
+  // Runs the plugin for the given user IDs and returns the per-member outcomes,
+  // or an Err with the plugin-level error message. Passing user IDs (rather than
+  // emails) targets the exact account even when several share an email.
   const runBatchUpdate = async (
     update: BatchMemberUpdate,
-    emails: string[]
+    userIds: string[]
   ): Promise<Result<BatchMemberResultRow[], string>> => {
     const res = await doRunPlugin({
       action: [update.action],
       role: update.action === "update_role" ? [update.role] : [],
       seatType: update.action === "update_seat" ? [update.seatType] : [],
-      emails: emails.join("\n"),
+      members: userIds.join("\n"),
       immediate: true,
     });
     if (res.isErr()) {

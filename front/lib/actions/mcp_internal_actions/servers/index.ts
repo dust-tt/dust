@@ -41,7 +41,6 @@ import { default as imageGenerationServer } from "@app/lib/api/actions/servers/i
 import { default as includeDataServer } from "@app/lib/api/actions/servers/include_data";
 import { default as interactiveContentServer } from "@app/lib/api/actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/api/actions/servers/jira";
-import { default as jitTestingServer } from "@app/lib/api/actions/servers/jit_testing";
 import { default as lumaServer } from "@app/lib/api/actions/servers/luma";
 import { default as microsoftDriveServer } from "@app/lib/api/actions/servers/microsoft_drive";
 import { default as microsoftExcelServer } from "@app/lib/api/actions/servers/microsoft_excel";
@@ -56,7 +55,6 @@ import { default as planModeServer } from "@app/lib/api/actions/servers/plan_mod
 import { default as podManagerServer } from "@app/lib/api/actions/servers/pod_manager";
 import { default as podTasksServer } from "@app/lib/api/actions/servers/pod_tasks";
 import { default as pokeServer } from "@app/lib/api/actions/servers/poke";
-import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as productboardServer } from "@app/lib/api/actions/servers/productboard";
 import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
 import { default as runAgentServer } from "@app/lib/api/actions/servers/run_agent";
@@ -87,9 +85,8 @@ import { default as valtownServer } from "@app/lib/api/actions/servers/val_town"
 import { default as vantaServer } from "@app/lib/api/actions/servers/vanta";
 import { default as wakeupsServer } from "@app/lib/api/actions/servers/wakeups";
 import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
-import { default as workdayServer } from "@app/lib/api/actions/servers/workday";
 import { default as workspaceAnalyticsServer } from "@app/lib/api/actions/servers/workspace_analytics";
-import { default as workspacePeopleServer } from "@app/lib/api/actions/servers/workspace_people";
+import { default as workspaceManagementServer } from "@app/lib/api/actions/servers/workspace_management";
 import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -150,10 +147,6 @@ export async function getInternalMCPServer(
       return interactiveContentServer(auth, toolContext);
     case "query_tables_v2":
       return tablesQueryServerV2(auth, toolContext);
-    case "primitive_types_debugger":
-      return primitiveTypesDebuggerServer(auth, toolContext);
-    case "jit_testing":
-      return jitTestingServer(auth, toolContext);
     case "common_utilities":
       return commonUtilitiesServer(auth, toolContext);
     case "web_search_&_browse":
@@ -266,6 +259,8 @@ export async function getInternalMCPServer(
       return zendeskServer(auth, toolContext);
     case "workspace_analytics":
       return workspaceAnalyticsServer(auth, toolContext);
+    case "workspace_management":
+      return workspaceManagementServer(auth, toolContext);
     case "skill_management":
       return skillManagementServer(auth, toolContext);
     case "skill_authoring":
@@ -296,12 +291,8 @@ export async function getInternalMCPServer(
       return wakeupsServer(auth, toolContext);
     case "plan_mode":
       return planModeServer(auth, toolContext);
-    case "workday":
-      return workdayServer(auth, toolContext);
     case "user_analytics":
       return userAnalyticsServer(auth, toolContext);
-    case "workspace_people":
-      return workspacePeopleServer(auth, toolContext);
     case "user_memory":
       return userMemoryServer(auth, toolContext);
     case "activation_recommendations":

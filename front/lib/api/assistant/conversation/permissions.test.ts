@@ -11,7 +11,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -48,15 +47,11 @@ describe("canAgentBeUsedInProjectConversation", () => {
       ReturnType<Authenticator["getNonNullableUser"]>["toJSON"]
     >
   ) {
-    const regularGroupReference = space.groups.find((group) =>
-      group.isRegularAuto()
-    );
-    if (!regularGroupReference) {
+    const [regularGroup] =
+      await space.fetchRegularAutoGroups(internalAdminAuth);
+    if (!regularGroup) {
       throw new Error("Expected a regular group on the space");
     }
-    const [regularGroup] = await space.fetchGroupResources(internalAdminAuth, {
-      groupReferences: [regularGroupReference],
-    });
     const addRes = await regularGroup.dangerouslyAddMember(internalAdminAuth, {
       user: userJson,
     });
@@ -244,7 +239,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
       }
 
       expect(openProjectHydrated.isProject()).toBe(true);
-      expect(openProjectHydrated.isOpen()).toBe(true);
+      expect(await openProjectHydrated.isOpen(auth)).toBe(true);
 
       const manualMembers =
         await openProjectHydrated.fetchDistinctActiveManualGroupMembers(auth);
@@ -425,7 +420,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
       faker.string.alphanumeric(8)
     );
     await GroupFactory.withMembers(internalAdminAuth, provisionedGroup, [user]);
-    await GroupSpaceFactory.associate(restrictedSpace, provisionedGroup);
+    await SpaceFactory.attachGroup(restrictedSpace, provisionedGroup);
 
     await auth.refresh();
 
@@ -740,26 +735,10 @@ describe("updateConversationRequirements", () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
 
-    const projectSpaceGroupReference = projectSpace.groups.find((group) =>
-      group.isRegularAuto()
-    );
-    const anotherProjectSpaceGroupReference = anotherProjectSpace.groups.find(
-      (group) => group.isRegularAuto()
-    );
-    const [projectSpaceGroup] = await projectSpace.fetchGroupResources(
-      internalAdminAuth,
-      {
-        groupReferences: projectSpaceGroupReference
-          ? [projectSpaceGroupReference]
-          : [],
-      }
-    );
+    const [projectSpaceGroup] =
+      await projectSpace.fetchRegularAutoGroups(internalAdminAuth);
     const [anotherProjectSpaceGroup] =
-      await anotherProjectSpace.fetchGroupResources(internalAdminAuth, {
-        groupReferences: anotherProjectSpaceGroupReference
-          ? [anotherProjectSpaceGroupReference]
-          : [],
-      });
+      await anotherProjectSpace.fetchRegularAutoGroups(internalAdminAuth);
 
     if (projectSpaceGroup) {
       const addRes = await projectSpaceGroup.dangerouslyAddMember(
@@ -1386,15 +1365,10 @@ describe("rebuildConversationRequirements", () => {
     const userJson = auth.getNonNullableUser().toJSON();
 
     for (const space of [projectSpace, regularSpace, anotherRegularSpace]) {
-      const groupReference = space.groups.find((group) =>
-        group.isRegularAuto()
-      );
-      if (!groupReference) {
+      const [group] = await space.fetchRegularAutoGroups(internalAdminAuth);
+      if (!group) {
         continue;
       }
-      const [group] = await space.fetchGroupResources(internalAdminAuth, {
-        groupReferences: [groupReference],
-      });
       const addRes = await group.dangerouslyAddMember(internalAdminAuth, {
         user: userJson,
       });

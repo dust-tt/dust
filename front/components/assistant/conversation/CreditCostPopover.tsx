@@ -3,11 +3,17 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { useAgentMessageConsumption } from "@app/hooks/conversations/useAgentMessageConsumption";
 import { formatCreditValue, toolUsageLabel } from "@app/lib/client/credits";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
 import type { AgentMessageConsumptionToolDetails } from "@app/types/assistant/agent_message_consumption";
 import {
   Button,
   Chip,
   Icon,
+  LoadingBlock,
   Plus,
   PopoverContent,
   PopoverRoot,
@@ -97,11 +103,9 @@ export function CreditCostPopover({
       disabled: !hasOpened,
     });
 
-  const ownCredits = consumption?.billedCredits ?? credits ?? 0;
-  const childCredits =
-    consumption?.subAgentBilledCredits ?? subAgentCredits ?? 0;
   const totalCredits =
-    consumption?.totalBilledCredits ?? ownCredits + childCredits;
+    consumption?.totalBilledCredits ??
+    (consumption?.billedCredits ?? credits ?? 0) + (subAgentCredits ?? 0);
   const details = consumption?.details;
 
   if (totalCredits <= 0) {
@@ -132,6 +136,16 @@ export function CreditCostPopover({
         if (!open) {
           return;
         }
+        trackEvent({
+          area: TRACKING_AREAS.ANALYTICS,
+          object: "message_breakdown",
+          action: TRACKING_ACTIONS.VIEW,
+          extra: {
+            workspace_id: workspaceId,
+            conversation_id: conversationId,
+            message_id: messageId,
+          },
+        });
         if (hasOpened) {
           void mutateConsumption();
         } else {
@@ -182,7 +196,7 @@ export function CreditCostPopover({
               className="flex min-h-9 items-center text-sm text-muted-foreground"
             >
               <span className="flex-1">Loading details</span>
-              <span className="h-3 w-8 animate-pulse rounded bg-muted-foreground/20" />
+              <LoadingBlock className="h-3 w-8" />
             </div>
           ) : details ? (
             <dl>
@@ -191,13 +205,6 @@ export function CreditCostPopover({
                 value={formatCreditValue(details.agentWorkCredits)}
                 icon={InternalActionIcons.ActionBrainIcon}
               />
-              {childCredits > 0 && (
-                <CreditDetailRow
-                  label="Sub-agents"
-                  value={formatCreditValue(childCredits)}
-                  icon={InternalActionIcons.ActionRobotIcon}
-                />
-              )}
               {visibleTools.map((tool) => (
                 <CreditDetailRow
                   key={`${tool.internalMCPServerName ?? "external"}:${tool.toolName}:${tool.label}`}

@@ -18,7 +18,7 @@ import type {
   SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AttachmentChip,
@@ -34,7 +34,7 @@ import { useCallback, useMemo, useState } from "react";
 interface SkillInfoTabProps {
   skill: SkillType & { relations?: Pick<SkillRelations, "childSkills"> };
   owner: LightWorkspaceType;
-  spaces?: SpaceType[];
+  spaces?: EnrichedSpaceType[];
   showDescription?: boolean;
 }
 

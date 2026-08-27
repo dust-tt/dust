@@ -341,6 +341,9 @@ const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
 const FrameSlideshowContentTypeSchema = z.literal(
   "application/vnd.dust.frame.slideshow"
 );
+const FrameV2ContentTypeSchema = z.literal(
+  "application/vnd.dust.frame.v2+json"
+);
 const SandboxFunctionContentTypeSchema = z.literal(
   "application/vnd.dust.sandbox.function"
 );
@@ -349,6 +352,7 @@ const ActionGeneratedFileContentTypeSchema = z.union([
   SupportedFileContentFragmentTypeSchema,
   FrameContentTypeSchema,
   FrameSlideshowContentTypeSchema,
+  FrameV2ContentTypeSchema,
   SandboxFunctionContentTypeSchema,
 ]);
 
@@ -741,26 +745,26 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "allow_sso"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
-  | "anthropic_cache_diagnostics"
+  | "archive_inactive_agents"
   | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "claude_fable_5_feature"
   | "databricks_tool"
   | "deepseek_feature"
-  | "dev_mcp_actions"
   | "exa_people_and_company"
   | "disable_computer_feature"
   | "disable_formatting_prompt"
   | "disable_run_logs"
   | "discord_bot"
   | "dummy_feature_for_flag_testing"
-  | "dust_agent_gpt_5_6_luna_default"
   | "dust_agent_sonnet_5_default"
   | "dust_filesystem"
   | "dust_internal_dangerous_in_cluster_mcp_servers"
   | "dust_internal_global_agents"
+  | "dust_pod_goal"
   | "fireworks_new_model_feature"
+  | "frames_v2"
   | "google_sheets_tool"
   | "gpt_5_6_terra_long_context"
   | "group_permissions_shadow"
@@ -797,10 +801,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "shopify_tool"
   | "show_debug_tools"
   | "slack_message_splitting"
+  | "stateful_conversation_window"
   | "run_tools_from_prompt"
   | "usage_data_api"
   | "usage_page_read_only"
-  | "enable_analytics_consumption"
   | "pricing_groups"
   | "workspace_analytics"
   | "xai_feature"
@@ -808,20 +812,19 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "collapsible_messages"
   | "conversation_consumption_details"
   | "use_dust_keys"
-  | "browser_extension_mcp_tools"
   | "sensitivity_labels"
   | "use_vertex_for_supported_models"
   | "live_speech_to_text"
   | "workspace_default_agent"
   | "whitelabel_frames"
-  | "workday_mcp"
   | "user_memory"
   | "similar_agents_check"
   | "enforce_user_spend_limit_rate_cap"
   | "enforce_premium_model_message_limit"
   | "editable_tool_inputs"
   | "skip_free_usage_rate_limit"
-  | "trigger_pool_choice"
+  | "disable_fair_use_awu_limit"
+  | "metronome_aggregated_usage_event"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -3408,6 +3411,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionRobotIcon"
   | "ActionScanIcon"
   | "ActionSpeakIcon"
+  | "ActionStoreIcon"
   | "ActionTableIcon"
   | "ActionTimeIcon"
   | "AdomikLogo"
@@ -3462,6 +3466,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SalesforceLogo"
   | "SemrushLogo"
   | "SalesloftLogo"
+  | "ShopifyLogo"
   | "SlabLogo"
   | "SlackLogo"
   | "SnowflakeLogo"

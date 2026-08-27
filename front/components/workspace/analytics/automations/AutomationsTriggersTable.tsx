@@ -1,20 +1,22 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { getIcon } from "@app/components/resources/resources_icons";
-import { TableSelectionBanner } from "@app/components/shared/TableSelectionBanner";
+import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
 import { AutomationsFilterPanel } from "@app/components/workspace/analytics/automations/AutomationsFilterPanel";
 import { AutomationsFilterSummary } from "@app/components/workspace/analytics/automations/AutomationsFilterSummary";
 import type { TriggerRowData as BaseTriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
 import { AutomationsTriggersRowsTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
+import type { PoolRowFields } from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
+import {
+  agentColumn,
+  creditsColumn,
+  detailsColumn,
+  nameColumn,
+  poolColumn,
+  typeColumn,
+} from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
 import { BulkTriggerPoolModal } from "@app/components/workspace/analytics/automations/BulkTriggerPoolModal";
-import { POOL_OPTIONS } from "@app/components/workspace/analytics/automations/trigger_pool_options";
 import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { toAutomationsTriggersFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
-import {
-  AvatarNameCell,
-  CreditsCell,
-  EntityTooltipCard,
-} from "@app/components/workspace/analytics/creditsTableCells";
 import { useAutomationsTriggers } from "@app/hooks/useAutomationsTriggers";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
@@ -27,14 +29,12 @@ import type {
 } from "@app/lib/api/analytics/automations/schema";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import type { BulkTriggerSelection } from "@app/lib/api/triggers/bulk_selection";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   useBulkUpdateTriggerExecutionMode,
   useUpdateTriggerExecutionMode,
   useUpdateTriggerStatus,
 } from "@app/lib/swr/agent_triggers";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
-import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type {
   TriggerExecutionMode,
   TriggerStatus,
@@ -45,17 +45,8 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  ContentMessageAction,
   createSelectionColumn,
   DataTable,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Icon,
   Pagination,
   SearchInput,
   SliderToggle,
@@ -67,83 +58,16 @@ import type {
   RowSelectionState,
 } from "@tanstack/react-table";
 import { flexRender } from "@tanstack/react-table";
-import type { ComponentProps, Dispatch, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
 
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const TRIGGERS_PAGE_SIZE = 25;
 
-interface TriggerRowData extends BaseTriggerRowData {
+interface TriggerRowData extends BaseTriggerRowData, PoolRowFields {
   displayStatus: TriggerStatus;
   isStatusPending: boolean;
   onToggleStatus: () => void;
-  displayExecutionMode: TriggerExecutionMode;
-  isExecutionModePending: boolean;
-  onSetExecutionMode: (executionMode: TriggerExecutionMode) => void;
-}
-
-function PoolCell({ row }: { row: TriggerRowData }) {
-  const { hasPermission } = useWorkspacePermissions();
-  const isWorkspacePool = row.displayExecutionMode === "workspace_pool";
-  const canSetPool = hasPermission("use_workspace_pool", "trigger");
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="xs"
-          isSelect
-          disabled={row.isExecutionModePending || !canSetPool}
-          className={isWorkspacePool ? "text-highlight" : undefined}
-          label={isWorkspacePool ? "Workspace" : "Member"}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {POOL_OPTIONS.map(({ value, label }) => (
-          <DropdownMenuItem
-            key={value}
-            label={label}
-            onClick={() => row.onSetExecutionMode(value)}
-          />
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function TypeCell({ trigger }: { trigger: AutomationTriggerRow }) {
-  switch (trigger.kind) {
-    case "schedule":
-      return (
-        <TypeLabel
-          visual={Clock}
-          label={trigger.scheduleDescription || "Schedule"}
-        />
-      );
-    case "webhook":
-      if (trigger.webhookSourceRestricted) {
-        return (
-          <TypeLabel
-            visual={getIcon("ActionLockIcon")}
-            label="This webhook lives in a space you don't have access to."
-          />
-        );
-      }
-      return (
-        <TypeLabel
-          visual={getIcon(normalizeWebhookIcon(trigger.webhookIcon))}
-          label={
-            trigger.webhookSourceName
-              ? `${trigger.webhookSourceName} webhook`
-              : "Webhook"
-          }
-        />
-      );
-    default:
-      assertNeverAndIgnore(trigger.kind);
-      return null;
-  }
 }
 
 function RunningCell({ row }: { row: TriggerRowData }) {
@@ -186,65 +110,6 @@ function RunningCell({ row }: { row: TriggerRowData }) {
         />
       );
   }
-}
-
-function TypeLabel({
-  visual,
-  label,
-}: {
-  visual: ComponentProps<typeof Icon>["visual"];
-  label: string;
-}) {
-  return (
-    <Tooltip
-      label={label}
-      tooltipTriggerAsChild
-      trigger={
-        <div className="flex min-w-0 items-center gap-2">
-          <Icon visual={visual} size="xs" className="text-muted-foreground" />
-        </div>
-      }
-    />
-  );
-}
-
-function AgentCell({ agent }: { agent: AutomationTriggerRow["agent"] }) {
-  const content = (
-    <div className="min-w-0">
-      <AvatarNameCell
-        name={agent.name}
-        imageUrl={agent.pictureUrl}
-        size="xxs"
-      />
-    </div>
-  );
-
-  if (!agent.description) {
-    return content;
-  }
-
-  return (
-    <Tooltip
-      label={
-        <EntityTooltipCard
-          avatar={
-            <Avatar
-              name={agent.name}
-              visual={agent.pictureUrl ?? undefined}
-              size="xs"
-            />
-          }
-          name={agent.name}
-          description={agent.description}
-          modelId={agent.modelId}
-          modelDisplayName={agent.modelDisplayName}
-        />
-      }
-      className="p-3"
-      tooltipTriggerAsChild
-      trigger={content}
-    />
-  );
 }
 
 function EditorCell({ editor }: { editor: AutomationTriggerRow["editor"] }) {
@@ -291,28 +156,14 @@ function rowSelectionColumn(): ColumnDef<TriggerRowData> {
 
 function buildColumns({
   expandedRowId,
-  showPoolColumn,
   showSelectionColumn,
 }: {
   expandedRowId: string | null;
-  showPoolColumn: boolean;
   showSelectionColumn: boolean;
 }): ColumnDef<TriggerRowData>[] {
   return [
     ...(showSelectionColumn ? [rowSelectionColumn()] : []),
-    {
-      id: "name",
-      accessorKey: "name",
-      header: "Name",
-      meta: { className: "truncate", headerAlign: "left" },
-      cell: (info) => (
-        <DataTable.CellContent className="w-full justify-start text-left">
-          <span className="truncate text-sm font-semibold">
-            {info.row.original.name}
-          </span>
-        </DataTable.CellContent>
-      ),
-    },
+    nameColumn(),
     {
       id: "editor",
       header: "Editor",
@@ -324,54 +175,10 @@ function buildColumns({
         </DataTable.CellContent>
       ),
     },
-    {
-      id: "agent",
-      header: "Agent",
-      enableSorting: false,
-      meta: { className: "w-44", headerAlign: "left" },
-      cell: (info) => (
-        <DataTable.CellContent className="w-full justify-start">
-          <AgentCell agent={info.row.original.agent} />
-        </DataTable.CellContent>
-      ),
-    },
-    {
-      id: "type",
-      header: "Type",
-      enableSorting: false,
-      meta: { className: "w-8" },
-      cell: (info) => (
-        <DataTable.CellContent className="w-full justify-center">
-          <TypeCell trigger={info.row.original} />
-        </DataTable.CellContent>
-      ),
-    },
-    {
-      id: "credits",
-      accessorKey: "credits",
-      header: "Credits",
-      meta: { className: "w-24", headerAlign: "right" },
-      cell: (info) => (
-        <DataTable.CellContent className="w-full justify-end text-right">
-          <CreditsCell credits={info.row.original.credits} />
-        </DataTable.CellContent>
-      ),
-    },
-    ...(showPoolColumn
-      ? [
-          {
-            id: "pool",
-            header: "Pool",
-            enableSorting: false,
-            meta: { className: "w-28" },
-            cell: (info) => (
-              <DataTable.CellContent className="w-full justify-start">
-                <PoolCell row={info.row.original} />
-              </DataTable.CellContent>
-            ),
-          } satisfies ColumnDef<TriggerRowData>,
-        ]
-      : []),
+    agentColumn(),
+    typeColumn(),
+    creditsColumn(),
+    poolColumn(),
     {
       id: "status",
       header: "Enabled",
@@ -383,31 +190,7 @@ function buildColumns({
         </DataTable.CellContent>
       ),
     },
-    {
-      id: "details",
-      header: "",
-      enableSorting: false,
-      meta: { className: "w-12" },
-      cell: (info) => {
-        const row = info.row.original;
-        const isExpanded = expandedRowId === row.triggerId;
-        return (
-          <DataTable.CellContent className="w-full justify-end">
-            <Button
-              icon={isExpanded ? ChevronUp : ChevronDown}
-              variant="ghost-secondary"
-              size="xs"
-              aria-label={`${isExpanded ? "Collapse" : "Expand"} breakdown for ${row.name}`}
-              aria-expanded={isExpanded}
-              onClick={(event) => {
-                event.stopPropagation();
-                row.onClick();
-              }}
-            />
-          </DataTable.CellContent>
-        );
-      },
-    },
+    detailsColumn(expandedRowId),
   ];
 }
 
@@ -477,11 +260,8 @@ export function AutomationsTriggersTable({
     workspaceId,
   });
 
-  const { hasFeature } = useFeatureFlags();
-  const showPoolColumn = hasFeature("trigger_pool_choice");
   const { hasPermission } = useWorkspacePermissions();
-  const canBulkSetPool =
-    showPoolColumn && hasPermission("use_workspace_pool", "trigger");
+  const canBulkSetPool = hasPermission("use_workspace_pool", "trigger");
 
   const triggersQuery: AutomationTriggersQuery = useMemo(
     () => ({
@@ -704,71 +484,72 @@ export function AutomationsTriggersTable({
   );
 
   return (
-    <div className="rounded-lg border border-border bg-panel-background p-4">
-      <div className="mb-4 flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <SearchInput
-            name="automations-triggers-search"
-            placeholder="Search…"
-            value={inputValue}
-            onChange={setValue}
-            className="flex-1"
-          />
-          <AutomationsFilterPanel
-            owner={owner}
+    <>
+      <div className="rounded-lg border border-border bg-panel-background p-4">
+        <div className="mb-4 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <SearchInput
+              name="automations-triggers-search"
+              placeholder="Search…"
+              value={inputValue}
+              onChange={setValue}
+              className="flex-1"
+            />
+            <AutomationsFilterPanel
+              owner={owner}
+              period={period}
+              filter={filter}
+              onFilterChange={onFilterChange}
+            />
+            <CsvDownloadButton {...csvDownload} size="sm" />
+          </div>
+          <AutomationsFilterSummary
             filter={filter}
             onFilterChange={onFilterChange}
           />
-          <CsvDownloadButton {...csvDownload} size="sm" />
         </div>
-        <AutomationsFilterSummary
-          filter={filter}
-          onFilterChange={onFilterChange}
+        <TriggersTableBody
+          isLoading={isTriggersLoading}
+          isError={!!isTriggersError}
+          search={debouncedValue}
+          rows={rows}
+          totalCount={totalCount}
+          medianRunCount={medianRunCount}
+          medianCostPerRun={medianCostPerRun}
+          pagination={pagination}
+          setPagination={setPagination}
+          workspaceId={workspaceId}
+          period={period}
+          expandedRowId={expandedRowId}
+          showSelectionColumn={canBulkSetPool}
+          rowSelection={selection.rowSelection}
+          onRowSelectionChange={selection.onRowSelectionChange}
         />
-        {canBulkSetPool && (
-          <TableSelectionBanner
-            selectedCount={selection.selectedCount}
-            pageCount={pageTriggerIds.length}
-            totalCount={totalCount}
-            itemLabel="automation"
-            isAllAcrossPagesSelected={selection.isAllAcrossPagesSelected}
-            hasMorePagesToSelect={selection.hasMorePagesToSelect}
-            onSelectAllAcrossPages={selection.selectAllAcrossPages}
-            onClear={selection.clearSelection}
-          >
-            <ContentMessageAction
-              variant="primary"
-              label="Set pool"
-              onClick={() => setIsBulkPoolOpen(true)}
-            />
-          </TableSelectionBanner>
-        )}
+        <BulkTriggerPoolModal
+          isOpen={isBulkPoolOpen}
+          onClose={() => setIsBulkPoolOpen(false)}
+          triggerCount={selection.selectedCount}
+          onValidate={handleBulkExecutionMode}
+        />
       </div>
-      <TriggersTableBody
-        isLoading={isTriggersLoading}
-        isError={!!isTriggersError}
-        search={debouncedValue}
-        rows={rows}
-        totalCount={totalCount}
-        medianRunCount={medianRunCount}
-        medianCostPerRun={medianCostPerRun}
-        pagination={pagination}
-        setPagination={setPagination}
-        workspaceId={workspaceId}
-        period={period}
-        expandedRowId={expandedRowId}
-        showPoolColumn={showPoolColumn}
-        showSelectionColumn={canBulkSetPool}
-        rowSelection={selection.rowSelection}
-        onRowSelectionChange={selection.onRowSelectionChange}
-      />
-      <BulkTriggerPoolModal
-        isOpen={isBulkPoolOpen}
-        onClose={() => setIsBulkPoolOpen(false)}
-        triggerCount={selection.selectedCount}
-        onValidate={handleBulkExecutionMode}
-      />
-    </div>
+      {canBulkSetPool && (
+        <BulkSelectionBar
+          selectedCount={selection.selectedCount}
+          totalCount={totalCount}
+          itemLabel="automation"
+          canSelectAll={selection.hasMorePagesToSelect}
+          onSelectAll={selection.selectAllAcrossPages}
+          onClear={selection.clearSelection}
+        >
+          <Button
+            size="sm"
+            variant="primary"
+            label="Set pool"
+            onClick={() => setIsBulkPoolOpen(true)}
+          />
+        </BulkSelectionBar>
+      )}
+    </>
   );
 }
 
@@ -785,7 +566,6 @@ interface TriggersTableBodyProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   expandedRowId: string | null;
-  showPoolColumn: boolean;
   showSelectionColumn: boolean;
   rowSelection: RowSelectionState;
   onRowSelectionChange: (selection: RowSelectionState) => void;
@@ -804,14 +584,13 @@ function TriggersTableBody({
   workspaceId,
   period,
   expandedRowId,
-  showPoolColumn,
   showSelectionColumn,
   rowSelection,
   onRowSelectionChange,
 }: TriggersTableBodyProps) {
   const columns = useMemo(
-    () => buildColumns({ expandedRowId, showPoolColumn, showSelectionColumn }),
-    [expandedRowId, showPoolColumn, showSelectionColumn]
+    () => buildColumns({ expandedRowId, showSelectionColumn }),
+    [expandedRowId, showSelectionColumn]
   );
 
   const firstRowIndex = pagination.pageIndex * pagination.pageSize;
@@ -857,6 +636,7 @@ function TriggersTableBody({
           columns={columns}
           workspaceId={workspaceId}
           period={period}
+          scope="workspace"
           expandedRowId={expandedRowId}
           medianRunCount={medianRunCount}
           medianCostPerRun={medianCostPerRun}

@@ -287,6 +287,30 @@ async function fetchLatestWorkspaceAgentModels(
 }
 
 /**
+ * When each agent first appeared. Not the active row's `createdAt`: upgrading inserts a new row, so
+ * that date is really the last edit.
+ */
+export async function fetchFirstVersionCreatedAtByAgentId(
+  auth: Authenticator,
+  agentIds: string[]
+): Promise<Map<string, Date>> {
+  if (agentIds.length === 0) {
+    return new Map();
+  }
+
+  const firstVersions = await AgentConfigurationModel.findAll({
+    attributes: ["sId", "createdAt"],
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      sId: { [Op.in]: agentIds },
+      version: 0,
+    },
+  });
+
+  return new Map(firstVersions.map(({ sId, createdAt }) => [sId, createdAt]));
+}
+
+/**
  * Get the latest versions of multiple agents.
  */
 export async function getAgentConfigurations<V extends AgentFetchVariant>(
@@ -410,6 +434,7 @@ type AgentLabel = {
   name: string;
   pictureUrl: string | null;
   model: AgentModelConfigurationType;
+  scope: Exclude<AgentConfigurationScope, "global">;
 };
 
 export async function getAgentLabelsByIds(
@@ -432,6 +457,7 @@ export async function getAgentLabelsByIds(
     authorModelId: agent.authorId,
     pictureUrl: agent.pictureUrl,
     model: getModelForAgentConfiguration(agent),
+    scope: agent.scope,
   }));
 }
 
@@ -1047,9 +1073,14 @@ async function cancelWakeUpsForAgent(
   );
 }
 
+type ArchiveAgentConfigurationOptions = {
+  dangerouslySkipPermissionFiltering?: boolean;
+};
+
 export async function archiveAgentConfiguration(
   auth: Authenticator,
-  agentConfigurationId: string
+  agentConfigurationId: string,
+  { dangerouslySkipPermissionFiltering }: ArchiveAgentConfigurationOptions = {}
 ): Promise<boolean> {
   const owner = auth.workspace();
   if (!owner) {
@@ -1059,6 +1090,7 @@ export async function archiveAgentConfiguration(
   const agentConfig = await getAgentConfiguration(auth, {
     agentId: agentConfigurationId,
     variant: "light",
+    dangerouslySkipPermissionFiltering,
   });
 
   if (!agentConfig) {
@@ -1632,9 +1664,13 @@ export async function updateAgentConfigurationsScope(
     return new Ok(undefined);
   }
 
+  // Admins may publish or unpublish any agent of the workspace, including the ones built on
+  // spaces they cannot read (the manage agents page lists those behind "Show hidden agents").
+  // Changing the scope touches nothing the spaces protect.
   const agentConfigs = await getAgentConfigurations(auth, {
     agentIds,
     variant: "light",
+    dangerouslySkipPermissionFiltering: auth.isAdmin(),
   });
 
   const editableAgents = agentConfigs.filter(

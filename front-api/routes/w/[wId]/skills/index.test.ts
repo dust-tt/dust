@@ -13,7 +13,6 @@ import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -1264,7 +1263,7 @@ describe("POST /api/w/:wId/skills", () => {
     const { auth, workspace, globalGroup } = await setupTest("admin");
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
 
     const childSkill = await SkillFactory.create(auth, {
       name: "Referenced Pod Skill",
@@ -1323,7 +1322,11 @@ describe("POST /api/w/:wId/skills", () => {
     const { auth, workspace, globalGroup } = await setupTest("admin");
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
+    // An open space confers read through the global group's `reader` grant, and an Authenticator
+    // resolves its grants once, at construction. `auth` predates the space, so refresh it before
+    // reading a skill that requests it — `SkillResource` drops skills whose spaces it cannot read.
+    await auth.refresh();
 
     const response = await postSkill(workspace, {
       name: "Skill With Additional Space",
@@ -1385,7 +1388,7 @@ describe("POST /api/w/:wId/skills", () => {
     await grantCreateSkillCapability(workspace, user);
 
     const openPod = await SpaceFactory.project(workspace);
-    await GroupSpaceFactory.associate(openPod, globalGroup);
+    await SpaceFactory.attachGroup(openPod, globalGroup);
 
     const response = await postSkill(workspace, {
       name: "Skill Restricted To Open Pod",
@@ -1481,14 +1484,9 @@ describe("POST /api/w/:wId/skills", () => {
     const { auth, workspace, user } = await setupTest("admin");
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    // A manual group: `SpaceFactory.regular` already attaches a `regular_auto` member group, and
-    // only one `regular_auto` group may hold a given grant tuple.
-    const memberGroup = await GroupFactory.regularManual(
-      workspace,
-      "Tool Space Members"
-    );
+    // Membership on a manually-managed space comes from its own auto-created member group.
+    const [memberGroup] = await regularSpace.fetchRegularAutoGroups(auth);
     await GroupFactory.withMembers(auth, memberGroup, [user]);
-    await GroupSpaceFactory.associate(regularSpace, memberGroup);
     const spaceMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
@@ -1584,14 +1582,9 @@ describe("POST /api/w/:wId/skills", () => {
     const { auth, workspace, user } = await setupTest("admin");
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    // A manual group: `SpaceFactory.regular` already attaches a `regular_auto` member group, and
-    // only one `regular_auto` group may hold a given grant tuple.
-    const memberGroup = await GroupFactory.regularManual(
-      workspace,
-      "Knowledge Space Members"
-    );
+    // Membership on a manually-managed space comes from its own auto-created member group.
+    const [memberGroup] = await regularSpace.fetchRegularAutoGroups(auth);
     await GroupFactory.withMembers(auth, memberGroup, [user]);
-    await GroupSpaceFactory.associate(regularSpace, memberGroup);
     const spaceMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId

@@ -422,6 +422,7 @@ export function useMyUsage({
 
   return {
     myUsage: data?.member ?? null,
+    premiumModelUsage: data?.premiumModelUsage ?? null,
     creditUsageStatus: data?.creditUsageStatus ?? null,
     nextCreditResetAt: data?.member?.nextCreditResetAt ?? null,
     isMyUsageLoading: !error && !data && !disabled,

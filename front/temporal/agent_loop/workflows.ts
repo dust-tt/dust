@@ -15,7 +15,6 @@ import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_lo
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
 import {
   MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
-  RUN_MODEL_MAX_RETRIES,
   TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
 } from "@app/temporal/agent_loop/config";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
@@ -47,6 +46,7 @@ import type {
 import {
   ActivityCancellationType,
   CancellationScope,
+  deprecatePatch,
   patched,
   proxyActivities,
   proxySinks,
@@ -77,22 +77,12 @@ const { runModelAndCreateActionsActivity } = proxyActivities<
 >({
   startToCloseTimeout: "10 minutes",
   heartbeatTimeout: MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
-  retry: {
-    maximumAttempts: RUN_MODEL_MAX_RETRIES,
-    backoffCoefficient: 1,
-  },
-});
-
-const {
-  runModelAndCreateActionsActivity:
-    runModelAndCreateActionsActivityWithExplicitCancellation,
-} = proxyActivities<typeof runModelAndCreateWrapperActivities>({
-  startToCloseTimeout: "10 minutes",
-  heartbeatTimeout: MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
   cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
   retry: {
-    maximumAttempts: RUN_MODEL_MAX_RETRIES,
-    backoffCoefficient: 1,
+    // Attempts past RUN_MODEL_MAX_RETRIES only serve non-model failures (worker-shutdown
+    // interruptions, timeouts, internal errors): real model errors self-limit in run_model
+    // (see shouldSurfaceModelError).
+    maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
   },
 });
 
@@ -481,13 +471,9 @@ async function executeStepIteration({
   shouldContinue: boolean;
   retryWithoutTools?: boolean;
 }> {
-  const runModelActivity = patched(
-    "wait-for-model-activity-before-finalization"
-  )
-    ? runModelAndCreateActionsActivityWithExplicitCancellation
-    : runModelAndCreateActionsActivity;
+  deprecatePatch("wait-for-model-activity-before-finalization");
 
-  const result = await runModelActivity({
+  const result = await runModelAndCreateActionsActivity({
     authType,
     checkForResume: currentStep === startStep, // Only run resume the first time.
     runAgentArgs: agentLoopArgs,
@@ -530,43 +516,24 @@ async function executeStepIteration({
   }
 
   // Execute tools and collect any deferred events.
-  let toolResults: ToolExecutionResult[];
-  if (patched("wait-for-all-tool-activities-before-finalization")) {
-    const toolActivityPromises = actionBlobs.map(({ actionId, retryPolicy }) =>
-      retryPolicy === "no_retry"
-        ? runToolActivityWithExplicitCancellation(authType, {
-            actionId,
-            runAgentArgs: agentLoopArgs,
-            step: currentStep,
-            runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-          })
-        : runRetryableToolActivityWithExplicitCancellation(authType, {
-            actionId,
-            runAgentArgs: agentLoopArgs,
-            step: currentStep,
-            runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-          })
-    );
-    toolResults = await waitForAllPromises(toolActivityPromises);
-  } else {
-    toolResults = await Promise.all(
-      actionBlobs.map(({ actionId, retryPolicy }) =>
-        retryPolicy === "no_retry"
-          ? runToolActivity(authType, {
-              actionId,
-              runAgentArgs: agentLoopArgs,
-              step: currentStep,
-              runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-            })
-          : runRetryableToolActivity(authType, {
-              actionId,
-              runAgentArgs: agentLoopArgs,
-              step: currentStep,
-              runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-            })
-      )
-    );
-  }
+  deprecatePatch("wait-for-all-tool-activities-before-finalization");
+  const toolActivityPromises = actionBlobs.map(({ actionId, retryPolicy }) =>
+    retryPolicy === "no_retry"
+      ? runToolActivityWithExplicitCancellation(authType, {
+          actionId,
+          runAgentArgs: agentLoopArgs,
+          step: currentStep,
+          runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+        })
+      : runRetryableToolActivityWithExplicitCancellation(authType, {
+          actionId,
+          runAgentArgs: agentLoopArgs,
+          step: currentStep,
+          runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+        })
+  );
+  const toolResults: ToolExecutionResult[] =
+    await waitForAllPromises(toolActivityPromises);
 
   // Collect all deferred events from tool executions.
   const allDeferredEvents = toolResults.flatMap(

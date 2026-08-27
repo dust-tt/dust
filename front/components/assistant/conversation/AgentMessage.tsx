@@ -56,6 +56,7 @@ import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { OpenUserAnalyticsEvent } from "@app/lib/analytics/events";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -66,6 +67,7 @@ import { FILE_ID_PATTERN } from "@app/lib/files";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
+import { LinkWrapper } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
@@ -109,6 +111,7 @@ import {
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
+  cn,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -130,62 +133,97 @@ import {
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
-import type { MutableRefObject, ReactElement } from "react";
+import type { MutableRefObject, ReactElement, ReactNode } from "react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
 
-// Popover (not Tooltip) so the "Learn more" link inside stays reachable.
-function PrunedContextChip() {
+interface MessageInfoChipProps {
+  children: ReactNode;
+  label: string;
+  title?: string | null;
+}
+
+// Popover, not Tooltip: on touch there is no hover, and links inside must stay reachable.
+function MessageInfoChip({ children, label, title }: MessageInfoChipProps) {
   return (
     <PopoverRoot>
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="cursor-pointer rounded-lg border-0 bg-transparent p-0 outline-hidden ring-offset-background transition focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
-          aria-label="Context limit reached. Open details."
+          className={cn(
+            "cursor-pointer rounded-lg border-0 bg-transparent p-0 transition",
+            "outline-hidden ring-offset-background",
+            "focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
+          )}
+          aria-label={`${label}. Open details.`}
         >
-          <Chip
-            label="Context limit reached"
-            size="xs"
-            color="primary"
-            icon={InfoCircle}
-          />
+          <Chip label={label} size="xs" color="primary" icon={InfoCircle} />
         </button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
         className="flex w-[min(24rem,calc(100vw-1.5rem))] flex-col gap-2"
       >
-        <div className="font-semibold">
-          This conversation reached its size limit
-        </div>
+        {title && <div className="font-semibold">{title}</div>}
         <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground">
-          <p>
-            Dust had to trim part of the tool output used to generate this
-            message to fit the model&apos;s context window. This usually happens
-            when a search or other tool returns more data than the model can
-            process at once.
-          </p>
-          <p>
-            For best accuracy, first use <code>/compact</code> to summarize this
-            conversation and free up context. If needed, start a fresh
-            conversation or narrow your request.
-          </p>
-          <p>
-            <a
-              href={CONTEXT_WINDOW_DOC_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-foreground"
-            >
-              Learn more
-            </a>
-          </p>
+          {children}
         </div>
       </PopoverContent>
     </PopoverRoot>
+  );
+}
+
+function PremiumDowngradeChip() {
+  return (
+    <MessageInfoChip label="Auto-switched to Standard">
+      <p>
+        You have reached your Premium model limit for the current 7-day window,
+        so Dust ran this message on a Standard model instead.
+      </p>
+      <p>
+        <LinkWrapper
+          href="#personal-usage"
+          className="underline hover:text-foreground"
+          onClick={() => window.dispatchEvent(new OpenUserAnalyticsEvent())}
+        >
+          View your Premium model usage in Analytics
+        </LinkWrapper>
+        .
+      </p>
+    </MessageInfoChip>
+  );
+}
+
+function PrunedContextChip() {
+  return (
+    <MessageInfoChip
+      label="Context limit reached"
+      title="This conversation reached its size limit"
+    >
+      <p>
+        Dust had to trim part of the tool output used to generate this message
+        to fit the model&apos;s context window. This usually happens when a
+        search or other tool returns more data than the model can process at
+        once.
+      </p>
+      <p>
+        For best accuracy, first use <code>/compact</code> to summarize this
+        conversation and free up context. If needed, start a fresh conversation
+        or narrow your request.
+      </p>
+      <p>
+        <a
+          href={CONTEXT_WINDOW_DOC_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-foreground"
+        >
+          Learn more
+        </a>
+      </p>
+    </MessageInfoChip>
   );
 }
 
@@ -993,6 +1031,9 @@ export function AgentMessage({
         })
       : null;
 
+  const isFairUseDowngrade =
+    agentMessage.modelResolutionMethod === "fair_use_downgrade";
+
   const renderName = useCallback(
     () => (
       <span className="inline-flex items-center">
@@ -1118,7 +1159,11 @@ export function AgentMessage({
             name={agentConfiguration.name}
             timestamp={timestamp}
             infoChip={
-              agentMessage.prunedContext ? <PrunedContextChip /> : undefined
+              isFairUseDowngrade ? (
+                <PremiumDowngradeChip />
+              ) : agentMessage.prunedContext ? (
+                <PrunedContextChip />
+              ) : undefined
             }
             completionStatus={undefined}
             renderName={renderName}

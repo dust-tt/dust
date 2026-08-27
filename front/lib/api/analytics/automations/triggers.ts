@@ -101,7 +101,7 @@ type RankedTrigger = {
   credits: number;
 };
 
-function median(values: number[]): number {
+export function median(values: number[]): number {
   if (values.length === 0) {
     return 0;
   }
@@ -113,19 +113,29 @@ function median(values: number[]): number {
 }
 
 /**
- * Trigger kind isn't indexed in the consumption Elasticsearch documents, so
- * a kind filter is resolved to a concrete set of trigger ids up front and
- * applied as a terms filter on TRIGGER_ID_FIELD. Returns null when no kind
- * filter is requested (no restriction).
+ * Neither trigger kind nor execution mode is indexed in the consumption
+ * Elasticsearch documents, so those filters are resolved to a concrete set of
+ * trigger ids up front and applied as a terms filter on TRIGGER_ID_FIELD.
+ * Returns null when neither filter is requested (no restriction).
  */
-async function resolveTriggerIdsForKindFilter(
+async function resolveTriggerIdsForTriggerAttributeFilters(
   auth: Authenticator,
-  kinds: TriggerKind[] | undefined
+  {
+    kinds,
+    executionModes,
+  }: {
+    kinds: TriggerKind[] | undefined;
+    executionModes: TriggerExecutionMode[] | undefined;
+  }
 ): Promise<string[] | null> {
-  if (!kinds || kinds.length === 0) {
+  if (!kinds?.length && !executionModes?.length) {
     return null;
   }
-  const triggers = await TriggerResource.listByWorkspaceAndKinds(auth, kinds);
+  const triggers =
+    await TriggerResource.listByWorkspaceAndKindsAndExecutionModes(auth, {
+      kinds,
+      executionModes,
+    });
   return triggers.map((trigger) => trigger.sId);
 }
 
@@ -158,7 +168,7 @@ async function resolveTriggerIdsForSearch(
  * always compare against the full active set, never just the triggers
  * ranked ahead of it.
  */
-async function fetchTriggersRanking(
+export async function fetchTriggersRanking(
   auth: Authenticator,
   {
     period,
@@ -166,12 +176,14 @@ async function fetchTriggersRanking(
     offset,
     search,
     filter,
+    consumptionScopeFilter = {},
   }: {
     period: ConsumptionPeriod;
     limit: number;
     offset: number;
     search?: string;
     filter?: AutomationTriggersFilter;
+    consumptionScopeFilter?: ConsumptionScopeFilter;
   }
 ): Promise<
   Result<
@@ -184,7 +196,7 @@ async function fetchTriggersRanking(
     ElasticsearchError
   >
 > {
-  const scopeFilter: ConsumptionScopeFilter = {};
+  const scopeFilter: ConsumptionScopeFilter = { ...consumptionScopeFilter };
   if (filter?.agentIds?.length) {
     scopeFilter.agents = filter.agentIds;
   }
@@ -192,10 +204,11 @@ async function fetchTriggersRanking(
     scopeFilter.users = filter.editorIds;
   }
 
-  const triggerIdsForKindFilter = await resolveTriggerIdsForKindFilter(
-    auth,
-    filter?.kinds
-  );
+  const triggerIdsForAttributeFilters =
+    await resolveTriggerIdsForTriggerAttributeFilters(auth, {
+      kinds: filter?.kinds,
+      executionModes: filter?.executionModes,
+    });
   const triggerIdsForSearch = await resolveTriggerIdsForSearch(auth, search);
 
   const query = buildConsumptionScopeQuery({
@@ -204,8 +217,8 @@ async function fetchTriggersRanking(
     endDate: period.endDate,
     filter: scopeFilter,
     extraFilters:
-      triggerIdsForKindFilter !== null
-        ? [{ terms: { [TRIGGER_ID_FIELD]: triggerIdsForKindFilter } }]
+      triggerIdsForAttributeFilters !== null
+        ? [{ terms: { [TRIGGER_ID_FIELD]: triggerIdsForAttributeFilters } }]
         : [],
   });
 
@@ -241,7 +254,7 @@ async function fetchTriggersRanking(
   );
   const ranked = buckets.map((bucket) => ({
     triggerId: String(bucket.key),
-    runCount: Math.round(bucket[RUNS_AGG]?.value ?? 0),
+    runCount: bucket[RUNS_AGG]?.value ?? 0,
     credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
   }));
   // Triggers that never ran have nothing to compare a "how often" or "per
@@ -306,6 +319,77 @@ async function resolveWebhookSources(
   };
 }
 
+export type RankedTriggerWithResource = {
+  trigger: TriggerResource;
+  runCount: number;
+  credits: number;
+};
+
+export async function buildAutomationTriggerRows(
+  auth: Authenticator,
+  page: RankedTriggerWithResource[]
+): Promise<AutomationTriggerRow[]> {
+  const [agentLabels, editors, webhookSources] = await Promise.all([
+    resolveAnalyticsAgentLabels(auth, [
+      ...new Set(page.map(({ trigger }) => trigger.agentConfigurationId)),
+    ]),
+    UserResource.fetchByModelIds([
+      ...new Set(page.map(({ trigger }) => trigger.editor)),
+    ]),
+    resolveWebhookSources(
+      auth,
+      page.map(({ trigger }) => trigger)
+    ),
+  ]);
+  const editorsByModelId = new Map(
+    editors.map((editor) => [editor.id, editor])
+  );
+
+  return page.map(({ trigger, runCount, credits }) => {
+    const agentLabel = agentLabels.get(trigger.agentConfigurationId);
+    const editor = editorsByModelId.get(trigger.editor);
+    const webhookSource = trigger.webhookSourceViewId
+      ? webhookSources.labels.get(trigger.webhookSourceViewId)
+      : undefined;
+    const triggerJSON = trigger.toJSON();
+
+    return {
+      triggerId: trigger.sId,
+      name: trigger.name,
+      kind: trigger.kind,
+      status: trigger.status,
+      agent: {
+        agentId: trigger.agentConfigurationId,
+        name: agentLabel?.name ?? trigger.agentConfigurationId,
+        pictureUrl: agentLabel?.pictureUrl ?? null,
+        description: agentLabel?.description ?? null,
+        modelId: agentLabel?.modelId ?? null,
+        modelDisplayName: agentLabel?.modelDisplayName ?? null,
+      },
+      editor: {
+        name: getUserDisplayName(editor),
+        email: editor?.email ?? null,
+        pictureUrl: editor?.imageUrl ?? null,
+      },
+      scheduleDescription: isScheduleTrigger(triggerJSON)
+        ? describeScheduleConfig(triggerJSON.configuration)
+        : null,
+      webhookSourceName: webhookSource?.name ?? null,
+      // Restricted means the view still exists but the caller lacks read
+      // access to its space — as opposed to a deleted/missing view, which
+      // falls back to a generic "Webhook" label instead.
+      webhookSourceRestricted:
+        !webhookSource &&
+        !!trigger.webhookSourceViewId &&
+        webhookSources.existingIds.has(trigger.webhookSourceViewId),
+      webhookIcon: webhookSource?.icon ?? null,
+      runCount,
+      credits,
+      executionMode: trigger.executionMode,
+    };
+  });
+}
+
 export async function fetchAutomationTriggers(
   auth: Authenticator,
   {
@@ -352,65 +436,7 @@ export async function fetchAutomationTriggers(
     })
   );
 
-  const [agentLabels, editors, webhookSources] = await Promise.all([
-    resolveAnalyticsAgentLabels(auth, [
-      ...new Set(page.map(({ trigger }) => trigger.agentConfigurationId)),
-    ]),
-    UserResource.fetchByModelIds([
-      ...new Set(page.map(({ trigger }) => trigger.editor)),
-    ]),
-    resolveWebhookSources(
-      auth,
-      page.map(({ trigger }) => trigger)
-    ),
-  ]);
-  const editorsByModelId = new Map(
-    editors.map((editor) => [editor.id, editor])
-  );
-
-  const rows = page.map(({ trigger, runCount, credits }) => {
-    const agentLabel = agentLabels.get(trigger.agentConfigurationId);
-    const editor = editorsByModelId.get(trigger.editor);
-    const webhookSource = trigger.webhookSourceViewId
-      ? webhookSources.labels.get(trigger.webhookSourceViewId)
-      : undefined;
-    const triggerJSON = trigger.toJSON();
-
-    return {
-      triggerId: trigger.sId,
-      name: trigger.name,
-      kind: trigger.kind,
-      status: trigger.status,
-      agent: {
-        agentId: trigger.agentConfigurationId,
-        name: agentLabel?.name ?? trigger.agentConfigurationId,
-        pictureUrl: agentLabel?.pictureUrl ?? null,
-        description: agentLabel?.description ?? null,
-        modelId: agentLabel?.modelId ?? null,
-        modelDisplayName: agentLabel?.modelDisplayName ?? null,
-      },
-      editor: {
-        name: getUserDisplayName(editor),
-        email: editor?.email ?? null,
-        pictureUrl: editor?.imageUrl ?? null,
-      },
-      scheduleDescription: isScheduleTrigger(triggerJSON)
-        ? describeScheduleConfig(triggerJSON.configuration)
-        : null,
-      webhookSourceName: webhookSource?.name ?? null,
-      // Restricted means the view still exists but the caller lacks read
-      // access to its space — as opposed to a deleted/missing view, which
-      // falls back to a generic "Webhook" label instead.
-      webhookSourceRestricted:
-        !webhookSource &&
-        !!trigger.webhookSourceViewId &&
-        webhookSources.existingIds.has(trigger.webhookSourceViewId),
-      webhookIcon: webhookSource?.icon ?? null,
-      runCount,
-      credits,
-      executionMode: trigger.executionMode,
-    };
-  });
+  const rows = await buildAutomationTriggerRows(auth, page);
 
   return new Ok({
     period,

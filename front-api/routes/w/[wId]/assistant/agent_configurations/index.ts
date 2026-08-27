@@ -22,6 +22,7 @@ import keyBy from "lodash/keyBy";
 import omit from "lodash/omit";
 
 import agent from "./[aId]";
+import archiveInactive from "./archive_inactive";
 import batchUpdateModel from "./batch_update_model";
 import batchUpdateScope from "./batch_update_scope";
 import batchUpdateTags from "./batch_update_tags";
@@ -59,7 +60,7 @@ const app = workspaceApp();
  *         description: Filter agents by view
  *         schema:
  *           type: string
- *           enum: [all, analytics, list, favorites, published, admin_internal, global, workspace]
+ *           enum: [all, analytics, list, favorites, published, admin_internal, manage_unrestricted, global, workspace]
  *       - in: query
  *         name: limit
  *         required: false
@@ -202,6 +203,15 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
       },
     });
   }
+  if (viewParam === "manage_unrestricted" && !auth.isAdmin()) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Only admins can list all agents of the workspace.",
+      },
+    });
+  }
   let agentConfigurations = await getAgentConfigurationsForView({
     auth,
     agentsGetView:
@@ -332,6 +342,7 @@ app.post(
 
 // Register static paths BEFORE `/:aId` so the param route does not swallow
 // these names as agent ids.
+app.route("/archive_inactive", archiveInactive);
 app.route("/batch_update_model", batchUpdateModel);
 app.route("/batch_update_scope", batchUpdateScope);
 app.route("/batch_update_tags", batchUpdateTags);

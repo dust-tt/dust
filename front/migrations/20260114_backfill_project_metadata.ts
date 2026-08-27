@@ -3,13 +3,10 @@ import { Op } from "sequelize";
 
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 /**
  * This migration creates project_metadata records for existing project spaces
@@ -105,24 +102,12 @@ makeScript(
   async ({ wId, execute }, logger) => {
     logger.info("Starting project metadata backfill");
 
-    if (wId) {
-      const ws = await WorkspaceResource.fetchById(wId);
-      if (!ws) {
-        throw new Error(`Workspace not found: ${wId}`);
-      }
-      await backfillProjectMetadata(
-        execute,
-        logger,
-        renderLightWorkspaceType({ workspace: ws })
-      );
-    } else {
-      await runOnAllWorkspaces(
-        async (workspace) => {
-          await backfillProjectMetadata(execute, logger, workspace);
-        },
-        { concurrency: 4 }
-      );
-    }
+    await runOnAllWorkspaces(
+      async (workspace) => {
+        await backfillProjectMetadata(execute, logger, workspace);
+      },
+      { concurrency: 4, wId }
+    );
 
     logger.info("Project metadata backfill completed");
   }

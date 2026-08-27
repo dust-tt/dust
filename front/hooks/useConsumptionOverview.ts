@@ -1,17 +1,22 @@
-import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
+import {
+  getConsumptionAnalyticsUrl,
+  useConsumptionQuery,
+} from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import {
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 
 export interface UseConsumptionOverviewParams {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
 }
 
@@ -19,9 +24,14 @@ export function useConsumptionOverview({
   workspaceId,
   period,
   filter,
+  analyticsScope,
   disabled,
 }: UseConsumptionOverviewParams) {
-  const url = `/api/w/${workspaceId}/analytics/consumption/overview`;
+  const url = getConsumptionAnalyticsUrl({
+    workspaceId,
+    analyticsScope,
+    endpoint: "overview",
+  });
   const body: ConsumptionBody = {
     period: period.kind,
     days:

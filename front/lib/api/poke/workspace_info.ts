@@ -8,6 +8,7 @@ import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { microCreditsToCredits } from "@app/lib/credits/units";
 import type { DefaultMetronomeAlerts } from "@app/lib/metronome/alerts/default_alerts";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { getCachedWorkspaceMetronomeAlerts } from "@app/lib/metronome/alerts/workspace_alerts";
@@ -163,8 +164,10 @@ export async function getPokeWorkspaceInfo(
       key: makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace(owner),
       bounds: spendLimitBounds,
     });
+    // The counter stores microCredits; convert back to credits so RL lines up
+    // with the ES/MT figures (all in credits).
     programmaticSpendLimitRateCapCount = countResult.isOk()
-      ? countResult.value
+      ? microCreditsToCredits(countResult.value)
       : null;
   }
   const programmaticEsConsumedAwuCredits = spendLimitBounds

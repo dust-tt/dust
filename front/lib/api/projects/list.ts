@@ -4,7 +4,9 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { removeDiacritics } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { SearchProjectsResponseBody } from "@app/types/api/projects/list";
-import type { PodType, SpaceType } from "@app/types/space";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import type { EnrichedSpaceType, PodType } from "@app/types/space";
 
 type ListPodsAccess = "member" | "open";
 
@@ -142,9 +144,14 @@ export async function listPodsForScope(
     );
     const metadataMap = new Map(metadatas.map((m) => [m.spaceId, m]));
 
+    const openIds = await SpaceResource.listOpenSpaceModelIds(
+      auth,
+      page.spaces
+    );
+
     for (const space of page.spaces) {
       if (
-        space.isOpen() &&
+        openIds.has(space.id) &&
         metadataMap.get(space.id)?.archivedAt === null &&
         podNameMatches(q, space.name)
       ) {
@@ -208,8 +215,10 @@ export async function enrichProjectsWithMetadata(
     metadatas.map((m) => [m.spaceId, m])
   );
 
-  return spaces.map((space) => ({
-    ...space.toJSON(),
+  const enrichedSpaces = await SpaceResource.batchToJSONEnriched(auth, spaces);
+
+  return spaces.map((space, i) => ({
+    ...enrichedSpaces[i],
     description: metadataMap.get(space.id)?.description ?? null,
     isMember: space.isMember(auth),
     isEditor: space.canAdministrate(auth),
@@ -217,7 +226,34 @@ export async function enrichProjectsWithMetadata(
   }));
 }
 
-export type ProjectWithAdminMetadata = SpaceType & {
+/**
+ * Every non-archived project space in the workspace, regardless of the
+ * caller's Pod membership. Admin surfaces only (central Computer admin page
+ * and its bulk sandbox reads) — membership is not consulted, so the admin
+ * role is enforced here rather than trusted from the caller. Pods with a
+ * missing metadata row are treated as invalid and excluded.
+ */
+export async function listNonArchivedProjectSpacesAsAdmin(
+  auth: Authenticator
+): Promise<Result<SpaceResource[], Error>> {
+  if (!auth.isAdmin()) {
+    return new Err(new Error("Only workspace admins can list all Pods."));
+  }
+
+  const projectSpaces = await SpaceResource.listProjectSpaces(auth);
+
+  const metadatas = await ProjectMetadataResource.fetchBySpaceModelIds(
+    auth,
+    projectSpaces.map((s) => s.id)
+  );
+  const metadataMap = new Map(metadatas.map((m) => [m.spaceId, m]));
+
+  return new Ok(
+    projectSpaces.filter((s) => metadataMap.get(s.id)?.archivedAt === null)
+  );
+}
+
+export type ProjectWithAdminMetadata = EnrichedSpaceType & {
   description: string | null;
   archivedAt: number | null;
   todoGenerationEnabled: boolean;
@@ -239,10 +275,15 @@ export async function listAllProjectsWithAdminMetadata(
   );
   const metadataMap = new Map(metadatas.map((m) => [m.spaceId, m]));
 
-  return projectSpaces.map((space) => {
+  const enrichedSpaces = await SpaceResource.batchToJSONEnriched(
+    auth,
+    projectSpaces
+  );
+
+  return projectSpaces.map((space, i) => {
     const metadata = metadataMap.get(space.id);
     return {
-      ...space.toJSON(),
+      ...enrichedSpaces[i],
       description: metadata?.description ?? null,
       archivedAt: metadata?.archivedAt?.getTime() ?? null,
       todoGenerationEnabled: metadata?.todoGenerationEnabled ?? false,

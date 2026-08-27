@@ -1,6 +1,7 @@
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
@@ -120,10 +121,12 @@ export class SandboxOwnerModel extends WorkspaceAwareModel<SandboxOwnerModel> {
 
   declare conversationId: ForeignKey<ConversationModel["id"]> | null;
   declare spaceId: ForeignKey<SpaceModel["id"]> | null;
+  declare frameFileModelId: ForeignKey<FileModel["id"]> | null;
   declare sandboxId: ForeignKey<SandboxModel["id"]>;
 
   declare conversation: NonAttribute<ConversationModel>;
   declare space: NonAttribute<SpaceModel>;
+  declare frameFile: NonAttribute<FileModel | null>;
   declare sandbox: NonAttribute<SandboxModel>;
 }
 
@@ -144,6 +147,10 @@ SandboxOwnerModel.init(
       allowNull: true,
     },
     spaceId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
+    frameFileModelId: {
       type: DataTypes.BIGINT,
       allowNull: true,
     },
@@ -177,6 +184,13 @@ SandboxOwnerModel.init(
         concurrently: true,
       },
       {
+        unique: true,
+        fields: ["workspaceId", "frameFileModelId"],
+        name: "sandbox_owners_workspace_frame_file_model_idx",
+        where: { frameFileModelId: { [Op.ne]: null } },
+        concurrently: true,
+      },
+      {
         fields: ["conversationId"],
         name: "sandbox_owners_conversation_id_idx",
         concurrently: true,
@@ -184,6 +198,11 @@ SandboxOwnerModel.init(
       {
         fields: ["spaceId"],
         name: "sandbox_owners_space_id_idx",
+        concurrently: true,
+      },
+      {
+        fields: ["frameFileModelId"],
+        name: "sandbox_owners_frame_file_model_id_idx",
         concurrently: true,
       },
       {
@@ -214,6 +233,17 @@ SandboxOwnerModel.belongsTo(SpaceModel, {
 
 SpaceModel.hasMany(SandboxOwnerModel, {
   foreignKey: { name: "spaceId", allowNull: true },
+  as: "sandboxOwnerLinks",
+});
+
+SandboxOwnerModel.belongsTo(FileModel, {
+  foreignKey: { name: "frameFileModelId", allowNull: true },
+  onDelete: "RESTRICT",
+  as: "frameFile",
+});
+
+FileModel.hasMany(SandboxOwnerModel, {
+  foreignKey: { name: "frameFileModelId", allowNull: true },
   as: "sandboxOwnerLinks",
 });
 

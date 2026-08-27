@@ -7,6 +7,7 @@ import { determineEligibleActivationUsers } from "@app/lib/api/activation/orches
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -19,6 +20,7 @@ import {
   DEFAULT_ACTIVATION_NUDGE_MAX_USERS_PER_RUN,
 } from "@app/temporal/activation_scheduler/config";
 import { getNudgeSlotAtMs } from "@app/temporal/activation_scheduler/slots";
+import moment from "moment-timezone";
 
 const ACTIVATION_PODS_CONCURRENCY = 4;
 
@@ -26,6 +28,10 @@ export type EligiblePodNudge = {
   podId: string;
   targetUserId: string;
   slotAtMs: number;
+};
+
+type RankedEligiblePodNudge = EligiblePodNudge & {
+  lastNudgedAtMs: number | null;
 };
 
 /**
@@ -45,6 +51,24 @@ export async function enumerateEligiblePodsForNudgeActivity({
   userIds?: string[] | null;
   overrideChecks?: boolean;
 }): Promise<EligiblePodNudge[]> {
+  const timezone = REGION_TIMEZONES[config.getCurrentRegion()];
+  const now = new Date();
+  const dayOfWeek = moment.tz(now, timezone).day();
+
+  // Scheduled runs skip Sat/Sun in the regional timezone. Poke one-offs
+  // (`userIds` or overrideChecks) still fire immediately, including weekends.
+  if (
+    userIds == null &&
+    !overrideChecks &&
+    (dayOfWeek === 0 || dayOfWeek === 6)
+  ) {
+    logger.info(
+      { workspaceId, timezone },
+      "[ActivationScheduler] Skipping weekend run."
+    );
+    return [];
+  }
+
   // Activation conversations live in Pods, which are restricted spaces: request
   // all groups so admin auth can read/write them.
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
@@ -83,10 +107,7 @@ export async function enumerateEligiblePodsForNudgeActivity({
   ]);
   const userBySId = new Map(users.map((user) => [user.sId, user]));
 
-  const timezone = REGION_TIMEZONES[config.getCurrentRegion()];
-  const now = new Date();
-
-  const eligiblePods: EligiblePodNudge[] = [];
+  const eligiblePods: RankedEligiblePodNudge[] = [];
 
   await concurrentExecutor(
     eligible,
@@ -125,9 +146,16 @@ export async function enumerateEligiblePodsForNudgeActivity({
         return;
       }
 
+      const [lastNudgedAt] =
+        await ConversationResource.listNudgeConversationTimestamps(auth, {
+          spaceModelId: pod.id,
+          limit: 1,
+        });
+
       eligiblePods.push({
         podId: pod.sId,
         targetUserId: candidate.targetUserId,
+        lastNudgedAtMs: lastNudgedAt?.getTime() ?? null,
         slotAtMs:
           userIds != null
             ? now.getTime()
@@ -143,21 +171,24 @@ export async function enumerateEligiblePodsForNudgeActivity({
     { concurrency: ACTIVATION_PODS_CONCURRENCY }
   );
 
-  const sorted = eligiblePods.sort((a, b) => a.slotAtMs - b.slotAtMs);
   if (
     !overrideChecks &&
-    sorted.length > DEFAULT_ACTIVATION_NUDGE_MAX_USERS_PER_RUN
+    eligiblePods.length > DEFAULT_ACTIVATION_NUDGE_MAX_USERS_PER_RUN
   ) {
     logger.info(
       {
         workspaceId,
-        eligibleCount: sorted.length,
+        eligibleCount: eligiblePods.length,
         cap: DEFAULT_ACTIVATION_NUDGE_MAX_USERS_PER_RUN,
       },
-      "[ActivationScheduler] Capping this run to the per-workflow user limit."
+      "[ActivationScheduler] Capping this run to the pods that have gone the longest without a nudge."
     );
   }
-  return applyActivationNudgePerRunCap(sorted, { overrideChecks });
+
+  // Cap by longest-without-a-nudge, then send in workday slot order.
+  return applyActivationNudgePerRunCap(eligiblePods, { overrideChecks }).sort(
+    (a, b) => a.slotAtMs - b.slotAtMs
+  );
 }
 
 /**

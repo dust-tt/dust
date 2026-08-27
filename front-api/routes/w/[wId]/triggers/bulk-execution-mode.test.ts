@@ -2,7 +2,6 @@ import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -11,11 +10,9 @@ import { describe, expect, it } from "vitest";
 
 async function setupTest({
   role = "admin",
-  withFeatureFlag = true,
   withWorkspacePoolGrant = true,
 }: {
   role?: MembershipRoleType;
-  withFeatureFlag?: boolean;
   withWorkspacePoolGrant?: boolean;
 }) {
   const { workspace, user } = await createPrivateApiMockRequest({
@@ -29,9 +26,6 @@ async function setupTest({
   const adminAuth = await Authenticator.internalAdminForWorkspace(
     workspace.sId
   );
-  if (withFeatureFlag) {
-    await FeatureFlagFactory.basic(adminAuth, "trigger_pool_choice");
-  }
   if (withWorkspacePoolGrant) {
     await GroupPermissionResource.setForEverybody(adminAuth, {
       grantType: "use_workspace_pool",
@@ -53,17 +47,6 @@ function postBulkExecutionMode(wId: string, body: Record<string, unknown>) {
 describe("POST /api/w/:wId/triggers/bulk-execution-mode", () => {
   it("returns 403 for regular users", async () => {
     const { workspace } = await setupTest({ role: "user" });
-
-    const response = await postBulkExecutionMode(workspace.sId, {
-      selection: { mode: "ids", triggerIds: ["trg1"] },
-      executionMode: "workspace_pool",
-    });
-
-    expect(response.status).toBe(403);
-  });
-
-  it("returns 403 without the trigger_pool_choice feature flag", async () => {
-    const { workspace } = await setupTest({ withFeatureFlag: false });
 
     const response = await postBulkExecutionMode(workspace.sId, {
       selection: { mode: "ids", triggerIds: ["trg1"] },

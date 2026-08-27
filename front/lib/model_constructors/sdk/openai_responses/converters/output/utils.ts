@@ -301,6 +301,7 @@ function apiErrorToErrorEvent(
     case 400:
     case 422:
       return buildErrorEvent({
+        errorSource: "dust",
         metadata,
         type: "invalid_request_error",
         message: `Invalid request to OpenAI: ${error.message}`,
@@ -308,6 +309,7 @@ function apiErrorToErrorEvent(
       });
     case 401:
       return buildErrorEvent({
+        errorSource: "dust",
         metadata,
         type: "authentication_error",
         message: `Authentication failed for OpenAI: ${error.message}`,
@@ -315,6 +317,7 @@ function apiErrorToErrorEvent(
       });
     case 403:
       return buildErrorEvent({
+        errorSource: "dust",
         metadata,
         type: "permission_error",
         message: `Permission denied for OpenAI: ${error.message}`,
@@ -322,6 +325,7 @@ function apiErrorToErrorEvent(
       });
     case 404:
       return buildErrorEvent({
+        errorSource: "dust",
         metadata,
         type: "not_found_error",
         message: `Resource not found for OpenAI: ${error.message}`,
@@ -329,6 +333,7 @@ function apiErrorToErrorEvent(
       });
     case 429:
       return buildErrorEvent({
+        errorSource: "dust",
         metadata,
         type: "rate_limit_error",
         message: `Rate limit exceeded for OpenAI/${metadata.model}: ${error.message}`,
@@ -337,6 +342,7 @@ function apiErrorToErrorEvent(
     default:
       if (status !== undefined && status >= 500 && status < 600) {
         return buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "server_error",
           message: `Server error from OpenAI (${status}): ${error.message}`,
@@ -344,6 +350,7 @@ function apiErrorToErrorEvent(
         });
       }
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "unknown_error",
         message: `Error from OpenAI (${status}): ${error.message}`,
@@ -362,6 +369,7 @@ export function streamErrorToErrorEvent(
   switch (classified.kind) {
     case "connection":
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "network_error",
         message: `Network error connecting to OpenAI: ${classified.error.message}`,
@@ -371,6 +379,7 @@ export function streamErrorToErrorEvent(
       return apiErrorToErrorEvent(metadata, classified.error);
     case "unknown":
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "unknown_error",
         message: `Unknown error from OpenAI`,
@@ -406,6 +415,7 @@ export function outputItemToEvents(
           case "refusal":
             return [
               buildErrorEvent({
+                errorSource: "dust",
                 metadata,
                 type: "refusal_error",
                 message: part.refusal,
@@ -524,6 +534,19 @@ export async function* rawOutputToEvents(
           ),
         ];
         break;
+      case "response.reasoning_summary_part.added":
+        // Completed reasoning items join summary parts with a blank line. Keep
+        // the streaming deltas consistent so adjacent Markdown titles do not
+        // collapse into `****` while the response is in progress.
+        if (event.summary_index > 0) {
+          outputEvents = [
+            converters.reasoningSummaryDeltaToReasoningDeltaEvent(
+              metadata,
+              "\n\n"
+            ),
+          ];
+        }
+        break;
       case "response.output_item.added":
         if (event.item.type === "function_call") {
           outputEvents = [
@@ -560,6 +583,7 @@ export async function* rawOutputToEvents(
         return;
       case "response.incomplete":
         yield buildErrorEvent({
+          errorSource: "dust",
           metadata,
           type: "stop_error",
           message:
@@ -569,6 +593,7 @@ export async function* rawOutputToEvents(
         return;
       case "error":
         yield buildErrorEvent({
+          errorSource: "provider",
           metadata,
           type: "stream_error",
           message: event.message,
@@ -593,7 +618,6 @@ export async function* rawOutputToEvents(
       case "response.file_search_call.searching":
       case "response.function_call_arguments.done":
       case "response.in_progress":
-      case "response.reasoning_summary_part.added":
       case "response.reasoning_summary_part.done":
       case "response.reasoning_summary_text.done":
       case "response.reasoning_text.delta":
@@ -678,6 +702,7 @@ export function responseToEvents(
   if (response.status === "incomplete") {
     return [
       buildErrorEvent({
+        errorSource: "dust",
         metadata,
         type: "stop_error",
         message:

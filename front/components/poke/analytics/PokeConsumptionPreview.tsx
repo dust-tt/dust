@@ -6,7 +6,6 @@ import {
 import { PokeConsumptionAttributionTable } from "@app/components/poke/analytics/PokeConsumptionAttributionTable";
 import { PokeConsumptionOverview } from "@app/components/poke/analytics/PokeConsumptionOverview";
 import { PokeConsumptionSummary } from "@app/components/poke/analytics/PokeConsumptionSummary";
-import { PokeCustomerVisibilityChip } from "@app/components/poke/analytics/PokeCustomerVisibilityChip";
 import { PokeUsageFilterPanel } from "@app/components/poke/analytics/PokeUsageFilterPanel";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import type { WorkspaceType } from "@app/types/user";
@@ -44,12 +43,6 @@ export function PokeConsumptionPreview({ owner }: PokeConsumptionPreviewProps) {
       components={POKE_CONSUMPTION_COMPONENTS}
       owner={owner}
       embedded
-      headerBadge={
-        <PokeCustomerVisibilityChip
-          feature="enable_analytics_consumption"
-          owner={owner}
-        />
-      }
       showExport={false}
       showMemberGroupFilter={false}
       showOverviewError

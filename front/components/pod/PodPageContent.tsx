@@ -4,6 +4,7 @@ import { PodAppsTab } from "@app/components/pod/apps/PodAppsTab";
 import { PodConnectedDataTab } from "@app/components/pod/connected_data/PodConnectedDataTab";
 import { PodConversationsTab } from "@app/components/pod/conversation/PodConversationsTab";
 import { PodFilesTab } from "@app/components/pod/files/PodFilesTab";
+import { GoalPodOverview } from "@app/components/pod/GoalPodOverview";
 import { PodFrameTabContent } from "@app/components/pod/PodFrameTabContent";
 import { PodSettingsTab } from "@app/components/pod/settings/PodSettingsTab";
 import { PodTasksTab } from "@app/components/pod/tasks/PodTasksTab";
@@ -33,6 +34,7 @@ type PodInfo = NonNullable<ReturnType<typeof useSpaceInfo>["spaceInfo"]>;
 
 interface PodPageContentProps {
   podInfo: PodInfo;
+  isGoalPod?: boolean;
   onTabChange: (tab: PodTab) => void;
   podUiPreferences: PodUiScopedPreferences;
   setPodUiPreferences: (value: PodUiScopedPreferences) => void;
@@ -44,6 +46,7 @@ interface PodPageContentProps {
 
 export function PodPageContent({
   podInfo,
+  isGoalPod = false,
   onTabChange,
   podUiPreferences,
   setPodUiPreferences,
@@ -191,25 +194,29 @@ export function PodPageContent({
   return (
     <>
       <NavTabPillContent value="conversations">
-        <PodConversationsTab
-          owner={owner}
-          user={user}
-          conversations={conversations}
-          isConversationsLoading={isConversationsLoading}
-          hasMore={hasMore}
-          loadMore={loadMore}
-          isLoadingMore={isLoadingMore}
-          podInfo={podInfo}
-          isPodEmpty={isPodEmpty}
-          conversationFilter={conversationFilter}
-          onConversationFilterChange={handleConversationFilterChange}
-          hideTriggeredConversations={hideTriggeredConversations}
-          onHideTriggeredConversationsChange={
-            handleHideTriggeredConversationsChange
-          }
-          onSubmit={handleConversationCreation}
-          onNavigateToTasks={() => onTabChange("tasks")}
-        />
+        {isGoalPod && podInfo.isEditor ? (
+          <GoalPodOverview owner={owner} user={user} podId={podInfo.sId} />
+        ) : (
+          <PodConversationsTab
+            owner={owner}
+            user={user}
+            conversations={conversations}
+            isConversationsLoading={isConversationsLoading}
+            hasMore={hasMore}
+            loadMore={loadMore}
+            isLoadingMore={isLoadingMore}
+            podInfo={podInfo}
+            isPodEmpty={isPodEmpty}
+            conversationFilter={conversationFilter}
+            onConversationFilterChange={handleConversationFilterChange}
+            hideTriggeredConversations={hideTriggeredConversations}
+            onHideTriggeredConversationsChange={
+              handleHideTriggeredConversationsChange
+            }
+            onSubmit={handleConversationCreation}
+            onNavigateToTasks={() => onTabChange("tasks")}
+          />
+        )}
       </NavTabPillContent>
       <NavTabPillContent value="tasks">
         <PodTasksTab

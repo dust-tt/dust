@@ -117,6 +117,8 @@ export const adminRoutes: RouteObject[] = [
     element: <RequireRoleLayout requiredRole="manager" />,
     children: [
       { path: "members", element: <MembersPage /> },
+      // Legacy analytics page, kept for direct access but intentionally absent
+      // from the admin sidebar.
       { path: "analytics", element: <AnalyticsPage /> },
       {
         path: "analytics/consumption",

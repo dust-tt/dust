@@ -1,15 +1,15 @@
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
+import {
+  getConsumptionAnalyticsUrl,
+  useConsumptionQuery,
+} from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import {
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/schema";
-import type {
-  ConsumptionScopeFilter,
-  ConsumptionTopSortOrder,
-} from "@app/lib/api/analytics/consumption/scope";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
 import type { GetConsumptionTopApiKeysResponse } from "@app/lib/api/analytics/consumption/top_api_keys";
 import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
@@ -19,6 +19,10 @@ import type { GetConsumptionTopSourcesResponse } from "@app/lib/api/analytics/co
 import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/consumption/top_tools";
 import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
 import { emptyArray } from "@app/lib/swr/swr";
+import type {
+  ConsumptionScopeFilter,
+  ConsumptionTopSortOrder,
+} from "@app/types/api/analytics/consumption";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useMemo } from "react";
 
@@ -36,6 +40,7 @@ const CONSUMPTION_TOP_ENDPOINTS = {
 export type ConsumptionTopRow = {
   id: string;
   name: string;
+  detailsHref?: string;
   pictureUrl: string | null;
   description: string | null;
   icon: string | null;
@@ -64,6 +69,7 @@ export interface UseConsumptionTopParams {
   offset?: number;
   search?: string;
   filter?: ConsumptionScopeFilter;
+  analyticsScope?: ConsumptionAnalyticsScope;
   sortOrder?: ConsumptionTopSortOrder;
   disabled?: boolean;
 }
@@ -198,10 +204,15 @@ export function useConsumptionTop({
   offset = 0,
   search,
   filter,
+  analyticsScope,
   sortOrder = "desc",
   disabled,
 }: UseConsumptionTopParams) {
-  const url = `/api/w/${workspaceId}/analytics/consumption/${CONSUMPTION_TOP_ENDPOINTS[dimension]}`;
+  const url = getConsumptionAnalyticsUrl({
+    workspaceId,
+    analyticsScope,
+    endpoint: CONSUMPTION_TOP_ENDPOINTS[dimension],
+  });
   const body: ConsumptionTopBody = {
     period: period.kind,
     days:
@@ -225,8 +236,8 @@ export function useConsumptionTop({
 
   return {
     rows,
-    // Everything the workspace consumed over the period, so a row's share of it
-    // is `credits / totalCredits`.
+    // Everything in the selected scope consumed over the period, so a row's
+    // share of it is `credits / totalCredits`.
     totalCredits: data?.totalCredits ?? 0,
     totalCount: data?.totalCount ?? 0,
     hasMore: data?.hasMore ?? false,

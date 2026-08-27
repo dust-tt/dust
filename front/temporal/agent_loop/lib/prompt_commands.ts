@@ -16,9 +16,8 @@ import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type { RunModelAndCreateActionsResult } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
-import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent } from "@app/types/assistant/agent";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type { AgentLoopRuntimeData } from "@app/types/assistant/agent_run";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 
@@ -138,22 +137,10 @@ function parseToolCalls(body: string): ParsedToolCall[] | { error: string } {
  */
 async function listAvailableTools(
   auth: Authenticator,
-  runAgentData: AgentLoopExecutionData,
-  step: number
+  runAgentData: AgentLoopRuntimeData
 ): Promise<MCPToolConfigurationType[]> {
-  const {
-    agentConfiguration,
-    conversation: originalConversation,
-    userMessage,
-    agentMessage: originalAgentMessage,
-  } = runAgentData;
-
-  const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
-    sliceConversationForAgentMessage(originalConversation, {
-      agentMessageId: originalAgentMessage.sId,
-      agentMessageVersion: originalAgentMessage.version,
-      step,
-    });
+  const { agentConfiguration, conversation, userMessage, agentMessage } =
+    runAgentData;
 
   const attachments = await listAttachments(auth, { conversation });
   const jitServers = await getJITServers(auth, {
@@ -201,22 +188,11 @@ async function listAvailableTools(
  */
 async function publishSuccessAndFinish(
   auth: Authenticator,
-  runAgentData: AgentLoopExecutionData,
+  runAgentData: AgentLoopRuntimeData,
   step: number,
   content: string
 ): Promise<null> {
-  const {
-    agentConfiguration,
-    conversation: originalConversation,
-    agentMessage: originalAgentMessage,
-  } = runAgentData;
-
-  const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
-    sliceConversationForAgentMessage(originalConversation, {
-      agentMessageId: originalAgentMessage.sId,
-      agentMessageVersion: originalAgentMessage.version,
-      step,
-    });
+  const { agentConfiguration, conversation, agentMessage } = runAgentData;
 
   await AgentStepContentResource.createNewVersion({
     workspaceId: conversation.owner.id,
@@ -270,7 +246,7 @@ async function publishSuccessAndFinish(
  */
 export async function handlePromptCommand(
   auth: Authenticator,
-  runAgentData: AgentLoopExecutionData,
+  runAgentData: AgentLoopRuntimeData,
   step: number,
   runIds: string[]
 ): Promise<RunModelAndCreateActionsResult | null | "not_a_command"> {
@@ -331,10 +307,10 @@ function formatToolListWithButtons(tools: MCPToolConfigurationType[]): string {
  */
 async function handleToolListCommand(
   auth: Authenticator,
-  runAgentData: AgentLoopExecutionData,
+  runAgentData: AgentLoopRuntimeData,
   step: number
 ): Promise<null> {
-  const availableTools = await listAvailableTools(auth, runAgentData, step);
+  const availableTools = await listAvailableTools(auth, runAgentData);
   const body = getBodyAfterCommand(runAgentData.userMessage.content);
 
   if (body) {
@@ -396,7 +372,7 @@ async function handleToolListCommand(
  */
 async function handleToolRunFirstStep(
   auth: Authenticator,
-  runAgentData: AgentLoopExecutionData,
+  runAgentData: AgentLoopRuntimeData,
   step: number,
   runIds: string[]
 ): Promise<{
@@ -408,17 +384,10 @@ async function handleToolRunFirstStep(
   const {
     agentConfiguration,
     modelInfo,
-    conversation: originalConversation,
+    conversation,
     userMessage,
-    agentMessage: originalAgentMessage,
+    agentMessage,
   } = runAgentData;
-
-  const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
-    sliceConversationForAgentMessage(originalConversation, {
-      agentMessageId: originalAgentMessage.sId,
-      agentMessageVersion: originalAgentMessage.version,
-      step,
-    });
 
   const localLogger = logger.child({
     workspaceId: conversation.owner.sId,
@@ -460,7 +429,7 @@ async function handleToolRunFirstStep(
     return null;
   }
 
-  const availableTools = await listAvailableTools(auth, runAgentData, step);
+  const availableTools = await listAvailableTools(auth, runAgentData);
 
   // Match each parsed tool call to an available tool.
   const actions: AgentActionsEvent["actions"] = [];
@@ -508,7 +477,7 @@ async function handleToolRunFirstStep(
   }
 
   // Compute the citations offset.
-  const citationsRefsOffset = originalAgentMessage.actions.reduce(
+  const citationsRefsOffset = agentMessage.actions.reduce(
     (total, action) => total + (action.citationsAllocated || 0),
     0
   );
@@ -533,7 +502,7 @@ async function handleToolRunFirstStep(
  */
 async function handleToolRunFinalStep(
   auth: Authenticator,
-  runAgentData: AgentLoopExecutionData,
+  runAgentData: AgentLoopRuntimeData,
   step: number
 ): Promise<null> {
   // Build the output from the actions that ran in step 0.

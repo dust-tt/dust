@@ -4,23 +4,7 @@ import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
-import type { GetContextOriginResponse } from "@app/lib/api/assistant/observability/context_origin";
-import type { GetDatasourceRetrievalResponse } from "@app/lib/api/assistant/observability/datasource_retrieval";
-import type { GetDatasourceRetrievalDocumentsResponse } from "@app/lib/api/assistant/observability/datasource_retrieval_documents";
 import type { GetFeedbackDistributionResponse } from "@app/lib/api/assistant/observability/feedback_distribution";
-import type {
-  GetLatencyResponse,
-  GetUsageMetricsResponse,
-} from "@app/lib/api/assistant/observability/messages_metrics";
-import type { GetPodUsageResponse } from "@app/lib/api/assistant/observability/pod_usage";
-import type { GetSkillExecutionResponse } from "@app/lib/api/assistant/observability/skill_execution";
-import type { GetToolExecutionResponse } from "@app/lib/api/assistant/observability/tool_execution";
-import type {
-  GetToolLatencyResponse,
-  ToolLatencyRow,
-  ToolLatencyView,
-} from "@app/lib/api/assistant/observability/tool_latency";
-import type { GetToolStepIndexResponse } from "@app/lib/api/assistant/observability/tool_step_index";
 import type { GetVersionMarkersResponse } from "@app/lib/api/assistant/observability/version_markers";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
@@ -34,16 +18,18 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
 import type { GetAgentUsageResponseBody } from "@app/types/api/assistant/agent_usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api/assistant/builder/slack/channels_linked_with_agent";
 import type { GetSlackUserPrivateChannelsResponseBody } from "@app/types/api/assistant/builder/slack/user_private_channels";
 import type { GetAgentConfigurationsResponseBody } from "@app/types/api/assistant/configuration";
-import { BatchUpdateAgentModelResponseBodySchema } from "@app/types/api/assistant/configuration";
+import {
+  ArchiveInactiveAgentsResponseBodySchema,
+  BatchUpdateAgentModelResponseBodySchema,
+  PreviewInactiveAgentsResponseBodySchema,
+} from "@app/types/api/assistant/configuration";
 import type { GetSimilarAgentsResponseBody } from "@app/types/api/assistant/configuration/existing_agent_checker";
 import type { GetAgentMcpConfigurationsResponseBody } from "@app/types/api/assistant/mcp_configurations";
 import type { GetAgentOverviewResponseBody } from "@app/types/api/assistant/observability/overview";
-import type { GetAgentSummaryResponseBody } from "@app/types/api/assistant/observability/summary";
 import type { PostAgentUserFavoriteRequestBody } from "@app/types/api/assistant/user_relation";
 import type { GetMemberResponseBody } from "@app/types/api/user";
 import type {
@@ -496,35 +482,6 @@ export function useAgentAnalytics({
   };
 }
 
-export function useAgentObservabilitySummary({
-  workspaceId,
-  agentConfigurationId,
-  days = DEFAULT_PERIOD_DAYS,
-  disabled,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  days?: number;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const summaryFetcher: Fetcher<GetAgentSummaryResponseBody> = fetcher;
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/summary?days=${days}`;
-
-  const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    disabled ? null : key,
-    summaryFetcher
-  );
-
-  return {
-    summaryText: data?.summaryText ?? null,
-    isSummaryLoading: !error && !data && !disabled,
-    isSummaryError: error,
-    isSummaryValidating: isValidating,
-    refetchSummary: mutate,
-  };
-}
-
 export function useSlackChannelsLinkedWithAgent({
   workspaceId,
   disabled,
@@ -963,129 +920,161 @@ export function useBatchUpdateAgentScope({
   return batchUpdateAgentScope;
 }
 
-export function useAgentUsageMetrics({
-  workspaceId,
-  agentConfigurationId,
-  days = DEFAULT_PERIOD_DAYS,
-  interval = "day",
-  disabled,
+export function useUpdateInactiveAgentArchival({
+  owner,
 }: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  days?: number;
-  interval?: "day" | "week";
-  disabled?: boolean;
+  owner: LightWorkspaceType;
 }) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetUsageMetricsResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/usage-metrics?days=${days}&interval=${interval}&timezone=${encodeURIComponent(BROWSER_TIMEZONE)}`;
+  const sendNotification = useSendNotification();
 
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
+  // Null turns it off: the policy is opt-in and has no default threshold.
+  const updateInactiveAgentArchival = useCallback(
+    async (thresholdDays: number | null) => {
+      const res = await clientFetch(`/api/w/${owner.sId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          inactiveAgentArchivalThresholdDays: thresholdDays,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+
+        sendNotification({
+          type: "error",
+          title: "Error updating automatic archival",
+          description: `Error: ${errorData.message}`,
+        });
+        return false;
+      }
+
+      sendNotification({
+        type: "success",
+        title: thresholdDays
+          ? "Automatic archival enabled"
+          : "Automatic archival disabled",
+        description: thresholdDays
+          ? `Agents unmentioned for ${thresholdDays} days will be archived.`
+          : "No agent will be archived automatically.",
+      });
+      return true;
+    },
+    [owner.sId, sendNotification]
   );
 
-  return {
-    usageMetrics: data?.points ?? emptyArray(),
-    isUsageMetricsLoading: !error && !data && !disabled,
-    isUsageMetricsError: error,
-    isUsageMetricsValidating: isValidating,
-  };
+  return updateInactiveAgentArchival;
 }
 
-export function useAgentContextOrigin(params: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  days?: number;
-  version?: string;
-  disabled?: boolean;
-}) {
-  const {
-    workspaceId,
-    agentConfigurationId,
-    days = DEFAULT_PERIOD_DAYS,
-    version,
-    disabled,
-  } = params;
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetContextOriginResponse> = fetcher;
-  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/source?days=${days}${versionParam}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    contextOrigin: data ?? { total: 0, buckets: emptyArray() },
-    isContextOriginLoading: !error && !data && !disabled,
-    isContextOriginError: error,
-    isContextOriginValidating: isValidating,
-  };
-}
-
-export function useAgentPodUsage(params: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  days?: number;
-  version?: string;
-  disabled?: boolean;
-}) {
-  const {
-    workspaceId,
-    agentConfigurationId,
-    days = DEFAULT_PERIOD_DAYS,
-    version,
-    disabled,
-  } = params;
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetPodUsageResponse> = fetcher;
-  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/pods?days=${days}${versionParam}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    podUsage: data ?? { total: 0, buckets: emptyArray(), otherPodsCount: 0 },
-    isPodUsageLoading: !error && !data && !disabled,
-    isPodUsageError: error,
-    isPodUsageValidating: isValidating,
-  };
-}
-
-export function useAgentLatency({
-  workspaceId,
-  agentConfigurationId,
-  days = DEFAULT_PERIOD_DAYS,
-  version,
-  disabled,
+export function usePreviewInactiveAgents({
+  owner,
 }: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  days?: number;
-  version?: string;
-  disabled?: boolean;
+  owner: LightWorkspaceType;
 }) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetLatencyResponse> = fetcher;
-  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/latency?days=${days}${versionParam}&timezone=${encodeURIComponent(BROWSER_TIMEZONE)}`;
+  const sendNotification = useSendNotification();
 
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
+  const previewInactiveAgents = useCallback(
+    async (thresholdDays: number) => {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/archive_inactive/preview`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ thresholdDays }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+
+        sendNotification({
+          type: "error",
+          title: "Error previewing inactive agents",
+          description: `Error: ${errorData.message}`,
+        });
+        return null;
+      }
+
+      const parsed = PreviewInactiveAgentsResponseBodySchema.safeParse(
+        await res.json()
+      );
+      if (!parsed.success) {
+        sendNotification({
+          type: "error",
+          title: "Error previewing inactive agents",
+          description: "An unknown error occurred.",
+        });
+        return null;
+      }
+
+      return parsed.data.preview;
+    },
+    [owner.sId, sendNotification]
   );
 
-  return {
-    latency: data?.points ?? emptyArray(),
-    isLatencyLoading: !error && !data && !disabled,
-    isLatencyError: error,
-    isLatencyValidating: isValidating,
-  };
+  return previewInactiveAgents;
+}
+
+export function useArchiveInactiveAgents({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const archiveInactiveAgents = useCallback(
+    async (thresholdDays: number) => {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/archive_inactive`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ thresholdDays }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+
+        sendNotification({
+          type: "error",
+          title: "Error archiving inactive agents",
+          description: `Error: ${errorData.message}`,
+        });
+        return null;
+      }
+
+      const parsed = ArchiveInactiveAgentsResponseBodySchema.safeParse(
+        await res.json()
+      );
+      if (!parsed.success) {
+        sendNotification({
+          type: "error",
+          title: "Error archiving inactive agents",
+          description: "An unknown error occurred.",
+        });
+        return null;
+      }
+
+      const { archivedCount } = parsed.data.archival;
+      sendNotification({
+        type: "success",
+        title: "Inactive agents archived",
+        description: `Archived ${archivedCount} agent${pluralize(archivedCount)}.`,
+      });
+
+      return { archivedCount };
+    },
+    [owner.sId, sendNotification]
+  );
+
+  return archiveInactiveAgents;
 }
 
 export function useAgentFeedbackDistribution({
@@ -1141,247 +1130,6 @@ export function useAgentVersionMarkers({
     isVersionMarkersLoading: !error && !data && !disabled,
     isVersionMarkersError: error,
     isVersionMarkersValidating: isValidating,
-  };
-}
-
-export function useAgentToolExecution({
-  workspaceId,
-  agentConfigurationId,
-  days = DEFAULT_PERIOD_DAYS,
-  version,
-  disabled,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  days?: number;
-  version?: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetToolExecutionResponse> = fetcher;
-  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-execution?days=${days}${versionParam}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    toolExecutionByVersion: data?.byVersion ?? emptyArray(),
-    isToolExecutionLoading: !error && !data && !disabled,
-    isToolExecutionError: error,
-    isToolExecutionValidating: isValidating,
-  };
-}
-
-export function useAgentSkillExecution({
-  workspaceId,
-  agentConfigurationId,
-  days = DEFAULT_PERIOD_DAYS,
-  version,
-  disabled,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  days?: number;
-  version?: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetSkillExecutionResponse> = fetcher;
-  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/skill-execution?days=${days}${versionParam}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    skillExecutionByVersion: data?.byVersion ?? emptyArray(),
-    skillExecutionBySource: data?.bySource ?? emptyArray(),
-    isSkillExecutionLoading: !error && !data && !disabled,
-    isSkillExecutionError: error,
-    isSkillExecutionValidating: isValidating,
-  };
-}
-
-type AgentToolLatencyResult = {
-  toolLatencyRows: ToolLatencyRow[];
-  isToolLatencyLoading: boolean;
-  isToolLatencyError: unknown;
-  isToolLatencyValidating: boolean;
-};
-
-export function useAgentToolLatency({
-  workspaceId,
-  agentConfigurationId,
-  days = DEFAULT_PERIOD_DAYS,
-  version,
-  view,
-  serverName,
-  disabled,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  days?: number;
-  version?: string;
-  view: ToolLatencyView;
-  serverName?: string;
-  disabled?: boolean;
-}): AgentToolLatencyResult {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetToolLatencyResponse> = fetcher;
-  const params = new URLSearchParams({ days: days.toString(), view });
-  if (version) {
-    params.set("version", version);
-  }
-  if (serverName) {
-    params.set("serverName", serverName);
-  }
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-latency?${params.toString()}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    toolLatencyRows: data?.rows ?? emptyArray(),
-    isToolLatencyLoading: !error && !data && !disabled,
-    isToolLatencyError: error,
-    isToolLatencyValidating: isValidating,
-  };
-}
-
-export function useAgentToolStepIndex({
-  workspaceId,
-  agentConfigurationId,
-  days = DEFAULT_PERIOD_DAYS,
-  version,
-  disabled,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  days?: number;
-  version?: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetToolStepIndexResponse> = fetcher;
-  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-step-index?days=${days}${versionParam}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    toolStepIndexByStep: data?.byStep ?? emptyArray(),
-    isToolStepIndexLoading: !error && !data && !disabled,
-    isToolStepIndexError: error,
-    isToolStepIndexValidating: isValidating,
-  };
-}
-
-export function useAgentDatasourceRetrieval({
-  workspaceId,
-  agentConfigurationId,
-  days = DEFAULT_PERIOD_DAYS,
-  version,
-  disabled,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  days?: number;
-  version?: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetDatasourceRetrievalResponse> = fetcher;
-  const params = new URLSearchParams({ days: days.toString() });
-  if (version) {
-    params.set("version", version);
-  }
-  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/datasource-retrieval?${params.toString()}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    datasourceRetrieval: data?.datasources ?? emptyArray(),
-    totalRetrievals: data?.total ?? 0,
-    isDatasourceRetrievalLoading: !error && !data && !disabled,
-    isDatasourceRetrievalError: error,
-    isDatasourceRetrievalValidating: isValidating,
-  };
-}
-
-export function useAgentDatasourceRetrievalDocuments({
-  workspaceId,
-  agentConfigurationId,
-  days = DEFAULT_PERIOD_DAYS,
-  version,
-  mcpServerConfigIds,
-  mcpServerName,
-  dataSourceId,
-  limit = 50,
-  disabled,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-  days?: number;
-  version?: string;
-  mcpServerConfigIds: string[] | null;
-  // For servers without config IDs (like data_sources_file_system), use name.
-  mcpServerName: string | null;
-  dataSourceId: string | null;
-  limit?: number;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetDatasourceRetrievalDocumentsResponse> = fetcher;
-  const hasConfigIds = mcpServerConfigIds && mcpServerConfigIds.length > 0;
-  // Allow query if we have either config IDs or server name.
-  const isDisabled =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    disabled || (!hasConfigIds && !mcpServerName) || !dataSourceId;
-
-  const params = new URLSearchParams({ days: days.toString() });
-  if (version) {
-    params.set("version", version);
-  }
-  if (hasConfigIds) {
-    params.set(
-      "mcpServerConfigIds",
-      [...new Set(mcpServerConfigIds)].join(",")
-    );
-  }
-  if (mcpServerName) {
-    params.set("mcpServerName", mcpServerName);
-  }
-  if (dataSourceId) {
-    params.set("dataSourceId", dataSourceId);
-  }
-  params.set("limit", limit.toString());
-
-  const key = isDisabled
-    ? null
-    : `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/datasource-retrieval-documents?${params.toString()}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(key, fetcherFn);
-
-  return {
-    documents: data?.documents ?? emptyArray(),
-    groups: data?.groups ?? emptyArray(),
-    total: data?.total ?? 0,
-    isDatasourceRetrievalDocumentsLoading: !error && !data && !isDisabled,
-    isDatasourceRetrievalDocumentsError: error,
-    isDatasourceRetrievalDocumentsValidating: isValidating,
   };
 }
 

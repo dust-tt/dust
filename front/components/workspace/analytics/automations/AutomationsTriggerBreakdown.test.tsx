@@ -47,6 +47,7 @@ describe("AutomationsTriggerBreakdown", () => {
   it("shows no comparison for a trigger with zero run count, instead of an Infinity ratio", () => {
     render(
       <AutomationsTriggerBreakdown
+        scope="workspace"
         workspaceId="w1"
         trigger={TRIGGER}
         period={PERIOD}
@@ -62,6 +63,7 @@ describe("AutomationsTriggerBreakdown", () => {
   it("compares a trigger's stats against a non-zero median", () => {
     render(
       <AutomationsTriggerBreakdown
+        scope="workspace"
         workspaceId="w1"
         trigger={{ ...TRIGGER, runCount: 720, credits: 2448 }}
         period={PERIOD}
@@ -94,6 +96,7 @@ describe("AutomationsTriggerBreakdown", () => {
 
     render(
       <AutomationsTriggerBreakdown
+        scope="workspace"
         workspaceId="w1"
         trigger={TRIGGER}
         period={PERIOD}

@@ -268,7 +268,7 @@ async function processTriggers({
   // 1. Batch delete triggers
   if (formData.triggersToDelete.length > 0) {
     const deleteRes = await clientFetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+      `/api/w/${owner.sId}/triggers?aId=${agentConfigurationId}`,
       {
         method: "DELETE",
         headers: {
@@ -299,7 +299,7 @@ async function processTriggers({
   // 2. Batch update existing triggers
   if (formData.triggersToUpdate.length > 0) {
     const updateRes = await clientFetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+      `/api/w/${owner.sId}/triggers?aId=${agentConfigurationId}`,
       {
         method: "PATCH",
         headers: {
@@ -338,7 +338,7 @@ async function processTriggers({
   // 3. Batch create new triggers
   if (formData.triggersToCreate.length > 0) {
     const createRes = await clientFetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+      `/api/w/${owner.sId}/triggers?aId=${agentConfigurationId}`,
       {
         method: "POST",
         headers: {

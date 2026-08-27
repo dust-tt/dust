@@ -2544,23 +2544,21 @@ describe("findPathsToConfiguration", () => {
     };
   }
 
-  // Helper function to create a mock MCP server view similar to PrimitiveTypesDebugger
-
   function createMockMCPServerView(): MCPServerViewType {
     const schemas = createZodSchemas();
 
     return {
       id: 1,
       sId: "test-server-id",
-      name: "Primitive Types Debugger",
+      name: "Test Server",
       description: "Test server for primitive types",
       createdAt: Date.now(),
       updatedAt: Date.now(),
       spaceId: "space-id",
       serverType: "internal",
       server: {
-        sId: "primitive-types-debugger",
-        name: "primitive_types_debugger",
+        sId: "test-server",
+        name: "test_server",
         version: "1.0.0",
         description: "Super useful tool server",
         icon: "ActionBrainIcon",

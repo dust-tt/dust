@@ -25,16 +25,30 @@ import { mapToEnumValues } from "@app/types/poke/plugins";
 import { Err, Ok } from "@app/types/shared/result";
 import { ASSIGNABLE_ROLES, isAssignableRoleType } from "@app/types/user";
 
-// One email per line; trim, lowercase and dedupe.
-function parseEmails(raw: string): string[] {
-  return Array.from(
-    new Set(
-      raw
-        .split("\n")
-        .map((email) => email.trim().toLowerCase())
-        .filter((email) => email.length > 0)
-    )
-  );
+type MemberIdentifier =
+  | { kind: "email"; value: string }
+  | { kind: "userId"; value: string };
+
+// One identifier per line: an email (contains "@") or a user ID. Emails are
+// lowercased; user IDs are kept verbatim. Lines are trimmed and deduped.
+function parseMemberIdentifiers(raw: string): MemberIdentifier[] {
+  const seen = new Set<string>();
+  const identifiers: MemberIdentifier[] = [];
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+    const identifier: MemberIdentifier = trimmed.includes("@")
+      ? { kind: "email", value: trimmed.toLowerCase() }
+      : { kind: "userId", value: trimmed };
+    const key = `${identifier.kind}:${identifier.value}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      identifiers.push(identifier);
+    }
+  }
+  return identifiers;
 }
 
 export const batchUpdateMembersPlugin = createPlugin({
@@ -42,10 +56,11 @@ export const batchUpdateMembersPlugin = createPlugin({
     id: "batch-update-members",
     name: "Batch Update Members",
     description:
-      "Update a batch of members identified by email: change their seat " +
-      "type, change their role (also reactivates revoked members), or " +
-      "revoke them. Each email is looked up in this workspace; the outcome " +
-      "is reported per email.",
+      "Update a batch of members identified by email or user ID: change " +
+      "their seat type, change their role (also reactivates revoked " +
+      "members), or revoke them. Each identifier is looked up in this " +
+      "workspace; the outcome is reported per identifier. Prefer a user ID " +
+      "over an email when several accounts share the same email.",
     resourceTypes: ["workspaces"],
     args: {
       action: {
@@ -82,10 +97,12 @@ export const batchUpdateMembersPlugin = createPlugin({
         })),
         multiple: false,
       },
-      emails: {
+      members: {
         type: "text",
-        label: "Emails",
-        description: "One email per line.",
+        label: "Emails or user IDs",
+        description:
+          "One email or user ID per line. Use a user ID to target a " +
+          "specific account when several share the same email.",
       },
       immediate: {
         type: "boolean",
@@ -106,31 +123,73 @@ export const batchUpdateMembersPlugin = createPlugin({
 
     const action = args.action[0];
 
-    const emails = parseEmails(args.emails);
-    if (emails.length === 0) {
-      return new Err(new Error("At least one email is required."));
+    const identifiers = parseMemberIdentifiers(args.members);
+    if (identifiers.length === 0) {
+      return new Err(new Error("At least one email or user ID is required."));
     }
 
-    const users = await UserResource.fetchByEmails(emails);
-    const usersByEmail = new Map(
-      users.map((user) => [user.email.toLowerCase(), user])
-    );
+    const emails = identifiers
+      .filter((identifier) => identifier.kind === "email")
+      .map((identifier) => identifier.value);
+    const userIds = identifiers
+      .filter((identifier) => identifier.kind === "userId")
+      .map((identifier) => identifier.value);
+
+    const [emailMatches, idMatches] = await Promise.all([
+      UserResource.fetchByEmails(emails),
+      UserResource.fetchByIds(userIds),
+    ]);
+
+    // An email may resolve to several accounts; keep them all so we can flag
+    // the ambiguity instead of silently acting on one.
+    const usersByEmail = new Map<string, UserResource[]>();
+    for (const user of emailMatches) {
+      const key = user.email.toLowerCase();
+      const existing = usersByEmail.get(key);
+      if (existing) {
+        existing.push(user);
+      } else {
+        usersByEmail.set(key, [user]);
+      }
+    }
+    const usersById = new Map(idMatches.map((user) => [user.sId, user]));
+
+    const resolveUser = (
+      identifier: MemberIdentifier
+    ):
+      | { status: "ok"; user: UserResource }
+      | { status: "user_not_found" }
+      | { status: "ambiguous_email" } => {
+      if (identifier.kind === "userId") {
+        const user = usersById.get(identifier.value);
+        return user ? { status: "ok", user } : { status: "user_not_found" };
+      }
+      const users = usersByEmail.get(identifier.value) ?? [];
+      if (users.length === 0) {
+        return { status: "user_not_found" };
+      }
+      if (users.length > 1) {
+        return { status: "ambiguous_email" };
+      }
+      return { status: "ok", user: users[0] };
+    };
 
     const author = auth.user()?.toJSON() ?? "no-author";
 
-    // Run `fn` for every email, reporting `user_not_found` for emails that do
-    // not resolve to a user.
+    // Run `fn` for every identifier, reporting `user_not_found` for identifiers
+    // that do not resolve to a user and `ambiguous_email` for emails shared by
+    // several accounts (use a user ID to disambiguate).
     const runForEach = (
-      fn: (email: string, user: UserResource) => Promise<object>
+      fn: (identifier: string, user: UserResource) => Promise<object>
     ) =>
       concurrentExecutor(
-        emails,
-        async (email) => {
-          const user = usersByEmail.get(email);
-          if (!user) {
-            return { email, status: "user_not_found" as const };
+        identifiers,
+        async (identifier) => {
+          const resolution = resolveUser(identifier);
+          if (resolution.status !== "ok") {
+            return { identifier: identifier.value, status: resolution.status };
           }
-          return fn(email, user);
+          return fn(identifier.value, resolution.user);
         },
         { concurrency: 10 }
       );
@@ -176,7 +235,7 @@ export const batchUpdateMembersPlugin = createPlugin({
         // `membership.seat_updated` event; we additionally emit one
         // `membership.bulk_seat_updated` summarizing the batch.
         const updatedEmails: string[] = [];
-        const results = await runForEach(async (email, user) => {
+        const results = await runForEach(async (identifier, user) => {
           const res = await updateMembershipSeatAndTrack({
             user,
             workspace,
@@ -186,22 +245,29 @@ export const batchUpdateMembersPlugin = createPlugin({
             allowReturningMemberFreeSeat: true,
           });
           if (res.isErr()) {
-            return { email, status: "failed" as const, error: res.error.type };
+            return {
+              identifier,
+              email: user.email,
+              status: "failed" as const,
+              error: res.error.type,
+            };
           }
 
           const { previousSeatType, newSeatType, scheduledSeatChangeAt } =
             res.value;
           if (previousSeatType === newSeatType && !scheduledSeatChangeAt) {
             return {
-              email,
+              identifier,
+              email: user.email,
               status: "unchanged" as const,
               seatType: newSeatType,
             };
           }
 
-          updatedEmails.push(email);
+          updatedEmails.push(user.email);
           return {
-            email,
+            identifier,
+            email: user.email,
             status: "updated" as const,
             previousSeatType,
             newSeatType,
@@ -237,7 +303,7 @@ export const batchUpdateMembersPlugin = createPlugin({
         // `membership.role_updated` event; we additionally emit one
         // `membership.bulk_role_updated` summarizing the batch.
         const updatedEmails: string[] = [];
-        const results = await runForEach(async (email, user) => {
+        const results = await runForEach(async (identifier, user) => {
           // `allowTerminated` re-activates revoked members (preserving their
           // previous origin/seat), so this doubles as a "re-add".
           const res = await updateMembershipRoleAndTrack({
@@ -249,14 +315,25 @@ export const batchUpdateMembersPlugin = createPlugin({
           });
           if (res.isErr()) {
             if (res.error.type === "already_on_role") {
-              return { email, status: "unchanged" as const, role };
+              return {
+                identifier,
+                email: user.email,
+                status: "unchanged" as const,
+                role,
+              };
             }
-            return { email, status: "failed" as const, error: res.error.type };
+            return {
+              identifier,
+              email: user.email,
+              status: "failed" as const,
+              error: res.error.type,
+            };
           }
 
-          updatedEmails.push(email);
+          updatedEmails.push(user.email);
           return {
-            email,
+            identifier,
+            email: user.email,
             status: "updated" as const,
             previousRole: res.value.previousRole,
             newRole: res.value.newRole,
@@ -286,17 +363,26 @@ export const batchUpdateMembersPlugin = createPlugin({
         // event; we additionally emit one `member.bulk_revoked` summarizing the
         // batch (mirrors the `revoke-users` plugin).
         const revokedEmails: string[] = [];
-        const results = await runForEach(async (email, user) => {
+        const results = await runForEach(async (identifier, user) => {
           const res = await revokeAndTrackMembership(auth, user);
           if (res.isErr()) {
             if (res.error.type === "already_revoked") {
-              return { email, status: "unchanged" as const };
+              return {
+                identifier,
+                email: user.email,
+                status: "unchanged" as const,
+              };
             }
-            return { email, status: "failed" as const, error: res.error.type };
+            return {
+              identifier,
+              email: user.email,
+              status: "failed" as const,
+              error: res.error.type,
+            };
           }
 
-          revokedEmails.push(email);
-          return { email, status: "revoked" as const };
+          revokedEmails.push(user.email);
+          return { identifier, email: user.email, status: "revoked" as const };
         });
 
         if (revokedEmails.length > 0) {

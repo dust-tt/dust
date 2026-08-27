@@ -10,9 +10,14 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import type { AppType, SpecificationType } from "@app/types/app";
+import type {
+  AppType,
+  EnrichedAppType,
+  SpecificationType,
+} from "@app/types/app";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { EnrichedSpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import sortBy from "lodash/sortBy";
@@ -310,6 +315,17 @@ export class AppResource extends ResourceWithSpace<AppModel> {
       savedRun: this.savedRun,
       dustAPIProjectId: this.dustAPIProjectId,
       space: this.space.toJSON(),
+    };
+  }
+
+  // The app serialized with its space in enriched form (`groupIds`, `isRestricted` — part of the
+  // public app contract). The caller obtains the `EnrichedSpaceType` on demand via
+  // `SpaceResource.batchToJSONEnriched`, so app serialization does not depend on the space's
+  // eagerly-loaded grants.
+  toJSONEnriched(space: EnrichedSpaceType): EnrichedAppType {
+    return {
+      ...this.toJSON(),
+      space,
     };
   }
 

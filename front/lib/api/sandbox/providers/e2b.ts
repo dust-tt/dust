@@ -21,6 +21,7 @@ import type {
 } from "@app/lib/api/sandbox/provider";
 import {
   isSandboxExecUser,
+  SandboxExecTimeoutError,
   SandboxNotFoundError,
   traceSandboxOperation,
 } from "@app/lib/api/sandbox/provider";
@@ -36,7 +37,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { CommandHandle } from "e2b";
-import { CommandExitError, NotFoundError, Sandbox } from "e2b";
+import { CommandExitError, NotFoundError, Sandbox, TimeoutError } from "e2b";
 
 const ONE_HOUR_MS = 60 * 60 * 1_000;
 
@@ -290,6 +291,7 @@ async function sendStdinAndWait(
   handle: CommandHandle,
   stdin: string | Uint8Array
 ) {
+  let stdinDelivered = false;
   try {
     // Per-RPC timeout, not the command's total runtime — clamping to the
     // overall timeoutMs would block sendStdin/closeStdin for the entire
@@ -300,6 +302,7 @@ async function sendStdinAndWait(
     await sandbox.commands.closeStdin(handle.pid, {
       requestTimeoutMs: REQUEST_TIMEOUT_MS,
     });
+    stdinDelivered = true;
     return await handle.wait();
   } catch (err) {
     if (err instanceof NotFoundError) {
@@ -314,6 +317,14 @@ async function sendStdinAndWait(
       await handle.kill();
     } catch {
       // Best-effort: caller already has a real error to surface.
+    }
+    if (!stdinDelivered && err instanceof TimeoutError) {
+      // A per-RPC stdin timeout is an input-delivery failure, not the command
+      // running past its ceiling: rewrap so the caller does not map it to
+      // SandboxExecTimeoutError.
+      throw new Error(
+        `Failed to deliver stdin to the sandbox command: ${err.message}`
+      );
     }
     throw err;
   }
@@ -565,6 +576,11 @@ export class E2BSandboxProvider implements SandboxProvider {
               stdout: err.stdout,
               stderr: err.stderr,
             });
+          }
+          // The command ran past `timeoutMs`. Map to our own error so callers
+          // can tell an exec timeout from an infra failure.
+          if (err instanceof TimeoutError) {
+            return new Err(new SandboxExecTimeoutError(start.opts.timeoutMs));
           }
           return new Err(normalizeError(err));
         }

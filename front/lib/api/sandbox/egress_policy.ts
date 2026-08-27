@@ -40,6 +40,29 @@ function getPolicyBucket() {
   return getBucketInstance(config.getEgressPolicyBucket());
 }
 
+// Pod ids that have their own egress policy file. Pods store policies at
+// w/{wId}/sandboxes/{podId}.json; the `vlt_` prefix (spaces' sId prefix)
+// isolates Pod (space) policies from the conversation-owned files sharing that
+// directory. One prefix list instead of a read per Pod, so the admin surfaces
+// scale with the Pods that actually diverged from the workspace baseline, not
+// the total Pod count.
+export async function listPodIdsWithEgressPolicy(
+  auth: Authenticator
+): Promise<Result<string[], Error>> {
+  const prefix = `w/${auth.getNonNullableWorkspace().sId}/sandboxes/vlt_`;
+  try {
+    const { files } = await getPolicyBucket().getAllFilesByPrefix({ prefix });
+    return new Ok(
+      files.flatMap((file) => {
+        const match = file.name.match(/\/sandboxes\/(vlt_[^/]+)\.json$/);
+        return match ? [match[1]] : [];
+      })
+    );
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
 // Reads a policy file, distinguishing "absent" (Ok(null)) from real errors so
 // callers can fall back across layouts without masking failures.
 async function fetchPolicyAtPath(
@@ -237,13 +260,11 @@ export async function addOwnerPolicyDomain(
     parsedDomain.value
   );
   const addedDomain = alreadyAllowed ? null : parsedDomain.value;
-  const policy: EgressPolicy = {
-    allowedDomains: alreadyAllowed
-      ? currentPolicy.value.allowedDomains
-      : [...currentPolicy.value.allowedDomains, parsedDomain.value],
-  };
+  const allowedDomains = alreadyAllowed
+    ? currentPolicy.value.allowedDomains
+    : [...currentPolicy.value.allowedDomains, parsedDomain.value];
 
-  if (policy.allowedDomains.length > SANDBOX_POLICY_MAX_DOMAINS) {
+  if (allowedDomains.length > SANDBOX_POLICY_MAX_DOMAINS) {
     return new Err(
       new Error(
         `Sandbox egress policy cannot exceed ${SANDBOX_POLICY_MAX_DOMAINS} domains.`
@@ -251,20 +272,139 @@ export async function addOwnerPolicyDomain(
     );
   }
 
-  try {
-    // Last-writer-wins is acceptable here because sandbox policy updates are user-approved and rare.
-    await getPolicyBucket().uploadRawContentToBucket({
-      content: JSON.stringify(policy),
-      contentType: "application/json",
-      filePath: getOwnerPolicyPath(auth, ownerId),
-    });
-
-    await invalidateOwnerPolicyCache(auth, ownerId);
-
-    return new Ok({ policy, addedDomain });
-  } catch (error) {
-    return new Err(normalizeError(error));
+  // Write through writeOwnerPolicy so the file's pending requestedDomains are
+  // preserved (and a now-allowed request is resolved) rather than overwritten
+  // with an allowlist-only policy.
+  const written = await writeOwnerPolicy(auth, {
+    ownerId,
+    policy: { allowedDomains },
+  });
+  if (written.isErr()) {
+    return written;
   }
+
+  return new Ok({ policy: written.value, addedDomain });
+}
+
+// Workspace-scoped counterpart of addOwnerPolicyDomain: exact-domain append
+// with the same dedupe and cap, but on the workspace policy file.
+export async function addWorkspacePolicyDomain(
+  auth: Authenticator,
+  { domain }: { domain: string }
+): Promise<
+  Result<{ policy: EgressPolicy; addedDomain: string | null }, Error>
+> {
+  const parsedDomain = parseExactEgressDomain(domain);
+  if (parsedDomain.isErr()) {
+    return new Err(parsedDomain.error);
+  }
+
+  const currentPolicy = await readWorkspacePolicy(auth);
+  if (currentPolicy.isErr()) {
+    return new Err(currentPolicy.error);
+  }
+
+  const alreadyAllowed = currentPolicy.value.allowedDomains.includes(
+    parsedDomain.value
+  );
+  const addedDomain = alreadyAllowed ? null : parsedDomain.value;
+  const allowedDomains = alreadyAllowed
+    ? currentPolicy.value.allowedDomains
+    : [...currentPolicy.value.allowedDomains, parsedDomain.value];
+
+  if (allowedDomains.length > SANDBOX_POLICY_MAX_DOMAINS) {
+    return new Err(
+      new Error(
+        `Sandbox egress policy cannot exceed ${SANDBOX_POLICY_MAX_DOMAINS} domains.`
+      )
+    );
+  }
+
+  const written = await writeWorkspacePolicy(auth, {
+    policy: { allowedDomains },
+  });
+  if (written.isErr()) {
+    return new Err(written.error);
+  }
+
+  return new Ok({ policy: written.value, addedDomain });
+}
+
+// Removes an exact domain from a pod's allowlist. No cap check (removal only
+// shrinks the list); removedDomain is null when the domain was not present.
+export async function removeOwnerPolicyDomain(
+  auth: Authenticator,
+  { ownerId, domain }: { ownerId: string; domain: string }
+): Promise<
+  Result<{ policy: EgressPolicy; removedDomain: string | null }, Error>
+> {
+  const parsedDomain = parseExactEgressDomain(domain);
+  if (parsedDomain.isErr()) {
+    return new Err(parsedDomain.error);
+  }
+
+  const currentPolicy = await readOwnerPolicy(auth, ownerId);
+  if (currentPolicy.isErr()) {
+    return new Err(currentPolicy.error);
+  }
+
+  // Skip the write entirely when the domain is absent so a no-op remove never
+  // creates an owner policy file — which would make an unconfigured Pod look
+  // configured to listPodIdsWithEgressPolicy (file-existence based).
+  if (!currentPolicy.value.allowedDomains.includes(parsedDomain.value)) {
+    return new Ok({ policy: currentPolicy.value, removedDomain: null });
+  }
+
+  const allowedDomains = currentPolicy.value.allowedDomains.filter(
+    (allowed) => allowed !== parsedDomain.value
+  );
+
+  const written = await writeOwnerPolicy(auth, {
+    ownerId,
+    policy: { allowedDomains },
+  });
+  if (written.isErr()) {
+    return new Err(written.error);
+  }
+
+  return new Ok({ policy: written.value, removedDomain: parsedDomain.value });
+}
+
+// Workspace-scoped counterpart of removeOwnerPolicyDomain.
+export async function removeWorkspacePolicyDomain(
+  auth: Authenticator,
+  { domain }: { domain: string }
+): Promise<
+  Result<{ policy: EgressPolicy; removedDomain: string | null }, Error>
+> {
+  const parsedDomain = parseExactEgressDomain(domain);
+  if (parsedDomain.isErr()) {
+    return new Err(parsedDomain.error);
+  }
+
+  const currentPolicy = await readWorkspacePolicy(auth);
+  if (currentPolicy.isErr()) {
+    return new Err(currentPolicy.error);
+  }
+
+  // Skip the write when the domain is absent (no-op remove), mirroring
+  // removeOwnerPolicyDomain.
+  if (!currentPolicy.value.allowedDomains.includes(parsedDomain.value)) {
+    return new Ok({ policy: currentPolicy.value, removedDomain: null });
+  }
+
+  const allowedDomains = currentPolicy.value.allowedDomains.filter(
+    (allowed) => allowed !== parsedDomain.value
+  );
+
+  const written = await writeWorkspacePolicy(auth, {
+    policy: { allowedDomains },
+  });
+  if (written.isErr()) {
+    return new Err(written.error);
+  }
+
+  return new Ok({ policy: written.value, removedDomain: parsedDomain.value });
 }
 
 // Caps the pending-request section: the proxy re-reads this file on every

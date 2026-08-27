@@ -9,8 +9,9 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetActivationPodResponseBody> => {
   const auth = ctx.get("auth");
+  const podId = ctx.req.query("podId");
 
-  const podInfo = await getActivationPodInfo(auth);
+  const podInfo = await getActivationPodInfo(auth, { podId });
 
   return ctx.json(podInfo);
 });

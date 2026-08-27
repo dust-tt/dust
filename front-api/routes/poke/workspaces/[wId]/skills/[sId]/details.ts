@@ -48,7 +48,7 @@ app.get(
     return ctx.json({
       skill: serializedSkill,
       editedByUser: editedByUser ? editedByUser.toJSON() : null,
-      spaces: spaces.map((s) => s.toJSON()),
+      spaces: await SpaceResource.batchToJSONEnriched(auth, spaces),
       agentsUsage,
       usedBySkills,
     });

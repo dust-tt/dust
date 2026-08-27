@@ -1,5 +1,4 @@
 import { ModelTierPickerDropdown } from "@app/components/workspace/ModelTierPickerDropdown";
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import {
   getGroupModelTierOptions,
   NO_GROUP_MODEL_TIER,
@@ -8,6 +7,7 @@ import {
   useGroupAllowedModelTierMutations,
   useGroupAllowedModelTiers,
 } from "@app/lib/swr/model_tiers";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { LightWorkspaceType } from "@app/types/user";
 
 interface GroupModelTierPickerDropdownProps {

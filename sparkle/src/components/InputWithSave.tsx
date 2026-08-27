@@ -23,6 +23,8 @@ export interface InputWithSaveProps
   normalizeValue?: (value: string) => string;
   /** Formats the draft for display while editing (e.g. add thousands separators). */
   formatValue?: (value: string) => string;
+  /** Returns an error message for an invalid draft; saving is blocked while it returns one. */
+  validate?: (value: string) => string | null;
   className?: string;
 }
 
@@ -44,6 +46,7 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
       onSave,
       normalizeValue,
       formatValue,
+      validate,
       className,
       disabled,
       onFocus,
@@ -61,9 +64,12 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
     const [isSaving, setIsSaving] = useState(false);
 
     const showSaveButton = isEditing || isSaving;
+    const validationMessage = showSaveButton
+      ? (validate?.(draftValue) ?? null)
+      : null;
 
     const handleSave = async () => {
-      if (isSaving) {
+      if (isSaving || validationMessage) {
         return;
       }
       setIsSaving(true);
@@ -128,14 +134,18 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
           onKeyDown={handleKeyDown}
           disabled={disabled}
           readOnly={isSaving}
+          message={validationMessage}
+          messageStatus="error"
           className={cn(
             "text-right",
-            showSaveButton ? "pr-20" : unit ? "pr-12" : null
+            showSaveButton ? "pr-24" : unit ? "pr-14" : null
           )}
           {...props}
         />
         {hasOverlay && (
-          <div className="pointer-events-none absolute inset-y-0 right-1 flex items-center gap-1.5">
+          // Pinned to the field (h-8 at size sm) rather than the container, which
+          // also holds the validation message.
+          <div className="pointer-events-none absolute top-0 right-3 flex h-8 items-center gap-1.5">
             {unit && (
               <span className="shrink-0 text-sm text-faint">{unit}</span>
             )}
@@ -145,6 +155,7 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
                 variant="highlight"
                 size="xs"
                 isLoading={isSaving}
+                disabled={Boolean(validationMessage)}
                 className="pointer-events-auto"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={(e) => {

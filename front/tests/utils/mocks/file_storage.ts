@@ -25,6 +25,15 @@ interface MockFileMetadata {
   contentDisposition?: string;
 }
 
+class MockGcsError extends Error {
+  constructor(
+    readonly code: number,
+    message: string
+  ) {
+    super(message);
+  }
+}
+
 // Minimal duck-typed stand-in for the GCS `File` objects `getSortedFileVersions` resolves to.
 // Callers (e.g. FileResource.revert()) only ever call `.copy(dest)` and `.delete()` on them.
 export interface MockFileVersion {
@@ -247,6 +256,7 @@ class FileStorageMock {
       getPrivateUploadBucket: vi.fn(createStorage),
       getPublicUploadBucket: vi.fn(createStorage),
       getUpsertQueueBucket: vi.fn(createStorage),
+      getTmpWorkloadsBucket: vi.fn(createStorage),
       getDustDataSourcesBucket: vi.fn(createStorage),
       getWebhookRequestsBucket: vi.fn(createStorage),
       getLLMTracesBucket: vi.fn(createStorage),
@@ -373,9 +383,27 @@ class FileStorageMock {
           return Promise.resolve(undefined);
         }
       ),
-      uploadSmallRawContentToBucketAsNewFile: vi
-        .fn()
-        .mockResolvedValue(undefined),
+      uploadSmallRawContentToBucketAsNewFile: vi.fn(
+        (args: { content: string; contentType: string; filePath: string }) => {
+          if (this._objectStore.has(args.filePath)) {
+            return Promise.reject(
+              new MockGcsError(412, `Object already exists: ${args.filePath}`)
+            );
+          }
+          if (this._saveShouldFail(args.filePath)) {
+            return Promise.reject(
+              new Error(`Simulated GCS write failure: ${args.filePath}`)
+            );
+          }
+          this._objectStore.set(args.filePath, args.content);
+          this._saveFileCalls.push({
+            filePath: args.filePath,
+            content: args.content,
+            contentType: args.contentType,
+          });
+          return Promise.resolve(undefined);
+        }
+      ),
       fetchFileContent: vi.fn((filePath: string) => {
         const stored = this._objectStore.get(filePath);
         if (stored !== undefined) {
@@ -388,14 +416,23 @@ class FileStorageMock {
         if (this._fetchNotFoundPredicate(filePath)) {
           // Same shape isGCSNotFoundError matches on real GCS ApiErrors.
           return Promise.reject(
-            Object.assign(new Error(`No such object: ${filePath}`), {
-              code: 404,
-            })
+            new MockGcsError(404, `No such object: ${filePath}`)
           );
         }
         return Promise.resolve("mock content");
       }),
-      fetchFileBuffer: vi.fn().mockResolvedValue(new Uint8Array()),
+      fetchFileBuffer: vi.fn((filePath: string) => {
+        const stored = this._objectStore.get(filePath);
+        if (stored !== undefined) {
+          return Promise.resolve(Uint8Array.from(Buffer.from(stored)));
+        }
+        if (this._fetchNotFoundPredicate(filePath)) {
+          return Promise.reject(
+            new MockGcsError(404, `No such object: ${filePath}`)
+          );
+        }
+        return Promise.resolve(new Uint8Array());
+      }),
       copyFile: vi.fn((src: string, dest: string) => {
         if (this._copyFileShouldFail(src, dest)) {
           return Promise.reject(

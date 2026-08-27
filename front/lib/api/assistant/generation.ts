@@ -176,9 +176,7 @@ function constructToolsSection({
       "target or scope before a consequential action, collecting missing " +
       "inputs, or letting the user pick preferences such as topic, " +
       "difficulty, format, audience, length, or direction for creative and " +
-      "interactive tasks. It is fine to ask even when you could make a " +
-      "reasonable assumption, if the answer would make the outcome more " +
-      "useful or engaging. Ask one precise question at a time, and prefer " +
+      "interactive tasks. Ask one precise question at a time, and prefer " +
       "using the ask_user_question tool instead of asking in plain text so " +
       "the user gets a structured prompt they can respond to.\n";
   }
@@ -218,9 +216,7 @@ function constructSkillsSection({
     "These mean the instructions used to reference another skill, but that skill is no longer available to this conversation, for example because skill scope or permissions changed. " +
     "Do not try to enable unavailable skill tags.\n" +
     "If you need to enable multiple skills, enable those skills in parallel together. " +
-    "Do not make tool calls to other tools in parallel to skill-enablement; you may want to revisit after the skill instructions are loaded.\n\n" +
-    "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
-    "perspective on the currently available context.\n";
+    "Do not make tool calls to other tools in parallel to skill-enablement; you may want to revisit after the skill instructions are loaded.\n";
 
   if (systemSkills.length > 0) {
     skillsSection +=

@@ -275,3 +275,46 @@ export const LargeContent: Story = {
     </Dialog>
   ),
 };
+
+/**
+ * `DialogContent height="md" grow` keeps the fixed height as a minimum: the
+ * dialog opens at least `md` tall, grows with its content, and only scrolls
+ * once it hits the 90vh cap. Toggle the content size to see all three states.
+ * @summary Dialog growing with content above a minimum height.
+ */
+export const GrowingDialog: Story = {
+  render: () => {
+    const [tall, setTall] = React.useState(false);
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button label="Open growing dialog" />
+        </DialogTrigger>
+        <DialogContent size="lg" height="md" grow>
+          <DialogHeader>
+            <DialogTitle>Growing dialog</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            <div className="flex flex-col gap-4">
+              <Button
+                label={tall ? "Shrink content" : "Make content tall"}
+                variant="outline"
+                onClick={() => setTall(!tall)}
+              />
+              <div
+                className="rounded-lg bg-highlight-100"
+                style={{ height: tall ? 1600 : 120 }}
+              />
+            </div>
+          </DialogContainer>
+          <DialogFooter
+            rightButtonProps={{
+              label: "Close",
+              variant: "highlight",
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  },
+};

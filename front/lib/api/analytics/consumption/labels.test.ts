@@ -9,10 +9,14 @@ import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { getTierForModel } from "@app/types/assistant/models/model_tiers";
+import { getModelMaker } from "@app/types/assistant/models/providers";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("resolveDimensionDisplayNames", () => {
@@ -126,6 +130,65 @@ describe("resolveDimensionLabels", () => {
       description: "Answers analytics questions",
       modelId: agent.model.modelId,
       modelDisplayName: getAgentModelDisplayName(agent.model),
+      scope: agent.scope,
+    });
+  });
+
+  it("preserves scope for fallback agent labels", async () => {
+    const { authenticator: editorAuth, workspace } = await createResourceTest({
+      role: "user",
+    });
+    const space = await SpaceFactory.regular(workspace);
+    const agent = await AgentConfigurationFactory.createTestAgent(editorAuth, {
+      name: "Restricted agent",
+      scope: "hidden",
+      requestedSpaceIds: [space.id],
+    });
+    const manager = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, manager, { role: "manager" });
+    const managerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      manager.sId,
+      workspace.sId
+    );
+
+    const labels = await resolveDimensionLabels(managerAuth, "agent", [
+      agent.sId,
+    ]);
+
+    expect(labels.get(agent.sId)).toEqual(
+      expect.objectContaining({
+        name: "Restricted agent",
+        scope: "hidden",
+      })
+    );
+  });
+
+  it("labels models with their maker and tier", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const model = getSupportedModelConfigs().find(
+      (config) =>
+        getTierForModel(config.modelId, config.defaultReasoningEffort) !== null
+    );
+    expect(model).toBeDefined();
+    if (!model) {
+      return;
+    }
+    const tier = getTierForModel(model.modelId, model.defaultReasoningEffort);
+    expect(tier).not.toBeNull();
+    if (!tier) {
+      return;
+    }
+
+    const labels = await resolveDimensionLabels(authenticator, "model", [
+      model.modelId,
+    ]);
+
+    expect(labels.get(model.modelId)).toEqual({
+      name: model.displayName,
+      pictureUrl: null,
+      description: null,
+      maker: getModelMaker(model),
+      tier,
     });
   });
 

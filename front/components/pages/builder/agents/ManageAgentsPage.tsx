@@ -4,6 +4,7 @@ import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetail
 import type { AgentModelFilterType } from "@app/components/assistant/ModelsFilterMenu";
 import { ModelsFilterMenu } from "@app/components/assistant/ModelsFilterMenu";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
+import { NoArchivedAgentsCTA } from "@app/components/assistant/manager/NoArchivedAgentsCTA";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { getModelLogoByModelId } from "@app/components/providers/types";
@@ -15,8 +16,8 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useModels } from "@app/lib/swr/models";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
@@ -27,15 +28,17 @@ import {
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TagType } from "@app/types/tag";
 import {
+  Checkbox,
   Chip,
   EmptyCTA,
+  InfoCircle,
   Page,
   Plus,
   SearchInput,
-  Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -72,7 +75,8 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
 
 export function ManageAgentsPage() {
   const owner = useWorkspace();
-  const { user } = useAuth();
+  const { models: enabledModels } = useModels({ owner });
+  const { user, isAdmin } = useAuth();
   const [assistantSearch, setAssistantSearch] = useState("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
@@ -82,6 +86,7 @@ export function ManageAgentsPage() {
     []
   );
   const [selection, setSelection] = useState<string[]>([]);
+  const [showHiddenAgents, setShowHiddenAgents] = useState(false);
   const isMobile = useIsMobile();
 
   const { isDark } = useTheme();
@@ -89,6 +94,9 @@ export function ManageAgentsPage() {
   const { hasPermission } = useWorkspacePermissions();
 
   const canCreateAgent = hasPermission("create", "agent");
+  // Only admins may list the agents they neither edit nor share a space with.
+  const canShowHiddenAgents = isAdmin;
+  const isShowHiddenAgentsEnabled = canShowHiddenAgents && showHiddenAgents;
   const isSearchActive = assistantSearch.trim() !== "";
   const isFilterActive =
     isSearchActive || selectedTags.length > 0 || selectedModels.length > 0;
@@ -102,6 +110,7 @@ export function ManageAgentsPage() {
   const selectionScopeKey = [
     activeTab,
     assistantSearch,
+    String(isShowHiddenAgentsEnabled),
     selectedTags
       .map((t) => t.sId)
       .sort()
@@ -126,13 +135,14 @@ export function ManageAgentsPage() {
     isAgentConfigurationsLoading,
   } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: "manage",
+    agentsGetView: isShowHiddenAgentsEnabled ? "manage_unrestricted" : "manage",
     includes: ["authors", "usage", "feedbacks", "editors"],
   });
 
   const {
     agentConfigurations: archivedAgentConfigurations,
     isAgentConfigurationsLoading: isArchivedAgentConfigurationsLoading,
+    mutateRegardlessOfQueryParams: mutateArchivedAgentConfigurations,
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "archived",
@@ -208,20 +218,6 @@ export function ManageAgentsPage() {
     return { uniqueTags };
   }, [agentConfigurations]);
 
-  const uniqueModels = useMemo(() => {
-    // Agents pointing at a model we no longer support fall back to their raw
-    // modelId, as the Model column of the agents table does.
-    const models = agentConfigurations.map((a) => ({
-      modelId: a.model.modelId,
-      displayName:
-        getSupportedModelConfig(a.model)?.displayName ?? a.model.modelId,
-    }));
-    // Remove duplicate models by unique modelId.
-    return Array.from(
-      new Map(models.map((model) => [model.modelId, model])).values()
-    ).sort((a, b) => a.displayName.localeCompare(b.displayName));
-  }, [agentConfigurations]);
-
   const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
 
   const handleToggleAgentStatus = async (
@@ -286,6 +282,9 @@ export function ManageAgentsPage() {
   useSetContentWidth("wide");
   useSetNavChildren(navChildren);
 
+  const isLoading =
+    isAgentConfigurationsLoading || isArchivedAgentConfigurationsLoading;
+
   return (
     <>
       <AgentDetailsSheet
@@ -310,7 +309,7 @@ export function ManageAgentsPage() {
             />
             <div className="flex gap-2">
               <ModelsFilterMenu
-                models={uniqueModels}
+                models={enabledModels}
                 selectedModels={selectedModels}
                 setSelectedModels={setSelectedModels}
                 isCompact={isMobile}
@@ -379,21 +378,28 @@ export function ManageAgentsPage() {
                     counterValue={`${agentsByTab[tab.id].length}`}
                   />
                 ))}
+                {canShowHiddenAgents && activeTab === "all_custom" && (
+                  <span className="ml-auto flex gap-1 self-center text-sm text-muted-foreground">
+                    <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
+                      <Checkbox
+                        checked={showHiddenAgents}
+                        onCheckedChange={(checked) =>
+                          setShowHiddenAgents(checked === true)
+                        }
+                      />
+                      Show hidden agents
+                    </label>
+                    <Tooltip
+                      label="Shows the agents of all members you can access as an admin, even if they are not published or if they use restricted spaces"
+                      trigger={
+                        <InfoCircle className="h-4 w-4 text-muted-foreground" />
+                      }
+                    />
+                  </span>
+                )}
               </TabsList>
             </Tabs>
-            {isAgentConfigurationsLoading ||
-            isArchivedAgentConfigurationsLoading ? (
-              <div className="mt-8 flex justify-center">
-                <Spinner size="lg" />
-              </div>
-            ) : isFilterActive && agentsByTab[activeTab].length === 0 ? (
-              <div className="pt-2">
-                <EmptyCTA
-                  message="No agent matches your search or filters."
-                  action={null}
-                />
-              </div>
-            ) : agentsByTab[activeTab].length > 0 ? (
+            {isLoading || agentsByTab[activeTab].length > 0 ? (
               <AssistantsTable
                 selection={selection}
                 setSelection={setSelection}
@@ -406,7 +412,24 @@ export function ManageAgentsPage() {
                   setShowDisabledFreeWorkspacePopup
                 }
                 mutateAgentConfigurations={mutateAgentConfigurations}
+                isLoading={isLoading}
               />
+            ) : isFilterActive ? (
+              <div className="pt-2">
+                <EmptyCTA
+                  message="No agent matches your search or filters."
+                  action={null}
+                />
+              </div>
+            ) : activeTab === "archived" ? (
+              <div className="pt-2">
+                <NoArchivedAgentsCTA
+                  owner={owner}
+                  onArchived={() => {
+                    void mutateArchivedAgentConfigurations();
+                  }}
+                />
+              </div>
             ) : (
               canCreateAgent && (
                 <div className="pt-2">

@@ -1,8 +1,6 @@
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import type {
-  ConsumptionFacetOptions,
-  UseConsumptionFacetsParams,
-} from "@app/hooks/useConsumptionFacets";
+import { EMPTY_FACET_OPTIONS } from "@app/components/workspace/analytics/usageFilter";
+import type { UseConsumptionFacetsParams } from "@app/hooks/useConsumptionFacets";
 import { toConsumptionFacetOptions } from "@app/hooks/useConsumptionFacets";
 import type { UseConsumptionOverviewParams } from "@app/hooks/useConsumptionOverview";
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
@@ -31,17 +29,6 @@ import type {
 import { emptyArray } from "@app/lib/swr/swr";
 import { useMemo } from "react";
 
-const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
-  agent: [],
-  member: [],
-  group: [],
-  model: [],
-  tool: [],
-  skill: [],
-  source: [],
-  api_key: [],
-};
-
 const CONSUMPTION_TOP_ENDPOINTS = {
   agent: "top-agents",
   user: "top-users",
@@ -52,6 +39,41 @@ const CONSUMPTION_TOP_ENDPOINTS = {
   source: "top-sources",
   api_key: "top-api-keys",
 } as const satisfies Record<ConsumptionDimension, string>;
+
+function toPokeConsumptionTopRows(
+  data: ConsumptionTopResponse,
+  workspaceId: string
+): ConsumptionTopRow[] {
+  const rows = toConsumptionTopRows(data);
+  if ("agents" in data) {
+    return rows.map((row) => ({
+      ...row,
+      detailsHref: row.modelId
+        ? `/poke/${workspaceId}/assistants/${row.id}`
+        : undefined,
+    }));
+  }
+  if ("groups" in data) {
+    return rows.map((row) => ({
+      ...row,
+      detailsHref:
+        row.name !== row.id
+          ? `/poke/${workspaceId}/groups/${row.id}`
+          : undefined,
+    }));
+  }
+  if ("skills" in data) {
+    return rows.map((row) => ({
+      ...row,
+      detailsHref:
+        row.name !== row.id
+          ? `/poke/${workspaceId}/skills/${row.id}`
+          : undefined,
+    }));
+  }
+
+  return rows;
+}
 
 type ConsumptionTimeseriesBody = ConsumptionBody & {
   mode: ConsumptionTimeseriesMode;
@@ -180,8 +202,11 @@ export function usePokeConsumptionTop({
   >({ url, body, disabled });
 
   const rows = useMemo(
-    () => (data ? toConsumptionTopRows(data) : emptyArray<ConsumptionTopRow>()),
-    [data]
+    () =>
+      data
+        ? toPokeConsumptionTopRows(data, workspaceId)
+        : emptyArray<ConsumptionTopRow>(),
+    [data, workspaceId]
   );
 
   return {

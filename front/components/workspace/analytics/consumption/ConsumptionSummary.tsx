@@ -1,11 +1,13 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { formatCredits } from "@app/lib/client/credits";
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
-import { ArrowUpRight, Button, Chip } from "@dust-tt/sparkle";
+import { ArrowUpRight, Button, Chip, LoadingBlock } from "@dust-tt/sparkle";
 
 const TARGET_CHIP: Record<
   CreditUsageTarget,
@@ -32,6 +34,8 @@ export interface ConsumptionSummaryProps {
   period: ConsumptionPeriodSelection;
   usageHref?: string;
   usageLinkLabel?: string;
+  analyticsScope?: ConsumptionAnalyticsScope;
+  disabled?: boolean;
 }
 
 export function ConsumptionSummary({
@@ -39,9 +43,16 @@ export function ConsumptionSummary({
   period: periodSelection,
   usageHref = `/w/${workspaceId}/usage`,
   usageLinkLabel = "Manage in Usage",
+  analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
+  disabled,
 }: ConsumptionSummaryProps) {
   const { overview, isOverviewLoading, isOverviewError } =
-    useConsumptionOverview({ workspaceId, period: periodSelection });
+    useConsumptionOverview({
+      workspaceId,
+      period: periodSelection,
+      analyticsScope,
+      disabled,
+    });
 
   return (
     <ConsumptionSummaryView
@@ -50,17 +61,22 @@ export function ConsumptionSummary({
       isOverviewError={Boolean(isOverviewError)}
       usageHref={usageHref}
       usageLinkLabel={usageLinkLabel}
+      analyticsScope={analyticsScope}
     />
   );
 }
 
-interface ConsumptionSummaryViewProps {
+interface ConsumptionSummaryData {
   overview: GetConsumptionOverviewResponse | null;
   isOverviewLoading: boolean;
   isOverviewError: boolean;
+}
+
+interface ConsumptionSummaryViewProps extends ConsumptionSummaryData {
   usageHref: string;
   usageLinkLabel: string;
   responsiveLayout?: boolean;
+  analyticsScope?: ConsumptionAnalyticsScope;
 }
 
 export function ConsumptionSummaryView({
@@ -70,30 +86,36 @@ export function ConsumptionSummaryView({
   usageHref,
   usageLinkLabel,
   responsiveLayout = false,
+  analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
 }: ConsumptionSummaryViewProps) {
+  if (analyticsScope.kind === "agent") {
+    return (
+      <AgentConsumptionSummaryView
+        overview={overview}
+        isOverviewLoading={isOverviewLoading}
+        isOverviewError={isOverviewError}
+        responsiveLayout={responsiveLayout}
+      />
+    );
+  }
+
+  const loadingCardClassName = responsiveLayout
+    ? "h-24 rounded-xl"
+    : "h-24 flex-1 rounded-xl";
+
   if (isOverviewLoading) {
     return (
-      <div
-        className={
-          responsiveLayout
-            ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
-            : "flex items-stretch gap-6"
-        }
-      >
+      <div className="flex flex-col gap-4">
         <div
           className={
             responsiveLayout
-              ? "h-24 animate-pulse rounded-xl bg-muted-background"
-              : "h-24 flex-1 animate-pulse rounded-xl bg-muted-background"
+              ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+              : "flex items-stretch gap-6"
           }
-        />
-        <div
-          className={
-            responsiveLayout
-              ? "h-24 animate-pulse rounded-xl bg-muted-background"
-              : "h-24 flex-1 animate-pulse rounded-xl bg-muted-background"
-          }
-        />
+        >
+          <LoadingBlock className={loadingCardClassName} />
+          <LoadingBlock className={loadingCardClassName} />
+        </div>
       </div>
     );
   }
@@ -102,7 +124,9 @@ export function ConsumptionSummaryView({
     return null;
   }
 
-  const { topAgent, totalCredits, creditUsage } = overview;
+  const { topAgent, totalCredits } = overview;
+  const creditUsage =
+    analyticsScope.kind === "workspace" ? overview.creditUsage : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -158,6 +182,112 @@ export function ConsumptionSummaryView({
               ? `${Math.round((topAgent.credits / totalCredits) * 100)}% of total consumption`
               : null
           }
+        />
+      </div>
+    </div>
+  );
+}
+
+interface AgentConsumptionSummaryViewProps extends ConsumptionSummaryData {
+  responsiveLayout: boolean;
+}
+
+function AgentConsumptionSummaryView({
+  overview,
+  isOverviewLoading,
+  isOverviewError,
+  responsiveLayout,
+}: AgentConsumptionSummaryViewProps) {
+  const loadingCardClassName = responsiveLayout
+    ? "h-20 rounded-xl"
+    : "h-20 flex-1 rounded-xl";
+
+  if (isOverviewLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div
+          className={
+            responsiveLayout
+              ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+              : "flex items-stretch gap-6"
+          }
+        >
+          <LoadingBlock className={loadingCardClassName} />
+          <LoadingBlock className={loadingCardClassName} />
+        </div>
+        <div
+          className={
+            responsiveLayout
+              ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+              : "flex items-stretch gap-6"
+          }
+        >
+          <LoadingBlock className={loadingCardClassName} />
+          <LoadingBlock className={loadingCardClassName} />
+        </div>
+      </div>
+    );
+  }
+
+  if (isOverviewError || !overview) {
+    return null;
+  }
+
+  const messagesPerActiveUser =
+    overview.messageCount === undefined
+      ? null
+      : overview.members.active > 0
+        ? Math.round(overview.messageCount / overview.members.active)
+        : 0;
+  const averageCostPerMessage =
+    overview.messageCount !== undefined && overview.messageCount > 0
+      ? overview.totalCredits / overview.messageCount
+      : null;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div
+        className={
+          responsiveLayout
+            ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+            : "flex items-stretch gap-6"
+        }
+      >
+        <SummaryCard
+          className="h-20"
+          label="Active Users"
+          value={overview.members.active.toLocaleString()}
+          hint={null}
+        />
+        <SummaryCard
+          className="h-20"
+          label="Messages / active user"
+          value={messagesPerActiveUser?.toLocaleString() ?? "—"}
+          hint={null}
+        />
+      </div>
+      <div
+        className={
+          responsiveLayout
+            ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+            : "flex items-stretch gap-6"
+        }
+      >
+        <SummaryCard
+          className="h-20"
+          label="Total cost"
+          value={`${formatCredits(overview.totalCredits)} credits`}
+          hint={null}
+        />
+        <SummaryCard
+          className="h-20"
+          label="Avg. cost/msg"
+          value={
+            averageCostPerMessage === null
+              ? "—"
+              : `${formatCredits(averageCostPerMessage)} credits`
+          }
+          hint={null}
         />
       </div>
     </div>

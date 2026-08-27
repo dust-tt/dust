@@ -14,6 +14,7 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
+import { useActivationPod } from "@app/lib/swr/activation";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
@@ -68,6 +69,8 @@ export function PodPage() {
   const { user } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const podId = useActivePodId();
+  const { podKind } = useActivationPod({ workspaceId: owner.sId, podId });
+  const isGoalPod = podKind === "goal";
   const hasFrameTabs = hasFeature("pod_frame_tabs");
   // Pod Apps sit on top of Pod Functions, so both flags are required.
   const hasApps =
@@ -86,7 +89,6 @@ export function PodPage() {
     spaceId: podId,
     includeAllMembers: true,
   });
-
   const { value: podUiPreferences, setValue: setPodUiPreferences } =
     useScopedPodUiPreferences({
       scope: "podUi",
@@ -251,6 +253,7 @@ export function PodPage() {
 
         <PodPageContent
           podInfo={podInfo}
+          isGoalPod={isGoalPod}
           onTabChange={handleTabChange}
           podUiPreferences={podUiPreferences}
           setPodUiPreferences={setPodUiPreferences}

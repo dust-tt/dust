@@ -1,5 +1,6 @@
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type { GetBySpacesSummaryResponseBody } from "@app/types/api/assistant/conversation/spaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -97,14 +98,16 @@ app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
   const filteredSpaces = nonArchivedSpaces.filter(
     (space) => space.kind === "project" || conversationsBySpace.has(space.id)
   );
+  const sortedSpaces = sortSpacesSummary(
+    filteredSpaces,
+    conversationsBySpace,
+    lastUserActivityBySpace
+  );
+  const enriched = await SpaceResource.batchToJSONEnriched(auth, sortedSpaces);
   return ctx.json({
-    summary: sortSpacesSummary(
-      filteredSpaces,
-      conversationsBySpace,
-      lastUserActivityBySpace
-    ).map((space) => ({
+    summary: sortedSpaces.map((space, i) => ({
       space: {
-        ...space.toJSON(),
+        ...enriched[i],
         description: metadataMap.get(space.id)?.description ?? null,
         // We excluded archived projects and we only list projects where the user is a member.
         archivedAt: null,

@@ -1,0 +1,33 @@
+{
+  "scenario": "every catalog space readable, so only the deleted space can hide an agent",
+  "workspaceId": "w_mocked",
+  "workspaceName": "Permission model",
+  "generatedAt": "2026-08-27T00:00:00.000Z",
+  "user": { "sId": "usr_deleted_space", "email": "member@example.com", "fullName": "Deleted space" },
+  "role": "user",
+  "groupIds": [],
+  "groups": [],
+  "readableNonPodSpaces": [
+    { "sId": "vlt_company", "name": "Company", "kind": "global" },
+    { "sId": "vlt_restricted_alpha", "name": "Restricted Alpha", "kind": "regular" },
+    { "sId": "vlt_restricted_beta", "name": "Restricted Beta", "kind": "regular" }
+  ],
+  "readablePodSpaces": [
+    { "sId": "vlt_pod_alpha", "name": "Pod Alpha", "kind": "project" },
+    { "sId": "vlt_pod_beta", "name": "Pod Beta", "kind": "project" }
+  ],
+  "expectedAgentIds": [
+    "agt_global_none",
+    "agt_visible_all",
+    "agt_visible_company",
+    "agt_visible_company_pod_alpha",
+    "agt_visible_none",
+    "agt_visible_pod_alpha",
+    "agt_visible_pod_beta",
+    "agt_visible_pods_all",
+    "agt_visible_restricted_alpha",
+    "agt_visible_restricted_alpha_pod_beta",
+    "agt_visible_restricted_beta",
+    "agt_visible_restricted_both"
+  ]
+}

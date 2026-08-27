@@ -46,11 +46,8 @@ describe("POST /api/w/:wId/spaces/:spaceId/leave", () => {
       );
 
       const regularSpace = await SpaceFactory.regular(workspace);
-      const [memberGroup] = await regularSpace.fetchGroupResources(adminAuth, {
-        groupReferences: regularSpace.groups.filter((group) =>
-          group.isRegularAuto()
-        ),
-      });
+      const [memberGroup] =
+        await regularSpace.fetchRegularAutoGroups(adminAuth);
       if (memberGroup) {
         await memberGroup.dangerouslyAddMembers(adminAuth, {
           users: [user.toJSON()],
@@ -126,11 +123,7 @@ describe("POST /api/w/:wId/spaces/:spaceId/leave", () => {
       expect(response.status).toBe(200);
       expect((await response.json()).success).toBe(true);
 
-      const [memberGroup] = await project.fetchGroupResources(adminAuth, {
-        groupReferences: project.groups.filter((group) =>
-          group.isRegularAuto()
-        ),
-      });
+      const [memberGroup] = await project.fetchRegularAutoGroups(adminAuth);
       if (memberGroup) {
         const isMember = await memberGroup.isMember(user);
         expect(isMember).toBe(false);

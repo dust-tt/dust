@@ -222,6 +222,80 @@ describe("rawOutputToEvents", () => {
     expect(usageEvent?.content).not.toHaveProperty("serviceTier");
   });
 
+  it("preserves blank lines between streamed reasoning summary parts", async () => {
+    const firstSummary = "**Verifying model usage by region**";
+    const secondSummary = "**Investigating workspace region data**";
+    const rawEvents: ResponseStreamEvent[] = [
+      {
+        type: "response.reasoning_summary_part.added",
+        item_id: "rs_1",
+        output_index: 0,
+        summary_index: 0,
+        sequence_number: 0,
+        part: { type: "summary_text", text: "" },
+      },
+      {
+        type: "response.reasoning_summary_text.delta",
+        item_id: "rs_1",
+        output_index: 0,
+        summary_index: 0,
+        sequence_number: 1,
+        delta: firstSummary,
+      },
+      {
+        type: "response.reasoning_summary_part.added",
+        item_id: "rs_1",
+        output_index: 0,
+        summary_index: 1,
+        sequence_number: 2,
+        part: { type: "summary_text", text: "" },
+      },
+      {
+        type: "response.reasoning_summary_text.delta",
+        item_id: "rs_1",
+        output_index: 0,
+        summary_index: 1,
+        sequence_number: 3,
+        delta: secondSummary,
+      },
+      {
+        type: "response.output_item.done",
+        output_index: 0,
+        sequence_number: 4,
+        item: {
+          type: "reasoning",
+          id: "rs_1",
+          summary: [
+            { type: "summary_text", text: firstSummary },
+            { type: "summary_text", text: secondSummary },
+          ],
+          status: "completed",
+        },
+      },
+    ];
+    const events = [];
+    for await (const event of rawOutputToEvents(
+      createAsyncGenerator(rawEvents),
+      metadata,
+      converters
+    )) {
+      events.push(event);
+    }
+
+    const streamedReasoning = events
+      .filter((event) => event.type === "reasoning_delta")
+      .map((event) => event.content.value)
+      .join("");
+    const completedReasoning = events.find(
+      (event) => event.type === "reasoning"
+    );
+
+    expect(streamedReasoning).toBe(`${firstSummary}\n\n${secondSummary}`);
+    expect(completedReasoning).toMatchObject({
+      content: { value: streamedReasoning },
+    });
+  });
+
   it("preserves interleaved reasoning and function-call item order", async () => {
     const rawEvents: ResponseStreamEvent[] = [
       {
