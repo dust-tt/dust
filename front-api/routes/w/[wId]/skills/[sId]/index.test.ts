@@ -1281,6 +1281,32 @@ describe("DELETE /api/w/:wId/skills/:sId", () => {
     });
   });
 
+  it("refuses to re-archive an already archived skill", async () => {
+    const { workspace, requestUserAuth, skill, skillOwnerAuth } =
+      await setupTest({
+        requestUserRole: "admin",
+        skillOwnerRole: "admin",
+      });
+
+    await skill.archive(skillOwnerAuth);
+
+    const response = await deleteSkill(workspace, skill.sId);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "An archived skill cannot be updated. Restore it first.",
+      },
+    });
+
+    // Archiving twice used to rename the skill after itself: `archive` timestamps the same-named
+    // archived skill it finds, which is this one.
+    const untouched = await SkillResource.fetchById(requestUserAuth, skill.sId);
+    expect(untouched?.name).toBe(skill.name);
+    expect(untouched?.status).toBe("archived");
+  });
+
   it("allows a workspace admin to archive a skill they do not edit", async () => {
     const { workspace, requestUserAuth, skill } = await setupTest({
       skillOwnerRole: "builder",

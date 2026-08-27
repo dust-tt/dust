@@ -10,6 +10,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { rejectArchivedSkill } from "@front-api/routes/w/[wId]/skills/guards";
 import { z } from "zod";
 
 const PatchSkillReinforcementBodySchema = z
@@ -67,6 +68,11 @@ app.patch(
           message: "The skill you're trying to access was not found.",
         },
       });
+    }
+
+    const archivedError = rejectArchivedSkill(ctx, skill);
+    if (archivedError) {
+      return archivedError;
     }
 
     const {

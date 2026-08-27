@@ -30,6 +30,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { rejectArchivedSkill } from "@front-api/routes/w/[wId]/skills/guards";
 import type { Context, TypedResponse } from "hono";
 import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
@@ -252,15 +253,9 @@ app.patch(
       });
     }
 
-    // An archived skill is frozen: POST /skills/:sId/restore is the only change it accepts.
-    if (skill.status === "archived") {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "An archived skill cannot be updated. Restore it first.",
-        },
-      });
+    const archivedError = rejectArchivedSkill(ctx, skill);
+    if (archivedError) {
+      return archivedError;
     }
 
     // Editing a skill remains editor-only; non-editors holding the publish permission use
@@ -527,6 +522,11 @@ app.delete(
           message: "Only admins and editors can archive this skill.",
         },
       });
+    }
+
+    const archivedDeleteError = rejectArchivedSkill(ctx, skill);
+    if (archivedDeleteError) {
+      return archivedDeleteError;
     }
 
     if (skill.status === "suggested") {
