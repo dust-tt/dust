@@ -423,8 +423,8 @@ function CustomizationSection() {
         />
 
         <SettingsList.Row
-          title={'Show "Chat with..." on home'}
-          description="Display your favorite and most used agents, and the agent search, on the home page"
+          title="Show your agents on the home page"
+          description="Access your favorite and most-used agents, or search for one from the home page."
           action={
             <SliderToggle
               selected={localAgentsSectionVisible}
