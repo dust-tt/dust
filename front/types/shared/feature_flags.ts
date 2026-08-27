@@ -39,6 +39,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "flvndvd",
   },
+  openai_flex_processing: {
+    description:
+      "Run trigger and wake-up agent runs on OpenAI flex processing (cheaper, slower), falling back to standard processing when flex does not deliver",
+    stage: "dust_only",
+    owner: "Nils-Fedrigo",
+  },
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",

@@ -6,6 +6,7 @@ import {
   usageToTokenUsageEvent,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
 import type {
+  Response,
   ResponseOutputItem,
   ResponseStreamEvent,
   ResponseUsage,
@@ -131,7 +132,99 @@ describe("usageToTokenUsageEvent", () => {
   });
 });
 
+function completedResponse(
+  serviceTier: Response["service_tier"],
+  usage: ResponseUsage
+): Response {
+  return {
+    id: "resp_1",
+    created_at: 0,
+    output_text: "",
+    error: null,
+    incomplete_details: null,
+    instructions: null,
+    metadata: null,
+    model: "gpt-5.6-terra",
+    object: "response",
+    output: [],
+    parallel_tool_calls: false,
+    temperature: null,
+    tool_choice: "auto",
+    tools: [],
+    top_p: null,
+    status: "completed",
+    service_tier: serviceTier,
+    usage,
+  };
+}
+
 describe("rawOutputToEvents", () => {
+  // The tier the response was served on is what OpenAI bills, and it can differ
+  // from the one we asked for: a refused flex request is replayed on standard
+  // processing. OpenAI's own tier names collapse into the two provider-agnostic
+  // ones, since flex is the only tier that changes the rate.
+  it.each([
+    { reportedTier: "flex", serviceTier: "flex" },
+    { reportedTier: "default", serviceTier: "auto" },
+    { reportedTier: "scale", serviceTier: "auto" },
+    { reportedTier: "priority", serviceTier: "auto" },
+  ] as const)("reports $reportedTier as the $serviceTier tier", async ({
+    reportedTier,
+    serviceTier,
+  }) => {
+    const events = [];
+    for await (const event of rawOutputToEvents(
+      createAsyncGenerator([
+        {
+          type: "response.completed",
+          sequence_number: 0,
+          response: completedResponse(reportedTier, {
+            input_tokens: 10,
+            input_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 },
+            output_tokens: 5,
+            output_tokens_details: { reasoning_tokens: 0 },
+            total_tokens: 15,
+          }),
+        },
+      ]),
+      metadata,
+      converters
+    )) {
+      events.push(event);
+    }
+
+    expect(events.find((event) => event.type === "token_usage")).toMatchObject({
+      content: { serviceTier },
+    });
+  });
+
+  it("omits the tier when the response does not report one", async () => {
+    const events = [];
+    for await (const event of rawOutputToEvents(
+      createAsyncGenerator([
+        {
+          type: "response.completed",
+          sequence_number: 0,
+          response: completedResponse(null, {
+            input_tokens: 10,
+            input_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 },
+            output_tokens: 5,
+            output_tokens_details: { reasoning_tokens: 0 },
+            total_tokens: 15,
+          }),
+        },
+      ]),
+      metadata,
+      converters
+    )) {
+      events.push(event);
+    }
+
+    const usageEvent = events.find((event) => event.type === "token_usage");
+    expect(usageEvent).toBeDefined();
+    expect(usageEvent?.content).not.toHaveProperty("serviceTier");
+  });
+
   it("preserves blank lines between streamed reasoning summary parts", async () => {
     const firstSummary = "**Verifying model usage by region**";
     const secondSummary = "**Investigating workspace region data**";

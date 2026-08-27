@@ -1,4 +1,5 @@
 import type { InferenceRegionType } from "@app/lib/api/assistant/token_pricing";
+import { withFlexProcessing } from "@app/lib/api/llm/flex_processing";
 import { LLM } from "@app/lib/api/llm/llm";
 import { withConciseOpenAIReasoningSummary } from "@app/lib/api/llm/reasoning_summary";
 import type {
@@ -554,6 +555,7 @@ export function convertToOldEvent(
         longCacheCreated,
         shortCacheCreated,
         reasoning,
+        serviceTier,
       } = event.content;
       // `cacheCreated` is only set when the provider reports a flat total with
       // no per-duration breakdown. Otherwise the split lives in long/short.
@@ -586,6 +588,7 @@ export function convertToOldEvent(
               }
             : {}),
           uncachedInputTokens: standardInput,
+          ...(serviceTier !== undefined ? { serviceTier } : {}),
         },
         metadata,
       };
@@ -690,9 +693,12 @@ abstract class BaseTransition extends LLM {
     }
 
     this.featureFlagsPromise ??= getFeatureFlags(this.authenticator);
-    return withConciseOpenAIReasoningSummary(
-      config,
-      await this.featureFlagsPromise
+    const featureFlags = await this.featureFlagsPromise;
+
+    return withFlexProcessing(
+      withConciseOpenAIReasoningSummary(config, featureFlags),
+      featureFlags,
+      this.context?.userMessageOrigin
     );
   }
 

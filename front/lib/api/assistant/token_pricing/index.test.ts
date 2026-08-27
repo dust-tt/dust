@@ -1,4 +1,7 @@
-import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
+import {
+  computeTokensCostForUsageInMicroUsd,
+  FLEX_DISCOUNT_FACTOR,
+} from "@app/lib/api/assistant/token_pricing";
 import { EU_UPLIFT_MODEL_IDS } from "@app/lib/api/assistant/token_pricing/eu";
 import {
   GPT_5_4_MODEL_ID,
@@ -59,6 +62,45 @@ describe("computeTokensCostForUsageInMicroUsd", () => {
         inferenceRegion: "eu",
       })
     ).toBe(17_050_000);
+  });
+
+  it("halves every rate when the provider served the request on flex", () => {
+    const usage = {
+      modelId: GPT_5_MODEL_ID,
+      promptTokens: 1_000_000,
+      completionTokens: 1_000_000,
+      cachedTokens: 200_000,
+      cacheCreationTokens: 300_000,
+    };
+
+    const standardCostMicroUsd = 11_025_000;
+
+    expect(computeTokensCostForUsageInMicroUsd(usage)).toBe(
+      standardCostMicroUsd
+    );
+    expect(
+      computeTokensCostForUsageInMicroUsd({ ...usage, serviceTier: "flex" })
+    ).toBe(standardCostMicroUsd * FLEX_DISCOUNT_FACTOR);
+    expect(
+      computeTokensCostForUsageInMicroUsd({ ...usage, serviceTier: "auto" })
+    ).toBe(standardCostMicroUsd);
+  });
+
+  it("keeps the batch discount when a batch response also reports a tier", () => {
+    const usage = {
+      modelId: GPT_5_MODEL_ID,
+      promptTokens: 1_000_000,
+      completionTokens: 1_000_000,
+      cachedTokens: null,
+    };
+
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        ...usage,
+        isBatch: true,
+        serviceTier: "flex",
+      })
+    ).toBe(computeTokensCostForUsageInMicroUsd({ ...usage, isBatch: true }));
   });
 
   it("does not uplift OpenAI models without regional premium pricing", () => {

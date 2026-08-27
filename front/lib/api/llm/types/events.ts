@@ -1,5 +1,6 @@
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type {
   AgentMessagePhase,
   AgentProviderPassthroughContentType,
@@ -120,6 +121,8 @@ export interface TokenUsage {
   // Raw input tokens after the last cache breakpoint (not from cache).
   // This is the raw `input_tokens` value from providers that support caching.
   uncachedInputTokens?: number;
+  // Processing tier the provider reports having billed this response at.
+  serviceTier?: ServiceTier;
 }
 
 export interface TokenUsageEvent {

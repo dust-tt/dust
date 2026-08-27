@@ -343,7 +343,12 @@ export abstract class LLM<
         // Providers report usage exactly once per response, at end of stream. Emitting here in
         // the base class covers both the new router and the legacy clients.
         if (currentEvent.type === "token_usage") {
-          emitTokenUsageMetrics(currentEvent.content, metricTags);
+          emitTokenUsageMetrics(currentEvent.content, [
+            ...metricTags,
+            ...(currentEvent.content.serviceTier
+              ? [`service_tier:${currentEvent.content.serviceTier}`]
+              : []),
+          ]);
         }
 
         if (currentEvent.type === "interaction_id") {

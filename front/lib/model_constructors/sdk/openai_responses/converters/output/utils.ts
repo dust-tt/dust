@@ -1,5 +1,6 @@
 import { logOpenAIToolSearchItem } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search_logging";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
+import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type {
   ErrorEvent,
   ModelResponseEvent,
@@ -98,7 +99,8 @@ export interface OutputEventConverters {
   ): ProviderPassthroughEvent;
   usageToTokenUsageEvent(
     metadata: EndpointMetadata,
-    usage: ResponseUsage
+    usage: ResponseUsage,
+    reportedTier?: OpenAIResponse["service_tier"]
   ): TokenUsageEvent;
   streamErrorToErrorEvent(
     metadata: EndpointMetadata,
@@ -234,10 +236,25 @@ export function toolSearchItemToProviderPassthroughEvent(
   };
 }
 
+// The Responses API reports the tier it served on with its own vocabulary
+// (`default`, `scale`, `priority`, ...). Flex is the only one that changes what
+// we are billed, so every other tier normalizes to the standard path.
+function toServiceTier(
+  reportedTier: OpenAIResponse["service_tier"]
+): ServiceTier | undefined {
+  if (reportedTier === null || reportedTier === undefined) {
+    return undefined;
+  }
+
+  return reportedTier === "flex" ? "flex" : "auto";
+}
+
 export function usageToTokenUsageEvent(
   metadata: EndpointMetadata,
-  usage: ResponseUsage
+  usage: ResponseUsage,
+  reportedTier?: OpenAIResponse["service_tier"]
 ): TokenUsageEvent {
+  const serviceTier = toServiceTier(reportedTier);
   const cacheHit = usage.input_tokens_details?.cached_tokens ?? 0;
   const cacheCreated = usage.input_tokens_details?.cache_write_tokens ?? 0;
   const reasoning = usage.output_tokens_details?.reasoning_tokens;
@@ -256,6 +273,7 @@ export function usageToTokenUsageEvent(
       // output_tokens total, not as an additional token count.
       totalOutput: usage.output_tokens,
       ...(reasoning !== undefined ? { reasoning } : {}),
+      ...(serviceTier !== undefined ? { serviceTier } : {}),
     },
     metadata,
   };
@@ -492,6 +510,7 @@ export async function* rawOutputToEvents(
 ): AsyncGenerator<ModelResponseEvent> {
   const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
   let usage: ResponseUsage | null = null;
+  let reportedTier: OpenAIResponse["service_tier"] = undefined;
   let stopReason: string | null = null;
 
   while (true) {
@@ -564,6 +583,7 @@ export async function* rawOutputToEvents(
         break;
       case "response.completed":
         usage = event.response.usage ?? null;
+        reportedTier = event.response.service_tier;
         // Recorded for diagnostics: the Responses API has no stop reason, so the
         // response status is the closest signal for a turn that came back with
         // nothing usable (`incomplete` surfaces as an error event below).
@@ -658,7 +678,7 @@ export async function* rawOutputToEvents(
   }
 
   if (usage !== null) {
-    yield converters.usageToTokenUsageEvent(metadata, usage);
+    yield converters.usageToTokenUsageEvent(metadata, usage, reportedTier);
   }
 
   yield {
@@ -730,7 +750,13 @@ export function responseToEvents(
   }
 
   if (response.usage) {
-    events.push(converters.usageToTokenUsageEvent(metadata, response.usage));
+    events.push(
+      converters.usageToTokenUsageEvent(
+        metadata,
+        response.usage,
+        response.service_tier
+      )
+    );
   }
 
   events.push({ type: "success", content: { aggregated }, metadata });

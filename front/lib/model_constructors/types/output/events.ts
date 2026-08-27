@@ -1,4 +1,5 @@
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
+import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type { Lab } from "@app/lib/model_constructors/types/labs";
 
 export type ResponseIdContent = { responseId: string };
@@ -100,6 +101,9 @@ export type TokenUsageContent = {
   // Optional reasoning and thinking subset of totalOutput. Never add it to
   // totalOutput for persistence or billing.
   reasoning?: number;
+  // Processing tier the provider reports having served this response on, which
+  // is what it bills for. Absent for providers that do not report one.
+  serviceTier?: ServiceTier;
 };
 export interface TokenUsageEvent {
   type: "token_usage";
