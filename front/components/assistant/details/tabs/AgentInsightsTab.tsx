@@ -63,7 +63,10 @@ export function AgentInsightsTab({
     agentId,
   };
   const isCustomAgent = agentConfiguration.scope !== "global";
-  const canViewInsights = agentConfiguration.canEdit || isManager(owner);
+  const canViewInsights =
+    agentConfiguration.scope === "global" ||
+    agentConfiguration.canEdit ||
+    isManager(owner);
 
   if (!canViewInsights) {
     return (
