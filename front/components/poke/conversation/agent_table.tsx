@@ -110,7 +110,6 @@ export function ConversationAgentDataTable({
     <PokeDataTableConditionalFetch
       header="Conversations"
       owner={owner}
-      showSensitiveDataWarning={true}
       useSWRHook={useConversationsWithAgent}
     >
       {({ conversations, hasMore, isLoadingMore }) => (
