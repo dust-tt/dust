@@ -325,26 +325,12 @@ export async function fetchConsumptionTopGroups(
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
-    extraFilters:
-      excludedDimensionValues.length > 0
-        ? [
-            {
-              bool: {
-                must_not: [
-                  {
-                    terms: {
-                      [CONSUMPTION_TOP_DIMENSION_FIELDS[dimension]]:
-                        excludedDimensionValues,
-                    },
-                  },
-                ],
-              },
-            },
-          ]
-        : [],
   });
 
-  const requestedBucketCount = offset + limit;
+  const excludedDimensionValueSet = new Set(excludedDimensionValues);
+  // Over-fetch one bucket per hidden value so filtering in application code
+  // does not leave the requested page short.
+  const requestedBucketCount = offset + limit + excludedDimensionValueSet.size;
   const rankedGroups: Omit<ConsumptionTopGroup, "previousCredits">[] = [];
   let buckets: GroupBucket[];
   let batchSize = 0;
@@ -398,7 +384,11 @@ export async function fetchConsumptionTopGroups(
     buckets.length === batchSize
   );
 
-  const pagedGroups = rankedGroups.slice(offset, offset + limit);
+  const visibleRankedGroups = rankedGroups.filter(
+    (group) => !excludedDimensionValueSet.has(group.key)
+  );
+  const pagedGroups = visibleRankedGroups.slice(offset, offset + limit);
+  const excludedGroupCount = rankedGroups.length - visibleRankedGroups.length;
 
   const previousCreditsResult = await fetchConsumptionPreviousCredits(auth, {
     dimension,
@@ -429,8 +419,10 @@ export async function fetchConsumptionTopGroups(
       ...group,
       previousCredits: previousCreditsByKey.get(group.key) ?? null,
     })),
-    hasMore: totalCount > offset + limit,
-    totalCount,
+    hasMore:
+      totalCount > rankedGroups.length ||
+      visibleRankedGroups.length > offset + limit,
+    totalCount: totalCount - excludedGroupCount,
     totalCredits,
   });
 }

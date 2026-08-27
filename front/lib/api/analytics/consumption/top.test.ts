@@ -329,7 +329,7 @@ describe("consumption top rankings", () => {
     expect(termsClauses[1]?.terms?.["agent.attributed_id"]).toHaveLength(1);
   });
 
-  it("counts visible tool invocations and excludes skill management", async () => {
+  it("filters skill management after ranking without a negative query", async () => {
     const { auth } = await setup();
     vi.mocked(resolveDimensionLabels).mockResolvedValue(
       new Map([
@@ -347,17 +347,23 @@ describe("consumption top rankings", () => {
     mockAggs({
       buckets: [
         {
+          key: "skill_management",
+          doc_count: 5,
+          credit_micro: { value: 3_000_000 },
+        },
+        {
           key: "web_search_browse",
           doc_count: 4,
           credit_micro: { value: 2_000_000 },
         },
       ],
+      totalCount: 2,
       totalMicro: 10_000_000,
     });
 
     const result = await fetchConsumptionTopTools(auth, {
       period: PERIOD,
-      limit: 10,
+      limit: 1,
     });
 
     expect(result.isOk()).toBe(true);
@@ -378,17 +384,20 @@ describe("consumption top rankings", () => {
     ]);
     // The tools are a slice of the period, not all of it.
     expect(result.value.totalCredits).toBe(10);
+    expect(result.value.totalCount).toBe(1);
+    expect(result.value.hasMore).toBe(false);
 
     const [query] = rankingSearchCall();
-    expect(query.bool?.filter).toContainEqual({
+    expect(query.bool?.filter).not.toContainEqual({
       bool: {
         must_not: [{ terms: { "tool.server_name": ["skill_management"] } }],
       },
     });
 
-    const [, options] = lastSearchCall();
+    const [, options] = rankingSearchCall();
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
       field: "tool.server_name",
+      size: 2,
     });
     expect(options?.aggregations?.by_group?.aggs?.messages).toBeUndefined();
   });
