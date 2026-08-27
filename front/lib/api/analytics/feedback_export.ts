@@ -1,29 +1,12 @@
-import {
-  fetchAgentMetadata,
-  fetchFeedbackContents,
-  fetchUserEmails,
-} from "@app/lib/api/analytics/enrichment";
+import { fetchAgentMetadata } from "@app/lib/api/analytics/enrichment";
 import config from "@app/lib/api/config";
-import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { AgentMessageAnalyticsFeedback } from "@app/types/assistant/analytics";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
-import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
-
-const PAGE_SIZE = 10000;
-
-interface FeedbackAgentMessageDocument extends ElasticsearchBaseDocument {
-  message_id: string;
-  conversation_id: string;
-  agent_id: string;
-  timestamp: string;
-  feedbacks: AgentMessageAnalyticsFeedback[];
-}
 
 export interface FeedbackExportRow {
   feedbackId: string;
@@ -51,41 +34,11 @@ export const FEEDBACK_EXPORT_HEADERS: (keyof FeedbackExportRow)[] = [
   "dismissed",
 ];
 
-async function fetchAllFeedbackDocuments(
-  query: estypes.QueryDslQueryContainer
-): Promise<Result<FeedbackAgentMessageDocument[], Error>> {
-  const allDocs: FeedbackAgentMessageDocument[] = [];
-  let searchAfter: estypes.SortResults | undefined;
-
-  while (true) {
-    const result = await searchAnalytics<FeedbackAgentMessageDocument>(query, {
-      size: PAGE_SIZE,
-      sort: [{ timestamp: "asc" }, { message_id: "asc" }],
-      search_after: searchAfter,
-    });
-
-    if (result.isErr()) {
-      return new Err(new Error(result.error.message));
-    }
-
-    const { hits } = result.value.hits;
-    for (const hit of hits) {
-      if (hit._source) {
-        allDocs.push(hit._source);
-      }
-    }
-
-    if (hits.length < PAGE_SIZE) {
-      break;
-    }
-
-    const lastHit = hits[hits.length - 1];
-    searchAfter = lastHit.sort;
-  }
-
-  return new Ok(allDocs);
-}
-
+/**
+ * Feedback (thumb, content, dismissed) lives entirely in Postgres — it was
+ * never in the consumption index, so this reads straight from
+ * AgentMessageFeedbackResource instead of Elasticsearch.
+ */
 export async function fetchFeedbackExportRows({
   owner,
   startDate,
@@ -97,90 +50,66 @@ export async function fetchFeedbackExportRows({
   endDate: string;
   timezone: string;
 }): Promise<Result<FeedbackExportRow[], Error>> {
-  // Feedback is filtered by the date the feedback was given (which can differ
-  // from the message timestamp), so we range on the nested feedbacks.created_at
-  // and post-filter each document's feedbacks to the requested window.
-  const startIso = `${startDate}T00:00:00.000Z`;
-  const endIso = `${endDate}T23:59:59.999Z`;
+  const startInstant = moment.tz(startDate, timezone).startOf("day").toDate();
+  const exclusiveEndInstant = moment
+    .tz(endDate, timezone)
+    .add(1, "day")
+    .startOf("day")
+    .toDate();
 
-  const query: estypes.QueryDslQueryContainer = {
-    bool: {
-      filter: [
-        { term: { workspace_id: owner.sId } },
-        {
-          nested: {
-            path: "feedbacks",
-            query: {
-              range: {
-                "feedbacks.created_at": { gte: startIso, lte: endIso },
-              },
-            },
-          },
-        },
-      ],
-    },
-  };
+  // Note: getFeedbackUsageDataForWorkspace filters out feedback whose author
+  // user record can no longer be resolved (e.g. deleted user), so those rows
+  // are silently excluded from the export.
+  const feedbacks =
+    await AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
+      startDate: startInstant,
+      endDate: exclusiveEndInstant,
+      workspace: owner,
+    });
 
-  const docsResult = await fetchAllFeedbackDocuments(query);
-  if (docsResult.isErr()) {
-    return new Err(docsResult.error);
+  if (feedbacks.length === 0) {
+    return new Ok([]);
   }
 
-  const docs = docsResult.value;
-
   const uniqueAgentIds = [
-    ...new Set(docs.map((d) => d.agent_id).filter(Boolean)),
+    ...new Set(feedbacks.map((f) => f.agentConfigurationId)),
   ];
-  const allFeedbacks = docs.flatMap((d) => d.feedbacks ?? []);
-  const uniqueUserIds = [
-    ...new Set(allFeedbacks.map((f) => f.user_id).filter(Boolean)),
-  ];
-  const uniqueFeedbackIds = [
-    ...new Set(allFeedbacks.map((f) => f.feedback_id).filter(Boolean)),
-  ];
+  const uniqueUserModelIds = [...new Set(feedbacks.map((f) => f.userId))];
 
-  const [agentMeta, userEmails, feedbackContents] = await Promise.all([
+  const [agentMeta, users] = await Promise.all([
     fetchAgentMetadata(uniqueAgentIds, owner),
-    fetchUserEmails(uniqueUserIds),
-    fetchFeedbackContents(uniqueFeedbackIds, owner),
+    UserResource.fetchByModelIds(uniqueUserModelIds),
   ]);
+  const userSIdByModelId = new Map(users.map((u) => [u.id, u.sId]));
+  const userEmailByModelId = new Map(users.map((u) => [u.id, u.email]));
 
-  const rows: FeedbackExportRow[] = [];
-  for (const doc of docs) {
-    const agent = agentMeta.get(doc.agent_id);
-    for (const feedback of doc.feedbacks ?? []) {
-      // A matched document can carry feedbacks outside the requested window;
-      // keep only the ones created within it.
-      if (feedback.created_at < startIso || feedback.created_at > endIso) {
-        continue;
-      }
-      rows.push({
-        // feedback_id is stored as the internal ModelId; expose the opaque sId.
-        feedbackId: AgentMessageFeedbackResource.modelIdToSId({
-          id: feedback.feedback_id,
-          workspaceId: owner.id,
-        }),
-        createdAt: moment(feedback.created_at)
-          .tz(timezone)
-          .format("YYYY-MM-DD HH:mm:ss"),
-        assistantId: doc.agent_id,
-        assistantName: agent?.name ?? doc.agent_id,
-        conversationUrl: feedback.is_conversation_shared
+  const rows: FeedbackExportRow[] = feedbacks.map((feedback) => {
+    const conversationId = feedback.toJSON().conversationId;
+    const agent = agentMeta.get(feedback.agentConfigurationId);
+
+    return {
+      feedbackId: feedback.sId,
+      createdAt: moment(feedback.createdAt)
+        .tz(timezone)
+        .format("YYYY-MM-DD HH:mm:ss"),
+      assistantId: feedback.agentConfigurationId,
+      assistantName: agent?.name ?? feedback.agentConfigurationId,
+      conversationUrl:
+        feedback.isConversationShared && conversationId
           ? getConversationRoute(
               owner.sId,
-              doc.conversation_id,
+              conversationId,
               undefined,
               config.getAppUrl()
             )
           : "",
-        userId: feedback.user_id,
-        userEmail: userEmails.get(feedback.user_id) ?? "",
-        thumb: feedback.thumb_direction,
-        content: feedbackContents.get(feedback.feedback_id) ?? "",
-        dismissed: feedback.dismissed ? "true" : "false",
-      });
-    }
-  }
+      userId: userSIdByModelId.get(feedback.userId) ?? "",
+      userEmail: userEmailByModelId.get(feedback.userId) ?? "",
+      thumb: feedback.thumbDirection,
+      content: feedback.content ?? "",
+      dismissed: feedback.dismissed ? "true" : "false",
+    };
+  });
 
   rows.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
