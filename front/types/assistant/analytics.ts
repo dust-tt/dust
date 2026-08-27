@@ -144,7 +144,9 @@ export interface AgentMessageConsumptionAnalyticsTool {
   // Server that called this tool. Empty when the agent called this tool directly.
   parent_server_name: string;
   action_id: string;
-  // Every skill whose configured server exposes this tool.
+  // Every skill that can be held responsible, directly or indirectly, for this
+  // tool call being made.
+  // When a tool call enables a skill, that skill is also reflected here.
   attributed_skill_ids: string[];
 }
 
