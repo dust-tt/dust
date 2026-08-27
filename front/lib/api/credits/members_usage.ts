@@ -7,7 +7,11 @@ import {
   makeSpendLimitCycleWindowBounds,
 } from "@app/lib/api/assistant/rate_limits";
 import { computeCreditUsageStatus } from "@app/lib/api/credits/usage_status";
-import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import {
+  bucketsToArray,
+  searchAnalytics,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
 import { getProgrammaticUsageFilterClause } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import type { BillingCycle } from "@app/lib/client/subscription";
@@ -463,7 +467,10 @@ export async function fetchConsumedAwuCreditsByApiKeyName({
   }
   const { cycleStart, cycleEnd } = resolvedCycle;
 
-  const result = await searchAnalytics<never, ApiKeyConsumedCreditsAggs>(
+  const result = await searchConsumptionAnalytics<
+    never,
+    ApiKeyConsumedCreditsAggs
+  >(
     {
       bool: {
         filter: [
@@ -471,7 +478,7 @@ export async function fetchConsumedAwuCreditsByApiKeyName({
           { terms: { api_key_name: apiKeyNames } },
           {
             range: {
-              timestamp: {
+              completed_at: {
                 gte: cycleStart.toISOString(),
                 lte: cycleEnd.toISOString(),
               },
@@ -487,7 +494,7 @@ export async function fetchConsumedAwuCreditsByApiKeyName({
             field: "api_key_name",
             size: Math.max(1, apiKeyNames.length),
           },
-          aggs: { credits: { sum: { field: "cost.billable_awu" } } },
+          aggs: { credits: { sum: { field: "credit_micro" } } },
         },
       },
       size: 0,
@@ -507,7 +514,7 @@ export async function fetchConsumedAwuCreditsByApiKeyName({
   )) {
     consumedByApiKeyName.set(
       String(bucket.key),
-      Math.round(bucket.credits?.value ?? 0)
+      Math.round(microCreditsToCredits(bucket.credits?.value ?? 0))
     );
   }
   return consumedByApiKeyName;
