@@ -10,6 +10,7 @@ import {
   verifyStagingContent,
 } from "@app/lib/api/sandbox_functions/staging_integrity";
 import type { Authenticator } from "@app/lib/auth";
+import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
 import { SANDBOX_FUNCTION_USER_IDENTITY_POLICIES } from "@app/types/api/sandbox_functions";
@@ -24,7 +25,7 @@ const DSBX_BIN_PATH = "/opt/bin/dsbx";
 const BUILD_STAGING_ROOT = "/tmp/dust-sandbox-function-builds";
 const BUILD_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
 
-interface SandboxFunctionBuildResult {
+export interface SandboxFunctionBuildResult {
   bundleCode: string;
   userIdentity: SandboxFunctionUserIdentityPolicy;
   inputSchema: JSONSchema;
@@ -94,8 +95,24 @@ export async function buildSandboxFunctionOnSandbox(
       )
     );
   }
-  const { sandbox } = ensureResult.value;
 
+  return buildSandboxFunctionOnReadySandbox(auth, {
+    sandbox: ensureResult.value.sandbox,
+    srcSandboxPath,
+  });
+}
+
+/** Build a function in a sandbox whose owner-specific lifecycle setup has already completed. */
+export async function buildSandboxFunctionOnReadySandbox(
+  auth: Authenticator,
+  {
+    sandbox,
+    srcSandboxPath,
+  }: {
+    sandbox: SandboxResource;
+    srcSandboxPath: string;
+  }
+): Promise<Result<SandboxFunctionBuildResult, SandboxFunctionError>> {
   const buildDir = path.posix.join(BUILD_STAGING_ROOT, randomUUID());
   const bundlePath = path.posix.join(buildDir, "bundle.js");
   const schemaPath = path.posix.join(buildDir, "schema.json");
