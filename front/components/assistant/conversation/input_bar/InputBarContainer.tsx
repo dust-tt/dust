@@ -14,6 +14,7 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
+import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { getAvailableInputBarSlashCommands } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
@@ -37,13 +38,6 @@ import useCustomEditor, {
 } from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
-import {
-  BUBBLE_MENU_APPEND_TO,
-  BUBBLE_MENU_STYLE,
-  BUBBLE_MENU_TOOLBAR_HIDDEN_CLASSES,
-  BUBBLE_MENU_TOOLBAR_MOTION_CLASSES,
-  useBubbleMenuOptions,
-} from "@app/components/editor/useBubbleMenuOptions";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
@@ -114,7 +108,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
 import React, {
   useCallback,
   useContext,
@@ -329,8 +322,6 @@ const InputBarContainer = ({
   onVoiceActiveChange,
 }: InputBarContainerProps) => {
   const { setOverlayOpen } = useInputBarOverlayTracker(onOverlayOpenChange);
-  const { options: bubbleMenuOptions, isPositioned: isBubbleMenuPositioned } =
-    useBubbleMenuOptions();
   const onSuggestionActiveChangeRef = useRef<(active: boolean) => void>(
     () => {}
   );
@@ -1751,26 +1742,13 @@ const InputBarContainer = ({
               )}
             />
           </div>
-          <BubbleMenu
-            editor={editor ?? undefined}
-            className={cn("z-[60] flex", isMobile && "hidden")}
-            style={BUBBLE_MENU_STYLE}
-            appendTo={BUBBLE_MENU_APPEND_TO}
-            options={bubbleMenuOptions}
-          >
+          <EditorSelectionToolbar editor={editor} disabled={isMobile}>
             {editor && (
-              <Toolbar
-                className={cn(
-                  "inline-flex",
-                  isMobile && "hidden",
-                  BUBBLE_MENU_TOOLBAR_MOTION_CLASSES,
-                  !isBubbleMenuPositioned && BUBBLE_MENU_TOOLBAR_HIDDEN_CLASSES
-                )}
-              >
+              <Toolbar className="inline-flex">
                 <ToolBarContent editor={editor} />
               </Toolbar>
             )}
-          </BubbleMenu>
+          </EditorSelectionToolbar>
           <div
             className={cn("mt-auto flex w-full flex-col", "pt-2 pb-3")}
             style={{

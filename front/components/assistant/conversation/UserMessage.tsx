@@ -11,15 +11,9 @@ import {
 import { UserHandle } from "@app/components/assistant/conversation/UserHandle";
 import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdown";
 import { ConfirmContext } from "@app/components/Confirm";
+import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
-import {
-  BUBBLE_MENU_APPEND_TO,
-  BUBBLE_MENU_STYLE,
-  BUBBLE_MENU_TOOLBAR_HIDDEN_CLASSES,
-  BUBBLE_MENU_TOOLBAR_MOTION_CLASSES,
-  useBubbleMenuOptions,
-} from "@app/components/editor/useBubbleMenuOptions";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useHover } from "@app/hooks/useHover";
@@ -62,7 +56,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { cva } from "class-variance-authority";
 import type React from "react";
@@ -84,8 +77,6 @@ function UserMessageEditor({
   onSave,
 }: UserMessageEditorProps) {
   const isMobile = useIsMobile();
-  const { options: bubbleMenuOptions, isPositioned: isBubbleMenuPositioned } =
-    useBubbleMenuOptions();
 
   if (!editor) {
     return null;
@@ -107,26 +98,13 @@ function UserMessageEditor({
         className="inline-block max-h-[40vh] min-h-14 w-full overflow-y-auto whitespace-pre-wrap scrollbar-hide"
       />
 
-      <BubbleMenu
-        editor={editor}
-        className={cn("z-[60] flex", isMobile && "hidden")}
-        style={BUBBLE_MENU_STYLE}
-        appendTo={BUBBLE_MENU_APPEND_TO}
-        options={bubbleMenuOptions}
-      >
+      <EditorSelectionToolbar editor={editor} disabled={isMobile}>
         {editor && (
-          <Toolbar
-            className={cn(
-              "inline-flex",
-              isMobile && "hidden",
-              BUBBLE_MENU_TOOLBAR_MOTION_CLASSES,
-              !isBubbleMenuPositioned && BUBBLE_MENU_TOOLBAR_HIDDEN_CLASSES
-            )}
-          >
+          <Toolbar className="inline-flex">
             <ToolBarContent editor={editor} />
           </Toolbar>
         )}
-      </BubbleMenu>
+      </EditorSelectionToolbar>
 
       <div className="flex justify-end gap-2">
         <Button
