@@ -1,4 +1,8 @@
-import { storeFramePublication } from "@app/lib/api/frames/publication_storage";
+import {
+  loadFramePublicationManifest,
+  loadFramePublicationSourceFile,
+  storeFramePublication,
+} from "@app/lib/api/frames/publication_storage";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -10,6 +14,7 @@ import {
   getFramePublicationSourcePath,
 } from "@app/types/api/frame_storage";
 import { frameV2ContentType } from "@app/types/files";
+import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it } from "vitest";
 
 async function setupFrame(): Promise<{
@@ -151,5 +156,112 @@ describe("storeFramePublication", () => {
         filePath.endsWith("/manifest.json")
       )
     ).toBe(false);
+  });
+});
+
+describe("Frame publication reads", () => {
+  it("loads the manifest and source of a committed publication", async () => {
+    const { auth, frame } = await setupFrame();
+    const stored = await storeFramePublication(auth, {
+      frame,
+      manifest,
+      sourceFiles,
+    });
+    expect(stored.isOk()).toBe(true);
+    if (stored.isErr()) {
+      return;
+    }
+
+    const loadedManifest = await loadFramePublicationManifest(auth, {
+      frame,
+      publicationId: stored.value.publicationId,
+    });
+    expect(loadedManifest).toEqual(new Ok(manifest));
+
+    const loadedSource = await loadFramePublicationSourceFile(auth, {
+      frame,
+      publicationId: stored.value.publicationId,
+      relativePath: "index.tsx",
+    });
+    expect(loadedSource.isOk() && loadedSource.value.toString("utf8")).toBe(
+      "export default function App() {}"
+    );
+  });
+
+  it("does not expose source without the manifest commit marker", async () => {
+    const { auth, frame, workspaceId } = await setupFrame();
+    const publicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
+    fileStorageMock.setObject(
+      getFramePublicationSourcePath({
+        workspaceId,
+        frameId: frame.sId,
+        publicationId,
+        relativePath: "index.tsx",
+      }),
+      "partial source"
+    );
+    fileStorageMock.setFetchFileContentNotFound(() => true);
+
+    const result = await loadFramePublicationSourceFile(auth, {
+      frame,
+      publicationId,
+      relativePath: "index.tsx",
+    });
+
+    expect(result.isErr() && result.error.code).toBe("publication_not_found");
+  });
+
+  it("rejects an invalid stored manifest", async () => {
+    const { auth, frame, workspaceId } = await setupFrame();
+    const publicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
+    fileStorageMock.setObject(
+      getFramePublicationManifestPath({
+        workspaceId,
+        frameId: frame.sId,
+        publicationId,
+      }),
+      "not json"
+    );
+
+    const result = await loadFramePublicationManifest(auth, {
+      frame,
+      publicationId,
+    });
+
+    expect(result.isErr() && result.error.code).toBe("invalid_manifest");
+  });
+
+  it("returns a typed error for a missing source file", async () => {
+    const { auth, frame } = await setupFrame();
+    const stored = await storeFramePublication(auth, {
+      frame,
+      manifest,
+      sourceFiles,
+    });
+    expect(stored.isOk()).toBe(true);
+    if (stored.isErr()) {
+      return;
+    }
+    fileStorageMock.setFetchFileContentNotFound(() => true);
+
+    const result = await loadFramePublicationSourceFile(auth, {
+      frame,
+      publicationId: stored.value.publicationId,
+      relativePath: "missing.ts",
+    });
+
+    expect(result.isErr() && result.error.code).toBe("source_not_found");
+  });
+
+  it("rejects unsafe source paths before reading", async () => {
+    const { auth, frame } = await setupFrame();
+
+    const result = await loadFramePublicationSourceFile(auth, {
+      frame,
+      publicationId: "b8c2b796-534a-4ad2-a5ad-071da692ca0b",
+      relativePath: "../index.tsx",
+    });
+
+    expect(result.isErr() && result.error.code).toBe("invalid_source");
   });
 });

@@ -4,10 +4,14 @@ import {
   GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
   getPrivateUploadBucket,
 } from "@app/lib/file_storage";
+import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
-import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
+import {
+  isSafeFrameRelativePath,
+  parseFrameManifest,
+} from "@app/types/api/frame_manifest";
 import {
   getFramePublicationManifestPath,
   getFramePublicationSourcePath,
@@ -27,12 +31,34 @@ export type FramePublicationSourceFile = {
 
 export class FramePublicationError extends Error {
   constructor(
-    readonly code: "invalid_frame" | "invalid_source",
+    readonly code:
+      | "invalid_frame"
+      | "invalid_manifest"
+      | "invalid_source"
+      | "publication_not_found"
+      | "source_not_found",
     message: string
   ) {
     super(message);
     this.name = "FramePublicationError";
   }
+}
+
+function getFrameIdentity(
+  auth: Authenticator,
+  frame: FileResource
+): Result<{ workspaceId: string; frameId: string }, FramePublicationError> {
+  const owner = auth.getNonNullableWorkspace();
+  if (!frame.isFrameV2 || frame.workspaceId !== owner.id) {
+    return new Err(
+      new FramePublicationError(
+        "invalid_frame",
+        "Frame publication access requires a Frames v2 FileResource from the current workspace."
+      )
+    );
+  }
+
+  return new Ok({ workspaceId: owner.sId, frameId: frame.sId });
 }
 
 export async function storeFramePublication(
@@ -47,14 +73,9 @@ export async function storeFramePublication(
     sourceFiles: FramePublicationSourceFile[];
   }
 ): Promise<Result<{ publicationId: string }, FramePublicationError>> {
-  const owner = auth.getNonNullableWorkspace();
-  if (!frame.isFrameV2 || frame.workspaceId !== owner.id) {
-    return new Err(
-      new FramePublicationError(
-        "invalid_frame",
-        "Frame publication storage requires a Frames v2 FileResource from the current workspace."
-      )
-    );
+  const frameIdentity = getFrameIdentity(auth, frame);
+  if (frameIdentity.isErr()) {
+    return frameIdentity;
   }
 
   const sourcePaths = new Set<string>();
@@ -87,8 +108,7 @@ export async function storeFramePublication(
   }
 
   const identity = {
-    workspaceId: owner.sId,
-    frameId: frame.sId,
+    ...frameIdentity.value,
     publicationId: randomUUID(),
   };
   const storage = getPrivateUploadBucket();
@@ -120,4 +140,102 @@ export async function storeFramePublication(
   });
 
   return new Ok({ publicationId: identity.publicationId });
+}
+
+export async function loadFramePublicationManifest(
+  auth: Authenticator,
+  {
+    frame,
+    publicationId,
+  }: {
+    frame: FileResource;
+    publicationId: string;
+  }
+): Promise<Result<FrameManifest, FramePublicationError>> {
+  const frameIdentity = getFrameIdentity(auth, frame);
+  if (frameIdentity.isErr()) {
+    return frameIdentity;
+  }
+
+  const manifestPath = getFramePublicationManifestPath({
+    ...frameIdentity.value,
+    publicationId,
+  });
+  let manifestBuffer: Uint8Array<ArrayBuffer>;
+  try {
+    manifestBuffer =
+      await getPrivateUploadBucket().fetchFileBuffer(manifestPath);
+  } catch (error) {
+    if (isGCSNotFoundError(error)) {
+      return new Err(
+        new FramePublicationError(
+          "publication_not_found",
+          `Frame publication not found: ${publicationId}`
+        )
+      );
+    }
+    throw error;
+  }
+
+  const manifest = parseFrameManifest(Buffer.from(manifestBuffer));
+  if (manifest.isErr()) {
+    return new Err(
+      new FramePublicationError("invalid_manifest", manifest.error)
+    );
+  }
+
+  return manifest;
+}
+
+export async function loadFramePublicationSourceFile(
+  auth: Authenticator,
+  {
+    frame,
+    publicationId,
+    relativePath,
+  }: {
+    frame: FileResource;
+    publicationId: string;
+    relativePath: string;
+  }
+): Promise<Result<Buffer, FramePublicationError>> {
+  if (!isSafeFrameRelativePath(relativePath)) {
+    return new Err(
+      new FramePublicationError(
+        "invalid_source",
+        `Invalid Frame source path: ${relativePath}`
+      )
+    );
+  }
+
+  const manifest = await loadFramePublicationManifest(auth, {
+    frame,
+    publicationId,
+  });
+  if (manifest.isErr()) {
+    return manifest;
+  }
+
+  const owner = auth.getNonNullableWorkspace();
+  const sourcePath = getFramePublicationSourcePath({
+    workspaceId: owner.sId,
+    frameId: frame.sId,
+    publicationId,
+    relativePath,
+  });
+  try {
+    const sourceBuffer =
+      await getPrivateUploadBucket().fetchFileBuffer(sourcePath);
+    return new Ok(Buffer.from(sourceBuffer));
+  } catch (error) {
+    if (isGCSNotFoundError(error)) {
+      return new Err(
+        new FramePublicationError(
+          "source_not_found",
+          `Frame publication source file not found: ${relativePath}`
+        )
+      );
+    }
+    throw error;
+  }
 }
