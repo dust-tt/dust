@@ -108,7 +108,7 @@ export const ConversationMessageContent = React.forwardRef<
               "flex min-w-0 flex-col gap-1",
               type === "user" &&
                 cn(
-                  "rounded-2xl border border-stone-100 bg-stone-50 px-3 py-2",
+                  "rounded-2xl border border-border bg-muted-background px-3 py-2",
                   CARD_SHADOW
                 ),
               className
