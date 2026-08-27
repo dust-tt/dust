@@ -16,6 +16,18 @@ type BreakdownDimension =
   | (typeof BREAKDOWN_DIMENSIONS)[number]
   | "reasoning_effort";
 
+function getBreakdownDimensions(
+  selectedDimension: ConsumptionDimension
+): BreakdownDimension[] {
+  const breakdownDimensions = BREAKDOWN_DIMENSIONS.filter(
+    (dimension) => dimension !== selectedDimension
+  );
+
+  return selectedDimension === "model"
+    ? [...breakdownDimensions, "reasoning_effort"]
+    : breakdownDimensions;
+}
+
 const BREAKDOWN_LABELS: Record<BreakdownDimension, string> = {
   model: "By model",
   reasoning_effort: "By reasoning effort",
@@ -207,27 +219,19 @@ export function ConsumptionAttributionBreakdownView({
     ...filter,
     [CONSUMPTION_DIMENSION_FILTER_KEYS[selectedDimension]]: [selectedRow.id],
   };
-  const visibleDimensions = BREAKDOWN_DIMENSIONS.filter(
-    (dimension) =>
-      dimension !== selectedDimension &&
-      (analyticsScope.kind !== "personal" || dimension !== "user")
+  const visibleDimensions = getBreakdownDimensions(selectedDimension).filter(
+    (dimension) => analyticsScope.kind !== "personal" || dimension !== "user"
   );
-  const modelBreakdownDimensions: BreakdownDimension[] =
-    selectedDimension === "model" ? ["reasoning_effort"] : [];
-  const allVisibleDimensions = [
-    ...visibleDimensions,
-    ...modelBreakdownDimensions,
-  ];
 
   return (
     <div
       className={cn(
         "grid gap-20",
-        allVisibleDimensions.length === 2 ? "grid-cols-2" : "grid-cols-3",
+        visibleDimensions.length === 2 ? "grid-cols-2" : "grid-cols-3",
         "border-b border-separator px-2 pb-6 pt-4"
       )}
     >
-      {allVisibleDimensions.map((dimension) => (
+      {visibleDimensions.map((dimension) => (
         <BreakdownColumnComponent
           key={dimension}
           workspaceId={workspaceId}
