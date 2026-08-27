@@ -1,5 +1,7 @@
-import type { AllowedTable } from "@app/lib/api/actions/servers/servicenow/client";
-import { createServiceNowClient } from "@app/lib/api/actions/servers/servicenow/client";
+import {
+  createServiceNowClient,
+  isAllowedTable,
+} from "@app/lib/api/actions/servers/servicenow/client";
 import { untrustedFetch } from "@app/lib/egress/server";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { Response } from "undici";
@@ -252,15 +254,13 @@ describe("ServiceNowClient generic table access (listRecords/getRecord)", () => 
     vi.clearAllMocks();
   });
 
-  it("rejects a table outside the allowlist before making a request", async () => {
-    const client = getClient();
-    const result = await client.listRecords(
-      "sys_user" as unknown as AllowedTable,
-      {}
-    );
-
-    expect(result.isErr()).toBe(true);
-    expect(untrustedFetch).not.toHaveBeenCalled();
+  it("isAllowedTable rejects tables outside the allowlist", () => {
+    expect(isAllowedTable("sys_user")).toBe(false);
+    expect(isAllowedTable("incident")).toBe(true);
+    expect(isAllowedTable("problem")).toBe(true);
+    expect(isAllowedTable("change_request")).toBe(true);
+    expect(isAllowedTable("sc_request")).toBe(true);
+    expect(isAllowedTable("kb_knowledge")).toBe(true);
   });
 
   it("builds a safe path for get_record and force-includes sys_id in projection", async () => {

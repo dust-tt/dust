@@ -35,7 +35,7 @@ export const ALLOWED_TABLES = [
 ] as const;
 export type AllowedTable = (typeof ALLOWED_TABLES)[number];
 
-function isAllowedTable(table: string): table is AllowedTable {
+export function isAllowedTable(table: string): table is AllowedTable {
   return (ALLOWED_TABLES as readonly string[]).includes(table);
 }
 

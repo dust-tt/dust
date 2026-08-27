@@ -6,6 +6,7 @@ import type {
 import { FIELD_NAME_REGEX } from "@app/lib/api/actions/servers/servicenow/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 
 export function renderIncident(incident: Incident): string {
   let text = `- **${incident.number}**: ${incident.short_description || "(no description)"}`;
@@ -20,7 +21,7 @@ export function renderIncident(incident: Incident): string {
 export function renderRecord(record: GenericRecord): string {
   const { sys_id, number, ...rest } = record;
   const lines = [`- **sys_id**: ${sys_id}`];
-  if (typeof number === "string") {
+  if (isString(number)) {
     lines.unshift(`- **number**: ${number}`);
   }
   for (const [key, value] of Object.entries(rest).sort(([a], [b]) =>
