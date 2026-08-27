@@ -212,6 +212,39 @@ describe("ServiceNowClient pagination (listIncidents)", () => {
     const countUrl = new URL(requestedUrl(1));
     expect(countUrl.searchParams.get("sysparm_no_count")).toBe("false");
   });
+
+  it("counts against the full result set, not just what's left after the cursor", async () => {
+    vi.mocked(untrustedFetch)
+      .mockResolvedValueOnce(
+        jsonResponse({
+          result: [makeIncident(SYS_ID_B), makeIncident(SYS_ID_C)],
+        })
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { result: [{ sys_id: SYS_ID_A }] },
+          { headers: { "X-Total-Count": "5300" } }
+        )
+      );
+
+    const client = getClient();
+    const result = await client.listIncidents({
+      cursor: SYS_ID_A,
+      includeTotalCount: true,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value.totalCount).toBe(5300);
+
+    // The count request must not carry the "sys_id>{cursor}" clause used for the page
+    // itself — otherwise totalCount would shrink on every subsequent page instead of
+    // reflecting the query's full result set.
+    const countUrl = new URL(requestedUrl(1));
+    expect(countUrl.searchParams.get("sysparm_query")).not.toContain("sys_id>");
+  });
 });
 
 describe("ServiceNowClient generic table access (listRecords/getRecord)", () => {

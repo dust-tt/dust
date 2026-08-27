@@ -307,6 +307,9 @@ class ServiceNowClient {
       }
     }
 
+    // Built without the cursor clause: this is the query that defines the full result set
+    // (used for the total-count request below), independent of which page we're on.
+    const baseQuery = buildEncodedQuery([query, ...dateFilterClauses]);
     const cursorClause = cursor ? `sys_id>${cursor}` : undefined;
     const encodedQuery = buildEncodedQuery([
       query,
@@ -355,7 +358,7 @@ class ServiceNowClient {
 
     let totalCount: number | undefined;
     if (includeTotalCount) {
-      const countResult = await this.getTotalCount(table, encodedQuery);
+      const countResult = await this.getTotalCount(table, baseQuery);
       if (countResult.isErr()) {
         return countResult;
       }

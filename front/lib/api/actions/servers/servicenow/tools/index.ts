@@ -4,9 +4,11 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import type { WritableIncidentFields } from "@app/lib/api/actions/servers/servicenow/client";
 import { createServiceNowClient } from "@app/lib/api/actions/servers/servicenow/client";
 import {
+  CREATE_INCIDENT_TYPED_FIELD_NAMES,
   renderIncident,
   renderPaginationFooter,
   renderRecord,
+  UPDATE_INCIDENT_TYPED_FIELD_NAMES,
   validateAdditionalFields,
 } from "@app/lib/api/actions/servers/servicenow/helpers";
 import { SERVICENOW_TOOLS_METADATA } from "@app/lib/api/actions/servers/servicenow/metadata";
@@ -152,8 +154,10 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
     }
     const client = clientResult.value;
 
-    const validatedAdditionalFields =
-      validateAdditionalFields(additionalFields);
+    const validatedAdditionalFields = validateAdditionalFields(
+      additionalFields,
+      CREATE_INCIDENT_TYPED_FIELD_NAMES
+    );
     if (validatedAdditionalFields.isErr()) {
       return validatedAdditionalFields;
     }
@@ -185,8 +189,10 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
     }
     const client = clientResult.value;
 
-    const validatedAdditionalFields =
-      validateAdditionalFields(additionalFields);
+    const validatedAdditionalFields = validateAdditionalFields(
+      additionalFields,
+      UPDATE_INCIDENT_TYPED_FIELD_NAMES
+    );
     if (validatedAdditionalFields.isErr()) {
       return validatedAdditionalFields;
     }

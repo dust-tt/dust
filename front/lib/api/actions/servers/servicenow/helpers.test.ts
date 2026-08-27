@@ -1,25 +1,33 @@
 import type { GenericRecord } from "@app/lib/api/actions/servers/servicenow/client";
 import {
+  CREATE_INCIDENT_TYPED_FIELD_NAMES,
   renderPaginationFooter,
   renderRecord,
+  UPDATE_INCIDENT_TYPED_FIELD_NAMES,
   validateAdditionalFields,
 } from "@app/lib/api/actions/servers/servicenow/helpers";
 import { describe, expect, it } from "vitest";
 
 describe("validateAdditionalFields", () => {
   it("accepts flat scalar values for valid custom field names", () => {
-    const result = validateAdditionalFields({
-      u_custom_field: "value",
-      x_acme_score: 42,
-      u_is_vip: true,
-      u_optional: null,
-    });
+    const result = validateAdditionalFields(
+      {
+        u_custom_field: "value",
+        x_acme_score: 42,
+        u_is_vip: true,
+        u_optional: null,
+      },
+      CREATE_INCIDENT_TYPED_FIELD_NAMES
+    );
 
     expect(result.isOk()).toBe(true);
   });
 
   it("defaults to an empty object when omitted", () => {
-    const result = validateAdditionalFields(undefined);
+    const result = validateAdditionalFields(
+      undefined,
+      CREATE_INCIDENT_TYPED_FIELD_NAMES
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
@@ -29,22 +37,54 @@ describe("validateAdditionalFields", () => {
   });
 
   it("rejects field names that aren't valid ServiceNow identifiers", () => {
-    const result = validateAdditionalFields({ "not a field!": "value" });
+    const result = validateAdditionalFields(
+      { "not a field!": "value" },
+      CREATE_INCIDENT_TYPED_FIELD_NAMES
+    );
 
     expect(result.isErr()).toBe(true);
   });
 
   it("rejects system-managed field names", () => {
     for (const name of ["sys_id", "sys_created_on", "number"]) {
-      const result = validateAdditionalFields({ [name]: "value" });
+      const result = validateAdditionalFields(
+        { [name]: "value" },
+        CREATE_INCIDENT_TYPED_FIELD_NAMES
+      );
       expect(result.isErr(), name).toBe(true);
     }
   });
 
   it("rejects names colliding with the dedicated typed parameters", () => {
-    const result = validateAdditionalFields({ priority: "1 - Critical" });
+    const result = validateAdditionalFields(
+      { priority: "1 - Critical" },
+      CREATE_INCIDENT_TYPED_FIELD_NAMES
+    );
 
     expect(result.isErr()).toBe(true);
+  });
+
+  it("checks collisions against the calling tool's own typed fields, not the other tool's", () => {
+    // urgency/impact/category are typed fields on create_incident but NOT on update_incident,
+    // so they must remain settable via update_incident's additionalFields.
+    const onUpdate = validateAdditionalFields(
+      { urgency: "1 - High" },
+      UPDATE_INCIDENT_TYPED_FIELD_NAMES
+    );
+    expect(onUpdate.isOk()).toBe(true);
+
+    const onCreate = validateAdditionalFields(
+      { urgency: "1 - High" },
+      CREATE_INCIDENT_TYPED_FIELD_NAMES
+    );
+    expect(onCreate.isErr()).toBe(true);
+
+    // state IS a typed field on update_incident, so it still collides there.
+    const stateOnUpdate = validateAdditionalFields(
+      { state: "In Progress" },
+      UPDATE_INCIDENT_TYPED_FIELD_NAMES
+    );
+    expect(stateOnUpdate.isErr()).toBe(true);
   });
 });
 

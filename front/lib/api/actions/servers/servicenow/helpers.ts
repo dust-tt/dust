@@ -57,11 +57,14 @@ export function renderPaginationFooter({
 
 // Fields writable through `additionalFields` on create_incident/update_incident must be: valid
 // ServiceNow field identifiers, not system-managed (sys_* / sys_id / number, which ServiceNow
-// assigns), and not a duplicate of one of the tool's own typed fields (which should be used
-// instead so ServiceNow's display-value handling and our own typing stay in effect).
+// assigns), and not a duplicate of one of *that tool's own* typed fields (which should be used
+// instead so ServiceNow's display-value handling and our own typing stay in effect). The two
+// tools expose different typed fields (e.g. update_incident has no urgency/impact/category
+// parameter), so each has its own collision set — checking against the union would make a field
+// unsettable through a tool that never had a dedicated parameter for it in the first place.
 const SYSTEM_MANAGED_FIELD_NAMES = new Set(["sys_id", "number"]);
 
-const TYPED_INCIDENT_FIELD_NAMES = new Set([
+export const CREATE_INCIDENT_TYPED_FIELD_NAMES = new Set([
   "short_description",
   "description",
   "urgency",
@@ -75,8 +78,20 @@ const TYPED_INCIDENT_FIELD_NAMES = new Set([
   "close_code",
 ]);
 
+export const UPDATE_INCIDENT_TYPED_FIELD_NAMES = new Set([
+  "short_description",
+  "state",
+  "priority",
+  "work_notes",
+  "close_notes",
+  "close_code",
+]);
+
 export function validateAdditionalFields(
-  additionalFields: Record<string, string | number | boolean | null> | undefined
+  additionalFields:
+    | Record<string, string | number | boolean | null>
+    | undefined,
+  typedFieldNames: ReadonlySet<string>
 ): Result<Record<string, string | number | boolean | null>, MCPError> {
   if (!additionalFields) {
     return new Ok({});
@@ -95,7 +110,7 @@ export function validateAdditionalFields(
       systemManagedNames.push(name);
       continue;
     }
-    if (TYPED_INCIDENT_FIELD_NAMES.has(name)) {
+    if (typedFieldNames.has(name)) {
       collidingNames.push(name);
     }
   }
