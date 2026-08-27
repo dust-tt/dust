@@ -1198,11 +1198,8 @@ export class Authenticator {
     return new Authenticator({
       authMethod: auth.authMethod(),
       key: auth._key,
-      // Scope down to the impersonated user's own workspace role: the system key is admin by
-      // default, and the resulting authenticator must not grant more than the user has. The role
-      // comes from the verified active membership, never from the caller, and the groups below
-      // are already the user's own.
-      role: activeMembership.role,
+      // We limit scope to a user role.
+      role: "user",
       groupModelIds,
       user,
       subscription: auth._subscription,
