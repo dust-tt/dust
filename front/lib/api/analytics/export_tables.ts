@@ -519,6 +519,7 @@ async function exportSkillUsage({
   const baseQuery = buildExportConsumptionScopeQuery(auth, {
     startDate,
     endDate,
+    timezone,
   });
 
   const result = await fetchSkillUsageExportRows(auth, baseQuery, timezone);

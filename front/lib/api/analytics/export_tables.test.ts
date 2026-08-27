@@ -638,7 +638,10 @@ describe("exportTable skill_usage", () => {
           { term: { workspace_id: workspace.sId } },
           {
             range: {
-              completed_at: { gte: "2024-01-01", lt: "2024-02-01" },
+              completed_at: {
+                gte: "2024-01-01T00:00:00.000Z",
+                lt: "2024-02-01T00:00:00.000Z",
+              },
             },
           },
         ],
@@ -653,6 +656,55 @@ describe("exportTable skill_usage", () => {
         uniqueUsers: 2,
       },
     ]);
+  });
+
+  it("resolves the completed_at range from timezone-local day boundaries, not UTC", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      new Ok({
+        took: 1,
+        timed_out: false,
+        _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+        hits: { total: { value: 0, relation: "eq" }, hits: [] },
+        aggregations: { by_skill: { buckets: [] } },
+      })
+    );
+
+    await exportTable({
+      auth: authenticator,
+      table: "skill_usage",
+      startDate: "2024-01-01",
+      endDate: "2024-01-31",
+      // UTC-8: local midnight on 2024-01-01 is 2024-01-01T08:00:00.000Z, not
+      // 2024-01-01T00:00:00.000Z. A bare-date range filter is parsed by
+      // Elasticsearch as UTC midnight, which would disagree with the
+      // date_histogram aggregation's timezone-local day buckets and cut off
+      // the first/last local day's early-morning activity.
+      timezone: "America/Los_Angeles",
+      owner: workspace,
+      includeHiddenAgents: false,
+    });
+
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
+    const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(query).toEqual({
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          {
+            range: {
+              completed_at: {
+                gte: "2024-01-01T08:00:00.000Z",
+                lt: "2024-02-01T08:00:00.000Z",
+              },
+            },
+          },
+        ],
+      },
+    });
   });
 });
 
