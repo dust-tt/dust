@@ -45,7 +45,7 @@ const DEFAULT_EMPTY_MESSAGE = "No commands found";
 const DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME =
   SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME;
 
-const SKILL_NAME_TOOLTIP_DELAY_MS = 1000;
+const SKILL_NAME_TOOLTIP_DELAY_MS = 1500;
 
 function SlashCommandDropdownLoadingState({ message }: { message: string }) {
   return (
@@ -368,7 +368,16 @@ export const SlashCommandDropdown = forwardRef<
                           ) : undefined
                         }
                         onClick={() => selectEntry(index)}
-                        onFocus={() => setSelectedIndex(index)}
+                        onFocus={(event) => {
+                          if (
+                            item.tooltipLabel &&
+                            event.currentTarget.matches(":hover")
+                          ) {
+                            // Menu items focus on pointer move, which would bypass the tooltip delay.
+                            event.stopPropagation();
+                          }
+                          setSelectedIndex(index);
+                        }}
                         className={cn(
                           "group",
                           index === selectedIndex &&
@@ -465,7 +474,16 @@ export const SlashCommandDropdown = forwardRef<
                         ) : undefined
                       }
                       onClick={() => selectEntry(entryIndex)}
-                      onFocus={() => setSelectedIndex(entryIndex)}
+                      onFocus={(event) => {
+                        if (
+                          item.tooltipLabel &&
+                          event.currentTarget.matches(":hover")
+                        ) {
+                          // Menu items focus on pointer move, which would bypass the tooltip delay.
+                          event.stopPropagation();
+                        }
+                        setSelectedIndex(entryIndex);
+                      }}
                       className={cn(
                         "group",
                         entryIndex === selectedIndex &&
