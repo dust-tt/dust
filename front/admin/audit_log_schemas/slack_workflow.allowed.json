@@ -10,7 +10,7 @@
   ],
   "metadata": {
     "bot_name": "string",
-    "group_names": "string",
+    "space_names": "string",
     "actor_type": "string"
   }
 }

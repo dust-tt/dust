@@ -24,7 +24,10 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import tracer from "@app/logger/tracer";
 import type { GrantType, GrantVerb } from "@app/types/group_permissions";
-import { SPACE_EDITOR_GRANT_TYPE } from "@app/types/group_permissions";
+import {
+  SPACE_EDITOR_GRANT_TYPE,
+  SPACE_MEMBER_GRANT_TYPE,
+} from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
 import {
   GLOBAL_SPACE_NAME,
@@ -1989,7 +1992,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     if (this.isRegular() && isOpen) {
       return groups.map((group) => ({
         groupId: group.id,
-        grantType: group.isGlobal() ? "reader" : "member",
+        grantType: group.isGlobal() ? "reader" : SPACE_MEMBER_GRANT_TYPE,
       }));
     }
 
@@ -2007,14 +2010,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           return { groupId: group.id, grantType: "reader" };
         }
         // Every other group (the manual member group, provisioned member groups) reads and writes.
-        return { groupId: group.id, grantType: "member" };
+        return { groupId: group.id, grantType: SPACE_MEMBER_GRANT_TYPE };
       });
     }
 
     // Restricted regular space.
     return groups.map((group) => ({
       groupId: group.id,
-      grantType: "member",
+      grantType: SPACE_MEMBER_GRANT_TYPE,
     }));
   }
 

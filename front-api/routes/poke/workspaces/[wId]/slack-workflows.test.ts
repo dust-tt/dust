@@ -12,38 +12,34 @@ vi.mock("@app/lib/api/audit/workos_audit", async () => {
 });
 
 import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import {
+  connectSlackBot,
+  createSpaceWithMemberGroup,
+  mockRevokeSlackWorkflow,
+  mockSummoningWhitelist,
+  SLACK_BOT_CONNECTOR_ID,
+  SLACK_WORKFLOW_BOT_NAME,
+  SLACK_WORKFLOW_CREATED_AT_MS,
+} from "@app/tests/utils/slack_workflows";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
-
-const CONNECTOR_ID = "1234";
-const BOT_NAME = "Weekly report";
-const CREATED_AT = 1756166400000;
-
-function mockSlackBotDataSource({ connected }: { connected: boolean }) {
-  vi.spyOn(DataSourceResource, "listByConnectorProvider").mockImplementation(((
-    _auth: unknown,
-    provider: string
-  ) =>
-    Promise.resolve(
-      provider === "slack_bot" && connected
-        ? [{ connectorId: CONNECTOR_ID }]
-        : []
-    )) as unknown as typeof DataSourceResource.listByConnectorProvider);
-}
 
 async function setupTest({
   isSuperUser = true,
+  withSlackBot = true,
 }: {
   isSuperUser?: boolean;
+  withSlackBot?: boolean;
 } = {}) {
   const setup = await createPrivateApiMockRequest({
     isSuperUser,
     role: "admin",
   });
-  mockSlackBotDataSource({ connected: true });
+  if (withSlackBot) {
+    await connectSlackBot(setup.workspace, setup.systemSpace);
+  }
 
   return setup;
 }
@@ -66,10 +62,7 @@ describe("GET /api/poke/workspaces/[wId]/slack-workflows", () => {
 
   it("returns 401 for non super users", async () => {
     const { workspace } = await setupTest({ isSuperUser: false });
-    const whitelist = vi.spyOn(
-      ConnectorsAPI.prototype,
-      "getSlackBotSummoningWhitelist"
-    );
+    const whitelist = mockSummoningWhitelist([]);
 
     const response = await pokeSlackWorkflowsRequest(workspace.sId, {
       method: "GET",
@@ -79,22 +72,16 @@ describe("GET /api/poke/workspaces/[wId]/slack-workflows", () => {
     expect(whitelist).not.toHaveBeenCalled();
   });
 
-  it("lists the allowed workflows with their group names", async () => {
+  it("lists the allowed workflows with their spaces", async () => {
     const { workspace, globalGroup } = await setupTest();
-    vi.spyOn(
-      ConnectorsAPI.prototype,
-      "getSlackBotSummoningWhitelist"
-    ).mockResolvedValue(
-      new Ok({
-        bots: [
-          {
-            botName: BOT_NAME,
-            groupIds: [globalGroup.sId],
-            createdAt: CREATED_AT,
-          },
-        ],
-      })
-    );
+    const { space, memberGroupId } =
+      await createSpaceWithMemberGroup(workspace);
+    mockSummoningWhitelist([
+      {
+        botName: SLACK_WORKFLOW_BOT_NAME,
+        groupIds: [memberGroupId, globalGroup.sId],
+      },
+    ]);
 
     const response = await pokeSlackWorkflowsRequest(workspace.sId, {
       method: "GET",
@@ -105,17 +92,16 @@ describe("GET /api/poke/workspaces/[wId]/slack-workflows", () => {
       isSlackBotConnected: true,
       workflows: [
         {
-          botName: BOT_NAME,
-          groups: [{ sId: globalGroup.sId, name: globalGroup.name }],
-          createdAt: CREATED_AT,
+          botName: SLACK_WORKFLOW_BOT_NAME,
+          spaces: [{ sId: space.sId, name: space.name }],
+          createdAt: SLACK_WORKFLOW_CREATED_AT_MS,
         },
       ],
     });
   });
 
   it("reports the Slack bot as disconnected instead of failing", async () => {
-    const { workspace } = await setupTest();
-    mockSlackBotDataSource({ connected: false });
+    const { workspace } = await setupTest({ withSlackBot: false });
 
     const response = await pokeSlackWorkflowsRequest(workspace.sId, {
       method: "GET",
@@ -136,24 +122,22 @@ describe("DELETE /api/poke/workspaces/[wId]/slack-workflows", () => {
 
   it("revokes a workflow and audits the support actor", async () => {
     const { workspace } = await setupTest();
-    const revoke = vi
-      .spyOn(ConnectorsAPI.prototype, "unwhitelistSlackBotToSummon")
-      .mockResolvedValue(new Ok({ success: true }));
+    const revoke = mockRevokeSlackWorkflow();
 
     const response = await pokeSlackWorkflowsRequest(workspace.sId, {
       method: "DELETE",
-      body: { botName: BOT_NAME },
+      body: { botName: SLACK_WORKFLOW_BOT_NAME },
     });
 
     expect(response.status).toBe(200);
     expect(revoke).toHaveBeenCalledWith({
-      connectorId: CONNECTOR_ID,
-      botName: BOT_NAME,
+      connectorId: SLACK_BOT_CONNECTOR_ID,
+      botName: SLACK_WORKFLOW_BOT_NAME,
     });
     expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "slack_workflow.revoked",
-        metadata: { bot_name: BOT_NAME },
+        metadata: { bot_name: SLACK_WORKFLOW_BOT_NAME },
       })
     );
   });
@@ -169,7 +153,7 @@ describe("DELETE /api/poke/workspaces/[wId]/slack-workflows", () => {
 
     const response = await pokeSlackWorkflowsRequest(workspace.sId, {
       method: "DELETE",
-      body: { botName: BOT_NAME },
+      body: { botName: SLACK_WORKFLOW_BOT_NAME },
     });
 
     expect(response.status).toBe(404);

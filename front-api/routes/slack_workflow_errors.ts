@@ -15,6 +15,7 @@ export function slackWorkflowErrorToApiError(
         },
       };
     case "invalid_groups":
+    case "invalid_spaces":
       return {
         status_code: 400,
         api_error: {

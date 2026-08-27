@@ -6,20 +6,28 @@ import {
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type {
   GetSlackWorkflowsResponseBody,
   SlackWorkflowType,
 } from "@app/types/api/slack/workflows";
-import { SLACK_WORKFLOW_GROUP_KINDS } from "@app/types/api/slack/workflows";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { GrantSpec } from "@app/types/group_permissions";
+import {
+  grantKey,
+  SPACE_MEMBER_GRANT_TYPE,
+} from "@app/types/group_permissions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 type SlackWorkflowErrorType =
   | "slack_bot_not_connected"
   | "invalid_groups"
+  | "invalid_spaces"
   | "not_found"
   | "connectors_error";
 
@@ -31,6 +39,11 @@ export class SlackWorkflowError extends Error {
     super(message);
   }
 }
+
+type SpaceMemberGroup = {
+  space: SpaceResource;
+  memberGroupId: string;
+};
 
 async function fetchSlackBotDataSource(
   auth: Authenticator
@@ -57,6 +70,55 @@ async function fetchSlackBotDataSource(
   return new Ok({ dataSource, connectorId: dataSource.connectorId });
 }
 
+function spaceMemberGrant(space: SpaceResource): GrantSpec {
+  return {
+    grantType: SPACE_MEMBER_GRANT_TYPE,
+    resourceType: "space",
+    resourceId: space.id,
+  };
+}
+
+// Connectors stores the whitelist as group ids, so a space has to be represented by one of its
+// groups. Only its own regular_auto member group will do: it lives and dies with the space and
+// cannot be attached to another one, so it grants exactly that space forever. A provisioned group
+// would drift the moment an admin attaches it elsewhere.
+async function listSpaceMemberGroups(
+  auth: Authenticator
+): Promise<SpaceMemberGroup[]> {
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
+    includeProjectSpaces: true,
+  });
+  const selectableSpaces = spaces.filter(
+    (space) => space.isRegular() || space.isProject()
+  );
+
+  const memberGroupByGrantKey =
+    await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+      grants: selectableSpaces.map(spaceMemberGrant),
+    });
+
+  return removeNulls(
+    selectableSpaces.map((space) => {
+      const memberGroup = memberGroupByGrantKey.get(
+        grantKey(spaceMemberGrant(space))
+      );
+
+      return memberGroup ? { space, memberGroupId: memberGroup.sId } : null;
+    })
+  );
+}
+
+export async function listSlackWorkflowSpaces(
+  auth: Authenticator
+): Promise<{ sId: string; name: string }[]> {
+  const spaceMemberGroups = await listSpaceMemberGroups(auth);
+
+  return spaceMemberGroups.map(({ space }) => ({
+    sId: space.sId,
+    name: space.name,
+  }));
+}
+
 export async function listSlackWorkflows(
   auth: Authenticator
 ): Promise<Result<GetSlackWorkflowsResponseBody, SlackWorkflowError>> {
@@ -73,13 +135,11 @@ export async function listSlackWorkflows(
     logger
   );
 
-  const [whitelistRes, groups] = await Promise.all([
+  const [whitelistRes, spaceMemberGroups] = await Promise.all([
     connectorsAPI.getSlackBotSummoningWhitelist({
       connectorId: dataSourceRes.value.connectorId,
     }),
-    GroupResource.listAllWorkspaceGroups(auth, {
-      groupKinds: SLACK_WORKFLOW_GROUP_KINDS,
-    }),
+    listSpaceMemberGroups(auth),
   ]);
 
   if (whitelistRes.isErr()) {
@@ -88,14 +148,15 @@ export async function listSlackWorkflows(
     );
   }
 
-  const groupNameById = new Map(groups.map((g) => [g.sId, g.name]));
+  const spaceByMemberGroupId = new Map(
+    spaceMemberGroups.map(({ space, memberGroupId }) => [memberGroupId, space])
+  );
 
   const workflows: SlackWorkflowType[] = whitelistRes.value.bots.map((bot) => ({
     botName: bot.botName,
-    groups: bot.groupIds.map((sId) => ({
-      sId,
-      name: groupNameById.get(sId) ?? sId,
-    })),
+    spaces: removeNulls(
+      bot.groupIds.map((groupId) => spaceByMemberGroupId.get(groupId))
+    ).map((space) => ({ sId: space.sId, name: space.name })),
     createdAt: bot.createdAt,
   }));
 
@@ -104,7 +165,7 @@ export async function listSlackWorkflows(
 
 export async function allowSlackWorkflow(
   auth: Authenticator,
-  { botName, groupIds }: { botName: string; groupIds: string[] }
+  { botName, spaceIds }: { botName: string; spaceIds: string[] }
 ): Promise<Result<undefined, SlackWorkflowError>> {
   const dataSourceRes = await fetchSlackBotDataSource(auth);
   if (dataSourceRes.isErr()) {
@@ -112,22 +173,10 @@ export async function allowSlackWorkflow(
   }
   const { dataSource, connectorId } = dataSourceRes.value;
 
-  const groups = await GroupResource.listAllWorkspaceGroups(auth, {
-    groupKinds: SLACK_WORKFLOW_GROUP_KINDS,
-  });
-  const groupById = new Map(groups.map((g) => [g.sId, g]));
-
-  const unknownGroupIds = groupIds.filter((sId) => !groupById.has(sId));
-  if (unknownGroupIds.length > 0) {
-    return new Err(
-      new SlackWorkflowError(
-        "invalid_groups",
-        `Unknown groups: ${unknownGroupIds.join(", ")}.`
-      )
-    );
-  }
-
-  const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+  const [spaceMemberGroups, globalGroupRes] = await Promise.all([
+    listSpaceMemberGroups(auth),
+    GroupResource.fetchWorkspaceGlobalGroup(auth),
+  ]);
   if (globalGroupRes.isErr()) {
     return new Err(
       new SlackWorkflowError(
@@ -137,9 +186,32 @@ export async function allowSlackWorkflow(
     );
   }
 
-  const allGroupIds = groupIds.includes(globalGroupRes.value.sId)
-    ? groupIds
-    : [...groupIds, globalGroupRes.value.sId];
+  const memberGroupIdBySpaceId = new Map(
+    spaceMemberGroups.map(({ space, memberGroupId }) => [
+      space.sId,
+      memberGroupId,
+    ])
+  );
+
+  const unknownSpaceIds = spaceIds.filter(
+    (spaceId) => !memberGroupIdBySpaceId.has(spaceId)
+  );
+  if (unknownSpaceIds.length > 0) {
+    return new Err(
+      new SlackWorkflowError(
+        "invalid_spaces",
+        `Unknown spaces: ${unknownSpaceIds.join(", ")}.`
+      )
+    );
+  }
+
+  // The global group grants the Company Space, which every workflow reaches.
+  const groupIds = [
+    globalGroupRes.value.sId,
+    ...removeNulls(
+      spaceIds.map((spaceId) => memberGroupIdBySpaceId.get(spaceId))
+    ),
+  ];
 
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
@@ -149,13 +221,17 @@ export async function allowSlackWorkflow(
   const whitelistRes = await connectorsAPI.whitelistSlackBotToSummon({
     connectorId,
     botName,
-    groupIds: allGroupIds,
+    groupIds,
   });
   if (whitelistRes.isErr()) {
     return new Err(
       new SlackWorkflowError("connectors_error", whitelistRes.error.message)
     );
   }
+
+  const spaceNameBySpaceId = new Map(
+    spaceMemberGroups.map(({ space }) => [space.sId, space.name])
+  );
 
   void emitAuditLogEvent({
     auth,
@@ -167,9 +243,9 @@ export async function allowSlackWorkflow(
     context: getAuditLogContext(auth),
     metadata: {
       bot_name: botName,
-      group_names: allGroupIds
-        .map((sId) => groupById.get(sId)?.name ?? globalGroupRes.value.name)
-        .join(", "),
+      space_names: removeNulls(
+        spaceIds.map((spaceId) => spaceNameBySpaceId.get(spaceId))
+      ).join(", "),
     },
   });
 
