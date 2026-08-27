@@ -40,6 +40,8 @@ import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
 import {
   BUBBLE_MENU_APPEND_TO,
   BUBBLE_MENU_STYLE,
+  BUBBLE_MENU_TOOLBAR_HIDDEN_CLASSES,
+  BUBBLE_MENU_TOOLBAR_MOTION_CLASSES,
   useBubbleMenuOptions,
 } from "@app/components/editor/useBubbleMenuOptions";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
@@ -1761,7 +1763,8 @@ const InputBarContainer = ({
                 className={cn(
                   "inline-flex",
                   isMobile && "hidden",
-                  !isBubbleMenuPositioned && "opacity-0"
+                  BUBBLE_MENU_TOOLBAR_MOTION_CLASSES,
+                  !isBubbleMenuPositioned && BUBBLE_MENU_TOOLBAR_HIDDEN_CLASSES
                 )}
               >
                 <ToolBarContent editor={editor} />

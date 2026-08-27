@@ -3,6 +3,8 @@ import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPaste
 import {
   BUBBLE_MENU_APPEND_TO,
   BUBBLE_MENU_STYLE,
+  BUBBLE_MENU_TOOLBAR_HIDDEN_CLASSES,
+  BUBBLE_MENU_TOOLBAR_MOTION_CLASSES,
   useBubbleMenuOptions,
 } from "@app/components/editor/useBubbleMenuOptions";
 import { buildMarkdownEditorExtensions } from "@app/lib/editor/build_markdown_editor_extensions";
@@ -319,7 +321,8 @@ export function MarkdownEditor({
               className={cn(
                 "inline-flex",
                 isMobile && "hidden",
-                !isBubbleMenuPositioned && "opacity-0"
+                BUBBLE_MENU_TOOLBAR_MOTION_CLASSES,
+                !isBubbleMenuPositioned && BUBBLE_MENU_TOOLBAR_HIDDEN_CLASSES
               )}
             >
               <ToolBarContent editor={editor} />

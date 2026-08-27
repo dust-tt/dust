@@ -10,6 +10,16 @@ export const BUBBLE_MENU_APPEND_TO = () => document.body;
 // or popover needs the front.
 export const BUBBLE_MENU_STYLE = { zIndex: 60 };
 
+// Pop-in for the toolbar pill, driven by the same `isPositioned` flag that
+// gates its visibility: a transition (not a keyframe) so a selection changing
+// mid-animation retargets instead of restarting. Scales from the bottom
+// because the pill sits above the selection, so it grows out of the text it
+// acts on. 150ms ease-out keeps it in the popover band and reads as an
+// instant response to the selection.
+export const BUBBLE_MENU_TOOLBAR_MOTION_CLASSES =
+  "origin-bottom transition-[opacity,transform] duration-150 ease-out-cubic motion-reduce:transition-none";
+export const BUBBLE_MENU_TOOLBAR_HIDDEN_CLASSES = "scale-[0.97] opacity-0";
+
 /**
  * Options for Tiptap's BubbleMenu plus an `isPositioned` flag to gate the
  * menu's visibility. The plugin's `show()` unhides the element immediately

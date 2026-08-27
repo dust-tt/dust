@@ -16,6 +16,8 @@ import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import {
   BUBBLE_MENU_APPEND_TO,
   BUBBLE_MENU_STYLE,
+  BUBBLE_MENU_TOOLBAR_HIDDEN_CLASSES,
+  BUBBLE_MENU_TOOLBAR_MOTION_CLASSES,
   useBubbleMenuOptions,
 } from "@app/components/editor/useBubbleMenuOptions";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
@@ -117,7 +119,8 @@ function UserMessageEditor({
             className={cn(
               "inline-flex",
               isMobile && "hidden",
-              !isBubbleMenuPositioned && "opacity-0"
+              BUBBLE_MENU_TOOLBAR_MOTION_CLASSES,
+              !isBubbleMenuPositioned && BUBBLE_MENU_TOOLBAR_HIDDEN_CLASSES
             )}
           >
             <ToolBarContent editor={editor} />
