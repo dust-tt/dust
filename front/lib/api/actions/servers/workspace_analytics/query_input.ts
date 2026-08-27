@@ -62,43 +62,6 @@ export const timeWindowSchemaShape = {
 
 const timeWindowInputSchema = z.object(timeWindowSchemaShape);
 
-// Shared filter fragment for message-based usage tools.
-export const usageFilterSchema = {
-  source: z
-    .string()
-    .optional()
-    .describe(
-      "Filter to a single message origin (context_origin) — the source a " +
-        "message came from. Many origins exist (channels, integrations, " +
-        "triggers, and more); do not assume a fixed short list. Use 'unknown' " +
-        "to match messages with no recorded origin."
-    ),
-  agentIds: z
-    .array(z.string())
-    .optional()
-    .describe("Restrict to messages from these agent sIds."),
-  userIds: z
-    .array(z.string())
-    .optional()
-    .describe("Restrict to messages from these user sIds."),
-  agentTagIds: z
-    .array(z.string())
-    .optional()
-    .describe(
-      "Restrict to messages from agents carrying any of these agent tag sIds"
-    ),
-  modelIds: z
-    .array(z.string())
-    .optional()
-    .describe(
-      "Restrict to messages answered by these models, identified by their " +
-        "model id (e.g. 'claude-sonnet-4-5')."
-    ),
-};
-
-// Filters for the consumption-index tools. Every key narrows the same scope the
-// workspace Analytics page filters on. The legacy `usageFilterSchema` above stays
-// until the tools still reading the old index are gone.
 export const consumptionFilterSchema = {
   sources: z
     .array(z.string())
@@ -167,7 +130,7 @@ export function toConsumptionScope(
 
 // `resolveTimeWindow` reports an inclusive end instant, because the legacy index
 // is queried with `lte`. The consumption index uses a half-open range, so its
-// bound is the following millisecond. Goes away with the last legacy tool.
+// bound is the following millisecond.
 export function toConsumptionPeriod(
   window: ResolvedTimeWindow
 ): ConsumptionPeriod {

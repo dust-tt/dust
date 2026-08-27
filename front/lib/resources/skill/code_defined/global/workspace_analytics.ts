@@ -66,7 +66,7 @@ export const workspaceAnalyticsSkill = {
     { name: "workspace_analytics" },
     { name: WORKSPACE_MANAGEMENT_SERVER_NAME },
   ],
-  version: 8,
+  version: 9,
   icon: "ActionPieChartIcon",
   isRestricted: async (auth: Authenticator) => {
     if (!auth.isManager()) {

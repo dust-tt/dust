@@ -6,8 +6,8 @@ import {
   MAX_CREDIT_GROUPS,
   MAX_RESULTS,
   timeWindowSchemaShape,
-  usageFilterSchema,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import { CONSUMPTION_ACTIVITY_METRICS } from "@app/lib/api/analytics/consumption/activity_timeseries";
 import { ConsumptionPeriodSchema } from "@app/lib/api/analytics/consumption/schema";
 import {
   CONSUMPTION_INVOCATION_DIMENSIONS,
@@ -62,21 +62,18 @@ const getCreditTimeseriesSchema = {
 
 const getUsageTimeseriesSchema = {
   ...timeWindowSchemaShape,
-  ...usageFilterSchema,
+  ...consumptionFilterSchema,
   metric: z
-    .enum(["messages", "skills", "tools"])
+    .enum(CONSUMPTION_ACTIVITY_METRICS)
     .optional()
     .describe(
       "What to plot over time. 'messages' (default): messages, conversations " +
-        "and active users. 'skills'/'tools': executions and unique users."
+        "and active users. 'tools'/'skills': executions and active users."
     ),
   granularity: z
-    .enum(["day", "week"])
+    .enum(["day", "week", "month"])
     .optional()
-    .describe(
-      "Bucket granularity (default day). Only applies to the messages metric; " +
-        "skills and tools are always daily."
-    ),
+    .describe("Bucket granularity (default day)."),
 };
 
 export const GET_TOP_ENTITIES_BY_MESSAGE_COUNT_TOOL_NAME =
@@ -228,7 +225,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       "days). Plot message volume (messages, conversations, active users), " +
       "skill executions, or tool calls over time. Use this for any activity " +
       "or usage trend — it is a single call, do not call other tools once per " +
-      "day. Combine with filters to narrow. Chart the result. Admin-only.",
+      "day. Combine with filters to narrow. Chart the result.",
     schema: getUsageTimeseriesSchema,
     stake: "never_ask",
     eager: true,

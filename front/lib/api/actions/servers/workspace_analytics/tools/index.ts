@@ -9,7 +9,6 @@ import { workspaceManagerGuard } from "@app/lib/actions/mcp_internal_actions/uti
 import { WORKSPACE_ANALYTICS_TOOLS_METADATA } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import type {
   ConsumptionFilterInput,
-  ResolvedTimeWindow,
   TimeWindowInput,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import {
@@ -19,6 +18,8 @@ import {
   toConsumptionPeriod,
   toConsumptionScope,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import type { ConsumptionActivityTimeseries } from "@app/lib/api/analytics/consumption/activity_timeseries";
+import { fetchConsumptionActivityTimeseries } from "@app/lib/api/analytics/consumption/activity_timeseries";
 import { fetchConsumptionOverview } from "@app/lib/api/analytics/consumption/overview";
 import { toConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/schema";
 import type {
@@ -41,84 +42,10 @@ import {
   resolveConsumptionGroupLabels,
 } from "@app/lib/api/analytics/consumption/top";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
-import { fetchSkillUsageMetrics } from "@app/lib/api/assistant/observability/skill_usage";
-import { fetchToolUsageMetrics } from "@app/lib/api/assistant/observability/tool_usage";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { formatDateFromMillis } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import moment from "moment-timezone";
-
-function scopedBaseQuery(
-  auth: Authenticator,
-  window: ResolvedTimeWindow,
-  {
-    source,
-    agentIds,
-    userIds,
-    agentTagIds,
-    modelIds,
-  }: {
-    source?: string;
-    agentIds?: string[];
-    userIds?: string[];
-    agentTagIds?: string[];
-    modelIds?: string[];
-  }
-) {
-  return buildAgentAnalyticsBaseQuery({
-    workspaceId: auth.getNonNullableWorkspace().sId,
-    startDate: window.startDate,
-    endDate: window.endDate,
-    contextOrigin: source,
-    agentIds,
-    userIds,
-    agentTagIds,
-    modelIds,
-  });
-}
-
-function renderExecutionSeries<
-  T extends { date: string; executionCount: number; uniqueUsers: number },
->(
-  result: Result<T[], Error>,
-  metricLabel: string,
-  windowLabel: string,
-  tz: string
-): ToolHandlerResult {
-  if (result.isErr()) {
-    return new Err(
-      new MCPError(
-        `Failed to retrieve usage time series: ${result.error.message}`
-      )
-    );
-  }
-  if (result.value.length === 0) {
-    return new Ok([
-      {
-        type: "text" as const,
-        text: `No ${metricLabel} usage recorded for ${windowLabel} (${tz}).`,
-      },
-    ]);
-  }
-  const lines = result.value.map(
-    (point) =>
-      `${point.date}: ${point.executionCount} executions, ` +
-      `${point.uniqueUsers} unique users`
-  );
-  return new Ok([
-    {
-      type: "text" as const,
-      text:
-        `${metricLabel} usage per day for ${windowLabel} (${tz}):\n` +
-        lines.join("\n"),
-    },
-  ]);
-}
 
 function excludeSkillManagement(
   dimension: ConsumptionTopDimension,
@@ -203,7 +130,7 @@ async function renderRanking(
 
   const result = await fetchConsumptionTopGroups(auth, {
     dimension,
-    period: toConsumptionPeriod(window.value),
+    period: window.value,
     limit: limit ?? DEFAULT_RESULTS,
     filter,
     rankBy,
@@ -249,6 +176,17 @@ function formatCreditLine(
       `${name}: ${(point.values[groupKey] ?? 0).toFixed(2)}`
   );
   return `${formatDateFromMillis(point.timestamp, tz)} — ${parts.join(", ")}`;
+}
+
+function formatActivityLine(
+  point: ConsumptionTimeseriesPoint,
+  series: ConsumptionActivityTimeseries["series"],
+  tz: string
+): string {
+  const parts = series.map(
+    ({ key, name }) => `${point.values[key] ?? 0} ${name.toLowerCase()}`
+  );
+  return `${formatDateFromMillis(point.timestamp, tz)}: ${parts.join(", ")}`;
 }
 
 const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
@@ -378,7 +316,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     const filter = toConsumptionScope(input);
 
     const result = await fetchConsumptionTimeseries(auth, {
-      period: toConsumptionPeriod(window.value),
+      period: window.value,
       granularity,
       mode: "daily",
       breakdownBy,
@@ -423,19 +361,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
   },
 
   get_usage_timeseries: async (
-    {
-      metric,
-      granularity,
-      period,
-      startDate,
-      endDate,
-      timezone,
-      source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    },
+    { metric = "messages", granularity = "day", ...input },
     { auth }
   ) => {
     const deniedError = workspaceManagerGuard(auth);
@@ -443,82 +369,55 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(deniedError);
     }
 
-    const window = resolveTimeWindow(
-      { period, startDate, endDate, timezone },
-      "last_30_days"
-    );
+    const window = resolveTimeWindow(input, "last_30_days");
     if (window.isErr()) {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
+    const filter = toConsumptionScope(input);
 
-    const baseQuery = scopedBaseQuery(auth, window.value, {
-      source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
+    const result = await fetchConsumptionActivityTimeseries(auth, {
+      period: window.value,
+      granularity,
+      metric,
+      filter,
+      timezone: window.value.timezone,
     });
-    const { label, timezone: tz } = window.value;
-    const selectedMetric = metric ?? "messages";
 
-    switch (selectedMetric) {
-      case "messages": {
-        const interval = granularity ?? "day";
-        const result = await fetchMessageMetrics(
-          baseQuery,
-          interval,
-          ["conversations", "activeUsers"],
-          tz
-        );
-        if (result.isErr()) {
-          return new Err(
-            new MCPError(
-              `Failed to retrieve usage time series: ${result.error.message}`
-            )
-          );
-        }
-        if (result.value.length === 0) {
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `No messages usage recorded for ${label} (${tz}).`,
-            },
-          ]);
-        }
-        const lines = result.value.map((point) => {
-          const date = moment.tz(point.timestamp, tz).format("YYYY-MM-DD");
-          return (
-            `${date}: ${point.count} messages, ` +
-            `${point.conversations} conversations, ` +
-            `${point.activeUsers} active users`
-          );
-        });
-        return new Ok([
-          {
-            type: "text" as const,
-            text:
-              `messages usage per ${interval} for ${label} (${tz}):\n` +
-              lines.join("\n"),
-          },
-        ]);
-      }
-      case "skills":
-        return renderExecutionSeries(
-          await fetchSkillUsageMetrics(baseQuery, null, tz),
-          "skills",
-          label,
-          tz
-        );
-      case "tools":
-        return renderExecutionSeries(
-          await fetchToolUsageMetrics(baseQuery, null, tz),
-          "tools",
-          label,
-          tz
-        );
-      default:
-        return assertNever(selectedMetric);
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to retrieve the usage time series: ${result.error.message}`
+        )
+      );
     }
+
+    const { label, timezone: tz } = window.value;
+    const series = result.value;
+    const active = series.points.filter((point) =>
+      Object.values(point.values).some((value) => value > 0)
+    );
+
+    if (active.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `No ${metric} activity recorded for ${label} (${tz}).`,
+        },
+      ]);
+    }
+
+    const lines = active.map((point) =>
+      formatActivityLine(point, series.series, tz)
+    );
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `${metric} per ${granularity} for ${label} (${tz}):\n` +
+          lines.join("\n"),
+      },
+    ]);
   },
   get_top_entities_by_message_count: async (
     { dimension, limit, ...input },
