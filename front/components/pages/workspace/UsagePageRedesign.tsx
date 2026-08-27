@@ -82,7 +82,6 @@ import {
 import { useUsageSettings } from "@app/lib/swr/usage_settings";
 import {
   useAwuUsageFromAnalytics,
-  useMetronomeContract,
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
@@ -116,6 +115,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
+  InfoCircle,
   LinkExternal01,
   LoadingBlock,
   Page,
@@ -126,6 +126,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -467,14 +468,13 @@ export function UsagePageRedesign() {
     totalRemainingCredits,
     totalActiveCredits,
     overageCredits,
+    avgPoolCreditsPerCycle,
+    cyclesUsedForAverage,
+    latestCreditExpirationMs,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
     mutateAwuPoolSummary,
   } = useAwuPoolSummary({
-    workspaceId: owner.sId,
-  });
-
-  const { contract: metronomeContract } = useMetronomeContract({
     workspaceId: owner.sId,
   });
 
@@ -1288,13 +1288,15 @@ export function UsagePageRedesign() {
               </div>
             ) : (
               <>
-                <div className="flex items-baseline gap-1">
-                  <span className="heading-mono-4xl text-foreground">
-                    {formatCredits(totalConsumedCredits)}
-                  </span>
-                  <span className="copy-sm text-muted-foreground">
-                    /{formatCredits(initialTotalCredits)}
-                  </span>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-baseline gap-1">
+                    <span className="heading-mono-4xl text-foreground">
+                      {formatCredits(totalConsumedCredits)}
+                    </span>
+                    <span className="copy-sm text-muted-foreground">
+                      /{formatCredits(initialTotalCredits)}
+                    </span>
+                  </div>
                 </div>
                 {hasPool && (
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted-foreground/20">
@@ -1311,12 +1313,28 @@ export function UsagePageRedesign() {
                     <span className="copy-sm text-muted-foreground">
                       {usedPercentage}% used
                     </span>
-                    {metronomeContract?.contractEndingAtMs && (
+                    {avgPoolCreditsPerCycle !== null &&
+                      cyclesUsedForAverage > 0 && (
+                        <div className="flex items-center gap-1">
+                          <span className="copy-sm text-muted-foreground">
+                            {formatCredits(Math.round(avgPoolCreditsPerCycle))}{" "}
+                            used credits/cycles
+                          </span>
+                          <Tooltip
+                            label="This is your estimated burn rate"
+                            tooltipTriggerAsChild
+                            trigger={
+                              <span className="inline-flex items-center rounded-md p-0.5 text-muted-foreground hover:text-foreground">
+                                <Icon visual={InfoCircle} size="xs" />
+                              </span>
+                            }
+                          />
+                        </div>
+                      )}
+                    {latestCreditExpirationMs && (
                       <span className="copy-sm text-muted-foreground">
-                        End of contract{" "}
-                        {formatConsumptionDate(
-                          metronomeContract.contractEndingAtMs
-                        )}
+                        Credits expire{" "}
+                        {formatConsumptionDate(latestCreditExpirationMs)}
                       </span>
                     )}
                   </div>

@@ -2279,6 +2279,39 @@ export async function listMetronomeDraftInvoices(
   }
 }
 
+/**
+ * Most recent finalized (closed) invoices, newest first. Stops paginating
+ * once `limit` invoices have been collected instead of walking the
+ * customer's entire invoice history.
+ */
+export async function listMetronomeFinalizedInvoices(
+  metronomeCustomerId: string,
+  { limit = 3 }: { limit?: number } = {}
+): Promise<Result<Invoice[], Error>> {
+  try {
+    const invoices: Invoice[] = [];
+    for await (const entry of getMetronomeClient().v1.customers.invoices.list({
+      customer_id: metronomeCustomerId,
+      status: "FINALIZED",
+      sort: "date_desc",
+      skip_zero_qty_line_items: true,
+    })) {
+      invoices.push(entry);
+      if (invoices.length >= limit) {
+        break;
+      }
+    }
+    return new Ok(invoices);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId },
+      "[Metronome] Failed to list finalized invoices"
+    );
+    return new Err(error);
+  }
+}
+
 export async function listMetronomeBalances(
   metronomeCustomerId: string,
   {
