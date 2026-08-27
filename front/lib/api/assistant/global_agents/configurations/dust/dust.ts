@@ -268,14 +268,12 @@ function _getDustLikeGlobalAgent(
     name,
     preferredModelConfiguration,
     preferredReasoningEffort,
-    requiredPreferredModelConfiguration,
     omittedThinking,
   }: {
     agentId: GLOBAL_AGENTS_SID;
     name: string;
     preferredModelConfiguration?: ModelConfigurationType | null;
     preferredReasoningEffort?: ReasoningEffort;
-    requiredPreferredModelConfiguration?: boolean;
     omittedThinking?: boolean;
   }
 ): (AgentConfigurationType & { omittedThinking?: boolean }) | null {
@@ -304,15 +302,6 @@ function _getDustLikeGlobalAgent(
         featureFlags,
         excludeProviders,
       }) != null;
-
-    if (requiredPreferredModelConfiguration) {
-      if (isPreferredModelConfigurationAvailable) {
-        isPreferredModel = true;
-        return preferredModelConfiguration;
-      }
-
-      return null;
-    }
 
     if (!auth.isUpgraded()) {
       return getSmallWhitelistedModel(auth, excludeProviders, {
@@ -1113,13 +1102,14 @@ export function _getDustNextHighGlobalAgent(
   });
 }
 
-// Formerly custom-model dust-* global agents (soupinou, sundae, pistache,
-// chalom). Their eval models were removed from the infra custom-models config
-// (GCS), so they no longer resolve to a custom model. They remain callable for past
+// Formerly custom-model dust-* global agents (chawi, soupinou, sundae,
+// pistache, chalom). Their eval models were removed from the infra custom-models
+// config (GCS), so they no longer resolve to a custom model. They remain callable for past
 // conversations via a concrete fallback model and are listed in
-// RETIRED_GLOBAL_AGENTS_SID (see global_agents.ts). We may revive them as
-// custom-model agents in the future by moving them back into
-// CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.
+// RETIRED_GLOBAL_AGENTS_SID (see global_agents.ts). Reviving one as a
+// custom-model agent requires moving it back into
+// CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS and restoring
+// _getCustomModelDustLikeGlobalAgent and its switch cases (removed in #31262).
 type RetiredDustGlobalAgentConfig = {
   name: string;
   preferredReasoningEffort: ReasoningEffort;
@@ -1168,6 +1158,18 @@ const RETIRED_DUST_GLOBAL_AGENT_CONFIGS = new Map<
   [
     GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
     { name: "dust-soupinou-none", preferredReasoningEffort: "none" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHAWI,
+    { name: "dust-chawi", preferredReasoningEffort: "light" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
+    { name: "dust-chawi-medium", preferredReasoningEffort: "medium" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
+    { name: "dust-chawi-high", preferredReasoningEffort: "high" },
   ],
 ]);
 
@@ -1231,30 +1233,6 @@ const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
       preferredReasoningEffort: "high",
     },
   ],
-  [
-    GLOBAL_AGENTS_SID.DUST_CHAWI,
-    {
-      name: "dust-chawi",
-      customModelIndex: 0,
-      preferredReasoningEffort: "light",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
-    {
-      name: "dust-chawi-medium",
-      customModelIndex: 0,
-      preferredReasoningEffort: "medium",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
-    {
-      name: "dust-chawi-high",
-      customModelIndex: 0,
-      preferredReasoningEffort: "high",
-    },
-  ],
 ]);
 
 export function getCustomModelDustGlobalAgentIndex(
@@ -1264,25 +1242,4 @@ export function getCustomModelDustGlobalAgentIndex(
     CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId)?.customModelIndex ??
     null
   );
-}
-
-export function _getCustomModelDustLikeGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
-  agentId: GLOBAL_AGENTS_SID
-): AgentConfigurationType | null {
-  const config = CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId);
-
-  if (!config) {
-    return null;
-  }
-
-  return _getDustLikeGlobalAgent(auth, args, {
-    agentId,
-    name: config.name,
-    preferredModelConfiguration:
-      CUSTOM_MODEL_CONFIGS[config.customModelIndex] ?? null,
-    preferredReasoningEffort: config.preferredReasoningEffort,
-    requiredPreferredModelConfiguration: true,
-  });
 }
