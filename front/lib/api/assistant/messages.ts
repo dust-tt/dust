@@ -1,11 +1,17 @@
 import { renderAgentMessageContentView } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import {
   resolvedModelFromAgentMessageRow,
   resolvedModelFromUserMessageRow,
 } from "@app/lib/api/assistant/models";
 import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
+import {
+  getUserMemoryFunctionCallIds,
+  redactUserMemoryActions,
+  redactUserMemoryStepContent,
+} from "@app/lib/api/assistant/user_memory_redaction";
 import type { Authenticator } from "@app/lib/auth";
 import {
   MessageModel,
@@ -700,9 +706,24 @@ async function renderSingleAgentMessage(
   }
   const agentMessage = message.agentMessage;
 
-  const actions = (actionsByAgentMessageId[agentMessage.id] ?? []).sort(
+  const rawActions = (actionsByAgentMessageId[agentMessage.id] ?? []).sort(
     (a, b) => a.step - b.step
   );
+
+  const actingUserId =
+    message.parentId !== null
+      ? (allMessagesById.get(message.parentId)?.userMessage?.userId ?? null)
+      : null;
+  const isMemoryOwner = canCurrentUserRespondToParentUserMessage({
+    parentUserId: actingUserId,
+    currentUserId: auth.user()?.id,
+  });
+  const actions = isMemoryOwner
+    ? rawActions
+    : redactUserMemoryActions(rawActions);
+  const redactedUserMemoryCallIds = isMemoryOwner
+    ? new Set<string>()
+    : getUserMemoryFunctionCallIds(rawActions);
 
   const agentConfiguration = agentConfigurationsById.get(
     agentMessage.agentConfigurationId
@@ -743,7 +764,10 @@ async function renderSingleAgentMessage(
       ?.sort((a, b) => a.step - b.step || a.index - b.index)
       .map((sc) => ({
         step: sc.step,
-        content: sc.value,
+        content: redactUserMemoryStepContent(
+          sc.value,
+          redactedUserMemoryCallIds
+        ),
       })) ?? [];
 
   // Single source of truth for the body, chain of thought, and activity steps:

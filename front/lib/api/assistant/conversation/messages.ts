@@ -37,6 +37,8 @@ import type {
   ResolvedRequestedModel,
 } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -747,6 +749,43 @@ export async function getUserMessageIdFromMessageId(
     userMessageUserId: parentMessage.userMessage.userId,
     userMessageOrigin: parentMessage.userMessage.userContextOrigin,
   };
+}
+
+export async function getRunOwnerUserId(
+  auth: Authenticator,
+  { messageId }: { messageId: string }
+): Promise<Result<number | null, Error>> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+
+  const agentMessage = await MessageModel.findOne({
+    where: {
+      workspaceId,
+      sId: messageId,
+      agentMessageId: { [Op.ne]: null },
+    },
+    attributes: ["parentId"],
+  });
+  if (!agentMessage?.parentId) {
+    return new Err(new Error("Agent message has no parent."));
+  }
+
+  const parentMessage = await MessageModel.findOne({
+    where: { id: agentMessage.parentId, workspaceId },
+    attributes: ["id"],
+    include: [
+      {
+        model: UserMessageModel,
+        as: "userMessage",
+        required: false,
+        attributes: ["userId"],
+      },
+    ],
+  });
+  if (!parentMessage?.userMessage) {
+    return new Err(new Error("Agent message parent is not a user message."));
+  }
+
+  return new Ok(parentMessage.userMessage.userId);
 }
 
 export async function createCompactionMessage(
