@@ -24,9 +24,16 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isProjectType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { Dialog, DialogContent, Moon01, Sun } from "@dust-tt/sparkle";
+import {
+  Dialog,
+  DialogContent,
+  Monitor01,
+  Moon01,
+  Sun,
+} from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface CommandPaletteProps {
@@ -34,10 +41,32 @@ interface CommandPaletteProps {
   user: UserType;
 }
 
+type Theme = "dark" | "light" | "system";
+
+const THEME_ICONS: Record<Theme, typeof Sun> = {
+  system: Monitor01,
+  light: Sun,
+  dark: Moon01,
+};
+
+// Cycle: system -> light -> dark -> system.
+function getNextTheme(theme: Theme): Theme {
+  switch (theme) {
+    case "system":
+      return "light";
+    case "light":
+      return "dark";
+    case "dark":
+      return "system";
+    default:
+      return assertNever(theme);
+  }
+}
+
 export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const { isOpen, close } = useCommandPalette();
   const router = useAppRouter();
-  const { isDark, setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   // Dialog state.
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,17 +132,17 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const MAX_DISPLAYED_PODS = 5;
   const MAX_DISPLAYED_SKILLS = 5;
 
+  const nextTheme = getNextTheme(theme);
+
   const allCommands: CommandPaletteCommand[] = useMemo(
     () => [
       {
         id: "toggle_theme",
-        label: isDark
-          ? "Switch to light appearance"
-          : "Switch to dark appearance",
-        icon: isDark ? Sun : Moon01,
+        label: `Switch to ${nextTheme} appearance`,
+        icon: THEME_ICONS[nextTheme],
       },
     ],
-    [isDark]
+    [nextTheme]
   );
 
   const filteredCommands = useMemo(() => {
@@ -224,7 +253,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
       if (item.kind === "command") {
         close();
         if (item.command.id === "toggle_theme") {
-          setTheme(isDark ? "light" : "dark");
+          setTheme(nextTheme);
         }
         return;
       }
@@ -241,7 +270,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         setPhase("action");
       }
     },
-    [close, executeAction, isDark, owner.sId, router, setTheme]
+    [close, executeAction, nextTheme, owner.sId, router, setTheme]
   );
 
   const handleBack = useCallback(() => {
