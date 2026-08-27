@@ -275,3 +275,34 @@ export const LargeContent: Story = {
     </Dialog>
   ),
 };
+
+/**
+ * True full screen: `DialogContent size="full" height="full"` covers the whole
+ * viewport, edge to edge, with no rounded corners or border.
+ * @summary Full screen dialog covering the viewport.
+ */
+export const FullScreen: Story = {
+  render: () => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button label="Open full screen" />
+      </DialogTrigger>
+      <DialogContent size="full" height="full">
+        <DialogHeader>
+          <DialogTitle>Full screen dialog</DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
+          <p className="text-sm text-muted-foreground">
+            This dialog covers the entire viewport, like a full page.
+          </p>
+        </DialogContainer>
+        <DialogFooter
+          rightButtonProps={{
+            label: "Close",
+            variant: "highlight",
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  ),
+};
