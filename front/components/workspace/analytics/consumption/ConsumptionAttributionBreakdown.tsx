@@ -24,7 +24,7 @@ function getBreakdownDimensions(
   );
 
   return selectedDimension === "model"
-    ? [...breakdownDimensions, "reasoning_effort"]
+    ? ["reasoning_effort", ...breakdownDimensions]
     : breakdownDimensions;
 }
 

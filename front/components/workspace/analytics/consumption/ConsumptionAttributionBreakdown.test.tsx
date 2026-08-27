@@ -23,14 +23,14 @@ const SELECTED_MODEL: ConsumptionTopRow = {
 const period = { kind: "days", days: 30 } as const;
 
 describe("ConsumptionAttributionBreakdown", () => {
-  it("adds reasoning effort to a model breakdown without a view-all action", () => {
+  it("adds reasoning effort first in a model breakdown without a view-all action", () => {
     function BreakdownColumn({
       dimension,
       filter,
       onViewAll,
     }: ConsumptionAttributionBreakdownColumnProps) {
       return (
-        <div>
+        <div data-testid="breakdown-column">
           {dimension}:{filter.models?.join(",")}:
           {onViewAll ? "view-all" : "no-view-all"}
         </div>
@@ -49,14 +49,14 @@ describe("ConsumptionAttributionBreakdown", () => {
     );
 
     expect(
-      screen.getByText("reasoning_effort:claude-sonnet-4-6:no-view-all")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("tool:claude-sonnet-4-6:view-all")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("user:claude-sonnet-4-6:view-all")
-    ).toBeInTheDocument();
+      screen
+        .getAllByTestId("breakdown-column")
+        .map((element) => element.textContent)
+    ).toEqual([
+      "reasoning_effort:claude-sonnet-4-6:no-view-all",
+      "tool:claude-sonnet-4-6:view-all",
+      "user:claude-sonnet-4-6:view-all",
+    ]);
   });
 
   it("does not add reasoning effort to other attribution breakdowns", () => {
