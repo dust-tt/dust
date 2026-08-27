@@ -111,6 +111,13 @@
     transform: translateY(0);
   }
 }
+@keyframes fade-rise-blur-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--hero-entrance-y));
+    filter: blur(var(--hero-entrance-blur));
+  }
+}
 @keyframes input-bar-compact-in {
   0% {
     opacity: 0.45;
