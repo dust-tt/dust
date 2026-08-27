@@ -280,14 +280,7 @@ export async function getFullAgentLoopDataWithAuth(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
 ): Promise<Result<FullAgentLoopDataWithAuth, AgentLoopDataError | Error>> {
-  const {
-    agentMessageId,
-    agentMessageVersion,
-    caching,
-    conversationId,
-    userMessageId,
-    userMessageVersion,
-  } = agentLoopArgs;
+  const { caching, conversationId } = agentLoopArgs;
 
   let conversation: ConversationType;
   if (caching?.useCachedGetConversation) {
@@ -344,6 +337,21 @@ export async function getFullAgentLoopDataWithAuth(
     }
     conversation = conversationRes.value;
   }
+
+  return buildAgentLoopDataFromConversation(auth, agentLoopArgs, conversation);
+}
+
+export async function buildAgentLoopDataFromConversation(
+  auth: Authenticator,
+  agentLoopArgs: AgentLoopArgs,
+  conversation: ConversationType
+): Promise<Result<FullAgentLoopDataWithAuth, AgentLoopDataError | Error>> {
+  const {
+    agentMessageId,
+    agentMessageVersion,
+    userMessageId,
+    userMessageVersion,
+  } = agentLoopArgs;
 
   // Find the agent message by searching all groups in reverse order. Retried messages do not have
   // the same sId as the original message, so we need to search all groups.

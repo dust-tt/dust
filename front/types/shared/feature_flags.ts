@@ -1,4 +1,10 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  stateful_conversation_window: {
+    description:
+      "Restore agent-loop context windows from the previous model step checkpoint",
+    stage: "dust_only",
+    owner: "flvndvd",
+  },
   dust_filesystem: {
     description:
       "Allow fresh Pods and standalone conversations to use the database-backed filesystem",

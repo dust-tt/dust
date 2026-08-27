@@ -68,11 +68,7 @@ function checkpointPath(
     encodeURIComponent(String(value));
 
   return [
-    "conversation-window-checkpoints",
-    "w",
-    component(identity.workspaceId),
-    "conversations",
-    component(identity.conversationId),
+    checkpointConversationPrefix(identity),
     "agent-messages",
     component(identity.agentMessageId),
     "versions",
@@ -81,6 +77,24 @@ function checkpointPath(
     `v${CONVERSATION_WINDOW_CHECKPOINT_VERSION}`,
     "steps",
     `${component(identity.step)}.json`,
+  ].join("/");
+}
+
+function checkpointConversationPrefix({
+  workspaceId,
+  conversationId,
+}: Pick<
+  ConversationWindowCheckpointIdentity,
+  "workspaceId" | "conversationId"
+>): string {
+  const component = (value: string) => encodeURIComponent(value);
+
+  return [
+    "conversation-window-checkpoints",
+    "w",
+    component(workspaceId),
+    "conversations",
+    component(conversationId),
   ].join("/");
 }
 
@@ -364,7 +378,9 @@ export async function loadConversationWindowCheckpoint(
 
 export async function publishConversationWindowCheckpoint(
   checkpoint: ConversationWindowCheckpoint
-): Promise<Result<ConversationWindowCheckpoint, Error>> {
+): Promise<
+  Result<{ checkpoint: ConversationWindowCheckpoint; created: boolean }, Error>
+> {
   const storage = getPrivateUploadBucket();
   const filePath = checkpointPath(checkpoint.identity);
   try {
@@ -373,7 +389,7 @@ export async function publishConversationWindowCheckpoint(
       contentType: "application/json",
       filePath,
     });
-    return new Ok(checkpoint);
+    return new Ok({ checkpoint, created: true });
   } catch (error) {
     if (!isGCSPreconditionFailedError(error)) {
       return new Err(normalizeError(error));
@@ -392,5 +408,17 @@ export async function publishConversationWindowCheckpoint(
       new Error("Conversation window checkpoint winner is unavailable")
     );
   }
-  return new Ok(winner);
+  return new Ok({ checkpoint: winner, created: false });
+}
+
+export async function deleteConversationWindowCheckpoints({
+  workspaceId,
+  conversationId,
+}: Pick<
+  ConversationWindowCheckpointIdentity,
+  "workspaceId" | "conversationId"
+>): Promise<void> {
+  await getPrivateUploadBucket().deleteByPrefix(
+    `${checkpointConversationPrefix({ workspaceId, conversationId })}/`
+  );
 }

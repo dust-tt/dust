@@ -2,6 +2,7 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import type { ConversationWindowStateSnapshot } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import {
   computeConversationWindowProfileHash,
+  deleteConversationWindowCheckpoints,
   loadConversationWindowCheckpoint,
   makeConversationWindowCheckpoint,
   publishConversationWindowCheckpoint,
@@ -56,6 +57,19 @@ describe("conversation window checkpoints", () => {
       throw loaded.error;
     }
     expect(loaded.value).toBeNull();
+  });
+
+  it("deletes every checkpoint for a conversation", async () => {
+    const deletedPrefixes: string[] = [];
+    fileStorageMock.setOnDeleteByPrefix((prefix) => {
+      deletedPrefixes.push(prefix);
+    });
+
+    await deleteConversationWindowCheckpoints(identity);
+
+    expect(deletedPrefixes).toEqual([
+      "conversation-window-checkpoints/w/w1/conversations/c1/",
+    ]);
   });
 
   it("returns storage failures as errors", async () => {
@@ -222,7 +236,8 @@ describe("conversation window checkpoints", () => {
     await publishOrThrow(winner);
     const published = await publishOrThrow(loser);
 
-    expect(published.profileHash).toBe("winner");
+    expect(published.created).toBe(false);
+    expect(published.checkpoint.profileHash).toBe("winner");
   });
 
   it("rejects malformed checkpointed model messages", async () => {
