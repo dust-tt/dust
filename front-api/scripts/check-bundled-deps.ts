@@ -54,9 +54,7 @@ async function findUndeclaredExternalDeps(
       .filter((pkg) => !builtinModules.includes(pkg.replace(/^node:/, "")))
   );
 
-  return [...externalPackages]
-    .filter((pkg) => !declaredDeps.has(pkg))
-    .sort();
+  return [...externalPackages].filter((pkg) => !declaredDeps.has(pkg)).sort();
 }
 
 async function main() {
