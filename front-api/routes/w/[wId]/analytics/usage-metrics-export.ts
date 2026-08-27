@@ -1,7 +1,6 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
-import { formatUTCDateFromMillis } from "@app/lib/api/elasticsearch";
+import { buildDaysConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/period";
+import { fetchUsageMetricsExportRows } from "@app/lib/api/analytics/usage_metrics_export";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
@@ -21,16 +20,10 @@ app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 
   const { days } = ctx.req.valid("query");
-  const owner = auth.getNonNullableWorkspace();
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
-    days,
-  });
 
-  const result = await fetchMessageMetrics(baseQuery, "day", [
-    "conversations",
-    "activeUsers",
-  ] as const);
+  const baseQuery = await buildDaysConsumptionScopeQuery(auth, days);
+
+  const result = await fetchUsageMetricsExportRows(baseQuery, "UTC");
 
   if (result.isErr()) {
     return apiError(ctx, {
@@ -44,8 +37,8 @@ app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
 
   const headers = ["date", "messages", "conversations", "activeUsers"];
   const csvData = result.value.map((point) => [
-    formatUTCDateFromMillis(point.timestamp),
-    point.count,
+    point.date,
+    point.messages,
     point.conversations,
     point.activeUsers,
   ]);
