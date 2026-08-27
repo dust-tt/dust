@@ -127,7 +127,7 @@ export function trackEvent({
  * <Button onClick={withTracking(TRACKING_AREAS.DATA, "select", handleClick, { id: "123" })} />
  */
 export function withTracking<T extends Element = HTMLElement>(
-  area: TrackingArea | string,
+  area: TrackingArea,
   object: string,
   handler?: (e: React.MouseEvent<T>) => void | Promise<void>,
   extra?: TrackingExtra
