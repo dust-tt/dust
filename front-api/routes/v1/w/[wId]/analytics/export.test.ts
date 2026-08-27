@@ -18,24 +18,19 @@ vi.mock("@app/lib/api/analytics/usage_metrics_export", async () => ({
   ),
 }));
 
-vi.mock(
-  "@app/lib/api/assistant/observability/active_users_metrics",
-  async () => ({
-    fetchActiveUsersMetrics: vi.fn(
-      async () =>
-        new Ok([
-          {
-            timestamp: 1717200000000,
-            date: "2024-06-01",
-            dau: 5,
-            wau: 10,
-            mau: 20,
-            memberCount: 50,
-          },
-        ])
-    ),
-  })
-);
+vi.mock("@app/lib/api/analytics/active_users_export", async () => ({
+  fetchActiveUsersExportRows: vi.fn(
+    async () =>
+      new Ok([
+        {
+          date: "2024-06-01",
+          dau: 5,
+          wau: 10,
+          mau: 20,
+        },
+      ])
+  ),
+}));
 
 vi.mock(
   "@app/lib/api/assistant/observability/context_origin",
