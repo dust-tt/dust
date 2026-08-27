@@ -254,10 +254,12 @@ function shouldPublishCheckpoint(status: CheckpointStatus): boolean {
   switch (status) {
     case "exact":
       return false;
+
     case "missing":
     case "previous":
     case "rejected":
       return true;
+
     default:
       return assertNever(status);
   }
@@ -289,6 +291,7 @@ async function renderCheckpointedConversation(
   if (sourceResult.isErr()) {
     return sourceResult;
   }
+
   const resolvedSource = sourceResult.value;
 
   const renderedResult = await renderConversationWindow(
@@ -418,6 +421,7 @@ export async function prepareAgentLoopContextProvider(
         { ...targetIdentity, error: conversationResult.error },
         "Failed to load bounded model context, using full conversation"
       );
+
       return prepareFullContextProvider(auth, agentLoopArgs, step);
     }
 
@@ -436,8 +440,10 @@ export async function prepareAgentLoopContextProvider(
         { ...targetIdentity, error: dataResult.error },
         "Failed to load bounded model context, using full conversation"
       );
+
       return prepareFullContextProvider(auth, agentLoopArgs, step);
     }
+
     return dataResult;
   }
 

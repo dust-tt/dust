@@ -244,14 +244,17 @@ function earliestImageSignedUrlExpiryMs(
         case "content_fragment":
           visitContent(message.content);
           break;
+
         case "function":
           if (Array.isArray(message.content)) {
             visitContent(message.content);
           }
           break;
+
         case "assistant":
         case "compaction":
           break;
+
         default:
           assertNever(message);
       }
@@ -350,12 +353,14 @@ export async function loadConversationWindowCheckpoint(
 ): Promise<Result<ConversationWindowCheckpoint | null, Error>> {
   const storage = getPrivateUploadBucket();
   let contentBuffer: Uint8Array<ArrayBuffer>;
+
   try {
     contentBuffer = await storage.fetchFileBuffer(checkpointPath(identity));
   } catch (error) {
     if (isGCSNotFoundError(error)) {
       return new Ok(null);
     }
+
     return new Err(normalizeError(error));
   }
 
@@ -365,6 +370,7 @@ export async function loadConversationWindowCheckpoint(
   if (checkpointResult.isErr()) {
     return checkpointResult;
   }
+
   const checkpoint = checkpointResult.value;
 
   if (
@@ -373,6 +379,7 @@ export async function loadConversationWindowCheckpoint(
   ) {
     return new Ok(null);
   }
+
   return new Ok(checkpoint);
 }
 
@@ -389,6 +396,7 @@ export async function publishConversationWindowCheckpoint(
       contentType: "application/json",
       filePath,
     });
+
     return new Ok({ checkpoint, created: true });
   } catch (error) {
     if (!isGCSPreconditionFailedError(error)) {
@@ -402,12 +410,14 @@ export async function publishConversationWindowCheckpoint(
   if (winnerResult.isErr()) {
     return winnerResult;
   }
+
   const winner = winnerResult.value;
   if (!winner) {
     return new Err(
       new Error("Conversation window checkpoint winner is unavailable")
     );
   }
+
   return new Ok({ checkpoint: winner, created: false });
 }
 
