@@ -549,7 +549,7 @@ function finalizeConversationWindow(
       tokensUsed,
       messageSelected: finalMessages.length,
       prunedContext,
-      elapsed: Date.now() - built.startedAtMs,
+      elapsedMs: Date.now() - built.startedAtMs,
       ...built.timings,
       pruneSelectAndFinalizeMs: Date.now() - built.windowProcessingStartedAtMs,
     },

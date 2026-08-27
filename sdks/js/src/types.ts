@@ -800,6 +800,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "shopify_tool"
   | "show_debug_tools"
   | "slack_message_splitting"
+  | "stateful_conversation_window"
   | "run_tools_from_prompt"
   | "usage_data_api"
   | "usage_page_read_only"

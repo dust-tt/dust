@@ -68,11 +68,7 @@ function checkpointPath(
     encodeURIComponent(String(value));
 
   return [
-    "conversation-window-checkpoints",
-    "w",
-    component(identity.workspaceId),
-    "conversations",
-    component(identity.conversationId),
+    checkpointConversationPrefix(identity),
     "agent-messages",
     component(identity.agentMessageId),
     "versions",
@@ -81,6 +77,24 @@ function checkpointPath(
     `v${CONVERSATION_WINDOW_CHECKPOINT_VERSION}`,
     "steps",
     `${component(identity.step)}.json`,
+  ].join("/");
+}
+
+function checkpointConversationPrefix({
+  workspaceId,
+  conversationId,
+}: Pick<
+  ConversationWindowCheckpointIdentity,
+  "workspaceId" | "conversationId"
+>): string {
+  const component = (value: string) => encodeURIComponent(value);
+
+  return [
+    "conversation-window-checkpoints",
+    "w",
+    component(workspaceId),
+    "conversations",
+    component(conversationId),
   ].join("/");
 }
 
@@ -230,14 +244,17 @@ function earliestImageSignedUrlExpiryMs(
         case "content_fragment":
           visitContent(message.content);
           break;
+
         case "function":
           if (Array.isArray(message.content)) {
             visitContent(message.content);
           }
           break;
+
         case "assistant":
         case "compaction":
           break;
+
         default:
           assertNever(message);
       }
@@ -336,12 +353,14 @@ export async function loadConversationWindowCheckpoint(
 ): Promise<Result<ConversationWindowCheckpoint | null, Error>> {
   const storage = getPrivateUploadBucket();
   let contentBuffer: Uint8Array<ArrayBuffer>;
+
   try {
     contentBuffer = await storage.fetchFileBuffer(checkpointPath(identity));
   } catch (error) {
     if (isGCSNotFoundError(error)) {
       return new Ok(null);
     }
+
     return new Err(normalizeError(error));
   }
 
@@ -351,6 +370,7 @@ export async function loadConversationWindowCheckpoint(
   if (checkpointResult.isErr()) {
     return checkpointResult;
   }
+
   const checkpoint = checkpointResult.value;
 
   if (
@@ -359,12 +379,15 @@ export async function loadConversationWindowCheckpoint(
   ) {
     return new Ok(null);
   }
+
   return new Ok(checkpoint);
 }
 
 export async function publishConversationWindowCheckpoint(
   checkpoint: ConversationWindowCheckpoint
-): Promise<Result<ConversationWindowCheckpoint, Error>> {
+): Promise<
+  Result<{ checkpoint: ConversationWindowCheckpoint; created: boolean }, Error>
+> {
   const storage = getPrivateUploadBucket();
   const filePath = checkpointPath(checkpoint.identity);
   try {
@@ -373,7 +396,8 @@ export async function publishConversationWindowCheckpoint(
       contentType: "application/json",
       filePath,
     });
-    return new Ok(checkpoint);
+
+    return new Ok({ checkpoint, created: true });
   } catch (error) {
     if (!isGCSPreconditionFailedError(error)) {
       return new Err(normalizeError(error));
@@ -386,11 +410,25 @@ export async function publishConversationWindowCheckpoint(
   if (winnerResult.isErr()) {
     return winnerResult;
   }
+
   const winner = winnerResult.value;
   if (!winner) {
     return new Err(
       new Error("Conversation window checkpoint winner is unavailable")
     );
   }
-  return new Ok(winner);
+
+  return new Ok({ checkpoint: winner, created: false });
+}
+
+export async function deleteConversationWindowCheckpoints({
+  workspaceId,
+  conversationId,
+}: Pick<
+  ConversationWindowCheckpointIdentity,
+  "workspaceId" | "conversationId"
+>): Promise<void> {
+  await getPrivateUploadBucket().deleteByPrefix(
+    `${checkpointConversationPrefix({ workspaceId, conversationId })}/`
+  );
 }

@@ -80,7 +80,7 @@ const assistantContentSchema = z.discriminatedUnion("type", [
       value: z.string(),
       metadata: z
         .object({ phase: z.enum(["commentary", "final_answer"]).optional() })
-        .strict()
+        .passthrough()
         .optional(),
     })
     .strict(),

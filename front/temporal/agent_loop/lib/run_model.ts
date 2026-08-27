@@ -1155,7 +1155,7 @@ export async function runModel(
   // We have actions.
   localLogger.info(
     {
-      elapsed: Date.now() - now,
+      elapsedMs: Date.now() - now,
     },
     "[ASSISTANT_TRACE] Action inputs generation"
   );

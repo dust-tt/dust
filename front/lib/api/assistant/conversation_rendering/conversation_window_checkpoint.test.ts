@@ -2,6 +2,7 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import type { ConversationWindowStateSnapshot } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import {
   computeConversationWindowProfileHash,
+  deleteConversationWindowCheckpoints,
   loadConversationWindowCheckpoint,
   makeConversationWindowCheckpoint,
   publishConversationWindowCheckpoint,
@@ -58,6 +59,19 @@ describe("conversation window checkpoints", () => {
     expect(loaded.value).toBeNull();
   });
 
+  it("deletes every checkpoint for a conversation", async () => {
+    const deletedPrefixes: string[] = [];
+    fileStorageMock.setOnDeleteByPrefix((prefix) => {
+      deletedPrefixes.push(prefix);
+    });
+
+    await deleteConversationWindowCheckpoints(identity);
+
+    expect(deletedPrefixes).toEqual([
+      "conversation-window-checkpoints/w/w1/conversations/c1/",
+    ]);
+  });
+
   it("returns storage failures as errors", async () => {
     const storage = getPrivateUploadBucket();
     vi.mocked(storage.fetchFileBuffer).mockRejectedValueOnce(
@@ -102,6 +116,59 @@ describe("conversation window checkpoints", () => {
     expect(storedCheckpoint.filePath).toBe(
       "conversation-window-checkpoints/w/w1/conversations/c1/agent-messages/a1/versions/0/schemas/v1/steps/2.json"
     );
+  });
+
+  it("round-trips text content with LLM provenance metadata", async () => {
+    const metadata = {
+      phase: "final_answer" as const,
+      region: "us",
+      modelId: "gpt-5.1",
+      clientId: "openai",
+      inferenceRegion: "global",
+      inferenceProvider: "openai-responses",
+    };
+    const state: ConversationWindowStateSnapshot = {
+      version: 1,
+      interactions: [
+        {
+          messages: [
+            {
+              kind: "message",
+              message: {
+                role: "assistant",
+                name: "assistant",
+                contents: [
+                  {
+                    type: "text_content",
+                    value: "Hello",
+                    metadata,
+                  },
+                ],
+                tokenCount: 10,
+              },
+            },
+          ],
+        },
+      ],
+      retainedTokens: 10,
+      totalTokensBefore: 10,
+      prunedTokens: 0,
+    };
+    const checkpoint = makeConversationWindowCheckpoint({
+      identity,
+      profileHash: "profile",
+      promptTokens: 20,
+      toolDefinitionTokens: 30,
+      state,
+    });
+
+    await publishOrThrow(checkpoint);
+    const loaded = await loadConversationWindowCheckpoint(identity);
+    if (loaded.isErr()) {
+      throw loaded.error;
+    }
+
+    expect(loaded.value).toEqual(checkpoint);
   });
 
   it("ignores an expired checkpoint", async () => {
@@ -222,7 +289,8 @@ describe("conversation window checkpoints", () => {
     await publishOrThrow(winner);
     const published = await publishOrThrow(loser);
 
-    expect(published.profileHash).toBe("winner");
+    expect(published.created).toBe(false);
+    expect(published.checkpoint.profileHash).toBe("winner");
   });
 
   it("rejects malformed checkpointed model messages", async () => {
