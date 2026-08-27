@@ -15,6 +15,7 @@ import type { EditorService } from "@app/components/editor/input_bar/useCustomEd
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import {
   BUBBLE_MENU_APPEND_TO,
+  BUBBLE_MENU_STYLE,
   useBubbleMenuOptions,
 } from "@app/components/editor/useBubbleMenuOptions";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
@@ -107,6 +108,7 @@ function UserMessageEditor({
       <BubbleMenu
         editor={editor}
         className={cn("z-50 flex", isMobile && "hidden")}
+        style={BUBBLE_MENU_STYLE}
         appendTo={BUBBLE_MENU_APPEND_TO}
         options={bubbleMenuOptions}
       >

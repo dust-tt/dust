@@ -2,6 +2,7 @@ import { ToolBarContent } from "@app/components/assistant/conversation/input_bar
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import {
   BUBBLE_MENU_APPEND_TO,
+  BUBBLE_MENU_STYLE,
   useBubbleMenuOptions,
 } from "@app/components/editor/useBubbleMenuOptions";
 import { buildMarkdownEditorExtensions } from "@app/lib/editor/build_markdown_editor_extensions";
@@ -310,6 +311,7 @@ export function MarkdownEditor({
           <BubbleMenu
             editor={editor}
             className={cn("z-50 flex", isMobile && "hidden")}
+            style={BUBBLE_MENU_STYLE}
             appendTo={BUBBLE_MENU_APPEND_TO}
             options={bubbleMenuOptions}
           >

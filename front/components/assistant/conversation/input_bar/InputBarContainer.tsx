@@ -39,6 +39,7 @@ import useHandleMentions from "@app/components/editor/input_bar/useHandleMention
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
 import {
   BUBBLE_MENU_APPEND_TO,
+  BUBBLE_MENU_STYLE,
   useBubbleMenuOptions,
 } from "@app/components/editor/useBubbleMenuOptions";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
@@ -1751,6 +1752,7 @@ const InputBarContainer = ({
           <BubbleMenu
             editor={editor ?? undefined}
             className={cn("z-50 flex", isMobile && "hidden")}
+            style={BUBBLE_MENU_STYLE}
             appendTo={BUBBLE_MENU_APPEND_TO}
             options={bubbleMenuOptions}
           >
