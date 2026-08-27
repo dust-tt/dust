@@ -13,6 +13,7 @@ import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
+import type { ConversationSandboxScope } from "@app/lib/resources/conversation_sandbox_adapter";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import type {
@@ -31,6 +32,9 @@ export interface EnsureSandboxReadyResult {
   sandbox: SandboxResource;
   freshlyCreated: boolean;
 }
+
+export type EnsureSandboxReadyWithScopeResult<TScope> =
+  EnsureSandboxReadyResult & { scope: TScope };
 
 type SandboxReadyConfig<TScope> = {
   ensureActive: () => Promise<Result<EnsureSandboxResult<TScope>, Error>>;
@@ -58,7 +62,7 @@ type SandboxReadyConfig<TScope> = {
 async function ensureOwnerSandboxReady<TScope>(
   auth: Authenticator,
   { ensureActive, deriveConfig }: SandboxReadyConfig<TScope>
-): Promise<Result<EnsureSandboxReadyResult, Error>> {
+): Promise<Result<EnsureSandboxReadyWithScopeResult<TScope>, Error>> {
   const startMs = performance.now();
   // cold is unknown until ensureActive returns; if it errors first (rare) we
   // record the failure as a warm attempt.
@@ -100,7 +104,7 @@ async function ensureOwnerSandboxReady<TScope>(
       }
 
       if (!shouldRefreshRuntime) {
-        return new Ok({ sandbox, freshlyCreated });
+        return new Ok({ sandbox, freshlyCreated, scope });
       }
 
       // Synchronous and cheap: not worth a span (it would always read ~0ms).
@@ -210,7 +214,7 @@ async function ensureOwnerSandboxReady<TScope>(
 
       await sandbox.updateLastRuntimeRefreshAt(new Date());
 
-      return new Ok({ sandbox, freshlyCreated });
+      return new Ok({ sandbox, freshlyCreated, scope });
     });
   } finally {
     recordSandboxStartupTotal(performance.now() - startMs, { cold }, status);
@@ -221,6 +225,15 @@ export async function ensureConversationSandboxReady(
   auth: Authenticator,
   conversation: ConversationType
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
+  return ensureConversationSandboxReadyWithScope(auth, conversation);
+}
+
+export async function ensureConversationSandboxReadyWithScope(
+  auth: Authenticator,
+  conversation: ConversationType
+): Promise<
+  Result<EnsureSandboxReadyWithScopeResult<ConversationSandboxScope>, Error>
+> {
   // Only the conversation's identity is trusted from the caller: it is
   // typically an agent-loop snapshot, and a move — possibly issued by this
   // very agent — can change the pod association mid-loop. The adapter
