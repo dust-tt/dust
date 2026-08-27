@@ -1,9 +1,6 @@
 import type { ModelId } from "./shared/model_id";
 
-export const CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY =
-  "chromeExtensionLastUsedAt";
-export const FIREFOX_EXTENSION_LAST_USED_AT_METADATA_KEY =
-  "firefoxExtensionLastUsedAt";
+export const EXTENSION_LAST_USED_AT_METADATA_KEY = "extension_last_used_at";
 
 // Resurface the install link after three months without extension activity.
 export const EXTENSION_MENU_REDISPLAY_THRESHOLD_MS = 90 * 24 * 60 * 60 * 1000;
