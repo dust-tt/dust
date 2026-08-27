@@ -46,14 +46,14 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  */
 function computeRollingActiveUsers(
   usersByDay: Map<number, Set<string>>,
-  endTimestamp: number,
+  endTimestampMs: number,
   windowDays: number
 ): number {
-  const startMs = endTimestamp - (windowDays - 1) * MS_PER_DAY;
+  const startMs = endTimestampMs - (windowDays - 1) * MS_PER_DAY;
   const uniqueUsers = new Set<string>();
 
   for (const [ts, users] of usersByDay) {
-    if (ts >= startMs && ts <= endTimestamp) {
+    if (ts >= startMs && ts <= endTimestampMs) {
       for (const user of users) {
         uniqueUsers.add(user);
       }
@@ -100,7 +100,7 @@ export async function fetchActiveUsersExportRows(
     .add(1, "day")
     .startOf("day")
     .toISOString();
-  const cutoffTimestamp = moment
+  const cutoffTimestampMs = moment
     .tz(startDate, timezone)
     .startOf("day")
     .valueOf();
@@ -171,16 +171,18 @@ export async function fetchActiveUsersExportRows(
     afterKey = aggregation?.after_key;
   } while (afterKey !== undefined && buckets.length > 0);
 
-  const requestedTimestamps = [...usersByDay.keys()]
-    .filter((ts) => ts >= cutoffTimestamp)
+  const requestedTimestampsMs = [...usersByDay.keys()]
+    .filter((ts) => ts >= cutoffTimestampMs)
     .sort((a, b) => a - b);
 
-  const rows: ActiveUsersExportRow[] = requestedTimestamps.map((timestamp) => ({
-    date: formatDateFromMillis(timestamp, timezone),
-    dau: usersByDay.get(timestamp)?.size ?? 0,
-    wau: computeRollingActiveUsers(usersByDay, timestamp, WAU_WINDOW_DAYS),
-    mau: computeRollingActiveUsers(usersByDay, timestamp, MAU_WINDOW_DAYS),
-  }));
+  const rows: ActiveUsersExportRow[] = requestedTimestampsMs.map(
+    (timestampMs) => ({
+      date: formatDateFromMillis(timestampMs, timezone),
+      dau: usersByDay.get(timestampMs)?.size ?? 0,
+      wau: computeRollingActiveUsers(usersByDay, timestampMs, WAU_WINDOW_DAYS),
+      mau: computeRollingActiveUsers(usersByDay, timestampMs, MAU_WINDOW_DAYS),
+    })
+  );
 
   return new Ok(rows);
 }
