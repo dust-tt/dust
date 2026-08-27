@@ -22,7 +22,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 
 const FRAME_SOURCE_READ_CONCURRENCY = 8;
-const MAX_FRAME_SOURCE_FILE_COUNT = 1000;
+const MAX_FRAME_SOURCE_FILE_COUNT = 1024;
 const MAX_FRAME_SOURCE_BYTES = 100 * 1024 * 1024;
 
 function frameError(code: FramePublicationError["code"], message: string) {
