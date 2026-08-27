@@ -51,7 +51,6 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { WorkspacePlanLimitOverrideResource } from "@app/lib/resources/workspace_plan_limit_override_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -438,11 +437,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       return null;
     }
 
-    const planLimitOverride =
-      await WorkspacePlanLimitOverrideResource.fetchByWorkspace({
-        workspace,
-        transaction,
-      });
+    const planLimitOverride = await WorkspaceResource.fetchPlanLimitOverride(
+      workspace.id,
+      transaction
+    );
 
     const plan = this.determinePlanFromSubscription(
       lastSubscription,
@@ -513,7 +511,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     );
 
     const planLimitOverrideByWorkspaceModelId =
-      await WorkspacePlanLimitOverrideResource.fetchByWorkspaceModelIds(
+      await WorkspaceResource.fetchPlanLimitOverridesByWorkspaceModelIds(
         workspaceModelIds,
         transaction
       );
@@ -876,10 +874,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         workspace,
         transaction: t,
       });
-      await WorkspacePlanLimitOverrideResource.deleteAllForWorkspace({
-        workspace,
-        transaction: t,
-      });
+      await WorkspaceResource.deleteAllPlanLimitOverridesForWorkspace(
+        workspace.id,
+        t
+      );
     });
 
     await SubscriptionResource.invalidateSubscriptionCache(workspace.id);
@@ -930,7 +928,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     // against the effective cap.
     const { maxUsersInWorkspace } = applyPlanLimitOverrides(
       newPlan.get(),
-      await WorkspacePlanLimitOverrideResource.fetchByWorkspace({ workspace })
+      await WorkspaceResource.fetchPlanLimitOverride(workspace.id)
     );
     if (maxUsersInWorkspace !== -1) {
       const activeSeats = await countActiveSeatsForWorkspace(workspace.sId);

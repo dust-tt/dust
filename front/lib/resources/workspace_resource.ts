@@ -10,6 +10,11 @@ import {
   isValidConversationsRetentionDays,
 } from "@app/lib/conversations_retention";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
+import type { PlanLimitOverride } from "@app/lib/plans/plan_limit_overrides";
+import {
+  hasAnyPlanLimitOverride,
+  OVERRIDABLE_PLAN_LIMITS,
+} from "@app/lib/plans/plan_limit_overrides";
 import type {
   ResourceLogJSON,
   ResourceUpdateBlob,
@@ -19,6 +24,7 @@ import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { WorkspacePlanLimitOverrideModel } from "@app/lib/resources/storage/models/workspace_plan_limit_override";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -113,11 +119,45 @@ type UpdateWorkspaceConversationKillSwitchResult = {
   wasUpdated: boolean;
 };
 
+function renderPlanLimitOverride(
+  row: WorkspacePlanLimitOverrideModel
+): PlanLimitOverride {
+  return {
+    maxUsersInWorkspace: row.maxUsersInWorkspace,
+    maxFreeUsersInWorkspace: row.maxFreeUsersInWorkspace,
+    maxLifetimeFreeUsersInWorkspace: row.maxLifetimeFreeUsersInWorkspace,
+    maxVaultsInWorkspace: row.maxVaultsInWorkspace,
+    maxDataSourcesCount: row.maxDataSourcesCount,
+    maxConnectionsCount: row.maxConnectionsCount,
+  };
+}
+
+// A limit is `null` (not overridden), `-1` (unlimited) or a non-negative count,
+// matching the plan convention.
+function validatePlanLimitOverride(
+  override: PlanLimitOverride
+): Result<undefined, Error> {
+  for (const key of OVERRIDABLE_PLAN_LIMITS) {
+    const value = override[key];
+    if (value !== null && (!Number.isInteger(value) || value < -1)) {
+      return new Err(
+        new Error(
+          `${key} must be -1 (unlimited) or a non-negative integer, got ${value}.`
+        )
+      );
+    }
+  }
+
+  return new Ok(undefined);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   static model: ModelStatic<WorkspaceModel> = WorkspaceModel;
   private static workspaceDomainModel: ModelStaticWorkspaceAware<WorkspaceHasDomainModel> =
     WorkspaceHasDomainModel;
+  private static planLimitOverrideModel: ModelStaticWorkspaceAware<WorkspacePlanLimitOverrideModel> =
+    WorkspacePlanLimitOverrideModel;
   static readonly KILL_SWITCH_METADATA_KEY = "killSwitched";
   static readonly FULL_WORKSPACE_KILL_SWITCH_VALUE = "full";
 
@@ -981,6 +1021,107 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     await workspaceResource.update({ ssoEnforced: false });
 
     return new Ok(undefined);
+  }
+
+  /**
+   * Plan limit overrides
+   *
+   * A workspace has at most one override row, and callers only ever need its
+   * values — never a row identity — so these statics return plain
+   * {@link PlanLimitOverride} objects.
+   */
+
+  /**
+   * Returns the plan-limit overrides for a workspace, or `null` when the
+   * workspace has none. Used by `SubscriptionResource` when resolving the plan.
+   */
+  static async fetchPlanLimitOverride(
+    workspaceModelId: ModelId,
+    transaction?: Transaction
+  ): Promise<PlanLimitOverride | null> {
+    const row = await this.planLimitOverrideModel.findOne({
+      where: { workspaceId: workspaceModelId },
+      transaction,
+    });
+
+    return row ? renderPlanLimitOverride(row) : null;
+  }
+
+  /**
+   * Batched variant of {@link fetchPlanLimitOverride}: returns one entry per
+   * workspace that has overrides (workspaces without any are simply absent).
+   */
+  static async fetchPlanLimitOverridesByWorkspaceModelIds(
+    workspaceModelIds: ModelId[],
+    transaction?: Transaction
+  ): Promise<Map<ModelId, PlanLimitOverride>> {
+    if (workspaceModelIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.planLimitOverrideModel.findAll({
+      where: { workspaceId: workspaceModelIds },
+      transaction,
+      // WORKSPACE_ISOLATION_BYPASS: Plans are resolved for several workspaces at
+      // once (`SubscriptionResource.fetchActiveByWorkspacesModelId`); the query
+      // is scoped to exactly the requested workspaces.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    return new Map(
+      rows.map((row) => [row.workspaceId, renderPlanLimitOverride(row)])
+    );
+  }
+
+  /**
+   * Sets the overrides for a workspace. Fields set to `null` are cleared, so the
+   * workspace falls back to its plan value. When no override remains, the row is
+   * deleted rather than kept fully null. Rejects out-of-range limits.
+   *
+   * The caller is responsible for invalidating the subscription cache — see
+   * `setWorkspacePlanLimitOverrides`, which is the entry point to use.
+   */
+  static async upsertPlanLimitOverride(
+    workspaceModelId: ModelId,
+    override: PlanLimitOverride
+  ): Promise<Result<undefined, Error>> {
+    const validation = validatePlanLimitOverride(override);
+    if (validation.isErr()) {
+      return validation;
+    }
+
+    if (!hasAnyPlanLimitOverride(override)) {
+      await this.planLimitOverrideModel.destroy({
+        where: { workspaceId: workspaceModelId },
+      });
+      return new Ok(undefined);
+    }
+
+    const existing = await this.planLimitOverrideModel.findOne({
+      where: { workspaceId: workspaceModelId },
+    });
+
+    if (existing) {
+      await existing.update(override);
+    } else {
+      await this.planLimitOverrideModel.create({
+        ...override,
+        workspaceId: workspaceModelId,
+      });
+    }
+
+    return new Ok(undefined);
+  }
+
+  static async deleteAllPlanLimitOverridesForWorkspace(
+    workspaceModelId: ModelId,
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.planLimitOverrideModel.destroy({
+      where: { workspaceId: workspaceModelId },
+      transaction,
+    });
   }
 
   /**
