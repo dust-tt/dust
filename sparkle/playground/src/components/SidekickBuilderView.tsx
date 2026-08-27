@@ -1,20 +1,20 @@
 import "@dust-tt/sparkle/styles/allotment.css";
 
 import {
-  HistoryIcon,
+  ClockRewind,
   Avatar,
   Bar,
-  BarChartIcon,
-  BoldIcon,
-  BoltIcon,
-  BookOpenIcon,
+  BarChart01,
+  Bold01,
+  Zap,
+  BookOpen01,
   Button,
   Checkbox,
-  CheckIcon,
+  Check,
   Chip,
-  CodeBlockIcon,
-  TagBlockIcon,
-  SidekickIcon,
+  CodeSquare01,
+  LayoutAlt02,
+  Sidekick,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -23,25 +23,25 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  EyeIcon,
-  EyeSlashIcon,
-  HeadingIcon,
+  Eye,
+  EyeOff,
+  Heading01,
   Icon,
   Input,
-  ItalicIcon,
-  LinkIcon,
-  ListCheckIcon,
+  Italic01,
+  Link01,
+  CheckDone01,
   ListGroup,
   ListItem,
   ListItemSection,
-  ListOrdered2Icon,
-  LockIcon,
+  List,
+  Lock01,
   DiffBlock,
   Markdown,
-  PlusIcon,
-  QuoteTextIcon,
+  Plus,
+  DoubleQuotes,
   Separator,
-  ServerIcon,
+  Server03,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -49,21 +49,21 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SidebarLeftCloseIcon,
-  SidebarLeftOpenIcon,
-  SpaceClosedIcon as SpaceCloseIcon,
-  SpaceOpenIcon,
-  SpacesIcon,
+  LogIn01,
+  ArrowNarrowLeft,
+  SpaceClosed as SpaceCloseIcon,
+  SpaceOpen,
+  Folder,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  TagIcon,
-  TestTubeIcon,
-  ToolsIcon,
-  UserGroupIcon,
-  XMarkIcon,
-  SparklesIcon,
+  Tag01,
+  Beaker02,
+  Tool02,
+  Users01,
+  XClose,
+  Stars02,
 } from "@dust-tt/sparkle";
 import { Allotment } from "allotment";
 import {
@@ -179,15 +179,15 @@ function MetadataRow({
   descriptionClassName,
 }: MetadataRowProps) {
   const descriptionClasses = [
-    "s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night",
+    "text-sm text-muted-foreground dark:text-muted-foreground-night",
     descriptionClassName,
   ]
     .filter(Boolean)
     .join(" ");
 
   return (
-    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border dark:s-border-border-night s-py-2">
-      <div className="s-w-[80px] s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+    <div className="flex items-center gap-2 border-t border-border dark:border-border-night py-2">
+      <div className="w-[80px] text-sm text-muted-foreground dark:text-muted-foreground-night">
         {label}
       </div>
       {action}
@@ -592,9 +592,9 @@ export function SidekickBuilderView({
 
     // Diff styles: success for additions, warning for removals
     const additionStyle =
-      "s-rounded s-bg-success-100 dark:s-bg-success-100-night s-px-0.5 s-text-success-600 dark:s-text-success-600-night";
+      "rounded bg-success-100 dark:bg-success-100-night px-0.5 text-success-600 dark:text-success-600-night";
     const removalStyle =
-      "s-rounded s-bg-warning-100 dark:s-bg-warning-100-night s-px-0.5 s-text-warning-600 dark:s-text-warning-600-night s-line-through";
+      "rounded bg-warning-100 dark:bg-warning-100-night px-0.5 text-warning-600 dark:text-warning-600-night line-through";
 
     // Apply some fake diff changes
     const modifiedLines = lines.map((line, index) => {
@@ -714,12 +714,12 @@ export function SidekickBuilderView({
     action?: React.ReactNode;
   }) => {
     return (
-      <div className="s-flex s-w-full s-items-end s-gap-2">
-        <div className="s-flex s-flex-1 s-flex-col">
-          <div className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+      <div className="flex w-full items-end gap-2">
+        <div className="flex flex-1 flex-col">
+          <div className="heading-base text-foreground dark:text-foreground-night">
             {title}
           </div>
-          <div className="s-text-base s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <div className="text-base text-muted-foreground dark:text-muted-foreground-night">
             {description}
           </div>
         </div>
@@ -728,13 +728,13 @@ export function SidekickBuilderView({
     );
   };
   const rightPanelTabs = [
-    { value: "sidekick", label: "Sidekick", icon: SidekickIcon },
-    { value: "testing", label: "Preview", icon: TestTubeIcon },
-    { value: "insights", label: "Insights", icon: BarChartIcon },
+    { value: "sidekick", label: "Sidekick", icon: Sidekick },
+    { value: "testing", label: "Preview", icon: Beaker02 },
+    { value: "insights", label: "Insights", icon: BarChart01 },
   ];
 
   return (
-    <div className="s-h-screen s-w-full s-bg-background dark:s-bg-background-night">
+    <div className="h-screen w-full bg-background dark:bg-background-night">
       <style>{`
         :root {
           --focus-border: linear-gradient(to bottom, ${customColors.gray[100]}, ${customColors.blue[400]}, ${customColors.gray[100]});
@@ -742,7 +742,7 @@ export function SidekickBuilderView({
           --sash-size: 8px;
           --sash-hover-size: 2px;
         }
-        .s-dark {
+        .dark {
           --focus-border: linear-gradient(to bottom, ${customColors.gray[900]}, ${customColors.blue[600]}, ${customColors.gray[900]});
           --separator-border: transparent;
         }
@@ -753,11 +753,11 @@ export function SidekickBuilderView({
           transition: width 200ms, background-color 200ms;
         }
       `}</style>
-      <div className="s-flex s-h-full s-w-full">
+      <div className="flex h-full w-full">
         {!isRightPanelOpen && (
-          <div className="s-flex s-h-full s-w-14 s-flex-col s-items-center s-gap-2 s-py-3">
+          <div className="flex h-full w-14 flex-col items-center gap-2 py-3">
             <Button
-              icon={SidebarLeftOpenIcon}
+              icon={ArrowNarrowLeft}
               size="sm"
               variant="ghost-secondary"
               onClick={() => setIsRightPanelOpen(true)}
@@ -795,22 +795,22 @@ export function SidekickBuilderView({
             }
             setRightPanelRatio(sideSize / total);
           }}
-          className="s-h-full s-w-full s-flex-1"
+          className="h-full w-full flex-1"
         >
           {isRightPanelOpen && (
             <Allotment.Pane
               minSize={280}
               preferredSize={40}
-              className="s-flex s-h-full s-flex-col s-overflow-hidden s-border-r s-border-border dark:s-border-border-night"
+              className="flex h-full flex-col overflow-hidden border-r border-border dark:border-border-night"
             >
               <Tabs
                 value={activeRightPanelTab}
                 onValueChange={setActiveRightPanelTab}
-                className="s-flex s-min-h-0 s-flex-1 s-flex-col s-pt-3"
+                className="flex min-h-0 flex-1 flex-col pt-3"
               >
-                <TabsList className="s-pl-6 s-pr-2">
+                <TabsList className="pl-6 pr-2">
                   <Button
-                    icon={SidebarLeftCloseIcon}
+                    icon={LogIn01}
                     variant="ghost-secondary"
                     size="sm"
                     onClick={() => setIsRightPanelOpen(false)}
@@ -827,9 +827,9 @@ export function SidekickBuilderView({
                 </TabsList>
                 <TabsContent
                   value="sidekick"
-                  className="s-flex s-min-h-0 s-flex-1 s-flex-col"
+                  className="flex min-h-0 flex-1 flex-col"
                 >
-                  <div className="s-flex s-min-h-0 s-flex-1 s-overflow-y-auto s-p-3">
+                  <div className="flex min-h-0 flex-1 overflow-y-auto p-3">
                     <NewConversationContainer>
                       {(() => {
                         const diffStart = "[[diff]]";
@@ -865,7 +865,7 @@ export function SidekickBuilderView({
                           const trimmedAfter = after.trim();
 
                           return (
-                            <div className="s-flex s-flex-col s-gap-3">
+                            <div className="flex flex-col gap-3">
                               {trimmedBefore ? (
                                 <Markdown
                                   content={trimmedBefore}
@@ -881,7 +881,7 @@ export function SidekickBuilderView({
                                   <Button
                                     variant="outline"
                                     size="xs"
-                                    icon={EyeIcon}
+                                    icon={Eye}
                                     tooltip="View changes"
                                     onClick={() => {}}
                                   />
@@ -983,9 +983,9 @@ export function SidekickBuilderView({
                       })()}
                     </NewConversationContainer>
                   </div>
-                  <div className="s-p-4">
-                    <div className="s-flex s-flex-col s-items-center s-gap-3">
-                      <div className="s-flex s-flex-wrap s-items-center s-gap-2">
+                  <div className="p-4">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -1026,25 +1026,25 @@ export function SidekickBuilderView({
                 </TabsContent>
                 <TabsContent
                   value="testing"
-                  className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
+                  className="flex flex-1 flex-col overflow-y-auto px-6 py-6"
                 >
-                  <div className="s-copy-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <div className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
                     Testing panel content.
                   </div>
                 </TabsContent>
                 <TabsContent
                   value="insights"
-                  className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
+                  className="flex flex-1 flex-col overflow-y-auto px-6 py-6"
                 >
-                  <div className="s-copy-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <div className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
                     Insights panel content.
                   </div>
                 </TabsContent>
                 <TabsContent
                   value="feedback"
-                  className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
+                  className="flex flex-1 flex-col overflow-y-auto px-6 py-6"
                 >
-                  <div className="s-copy-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <div className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
                     Feedback panel content.
                   </div>
                 </TabsContent>
@@ -1055,11 +1055,11 @@ export function SidekickBuilderView({
           <Allotment.Pane
             minSize={360}
             preferredSize={60}
-            className="s-flex s-h-full s-flex-col s-overflow-hidden"
+            className="flex h-full flex-col overflow-hidden"
           >
-            <div className="s-flex s-h-full s-flex-col">
-              <div className="s-relative s-z-10 s-flex s-h-14 s-min-w-0 s-shrink-0 s-flex-row s-items-center s-gap-2 s-border-b s-border-border s-bg-background s-px-3 dark:s-border-border-night dark:s-bg-background-night">
-                <div className="s-flex s-min-h-0 s-min-w-0 s-flex-1 s-items-center s-gap-1 s-overflow-x-auto">
+            <div className="flex h-full flex-col">
+              <div className="relative z-10 flex h-14 min-w-0 shrink-0 flex-row items-center gap-2 border-b border-border bg-background px-3 dark:border-border-night dark:bg-background-night">
+                <div className="flex min-h-0 min-w-0 flex-1 items-center gap-1 overflow-x-auto">
                   {editorTabs.map((tab) => {
                     const isActive = tab.id === activeEditorTabIdResolved;
                     return (
@@ -1068,15 +1068,15 @@ export function SidekickBuilderView({
                         role="tab"
                         aria-selected={isActive}
                         className={[
-                          "s-flex s-shrink-0 s-items-center s-gap-0.5 s-rounded-lg s-pl-1 s-pr-0.5",
+                          "flex shrink-0 items-center gap-0.5 rounded-lg pl-1 pr-0.5",
                           isActive
-                            ? "s-bg-primary-100 dark:s-bg-primary-100-night"
-                            : "s-bg-transparent hover:s-bg-muted dark:hover:s-bg-muted-night",
+                            ? "bg-primary-100 dark:bg-primary-100-night"
+                            : "bg-transparent hover:bg-muted dark:hover:bg-muted-night",
                         ].join(" ")}
                       >
                         <button
                           type="button"
-                          className="s-flex s-min-w-0 s-max-w-[200px] s-items-center s-gap-1.5 s-border-none s-bg-transparent s-py-2 s-pl-1 s-pr-0 s-text-left s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-muted-foreground/30 dark:focus-visible:s-ring-muted-foreground-night/30"
+                          className="flex min-w-0 max-w-[200px] items-center gap-1.5 border-none bg-transparent py-2 pl-1 pr-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-muted-foreground/30 dark:focus-visible:ring-muted-foreground-night/30"
                           onClick={() => setActiveEditorTabId(tab.id)}
                         >
                           <Avatar
@@ -1086,12 +1086,12 @@ export function SidekickBuilderView({
                             backgroundColor={tab.backgroundColor}
                             isRounded={false}
                           />
-                          <span className="s-truncate s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+                          <span className="truncate text-sm font-medium text-foreground dark:text-foreground-night">
                             {tab.name}
                           </span>
                         </button>
                         <Button
-                          icon={XMarkIcon}
+                          icon={XClose}
                           size="xs"
                           variant="ghost-secondary"
                           tooltip="Close edition"
@@ -1120,7 +1120,7 @@ export function SidekickBuilderView({
                     );
                   })}
                   <Button
-                    icon={PlusIcon}
+                    icon={Plus}
                     size="sm"
                     variant="ghost-secondary"
                     tooltip="Open another edition"
@@ -1140,7 +1140,7 @@ export function SidekickBuilderView({
                     }}
                   />
                 </div>
-                <div className="s-flex s-shrink-0 s-items-center s-gap-2 s-border-l s-border-border s-pl-3 dark:s-border-border-night">
+                <div className="flex shrink-0 items-center gap-2 border-l border-border pl-3 dark:border-border-night">
                   {isInstructionDirty ? (
                     <>
                       <Button
@@ -1163,10 +1163,10 @@ export function SidekickBuilderView({
               </div>
               <div
                 ref={setScrollContainer}
-                className="s-flex s-w-full s-flex-1 s-flex-col s-overflow-auto s-px-6"
+                className="flex w-full flex-1 flex-col overflow-auto px-6"
               >
-                <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-12 s-py-6">
-                  <div className="s-flex s-flex-1 s-flex-col s-gap-3">
+                <div className="mx-auto flex w-full max-w-4xl flex-col gap-12 py-6">
+                  <div className="flex flex-1 flex-col gap-3">
                     <SectionHeader
                       title="Instructions"
                       description="Command or guideline you provide to your agent to direct its responses."
@@ -1194,22 +1194,22 @@ export function SidekickBuilderView({
                       onTextChange={handleInstructionTextChange}
                       scrollContainer={scrollContainer}
                       topBar={
-                        <div className="s-flex s-flex-1 s-flex-wrap s-items-center s-gap-2 s-px-3 s-py-2">
+                        <div className="flex flex-1 flex-wrap items-center gap-2 px-3 py-2">
                           <Button
-                            icon={HeadingIcon}
+                            icon={Heading01}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Heading"
                           />
                           <Button
-                            icon={BoldIcon}
+                            icon={Bold01}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Bold"
                             tooltipShortcut="Cmd+B"
                           />
                           <Button
-                            icon={ItalicIcon}
+                            icon={Italic01}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Italic"
@@ -1217,39 +1217,39 @@ export function SidekickBuilderView({
                           />
                           <Separator orientation="vertical" />
                           <Button
-                            icon={LinkIcon}
+                            icon={Link01}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Insert a link"
                           />
                           <Button
-                            icon={ListCheckIcon}
+                            icon={CheckDone01}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Bulleted list"
                           />
                           <Button
-                            icon={ListOrdered2Icon}
+                            icon={List}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Ordered list"
                           />
                           <Separator orientation="vertical" />
                           <Button
-                            icon={QuoteTextIcon}
+                            icon={DoubleQuotes}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Quotation block"
                           />
                           <Button
-                            icon={CodeBlockIcon}
+                            icon={CodeSquare01}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="Code Block"
                           />
                           <Separator orientation="vertical" />
                           <Button
-                            icon={TagBlockIcon}
+                            icon={LayoutAlt02}
                             size="icon"
                             variant="ghost-secondary"
                             tooltip="XML tag"
@@ -1260,7 +1260,7 @@ export function SidekickBuilderView({
                               <Button
                                 size="icon"
                                 variant="ghost-secondary"
-                                icon={HistoryIcon}
+                                icon={ClockRewind}
                                 isSelect
                               />
                             </DropdownMenuTrigger>
@@ -1280,13 +1280,13 @@ export function SidekickBuilderView({
                               ))}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          <div className="s-flex-1" />
+                          <div className="flex-1" />
                           {hasSuggestionsState && (
-                            <div className="s-ml-auto s-flex s-gap-2">
+                            <div className="ml-auto flex gap-2">
                               <Button
                                 size="xs"
                                 variant="outline"
-                                icon={XMarkIcon}
+                                icon={XClose}
                                 label="Reject all"
                                 tooltip="Reject all suggestions"
                                 onClick={() => {
@@ -1296,7 +1296,7 @@ export function SidekickBuilderView({
                               />
                               <Button
                                 size="xs"
-                                icon={CheckIcon}
+                                icon={Check}
                                 variant="highlight-secondary"
                                 label="Accept all"
                                 tooltip="Accept all suggestions"
@@ -1311,17 +1311,17 @@ export function SidekickBuilderView({
                       }
                     />
                   </div>
-                  <div className="s-flex s-flex-col s-gap-2">
+                  <div className="flex flex-col gap-2">
                     <SectionHeader
                       title="Spaces"
                       description="Set what knowledge and capabilities the agent can access."
                     />
-                    <div className="s-flex s-flex-wrap s-gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         label="Manage"
-                        icon={SpacesIcon}
+                        icon={Folder}
                         onClick={() => setIsSpacesSheetOpen(true)}
                       />
                       {[...selectedSpaces]
@@ -1335,11 +1335,9 @@ export function SidekickBuilderView({
                           return (
                             <Chip
                               key={space.id}
-                              icon={
-                                isRestricted ? SpaceCloseIcon : SpaceOpenIcon
-                              }
+                              icon={isRestricted ? SpaceCloseIcon : SpaceOpen}
                               size="sm"
-                              color={isRestricted ? "rose" : "primary"}
+                              color={isRestricted ? "warning" : "primary"}
                               label={space.name}
                               onRemove={() => removeSpace(space.id)}
                             />
@@ -1350,9 +1348,9 @@ export function SidekickBuilderView({
                         return (
                           <Chip
                             key={project.id}
-                            icon={isRestricted ? SpaceCloseIcon : SpaceOpenIcon}
+                            icon={isRestricted ? SpaceCloseIcon : SpaceOpen}
                             size="sm"
-                            color={isRestricted ? "rose" : "primary"}
+                            color={isRestricted ? "warning" : "primary"}
                             label={project.name}
                             onRemove={() => removeProject(project.id)}
                           />
@@ -1361,57 +1359,57 @@ export function SidekickBuilderView({
                     </div>
                     {selectedSpaces.length === 0 &&
                       selectedProjects.length === 0 && (
-                        <div className="s-copy-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        <div className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
                           No spaces selected.
                         </div>
                       )}
                   </div>
-                  <div className="s-flex s-flex-col s-gap-2">
+                  <div className="flex flex-col gap-2">
                     <SectionHeader
                       title="Knowledge and capabilities"
                       description="Add knowledge, tools and skills to enhance your agent's
                     abilities."
                       action={<></>}
                     />
-                    <div className="s-flex s-flex-wrap s-gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         label="Capabilities"
-                        icon={ToolsIcon}
+                        icon={Tool02}
                       />
                       <Button
                         size="sm"
                         variant="outline"
                         label="Knowledge"
-                        icon={BookOpenIcon}
+                        icon={BookOpen01}
                       />
                     </div>
                   </div>
-                  <div className="s-flex s-flex-col s-gap-2">
+                  <div className="flex flex-col gap-2">
                     <SectionHeader
                       title="Triggers"
                       description="Add knowledge, tools and skills to enhance your agent's
                     abilities."
                     />
 
-                    <div className="s-flex s-flex-wrap s-gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         label="Triggers"
-                        icon={BoltIcon}
+                        icon={Zap}
                       />
                     </div>
                   </div>
-                  <div className="s-flex s-flex-col">
-                    <div className="s-flex s-w-full s-min-w-0 s-flex-1 s-items-end s-gap-2">
-                      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-2">
-                        <div className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+                  <div className="flex flex-col">
+                    <div className="flex w-full min-w-0 flex-1 items-end gap-2">
+                      <div className="flex min-w-0 flex-1 flex-col gap-2">
+                        <div className="heading-base text-foreground dark:text-foreground-night">
                           Settings
                         </div>
-                        <div className="s-flex s-flex-1 s-items-center s-gap-2 s-py-2">
-                          <div className="s-w-[80px] s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        <div className="flex flex-1 items-center gap-2 py-2">
+                          <div className="w-[80px] text-sm text-muted-foreground dark:text-muted-foreground-night">
                             Handle
                           </div>
                           <DropdownMenu>
@@ -1419,7 +1417,7 @@ export function SidekickBuilderView({
                               <Button
                                 size="sm"
                                 variant={"ghost"}
-                                icon={SparklesIcon}
+                                icon={Stars02}
                                 tooltip="Suggest"
                               />
                             </DropdownMenuTrigger>
@@ -1445,7 +1443,7 @@ export function SidekickBuilderView({
                           </DropdownMenu>
                           <Input
                             placeholder="Agent name"
-                            containerClassName="s-flex-1"
+                            containerClassName="flex-1"
                             value={agentName}
                             onChange={(event) => {
                               const value = event.target.value;
@@ -1470,11 +1468,11 @@ export function SidekickBuilderView({
                           displayBackgroundColor
                         }
                         isRounded={false}
-                        className="s-mb-2"
+                        className="mb-2"
                       />
                     </div>
-                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border dark:s-border-border-night s-py-2">
-                      <div className="s-w-[80px] s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    <div className="flex items-center gap-2 border-t border-border dark:border-border-night py-2">
+                      <div className="w-[80px] text-sm text-muted-foreground dark:text-muted-foreground-night">
                         Description
                       </div>
                       <DropdownMenu>
@@ -1482,7 +1480,7 @@ export function SidekickBuilderView({
                           <Button
                             size="sm"
                             variant={"ghost"}
-                            icon={SparklesIcon}
+                            icon={Stars02}
                             tooltip="Suggest"
                           />
                         </DropdownMenuTrigger>
@@ -1498,7 +1496,7 @@ export function SidekickBuilderView({
                         </DropdownMenuContent>
                       </DropdownMenu>
                       <Input
-                        containerClassName="s-flex-1"
+                        containerClassName="flex-1"
                         placeholder="Short description"
                         value={agentDescription}
                         onChange={(event) =>
@@ -1519,23 +1517,19 @@ export function SidekickBuilderView({
                                   ? "Published"
                                   : "Unpublished"
                               }
-                              icon={
-                                accessStatus === "published"
-                                  ? EyeIcon
-                                  : EyeSlashIcon
-                              }
+                              icon={accessStatus === "published" ? Eye : EyeOff}
                               isSelect
                             />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
                             <DropdownMenuItem
                               label="Unpublished"
-                              icon={EyeSlashIcon}
+                              icon={EyeOff}
                               onSelect={() => setAccessStatus("unpublished")}
                             />
                             <DropdownMenuItem
                               label="Published"
-                              icon={EyeIcon}
+                              icon={Eye}
                               onSelect={() => setAccessStatus("published")}
                             />
                           </DropdownMenuContent>
@@ -1558,12 +1552,12 @@ export function SidekickBuilderView({
                           size="sm"
                           variant="ghost"
                           label="Manage"
-                          icon={UserGroupIcon}
+                          icon={Users01}
                           onClick={() => setIsInviteEditorsOpen(true)}
                         />
                       }
                       description={editorNames.join(", ")}
-                      descriptionClassName="s-flex-1 s-min-w-0 s-truncate"
+                      descriptionClassName="flex-1 min-w-0 truncate"
                     />
                     <MetadataRow
                       label="Tags"
@@ -1574,7 +1568,7 @@ export function SidekickBuilderView({
                               size="sm"
                               variant="ghost"
                               label="Manage"
-                              icon={TagIcon}
+                              icon={Tag01}
                             />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
@@ -1628,7 +1622,7 @@ export function SidekickBuilderView({
                         </DropdownMenu>
                       }
                       description={selectedTagNames.join(", ")}
-                      descriptionClassName="s-flex-1 s-min-w-0 s-truncate"
+                      descriptionClassName="flex-1 min-w-0 truncate"
                     />
                   </div>
                 </div>
@@ -1648,12 +1642,12 @@ export function SidekickBuilderView({
               placeholder="Search spaces and projects"
               value={spacesProjectsSearch}
               onChange={(event) => setSpacesProjectsSearch(event.target.value)}
-              className="s-mt-4"
+              className="mt-4"
             />
           </SheetHeader>
           <SheetContainer isListSelector>
-            <div className="s-flex s-flex-col s-gap-4">
-              <div className="s-flex s-flex-col">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col">
                 <ListItemSection size="sm">Spaces</ListItemSection>
                 <ListGroup>
                   {[...filteredOpenSpaces, ...filteredRestrictedSpaces].map(
@@ -1666,23 +1660,21 @@ export function SidekickBuilderView({
                           onClick={() => toggleDraftSpace(space.id)}
                           className={
                             isSelected
-                              ? "s-bg-primary-50 dark:s-bg-primary-50-night"
+                              ? "bg-primary-50 dark:bg-primary-50-night"
                               : ""
                           }
                         >
                           <Icon
                             visual={
-                              isRestrictedSpace(space.id)
-                                ? LockIcon
-                                : ServerIcon
+                              isRestrictedSpace(space.id) ? Lock01 : Server03
                             }
                             size="sm"
                           />
-                          <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                            <span className="s-heading-sm s-truncate s-text-foreground dark:s-text-foreground-night">
+                          <div className="flex min-w-0 flex-1 flex-col">
+                            <span className="heading-sm truncate text-foreground dark:text-foreground-night">
                               {space.name}
                             </span>
-                            <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                            <span className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
                               {space.description}
                             </span>
                           </div>
@@ -1715,7 +1707,7 @@ export function SidekickBuilderView({
                         onClick={() => toggleDraftProject(space.id)}
                         className={
                           isSelected
-                            ? "s-bg-primary-50 dark:s-bg-primary-50-night"
+                            ? "bg-primary-50 dark:bg-primary-50-night"
                             : ""
                         }
                       >
@@ -1723,15 +1715,15 @@ export function SidekickBuilderView({
                           visual={
                             isRestrictedSpace(space.id)
                               ? SpaceCloseIcon
-                              : SpaceOpenIcon
+                              : SpaceOpen
                           }
                           size="sm"
                         />
-                        <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                          <span className="s-truncate s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate text-sm font-medium text-foreground dark:text-foreground-night">
                             {space.name}
                           </span>
-                          <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                          <span className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
                             {space.description}
                           </span>
                         </div>
@@ -1763,7 +1755,7 @@ export function SidekickBuilderView({
                         onClick={() => toggleDraftProject(space.id)}
                         className={
                           isSelected
-                            ? "s-bg-primary-50 dark:s-bg-primary-50-night"
+                            ? "bg-primary-50 dark:bg-primary-50-night"
                             : ""
                         }
                       >
@@ -1771,15 +1763,15 @@ export function SidekickBuilderView({
                           visual={
                             isRestrictedSpace(space.id)
                               ? SpaceCloseIcon
-                              : SpaceOpenIcon
+                              : SpaceOpen
                           }
                           size="sm"
                         />
-                        <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                          <span className="s-truncate s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate text-sm font-medium text-foreground dark:text-foreground-night">
                             {space.name}
                           </span>
-                          <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                          <span className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
                             {space.description}
                           </span>
                         </div>
@@ -1857,17 +1849,17 @@ export function SidekickBuilderView({
             <SheetTitle>{selectedVersion?.date ?? "Version"}</SheetTitle>
             <SheetDescription>
               By:{" "}
-              <span className="s-heading-ws">
+              <span className="heading-ws">
                 {selectedVersion?.author ?? "Unknown"}
               </span>
             </SheetDescription>
           </SheetHeader>
           <SheetContainer>
-            <div className="s-tiems-end s-flex s-flex-1 s-flex-col s-gap-3 s-overflow-auto">
-              <div className="s-flex s-w-full s-justify-end">
+            <div className="tiems-end flex flex-1 flex-col gap-3 overflow-auto">
+              <div className="flex w-full justify-end">
                 <Button
                   label="Restore this version"
-                  icon={HistoryIcon}
+                  icon={ClockRewind}
                   variant="outline"
                   size="sm"
                   onClick={() => setSelectedVersion(null)}
@@ -1877,7 +1869,7 @@ export function SidekickBuilderView({
               <RichTextArea
                 readOnly
                 defaultValue={versionDiffContent}
-                className="s-min-h-[400px]"
+                className="min-h-[400px]"
               />
             </div>
           </SheetContainer>
