@@ -1,20 +1,3 @@
-/**
- * Compare per-API-key credit usage between the legacy agent-message analytics index and the
- * consumption analytics index over an explicit time window.
- *
- * This script is read-only. `--execute` only suppresses the standard migration-script dry-run
- * warning.
- *
- *   npx tsx migrations/20260827_compare_api_key_usage_indices.ts \
- *     --workspaceId <wId> \
- *     --fromDate 2026-08-01T00:00:00.000Z \
- *     --toDate 2026-08-27T00:00:00.000Z \
- *     --execute
- *
- * The legacy index is bounded by message creation time (`timestamp`), while the consumption index
- * is bounded by message completion time (`completed_at`). Messages that cross either boundary can
- * therefore produce legitimate differences.
- */
 import {
   ANALYTICS_ALIAS_NAME,
   bucketsToArray,
