@@ -46,9 +46,13 @@ export const workspaceAnalyticsSkill = {
     "agent's spend evolve'), set breakdownBy on get_credit_timeseries — one " +
     "call returns the top groups plus an 'other' series. Do not make one " +
     "filtered call per agent, user or model.\n" +
-    "- To scope any tool to specific models, call get_top_models first to get " +
-    "the exact model ids in use, then pass them as modelIds — never guess a " +
-    "model id from its display name.\n" +
+    "- For volume rather than spend — who is most active, which agents or " +
+    "models get used most, where messages come from — call " +
+    "get_top_entities_by_message_count with that dimension, and " +
+    "get_top_entities_by_execution_count for how often tools and skills ran.\n" +
+    "- The rankings return each row's id. Feed those ids back in as filters " +
+    "(agentIds, userIds, modelIds, agentTagIds, sources, ...) to narrow any " +
+    "other call — never guess an id from a display name.\n" +
     `- To inventory what EXISTS rather than what is used — which agents or ` +
     `skills the workspace has, whether they are published or discoverable, ` +
     `which ones nobody uses — call ${LIST_AGENTS_TOOL_NAME} or ` +
@@ -61,7 +65,7 @@ export const workspaceAnalyticsSkill = {
     { name: "workspace_analytics" },
     { name: WORKSPACE_MANAGEMENT_SERVER_NAME },
   ],
-  version: 6,
+  version: 7,
   icon: "ActionPieChartIcon",
   isRestricted: async (auth: Authenticator) => {
     if (!auth.isManager()) {

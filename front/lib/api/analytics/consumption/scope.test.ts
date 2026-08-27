@@ -1,4 +1,10 @@
-import { buildConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/scope";
+import {
+  buildConsumptionScopeQuery,
+  CONSUMPTION_INVOCATION_DIMENSIONS,
+  CONSUMPTION_MESSAGE_DIMENSIONS,
+  CONSUMPTION_TOP_DIMENSION_UNIT,
+  CONSUMPTION_TOP_DIMENSIONS,
+} from "@app/lib/api/analytics/consumption/scope";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
@@ -74,5 +80,25 @@ describe("buildConsumptionScopeQuery", () => {
     });
 
     expect(query.bool?.filter).toHaveLength(2);
+  });
+});
+
+describe("the top dimensions split by ranking unit", () => {
+  it("covers every top dimension exactly once", () => {
+    expect(
+      [
+        ...CONSUMPTION_MESSAGE_DIMENSIONS,
+        ...CONSUMPTION_INVOCATION_DIMENSIONS,
+      ].sort()
+    ).toEqual([...CONSUMPTION_TOP_DIMENSIONS].sort());
+  });
+
+  it("files each dimension under its own unit", () => {
+    for (const dimension of CONSUMPTION_MESSAGE_DIMENSIONS) {
+      expect(CONSUMPTION_TOP_DIMENSION_UNIT[dimension]).toBe("message");
+    }
+    for (const dimension of CONSUMPTION_INVOCATION_DIMENSIONS) {
+      expect(CONSUMPTION_TOP_DIMENSION_UNIT[dimension]).toBe("invocation");
+    }
   });
 });
