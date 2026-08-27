@@ -19,6 +19,7 @@ import {
   DotsHorizontal,
   DropdownMenuItem,
   DropdownMenuLabel,
+  FilterChips,
   SearchDropdownMenu,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -405,21 +406,18 @@ export function AllTabContent({
   trackAgentBrowserEvents,
   canGetMore = true,
 }: AllTabContentProps) {
+  const tagLabelById = new Map(uniqueTags.map((tag) => [tag.sId, tag.name]));
+
   return (
     <>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         {!noTagsDefined && (
-          <>
-            {uniqueTags.map((tag) => (
-              <Button
-                size="xs"
-                variant={selectedTag === tag.sId ? "primary" : "outline"}
-                key={tag.sId}
-                label={tag.name}
-                onClick={() => setSelectedTag(tag.sId)}
-              />
-            ))}
-          </>
+          <FilterChips
+            filters={uniqueTags.map((tag) => tag.sId)}
+            selectedFilter={selectedTag}
+            onFilterClick={setSelectedTag}
+            getLabel={(sId) => tagLabelById.get(sId) ?? sId}
+          />
         )}
       </div>
       <div className="flex flex-col gap-4">

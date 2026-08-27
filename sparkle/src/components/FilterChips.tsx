@@ -7,8 +7,15 @@ interface FilterChipsProps<T extends string> {
   filters: T[];
   /** Called with the clicked filter's name; only fires when the selection changes. */
   onFilterClick: (filterName: T) => void;
-  /** Filter preselected on mount (must be one of filters). */
+  /** Filter preselected on mount (must be one of filters). Ignored if selectedFilter is set. */
   defaultFilter?: T;
+  /** Drives the selection from outside instead of the component's own state. */
+  selectedFilter?: T | null;
+  /** Custom chip label; defaults to the filter name itself. */
+  getLabel?: (filterName: T) => string;
+  /** Optional per-filter count, rendered as a counter badge on the chip. */
+  counts?: Partial<Record<T, number>>;
+  size?: "xs" | "sm";
 }
 
 /**
@@ -22,33 +29,52 @@ export function FilterChips<T extends string>({
   filters,
   onFilterClick,
   defaultFilter,
+  selectedFilter: controlledSelectedFilter,
+  getLabel,
+  counts,
+  size = "xs",
 }: FilterChipsProps<T>) {
-  const [selectedFilter, setSelectedFilter] = useState<T | null>(
-    defaultFilter && filters.includes(defaultFilter) ? defaultFilter : null
-  );
+  const isControlled = controlledSelectedFilter !== undefined;
+
+  const [uncontrolledSelectedFilter, setUncontrolledSelectedFilter] =
+    useState<T | null>(
+      defaultFilter && filters.includes(defaultFilter) ? defaultFilter : null
+    );
+
+  const selectedFilter = isControlled
+    ? controlledSelectedFilter
+    : uncontrolledSelectedFilter;
 
   const handleFilterClick = useCallback(
     (filterName: T) => {
       // Avoid unnecessary re-renders by only triggering event if filter has changed.
       if (filterName !== selectedFilter) {
-        setSelectedFilter(filterName);
+        if (!isControlled) {
+          setUncontrolledSelectedFilter(filterName);
+        }
         onFilterClick(filterName);
       }
     },
-    [onFilterClick, selectedFilter]
+    [isControlled, onFilterClick, selectedFilter]
   );
 
   return (
     <div className="flex flex-row flex-wrap gap-2">
-      {filters.map((filterName) => (
-        <Button
-          label={filterName}
-          variant={selectedFilter === filterName ? "primary" : "ghost"}
-          key={filterName}
-          size="xs"
-          onClick={() => handleFilterClick(filterName)}
-        />
-      ))}
+      {filters.map((filterName) => {
+        const count = counts?.[filterName];
+        return (
+          <Button
+            label={getLabel ? getLabel(filterName) : filterName}
+            variant={selectedFilter === filterName ? "primary" : "ghost"}
+            key={filterName}
+            size={size}
+            isCounter={count !== undefined}
+            counterValue={count !== undefined ? String(count) : undefined}
+            aria-pressed={selectedFilter === filterName}
+            onClick={() => handleFilterClick(filterName)}
+          />
+        );
+      })}
     </div>
   );
 }

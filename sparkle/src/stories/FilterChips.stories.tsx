@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import React, { useState } from "react";
 import { fn } from "storybook/test";
 
 import { FilterChips } from "../index_with_tw_base";
@@ -16,7 +17,10 @@ const meta = {
 
 **Guidelines**
 - Selection is single-choice: only one chip is active at a time, so use it for filtering rather than multi-tagging.
-- Pass a **defaultFilter** that matches an entry in **filters** to highlight the initial category.
+- Pass a **defaultFilter** that matches an entry in **filters** to highlight the initial category (uncontrolled usage).
+- Pass **selectedFilter** to drive the selection from external state instead (controlled usage) — the component no longer tracks its own selection in this case.
+- Use **getLabel** when the chip's display text should differ from its filter value (e.g. an id or slug backing a human-readable label).
+- Pass **counts** to show a counter badge per chip.
 - For a standalone status or metadata label that is not interactive, use **Chip** instead.`,
       },
     },
@@ -52,4 +56,35 @@ export const NoDefaultSelection: Story = {
   args: {
     filters: ["Featured", "Writing", "Productivity", "Research", "Knowledge"],
   },
+};
+
+const ControlledDemo = () => {
+  const [selectedFilter, setSelectedFilter] = useState<string | null>(
+    "featured"
+  );
+
+  return (
+    <FilterChips
+      filters={["featured", "writing", "productivity", "research"]}
+      selectedFilter={selectedFilter}
+      getLabel={(filter) => filter.charAt(0).toUpperCase() + filter.slice(1)}
+      onFilterClick={setSelectedFilter}
+    />
+  );
+};
+
+/**
+ * Passing **selectedFilter** drives the selection from external state instead
+ * of the component's own — useful when the filter value is stored on a
+ * parent (a router param, a form field) rather than owned by the chip row
+ * itself. **getLabel** lets the chip's display text differ from its filter
+ * value, here capitalizing an id-shaped value into a label.
+ * @summary Controlled filter row with a custom label per chip.
+ */
+export const Controlled: Story = {
+  args: {
+    filters: ["featured", "writing", "productivity", "research"],
+    onFilterClick: fn(),
+  },
+  render: () => <ControlledDemo />,
 };
