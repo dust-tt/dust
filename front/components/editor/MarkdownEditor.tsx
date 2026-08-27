@@ -309,7 +309,7 @@ export function MarkdownEditor({
         {shouldShowFormattingMenu && editor ? (
           <BubbleMenu
             editor={editor}
-            className={cn("flex", isMobile && "hidden")}
+            className={cn("z-50 flex", isMobile && "hidden")}
             options={BUBBLE_MENU_OPTIONS}
             appendTo={BUBBLE_MENU_APPEND_TO}
           >
