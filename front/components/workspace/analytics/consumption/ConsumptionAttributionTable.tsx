@@ -24,7 +24,7 @@ import {
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatAvgCredits, formatCredits } from "@app/lib/client/credits";
 import { LinkWrapper } from "@app/lib/platform";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import type {
@@ -366,7 +366,7 @@ function buildColumns({
       cell: (info) => (
         <DataTable.BasicCellContent
           className="justify-end text-right tabular-nums"
-          label={formatCredits(info.row.original.avgCredits)}
+          label={formatAvgCredits(info.row.original.avgCredits)}
         />
       ),
     },

@@ -9,6 +9,15 @@ export function formatCredits(credits: number): string {
   return credits.toLocaleString("en-US", { maximumFractionDigits: 1 });
 }
 
+// Format AWU credits with exactly one decimal (e.g. "310.0"), so values in
+// per-message average columns stay visually consistent.
+export function formatAvgCredits(credits: number): string {
+  return credits.toLocaleString("en-US", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+}
+
 // Format AWU credits with full fractional precision (up to 6 decimals,
 // trailing zeros trimmed). Used by Poke debugging views that surface
 // microcredit-derived figures (e.g. the rate-limiter counter), where an
