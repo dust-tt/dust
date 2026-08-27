@@ -294,14 +294,17 @@ function buildColumns({
           );
         const interactiveClassName = cn(
           "inline-flex min-h-11 min-w-11 max-w-full items-center rounded-sm text-left",
-          "text-highlight-500 outline-hidden ring-offset-background",
-          "pointer-fine:hover:text-highlight-600 pointer-fine:hover:underline",
+          "outline-hidden ring-offset-background",
+          "pointer-fine:hover:underline",
           "focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
         );
         const interactiveContent = row.detailsHref ? (
           <LinkWrapper
             href={row.detailsHref}
-            className={interactiveClassName}
+            className={cn(
+              interactiveClassName,
+              "text-highlight-500 pointer-fine:hover:text-highlight-600"
+            )}
             onClick={(event) => event.stopPropagation()}
           >
             {content}
