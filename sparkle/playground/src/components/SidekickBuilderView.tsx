@@ -90,13 +90,13 @@ import {
 } from "./NewConversationMessages";
 import { RichTextArea, type RichTextAreaHandle } from "./RichTextArea";
 import {
-  getRandomAgents,
-  mockSidekickConversationItems,
   mockInstructionCases,
-  mockSpaces,
+  mockSidekickConversationItems,
   mockSuggestionChanges,
-  mockUsers,
-} from "../data";
+} from "../data/agentBuilder";
+import { getRandomAgents } from "../data/agents";
+import { mockSpaces } from "../data/spaces";
+import { mockUsers } from "../data/users";
 import { ActionCardBlock } from "@dust-tt/sparkle";
 import { actionCardDirective } from "./actionCardDirective";
 
@@ -165,12 +165,12 @@ function parseDiffString(content: string): DiffChange[] {
   return changes;
 }
 
-type MetadataRowProps = {
+interface MetadataRowProps {
   label: string;
   action: React.ReactNode;
   description?: React.ReactNode;
   descriptionClassName?: string;
-};
+}
 
 function MetadataRow({
   label,
@@ -203,26 +203,82 @@ function humanizeHandle(handle: string): string {
   return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1).toLowerCase();
 }
 
-type EditorEditionTab = {
+interface EditorEditionTab {
   id: string;
   name: string;
   emoji: string;
   backgroundColor: string;
-};
+}
 
-export type SidekickBuilderViewTemplate = {
+export interface SidekickBuilderViewTemplate {
   handle: string;
   emoji: string;
   backgroundColor: string;
+}
+
+interface SidekickBuilderViewProps {
+  template?: SidekickBuilderViewTemplate;
+  onClose?: () => void;
+}
+
+interface SectionHeaderProps {
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+}
+
+function SectionHeader({ title, description, action }: SectionHeaderProps) {
+  return (
+    <div className="flex w-full items-end gap-2">
+      <div className="flex flex-1 flex-col">
+        <div className="heading-base text-foreground dark:text-foreground-night">
+          {title}
+        </div>
+        <div className="text-base text-muted-foreground dark:text-muted-foreground-night">
+          {description}
+        </div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+const isRestrictedSpace = (spaceId: string) =>
+  spaceId.charCodeAt(spaceId.length - 1) % 2 === 0;
+
+const isJoinedProject = (spaceId: string) => {
+  const match = spaceId.match(/\d+$/);
+  if (!match) {
+    return false;
+  }
+  return Number(match[0]) % 2 === 0;
 };
+
+const matchesSpacesProjectsSearch = (
+  name: string,
+  description: string | undefined,
+  search: string
+) => {
+  if (!search) {
+    return true;
+  }
+  const normalizedName = name.toLowerCase();
+  const normalizedDescription = (description ?? "").toLowerCase();
+  return (
+    normalizedName.includes(search) || normalizedDescription.includes(search)
+  );
+};
+
+const RIGHT_PANEL_TABS = [
+  { value: "sidekick", label: "Sidekick", icon: Sidekick },
+  { value: "testing", label: "Preview", icon: Beaker02 },
+  { value: "insights", label: "Insights", icon: BarChart01 },
+] as const;
 
 export function SidekickBuilderView({
   template,
   onClose,
-}: {
-  template?: SidekickBuilderViewTemplate;
-  onClose?: () => void;
-}) {
+}: SidekickBuilderViewProps) {
   const agent = useMemo(() => getRandomAgents(1)[0], []);
   const displayName = template
     ? humanizeHandle(template.handle)
@@ -372,9 +428,6 @@ export function SidekickBuilderView({
       .filter((user) => selectedEditorIds.has(user.id))
       .map((user) => user.fullName || `${user.firstName} ${user.lastName}`);
   }, [selectedEditorIds]);
-  const isRestrictedSpace = (spaceId: string) =>
-    spaceId.charCodeAt(spaceId.length - 1) % 2 === 0;
-
   const selectedSpaces = useMemo(() => {
     return selectableSpaces.filter((space) => selectedSpaceIds.has(space.id));
   }, [selectableSpaces, selectedSpaceIds]);
@@ -419,13 +472,6 @@ export function SidekickBuilderView({
     () => mockSpaces.filter((space) => !selectableSpaceIds.has(space.id)),
     [selectableSpaceIds]
   );
-  const isJoinedProject = (spaceId: string) => {
-    const match = spaceId.match(/\d+$/);
-    if (!match) {
-      return false;
-    }
-    return Number(match[0]) % 2 === 0;
-  };
   const myProjects = useMemo(() => {
     const count = Math.floor(Math.random() * 12) + 12;
     const joined = projectSpaces.filter((space) => isJoinedProject(space.id));
@@ -455,42 +501,47 @@ export function SidekickBuilderView({
   const normalizedSpacesProjectsSearch = spacesProjectsSearch
     .trim()
     .toLowerCase();
-  const matchesSpacesProjectsSearch = (name: string, description: string) => {
-    if (!normalizedSpacesProjectsSearch) {
-      return true;
-    }
-    const normalizedName = name.toLowerCase();
-    const normalizedDescription = (description ?? "").toLowerCase();
-    return (
-      normalizedName.includes(normalizedSpacesProjectsSearch) ||
-      normalizedDescription.includes(normalizedSpacesProjectsSearch)
-    );
-  };
   const filteredOpenSpaces = useMemo(
     () =>
       openSpaces.filter((space) =>
-        matchesSpacesProjectsSearch(space.name, space.description ?? "")
+        matchesSpacesProjectsSearch(
+          space.name,
+          space.description,
+          normalizedSpacesProjectsSearch
+        )
       ),
     [openSpaces, normalizedSpacesProjectsSearch]
   );
   const filteredRestrictedSpaces = useMemo(
     () =>
       restrictedSpaces.filter((space) =>
-        matchesSpacesProjectsSearch(space.name, space.description ?? "")
+        matchesSpacesProjectsSearch(
+          space.name,
+          space.description,
+          normalizedSpacesProjectsSearch
+        )
       ),
     [restrictedSpaces, normalizedSpacesProjectsSearch]
   );
   const filteredMyProjects = useMemo(
     () =>
       myProjects.filter((space) =>
-        matchesSpacesProjectsSearch(space.name, space.description ?? "")
+        matchesSpacesProjectsSearch(
+          space.name,
+          space.description,
+          normalizedSpacesProjectsSearch
+        )
       ),
     [myProjects, normalizedSpacesProjectsSearch]
   );
   const filteredAllProjects = useMemo(
     () =>
       allProjects.filter((space) =>
-        matchesSpacesProjectsSearch(space.name, space.description ?? "")
+        matchesSpacesProjectsSearch(
+          space.name,
+          space.description,
+          normalizedSpacesProjectsSearch
+        )
       ),
     [allProjects, normalizedSpacesProjectsSearch]
   );
@@ -704,35 +755,6 @@ export function SidekickBuilderView({
     setHasSuggestionsState(richTextAreaRef.current?.hasSuggestions() ?? false);
   };
 
-  const SectionHeader = ({
-    title,
-    description,
-    action,
-  }: {
-    title: string;
-    description: string;
-    action?: React.ReactNode;
-  }) => {
-    return (
-      <div className="flex w-full items-end gap-2">
-        <div className="flex flex-1 flex-col">
-          <div className="heading-base text-foreground dark:text-foreground-night">
-            {title}
-          </div>
-          <div className="text-base text-muted-foreground dark:text-muted-foreground-night">
-            {description}
-          </div>
-        </div>
-        {action}
-      </div>
-    );
-  };
-  const rightPanelTabs = [
-    { value: "sidekick", label: "Sidekick", icon: Sidekick },
-    { value: "testing", label: "Preview", icon: Beaker02 },
-    { value: "insights", label: "Insights", icon: BarChart01 },
-  ];
-
   return (
     <div className="h-screen w-full bg-background dark:bg-background-night">
       <style>{`
@@ -762,7 +784,7 @@ export function SidekickBuilderView({
               variant="ghost-secondary"
               onClick={() => setIsRightPanelOpen(true)}
             />
-            {rightPanelTabs.map((tab) => (
+            {RIGHT_PANEL_TABS.map((tab) => (
               <Button
                 key={tab.value}
                 icon={tab.icon}
@@ -815,7 +837,7 @@ export function SidekickBuilderView({
                     size="sm"
                     onClick={() => setIsRightPanelOpen(false)}
                   />
-                  {rightPanelTabs.map((tab) => (
+                  {RIGHT_PANEL_TABS.map((tab) => (
                     <TabsTrigger
                       key={tab.value}
                       value={tab.value}
@@ -1097,23 +1119,23 @@ export function SidekickBuilderView({
                           tooltip="Close edition"
                           onClick={(e: MouseEvent<HTMLButtonElement>) => {
                             e.stopPropagation();
-                            setEditorTabs((prev) => {
-                              if (prev.length <= 1) {
-                                return prev;
+                            if (editorTabs.length <= 1) {
+                              return;
+                            }
+                            const idx = editorTabs.findIndex(
+                              (t) => t.id === tab.id
+                            );
+                            const next = editorTabs.filter(
+                              (t) => t.id !== tab.id
+                            );
+                            if (tab.id === activeEditorTabIdResolved) {
+                              const fallback =
+                                next[Math.max(0, idx - 1)] ?? next[0];
+                              if (fallback) {
+                                setActiveEditorTabId(fallback.id);
                               }
-                              const idx = prev.findIndex(
-                                (t) => t.id === tab.id
-                              );
-                              const next = prev.filter((t) => t.id !== tab.id);
-                              if (tab.id === activeEditorTabIdResolved) {
-                                const fallback =
-                                  next[Math.max(0, idx - 1)] ?? next[0];
-                                if (fallback) {
-                                  setActiveEditorTabId(fallback.id);
-                                }
-                              }
-                              return next;
-                            });
+                            }
+                            setEditorTabs(next);
                           }}
                         />
                       </div>
