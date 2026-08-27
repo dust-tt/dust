@@ -3,7 +3,7 @@ import {
   INTERACTIVE_CONTENT_INSTRUCTIONS,
 } from "@app/lib/api/actions/servers/interactive_content/instructions";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
+import { getFeatureFlags, hasFeatureFlag } from "@app/lib/auth";
 import { POD_FUNCTIONS_SKILL_NAME } from "@app/lib/resources/skill/code_defined/global/pod_functions";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -37,6 +37,42 @@ export const framesSkill = {
     auth: Authenticator,
     params: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
+    if (await hasFeatureFlag(auth, "frames_v2")) {
+      return `# Frames v2
+
+Use the Computer and the \`dsbx frame\` CLI for the entire Frame lifecycle. Do not use the legacy interactive-content tools.
+
+## Create
+
+Create a Frame folder on the mounted file system, then edit its source files:
+
+\`\`\`bash
+dsbx frame create /files/conversation-<conversationId>/<frame-folder> --name "<name>"
+\`\`\`
+
+In a Pod, create it under \`/files/pod-<podId>/...\` instead. A Frame folder contains \`manifest.json\` and defaults its UI entry point to \`index.tsx\`.
+
+## Register an existing folder
+
+\`\`\`bash
+dsbx frame register /files/<scope>/<frame-folder>/manifest.json
+\`\`\`
+
+Registration assigns the stable Frame identity. It is idempotent for the same manifest path.
+
+## Publish
+
+After every source change that should become visible:
+
+\`\`\`bash
+dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
+\`\`\`
+
+Publishing validates the manifest and atomically activates a complete source/function publication. Fix any reported error and rerun the command.
+
+Use \`dsbx frame --help\` as the authority for available lifecycle operations. Never fall back to legacy Frame MCP tools. Do not use \`mv\` or \`cp\` on a registered Frame folder: move and clone are not supported in this initial scope.`;
+    }
+
     const conversation = params.agentLoopData?.conversation;
     if (conversation && conversation.metadata?.useFileSystem !== true) {
       return INTERACTIVE_CONTENT_INSTRUCTIONS;
@@ -50,7 +86,10 @@ export const framesSkill = {
       podFunctionsSkillName: POD_FUNCTIONS_SKILL_NAME,
     });
   },
-  mcpServers: [{ name: "interactive_content" }],
-  version: 3,
+  fetchMCPServers: async (auth: Authenticator) =>
+    (await hasFeatureFlag(auth, "frames_v2"))
+      ? []
+      : [{ name: "interactive_content" }],
+  version: 4,
   icon: "ActionFrameIcon",
 } as const satisfies GlobalSkillDefinition;

@@ -13,7 +13,7 @@ import {
   isSafeFrameRelativePath,
   parseFrameManifest,
 } from "@app/types/api/frame_manifest";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import {
   isAllSupportedFileContentType,
   normalizeMimeType,
@@ -40,7 +40,7 @@ export async function publishFrameV2FromSource(
     frame,
     manifestPath,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifestPath: string;
   }

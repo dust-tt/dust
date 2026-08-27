@@ -28,7 +28,6 @@ interface BaseSkillDefinition<
   readonly sId: string;
   readonly version: number;
   readonly icon: string;
-  readonly mcpServers?: MCPServerDefinition[];
   // Files that ship with the skill and are loaded into the conversation file
   // system when the skill is enabled, exactly like custom-skill attachments.
   readonly files?: readonly CodeDefinedSkillFile[];
@@ -52,6 +51,18 @@ interface BaseSkillDefinition<
   ) => boolean;
 }
 
+type WithMCPServers<T extends BaseSkillDefinition> =
+  | (T & {
+      readonly mcpServers?: MCPServerDefinition[];
+      readonly fetchMCPServers?: never;
+    })
+  | (T & {
+      readonly mcpServers?: never;
+      readonly fetchMCPServers: (
+        auth: Authenticator
+      ) => Promise<MCPServerDefinition[]>;
+    });
+
 export type CodeDefinedSkillFile = {
   // Unique within the skill; becomes the file name under `skills/<skillName>/`.
   readonly fileName: string;
@@ -59,21 +70,23 @@ export type CodeDefinedSkillFile = {
   readonly content: string;
 };
 
-type WithStaticInstructions<T extends BaseSkillDefinition> = T & {
-  readonly instructions: string;
-  readonly fetchInstructions?: never;
-};
+type WithStaticInstructions<T extends BaseSkillDefinition> =
+  WithMCPServers<T> & {
+    readonly instructions: string;
+    readonly fetchInstructions?: never;
+  };
 
-type WithDynamicInstructions<T extends BaseSkillDefinition> = T & {
-  readonly instructions?: never;
-  readonly fetchInstructions: (
-    auth: Authenticator,
-    params: {
-      spaceIds: string[];
-      agentLoopData?: AgentLoopExecutionData;
-    }
-  ) => Promise<string>;
-};
+type WithDynamicInstructions<T extends BaseSkillDefinition> =
+  WithMCPServers<T> & {
+    readonly instructions?: never;
+    readonly fetchInstructions: (
+      auth: Authenticator,
+      params: {
+        spaceIds: string[];
+        agentLoopData?: AgentLoopExecutionData;
+      }
+    ) => Promise<string>;
+  };
 
 export type SkillDefinition<
   T extends SkillAgentLoopState = SkillAgentLoopState,

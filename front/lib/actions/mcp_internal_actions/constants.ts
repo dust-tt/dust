@@ -556,7 +556,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     id: 23,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isRestricted: undefined,
+    isRestricted: ({ featureFlags }) => featureFlags.includes("frames_v2"),
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
