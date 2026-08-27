@@ -43,7 +43,9 @@ interface CommandPaletteProps {
 
 type Theme = "dark" | "light" | "system";
 
-const THEME_ORDER: Theme[] = ["system", "light", "dark"];
+// "system" is last so that, once the current theme is filtered out, it
+// always shows up as the second (last) option.
+const THEME_ORDER: Theme[] = ["light", "dark", "system"];
 
 const THEME_ICONS: Record<Theme, typeof Sun> = {
   system: Monitor01,
