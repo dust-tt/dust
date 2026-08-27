@@ -16,13 +16,6 @@ type VersionMarker = { version: string; timestamp: number };
 
 type SourceBucket = { origin: string; count: number };
 
-type SourceChartDatum = {
-  origin: AnalyticsVisibleOrigin;
-  count: number;
-  percent: number;
-  label: string;
-};
-
 export function isUserMessageOrigin(
   origin?: string | null
 ): origin is AnalyticsVisibleOrigin {
@@ -64,10 +57,7 @@ export function getIndexedBaseColor(
   return INDEXED_BASE_COLORS[(idx >= 0 ? idx : 0) % INDEXED_BASE_COLORS.length];
 }
 
-export function buildSourceChartData(
-  buckets: SourceBucket[],
-  total: number
-): SourceChartDatum[] {
+export function buildSourceChartData(buckets: SourceBucket[], total: number) {
   // Aggregate by label so origins sharing the same display name are merged.
   const aggregatedByLabel = new Map<
     string,
