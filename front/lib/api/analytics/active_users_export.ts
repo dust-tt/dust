@@ -8,7 +8,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 
@@ -154,7 +154,7 @@ export async function fetchActiveUsersExportRows(
     });
 
     if (result.isErr()) {
-      return new Err(new Error(result.error.message));
+      return result;
     }
 
     const aggregation = result.value.aggregations?.by_user_day;
