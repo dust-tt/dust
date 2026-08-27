@@ -16,7 +16,9 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 const MAX_API_KEY_NAMES = 10_000;
-const TimestampSchema = z.string().datetime({ offset: true });
+const DEFAULT_DAYS = 90;
+const DAY_DURATION_MS = 24 * 60 * 60 * 1000;
+const DaysSchema = z.number().int().positive();
 
 type ApiKeyCreditsBucket = {
   key: string;
@@ -30,15 +32,13 @@ type ApiKeyCreditsAggs = {
   by_api_key_name?: ApiKeyCreditsTermsAggregate;
 };
 
-function parseTimestamp(value: string, argumentName: string): Date {
-  const result = TimestampSchema.safeParse(value);
+function parseDays(value: number): number {
+  const result = DaysSchema.safeParse(value);
   if (!result.success) {
-    throw new Error(
-      `Invalid --${argumentName}: ${fromError(result.error).toString()}`
-    );
+    throw new Error(`Invalid --days: ${fromError(result.error).toString()}`);
   }
 
-  return new Date(result.data);
+  return result.data;
 }
 
 function assertCompleteAggregation(
@@ -73,28 +73,23 @@ makeScript(
       demandOption: true,
       description: "Workspace sId to compare.",
     },
-    fromDate: {
-      type: "string",
-      demandOption: true,
-      description: "Inclusive ISO-8601 start timestamp.",
-    },
-    toDate: {
-      type: "string",
-      demandOption: true,
-      description: "Inclusive ISO-8601 end timestamp.",
+    days: {
+      type: "number",
+      default: DEFAULT_DAYS,
+      description: "Number of past days to compare.",
     },
   },
-  async ({ fromDate, toDate, workspaceId }, logger) => {
+  async ({ days, workspaceId }, logger) => {
     const workspace = await WorkspaceResource.fetchById(workspaceId);
     if (!workspace) {
       throw new Error(`Workspace not found: ${workspaceId}`);
     }
 
-    const parsedFromDate = parseTimestamp(fromDate, "fromDate");
-    const parsedToDate = parseTimestamp(toDate, "toDate");
-    if (parsedFromDate >= parsedToDate) {
-      throw new Error("--fromDate must precede --toDate");
-    }
+    const parsedDays = parseDays(days);
+    const windowEnd = new Date();
+    const windowStart = new Date(
+      windowEnd.getTime() - parsedDays * DAY_DURATION_MS
+    );
 
     const [legacyResult, consumptionResult] = await Promise.all([
       searchAnalytics<never, ApiKeyCreditsAggs>(
@@ -105,8 +100,8 @@ makeScript(
               {
                 range: {
                   timestamp: {
-                    gte: parsedFromDate.toISOString(),
-                    lte: parsedToDate.toISOString(),
+                    gte: windowStart.toISOString(),
+                    lte: windowEnd.toISOString(),
                   },
                 },
               },
@@ -131,8 +126,8 @@ makeScript(
               {
                 range: {
                   completed_at: {
-                    gte: parsedFromDate.toISOString(),
-                    lte: parsedToDate.toISOString(),
+                    gte: windowStart.toISOString(),
+                    lte: windowEnd.toISOString(),
                   },
                 },
               },
@@ -222,8 +217,9 @@ makeScript(
     );
     const summary = {
       workspaceId: workspace.sId,
-      fromDate: parsedFromDate.toISOString(),
-      toDate: parsedToDate.toISOString(),
+      days: parsedDays,
+      fromDate: windowStart.toISOString(),
+      toDate: windowEnd.toISOString(),
       comparedApiKeyNames: apiKeyNames.length,
       mismatchedApiKeyNames: mismatches.length,
       legacyCredits: microCreditsToCredits(legacyTotalMicroCredits),
