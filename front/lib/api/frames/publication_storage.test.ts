@@ -159,7 +159,7 @@ describe("storeFramePublication", () => {
   });
 });
 
-describe("loadFramePublication", () => {
+describe("Frame publication reads", () => {
   it("loads the manifest and source of a committed publication", async () => {
     const { auth, frame } = await setupFrame();
     const stored = await storeFramePublication(auth, {
