@@ -155,10 +155,10 @@ export function makeColumnsForAutomationTriggers(
       ),
     },
     {
-      id: "editor",
-      header: "Editor",
+      id: "owner",
+      header: "Owner",
       enableSorting: false,
-      accessorFn: (trigger) => trigger.editor.email ?? trigger.editor.name,
+      accessorFn: (trigger) => trigger.owner.email ?? trigger.owner.name,
     },
   ];
 }

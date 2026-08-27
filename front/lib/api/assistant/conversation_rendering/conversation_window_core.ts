@@ -1,15 +1,13 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
 import { CheckpointedConversationWindowState } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
+import type { ConversationWindowCheckpoint } from "@app/lib/api/assistant/conversation_rendering/conversation_window_checkpoint";
 import type { ConversationRenderingMetricsCaller } from "@app/lib/api/assistant/conversation_rendering/instrumentation";
 import {
   emitConversationRenderingError,
   emitConversationRenderingMetrics,
 } from "@app/lib/api/assistant/conversation_rendering/instrumentation";
 import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
-import type {
-  InteractionWithTokens,
-  MessageWithTokens,
-} from "@app/lib/api/assistant/conversation_rendering/pruning";
+import type { MessageWithTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
 import { sumInteractionTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
 import type { ConversationWindowResult } from "@app/lib/api/assistant/conversation_rendering/window_types";
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
@@ -25,18 +23,13 @@ import type {
   ModelMessageTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
 } from "@app/types/assistant/generation";
-import {
-  isContentFragmentMessageTypeModel,
-  isImageContent,
-  isTextContent,
-} from "@app/types/assistant/generation";
+import { isImageContent, isTextContent } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { CredentialsType } from "@app/types/provider";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-// Fixed number of tokens assumed for image contents
 const IMAGE_CONTENT_TOKEN_COUNT = 3100;
 export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
 export const TOKENS_MARGIN = 1024;
@@ -74,57 +67,89 @@ export type RenderConversationForModelResult = {
   prunedContext: boolean;
 };
 
-/**
- * Replays the conversation chronologically so consumed tool results are pruned at stable
- * checkpoints without removing complete interactions.
- */
-function pruneConversationToBudget(
-  interactions: InteractionWithTokens[],
-  {
-    pruningBudget,
-    budgetForInteractions,
-    logDetails,
-  }: {
-    pruningBudget: number;
-    budgetForInteractions: number;
-    logDetails: Record<string, unknown>;
-  }
-): Result<ConversationWindowResult, Error> {
-  const state = CheckpointedConversationWindowState.empty({
-    pruningBudget,
-    budgetForInteractions,
-    logDetails,
-  });
+export type ConversationWindowSource =
+  | {
+      kind: "full";
+      conversation: ConversationType;
+    }
+  | {
+      kind: "checkpoint_exact";
+      conversation: ConversationType;
+      checkpoint: ConversationWindowCheckpoint;
+    }
+  | {
+      // A previous-step checkpoint can only be extended by more messages from the same agent
+      // interaction. New user turns require a full render until cross-message checkpoints exist.
+      kind: "checkpoint_continuation";
+      conversation: ConversationType;
+      continuation: ConversationType;
+      checkpoint: ConversationWindowCheckpoint;
+    };
 
-  for (const interaction of interactions) {
-    state.append(interaction);
-  }
+type ConversationWindowCheckpointData = Pick<
+  ConversationWindowCheckpoint,
+  "state" | "promptTokens" | "toolDefinitionTokens"
+>;
 
-  return state.fit();
-}
+export type RenderConversationWindowResult =
+  RenderConversationForModelResult & {
+    checkpointData: ConversationWindowCheckpointData;
+  };
 
-export async function renderConversationForModel(
+type RenderingTimings = {
+  renderAllMessagesMs: number;
+  getLlmCredentialsMs: number;
+  countTokensForMessagesMs: number;
+  tokenCountPromptToolsMs: number;
+  parallelTokenizationWallMs: number;
+};
+
+type ConversationRenderingLogDetails = Record<string, unknown> & {
+  messageCount: number;
+};
+
+type BuiltConversationWindow = {
+  state: CheckpointedConversationWindowState;
+  window: ConversationWindowResult;
+  conversation: ConversationType;
+  promptTokens: number;
+  toolDefinitionTokens: number;
+  baseTokens: number;
+  budgetForInteractions: number;
+  logDetails: ConversationRenderingLogDetails;
+  timings: RenderingTimings;
+  startedAtMs: number;
+  windowProcessingStartedAtMs: number;
+  metricsCaller?: ConversationRenderingMetricsCaller;
+  model: ModelConfigurationType;
+};
+
+type PreparedMessages = {
+  messages: ModelMessageTypeMultiActions[];
+  messagesWithTokens: MessageWithTokens[];
+  promptTokens: number;
+  toolDefinitionTokens: number;
+  timings: RenderingTimings;
+};
+
+async function prepareFullMessages(
   auth: Authenticator,
-  {
+  input: ConversationRenderingInput,
+  conversation: ConversationType
+): Promise<Result<PreparedMessages, Error>> {
+  const {
     leadingMessages = [],
-    conversation,
     model,
     prompt,
     tools,
-    allowedTokenCount,
     excludeActions,
     excludeImages,
     onMissingAction = "inject-placeholder",
     agentConfiguration,
     enabledSkills,
-    metricsCaller,
-  }: ConversationRenderingInput & {
-    conversation: ConversationType;
-  }
-): Promise<Result<RenderConversationForModelResult, Error>> {
-  const now = Date.now();
-  let stepStart = now;
+  } = input;
 
+  const renderStartedAtMs = Date.now();
   const renderedMessages = await renderAllMessages(auth, {
     conversation,
     model,
@@ -135,170 +160,363 @@ export async function renderConversationForModel(
     enabledSkills,
   });
   const messages = [...leadingMessages, ...renderedMessages];
-  const renderAllMessagesMs = Date.now() - stepStart;
-  stepStart = Date.now();
+  const renderAllMessagesMs = Date.now() - renderStartedAtMs;
 
+  const credentialsStartedAtMs = Date.now();
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  const getLlmCredentialsMs = Date.now() - stepStart;
-  stepStart = Date.now();
-
-  // Tokenize messages and prompt/tools in parallel to reduce latency
+  const getLlmCredentialsMs = Date.now() - credentialsStartedAtMs;
+  const tokenizationStartedAtMs = Date.now();
   const countMessagesPromise = (async () => {
-    const start = Date.now();
-    const r = await countTokensForMessages(messages, model, credentials);
-    return { r, elapsedMs: Date.now() - start };
+    const startedAtMs = Date.now();
+    const result = await countTokensForMessages(messages, model, credentials);
+    return { result, elapsedMs: Date.now() - startedAtMs };
   })();
   const countPromptToolsPromise = (async () => {
-    const start = Date.now();
-    const r = await tokenCountForTexts([prompt, tools], model, credentials);
-    return { r, elapsedMs: Date.now() - start };
+    const startedAtMs = Date.now();
+    const result = await tokenCountForTexts(
+      [prompt, tools],
+      model,
+      credentials
+    );
+    return { result, elapsedMs: Date.now() - startedAtMs };
   })();
-  const [messagesWithTokensWrapped, promptToolsWrapped] = await Promise.all([
+  const [messagesWithTokens, promptTools] = await Promise.all([
     countMessagesPromise,
     countPromptToolsPromise,
   ]);
-  const parallelTokenizationWallMs = Date.now() - stepStart;
-  const countTokensForMessagesMs = messagesWithTokensWrapped.elapsedMs;
-  const tokenCountPromptToolsMs = promptToolsWrapped.elapsedMs;
-  const messagesWithTokensRes = messagesWithTokensWrapped.r;
-  const promptToolsRes = promptToolsWrapped.r;
+  const parallelTokenizationWallMs = Date.now() - tokenizationStartedAtMs;
 
-  stepStart = Date.now();
-
-  if (messagesWithTokensRes.isErr()) {
-    return messagesWithTokensRes;
+  if (messagesWithTokens.result.isErr()) {
+    return messagesWithTokens.result;
+  }
+  if (promptTools.result.isErr()) {
+    return promptTools.result;
   }
 
-  if (promptToolsRes.isErr()) {
-    return promptToolsRes;
+  return new Ok({
+    messages,
+    messagesWithTokens: messagesWithTokens.result.value,
+    promptTokens: promptTools.result.value[0],
+    toolDefinitionTokens: promptTools.result.value[1],
+    timings: {
+      renderAllMessagesMs,
+      getLlmCredentialsMs,
+      countTokensForMessagesMs: messagesWithTokens.elapsedMs,
+      tokenCountPromptToolsMs: promptTools.elapsedMs,
+      parallelTokenizationWallMs,
+    },
+  });
+}
+
+async function prepareCheckpointContinuation(
+  auth: Authenticator,
+  input: ConversationRenderingInput,
+  source: Extract<ConversationWindowSource, { kind: "checkpoint_continuation" }>
+): Promise<Result<PreparedMessages, Error>> {
+  const {
+    model,
+    excludeActions,
+    excludeImages,
+    onMissingAction = "inject-placeholder",
+    agentConfiguration,
+    enabledSkills,
+  } = input;
+  const renderStartedAtMs = Date.now();
+  const messages = await renderAllMessages(auth, {
+    conversation: source.continuation,
+    model,
+    excludeActions,
+    excludeImages,
+    onMissingAction,
+    agentConfiguration,
+    enabledSkills,
+  });
+  const renderAllMessagesMs = Date.now() - renderStartedAtMs;
+
+  const credentialsStartedAtMs = Date.now();
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
+  });
+  const getLlmCredentialsMs = Date.now() - credentialsStartedAtMs;
+  const tokenizationStartedAtMs = Date.now();
+  const messagesWithTokens = await countTokensForMessages(
+    messages,
+    model,
+    credentials
+  );
+  const countTokensForMessagesMs = Date.now() - tokenizationStartedAtMs;
+  if (messagesWithTokens.isErr()) {
+    return messagesWithTokens;
   }
 
-  const messagesWithTokens = messagesWithTokensRes.value;
-  const [promptCount, toolDefinitionsCount] = promptToolsRes.value;
+  return new Ok({
+    messages,
+    messagesWithTokens: messagesWithTokens.value,
+    promptTokens: source.checkpoint.promptTokens,
+    toolDefinitionTokens: source.checkpoint.toolDefinitionTokens,
+    timings: {
+      renderAllMessagesMs,
+      getLlmCredentialsMs,
+      countTokensForMessagesMs,
+      tokenCountPromptToolsMs: 0,
+      parallelTokenizationWallMs: countTokensForMessagesMs,
+    },
+  });
+}
 
-  // Calculate base token usage.
+async function buildConversationWindow(
+  auth: Authenticator,
+  input: ConversationRenderingInput,
+  source: ConversationWindowSource
+): Promise<Result<BuiltConversationWindow, Error>> {
+  const startedAtMs = Date.now();
+  let prepared: PreparedMessages;
+  let checkpoint: ConversationWindowCheckpoint | null;
+  switch (source.kind) {
+    case "full": {
+      const preparedResult = await prepareFullMessages(
+        auth,
+        input,
+        source.conversation
+      );
+      if (preparedResult.isErr()) {
+        return preparedResult;
+      }
+      prepared = preparedResult.value;
+      checkpoint = null;
+      break;
+    }
+    case "checkpoint_continuation": {
+      const preparedResult = await prepareCheckpointContinuation(
+        auth,
+        input,
+        source
+      );
+      if (preparedResult.isErr()) {
+        return preparedResult;
+      }
+      prepared = preparedResult.value;
+      checkpoint = source.checkpoint;
+      break;
+    }
+    case "checkpoint_exact":
+      prepared = {
+        messages: [],
+        messagesWithTokens: [],
+        promptTokens: source.checkpoint.promptTokens,
+        toolDefinitionTokens: source.checkpoint.toolDefinitionTokens,
+        timings: {
+          renderAllMessagesMs: 0,
+          getLlmCredentialsMs: 0,
+          countTokensForMessagesMs: 0,
+          tokenCountPromptToolsMs: 0,
+          parallelTokenizationWallMs: 0,
+        },
+      };
+      checkpoint = source.checkpoint;
+      break;
+    default:
+      assertNever(source);
+  }
+
+  const windowProcessingStartedAtMs = Date.now();
   const baseTokens =
-    promptCount +
+    prepared.promptTokens +
     Math.floor(
-      toolDefinitionsCount * TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR
+      prepared.toolDefinitionTokens * TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR
     ) +
     TOKENS_MARGIN;
-
-  const interactions = groupMessagesIntoInteractions(messagesWithTokens);
-
-  // Hard ceiling shared by every interaction combined: previous history plus the current,
-  // still-in-progress turn.
-  const budgetForInteractions = allowedTokenCount - baseTokens;
-
-  // Only applied when positive: a small-context model with a large prompt/tools footprint can
-  // push baseTokens past the target alone, and a negative value would make the floor prune by
-  // default instead of as a last resort.
+  const interactions = groupMessagesIntoInteractions(
+    prepared.messagesWithTokens
+  );
+  const budgetForInteractions = input.allowedTokenCount - baseTokens;
   const pruningTargetCeiling =
-    model.contextSize * PRUNING_TARGET_CONTEXT_UTILIZATION - baseTokens;
+    input.model.contextSize * PRUNING_TARGET_CONTEXT_UTILIZATION - baseTokens;
   const pruningBudget =
     pruningTargetCeiling > 0
       ? Math.min(budgetForInteractions, pruningTargetCeiling)
       : budgetForInteractions;
-
-  const logDetails = {
-    workspaceId: conversation.owner.sId,
-    conversationId: conversation.sId,
-    agentConfigurationId: agentConfiguration?.sId,
-    allowedTokenCount,
+  const logDetails: ConversationRenderingLogDetails = {
+    workspaceId: source.conversation.owner.sId,
+    conversationId: source.conversation.sId,
+    agentConfigurationId: input.agentConfiguration?.sId,
+    allowedTokenCount: input.allowedTokenCount,
     model: {
-      providerId: model.providerId,
-      modelId: model.modelId,
-      contextSize: model.contextSize,
-      generationTokensCount: model.generationTokensCount,
-      tokenCountAdjustment: model.tokenCountAdjustment,
-      tokenizer: model.tokenizer,
+      providerId: input.model.providerId,
+      modelId: input.model.modelId,
+      contextSize: input.model.contextSize,
+      generationTokensCount: input.model.generationTokensCount,
+      tokenCountAdjustment: input.model.tokenCountAdjustment,
+      tokenizer: input.model.tokenizer,
     },
     baseTokens,
-    promptCount,
-    toolDefinitionsCount,
+    promptCount: prepared.promptTokens,
+    toolDefinitionsCount: prepared.toolDefinitionTokens,
     tokensMargin: TOKENS_MARGIN,
-    messageCount: messages.length,
-    interactionCount: interactions.length,
-    pokeUrl: `https://poke.dust.tt/${conversation.owner.sId}/conversation/${conversation.sId}`,
+    messageCount:
+      (checkpoint?.state.interactions.reduce(
+        (count, interaction) => count + interaction.messages.length,
+        0
+      ) ?? 0) + prepared.messages.length,
+    interactionCount:
+      checkpoint === null
+        ? interactions.length
+        : checkpoint.state.interactions.length +
+          Math.max(0, interactions.length - 1),
+    pokeUrl: `https://poke.dust.tt/${source.conversation.owner.sId}/conversation/${source.conversation.sId}`,
   };
 
-  const pruneRes = pruneConversationToBudget(interactions, {
-    pruningBudget,
-    budgetForInteractions,
-    logDetails,
-  });
-  if (pruneRes.isErr()) {
-    if (metricsCaller) {
+  const state = checkpoint
+    ? CheckpointedConversationWindowState.restore(checkpoint.state, {
+        pruningBudget,
+        budgetForInteractions,
+        logDetails,
+      })
+    : CheckpointedConversationWindowState.empty({
+        pruningBudget,
+        budgetForInteractions,
+        logDetails,
+      });
+
+  for (let index = 0; index < interactions.length; index++) {
+    if (source.kind === "checkpoint_continuation" && index === 0) {
+      state.appendToLatestInteraction(interactions[index]);
+    } else {
+      state.append(interactions[index]);
+    }
+  }
+
+  const window = state.fit();
+  if (window.isErr()) {
+    if (input.metricsCaller) {
       emitConversationRenderingError({
         kind: "context_overflow",
-        caller: metricsCaller,
-        providerId: model.providerId,
-        modelId: model.modelId,
+        caller: input.metricsCaller,
+        providerId: input.model.providerId,
+        modelId: input.model.modelId,
       });
     }
-    return pruneRes;
+    return window;
   }
+
+  return new Ok({
+    state,
+    window: window.value,
+    conversation: source.conversation,
+    promptTokens: prepared.promptTokens,
+    toolDefinitionTokens: prepared.toolDefinitionTokens,
+    baseTokens,
+    budgetForInteractions,
+    logDetails,
+    timings: prepared.timings,
+    startedAtMs,
+    windowProcessingStartedAtMs,
+    metricsCaller: input.metricsCaller,
+    model: input.model,
+  });
+}
+
+function finalizeConversationWindow(
+  built: BuiltConversationWindow
+): Result<RenderConversationForModelResult, Error> {
   const {
     interactions: prunedInteractions,
     prunedContext,
     stats: pruningStats,
-  } = pruneRes.value;
+  } = built.window;
   const totalTokens = sumInteractionTokens(prunedInteractions);
-
-  const selected: MessageWithTokens[] = prunedInteractions.flatMap(
+  const selected = prunedInteractions.flatMap(
     (interaction) => interaction.messages
   );
-  const tokensUsed = baseTokens + totalTokens;
+  const tokensUsed = built.baseTokens + totalTokens;
 
-  // Merge content fragments into user messages.
-  for (let i = selected.length - 1; i >= 0; i--) {
-    const cfMessage = selected[i];
-    if (isContentFragmentMessageTypeModel(cfMessage)) {
-      const userMessage = selected[i + 1];
-      if (!userMessage || userMessage.role !== "user") {
-        logger.error(
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            selected: selected.map((m) => ({
-              ...m,
-              content:
-                getTextContentFromMessage(m)?.slice(0, 100) + " (truncated...)",
-            })),
-          },
+  const finalMessages: ModelMessageTypeMultiActionsWithoutContentFragment[] =
+    [];
+  let pendingContentFragments: Extract<
+    MessageWithTokens,
+    { role: "content_fragment" }
+  >[] = [];
+
+  for (const message of selected) {
+    if (
+      pendingContentFragments.length > 0 &&
+      message.role !== "user" &&
+      message.role !== "content_fragment"
+    ) {
+      logger.error(
+        {
+          workspaceId: built.conversation.owner.sId,
+          conversationId: built.conversation.sId,
+          selected: selected.map((message) => ({
+            ...message,
+            content:
+              getTextContentFromMessage(message)?.slice(0, 100) +
+              " (truncated...)",
+          })),
+        },
+        "Unexpected state, cannot find user message after a Content Fragment"
+      );
+      return new Err(
+        new Error(
           "Unexpected state, cannot find user message after a Content Fragment"
-        );
-        throw new Error(
-          "Unexpected state, cannot find user message after a Content Fragment"
-        );
+        )
+      );
+    }
+
+    switch (message.role) {
+      case "content_fragment":
+        pendingContentFragments.push(message);
+        break;
+      case "user": {
+        const { tokenCount: _tokenCount, ...messageWithoutTokens } = message;
+        finalMessages.push({
+          ...messageWithoutTokens,
+          content: [
+            ...pendingContentFragments.flatMap((fragment) => fragment.content),
+            ...message.content,
+          ],
+        });
+        pendingContentFragments = [];
+        break;
       }
-
-      userMessage.content = [...cfMessage.content, ...userMessage.content];
-      selected.splice(i, 1);
+      case "assistant":
+      case "compaction":
+      case "function": {
+        const { tokenCount: _tokenCount, ...messageWithoutTokens } = message;
+        finalMessages.push(messageWithoutTokens);
+        break;
+      }
+      default:
+        assertNever(message);
     }
   }
 
-  // Only reachable when the conversation had no messages to begin with: pruning never drops the
-  // current interaction, and the merge above throws before it could empty one out. Not a context
-  // window problem, despite living downstream of the budget machinery.
-  if (selected.length === 0) {
+  if (pendingContentFragments.length > 0) {
+    return new Err(
+      new Error(
+        "Unexpected state, cannot find user message after a Content Fragment"
+      )
+    );
+  }
+
+  if (finalMessages.length === 0) {
     logger.error(
       {
-        ...logDetails,
+        ...built.logDetails,
         failureStage: "no_messages_to_render",
         tokensUsed,
-        budgetForInteractions,
+        budgetForInteractions: built.budgetForInteractions,
       },
       "Render Conversation V2: conversation has no messages to render."
     );
-    if (metricsCaller) {
+    if (built.metricsCaller) {
       emitConversationRenderingError({
         kind: "no_messages",
-        caller: metricsCaller,
-        providerId: model.providerId,
-        modelId: model.modelId,
+        caller: built.metricsCaller,
+        providerId: built.model.providerId,
+        modelId: built.model.modelId,
       });
     }
     return new Err(
@@ -306,58 +524,96 @@ export async function renderConversationForModel(
     );
   }
 
-  // Remove tokenCount from final messages and remove content fragments from return type
-  const finalMessages = selected
-    .map(({ tokenCount: _tokenCount, ...msg }) => msg)
-    // There should be no content fragments as they have been merged into user messages
-    // TODO: refactor how we define the selected array
-    .filter(
-      (
-        message
-      ): message is ModelMessageTypeMultiActionsWithoutContentFragment =>
-        message.role !== "content_fragment"
-    );
-
-  const pruneSelectAndFinalizeMs = Date.now() - stepStart;
-
-  if (metricsCaller) {
+  if (built.metricsCaller) {
     emitConversationRenderingMetrics({
       stats: pruningStats,
-      caller: metricsCaller,
-      providerId: model.providerId,
-      modelId: model.modelId,
-      contextSize: model.contextSize,
+      caller: built.metricsCaller,
+      providerId: built.model.providerId,
+      modelId: built.model.modelId,
+      contextSize: built.model.contextSize,
       tokensUsed,
     });
   }
 
   logger.info(
     {
-      workspaceId: conversation.owner.sId,
-      conversationId: conversation.sId,
-      messageCount: messages.length,
-      promptToken: promptCount,
+      workspaceId: built.conversation.owner.sId,
+      conversationId: built.conversation.sId,
+      messageCount: built.logDetails.messageCount,
+      promptToken: built.promptTokens,
       tokensUsed,
       messageSelected: finalMessages.length,
       prunedContext,
-      elapsed: Date.now() - now,
-      renderAllMessagesMs,
-      getLlmCredentialsMs,
-      countTokensForMessagesMs,
-      tokenCountPromptToolsMs,
-      parallelTokenizationWallMs,
-      pruneSelectAndFinalizeMs,
+      elapsedMs: Date.now() - built.startedAtMs,
+      ...built.timings,
+      pruneSelectAndFinalizeMs: Date.now() - built.windowProcessingStartedAtMs,
     },
     "[ASSISTANT_TRACE] renderConversationForModelEnhanced"
   );
 
   return new Ok({
-    modelConversation: {
-      messages: finalMessages,
-    },
+    modelConversation: { messages: finalMessages },
     tokensUsed,
     prunedContext,
   });
+}
+
+export async function renderConversationWindow(
+  auth: Authenticator,
+  input: ConversationRenderingInput,
+  source: ConversationWindowSource
+): Promise<Result<RenderConversationWindowResult, Error>> {
+  const built = await buildConversationWindow(auth, input, source);
+  if (built.isErr()) {
+    return built;
+  }
+
+  const finalized = finalizeConversationWindow(built.value);
+  if (finalized.isErr()) {
+    return finalized;
+  }
+
+  switch (source.kind) {
+    case "checkpoint_exact":
+      return new Ok({
+        ...finalized.value,
+        checkpointData: {
+          state: source.checkpoint.state,
+          promptTokens: source.checkpoint.promptTokens,
+          toolDefinitionTokens: source.checkpoint.toolDefinitionTokens,
+        },
+      });
+    case "checkpoint_continuation":
+    case "full":
+      return new Ok({
+        ...finalized.value,
+        checkpointData: {
+          state: built.value.state.snapshot(),
+          promptTokens: built.value.promptTokens,
+          toolDefinitionTokens: built.value.toolDefinitionTokens,
+        },
+      });
+    default:
+      assertNever(source);
+  }
+}
+
+export async function renderConversationForModel(
+  auth: Authenticator,
+  {
+    conversation,
+    ...input
+  }: ConversationRenderingInput & { conversation: ConversationType }
+): Promise<Result<RenderConversationForModelResult, Error>> {
+  const built = await buildConversationWindow(auth, input, {
+    kind: "full",
+    conversation,
+  });
+  if (built.isErr()) {
+    return built;
+  }
+
+  return finalizeConversationWindow(built.value);
 }
 
 async function countTokensForMessages(
@@ -368,78 +624,77 @@ async function countTokensForMessages(
   const textRepresentations: string[] = [];
   const additionalTokens: number[] = [];
 
-  for (const [i, m] of messages.entries()) {
-    additionalTokens[i] = 0;
+  for (const [index, message] of messages.entries()) {
+    additionalTokens[index] = 0;
+    let text = `${message.role} ${"name" in message ? message.name : ""} `;
 
-    let text = `${m.role} ${"name" in m ? m.name : ""} `;
-
-    if (m.role === "user" || m.role === "content_fragment") {
+    if (message.role === "user" || message.role === "content_fragment") {
       const textContents: string[] = [];
-      for (const c of m.content) {
-        if (isTextContent(c)) {
-          textContents.push(c.text);
-        } else if (isImageContent(c)) {
-          additionalTokens[i] += IMAGE_CONTENT_TOKEN_COUNT;
+      for (const content of message.content) {
+        if (isTextContent(content)) {
+          textContents.push(content.text);
+        } else if (isImageContent(content)) {
+          additionalTokens[index] += IMAGE_CONTENT_TOKEN_COUNT;
         } else {
-          assertNever(c);
+          assertNever(content);
         }
       }
       text += textContents.join("\n");
-    } else if (m.role === "assistant") {
-      //  Use the `contents` if available.
-      if (m.contents?.length) {
-        for (const c of m.contents) {
-          if (c.type === "reasoning") {
-            additionalTokens[i] += c.value.tokens;
-          } else if (c.type === "text_content") {
-            text += c.value;
-          } else if (c.type === "function_call") {
-            text += `${c.value.name} ${c.value.arguments}`;
-          } else if (c.type === "provider_passthrough") {
+    } else if (message.role === "assistant") {
+      if (message.contents?.length) {
+        for (const content of message.contents) {
+          if (content.type === "reasoning") {
+            additionalTokens[index] += content.value.tokens;
+          } else if (content.type === "text_content") {
+            text += content.value;
+          } else if (content.type === "function_call") {
+            text += `${content.value.name} ${content.value.arguments}`;
+          } else if (content.type === "provider_passthrough") {
             // Opaque provider block, not counted here.
           } else {
-            assertNever(c);
+            assertNever(content);
           }
         }
-      } else if (m.content) {
-        // Fallback to legacy `content` field if `contents` is not available.
-        text += m.content;
+      } else if (message.content) {
+        text += message.content;
       }
-    } else if (m.role === "function") {
-      const content = Array.isArray(m.content)
-        ? m.content
-        : [{ type: "text" as const, text: m.content }];
+    } else if (message.role === "function") {
+      const content = Array.isArray(message.content)
+        ? message.content
+        : [{ type: "text" as const, text: message.content }];
       const textContents: string[] = [];
-      for (const c of content) {
-        if (isTextContent(c)) {
-          textContents.push(c.text);
-        } else if (isImageContent(c)) {
-          additionalTokens[i] += IMAGE_CONTENT_TOKEN_COUNT;
+      for (const item of content) {
+        if (isTextContent(item)) {
+          textContents.push(item.text);
+        } else if (isImageContent(item)) {
+          additionalTokens[index] += IMAGE_CONTENT_TOKEN_COUNT;
         } else {
-          assertNever(c);
+          assertNever(item);
         }
       }
       text += textContents.join("\n");
-    } else if (m.role === "compaction") {
-      text += m.content;
+    } else if (message.role === "compaction") {
+      text += message.content;
     } else {
-      assertNever(m);
+      assertNever(message);
     }
 
     textRepresentations.push(text);
   }
 
-  const res = await tokenCountForTexts(textRepresentations, model, credentials);
-  if (res.isErr()) {
-    return res;
+  const result = await tokenCountForTexts(
+    textRepresentations,
+    model,
+    credentials
+  );
+  if (result.isErr()) {
+    return result;
   }
 
-  const textCounts = res.value;
-
   return new Ok(
-    textCounts.map((count, i) => ({
-      ...messages[i],
-      tokenCount: count + additionalTokens[i],
+    result.value.map((count, index) => ({
+      ...messages[index],
+      tokenCount: count + additionalTokens[index],
     }))
   );
 }

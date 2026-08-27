@@ -40,6 +40,36 @@ function get(workspace: { sId: string }, sId: string) {
 }
 
 describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
+  it("refuses to change the editors of an archived skill", async () => {
+    const { workspace, auth } = await setup();
+
+    const skill = await SkillFactory.create(auth);
+    const builderUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, builderUser, {
+      role: "builder",
+    });
+
+    await skill.archive(auth);
+
+    const response = await patch(workspace, skill.sId, {
+      addEditorIds: [builderUser.sId],
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "An archived skill cannot be updated. Restore it first.",
+      },
+    });
+
+    const editorsResponse = await get(workspace, skill.sId);
+    const editors = (await editorsResponse.json()).editors;
+    expect(editors.map((e: { sId: string }) => e.sId)).not.toContain(
+      builderUser.sId
+    );
+  });
+
   it("allows adding builder as editor", async () => {
     const { workspace, auth } = await setup();
 

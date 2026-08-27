@@ -7,7 +7,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -36,17 +35,17 @@ describe("MCPServerViewResource", () => {
 
       await FeatureFlagFactory.basic(
         await Authenticator.internalAdminForWorkspace(workspace1.sId),
-        "dev_mcp_actions"
+        "http_client_tool"
       );
       await FeatureFlagFactory.basic(
         await Authenticator.internalAdminForWorkspace(workspace2.sId),
-        "dev_mcp_actions"
+        "http_client_tool"
       );
 
-      // Mock the INTERNAL_MCP_SERVERS to override the "primitive_types_debugger" server config
+      // Mock the INTERNAL_MCP_SERVERS to override the "http_client" server config
       // so that the test passes even if we edit the server config.
-      const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
-      Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+      const originalConfig = INTERNAL_MCP_SERVERS["http_client"];
+      Object.defineProperty(INTERNAL_MCP_SERVERS, "http_client", {
         value: {
           ...originalConfig,
           availability: "auto",
@@ -56,16 +55,14 @@ describe("MCPServerViewResource", () => {
             plan: PlanType;
             featureFlags: WhitelistableFeature[];
           }) => {
-            return !featureFlags.includes("dev_mcp_actions");
+            return !featureFlags.includes("http_client_tool");
           },
         },
         writable: true,
         configurable: true,
       });
 
-      expect(
-        INTERNAL_MCP_SERVERS["primitive_types_debugger"].availability
-      ).toBe("auto");
+      expect(INTERNAL_MCP_SERVERS["http_client"].availability).toBe("auto");
 
       // Get auth for workspace1
       const auth1 = await Authenticator.internalAdminForWorkspace(
@@ -81,7 +78,7 @@ describe("MCPServerViewResource", () => {
       const internalServer1 = await InternalMCPServerInMemoryResource.makeNew(
         auth1,
         {
-          name: "primitive_types_debugger",
+          name: "http_client",
           useCase: null,
         }
       );
@@ -89,7 +86,7 @@ describe("MCPServerViewResource", () => {
       const internalServer2 = await InternalMCPServerInMemoryResource.makeNew(
         auth2,
         {
-          name: "primitive_types_debugger",
+          name: "http_client",
           useCase: null,
         }
       );
@@ -103,8 +100,8 @@ describe("MCPServerViewResource", () => {
         await GroupFactory.defaults(workspace1);
       const user1 = await UserFactory.superUser();
       await MembershipFactory.associate(workspace1, user1, { role: "user" });
-      await GroupSpaceFactory.associate(systemSpace1, systemGroup);
-      await GroupSpaceFactory.associate(space1, globalGroup);
+      await SpaceFactory.attachGroup(systemSpace1, systemGroup);
+      await SpaceFactory.attachGroup(space1, globalGroup);
 
       const auth = await Authenticator.fromUserIdAndWorkspaceId(
         user1.sId,
@@ -143,11 +140,11 @@ describe("MCPServerViewResource", () => {
       const restrictedSpace = await SpaceFactory.regular(workspace);
 
       // Create feature flag to enable MCP actions
-      await FeatureFlagFactory.basic(adminAuth, "dev_mcp_actions");
+      await FeatureFlagFactory.basic(adminAuth, "http_client_tool");
 
       // Mock the INTERNAL_MCP_SERVERS config
-      const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
-      Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+      const originalConfig = INTERNAL_MCP_SERVERS["http_client"];
+      Object.defineProperty(INTERNAL_MCP_SERVERS, "http_client", {
         value: {
           ...originalConfig,
           availability: "auto",
@@ -157,7 +154,7 @@ describe("MCPServerViewResource", () => {
             plan: PlanType;
             featureFlags: WhitelistableFeature[];
           }) => {
-            return !featureFlags.includes("dev_mcp_actions");
+            return !featureFlags.includes("http_client_tool");
           },
         },
         writable: true,
@@ -168,7 +165,7 @@ describe("MCPServerViewResource", () => {
       const internalServer = await InternalMCPServerInMemoryResource.makeNew(
         adminAuth,
         {
-          name: "primitive_types_debugger",
+          name: "http_client",
           useCase: null,
         }
       );
@@ -241,11 +238,11 @@ describe("MCPServerViewResource", () => {
       const space2 = await SpaceFactory.regular(workspace);
 
       // Create feature flag to enable MCP actions
-      await FeatureFlagFactory.basic(adminAuth, "dev_mcp_actions");
+      await FeatureFlagFactory.basic(adminAuth, "http_client_tool");
 
       // Mock the INTERNAL_MCP_SERVERS config
-      const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
-      Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+      const originalConfig = INTERNAL_MCP_SERVERS["http_client"];
+      Object.defineProperty(INTERNAL_MCP_SERVERS, "http_client", {
         value: {
           ...originalConfig,
           availability: "auto",
@@ -255,7 +252,7 @@ describe("MCPServerViewResource", () => {
             plan: PlanType;
             featureFlags: WhitelistableFeature[];
           }) => {
-            return !featureFlags.includes("dev_mcp_actions");
+            return !featureFlags.includes("http_client_tool");
           },
         },
         writable: true,
@@ -266,7 +263,7 @@ describe("MCPServerViewResource", () => {
       const internalServer = await InternalMCPServerInMemoryResource.makeNew(
         adminAuth,
         {
-          name: "primitive_types_debugger",
+          name: "http_client",
           useCase: null,
         }
       );
@@ -309,11 +306,11 @@ describe("MCPServerViewResource", () => {
       const space2 = await SpaceFactory.regular(workspace);
 
       // Create feature flag to enable MCP actions
-      await FeatureFlagFactory.basic(adminAuth, "dev_mcp_actions");
+      await FeatureFlagFactory.basic(adminAuth, "http_client_tool");
 
       // Mock the INTERNAL_MCP_SERVERS config
-      const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
-      Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+      const originalConfig = INTERNAL_MCP_SERVERS["http_client"];
+      Object.defineProperty(INTERNAL_MCP_SERVERS, "http_client", {
         value: {
           ...originalConfig,
           availability: "auto",
@@ -323,7 +320,7 @@ describe("MCPServerViewResource", () => {
             plan: PlanType;
             featureFlags: WhitelistableFeature[];
           }) => {
-            return !featureFlags.includes("dev_mcp_actions");
+            return !featureFlags.includes("http_client_tool");
           },
         },
         writable: true,
@@ -334,7 +331,7 @@ describe("MCPServerViewResource", () => {
       const internalServer = await InternalMCPServerInMemoryResource.makeNew(
         adminAuth,
         {
-          name: "primitive_types_debugger",
+          name: "http_client",
           useCase: null,
         }
       );
@@ -799,7 +796,7 @@ describe("MCPServerViewResource", () => {
       workspace = await WorkspaceFactory.basic();
       adminAuth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       await SpaceFactory.defaults(adminAuth);
-      await FeatureFlagFactory.basic(adminAuth, "dev_mcp_actions");
+      await FeatureFlagFactory.basic(adminAuth, "http_client_tool");
     });
 
     it("lists display metadata for internal and remote servers", async () => {
@@ -829,8 +826,8 @@ describe("MCPServerViewResource", () => {
     });
 
     it("should populate toolsMetadata for internal server views", async () => {
-      const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
-      Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+      const originalConfig = INTERNAL_MCP_SERVERS["http_client"];
+      Object.defineProperty(INTERNAL_MCP_SERVERS, "http_client", {
         value: {
           ...originalConfig,
           availability: "auto",
@@ -839,7 +836,7 @@ describe("MCPServerViewResource", () => {
           }: {
             plan: PlanType;
             featureFlags: WhitelistableFeature[];
-          }) => !featureFlags.includes("dev_mcp_actions"),
+          }) => !featureFlags.includes("http_client_tool"),
         },
         writable: true,
         configurable: true,
@@ -847,7 +844,7 @@ describe("MCPServerViewResource", () => {
 
       const internalServer = await InternalMCPServerInMemoryResource.makeNew(
         adminAuth,
-        { name: "primitive_types_debugger", useCase: null }
+        { name: "http_client", useCase: null }
       );
 
       // Create tool metadata for the internal server.
@@ -953,10 +950,10 @@ describe("MCPServerViewResource", () => {
       const globalSpace =
         await SpaceResource.fetchWorkspaceGlobalSpace(adminAuth);
 
-      // Gate primitive_types_debugger behind a flag, and grant it so the server
+      // Gate http_client behind a flag, and grant it so the server
       // and its views can be created — simulating a workspace that had the flag.
-      const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
-      Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+      const originalConfig = INTERNAL_MCP_SERVERS["http_client"];
+      Object.defineProperty(INTERNAL_MCP_SERVERS, "http_client", {
         value: {
           ...originalConfig,
           availability: "auto",
@@ -965,16 +962,16 @@ describe("MCPServerViewResource", () => {
           }: {
             plan: PlanType;
             featureFlags: WhitelistableFeature[];
-          }) => !featureFlags.includes("dev_mcp_actions"),
+          }) => !featureFlags.includes("http_client_tool"),
         },
         writable: true,
         configurable: true,
       });
-      await FeatureFlagFactory.basic(adminAuth, "dev_mcp_actions");
+      await FeatureFlagFactory.basic(adminAuth, "http_client_tool");
 
       const internalServer = await InternalMCPServerInMemoryResource.makeNew(
         adminAuth,
-        { name: "primitive_types_debugger", useCase: null }
+        { name: "http_client", useCase: null }
       );
       const view = await MCPServerViewFactory.create(
         workspace,
@@ -983,7 +980,7 @@ describe("MCPServerViewResource", () => {
       );
 
       // The flag is turned off: the view now resolves to a restricted server.
-      Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+      Object.defineProperty(INTERNAL_MCP_SERVERS, "http_client", {
         value: {
           ...originalConfig,
           availability: "auto",
@@ -1010,7 +1007,7 @@ describe("MCPServerViewResource", () => {
       expect(surfaced).not.toBeNull();
       expect(surfaced!.sId).toBe(view.sId);
 
-      Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+      Object.defineProperty(INTERNAL_MCP_SERVERS, "http_client", {
         value: originalConfig,
         writable: true,
         configurable: true,

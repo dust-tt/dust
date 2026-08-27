@@ -193,7 +193,7 @@ makeScript(
     },
   },
   async ({ agentMessageId, execute, workspaceId }) => {
-    const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+    const auth = await Authenticator.internalUserForWorkspace(workspaceId);
     const analyticsContext =
       await ConversationResource.fetchAgentMessageConsumptionAnalyticsContext(
         auth,

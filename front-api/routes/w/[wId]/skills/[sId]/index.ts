@@ -30,6 +30,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { rejectArchivedSkill } from "@front-api/routes/w/[wId]/skills/guards";
 import type { Context, TypedResponse } from "hono";
 import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
@@ -250,6 +251,11 @@ app.patch(
             "You don't have permission to change this skill's auto-discoverable status.",
         },
       });
+    }
+
+    const archivedError = rejectArchivedSkill(ctx, skill);
+    if (archivedError) {
+      return archivedError;
     }
 
     // Editing a skill remains editor-only; non-editors holding the publish permission use
@@ -516,6 +522,11 @@ app.delete(
           message: "Only admins and editors can archive this skill.",
         },
       });
+    }
+
+    const archivedDeleteError = rejectArchivedSkill(ctx, skill);
+    if (archivedDeleteError) {
+      return archivedDeleteError;
     }
 
     if (skill.status === "suggested") {

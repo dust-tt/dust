@@ -11,6 +11,7 @@ import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversati
 import { useDevMode } from "@app/hooks/useDevMode";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
+import { OPEN_USER_ANALYTICS_EVENT } from "@app/lib/analytics/events";
 import config from "@app/lib/api/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -23,7 +24,12 @@ import { serializeMention } from "@app/lib/mentions/format";
 import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { useUserMetadata } from "@app/lib/swr/user";
-import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
+import type { TrackingAction } from "@app/lib/tracking";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
@@ -75,7 +81,7 @@ import {
   Terminal,
   User01,
 } from "@dust-tt/sparkle";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 interface UserMenuProps {
   user: UserTypeWithWorkspaces;
@@ -84,10 +90,14 @@ interface UserMenuProps {
   creditUsageState?: CreditUsageState | null;
 }
 
-function trackUserMenuEvent(item: string) {
+function trackUserMenuEvent(
+  item: string,
+  action: TrackingAction = TRACKING_ACTIONS.CLICK
+) {
   trackEvent({
     area: TRACKING_AREAS.NAVIGATION,
     object: "user_menu_item",
+    action,
     extra: { item },
   });
 }
@@ -118,6 +128,13 @@ export function UserMenu({
   const showExtensionMenu =
     !isExtensionLastUsedAtLoading &&
     shouldShowExtensionMenu(extensionLastUsedAt?.value);
+
+  useEffect(() => {
+    const openAnalytics = () => setAnalyticsOpen(true);
+    window.addEventListener(OPEN_USER_ANALYTICS_EVENT, openAnalytics);
+    return () =>
+      window.removeEventListener(OPEN_USER_ANALYTICS_EVENT, openAnalytics);
+  }, []);
 
   const sendNotification = useSendNotification();
   const devMode = useDevMode();
@@ -283,7 +300,7 @@ export function UserMenu({
         owner={owner}
       />
       <Dialog open={analyticsOpen} onOpenChange={setAnalyticsOpen}>
-        <DialogContent size="2xl" height="xl" className="focus:outline-none">
+        <DialogContent size="2xl" height="xl" grow>
           <UserAnalyticsPopover
             key={owner.sId}
             open={analyticsOpen}
@@ -360,7 +377,13 @@ export function UserMenu({
             </>
           )}
 
-          <DropdownMenuSub>
+          <DropdownMenuSub
+            onOpenChange={(open) => {
+              if (open) {
+                trackUserMenuEvent("help", TRACKING_ACTIONS.OPEN);
+              }
+            }}
+          >
             <DropdownMenuSubTrigger label="Help" icon={Heart} />
             <DropdownMenuPortal>
               <DropdownMenuSubContent>

@@ -11,7 +11,7 @@ import {
   WHITELISTABLE_FEATURES,
   WHITELISTABLE_FEATURES_CONFIG,
 } from "@app/types/shared/feature_flags";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 function findFeatureFlagByDustOnlyStatus(dustOnly: boolean) {
   const feature = WHITELISTABLE_FEATURES.find(
@@ -145,6 +145,26 @@ describe("toggleFeatureFlagPlugin.execute", () => {
     await expect(
       FeatureFlagResource.isEnabledForWorkspace(workspace, dustOnlyFeature)
     ).resolves.toBe(true);
+  });
+
+  it("allows enabling Dust-only feature flags on any plan in development", async () => {
+    vi.stubEnv("IS_DEVELOPMENT", "true");
+    try {
+      const workspace = await WorkspaceFactory.basic();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const dustOnlyFeature = findFeatureFlagByDustOnlyStatus(true);
+
+      const result = await toggleFeatureFlagPlugin.execute(auth, null, {
+        features: [dustOnlyFeature],
+      });
+
+      expect(result.isOk()).toBe(true);
+      await expect(
+        FeatureFlagResource.isEnabledForWorkspace(workspace, dustOnlyFeature)
+      ).resolves.toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("allows enabling non-Dust-only feature flags on other plans", async () => {

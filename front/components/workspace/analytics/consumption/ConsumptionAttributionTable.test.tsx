@@ -437,6 +437,50 @@ describe("ConsumptionAttributionTable", () => {
     });
   });
 
+  it("clears the search when a row is added to the filters", async () => {
+    const onAddFilter = vi.fn();
+    const row = {
+      id: "user-1",
+      name: "Jane Doe",
+      pictureUrl: null,
+      credits: 100,
+      avgCredits: 10,
+    };
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [row],
+      totalCredits: 100,
+      totalCount: 1,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="user"
+        onDimensionChange={vi.fn()}
+        onAddFilter={onAddFilter}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    const searchInput = screen.getByPlaceholderText("Search…");
+    fireEvent.change(searchInput, { target: { value: "Jane" } });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add Jane Doe to filters" })
+    );
+
+    expect(onAddFilter).toHaveBeenCalledWith(expect.objectContaining(row));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Search…")).toHaveValue("");
+    });
+  });
+
   it("selects the API key dimension with a pointer", () => {
     const onDimensionChange = vi.fn();
     mockUseConsumptionTop.mockReturnValue({
@@ -737,6 +781,74 @@ describe("ConsumptionAttributionTable", () => {
       expect.objectContaining({ id: "agent-id" })
     );
     expect(onAddFilter).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    {
+      dimension: "agent" as const,
+      row: {
+        id: "agent-id",
+        name: "Research agent",
+        pictureUrl: null,
+        description: null,
+        icon: null,
+        modelId: "model-id",
+        modelDisplayName: "Model",
+        credits: 100,
+        avgCredits: 10,
+        previousCredits: null,
+      },
+    },
+    {
+      dimension: "skill" as const,
+      row: {
+        id: "skill-id",
+        name: "Research skill",
+        pictureUrl: null,
+        description: null,
+        icon: null,
+        modelId: null,
+        modelDisplayName: null,
+        credits: 100,
+        avgCredits: 10,
+        previousCredits: null,
+      },
+    },
+  ])("opens the $dimension info page from its name", ({ dimension, row }) => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [row],
+      totalCredits: 100,
+      totalCount: 1,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+    const onAgentClick = vi.fn();
+    const onSkillClick = vi.fn();
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension={dimension}
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onAgentClick={onAgentClick}
+        onRemoveFilter={vi.fn()}
+        onSkillClick={onSkillClick}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByText(row.name));
+
+    expect(
+      dimension === "agent" ? onAgentClick : onSkillClick
+    ).toHaveBeenCalledWith(row.id);
+    expect(
+      dimension === "agent" ? onSkillClick : onAgentClick
+    ).not.toHaveBeenCalled();
   });
 
   it("renders the skill identity and description without a model", () => {

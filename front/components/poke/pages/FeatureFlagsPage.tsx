@@ -10,6 +10,8 @@ import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import {
   FEATURE_FLAG_STAGE_LABELS,
   FEATURE_FLAG_STAGES,
+  isWhitelistableFeature,
+  WHITELISTABLE_FEATURES_CONFIG,
 } from "@app/types/shared/feature_flags";
 import { Button, LinkWrapper, Pencil01, Trash01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -60,7 +62,33 @@ function makeColumns({
         <PokeColumnSortableHeader column={column} label="Stage" />
       ),
       filterFn: (row, id, value) => value.includes(row.getValue(id)),
-      cell: ({ row }) => <FeatureFlagStageChip stage={row.original.stage} />,
+      cell: ({ row }) => <FeatureFlagStageChip flagName={row.original.name} />,
+    },
+    {
+      id: "owner",
+      accessorFn: (flag) =>
+        isWhitelistableFeature(flag.name)
+          ? WHITELISTABLE_FEATURES_CONFIG[flag.name].owner
+          : null,
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Owner" />
+      ),
+      cell: ({ row }) => {
+        const owner = row.getValue<string | null>("owner");
+        if (!owner) {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        return (
+          <a
+            href={`https://github.com/${owner}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-highlight-600 hover:underline"
+          >
+            @{owner}
+          </a>
+        );
+      },
     },
     {
       accessorKey: "workspaceCount",

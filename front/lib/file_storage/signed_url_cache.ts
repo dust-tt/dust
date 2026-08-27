@@ -5,7 +5,7 @@ import {
 import { cacheWithRedis } from "@app/lib/utils/cache";
 
 // LLM providers may fetch a cached image URL several minutes after it was signed.
-export const MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS = 15 * 60 * 1000;
+export const MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS = 60 * 60 * 1000;
 
 // Cache TTL as a fraction of the signed URL's own expiration, so a served URL still has
 // real validity left instead of sitting right at its expiry.

@@ -401,7 +401,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     workspaceId: string;
     wakeUpId: string;
   }): Promise<Result<{ auth: Authenticator; wakeUp: WakeUpResource }, Error>> {
-    let auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+    let auth = await Authenticator.internalUserForWorkspace(workspaceId);
     const wakeUp = await WakeUpResource.fetchById(auth, wakeUpId);
 
     if (!wakeUp) {

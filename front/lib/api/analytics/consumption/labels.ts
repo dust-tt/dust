@@ -8,6 +8,11 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
+import { getTierForModel } from "@app/types/assistant/models/model_tiers";
+import { getModelMaker } from "@app/types/assistant/models/providers";
+import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
@@ -38,6 +43,10 @@ export type DimensionLabel = {
   modelDisplayName?: string;
   // Only tools and skills have an icon.
   icon?: string | null;
+  // Facet metadata used to classify agents and models in filter controls.
+  scope?: AgentConfigurationScope;
+  maker?: ModelMakerIdType;
+  tier?: ModelsTierName;
 };
 
 function labelsFromNames(
@@ -74,6 +83,7 @@ export async function resolveDimensionLabels(
               description: label?.description || null,
               modelId: label?.modelId,
               modelDisplayName: label?.modelDisplayName,
+              ...(label?.scope ? { scope: label.scope } : {}),
             },
           ];
         })
@@ -112,13 +122,23 @@ export async function resolveDimensionLabels(
     }
 
     case "model":
-      return labelsFromNames(
-        new Map(
-          keys.map((key) => [
+      return new Map(
+        keys.map((key) => {
+          const model = getModelConfigByModelId(key);
+          const tier = model
+            ? getTierForModel(model.modelId, model.defaultReasoningEffort)
+            : null;
+          return [
             key,
-            getModelConfigByModelId(key)?.displayName ?? key,
-          ])
-        )
+            {
+              name: model?.displayName ?? key,
+              pictureUrl: null,
+              description: null,
+              ...(model ? { maker: getModelMaker(model) } : {}),
+              ...(tier ? { tier } : {}),
+            },
+          ];
+        })
       );
 
     case "tool": {

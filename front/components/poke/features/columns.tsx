@@ -11,6 +11,7 @@ type FeatureFlagsDisplayType = {
   name: WhitelistableFeature;
   description: string;
   stage: FeatureFlagStage;
+  owner: string;
   enabled: boolean;
   enabledAt: string | null;
 };
@@ -28,7 +29,23 @@ export function makeColumnsForFeatureFlags(): ColumnDef<FeatureFlagsDisplayType>
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Stage" />
       ),
-      cell: ({ row }) => <FeatureFlagStageChip stage={row.original.stage} />,
+      cell: ({ row }) => <FeatureFlagStageChip flagName={row.original.name} />,
+    },
+    {
+      accessorKey: "owner",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Owner" />
+      ),
+      cell: ({ row }) => (
+        <a
+          href={`https://github.com/${row.original.owner}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-highlight-600 hover:underline"
+        >
+          @{row.original.owner}
+        </a>
+      ),
     },
     {
       accessorKey: "description",

@@ -20,12 +20,13 @@ export type PricingEntry = TokenPricingRates & {
 // Pricing for current models (USD per million tokens - equivalent to micro-USD per token)
 // This record contains all static model IDs. Custom models use default pricing.
 const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
-  // https://openai.com/api/pricing
+  // Verified 2026-08-26: https://developers.openai.com/api/docs/pricing
+  // Promotional pricing is available at least through 2026-11-21; re-verify after that date.
   "gpt-5.6-sol": {
-    input: 5.0,
-    output: 30.0,
-    cache_creation_input_tokens: 6.25,
-    cache_read_input_tokens: 0.5,
+    input: 4.0,
+    output: 20.0,
+    cache_creation_input_tokens: 5.0,
+    cache_read_input_tokens: 0.4,
   },
   // https://openai.com/api/pricing
   "gpt-5.6-terra": {

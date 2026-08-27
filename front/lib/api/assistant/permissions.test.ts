@@ -2,7 +2,6 @@ import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp"
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -32,7 +31,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
 
     // Create a regular space with specific group permissions
     const regularSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(regularSpace, globalGroup);
+    await SpaceFactory.attachGroup(regularSpace, globalGroup);
 
     // Create a public space
     const publicSpace = await SpaceFactory.regular(workspace); // Using regular as proxy for now
@@ -117,7 +116,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
 
     // Create a restricted space using SpaceFactory
     const restrictedSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(restrictedSpace, globalGroup);
+    await SpaceFactory.attachGroup(restrictedSpace, globalGroup);
 
     // Create MCP servers first, then their views in different spaces
     const globalMCPServer = await RemoteMCPServerFactory.create(workspace);
@@ -194,10 +193,10 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
 
     // Create two spaces using SpaceFactory
     const space1 = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(space1, globalGroup);
+    await SpaceFactory.attachGroup(space1, globalGroup);
 
     const space2 = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(space2, globalGroup);
+    await SpaceFactory.attachGroup(space2, globalGroup);
 
     // Create data source views in both spaces
     const dsView1 = await DataSourceViewFactory.folder(workspace, space1);
@@ -287,10 +286,10 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
 
     // Create different spaces for different resource types
     const dsSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(dsSpace, globalGroup);
+    await SpaceFactory.attachGroup(dsSpace, globalGroup);
 
     const mcpSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(mcpSpace, globalGroup);
+    await SpaceFactory.attachGroup(mcpSpace, globalGroup);
 
     // Create resources in each space
     const dsView = await DataSourceViewFactory.folder(workspace, dsSpace);
@@ -466,10 +465,10 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
 
     // Create spaces for the skill requirements
     const skillSpace1 = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(skillSpace1, globalGroup);
+    await SpaceFactory.attachGroup(skillSpace1, globalGroup);
 
     const skillSpace2 = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(skillSpace2, globalGroup);
+    await SpaceFactory.attachGroup(skillSpace2, globalGroup);
 
     // Create a skill with space requirements
     const skill = await SkillFactory.create(authenticator, {
@@ -497,15 +496,15 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
 
     // Create a shared space used by both action and skill
     const sharedSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(sharedSpace, globalGroup);
+    await SpaceFactory.attachGroup(sharedSpace, globalGroup);
 
     // Create an action-only space
     const actionSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(actionSpace, globalGroup);
+    await SpaceFactory.attachGroup(actionSpace, globalGroup);
 
     // Create a skill-only space
     const skillSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(skillSpace, globalGroup);
+    await SpaceFactory.attachGroup(skillSpace, globalGroup);
 
     // Create data source view in shared and action spaces
     const sharedDsView = await DataSourceViewFactory.folder(

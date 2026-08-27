@@ -1,3 +1,4 @@
+import { Authenticator } from "@app/lib/auth";
 import { PlanModel } from "@app/lib/models/plan";
 import { upsertFreePlans } from "@app/lib/plans/free_plans";
 import {
@@ -9,6 +10,7 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -163,6 +165,19 @@ export class WorkspaceFactory {
     // Create default groups (global, system) so tests don't need to call
     // GroupFactory.defaults() manually. Idempotent if already created.
     await GroupResource.makeDefaultsForWorkspace(workspaceType);
+
+    // Every workspace reads its own skills: the global group holds `reader` on `skill:-1`, seeded by
+    // `seedWorkspaceCapabilities` in real provisioning. Without it `SkillResource.canRead` denies
+    // and no test could fetch a skill. The action-gating capabilities are deliberately left unset,
+    // so a test that needs one grants it explicitly (see `grantWorkspacePermission`) and the suites
+    // asserting denial keep their baseline.
+    const auth = await Authenticator.internalAdminForWorkspace(
+      workspaceType.sId
+    );
+    await GroupPermissionResource.setForEverybody(auth, {
+      grantType: "reader",
+      resourceType: "skill",
+    });
 
     return workspaceType;
   }

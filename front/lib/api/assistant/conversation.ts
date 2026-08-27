@@ -590,7 +590,7 @@ export async function postUserMessage(
     // If the Pod is open and there is no user in the context (eg: slack bot message),
     // we allow the message to be posted.
     const skipMembershipCheck =
-      pod.isOpen() && !auth.user() && doNotAssociateUser === true;
+      !auth.user() && doNotAssociateUser === true && (await pod.isOpen(auth));
     if (!skipMembershipCheck && !pod.isMember(auth)) {
       return new Err({
         status_code: 403,

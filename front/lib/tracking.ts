@@ -82,9 +82,9 @@ export type TrackingAction =
 export type TrackingExtra = Record<string, string | number | boolean>;
 
 interface TrackEventParams {
-  area: TrackingArea | string;
+  area: TrackingArea;
   object: string;
-  action?: TrackingAction | string;
+  action?: TrackingAction;
   extra?: TrackingExtra;
 }
 
@@ -127,7 +127,7 @@ export function trackEvent({
  * <Button onClick={withTracking(TRACKING_AREAS.DATA, "select", handleClick, { id: "123" })} />
  */
 export function withTracking<T extends Element = HTMLElement>(
-  area: TrackingArea | string,
+  area: TrackingArea,
   object: string,
   handler?: (e: React.MouseEvent<T>) => void | Promise<void>,
   extra?: TrackingExtra

@@ -56,7 +56,8 @@ export function uniqueMessagesCardinalityAgg(): estypes.AggregationsAggregationC
 
 export type ConsumptionTopDimension =
   | ConsumptionScopeDimension
-  | "conversation";
+  | "conversation"
+  | "reasoning_effort";
 
 export const CONSUMPTION_DIMENSION_FIELDS: Record<
   ConsumptionScopeDimension,
@@ -80,6 +81,7 @@ export const CONSUMPTION_TOP_DIMENSION_FIELDS: Record<
 > = {
   ...CONSUMPTION_DIMENSION_FIELDS,
   conversation: CONVERSATION_ID_FIELD,
+  reasoning_effort: "model.reasoning_effort",
 };
 
 export type ConsumptionTopUnit = "message" | "invocation";
@@ -104,6 +106,7 @@ export const CONSUMPTION_TOP_DIMENSION_UNIT: Record<
 > = {
   ...CONSUMPTION_DIMENSION_UNIT,
   conversation: "message",
+  reasoning_effort: "message",
 };
 
 export const CONSUMPTION_METRICS = ["credit_micro"] as const;

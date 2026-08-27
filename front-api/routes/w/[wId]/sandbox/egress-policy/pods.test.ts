@@ -73,7 +73,7 @@ describe("GET /api/w/:wId/sandbox/egress-policy/pods", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      pods: [{ sId: podA.sId, name: podA.name }],
+      pods: [{ sId: podA.sId, name: podA.name, isRestricted: true }],
     });
   });
 

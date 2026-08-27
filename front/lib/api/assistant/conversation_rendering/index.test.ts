@@ -1,5 +1,11 @@
+import { CheckpointedConversationWindowState } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
+import { makeConversationWindowCheckpoint } from "@app/lib/api/assistant/conversation_rendering/conversation_window_checkpoint";
+import { renderConversationWindow } from "@app/lib/api/assistant/conversation_rendering/conversation_window_core";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   Content,
   FunctionMessageTypeModel,
@@ -7,9 +13,10 @@ import type {
   UserMessageTypeModel,
 } from "@app/types/assistant/generation";
 import { isTextContent } from "@app/types/assistant/generation";
+import { GPT_4O_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import {
   renderConversationForModel,
   TOKENS_MARGIN,
@@ -39,12 +46,27 @@ vi.mock("@app/lib/tokenization", () => ({
   tokenCountForTexts: vi.fn(),
 }));
 
-function createConversation() {
+function createConversation(owner: LightWorkspaceType): ConversationType {
   return {
+    id: 1,
     sId: "conv_1",
-    owner: { sId: "w_1" },
+    created: 0,
+    updated: 0,
+    unread: false,
+    lastReadMs: null,
+    actionRequired: false,
+    hasError: false,
+    title: null,
+    spaceId: null,
+    triggerId: null,
+    depth: 0,
+    metadata: {},
+    requestedSpaceIds: [],
+    isRunningAgentLoop: true,
+    owner,
+    visibility: "unlisted",
     content: [],
-  } as any;
+  };
 }
 
 function userMessage(
@@ -164,21 +186,282 @@ function computeAllowedTokenCount({
   return baseTokens + interactionTokens + availableDelta;
 }
 
+function checkpointSnapshot(messages: ModelMessageTypeMultiActions[]) {
+  const state = CheckpointedConversationWindowState.empty({
+    pruningBudget: 100_000,
+    budgetForInteractions: 100_000,
+    logDetails: {},
+  });
+  state.append({
+    messages: messages.map((message) => ({ ...message, tokenCount: 10 })),
+  });
+
+  return state.snapshot();
+}
+
+function checkpoint(messages: ModelMessageTypeMultiActions[]) {
+  return makeConversationWindowCheckpoint({
+    identity: {
+      workspaceId: "w_1",
+      conversationId: "conv_1",
+      agentMessageId: "agent_message_1",
+      agentMessageVersion: 0,
+      step: 0,
+    },
+    profileHash: "profile",
+    promptTokens: 10,
+    toolDefinitionTokens: 20,
+    state: checkpointSnapshot(messages),
+  });
+}
+
+describe("seeded conversation window", () => {
+  const model = GPT_4O_MODEL_CONFIG;
+  let auth: Authenticator;
+  let workspace: LightWorkspaceType;
+
+  beforeEach(async () => {
+    ({ authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    }));
+    vi.clearAllMocks();
+    vi.mocked(getLlmCredentials).mockResolvedValue({});
+  });
+
+  it("restores an exact checkpoint without rendering or tokenizing", async () => {
+    const conversation = createConversation(workspace);
+    const result = await renderConversationWindow(
+      auth,
+      {
+        model,
+        prompt: "PROMPT",
+        enabledSkills: [],
+        tools: "TOOLS",
+        allowedTokenCount: 100_000,
+      },
+      {
+        kind: "checkpoint_exact",
+        conversation,
+        checkpoint: checkpoint([
+          userMessage("saved user"),
+          assistantMessage("saved assistant"),
+        ]),
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.modelConversation.messages).toEqual([
+      userMessage("saved user"),
+      assistantMessage("saved assistant"),
+    ]);
+    expect(renderAllMessages).not.toHaveBeenCalled();
+    expect(getLlmCredentials).not.toHaveBeenCalled();
+    expect(tokenCountForTexts).not.toHaveBeenCalled();
+  });
+
+  it("renders and tokenizes only the continuation appended to a checkpoint", async () => {
+    const conversation = createConversation(workspace);
+    const continuation = {
+      ...createConversation(workspace),
+      sId: "continuation",
+    };
+    vi.mocked(renderAllMessages).mockResolvedValue([
+      assistantMessage("delta assistant"),
+      functionMessage("delta tool", "delta result"),
+    ]);
+    mockTokenCounter({
+      byContains: { "delta assistant": 11, "delta result": 12 },
+    });
+
+    const result = await renderConversationWindow(
+      auth,
+      {
+        model,
+        prompt: "PROMPT",
+        enabledSkills: [],
+        tools: "TOOLS",
+        allowedTokenCount: 100_000,
+      },
+      {
+        kind: "checkpoint_continuation",
+        conversation,
+        continuation,
+        checkpoint: checkpoint([userMessage("saved user")]),
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.modelConversation.messages).toEqual([
+      userMessage("saved user"),
+      assistantMessage("delta assistant"),
+      functionMessage("delta tool", "delta result"),
+    ]);
+    expect(tokenCountForTexts).toHaveBeenCalledTimes(1);
+    expect(tokenCountForTexts).not.toHaveBeenCalledWith(
+      ["PROMPT", "TOOLS"],
+      model,
+      expect.anything()
+    );
+    expect(renderAllMessages).toHaveBeenCalledWith(
+      auth,
+      expect.objectContaining({ conversation: continuation })
+    );
+  });
+
+  it("appends new interactions created within a checkpoint continuation", async () => {
+    const conversation = createConversation(workspace);
+    const continuation = {
+      ...createConversation(workspace),
+      sId: "continuation",
+    };
+    const continuationMessages = [
+      assistantMessage("tool call"),
+      functionMessage("tool", "tool result"),
+      userMessage("enabled skill"),
+    ];
+    vi.mocked(renderAllMessages).mockResolvedValue(continuationMessages);
+    mockTokenCounter({
+      byContains: {
+        "tool call": 10,
+        "tool result": 10,
+        "enabled skill": 10,
+      },
+    });
+
+    const result = await renderConversationWindow(
+      auth,
+      {
+        model,
+        prompt: "PROMPT",
+        enabledSkills: [],
+        tools: "TOOLS",
+        allowedTokenCount: 100_000,
+      },
+      {
+        kind: "checkpoint_continuation",
+        conversation,
+        continuation,
+        checkpoint: checkpoint([userMessage("saved user")]),
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.modelConversation.messages).toEqual([
+      userMessage("saved user"),
+      ...continuationMessages,
+    ]);
+  });
+
+  it("matches a full replay when a continuation crosses a pruning checkpoint", async () => {
+    const conversation = createConversation(workspace);
+    const continuation = {
+      ...createConversation(workspace),
+      sId: "continuation",
+    };
+    const prefixMessages = [
+      userMessage("saved user"),
+      assistantMessage("tool call"),
+      functionMessage("large tool", "large result"),
+    ];
+    const continuationMessages = [
+      assistantMessage("completed"),
+      functionMessage("small tool", "small result"),
+    ];
+    mockTokenCounter({
+      byContains: {
+        "saved user": 10,
+        "tool call": 10,
+        "large result": 6_000,
+        completed: 10,
+        "small result": 10,
+      },
+    });
+    const input = {
+      model,
+      prompt: "PROMPT",
+      enabledSkills: [],
+      tools: "TOOLS",
+      allowedTokenCount: computeAllowedTokenCount({
+        promptTokens: 10,
+        toolsTokens: 10,
+        interactionTokens: 100,
+      }),
+    };
+
+    vi.mocked(renderAllMessages).mockResolvedValueOnce(prefixMessages);
+    const prefix = await renderConversationWindow(auth, input, {
+      kind: "full",
+      conversation,
+    });
+    if (prefix.isErr()) {
+      throw prefix.error;
+    }
+    const sourceCheckpoint = makeConversationWindowCheckpoint({
+      identity: {
+        workspaceId: workspace.sId,
+        conversationId: conversation.sId,
+        agentMessageId: "agent_message_1",
+        agentMessageVersion: 0,
+        step: 0,
+      },
+      profileHash: "profile",
+      ...prefix.value.checkpointData,
+    });
+
+    vi.mocked(renderAllMessages).mockResolvedValueOnce(continuationMessages);
+    const resumed = await renderConversationWindow(auth, input, {
+      kind: "checkpoint_continuation",
+      conversation,
+      continuation,
+      checkpoint: sourceCheckpoint,
+    });
+    if (resumed.isErr()) {
+      throw resumed.error;
+    }
+
+    vi.mocked(renderAllMessages).mockResolvedValueOnce([
+      ...prefixMessages,
+      ...continuationMessages,
+    ]);
+    const replayed = await renderConversationWindow(auth, input, {
+      kind: "full",
+      conversation,
+    });
+    if (replayed.isErr()) {
+      throw replayed.error;
+    }
+
+    expect(resumed.value).toEqual(replayed.value);
+    expect(resumed.value.prunedContext).toBe(true);
+  });
+});
+
 describe("renderConversationForModel", () => {
-  const auth = {} as any;
+  let auth: Authenticator;
+  let workspace: LightWorkspaceType;
   const model = {
-    providerId: "openai",
-    modelId: "gpt-4.1",
-    tokenizer: "cl100k_base",
+    ...GPT_4O_MODEL_CONFIG,
     // Large enough that PRUNING_TARGET_CONTEXT_UTILIZATION never becomes the binding constraint
     // in these tests, which are all sized in the low hundreds of tokens, unless explicitly
     // overridden.
     contextSize: 200_000,
-  } as any;
+  };
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    ({ authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    }));
     vi.clearAllMocks();
-    vi.mocked(getLlmCredentials).mockResolvedValue({} as any);
+    vi.mocked(getLlmCredentials).mockResolvedValue({});
   });
 
   it("returns all messages when they fit", async () => {
@@ -192,7 +475,7 @@ describe("renderConversationForModel", () => {
     });
 
     const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
+      conversation: createConversation(workspace),
       model,
       prompt: "PROMPT",
       enabledSkills: [],
@@ -233,7 +516,7 @@ describe("renderConversationForModel", () => {
     });
 
     const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
+      conversation: createConversation(workspace),
       model,
       prompt: "PROMPT",
       enabledSkills: [],
@@ -303,7 +586,7 @@ describe("renderConversationForModel", () => {
     });
 
     const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
+      conversation: createConversation(workspace),
       model,
       prompt: "PROMPT",
       enabledSkills: [],
@@ -371,7 +654,7 @@ describe("renderConversationForModel", () => {
     });
 
     const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
+      conversation: createConversation(workspace),
       model: { ...model, contextSize: 55_000 },
       prompt: "PROMPT",
       enabledSkills: [],
@@ -424,7 +707,7 @@ describe("renderConversationForModel", () => {
     });
 
     const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
+      conversation: createConversation(workspace),
       model,
       prompt: "PROMPT",
       enabledSkills: [],
@@ -466,7 +749,7 @@ describe("renderConversationForModel", () => {
     });
 
     const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
+      conversation: createConversation(workspace),
       model,
       prompt: "PROMPT",
       enabledSkills: [],
@@ -508,7 +791,7 @@ describe("renderConversationForModel", () => {
     });
 
     const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
+      conversation: createConversation(workspace),
       model,
       prompt: "PROMPT",
       enabledSkills: [],
@@ -532,7 +815,7 @@ describe("renderConversationForModel", () => {
     mockTokenCounter({ byContains: {} });
 
     const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
+      conversation: createConversation(workspace),
       model,
       prompt: "PROMPT",
       enabledSkills: [],
@@ -558,7 +841,7 @@ describe("renderConversationForModel", () => {
     mockTokenCounter({ byContains: {} });
 
     const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
+      conversation: createConversation(workspace),
       model,
       prompt: "PROMPT",
       enabledSkills: [],
@@ -582,7 +865,7 @@ describe("renderConversationForModel", () => {
     });
 
     const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
+      conversation: createConversation(workspace),
       model,
       prompt: "PROMPT",
       enabledSkills: [],
@@ -611,7 +894,7 @@ describe("renderConversationForModel", () => {
     });
 
     const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
+      conversation: createConversation(workspace),
       model,
       prompt: "PROMPT",
       enabledSkills: [],
@@ -687,7 +970,7 @@ describe("renderConversationForModel", () => {
     });
 
     const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
+      conversation: createConversation(workspace),
       model,
       prompt: "PROMPT",
       enabledSkills: [],
@@ -745,7 +1028,7 @@ describe("renderConversationForModel", () => {
     });
 
     const res = await renderConversationForModel(auth, {
-      conversation: createConversation(),
+      conversation: createConversation(workspace),
       model,
       prompt: "PROMPT",
       enabledSkills: [],
@@ -820,7 +1103,7 @@ describe("renderConversationForModel", () => {
 
     const render = () =>
       renderConversationForModel(auth, {
-        conversation: createConversation(),
+        conversation: createConversation(workspace),
         model,
         prompt: "PROMPT",
         enabledSkills: [],

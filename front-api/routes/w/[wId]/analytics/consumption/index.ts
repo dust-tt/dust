@@ -16,6 +16,7 @@ import topApiKeys from "./top-api-keys";
 import topConversations from "./top-conversations";
 import topGroups from "./top-groups";
 import topModels from "./top-models";
+import topReasoningEfforts from "./top-reasoning-efforts";
 import topSkills from "./top-skills";
 import topSources from "./top-sources";
 import topTools from "./top-tools";
@@ -33,6 +34,7 @@ function mountSharedConsumptionRoutes(
   app.route("/timeseries", timeseries);
   app.route("/top-api-keys", topApiKeys);
   app.route("/top-models", topModels);
+  app.route("/top-reasoning-efforts", topReasoningEfforts);
   app.route("/top-skills", topSkills);
   app.route("/top-sources", topSources);
   app.route("/top-tools", topTools);
@@ -99,12 +101,13 @@ export function createAgentConsumptionRoutes() {
       });
     }
 
-    if (!agent.canEdit && !auth.isAdmin()) {
+    if (!agent.canEdit && !auth.isManager()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
-          message: "Only agent editors can access its consumption analytics.",
+          message:
+            "Only workspace managers and editors of this agent can access its consumption analytics.",
         },
       });
     }

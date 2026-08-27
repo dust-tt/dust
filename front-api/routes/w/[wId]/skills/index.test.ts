@@ -13,7 +13,6 @@ import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -163,6 +162,51 @@ describe("GET /api/w/:wId/skills", () => {
     expect(skillNames).toContain("My Unpublished Skill");
     expect(skillNames).toContain("Someone Else's Published Skill");
     expect(skillNames).not.toContain("Someone Else's Unpublished Skill");
+  });
+
+  // Archiving no longer suspends the editor memberships, so an archived editors-only skill
+  // stays visible to its editors — otherwise it would vanish from the archived tab for
+  // everyone, leaving nobody able to restore it.
+  it("lists archived editors-only skills to members of their editor group", async () => {
+    const { workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const mySkill = await SkillFactory.create(auth, {
+      name: "My Archived Unpublished Skill",
+      availability: "editors",
+    });
+    await mySkill.archive(auth);
+
+    // Archived by another user: the requester is not one of its editors.
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, {
+      role: "manager",
+    });
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+    const otherSkill = await SkillFactory.create(otherAuth, {
+      name: "Someone Else's Archived Unpublished Skill",
+      availability: "editors",
+    });
+    await otherSkill.archive(otherAuth);
+
+    const response = await getSkills(workspace, { status: "archived" });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    const skillNames = data.skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).toContain("My Archived Unpublished Skill");
+    expect(skillNames).not.toContain(
+      "Someone Else's Archived Unpublished Skill"
+    );
   });
 
   // Suggestions are created with an empty editor group (SkillResource.makeSuggestion), and
@@ -741,6 +785,34 @@ describe("GET /api/w/:wId/skills", () => {
 });
 
 describe("GET /api/w/:wId/skills?withRelations=true", () => {
+  it("returns the editors of archived skills", async () => {
+    const { workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const skill = await SkillFactory.create(auth, {
+      name: "Archived Skill With Editors",
+    });
+    await skill.archive(auth);
+
+    const response = await getSkills(workspace, {
+      withRelations: "true",
+      status: "archived",
+    });
+    expect(response.status).toBe(200);
+
+    const responseBody: GetSkillsWithRelationsResponseBody =
+      await response.json();
+    const archivedSkill = responseBody.skills.find((s) => s.sId === skill.sId);
+    // Archiving keeps the editor memberships: the skill stays visible to its editors (it is
+    // unpublished, so that visibility comes from editorship) and still lists them.
+    expect(archivedSkill?.relations.editors?.map((e) => e.sId)).toEqual([
+      user.sId,
+    ]);
+  });
+
   it("should return the number of messages using each skill", async () => {
     const { workspace, user } = await setupTest();
 
@@ -1264,7 +1336,7 @@ describe("POST /api/w/:wId/skills", () => {
     const { auth, workspace, globalGroup } = await setupTest("admin");
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
 
     const childSkill = await SkillFactory.create(auth, {
       name: "Referenced Pod Skill",
@@ -1323,7 +1395,7 @@ describe("POST /api/w/:wId/skills", () => {
     const { auth, workspace, globalGroup } = await setupTest("admin");
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
     // An open space confers read through the global group's `reader` grant, and an Authenticator
     // resolves its grants once, at construction. `auth` predates the space, so refresh it before
     // reading a skill that requests it — `SkillResource` drops skills whose spaces it cannot read.
@@ -1389,7 +1461,7 @@ describe("POST /api/w/:wId/skills", () => {
     await grantCreateSkillCapability(workspace, user);
 
     const openPod = await SpaceFactory.project(workspace);
-    await GroupSpaceFactory.associate(openPod, globalGroup);
+    await SpaceFactory.attachGroup(openPod, globalGroup);
 
     const response = await postSkill(workspace, {
       name: "Skill Restricted To Open Pod",

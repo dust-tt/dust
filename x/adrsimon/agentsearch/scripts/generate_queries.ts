@@ -3,7 +3,11 @@ import { basename, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
 import { DEFAULT_ES_URL, DEFAULT_INDEX, esRequest } from "./es.ts";
-import { buildFilters, contextFromProfile } from "./query.ts";
+import {
+  buildFilters,
+  contextFromProfile,
+  fetchReferencedSpaces,
+} from "./query.ts";
 import { splitName, tokenize } from "./text.ts";
 import type {
   EvalNegative,
@@ -67,19 +71,21 @@ interface PageResponse {
   };
 }
 
+const referencedSpaces = await fetchReferencedSpaces(values.es, values.index);
+
 async function fetchCandidates(): Promise<Candidate[]> {
   const query = {
     bool: {
       filter: buildFilters({
         ...context,
         searchTerm: "",
-        scopes: [],
         excludeGlobal: values["exclude-global"],
         includeInstructions: false,
         minShouldMatch: "",
         matchMode: "bool_prefix",
         nameFallback: "off",
         groupBoost: 0,
+        referencedSpaces,
       }),
     },
   };

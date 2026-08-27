@@ -1,0 +1,25 @@
+{
+  "scenario": "restricted alpha and pod beta",
+  "workspaceId": "w_mocked",
+  "workspaceName": "Permission model",
+  "generatedAt": "2026-08-27T00:00:00.000Z",
+  "user": { "sId": "usr_mixed", "email": "member@example.com", "fullName": "Mixed access" },
+  "role": "user",
+  "groupIds": [],
+  "groups": [],
+  "readableNonPodSpaces": [
+    { "sId": "vlt_company", "name": "Company", "kind": "global" },
+    { "sId": "vlt_restricted_alpha", "name": "Restricted Alpha", "kind": "regular" }
+  ],
+  "readablePodSpaces": [
+    { "sId": "vlt_pod_beta", "name": "Pod Beta", "kind": "project" }
+  ],
+  "expectedAgentIds": [
+    "agt_global_none",
+    "agt_visible_company",
+    "agt_visible_none",
+    "agt_visible_pod_beta",
+    "agt_visible_restricted_alpha",
+    "agt_visible_restricted_alpha_pod_beta"
+  ]
+}

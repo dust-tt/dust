@@ -128,7 +128,7 @@ async function resolveAuthorAuthFromConversation(
     return null;
   }
 
-  const internalAuth = await Authenticator.internalBuilderForWorkspace(
+  const internalAuth = await Authenticator.internalUserForWorkspace(
     workspace.sId
   );
   const conversation = await ConversationResource.fetchById(
@@ -188,7 +188,7 @@ async function conversationExistsForFrame(
     return true;
   }
 
-  const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
+  const auth = await Authenticator.internalUserForWorkspace(workspace.sId);
   const conversation = await ConversationResource.fetchById(
     auth,
     conversationId,

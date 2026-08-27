@@ -64,6 +64,17 @@ const heightClasses: Record<DialogHeightType, string> = {
   "2xl": "sm:h-2xl",
 };
 
+// With grow, the fixed height becomes a minimum: the h-* class is not
+// emitted and min-h keeps the height's size as the floor. min-height wins
+// over max-height in CSS, so the floor is itself capped at 90vh to never
+// exceed the base max-h-[90vh] on short viewports.
+const growHeightClasses: Record<DialogHeightType, string> = {
+  md: "sm:min-h-[min(448px,90vh)]",
+  lg: "sm:min-h-[min(576px,90vh)]",
+  xl: "sm:min-h-[min(768px,90vh)]",
+  "2xl": "sm:min-h-[min(1024px,90vh)]",
+};
+
 const DIALOG_VARIANTS = ["default", "command"] as const;
 type DialogVariantType = (typeof DIALOG_VARIANTS)[number];
 
@@ -89,7 +100,10 @@ const dialogVariants = cva(
     "rounded-2xl flex flex-col w-full max-w-[calc(100vw-2rem)] border border shadow-lg",
     "bg-modal-background",
     "border-border",
-    "max-h-[90vh]"
+    "max-h-[90vh]",
+    // Radix focuses the panel itself when nothing tabbable is inside or on
+    // background clicks; suppress the UA focus ring on the panel.
+    "focus:outline-none"
   ),
   {
     variants: {
@@ -110,6 +124,8 @@ interface DialogContentProps
   size?: DialogSizeType;
   /** Fixed height of the dialog: "md" | "lg" | "xl" | "2xl"; unset grows with content up to 90vh. */
   height?: DialogHeightType;
+  /** Lets the dialog grow beyond its fixed `height` when the content needs it, up to the existing 90vh cap: the height becomes a minimum. No effect without `height`. */
+  grow?: boolean;
   /** "default" centers vertically; "command" pins near the top with a slide-in (command-palette style). */
   variant?: DialogVariantType;
   /** Traps keyboard focus inside the dialog while open. */
@@ -133,6 +149,7 @@ const DialogContent = React.forwardRef<
       children,
       size,
       height,
+      grow,
       variant,
       trapFocusScope,
       isAlertDialog,
@@ -159,7 +176,16 @@ const DialogContent = React.forwardRef<
         <FocusScope trapped={trapFocusScope} asChild>
           <DialogPrimitive.Content
             ref={ref}
-            className={cn(dialogVariants({ size, height, variant }), className)}
+            className={cn(
+              // grow replaces the fixed height with a floor.
+              dialogVariants({
+                size,
+                height: grow ? undefined : height,
+                variant,
+              }),
+              grow && height ? growHeightClasses[height] : undefined,
+              className
+            )}
             onInteractOutside={
               isAlertDialog
                 ? (e) => e.preventDefault()

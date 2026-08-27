@@ -662,6 +662,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
         <AnimatePresence initial={false} mode="popLayout" anchorY="bottom">
           <motion.div
             key={inputBarContentKey}
+            layout={shouldReduceMotion ? undefined : "position"}
             layoutId={
               shouldReduceMotion
                 ? undefined

@@ -1,0 +1,16 @@
+{
+  "action": "slack_workflow.allowed",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "data_source"
+    }
+  ],
+  "metadata": {
+    "bot_name": "string",
+    "group_names": "string",
+    "actor_type": "string"
+  }
+}

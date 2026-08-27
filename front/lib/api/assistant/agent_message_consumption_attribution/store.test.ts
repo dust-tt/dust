@@ -180,7 +180,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
   it("writes attribution for a project conversation hidden from the workflow auth", async () => {
     const { workspace, conversationId, agentMessageId, agentMessageModelId } =
       await setupSettledMessageWithUsage({ restrictedConversation: true });
-    const workflowAuth = await Authenticator.internalBuilderForWorkspace(
+    const workflowAuth = await Authenticator.internalUserForWorkspace(
       workspace.sId
     );
 

@@ -10,9 +10,8 @@
     "(see README.md, 'Producing an export'). It writes profile_<userSId>.json; drop it",
     "in this directory and pass it to search with --profile.",
     "",
-    "readableNonPodSpaces feeds the terms_set space filter. readablePodSpaces is",
-    "recorded but not filtered on, mirroring skill search, which authorizes pods",
-    "against Postgres after the query rather than inside it."
+    "readableNonPodSpaces and readablePodSpaces feed independent Elasticsearch",
+    "filters. An agent must pass both filters."
   ],
   "workspaceId": "0000000000",
   "workspaceName": "Example Workspace",

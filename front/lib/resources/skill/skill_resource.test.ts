@@ -20,7 +20,6 @@ import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -30,6 +29,7 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -67,6 +67,57 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("read grants", () => {
+    it("reads a skill through the global group's workspace-wide reader grant", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With A Read Grant",
+      });
+
+      const grants = await GroupPermissionResource.listForResource(
+        testContext.authenticator,
+        { resourceType: "skill", resourceId: skill.id }
+      );
+
+      expect(
+        grants.some(
+          (grant) =>
+            grant.groupId === testContext.globalGroup.id &&
+            grant.grantType === "reader" &&
+            grant.resourceId === WHOLE_TYPE_RESOURCE_ID
+        )
+      ).toBe(true);
+
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        testContext.user.sId,
+        testContext.workspace.sId
+      );
+      expect(skill.canRead(auth)).toBe(true);
+    });
+
+    it("lets any workspace member read a skill they did not create", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill Read By Anyone",
+      });
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, otherUser, {
+        role: "user",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        testContext.workspace.sId
+      );
+
+      // Not an editor, so no `editor` grant: read comes from the role grants until they are
+      // dropped, and from the global group's workspace-wide `reader` grant after that.
+      expect(skill.canRead(otherAuth)).toBe(true);
+      expect(skill.canWrite(otherAuth)).toBe(false);
+
+      const fetched = await SkillResource.fetchById(otherAuth, skill.sId);
+      expect(fetched?.sId).toBe(skill.sId);
+    });
+  });
+
   describe("editor grants", () => {
     // The per-user grants on a skill, straight from the table.
     async function fetchSkillGrants(skillModelId: ModelId) {
@@ -84,12 +135,11 @@ describe("SkillResource", () => {
         : ([] as UserResource[]);
     }
 
-    it("grants the creator on creation, and no editor group is created", async () => {
+    it("grants the creator on creation", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Grants",
       });
 
-      expect(skill.editorGroup).toBeNull();
       const editors = await fetchSkillGrants(skill.id);
       expect(editors.map((editor) => editor.sId)).toContain(
         testContext.user.sId
@@ -771,8 +821,8 @@ describe("SkillResource", () => {
     it("should remove space from agent when skill no longer requires it", async () => {
       const space1 = await SpaceFactory.regular(testContext.workspace);
       const space2 = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space1, testContext.globalGroup);
-      await GroupSpaceFactory.associate(space2, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space1, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space2, testContext.globalGroup);
 
       const skillResource = await SkillFactory.create(
         testContext.authenticator,
@@ -821,11 +871,8 @@ describe("SkillResource", () => {
     it("should keep space on agent if another skill still requires it", async () => {
       const sharedSpace = await SpaceFactory.regular(testContext.workspace);
       const skill1OnlySpace = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(sharedSpace, testContext.globalGroup);
-      await GroupSpaceFactory.associate(
-        skill1OnlySpace,
-        testContext.globalGroup
-      );
+      await SpaceFactory.attachGroup(sharedSpace, testContext.globalGroup);
+      await SpaceFactory.attachGroup(skill1OnlySpace, testContext.globalGroup);
 
       const skill1 = await SkillFactory.create(testContext.authenticator, {
         name: "Skill 1",
@@ -1435,7 +1482,7 @@ describe("SkillResource", () => {
   });
 
   describe("archive and restore", () => {
-    it("suspends editor grants when archiving and restores them when restoring", async () => {
+    it("keeps the editor grants active when archiving, so editors are still listed", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill To Archive",
       });
@@ -1464,17 +1511,47 @@ describe("SkillResource", () => {
         testContext.authenticator
       );
       expect(archiveCount).toBe(1);
-      expect((await memberships()).every((m) => m.status === "suspended")).toBe(
+
+      // Archiving leaves the memberships alone: an archived skill keeps its editors, both on the
+      // in-memory resource and on a freshly fetched one.
+      expect((await memberships()).every((m) => m.status === "active")).toBe(
         true
       );
+      expect(
+        (await skill.listEditors(testContext.authenticator))?.map((e) => e.id)
+      ).toEqual([testContext.user.id]);
 
-      const { affectedCount: restoreCount } = await skill.restore(
+      const archivedSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        skill.sId
+      );
+      assert(archivedSkill);
+      expect(
+        (await archivedSkill.listEditors(testContext.authenticator))?.map(
+          (e) => e.id
+        )
+      ).toEqual([testContext.user.id]);
+
+      const editorsMap = await SkillResource.batchListEditors(
+        testContext.authenticator,
+        [archivedSkill]
+      );
+      expect(editorsMap.get(skill.sId)?.map((e) => e.id)).toEqual([
+        testContext.user.id,
+      ]);
+
+      const { affectedCount: restoreCount } = await archivedSkill.restore(
         testContext.authenticator
       );
       expect(restoreCount).toBe(1);
       expect((await memberships()).every((m) => m.status === "active")).toBe(
         true
       );
+      expect(
+        (await archivedSkill.listEditors(testContext.authenticator))?.map(
+          (e) => e.id
+        )
+      ).toEqual([testContext.user.id]);
     });
 
     it("archives multiple skills sharing the same name without a unique constraint violation", async () => {
@@ -1514,10 +1591,7 @@ describe("SkillResource", () => {
 
     it("removes the skill's space requirements from agents when archiving and adds them back when restoring", async () => {
       const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(
-        restrictedSpace,
-        testContext.globalGroup
-      );
+      await SpaceFactory.attachGroup(restrictedSpace, testContext.globalGroup);
 
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Space To Archive",
@@ -1562,7 +1636,7 @@ describe("SkillResource", () => {
 
     it("keeps a space on the agent when archiving a skill if another active skill still requires it", async () => {
       const sharedSpace = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(sharedSpace, testContext.globalGroup);
+      await SpaceFactory.attachGroup(sharedSpace, testContext.globalGroup);
 
       const skill1 = await SkillFactory.create(testContext.authenticator, {
         name: "Skill 1 Sharing Space",
@@ -1689,8 +1763,6 @@ describe("SkillResource", () => {
         { name: "Skill To Delete" }
       );
 
-      // Skills no longer own an editor group; editors are the grant group's members.
-      expect(skillResource.editorGroup).toBeNull();
       const grantGroup =
         await GroupPermissionResource.findRegularAutoGroupForGrant(
           testContext.authenticator,
@@ -1788,7 +1860,7 @@ describe("SkillResource", () => {
   describe("listByMCPServerViewIds", () => {
     it("should return skills that use any of the given MCP server view IDs", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
       const server = await RemoteMCPServerFactory.create(testContext.workspace);
       const serverView = await MCPServerViewFactory.create(
@@ -1837,7 +1909,7 @@ describe("SkillResource", () => {
   describe("listByDataSourceViewIds", () => {
     it("should return skills that use any of the given data source view IDs", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
       const dsv1 = await DataSourceViewFactory.folder(
         testContext.workspace,
@@ -1893,7 +1965,7 @@ describe("SkillResource", () => {
   describe("listByDataSourceIds", () => {
     it("should return skills that use any of the given data source IDs", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
       const dsv1 = await DataSourceViewFactory.folder(
         testContext.workspace,
@@ -1947,9 +2019,9 @@ describe("SkillResource", () => {
 
     it("should return skills configured through any view of the given data source", async () => {
       const ownerSpace = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(ownerSpace, testContext.globalGroup);
+      await SpaceFactory.attachGroup(ownerSpace, testContext.globalGroup);
       const otherSpace = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(otherSpace, testContext.globalGroup);
+      await SpaceFactory.attachGroup(otherSpace, testContext.globalGroup);
 
       const defaultView = await DataSourceViewFactory.folder(
         testContext.workspace,
@@ -2354,7 +2426,7 @@ describe("SkillResource", () => {
   describe("getAttachedKnowledge", () => {
     it("should return attached knowledge from data source configurations", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
       const dsv = await DataSourceViewFactory.folder(
         testContext.workspace,
@@ -2395,7 +2467,7 @@ describe("SkillResource", () => {
   describe("computeRequestedSpaceIds", () => {
     it("should compute space IDs from attached knowledge", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
       const dsv = await DataSourceViewFactory.folder(
         testContext.workspace,
@@ -2777,7 +2849,7 @@ describe("SkillResource", () => {
   });
 
   describe("batchListEditors", () => {
-    it("returns editors for skills with editor groups", async () => {
+    it("returns editors for skills with an editor grant", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Editor",
       });
@@ -2809,6 +2881,30 @@ describe("SkillResource", () => {
 
       expect(editorsMap.get(skillA.sId)).not.toBeNull();
       expect(editorsMap.get(skillB.sId)).not.toBeNull();
+    });
+
+    it("returns editors for a mix of active and archived skills", async () => {
+      const activeSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Active Skill Editors",
+      });
+      const skillToArchive = await SkillFactory.create(
+        testContext.authenticator,
+        { name: "Archived Skill Editors" }
+      );
+      await skillToArchive.archive(testContext.authenticator);
+
+      const editorsMap = await SkillResource.batchListEditors(
+        testContext.authenticator,
+        [activeSkill, skillToArchive]
+      );
+
+      // Archiving keeps the editor memberships, so the archived skill still lists its editors.
+      expect(editorsMap.get(activeSkill.sId)?.map((e) => e.id)).toEqual([
+        testContext.user.id,
+      ]);
+      expect(editorsMap.get(skillToArchive.sId)?.map((e) => e.id)).toEqual([
+        testContext.user.id,
+      ]);
     });
 
     it("returns empty map for empty input", async () => {

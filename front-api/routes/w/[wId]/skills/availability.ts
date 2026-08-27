@@ -6,6 +6,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { rejectArchivedSkills } from "@front-api/routes/w/[wId]/skills/guards";
 import uniq from "lodash/uniq";
 import { z } from "zod";
 
@@ -87,6 +88,11 @@ app.patch(
           message: `Skills not found: ${missingSkillIds.join(", ")}.`,
         },
       });
+    }
+
+    const archivedError = rejectArchivedSkills(ctx, skills);
+    if (archivedError) {
+      return archivedError;
     }
 
     // Changing an already auto-discoverable skill's availability also requires the

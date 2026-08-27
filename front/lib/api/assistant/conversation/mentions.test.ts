@@ -23,7 +23,6 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { resolveAndCreateUserMentions } from "@app/tests/utils/mentions";
@@ -835,7 +834,7 @@ describe("createAgentMessages", () => {
       );
       expect(refreshedRestrictedSpace).not.toBeNull();
       // Regular spaces created by SpaceFactory.regular are restricted (no global group)
-      expect(refreshedRestrictedSpace?.isOpen()).toBe(false);
+      expect(await refreshedRestrictedSpace?.isOpen(adminAuth)).toBe(false);
 
       // Create a user who is NOT a member of the restricted space
       const mentionedUser = await UserFactory.basic();
@@ -933,12 +932,14 @@ describe("createAgentMessages", () => {
       const globalGroup = globalGroupRes.value;
 
       // Add global group directly to make it open (if not already there)
-      const existingGroupIds = openSpace.groups.map((g) => g.groupSId);
+      const existingGroupIds = (await openSpace.fetchGrantReferences()).map(
+        (g) => g.groupSId
+      );
       const hasGlobalGroup = existingGroupIds.includes(globalGroup.sId);
 
       // If global group is not already there, associate it directly
       if (!hasGlobalGroup) {
-        await GroupSpaceFactory.associate(openSpace, globalGroup);
+        await SpaceFactory.attachGroup(openSpace, globalGroup);
       }
 
       // Refresh to get updated groups
@@ -947,7 +948,7 @@ describe("createAgentMessages", () => {
         openSpace.sId
       );
       expect(refreshedOpenSpace).not.toBeNull();
-      expect(refreshedOpenSpace?.isOpen()).toBe(true);
+      expect(await refreshedOpenSpace?.isOpen(adminAuth)).toBe(true);
 
       // Create a user who can access the space (all users can access open spaces)
       const mentionedUser = await UserFactory.basic();
@@ -1043,7 +1044,7 @@ describe("createAgentMessages", () => {
       );
       expect(refreshedRestrictedSpace).not.toBeNull();
       // Regular spaces created by SpaceFactory.regular are restricted (no global group)
-      expect(refreshedRestrictedSpace?.isOpen()).toBe(false);
+      expect(await refreshedRestrictedSpace?.isOpen(adminAuth)).toBe(false);
 
       // Create a user who is NOT a member of the restricted space
       const mentionedUser = await UserFactory.basic();

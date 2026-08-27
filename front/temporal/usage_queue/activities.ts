@@ -5,7 +5,7 @@ import {
   trackProgrammaticCost,
 } from "@app/lib/api/programmatic_usage/tracking";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
   billedCostAwuFromEvents,
@@ -389,7 +389,9 @@ export async function emitMetronomeUsageEventsActivity(
   // ceils per the exact same execution partition that is billed here.
   const runKey = computeRunKey(effectiveRunIds);
 
-  // Build and ingest events.
+  // Build the legacy (per-model llm_usage_v3 + per-tool tool_use_v3) events and
+  // the single aggregated event. Which set is ingested depends on the feature
+  // flag below; the cost parity of both is logged in all cases.
   const llmEvents = buildLlmUsageEvents({
     workspaceId: workspace.sId,
     isByok,
@@ -431,11 +433,6 @@ export async function emitMetronomeUsageEventsActivity(
     timestamp,
   });
 
-  await ingestMetronomeEvents([...llmEvents, ...toolEvents]);
-
-  // Shadow the upcoming single aggregated event and log its cost against the
-  // legacy events' cost, so we can confirm parity on real traffic before
-  // switching over. The aggregated event is NOT ingested yet.
   const aggregatedUsageEvents = buildUsageEvents({
     workspaceId: workspace.sId,
     isByok,
@@ -457,6 +454,14 @@ export async function emitMetronomeUsageEventsActivity(
     isSubAgentMessage,
     timestamp,
   });
+
+  // When the flag is on, ingest the single aggregated event; otherwise keep
+  // ingesting the legacy events. Log the cost of both paths in all cases so we
+  // can confirm parity on real traffic.
+  const useAggregatedEvent = await hasFeatureFlag(
+    auth,
+    "metronome_aggregated_usage_event"
+  );
   const newCostAwu = aggregatedUsageEvents.reduce((total, event) => {
     const costAwu = event.properties["cost_awu"];
     return total + (typeof costAwu === "number" ? costAwu : 0);
@@ -471,8 +476,13 @@ export async function emitMetronomeUsageEventsActivity(
       newCostAwu,
       oldCostAwu,
       costMatches: newCostAwu === oldCostAwu,
+      useAggregatedEvent,
     },
     "[UsageQueue] Metronome usage event cost parity check."
+  );
+
+  await ingestMetronomeEvents(
+    useAggregatedEvent ? aggregatedUsageEvents : [...llmEvents, ...toolEvents]
   );
 
   // Per-key cap enforcement is pull-based: Metronome spend alerts can't

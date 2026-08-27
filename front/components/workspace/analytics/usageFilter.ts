@@ -121,9 +121,7 @@ export interface UsageFilterSourceOption extends UsageFilterOptionBase {
 export interface UsageFilterModelOption extends UsageFilterOptionBase {
   kind: "model";
   lab?: ModelMakerIdType;
-  // Undefined for a model outside the static tier table — it doesn't match
-  // any Basic/Standard/Premium quick filter, so it's absent from the main
-  // checklist but still reachable through the "More models" browse dropdown.
+  // Undefined for a model outside the static tier table.
   tier: ModelsTierName | undefined;
 }
 

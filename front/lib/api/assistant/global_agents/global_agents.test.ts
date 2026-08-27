@@ -17,6 +17,7 @@ import {
 } from "@app/types/assistant/models/auto";
 import { GEMINI_3_1_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import {
+  GPT_5_5_MODEL_ID,
   GPT_5_6_LUNA_MODEL_ID,
   GPT_5_6_SOL_MODEL_ID,
 } from "@app/types/assistant/models/openai";
@@ -26,9 +27,6 @@ import { describe, expect, it, vi } from "vitest";
 const CUSTOM_MODEL_ID = vi.hoisted(() => "custom-model-for-global-agent-test");
 const UNBOUND_CUSTOM_MODEL_ID = vi.hoisted(
   () => "custom-model-unbound-for-global-agent-test"
-);
-const SOUPINOU_CUSTOM_MODEL_ID = vi.hoisted(
-  () => "custom-model-for-soupinou-global-agent-test"
 );
 // Shared reference to the mocked CUSTOM_MODEL_CONFIGS array so tests can
 // simulate a model index missing from the generated config.
@@ -51,8 +49,8 @@ vi.mock("@app/types/assistant/models/custom_models.generated", async () => {
     },
   };
 
-  // Mirrors the infra config layout: index 0 is bound to the chawi agents,
-  // index 1 is unbound, index 2 is bound to the soupinou agents.
+  // Mirrors the infra config layout: index 0 is bound to the dust-next agents,
+  // index 1 is unbound.
   mockCustomModels.configs = [
     {
       ...baseCustomModelConfig,
@@ -64,25 +62,12 @@ vi.mock("@app/types/assistant/models/custom_models.generated", async () => {
       modelId: UNBOUND_CUSTOM_MODEL_ID,
       displayName: "Unbound Custom Model Test",
     },
-    {
-      ...baseCustomModelConfig,
-      modelId: SOUPINOU_CUSTOM_MODEL_ID,
-      displayName: "Soupinou Custom Model Test",
-    },
   ];
 
   return {
     CUSTOM_MODEL_CONFIGS: mockCustomModels.configs,
-    CUSTOM_MODEL_IDS: [
-      CUSTOM_MODEL_ID,
-      UNBOUND_CUSTOM_MODEL_ID,
-      SOUPINOU_CUSTOM_MODEL_ID,
-    ],
-    CUSTOM_OPENAI_MODEL_IDS: [
-      CUSTOM_MODEL_ID,
-      UNBOUND_CUSTOM_MODEL_ID,
-      SOUPINOU_CUSTOM_MODEL_ID,
-    ],
+    CUSTOM_MODEL_IDS: [CUSTOM_MODEL_ID, UNBOUND_CUSTOM_MODEL_ID],
+    CUSTOM_OPENAI_MODEL_IDS: [CUSTOM_MODEL_ID, UNBOUND_CUSTOM_MODEL_ID],
     CUSTOM_ANTHROPIC_MODEL_IDS: [],
   };
 });
@@ -151,7 +136,7 @@ describe("getGlobalAgents custom model agents", () => {
 
     const agents = await getGlobalAgents(
       auth,
-      [GLOBAL_AGENTS_SID.DUST_CHAWI],
+      [GLOBAL_AGENTS_SID.DUST_NEXT],
       "light"
     );
 
@@ -167,9 +152,9 @@ describe("getGlobalAgents custom model agents", () => {
     const agents = await getGlobalAgents(
       auth,
       [
-        GLOBAL_AGENTS_SID.DUST_CHAWI,
-        GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
-        GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
+        GLOBAL_AGENTS_SID.DUST_NEXT,
+        GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
+        GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
       ],
       "light"
     );
@@ -183,19 +168,19 @@ describe("getGlobalAgents custom model agents", () => {
       }))
     ).toEqual([
       {
-        sId: GLOBAL_AGENTS_SID.DUST_CHAWI,
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT,
         providerId: "openai",
         modelId: CUSTOM_MODEL_ID,
         reasoningEffort: "light",
       },
       {
-        sId: GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
         providerId: "openai",
         modelId: CUSTOM_MODEL_ID,
         reasoningEffort: "medium",
       },
       {
-        sId: GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
         providerId: "openai",
         modelId: CUSTOM_MODEL_ID,
         reasoningEffort: "high",
@@ -203,10 +188,49 @@ describe("getGlobalAgents custom model agents", () => {
     ]);
   });
 
-  it("resolves soupinou agent variants to the custom model at index 2", async () => {
+  it("resolves retired chawi agent variants to the GPT-5.5 fallback", async () => {
     const auth = await createAuthenticatorWithFlags([
       "dust_internal_global_agents",
-      "custom_model_feature",
+    ]);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [
+        GLOBAL_AGENTS_SID.DUST_CHAWI,
+        GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
+        GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
+      ],
+      "light"
+    );
+
+    expect(
+      agents.map((agent) => ({
+        sId: agent.sId,
+        modelId: agent.model.modelId,
+        reasoningEffort: agent.model.reasoningEffort,
+      }))
+    ).toEqual([
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_CHAWI,
+        modelId: GPT_5_5_MODEL_ID,
+        reasoningEffort: "light",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
+        modelId: GPT_5_5_MODEL_ID,
+        reasoningEffort: "medium",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
+        modelId: GPT_5_5_MODEL_ID,
+        reasoningEffort: "high",
+      },
+    ]);
+  });
+
+  it("resolves retired soupinou agent variants to the GPT-5.5 fallback", async () => {
+    const auth = await createAuthenticatorWithFlags([
+      "dust_internal_global_agents",
     ]);
 
     const agents = await getGlobalAgents(
@@ -229,22 +253,22 @@ describe("getGlobalAgents custom model agents", () => {
     ).toEqual([
       {
         sId: GLOBAL_AGENTS_SID.DUST_SOUPINOU,
-        modelId: SOUPINOU_CUSTOM_MODEL_ID,
+        modelId: GPT_5_5_MODEL_ID,
         reasoningEffort: "light",
       },
       {
         sId: GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
-        modelId: SOUPINOU_CUSTOM_MODEL_ID,
+        modelId: GPT_5_5_MODEL_ID,
         reasoningEffort: "medium",
       },
       {
         sId: GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
-        modelId: SOUPINOU_CUSTOM_MODEL_ID,
+        modelId: GPT_5_5_MODEL_ID,
         reasoningEffort: "high",
       },
       {
         sId: GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
-        modelId: SOUPINOU_CUSTOM_MODEL_ID,
+        modelId: GPT_5_5_MODEL_ID,
         reasoningEffort: "none",
       },
     ]);
@@ -256,15 +280,16 @@ describe("getGlobalAgents custom model agents", () => {
       "custom_model_feature",
     ]);
 
-    const removed = mockCustomModels.configs.splice(2, 1);
+    // The hiding comes from the sId filter in getGlobalAgents, not from the
+    // dust-next getter, which falls back to a concrete model on its own.
+    const removed = mockCustomModels.configs.splice(0);
     try {
       const agents = await getGlobalAgents(
         auth,
         [
-          GLOBAL_AGENTS_SID.DUST_SOUPINOU,
-          GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
-          GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
-          GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
+          GLOBAL_AGENTS_SID.DUST_NEXT,
+          GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
+          GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
         ],
         "light"
       );

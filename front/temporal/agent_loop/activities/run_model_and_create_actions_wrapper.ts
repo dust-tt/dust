@@ -20,7 +20,7 @@ import {
   MODEL_ACTIVITY_HEARTBEAT_INTERVAL_MS,
   RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS,
 } from "@app/temporal/agent_loop/config";
-import { prepareFullContextProvider } from "@app/temporal/agent_loop/lib/agent_loop_context_provider/full";
+import { prepareAgentLoopContextProvider } from "@app/temporal/agent_loop/lib/agent_loop_context_provider/checkpointed";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
@@ -124,9 +124,15 @@ async function _runModelAndCreateActionsActivity({
   const durationRecorder = DurationRecorder.create([]);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+  const featureFlags = await getFeatureFlags(auth);
   const contextProviderRes = await startActiveObservation(
     "get-agent-loop-data",
-    () => prepareFullContextProvider(auth, runAgentArgs, step)
+    () =>
+      prepareAgentLoopContextProvider(auth, runAgentArgs, {
+        featureFlags,
+        isActivityRetry: Context.current().info.attempt > 1,
+        step,
+      })
   );
   if (contextProviderRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(contextProviderRes.error)) {
@@ -235,7 +241,6 @@ async function _runModelAndCreateActionsActivity({
   }
 
   // Tool test run: bypass LLM and directly execute tool commands.
-  const featureFlags = await getFeatureFlags(auth);
   if (featureFlags.includes("run_tools_from_prompt")) {
     const result = await handlePromptCommand(auth, runAgentData, step, runIds);
     if (result !== "not_a_command") {

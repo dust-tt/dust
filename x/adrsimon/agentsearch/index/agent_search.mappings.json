@@ -50,12 +50,6 @@
       "editors": {
         "type": "keyword"
       },
-      "requested_space_ids": {
-        "type": "keyword"
-      },
-      "requested_space_count": {
-        "type": "integer"
-      },
       "non_pod_space_ids": {
         "type": "keyword"
       },
@@ -64,6 +58,9 @@
       },
       "pod_space_ids": {
         "type": "keyword"
+      },
+      "pod_space_count": {
+        "type": "integer"
       },
       "usage": {
         "properties": {

@@ -166,8 +166,8 @@ export async function maybeAutoUpgradeSeat({
   userId: string;
 }): Promise<Result<{ upgraded: boolean }, Error>> {
   // The caller's auth can't mutate seats (member, or no user at all). This only
-  // reads workspace data, we can take a builder only.
-  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+  // reads workspace data, so a plain user auth is sufficient.
+  const auth = await Authenticator.internalUserForWorkspace(workspaceId);
 
   const config =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);

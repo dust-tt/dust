@@ -14,6 +14,7 @@ import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/con
 import type { GetConsumptionTopApiKeysResponse } from "@app/lib/api/analytics/consumption/top_api_keys";
 import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
 import type { GetConsumptionTopModelsResponse } from "@app/lib/api/analytics/consumption/top_models";
+import type { GetConsumptionTopReasoningEffortsResponse } from "@app/lib/api/analytics/consumption/top_reasoning_efforts";
 import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/consumption/top_skills";
 import type { GetConsumptionTopSourcesResponse } from "@app/lib/api/analytics/consumption/top_sources";
 import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/consumption/top_tools";
@@ -26,16 +27,19 @@ import type {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useMemo } from "react";
 
+export type ConsumptionTopDimension = ConsumptionDimension | "reasoning_effort";
+
 const CONSUMPTION_TOP_ENDPOINTS = {
   agent: "top-agents",
   user: "top-users",
   group: "top-groups",
   model: "top-models",
+  reasoning_effort: "top-reasoning-efforts",
   tool: "top-tools",
   skill: "top-skills",
   source: "top-sources",
   api_key: "top-api-keys",
-} as const satisfies Record<ConsumptionDimension, string>;
+} as const satisfies Record<ConsumptionTopDimension, string>;
 
 export type ConsumptionTopRow = {
   id: string;
@@ -56,6 +60,7 @@ export type ConsumptionTopResponse =
   | GetConsumptionTopUsersResponse
   | GetConsumptionTopGroupsResponse
   | GetConsumptionTopModelsResponse
+  | GetConsumptionTopReasoningEffortsResponse
   | GetConsumptionTopToolsResponse
   | GetConsumptionTopSkillsResponse
   | GetConsumptionTopSourcesResponse
@@ -63,7 +68,7 @@ export type ConsumptionTopResponse =
 
 export interface UseConsumptionTopParams {
   workspaceId: string;
-  dimension: ConsumptionDimension;
+  dimension: ConsumptionTopDimension;
   period: ConsumptionPeriodSelection;
   limit: number;
   offset?: number;
@@ -125,6 +130,20 @@ export function toConsumptionTopRows(
   if ("models" in data) {
     return data.models.map((row) => ({
       id: row.modelId,
+      name: row.name,
+      pictureUrl: null,
+      description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
+      credits: row.credits,
+      avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
+    }));
+  }
+  if ("reasoningEfforts" in data) {
+    return data.reasoningEfforts.map((row) => ({
+      id: row.reasoningEffort,
       name: row.name,
       pictureUrl: null,
       description: null,

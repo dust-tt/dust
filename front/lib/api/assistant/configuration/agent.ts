@@ -434,6 +434,7 @@ type AgentLabel = {
   name: string;
   pictureUrl: string | null;
   model: AgentModelConfigurationType;
+  scope: Exclude<AgentConfigurationScope, "global">;
 };
 
 export async function getAgentLabelsByIds(
@@ -456,6 +457,7 @@ export async function getAgentLabelsByIds(
     authorModelId: agent.authorId,
     pictureUrl: agent.pictureUrl,
     model: getModelForAgentConfiguration(agent),
+    scope: agent.scope,
   }));
 }
 

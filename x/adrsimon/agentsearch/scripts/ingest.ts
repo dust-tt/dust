@@ -3,9 +3,8 @@ import { dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
 import { DEFAULT_ES_URL, DEFAULT_INDEX, esRequest } from "./es.ts";
+import { toAgentSearchDocument } from "./documents.ts";
 import type {
-  AgentSearchDocument,
-  ExportedAgent,
   WorkspaceAgentExport,
 } from "./types.ts";
 
@@ -23,39 +22,6 @@ const { values } = parseArgs({
 interface BulkResponse {
   errors: boolean;
   items: { index: { error?: unknown } }[];
-}
-
-function toDocument(agent: ExportedAgent): AgentSearchDocument {
-  return {
-    agent_id: agent.sId,
-    name: agent.name,
-    description: agent.description,
-    instructions: agent.instructions,
-    tags: agent.tags,
-    scope: agent.scope,
-    status: agent.status,
-    author: agent.author,
-    editors: agent.editors,
-    requested_space_ids: agent.requestedSpaceIds,
-    requested_space_count: agent.requestedSpaceIds.length,
-    non_pod_space_ids: agent.nonPodSpaceIds,
-    non_pod_space_count: agent.nonPodSpaceCount,
-    pod_space_ids: agent.podSpaceIds,
-    usage: {
-      messages: agent.usage.messages,
-      conversations: agent.usage.conversations,
-      users: agent.usage.users,
-      credits: agent.usage.credits,
-      feedbacks_up: agent.usage.feedbacksUp,
-      feedbacks_down: agent.usage.feedbacksDown,
-      by_group: agent.usage.byGroup.map((group) => ({
-        group_id: group.groupId,
-        group_name: group.groupName,
-        messages: group.messages,
-        users: group.users,
-      })),
-    },
-  };
 }
 
 const exportPath = values.file
@@ -88,7 +54,7 @@ for (let i = 0; i < workspaceExport.agents.length; i += BATCH_SIZE) {
   const batch = workspaceExport.agents.slice(i, i + BATCH_SIZE);
   const lines = batch.flatMap((agent) => [
     JSON.stringify({ index: { _index: values.index, _id: agent.sId } }),
-    JSON.stringify(toDocument(agent)),
+    JSON.stringify(toAgentSearchDocument(agent)),
   ]);
   const result = await esRequest<BulkResponse>(
     values.es,

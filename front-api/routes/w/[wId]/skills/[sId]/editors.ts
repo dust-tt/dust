@@ -12,6 +12,7 @@ import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { rejectArchivedSkill } from "@front-api/routes/w/[wId]/skills/guards";
 import type { Context } from "hono";
 import { z } from "zod";
 
@@ -90,6 +91,11 @@ app.patch(
           message: "User is not authorized to edit the skill editors list.",
         },
       });
+    }
+
+    const archivedError = rejectArchivedSkill(ctx, skillRes);
+    if (archivedError) {
+      return archivedError;
     }
 
     const { addEditorIds = [], removeEditorIds = [] } = ctx.req.valid("json");

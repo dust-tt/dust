@@ -3,8 +3,6 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -29,10 +27,13 @@ async function resetWorkspaceOpenSpaceMembers(
 ): Promise<void> {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-  // `isRegularAndOpen` is the predicate this targets: a regular space whose groups include the
-  // workspace global group as a `reader` viewer. Soft-deleted spaces are left out (default scope).
+  // This targets regular spaces that are open: a regular space whose groups include the workspace
+  // global group as a `reader` viewer. Soft-deleted spaces are left out (default scope).
   const spaces = await SpaceResource.listWorkspaceSpaces(auth);
-  const openRegularSpaces = spaces.filter((space) => space.isRegularAndOpen());
+  const openIds = await SpaceResource.listOpenSpaceModelIds(auth, spaces);
+  const openRegularSpaces = spaces.filter(
+    (space) => space.isRegular() && openIds.has(space.id)
+  );
   // Counts for every stage, logged once at the end: a run that removes nothing has to say which
   // stage came up empty, or a no-op is indistinguishable from a bug.
   const counts = {
@@ -53,11 +54,14 @@ async function resetWorkspaceOpenSpaceMembers(
     return;
   }
 
-  // Resolved in bulk rather than per space: one query for the groups, one for their memberships.
+  // Resolved in bulk rather than per space: one query for the grants, one for the groups, one for
+  // their memberships.
+  const referencesBySpaceModelId =
+    await SpaceResource.listGrantReferencesBySpaceModelId(openRegularSpaces);
   const groupModelIds = [
     ...new Set(
-      openRegularSpaces.flatMap((space) =>
-        space.groups.map((ref) => ref.groupId)
+      [...referencesBySpaceModelId.values()].flatMap((references) =>
+        references.map((ref) => ref.groupId)
       )
     ),
   ];
@@ -76,7 +80,9 @@ async function resetWorkspaceOpenSpaceMembers(
 
   const spaceByGroupModelId = new Map(
     openRegularSpaces.flatMap((space) =>
-      space.groups.map((ref) => [ref.groupId, space] as const)
+      (referencesBySpaceModelId.get(space.id) ?? []).map(
+        (ref) => [ref.groupId, space] as const
+      )
     )
   );
 
@@ -156,24 +162,12 @@ makeScript(
   async ({ wId, execute }, logger) => {
     logger.info("Starting open regular space member reset");
 
-    if (wId) {
-      const workspace = await WorkspaceResource.fetchById(wId);
-      if (!workspace) {
-        throw new Error(`Workspace not found: ${wId}`);
-      }
-      await resetWorkspaceOpenSpaceMembers(
-        execute,
-        logger,
-        renderLightWorkspaceType({ workspace })
-      );
-    } else {
-      await runOnAllWorkspaces(
-        async (workspace) => {
-          await resetWorkspaceOpenSpaceMembers(execute, logger, workspace);
-        },
-        { concurrency: 4 }
-      );
-    }
+    await runOnAllWorkspaces(
+      async (workspace) => {
+        await resetWorkspaceOpenSpaceMembers(execute, logger, workspace);
+      },
+      { concurrency: 4, wId }
+    );
 
     logger.info("Open regular space member reset completed");
   }

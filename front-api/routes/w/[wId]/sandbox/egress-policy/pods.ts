@@ -1,4 +1,5 @@
 import { listPodsWithEgressPolicy } from "@app/lib/api/sandbox/admin_pods";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { GetEgressPolicyPodsResponseBody } from "@app/types/api/sandbox/egress_policy";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -27,8 +28,18 @@ app.get("/", async (ctx): HandlerResult<GetEgressPolicyPodsResponseBody> => {
     });
   }
 
+  // Resolve openness for every pod in one query rather than one per pod.
+  const openPodModelIds = await SpaceResource.listOpenSpaceModelIds(
+    auth,
+    pods.value
+  );
+
   return ctx.json({
-    pods: pods.value.map((pod) => ({ sId: pod.sId, name: pod.name })),
+    pods: pods.value.map((pod) => ({
+      sId: pod.sId,
+      name: pod.name,
+      isRestricted: pod.isProject() && !openPodModelIds.has(pod.id),
+    })),
   });
 });
 

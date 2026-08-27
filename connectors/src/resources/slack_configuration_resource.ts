@@ -20,6 +20,12 @@ import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
+export type WhitelistedBotType = {
+  botName: string;
+  groupIds: string[];
+  createdAt: number;
+};
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
@@ -203,6 +209,39 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     }
 
     return new Ok(undefined);
+  }
+
+  async listWhitelistedBots(
+    whitelistType: SlackbotWhitelistType
+  ): Promise<WhitelistedBotType[]> {
+    const bots = await SlackBotWhitelistModel.findAll({
+      where: {
+        connectorId: this.connectorId,
+        slackConfigurationId: this.id,
+        whitelistType,
+      },
+      order: [["botName", "ASC"]],
+    });
+
+    return bots.map((bot) => ({
+      botName: bot.botName,
+      groupIds: bot.groupIds ?? [],
+      createdAt: bot.createdAt.getTime(),
+    }));
+  }
+
+  async removeWhitelistedBot(
+    botName: string,
+    whitelistType: SlackbotWhitelistType
+  ): Promise<number> {
+    return SlackBotWhitelistModel.destroy({
+      where: {
+        connectorId: this.connectorId,
+        slackConfigurationId: this.id,
+        botName,
+        whitelistType,
+      },
+    });
   }
 
   // Get the Dust group IDs that the bot is whitelisted for.

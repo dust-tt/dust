@@ -33,6 +33,7 @@
     "@hono/zod-validator": "^0.7.6",
     "hono": "^4.12.15",
     "jsonwebtoken": "^9.0.0",
+    "openai": "^6.46.0",
     "swagger-jsdoc": "^6.2.8",
     "zod": "^3.25.76",
     "zod-validation-error": "^3.4.0"

@@ -1,4 +1,4 @@
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { Authenticator } from "@app/lib/auth";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -30,8 +30,8 @@ describe("GET /api/v1/w/:wId/spaces", () => {
     const regularSpace2 = await SpaceFactory.regular(workspace);
     await SpaceFactory.regular(workspace); // Distractor: not associated with the global group.
 
-    await GroupSpaceFactory.associate(regularSpace1, globalGroup);
-    await GroupSpaceFactory.associate(regularSpace2, globalGroup);
+    await SpaceFactory.attachGroup(regularSpace1, globalGroup);
+    await SpaceFactory.attachGroup(regularSpace2, globalGroup);
 
     const response = await honoApp.request(
       `/api/v1/w/${workspace.sId}/spaces`,
@@ -57,7 +57,7 @@ describe("GET /api/v1/w/:wId/spaces", () => {
 
     await SpaceFactory.global(workspace);
     const regularSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(regularSpace, globalGroup);
+    await SpaceFactory.attachGroup(regularSpace, globalGroup);
 
     const response = await honoApp.request(
       `/api/v1/w/${workspace.sId}/spaces?kinds=regular`,
@@ -82,8 +82,11 @@ describe("GET /api/v1/w/:wId/spaces", () => {
 
     // A key is a workspace member, and the global group only ever reads a project, so the key has
     // to hold the project's own member group to be a member of it.
-    const { members } = await project.fetchAssociatedGroups();
-    const key = await KeyFactory.regular([globalGroup, ...members]);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const memberGroup = await project.fetchManualMemberGroup(adminAuth);
+    const key = await KeyFactory.regular([globalGroup, memberGroup]);
 
     const defaultResponse = await honoApp.request(
       `/api/v1/w/${workspace.sId}/spaces`,

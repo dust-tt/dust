@@ -5,6 +5,7 @@ import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   expireRateLimiterKey,
   getRateLimiterCount,
+  getRateLimiterTimestamps,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/utils/rate_limiter";
 import type {
@@ -91,13 +92,119 @@ export const makeFairUseAwuCreditsRateLimitKeyForUser = (
 
 export const PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK = 25;
 export const PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS = 7 * 24 * 60 * 60;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export const makePremiumModelMessageRateLimitKeyForUser = (
-  workspace: LightWorkspaceType,
-  user: UserType
+  workspace: Pick<LightWorkspaceType, "id">,
+  user: Pick<UserType, "id">
 ) => {
   return `workspace:${workspace.id}:user:${user.id}:premium_model_message_count`;
 };
+
+export type PremiumModelMessageUsage = {
+  usedMessages: number;
+  remainingMessages: number;
+  limitMessages: number;
+  windowDays: number;
+  // Optional for compatibility with clients deployed before refill information was added.
+  nextRefill?: { availableAt: string; messages: number } | null;
+  // Optional for compatibility with clients deployed before the daily breakdown was added.
+  dailyUsage?: { date: string; usedMessages: number }[];
+};
+
+function getNextPremiumModelRefill({
+  timestampsMs,
+  windowMs,
+}: {
+  timestampsMs: number[];
+  windowMs: number;
+}): PremiumModelMessageUsage["nextRefill"] {
+  if (
+    timestampsMs.length < PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK
+  ) {
+    return null;
+  }
+
+  const oldestTimestampMs = timestampsMs[0];
+  const messages = timestampsMs.filter(
+    (timestampMs) => timestampMs === oldestTimestampMs
+  ).length;
+
+  return {
+    availableAt: new Date(oldestTimestampMs + windowMs).toISOString(),
+    messages,
+  };
+}
+
+function getUtcDayStartMs(timestampMs: number): number {
+  const date = new Date(timestampMs);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function getPremiumModelDailyUsage({
+  timestampsMs,
+  windowStartMs,
+  windowEndMs,
+}: {
+  timestampsMs: number[];
+  windowStartMs: number;
+  windowEndMs: number;
+}): { date: string; usedMessages: number }[] {
+  const usageByDay = new Map<string, number>();
+  for (const timestampMs of timestampsMs) {
+    const date = new Date(timestampMs).toISOString().slice(0, 10);
+    usageByDay.set(date, (usageByDay.get(date) ?? 0) + 1);
+  }
+
+  const dailyUsage: { date: string; usedMessages: number }[] = [];
+  const firstDayStartMs = getUtcDayStartMs(windowStartMs);
+  const lastDayStartMs = getUtcDayStartMs(windowEndMs);
+  for (
+    let dayStartMs = firstDayStartMs;
+    dayStartMs <= lastDayStartMs;
+    dayStartMs += MS_PER_DAY
+  ) {
+    const date = new Date(dayStartMs).toISOString().slice(0, 10);
+    dailyUsage.push({ date, usedMessages: usageByDay.get(date) ?? 0 });
+  }
+
+  return dailyUsage;
+}
+
+export async function getPremiumModelMessageUsage({
+  workspace,
+  user,
+}: {
+  workspace: Pick<LightWorkspaceType, "id">;
+  user: Pick<UserType, "id">;
+}): Promise<PremiumModelMessageUsage> {
+  const result = await getRateLimiterTimestamps({
+    key: makePremiumModelMessageRateLimitKeyForUser(workspace, user),
+    timeframeSeconds: PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
+  });
+  const timestampsMs = result.isOk()
+    ? result.value.slice(-PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK)
+    : [];
+  const usedMessages = timestampsMs.length;
+  const windowEndMs = Date.now();
+  const windowMs = PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS * 1000;
+  const windowStartMs = windowEndMs - windowMs;
+
+  return {
+    usedMessages,
+    remainingMessages:
+      PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK - usedMessages,
+    limitMessages: PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK,
+    windowDays:
+      PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS / (24 * 60 * 60),
+    nextRefill: getNextPremiumModelRefill({ timestampsMs, windowMs }),
+    dailyUsage: getPremiumModelDailyUsage({
+      timestampsMs,
+      windowStartMs,
+      windowEndMs,
+    }),
+  };
+}
 
 // Fixed-window counter backing the admin-configured per-user spend cap. Always
 // bucketed on the Metronome contract billing cycle (the fixed-window counter

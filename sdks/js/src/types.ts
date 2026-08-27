@@ -752,7 +752,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_fable_5_feature"
   | "databricks_tool"
   | "deepseek_feature"
-  | "dev_mcp_actions"
   | "exa_people_and_company"
   | "disable_computer_feature"
   | "disable_formatting_prompt"
@@ -800,6 +799,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "shopify_tool"
   | "show_debug_tools"
   | "slack_message_splitting"
+  | "stateful_conversation_window"
   | "run_tools_from_prompt"
   | "usage_data_api"
   | "usage_page_read_only"
@@ -822,6 +822,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "editable_tool_inputs"
   | "skip_free_usage_rate_limit"
   | "disable_fair_use_awu_limit"
+  | "metronome_aggregated_usage_event"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -3463,6 +3464,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SalesforceLogo"
   | "SemrushLogo"
   | "SalesloftLogo"
+  | "ShopifyLogo"
   | "SlabLogo"
   | "SlackLogo"
   | "SnowflakeLogo"

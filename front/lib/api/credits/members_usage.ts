@@ -1,4 +1,6 @@
+import type { PremiumModelMessageUsage } from "@app/lib/api/assistant/rate_limits";
 import {
+  getPremiumModelMessageUsage,
   makeApiKeySpendLimitAwuCreditsRateLimitKey,
   makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace,
   makeSpendLimitAwuCreditsRateLimitKeyForUser,
@@ -1226,6 +1228,9 @@ export type GetMemberUsageResponseBody = {
   // Optional for backward compatibility with clients deployed before target
   // information was added to this endpoint.
   creditUsageStatus?: CreditUsageStatus | null;
+  // Optional for backward compatibility with clients deployed before premium
+  // rolling-window usage was added to this endpoint.
+  premiumModelUsage?: PremiumModelMessageUsage | null;
 };
 
 export async function getMemberUsage({
@@ -1252,6 +1257,10 @@ export async function getMemberUsage({
         ? Promise.resolve(cycleOverride)
         : resolveMetronomeCycle(workspace)
       : Promise.resolve(null);
+  const premiumModelUsagePromise =
+    plan && !isCreditPricedPlan(plan)
+      ? getPremiumModelMessageUsage({ workspace, user: userResource })
+      : Promise.resolve(null);
 
   // The workspace-wide default pool cap lives on the credit-usage
   // configuration row (created lazily; absent → no default configured).
@@ -1264,6 +1273,7 @@ export async function getMemberUsage({
     seatDataByUserId,
     perUserSpendLimits,
     billingCycle,
+    premiumModelUsage,
   ] = await Promise.all([
     MembershipResource.getActiveMemberships({
       workspace,
@@ -1289,6 +1299,7 @@ export async function getMemberUsage({
       includeAlertLinks: false,
     }),
     billingCyclePromise,
+    premiumModelUsagePromise,
   ]);
 
   const { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType } =
@@ -1430,6 +1441,7 @@ export async function getMemberUsage({
 
   return {
     member,
+    premiumModelUsage,
     creditUsageStatus:
       billingCycle && spendLimitAwuCredits !== null
         ? computeCreditUsageStatus({

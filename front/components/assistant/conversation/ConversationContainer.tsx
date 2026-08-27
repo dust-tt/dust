@@ -47,32 +47,72 @@ import {
   ScrollArea,
   XClose,
 } from "@dust-tt/sparkle";
-import type { Variants } from "framer-motion";
-import { motion, useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
+import type { CSSProperties } from "react";
 import { useCallback, useContext, useEffect, useState } from "react";
 
-const GREETING_WORD_OFFSET_PX = 10;
-const GREETING_WORD_DURATION_SECONDS = 0.42;
+// Shared "fade + rise + blur" entrance for the empty-state hero: the
+// greeting words, the composer, and "Chat with..." each play it once, offset
+// so the three appear in that order without waiting on one another to
+// finish. See `fade-rise-blur-in` in theme-extras.css for the keyframe.
+const HERO_ENTER_EASE = `cubic-bezier(${MOTION_EASINGS.emphasized.join(", ")})`;
+
+interface HeroEntranceStyle extends CSSProperties {
+  "--hero-entrance-y": string;
+  "--hero-entrance-blur": string;
+}
+
+function heroEntranceStyle({
+  yPx,
+  blurPx,
+  durationSeconds,
+  delaySeconds,
+}: {
+  yPx: number;
+  blurPx: number;
+  durationSeconds: number;
+  delaySeconds: number;
+}): HeroEntranceStyle {
+  return {
+    "--hero-entrance-y": `${yPx}px`,
+    "--hero-entrance-blur": `${blurPx}px`,
+    animation:
+      `fade-rise-blur-in ${durationSeconds}s ${HERO_ENTER_EASE} ` +
+      `${delaySeconds}s backwards`,
+  };
+}
+
+const GREETING_WORD_ENTER_Y_PX = 4;
+const GREETING_WORD_ENTER_BLUR_PX = 3;
+const GREETING_WORD_DURATION_SECONDS = 0.43;
 const GREETING_WORD_STAGGER_SECONDS = 0.07;
 
-const GREETING_VARIANTS = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: GREETING_WORD_STAGGER_SECONDS },
-  },
-} satisfies Variants;
+function greetingWordStyle(index: number): HeroEntranceStyle {
+  return heroEntranceStyle({
+    yPx: GREETING_WORD_ENTER_Y_PX,
+    blurPx: GREETING_WORD_ENTER_BLUR_PX,
+    durationSeconds: GREETING_WORD_DURATION_SECONDS,
+    delaySeconds: index * GREETING_WORD_STAGGER_SECONDS,
+  });
+}
 
-const GREETING_WORD_VARIANTS = {
-  hidden: { opacity: 0, y: GREETING_WORD_OFFSET_PX },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: GREETING_WORD_DURATION_SECONDS,
-      ease: MOTION_EASINGS.emphasized,
-    },
-  },
-} satisfies Variants;
+// Starts while the greeting is still animating in, rather than waiting for
+// it to finish, so the hero appears as one flowing wave.
+const COMPOSER_ENTER_DELAY_SECONDS = 0.13;
+const composerEntranceStyle = heroEntranceStyle({
+  yPx: 6,
+  blurPx: 3,
+  durationSeconds: 0.28,
+  delaySeconds: COMPOSER_ENTER_DELAY_SECONDS,
+});
+
+const CHAT_WITH_ENTER_DELAY_SECONDS = 0.3;
+const chatWithEntranceStyle = heroEntranceStyle({
+  yPx: 8,
+  blurPx: 3,
+  durationSeconds: 0.28,
+  delaySeconds: CHAT_WITH_ENTER_DELAY_SECONDS,
+});
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -302,23 +342,24 @@ export function ConversationContainerVirtuoso({
           >
             <Page.Header
               title={
-                <motion.h3
+                <h3
                   key={greeting}
                   className="heading-3xl font-medium text-foreground"
-                  variants={GREETING_VARIANTS}
-                  initial={shouldReduceMotion ? false : "hidden"}
-                  animate="visible"
                 >
                   {greeting.split(" ").map((word, index) => (
-                    <motion.span
+                    <span
                       key={`${index}-${word}`}
                       className="inline-block whitespace-pre"
-                      variants={GREETING_WORD_VARIANTS}
+                      style={
+                        shouldReduceMotion
+                          ? undefined
+                          : greetingWordStyle(index)
+                      }
                     >
                       {index === 0 ? word : ` ${word}`}
-                    </motion.span>
+                    </span>
                   ))}
-                </motion.h3>
+                </h3>
               }
             />
           </div>
@@ -331,6 +372,7 @@ export function ConversationContainerVirtuoso({
               // still measures exactly --container-conversation when wide.
               "md:w-full md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1 md:pb-4"
             )}
+            style={shouldReduceMotion ? undefined : composerEntranceStyle}
           >
             <InputBar
               owner={owner}
@@ -376,6 +418,7 @@ export function ConversationContainerVirtuoso({
               setSelectedSingleAgent(toRichAgentMentionType(agent));
             }}
             owner={owner}
+            style={shouldReduceMotion ? undefined : chatWithEntranceStyle}
             user={user}
           />
         </>

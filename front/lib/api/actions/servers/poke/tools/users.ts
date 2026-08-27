@@ -18,7 +18,6 @@ import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import {
   GROUP_KINDS,
   isAgentEditorGroupKind,
-  isSkillEditorGroupKind,
   isSystemGroupKind,
 } from "@app/types/groups";
 import { Err } from "@app/types/shared/result";
@@ -49,10 +48,7 @@ export const userHandlers: UserHandlers = {
 
     const groups = await GroupResource.listAllWorkspaceGroups(targetAuth, {
       groupKinds: GROUP_KINDS.filter(
-        (kind) =>
-          !isSystemGroupKind(kind) &&
-          !isAgentEditorGroupKind(kind) &&
-          !isSkillEditorGroupKind(kind)
+        (kind) => !isSystemGroupKind(kind) && !isAgentEditorGroupKind(kind)
       ),
     });
 

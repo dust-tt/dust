@@ -31,14 +31,14 @@ const COMMON_EXTRA = {
 };
 
 describe("modelPickerTracking", () => {
-  it("emits assistant:model_picker:exposure with the shared properties", () => {
+  it("emits assistant:model_picker:view with the shared properties", () => {
     trackModelPickerExposure(BASE);
 
     expect(trackEventMock).toHaveBeenCalledTimes(1);
     expect(trackEventMock).toHaveBeenCalledWith({
       area: "assistant",
       object: "model_picker",
-      action: "exposure",
+      action: "view",
       extra: COMMON_EXTRA,
     });
   });

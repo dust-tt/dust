@@ -8,6 +8,7 @@ import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import {
   GCS_CONTENT_CACHE_TTL_MS,
@@ -409,6 +410,85 @@ describe("listBlockedActionsForConversation", () => {
     expect(reloadedAction?.status).toBe("blocked_validation_required");
   });
 
+  it("excludes sandbox child actions from conversation-visible metadata", async () => {
+    const agentMessage = await AgentMessageModel.create({
+      conversationId: conversation.id,
+      workspaceId: workspace.id,
+      agentConfigurationId: "test-agent",
+      agentConfigurationVersion: 0,
+      status: "created",
+      skipToolsValidation: false,
+    });
+    const { action: parentAction } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+    await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.id,
+      parentAction,
+      sandboxChildActionInfo: { parentActionId: parentAction.sId },
+    });
+
+    const visibleActions =
+      await AgentMCPActionResource.fetchVisibleByLatestStepContents(auth, [
+        agentMessage.id,
+      ]);
+
+    expect(visibleActions.map(({ sId }) => sId)).toEqual([parentAction.sId]);
+  });
+
+  it("returns only actions linked to canonical function calls", async () => {
+    const agentMessage = await AgentMessageModel.create({
+      conversationId: conversation.id,
+      workspaceId: workspace.id,
+      agentConfigurationId: "test-agent",
+      agentConfigurationVersion: 0,
+      status: "created",
+      skipToolsValidation: false,
+    });
+    const { action: supersededAction } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+    const { action: canonicalAction } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+    const { action: removedAction } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+
+    await AgentStepContentModel.update(
+      {
+        step: supersededAction.stepContent.step,
+        index: supersededAction.stepContent.index,
+        version: supersededAction.stepContent.version + 1,
+      },
+      {
+        where: {
+          id: canonicalAction.stepContent.id,
+          workspaceId: workspace.id,
+        },
+      }
+    );
+    await AgentStepContentModel.create({
+      workspaceId: workspace.id,
+      agentMessageId: agentMessage.id,
+      step: removedAction.stepContent.step,
+      index: removedAction.stepContent.index,
+      version: removedAction.stepContent.version + 1,
+      dustRunId: null,
+      type: "text_content",
+      value: { type: "text_content", value: "The retry did not call a tool" },
+    });
+
+    const visibleActions =
+      await AgentMCPActionResource.fetchVisibleByLatestStepContents(auth, [
+        agentMessage.id,
+      ]);
+
+    expect(visibleActions.map(({ sId }) => sId)).toEqual([canonicalAction.sId]);
+  });
+
   it("does not rewind a final action through a stale sandbox parent resource", async () => {
     const agentMessage = await AgentMessageModel.create({
       conversationId: conversation.id,
@@ -446,6 +526,87 @@ describe("listBlockedActionsForConversation", () => {
       action.sId
     );
     expect(reloadedParent?.status).toBe("succeeded");
+  });
+});
+
+describe("listNonFinalActionsForAgentMessage", () => {
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
+  let conversation: ConversationType;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    workspace = setup.workspace;
+    auth = setup.authenticator;
+
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+  });
+
+  it("should return only the message's non-final actions", async () => {
+    const { agentMessage } = await AgentMCPActionFactory.createWithAgentMessage(
+      auth,
+      { workspace, conversation, status: "succeeded" }
+    );
+
+    const { action: runningAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "running",
+    });
+    const { action: blockedAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "blocked_validation_required",
+    });
+
+    // Non-final action on another agent message: must not be returned.
+    const otherAgentConfig = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      { name: "Other Agent" }
+    );
+    const { agentMessage: otherAgentMessage } =
+      await ConversationFactory.createAgentMessage(auth, {
+        workspace,
+        conversation,
+        agentConfig: otherAgentConfig,
+        // The first agent message of the test occupies rank 0.
+        rank: 1,
+      });
+    await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: otherAgentMessage.agentMessageId,
+      status: "running",
+    });
+
+    const actions =
+      await AgentMCPActionResource.listNonFinalActionsForAgentMessage(auth, {
+        agentMessageModelId: agentMessage.agentMessageId,
+      });
+
+    expect(actions.map((a) => a.id).sort()).toEqual(
+      [runningAction.id, blockedAction.id].sort()
+    );
+  });
+
+  it("should return an empty array when every action is final", async () => {
+    const { agentMessage } = await AgentMCPActionFactory.createWithAgentMessage(
+      auth,
+      { workspace, conversation, status: "errored" }
+    );
+
+    const actions =
+      await AgentMCPActionResource.listNonFinalActionsForAgentMessage(auth, {
+        agentMessageModelId: agentMessage.agentMessageId,
+      });
+
+    expect(actions).toEqual([]);
   });
 });
 

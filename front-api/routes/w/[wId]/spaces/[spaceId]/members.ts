@@ -52,9 +52,10 @@ app.patch(
     const owner = auth.getNonNullableWorkspace();
 
     if (
-      space.isProjectAndRestricted() &&
+      space.isProject() &&
       !body.isRestricted &&
-      !areOpenPodsAllowed(owner)
+      !areOpenPodsAllowed(owner) &&
+      !(await space.isOpen(auth))
     ) {
       return apiError(ctx, {
         status_code: 403,

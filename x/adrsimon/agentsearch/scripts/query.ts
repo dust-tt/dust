@@ -1,3 +1,4 @@
+import { esRequest } from "./es.ts";
 import type { UserProfile } from "./types.ts";
 
 export type EsQuery = Record<string, unknown>;
@@ -17,20 +18,26 @@ const PREFIX_CLAUSE_BOOST = 0.5;
 const MAX_SUBSEQUENCE_LENGTH = 24;
 
 export interface SearchContext {
-  readableSpaceIds: string[];
+  readableNonPodSpaceIds: string[];
+  readablePodSpaceIds: string[];
   userGroupIds: string[];
   userEmail: string | null;
 }
 
+export interface ReferencedSpaces {
+  nonPodSpaceIds: string[];
+  podSpaceIds: string[];
+}
+
 export interface SearchParams extends SearchContext {
   searchTerm: string;
-  scopes: string[];
   includeInstructions: boolean;
   minShouldMatch: string;
   matchMode: MatchMode;
   nameFallback: NameFallback;
   excludeGlobal: boolean;
   groupBoost: number;
+  referencedSpaces: ReferencedSpaces;
 }
 
 export function contextFromProfile(
@@ -39,40 +46,143 @@ export function contextFromProfile(
 ): SearchContext {
   if (profile) {
     return {
-      readableSpaceIds: [
-        ...profile.readableNonPodSpaces,
-        ...profile.readablePodSpaces,
-      ].map((space) => space.sId),
+      readableNonPodSpaceIds: profile.readableNonPodSpaces.map(
+        (space) => space.sId
+      ),
+      readablePodSpaceIds: profile.readablePodSpaces.map((space) => space.sId),
       userGroupIds: profile.groupIds,
       userEmail: profile.user.email,
     };
   }
   return {
-    readableSpaceIds: fallback.spaces.split(",").filter(Boolean),
+    readableNonPodSpaceIds: fallback.spaces.split(",").filter(Boolean),
+    readablePodSpaceIds: [],
     userGroupIds: fallback.groups.split(",").filter(Boolean),
     userEmail: null,
   };
 }
 
-function buildSpaceAccessFilter(readableSpaceIds: string[]): EsQuery {
-  if (readableSpaceIds.length === 0) {
-    return { term: { requested_space_count: 0 } };
+// `terms_set` is the literal translation of `filterAgentsByRequestedSpaces` — every requested
+// space readable — but it expands to one Lucene clause per term, so its ceiling is
+// `maxClauseCount`: 1024 at the floor, derived per node from heap and CPU above it. Its
+// contrapositive, `must_not` a `terms` list of the spaces the caller cannot read, is the same
+// predicate in a single `TermInSetQuery` and runs to `index.max_terms_count`.
+//
+// Neither side is bounded on its own. A workspace can reference thousands of pods, and a user can
+// belong to thousands. What is small is one of the two, per space class: send whichever side is
+// shorter, and only take the positive form while it fits the clause budget.
+const MAX_TERMS_SET_TERMS = 1024;
+
+export function buildSpaceClassFilter(
+  spaceIdsField: string,
+  spaceCountField: string,
+  readableSpaceIds: string[],
+  referencedSpaceIds: string[]
+): EsQuery {
+  const readableSpaceIdSet = new Set(readableSpaceIds);
+  const deniedSpaceIds = referencedSpaceIds.filter(
+    (spaceId) => !readableSpaceIdSet.has(spaceId)
+  );
+  if (deniedSpaceIds.length === 0) {
+    return { match_all: {} };
+  }
+
+  const grantingSpaceIds = referencedSpaceIds.filter((spaceId) =>
+    readableSpaceIdSet.has(spaceId)
+  );
+  if (grantingSpaceIds.length === 0) {
+    return { term: { [spaceCountField]: 0 } };
+  }
+  if (
+    grantingSpaceIds.length >
+    Math.min(deniedSpaceIds.length, MAX_TERMS_SET_TERMS)
+  ) {
+    return {
+      bool: { must_not: [{ terms: { [spaceIdsField]: deniedSpaceIds } }] },
+    };
   }
   return {
     bool: {
       should: [
-        { term: { requested_space_count: 0 } },
+        { term: { [spaceCountField]: 0 } },
         {
           terms_set: {
-            requested_space_ids: {
-              terms: readableSpaceIds,
-              minimum_should_match_field: "requested_space_count",
+            [spaceIdsField]: {
+              terms: grantingSpaceIds,
+              minimum_should_match_field: spaceCountField,
             },
           },
         },
       ],
       minimum_should_match: 1,
     },
+  };
+}
+
+// Pods and non-pods are filtered apart because their bounds are unrelated: non-pod spaces are
+// bounded by the workspace, pod membership by the caller. An agent is visible when both hold, so
+// the two clauses are ANDed, which is what `canReadRequestedSpaces` does term by term.
+function buildSpaceAccessFilter(params: SearchParams): EsQuery[] {
+  return [
+    buildSpaceClassFilter(
+      "non_pod_space_ids",
+      "non_pod_space_count",
+      params.readableNonPodSpaceIds,
+      params.referencedSpaces.nonPodSpaceIds
+    ),
+    buildSpaceClassFilter(
+      "pod_space_ids",
+      "pod_space_count",
+      params.readablePodSpaceIds,
+      params.referencedSpaces.podSpaceIds
+    ),
+  ];
+}
+
+interface ReferencedSpacesResponse {
+  aggregations: Record<
+    string,
+    { sum_other_doc_count: number; buckets: { key: string }[] }
+  >;
+}
+
+const MAX_REFERENCED_SPACES = 20000;
+
+// The spaces agents actually point at, the only ones that can change the answer. In front, a
+// cached `SELECT DISTINCT unnest("requestedSpaceIds")` over the workspace's active agents.
+// Over-listing this set is harmless; under-listing it leaks.
+export async function fetchReferencedSpaces(
+  esUrl: string,
+  index: string
+): Promise<ReferencedSpaces> {
+  const aggFor = (field: string) => ({
+    terms: { field, size: MAX_REFERENCED_SPACES },
+  });
+  const result = await esRequest<ReferencedSpacesResponse>(
+    esUrl,
+    "POST",
+    `/${index}/_search`,
+    JSON.stringify({
+      size: 0,
+      query: { term: { status: "active" } },
+      aggs: {
+        non_pod_space_ids: aggFor("non_pod_space_ids"),
+        pod_space_ids: aggFor("pod_space_ids"),
+      },
+    })
+  );
+  const spaceIdsOf = (field: string) => {
+    const agg = result.aggregations[field];
+    if (agg.sum_other_doc_count > 0) {
+      throw new Error(
+        `agents reference more than ${MAX_REFERENCED_SPACES} ${field}; the filter would be incomplete`
+      );
+    }
+    return agg.buckets.map((bucket) => bucket.key);
+  };
+  return {
+    nonPodSpaceIds: spaceIdsOf("non_pod_space_ids"),
+    podSpaceIds: spaceIdsOf("pod_space_ids"),
   };
 }
 
@@ -216,10 +326,8 @@ function buildGroupAdjacencyClause(
 export function buildFilters(params: SearchParams): EsQuery[] {
   return [
     { term: { status: "active" } },
-    buildSpaceAccessFilter(params.readableSpaceIds),
-    ...(params.scopes.length > 0
-      ? [{ terms: { scope: params.scopes } }]
-      : [buildVisibilityFilter(params.userEmail, params.excludeGlobal)]),
+    ...buildSpaceAccessFilter(params),
+    buildVisibilityFilter(params.userEmail, params.excludeGlobal),
   ];
 }
 

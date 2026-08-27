@@ -309,9 +309,7 @@ export class FileResource extends BaseResource<FileModel> {
       fileRes.useCase === "conversation" &&
       fileRes.useCaseMetadata?.conversationId
     ) {
-      const auth = await Authenticator.internalBuilderForWorkspace(
-        workspace.sId
-      );
+      const auth = await Authenticator.internalUserForWorkspace(workspace.sId);
       const conversation = await ConversationResource.fetchById(
         auth,
         fileRes.useCaseMetadata.conversationId,
@@ -671,6 +669,15 @@ export class FileResource extends BaseResource<FileModel> {
 
   get isFrameV2(): boolean {
     return this.contentType === frameV2ContentType;
+  }
+
+  async setActiveFramePublication(publicationId: string) {
+    return this.update({
+      useCaseMetadata: {
+        ...this.useCaseMetadata,
+        activePublicationId: publicationId,
+      },
+    });
   }
 
   // Content access logic.

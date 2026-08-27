@@ -67,7 +67,6 @@ import {
   AgentMessageSkillModel,
   ConversationSkillModel,
 } from "@app/lib/models/skill/conversation_skill";
-import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SelfImprovingSkillsUsageModel } from "@app/lib/models/skill/self_improving_skills_usage";
 import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
@@ -102,7 +101,6 @@ import {
 } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { KillSwitchModel } from "@app/lib/resources/storage/models/kill_switches";
@@ -194,7 +192,6 @@ export function loadAllModels() {
     SharingGrantModel,
     ExternalViewerSessionModel,
     DustAppSecretModel,
-    GroupSpaceModel,
     GroupPermissionModel,
     WebhookSourceModel,
     WebhookSourcesViewModel,
@@ -263,7 +260,6 @@ export function loadAllModels() {
     SkillConfigurationModel,
     SkillDataSourceConfigurationModel,
     SkillVersionModel,
-    GroupSkillModel,
     SkillReferenceModel,
     AgentSkillModel,
     ConversationSkillModel,

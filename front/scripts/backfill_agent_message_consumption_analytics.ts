@@ -310,7 +310,7 @@ makeScript(
 
     await runOnAllWorkspaces(
       async (workspace) => {
-        const auth = await Authenticator.internalBuilderForWorkspace(
+        const auth = await Authenticator.internalUserForWorkspace(
           workspace.sId
         );
 

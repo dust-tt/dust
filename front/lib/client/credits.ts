@@ -9,6 +9,15 @@ export function formatCredits(credits: number): string {
   return credits.toLocaleString("en-US", { maximumFractionDigits: 1 });
 }
 
+// Format AWU credits with exactly one decimal (e.g. "310.0"), so values in
+// per-message average columns stay visually consistent.
+export function formatAvgCredits(credits: number): string {
+  return credits.toLocaleString("en-US", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+}
+
 // Format AWU credits with full fractional precision (up to 6 decimals,
 // trailing zeros trimmed). Used by Poke debugging views that surface
 // microcredit-derived figures (e.g. the rate-limiter counter), where an
@@ -43,6 +52,44 @@ export function formatFairUseTimeframe(
       assertNeverAndIgnore(timeframe);
       return "";
   }
+}
+
+export function formatFairUseAllowance(
+  timeframe: MaxAwuCreditsTimeframeType
+): string {
+  switch (timeframe) {
+    case "day":
+      return "Daily allowance";
+    case "week":
+      return "Weekly allowance";
+    case "month":
+    case "lifetime":
+      return "Monthly allowance";
+    default:
+      assertNeverAndIgnore(timeframe);
+      return "Usage allowance";
+  }
+}
+
+export function formatCreditResetCountdown(
+  nextResetAt: string,
+  nowMs = Date.now()
+): string | null {
+  const nextResetAtMs = Date.parse(nextResetAt);
+  if (!Number.isFinite(nextResetAtMs)) {
+    return null;
+  }
+
+  const daysUntilReset = Math.max(
+    0,
+    Math.ceil((nextResetAtMs - nowMs) / (24 * 60 * 60 * 1000))
+  );
+
+  if (daysUntilReset === 0) {
+    return "Reset today";
+  }
+
+  return `Reset in ${daysUntilReset} day${pluralize(daysUntilReset)}`;
 }
 
 export function formatCreditsCompact(credits: number): string {

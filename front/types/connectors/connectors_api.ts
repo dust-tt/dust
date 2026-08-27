@@ -149,6 +149,12 @@ export interface ContentNodeWithParent extends ContentNode {
   parentTitle: string | null;
 }
 
+export type WhitelistedSlackBotType = {
+  botName: string;
+  groupIds: string[];
+  createdAt: number;
+};
+
 export class ConnectorsAPI {
   _url: string;
   _secret: string;
@@ -553,6 +559,73 @@ export class ConnectorsAPI {
       {
         method: "GET",
         headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
+  async getSlackBotSummoningWhitelist({
+    connectorId,
+  }: {
+    connectorId: string;
+  }): Promise<ConnectorsAPIResponse<{ bots: WhitelistedSlackBotType[] }>> {
+    const res = await this._fetchWithError(
+      `${
+        this._url
+      }/slack/bots/summoning_whitelist?connector_id=${encodeURIComponent(
+        connectorId
+      )}`,
+      {
+        method: "GET",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
+  async whitelistSlackBotToSummon({
+    connectorId,
+    botName,
+    groupIds,
+  }: {
+    connectorId: string;
+    botName: string;
+    groupIds: string[];
+  }): Promise<ConnectorsAPIResponse<{ success: true }>> {
+    const res = await this._fetchWithError(
+      `${this._url}/slack/bots/summoning_whitelist`,
+      {
+        method: "POST",
+        headers: this.getDefaultHeaders(),
+        body: JSON.stringify({
+          connector_id: connectorId,
+          bot_name: botName,
+          group_ids: groupIds,
+        }),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
+  async unwhitelistSlackBotToSummon({
+    connectorId,
+    botName,
+  }: {
+    connectorId: string;
+    botName: string;
+  }): Promise<ConnectorsAPIResponse<{ success: true }>> {
+    const res = await this._fetchWithError(
+      `${this._url}/slack/bots/summoning_whitelist`,
+      {
+        method: "DELETE",
+        headers: this.getDefaultHeaders(),
+        body: JSON.stringify({
+          connector_id: connectorId,
+          bot_name: botName,
+        }),
       }
     );
 

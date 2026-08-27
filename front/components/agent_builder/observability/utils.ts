@@ -8,7 +8,6 @@ import {
   USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
-import type { SourceChartDatum } from "@app/components/agent_builder/observability/types";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
 import moment from "moment-timezone";
@@ -58,10 +57,7 @@ export function getIndexedBaseColor(
   return INDEXED_BASE_COLORS[(idx >= 0 ? idx : 0) % INDEXED_BASE_COLORS.length];
 }
 
-export function buildSourceChartData(
-  buckets: SourceBucket[],
-  total: number
-): SourceChartDatum[] {
+export function buildSourceChartData(buckets: SourceBucket[], total: number) {
   // Aggregate by label so origins sharing the same display name are merged.
   const aggregatedByLabel = new Map<
     string,
@@ -90,47 +86,6 @@ export function buildSourceChartData(
       percent: total > 0 ? Math.round((count / total) * 100) : 0,
     })
   );
-}
-
-// Returns the top N tools from a pre-aggregated count map
-export function selectTopTools(
-  toolCounts: Map<string, number>,
-  maxTools: number
-): string[] {
-  return Array.from(toolCounts.entries())
-    .sort((a, b) => {
-      const countDiff = b[1] - a[1];
-      return countDiff !== 0 ? countDiff : a[0].localeCompare(b[0]);
-    })
-    .slice(0, maxTools)
-    .map(([toolName]) => toolName);
-}
-
-// Finds the version marker that is active for the given date.
-// Returns the marker whose timestamp is <= date and whose next marker's timestamp > date.
-// If date is before all markers, returns null.
-// If date is after all markers, returns the last marker.
-export function findVersionMarkerForDate(
-  date: string | Date,
-  versionMarkers: VersionMarker[]
-): VersionMarker | null {
-  if (!versionMarkers.length) {
-    return null;
-  }
-
-  const targetTime = new Date(date).getTime();
-
-  // Binary search could be used here for better performance with many markers,
-  // but linear search is simple and sufficient for typical use cases
-  for (let i = versionMarkers.length - 1; i >= 0; i--) {
-    const markerTime = new Date(versionMarkers[i].timestamp).getTime();
-    if (targetTime >= markerTime) {
-      return versionMarkers[i];
-    }
-  }
-
-  // Date is before all markers
-  return null;
 }
 
 function truncateToMidnightUTC(timestamp: number): number {

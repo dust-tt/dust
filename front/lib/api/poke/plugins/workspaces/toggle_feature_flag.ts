@@ -7,6 +7,7 @@ import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import logger from "@app/logger/logger";
+import { isDevelopment } from "@app/types/shared/env";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
   FEATURE_FLAG_STAGE_LABELS,
@@ -64,7 +65,7 @@ export const toggleFeatureFlagPlugin = createPlugin({
         const globalLabel =
           globalPct !== undefined ? ` [Global: ${globalPct}%]` : "";
         return {
-          label: `[${FEATURE_FLAG_STAGE_LABELS[config.stage]}] ${feature}${globalLabel}`,
+          label: `[${FEATURE_FLAG_STAGE_LABELS[config.stage]}] ${feature} (@${config.owner})${globalLabel}`,
           value: feature,
           checked: enabledFlagNames.has(feature),
         };
@@ -90,7 +91,9 @@ export const toggleFeatureFlagPlugin = createPlugin({
     const dustOnlyFeatures = toAdd.filter(
       (feature) => WHITELISTABLE_FEATURES_CONFIG[feature].stage === "dust_only"
     );
+    // On local environments, Dust-only flags can be enabled freely.
     if (
+      !isDevelopment() &&
       dustOnlyFeatures.length > 0 &&
       (!planCode ||
         (!isDustCompanyPlan(planCode) && !isFriendsAndFamilyPlan(planCode)))

@@ -3,7 +3,6 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import {
   GROUP_KINDS,
   isAgentEditorGroupKind,
-  isSkillEditorGroupKind,
   isSystemGroupKind,
 } from "@app/types/groups";
 import { pokeApp } from "@front-api/middlewares/ctx";
@@ -20,10 +19,7 @@ app.get("/", async (ctx): HandlerResult<PokeListGroups> => {
 
   const groups = await GroupResource.listAllWorkspaceGroups(auth, {
     groupKinds: GROUP_KINDS.filter(
-      (kind) =>
-        !isSystemGroupKind(kind) &&
-        !isAgentEditorGroupKind(kind) &&
-        !isSkillEditorGroupKind(kind)
+      (kind) => !isSystemGroupKind(kind) && !isAgentEditorGroupKind(kind)
     ),
   });
   const memberCounts = await GroupResource.getMemberCountsForGroups(

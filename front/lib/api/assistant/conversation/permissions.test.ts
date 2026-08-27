@@ -11,7 +11,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -240,7 +239,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
       }
 
       expect(openProjectHydrated.isProject()).toBe(true);
-      expect(openProjectHydrated.isOpen()).toBe(true);
+      expect(await openProjectHydrated.isOpen(auth)).toBe(true);
 
       const manualMembers =
         await openProjectHydrated.fetchDistinctActiveManualGroupMembers(auth);
@@ -421,7 +420,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
       faker.string.alphanumeric(8)
     );
     await GroupFactory.withMembers(internalAdminAuth, provisionedGroup, [user]);
-    await GroupSpaceFactory.associate(restrictedSpace, provisionedGroup);
+    await SpaceFactory.attachGroup(restrictedSpace, provisionedGroup);
 
     await auth.refresh();
 

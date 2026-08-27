@@ -8,7 +8,6 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -278,6 +277,57 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
         message: "Only editors can modify this skill.",
       },
     });
+  });
+
+  it("should return 400 for an archived skill, which only restore can change", async () => {
+    const { workspace, skill, skillOwnerAuth } = await setupTest({
+      requestUserRole: "admin",
+      skillOwnerRole: "admin",
+    });
+
+    await skill.archive(skillOwnerAuth);
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: "Renamed While Archived",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
+      instructions: "Updated instructions",
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "An archived skill cannot be updated. Restore it first.",
+      },
+    });
+
+    const untouched = await SkillResource.fetchById(skillOwnerAuth, skill.sId);
+    expect(untouched?.name).toBe(skill.name);
+    expect(untouched?.instructions).not.toBe("Updated instructions");
+
+    // Restoring is the one change it accepts, and editing works again afterwards.
+    const restoreResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/skills/${skill.sId}/restore`,
+      { method: "POST" }
+    );
+    expect(restoreResponse.status).toBe(200);
+
+    const patchAfterRestore = await patchSkill(workspace, skill.sId, {
+      name: "Renamed After Restore",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
+      instructions: "Updated instructions",
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+    expect(patchAfterRestore.status).toBe(200);
   });
 
   it("should return 400 for duplicate skill name", async () => {
@@ -564,7 +614,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
 
     const childSkill = await SkillFactory.create(requestUserAuth, {
       name: "Referenced Pod Skill",
@@ -735,7 +785,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
     // An open space confers read through the global group's `reader` grant, and an Authenticator
     // resolves its grants once, at construction. `requestUserAuth` predates the space, so refresh
     // it before reading a skill that requests it — `SkillResource` drops skills whose spaces it
@@ -858,7 +908,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
 
     await skill.updateSkill(requestUserAuth, {
       agentFacingDescription: skill.agentFacingDescription,
@@ -895,7 +945,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
 
     const selfReferenceInstructions = `Recurse with ${SkillFactory.serializeSkillReferenceTag(skill)}.`;
 
@@ -1229,6 +1279,32 @@ describe("DELETE /api/w/:wId/skills/:sId", () => {
         message: "Only admins and editors can archive this skill.",
       },
     });
+  });
+
+  it("refuses to re-archive an already archived skill", async () => {
+    const { workspace, requestUserAuth, skill, skillOwnerAuth } =
+      await setupTest({
+        requestUserRole: "admin",
+        skillOwnerRole: "admin",
+      });
+
+    await skill.archive(skillOwnerAuth);
+
+    const response = await deleteSkill(workspace, skill.sId);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "An archived skill cannot be updated. Restore it first.",
+      },
+    });
+
+    // Archiving twice used to rename the skill after itself: `archive` timestamps the same-named
+    // archived skill it finds, which is this one.
+    const untouched = await SkillResource.fetchById(requestUserAuth, skill.sId);
+    expect(untouched?.name).toBe(skill.name);
+    expect(untouched?.status).toBe("archived");
   });
 
   it("allows a workspace admin to archive a skill they do not edit", async () => {

@@ -25,10 +25,6 @@ import { isRoleType } from "./user";
  *  agent. Has special permissions: not restricted only to admins. Users can
  *  create, and members of the group can update it.
  *
- * skill_editors group: Group specific to represent skill editors, tied to a
- *  skill. Has special permissions: not restricted only to admins. Users can
- *  create, and members of the group can update it.
- *
  *  provisioned group: Contains all users from a provisioned group.
  */
 export const GROUP_KINDS = [
@@ -37,7 +33,6 @@ export const GROUP_KINDS = [
   "global",
   "system",
   "agent_editors",
-  "skill_editors",
   "provisioned",
 ] as const;
 export type GroupKind = (typeof GROUP_KINDS)[number];
@@ -84,10 +79,6 @@ export function isAgentEditorGroupKind(value: GroupKind): boolean {
   return value === "agent_editors";
 }
 
-export function isSkillEditorGroupKind(value: GroupKind): boolean {
-  return value === "skill_editors";
-}
-
 export type GroupType = {
   id: ModelId;
   name: string;
@@ -107,7 +98,6 @@ export const GroupKindCodec = z.enum([
   "regular_auto",
   "regular_manual",
   "agent_editors",
-  "skill_editors",
   "system",
   "provisioned",
 ]);

@@ -17,7 +17,6 @@ import {
   _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
 import {
-  _getCustomModelDustLikeGlobalAgent,
   _getDustAntGlobalAgent,
   _getDustAntHighGlobalAgent,
   _getDustAntHighOmittedGlobalAgent,
@@ -842,26 +841,6 @@ function getGlobalAgent({
         featureFlags,
       });
       break;
-    // Active custom-model dust-* agents.
-    case GLOBAL_AGENTS_SID.DUST_CHAWI:
-    case GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM:
-    case GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH:
-    case GLOBAL_AGENTS_SID.DUST_SOUPINOU:
-    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM:
-    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH:
-    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE:
-      agentConfiguration = _getCustomModelDustLikeGlobalAgent(
-        auth,
-        {
-          settings,
-          preFetchedDataSources,
-          mcpServerViews,
-          hasDeepDive,
-          featureFlags,
-        },
-        sId
-      );
-      break;
     // Retired custom-model dust-* agents: their eval models were removed from
     // the infra config, so they resolve to a fallback model for past
     // conversations only (see RETIRED_GLOBAL_AGENTS_SID).
@@ -871,6 +850,13 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.DUST_CHALOM:
     case GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH:
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU:
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM:
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH:
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE:
+    case GLOBAL_AGENTS_SID.DUST_CHAWI:
+    case GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM:
+    case GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH:
       agentConfiguration = _getRetiredDustLikeGlobalAgent(
         auth,
         {
@@ -984,6 +970,13 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.DUST_CHALOM,
   GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
+  GLOBAL_AGENTS_SID.DUST_CHAWI,
+  GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
 ];
 
 // Retired global agents remain resolvable internally (to keep past conversations running) but

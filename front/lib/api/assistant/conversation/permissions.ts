@@ -112,12 +112,13 @@ export async function canAgentBeUsedInProjectConversation(
       uniq([conversation.spaceId, ...configuration.requestedSpaceIds]),
       { transaction }
     );
+    const openIds = await SpaceResource.listOpenSpaceModelIds(auth, spaces);
     if (
       spaces
         // Exclude the project's space from the check.
         .filter((space) => space.sId !== conversation.spaceId)
         // Check if any of the other spaces are restricted.
-        .some((space) => !space.isOpen())
+        .some((space) => !openIds.has(space.id))
     ) {
       const project = spaces.find(
         (space) => space.sId === conversation.spaceId
@@ -128,9 +129,10 @@ export async function canAgentBeUsedInProjectConversation(
 
       // Special case for restricted projects whose members all belong to every
       // restricted space required by the agent, we can use the agent directly.
-      if (!project.isOpen()) {
+      if (!openIds.has(project.id)) {
         const restrictedAgentSpaces = spaces.filter(
-          (space) => space.sId !== conversation.spaceId && !space.isOpen()
+          (space) =>
+            space.sId !== conversation.spaceId && !openIds.has(space.id)
         );
         const projectMembers =
           await project.fetchDistinctActiveManualGroupMembers(auth);

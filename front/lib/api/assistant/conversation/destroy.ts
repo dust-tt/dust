@@ -1,3 +1,4 @@
+import { deleteConversationWindowCheckpoints } from "@app/lib/api/assistant/conversation_rendering/conversation_window_checkpoint";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
 import type { Authenticator } from "@app/lib/auth";
@@ -254,6 +255,10 @@ export async function destroyConversation(
     await getPrivateUploadBucket().deleteByPrefix(
       `${getContentFragmentBaseCloudStorageForWorkspace(owner.sId)}${conversation.sId}/`
     );
+    await deleteConversationWindowCheckpoints({
+      workspaceId: owner.sId,
+      conversationId: conversation.sId,
+    });
 
     const messages = await MessageModel.findAll({
       attributes: [

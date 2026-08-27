@@ -9,10 +9,10 @@ import React, { useCallback, useContext, useEffect } from "react";
 export function useNavigationLock(
   isEnabled = true,
   warningData = {
-    title: "Double checking",
-    message:
-      "You have unsaved changes - are you sure you wish to leave this page?",
-    validation: "primaryWarning",
+    title: "Discard your unsaved changes?",
+    message: "If you leave now, your latest edits won't be kept.",
+    validateLabel: "Discard",
+    cancelLabel: "Keep editing",
   }
 ) {
   const router = useAppRouter();

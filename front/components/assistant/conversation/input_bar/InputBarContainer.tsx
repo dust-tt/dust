@@ -14,6 +14,7 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
+import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { getAvailableInputBarSlashCommands } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
@@ -107,7 +108,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
 import React, {
   useCallback,
   useContext,
@@ -1741,16 +1741,13 @@ const InputBarContainer = ({
               )}
             />
           </div>
-          <BubbleMenu
-            editor={editor ?? undefined}
-            className={cn("flex", isMobile && "hidden")}
-          >
+          <EditorSelectionToolbar editor={editor} disabled={isMobile}>
             {editor && (
-              <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
+              <Toolbar className="inline-flex">
                 <ToolBarContent editor={editor} />
               </Toolbar>
             )}
-          </BubbleMenu>
+          </EditorSelectionToolbar>
           <div
             className={cn("mt-auto flex w-full flex-col", "pt-2 pb-3")}
             style={{

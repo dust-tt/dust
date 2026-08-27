@@ -61,6 +61,8 @@ export type FileUseCaseMetadata = {
   // record of what the entry actually is. Live edits (no model in the loop, triggered by a UI
   // click) reuse it to know what to rebuild from, rather than guessing from fileName.
   frameEntryRelPath?: string;
+  // Immutable Frames v2 publication currently served by the Frame.
+  activePublicationId?: string;
 };
 
 export function isConversationFileUseCase(

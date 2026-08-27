@@ -57,7 +57,7 @@ makeScript(
         "[Backfill MCP output citations] Starting workspace"
       );
 
-      const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+      const auth = await Authenticator.internalUserForWorkspace(workspaceId);
 
       const actionRows = await AgentMCPActionModel.findAll({
         attributes: ["id"],

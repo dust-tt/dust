@@ -78,6 +78,8 @@ export type ConsumptionAgentFacet = ConsumptionFacet & {
 
 export type ConsumptionModelFacet = ConsumptionFacet & {
   maker?: ModelMakerIdType;
+  // TODO(2026-08-26 aubin): Remove after clients with the model-tier filter UI
+  // have cycled out.
   tier?: ModelsTierName;
 };
 
@@ -254,7 +256,7 @@ async function resolveFacets(
   const missingCatalogValues = historicalValues.filter(
     (value) => !catalogByValue.has(value)
   );
-  const historicalLabels = await tracer.trace(
+  const resolvedLabels = await tracer.trace(
     "analytics.consumption.facets.resolve_labels",
     { resource: dimension },
     async (span) => {
@@ -268,11 +270,18 @@ async function resolveFacets(
   );
   const entries = [
     ...catalogEntries,
-    ...missingCatalogValues.map((value) => ({
-      value,
-      label: historicalLabels.get(value)?.name ?? value,
-      pictureUrl: historicalLabels.get(value)?.pictureUrl ?? null,
-    })),
+    ...missingCatalogValues.map((value) => {
+      const resolved = resolvedLabels.get(value);
+      return {
+        value,
+        label: resolved?.name ?? value,
+        pictureUrl: resolved?.pictureUrl ?? null,
+        ...(resolved?.icon !== undefined ? { icon: resolved.icon } : {}),
+        ...(resolved?.scope ? { scope: resolved.scope } : {}),
+        ...(resolved?.maker ? { maker: resolved.maker } : {}),
+        ...(resolved?.tier ? { tier: resolved.tier } : {}),
+      };
+    }),
   ];
 
   return entries

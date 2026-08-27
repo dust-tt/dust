@@ -309,7 +309,7 @@ export function createProjectManagerTools(
           }
 
           const newIsRestricted = access !== "open";
-          const currentlyRestricted = !pod.isOpen();
+          const currentlyRestricted = !(await pod.isOpen(auth));
           if (newIsRestricted !== currentlyRestricted) {
             const { editorIds, memberIds } = await getPodMemberAndEditorSIds(
               auth,
@@ -703,7 +703,7 @@ export function createProjectManagerTools(
               id: pod.sId,
               name: pod.name,
               url: projectUrl,
-              access: pod.isOpen() ? "open" : "restricted",
+              access: (await pod.isOpen(auth)) ? "open" : "restricted",
               description: metadata?.description ?? null,
               pinnedFramePath: metadata?.pinnedFramePath ?? null,
               defaultAgent,
@@ -1107,7 +1107,7 @@ export function createProjectManagerTools(
             pod: {
               id: pod.sId,
               title: pod.name,
-              access: pod.isOpen() ? "open" : "restricted",
+              access: (await pod.isOpen(auth)) ? "open" : "restricted",
               dustPod: {
                 uri: makePodConfigurationURI(owner.sId, pod.sId),
                 mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,

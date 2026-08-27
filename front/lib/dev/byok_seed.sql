@@ -122,31 +122,45 @@ inserted_conversations_space AS (
   RETURNING id, "workspaceId"
 ),
 
--- Step 6a: Link system group → system space
-link_system AS (
-  INSERT INTO group_vaults ("workspaceId", "groupId", "groupKind", "vaultId", "createdAt", "updatedAt")
-  SELECT sg."workspaceId", sg.id, 'system', ss.id, NOW(), NOW()
+-- Step 6a: Seed default governance capabilities (type-wide -1 grants on the global group).
+-- Mirrors seedWorkspaceCapabilities (front/lib/api/permissions/governance_seeding.ts): a fresh
+-- workspace resolves every "everyone" capability to the global group. Keep in sync with
+-- CAPABILITY_SEEDERS and with dust_hive_seed.sql.
+inserted_group_permissions AS (
+  INSERT INTO group_permissions (
+    "workspaceId", "groupId", "grantType", "resourceType", "resourceId", "createdAt", "updatedAt"
+  )
+  SELECT gg."workspaceId", gg.id, capability.grant_type, capability.resource_type, -1, NOW(), NOW()
+  FROM inserted_global_group gg
+  CROSS JOIN (
+    VALUES
+      ('create', 'agent'),
+      ('publish', 'agent'),
+      ('invite', 'frame'),
+      ('publish', 'frame')
+  ) AS capability(grant_type, resource_type)
+  RETURNING id
+),
+
+-- Step 6b: Seed instance-level space group_permissions for the default spaces. Mirrors
+-- SpaceResource.spaceGroupRoles (group_permissions is the source of truth for space access):
+-- system space => system group 'member'; global and conversations spaces => global group 'reader'.
+inserted_space_group_permissions AS (
+  INSERT INTO group_permissions (
+    "workspaceId", "groupId", "grantType", "resourceType", "resourceId", "createdAt", "updatedAt"
+  )
+  SELECT sg."workspaceId", sg.id, 'member', 'space', ss.id, NOW(), NOW()
   FROM inserted_system_group sg
   CROSS JOIN inserted_system_space ss
-  RETURNING "vaultId"
-),
-
--- Step 6b: Link global group → global space
-link_global AS (
-  INSERT INTO group_vaults ("workspaceId", "groupId", "groupKind", "vaultId", "createdAt", "updatedAt")
-  SELECT gg."workspaceId", gg.id, 'global', gs.id, NOW(), NOW()
+  UNION ALL
+  SELECT gg."workspaceId", gg.id, 'reader', 'space', gs.id, NOW(), NOW()
   FROM inserted_global_group gg
   CROSS JOIN inserted_global_space gs
-  RETURNING "vaultId"
-),
-
--- Step 6c: Link global group → conversations space
-link_conversations AS (
-  INSERT INTO group_vaults ("workspaceId", "groupId", "groupKind", "vaultId", "createdAt", "updatedAt")
-  SELECT gg."workspaceId", gg.id, 'global', cs.id, NOW(), NOW()
+  UNION ALL
+  SELECT gg."workspaceId", gg.id, 'reader', 'space', cs.id, NOW(), NOW()
   FROM inserted_global_group gg
   CROSS JOIN inserted_conversations_space cs
-  RETURNING "vaultId"
+  RETURNING id
 ),
 
 -- Step 7: Create subscription

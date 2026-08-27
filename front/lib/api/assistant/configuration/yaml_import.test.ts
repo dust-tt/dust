@@ -7,7 +7,6 @@ import type { GroupResource as GroupResourceType } from "@app/lib/resources/grou
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -29,7 +28,7 @@ async function createPatchableAgent({
   const user = auth.getNonNullableUser();
 
   const space = await SpaceFactory.regular(workspace);
-  await GroupSpaceFactory.associate(space, globalGroup);
+  await SpaceFactory.attachGroup(space, globalGroup);
   // `associate` seeds the space's group_permissions; refresh so this long-lived `auth`'s snapshot
   // picks up the grant (space access is served from the table).
   await auth.refresh();
@@ -366,7 +365,7 @@ describe("patchAgentConfigurationFromJSON", () => {
     const user = authenticator.getNonNullableUser();
 
     const space = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(space, globalGroup);
+    await SpaceFactory.attachGroup(space, globalGroup);
 
     const createResult = await createAgentConfiguration(authenticator, {
       name: "YAML export test agent",
