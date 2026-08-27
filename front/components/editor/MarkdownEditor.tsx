@@ -1,4 +1,5 @@
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
+import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { buildMarkdownEditorExtensions } from "@app/lib/editor/build_markdown_editor_extensions";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -6,7 +7,6 @@ import { cn, Toolbar } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
 import type { Editor, EditorOptions } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
 import type { ReactNode } from "react";
@@ -302,15 +302,12 @@ export function MarkdownEditor({
       <div className="relative">
         <EditorContent editor={editor} />
         {shouldShowFormattingMenu && editor ? (
-          <BubbleMenu
-            editor={editor}
-            className={cn("flex", isMobile && "hidden")}
-          >
-            <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
+          <EditorSelectionToolbar editor={editor} disabled={isMobile}>
+            <Toolbar className="inline-flex">
               <ToolBarContent editor={editor} />
               {toolbarExtra}
             </Toolbar>
-          </BubbleMenu>
+          </EditorSelectionToolbar>
         ) : null}
       </div>
       {shouldShowCharacterCount && editor ? (
