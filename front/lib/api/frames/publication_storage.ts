@@ -57,7 +57,8 @@ export class FramePublicationError extends Error {
       | "invalid_manifest"
       | "invalid_source"
       | "publication_not_found"
-      | "source_not_found",
+      | "source_not_found"
+      | "unauthorized",
     message: string
   ) {
     super(message);

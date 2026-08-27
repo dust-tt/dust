@@ -86,6 +86,11 @@ export async function publishFrameV2FromSource(
   }
   const dustFs = fsResult.value;
 
+  const writeAccess = dustFs.checkWriteAccess(canonicalManifestPath);
+  if (writeAccess.isErr()) {
+    return frameError("unauthorized", writeAccess.error.message);
+  }
+
   const manifestBufferResult = await dustFs.readBuffer(canonicalManifestPath);
   if (manifestBufferResult.isErr()) {
     return frameError("invalid_source", manifestBufferResult.error.message);
@@ -104,9 +109,17 @@ export async function publishFrameV2FromSource(
   }
 
   const sourceDirectoryPath = path.posix.dirname(canonicalManifestPath);
-  const listResult = await dustFs.list(sourceDirectoryPath);
+  const listResult = await dustFs.list(sourceDirectoryPath, {
+    maxFiles: MAX_FRAME_SOURCE_FILE_COUNT + 1,
+  });
   if (listResult.isErr()) {
     return frameError("invalid_source", listResult.error.message);
+  }
+  if (listResult.value.length > MAX_FRAME_SOURCE_FILE_COUNT) {
+    return frameError(
+      "invalid_source",
+      "Frame source exceeds the publication file count limit."
+    );
   }
 
   const sourceEntries: Array<{
@@ -193,7 +206,6 @@ export async function publishFrameV2FromSource(
     conversation,
     frame,
     manifest: manifestResult.value,
-    sourceDirectoryPath,
     sourceFiles,
   });
 }

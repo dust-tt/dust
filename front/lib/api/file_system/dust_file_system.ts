@@ -787,6 +787,11 @@ export class DustFileSystem {
     return this.mounts;
   }
 
+  checkWriteAccess(scopedPath: string): Result<void, DustFileSystemError> {
+    const resolved = this.requireWriteMount(scopedPath);
+    return resolved.isErr() ? new Err(resolved.error) : new Ok(undefined);
+  }
+
   /**
    * Constructs the thumbnail API URL for an image file entry.
    * Lives here because the URL points to our application API, not to GCS.
