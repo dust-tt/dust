@@ -447,6 +447,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "achilleburah",
   },
+  metronome_aggregated_usage_event: {
+    description:
+      "Ingest a single aggregated Metronome usage event (LLM + tools) instead of the legacy per-model llm_usage_v3 and per-tool tool_use_v3 events.",
+    stage: "dust_only",
+    owner: "tdraier",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";

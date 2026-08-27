@@ -822,6 +822,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "editable_tool_inputs"
   | "skip_free_usage_rate_limit"
   | "disable_fair_use_awu_limit"
+  | "metronome_aggregated_usage_event"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
