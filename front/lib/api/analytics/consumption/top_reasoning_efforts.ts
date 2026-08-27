@@ -3,7 +3,10 @@ import type {
   ConsumptionScopeFilter,
   ConsumptionTopSortOrder,
 } from "@app/lib/api/analytics/consumption/scope";
-import { fetchConsumptionTopGroups } from "@app/lib/api/analytics/consumption/top";
+import {
+  avgCreditsPerUnit,
+  fetchConsumptionTopGroups,
+} from "@app/lib/api/analytics/consumption/top";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
@@ -73,7 +76,7 @@ export async function fetchConsumptionTopReasoningEfforts(
       credits: row.credits,
       previousCredits: row.previousCredits,
       messageCount: row.count,
-      avgCreditsPerMessage: row.count > 0 ? row.credits / row.count : 0,
+      avgCreditsPerMessage: avgCreditsPerUnit(row.credits, row.count),
     })),
   });
 }
