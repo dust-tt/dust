@@ -4,7 +4,11 @@ import { parseArgs } from "node:util";
 
 import { DEFAULT_ES_URL, DEFAULT_INDEX, esRequest } from "./es.ts";
 import type { MatchMode, NameFallback } from "./query.ts";
-import { buildAgentSearchQuery, contextFromProfile } from "./query.ts";
+import {
+  buildAgentSearchQuery,
+  contextFromProfile,
+  fetchReferencedSpaces,
+} from "./query.ts";
 import type { AgentSearchDocument, UserProfile } from "./types.ts";
 
 const { values } = parseArgs({
@@ -13,7 +17,6 @@ const { values } = parseArgs({
     profile: { type: "string" },
     spaces: { type: "string", default: "" },
     groups: { type: "string", default: "" },
-    scope: { type: "string", default: "" },
     "exclude-global": { type: "boolean", default: false },
     "with-instructions": { type: "boolean", default: false },
     "min-should-match": { type: "string", default: "" },
@@ -37,6 +40,7 @@ const context = contextFromProfile(profile, {
 });
 const searchTerm = values.q.trim();
 const limit = Number(values.limit);
+const referencedSpaces = await fetchReferencedSpaces(values.es, values.index);
 
 interface SearchResponse {
   hits: {
@@ -55,13 +59,13 @@ interface SearchResponse {
 const query = buildAgentSearchQuery({
   ...context,
   searchTerm,
-  scopes: values.scope.split(",").filter(Boolean),
   excludeGlobal: values["exclude-global"],
   includeInstructions: values["with-instructions"],
   minShouldMatch: values["min-should-match"],
   matchMode: values["match-mode"] as MatchMode,
   nameFallback: values["name-fallback"] as NameFallback,
   groupBoost: Number(values["group-boost"]),
+  referencedSpaces,
 });
 
 const result = await esRequest<SearchResponse>(
@@ -80,7 +84,9 @@ const asWhom = profile
   ? `as ${profile.user.email} (${profile.role})`
   : "as an anonymous caller";
 console.log(
-  `q="${searchTerm}" ${asWhom} spaces=${context.readableSpaceIds.length} groups=${context.userGroupIds.length} -> ${result.hits.total.value} hits\n`
+  `q="${searchTerm}" ${asWhom}`
+    + ` spaces=${context.readableNonPodSpaceIds.length}+${context.readablePodSpaceIds.length} pods`
+    + ` groups=${context.userGroupIds.length} -> ${result.hits.total.value} hits\n`
 );
 for (const [rank, hit] of result.hits.hits.entries()) {
   const source = hit._source;

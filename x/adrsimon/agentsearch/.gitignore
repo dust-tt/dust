@@ -1,6 +1,7 @@
 # Workspace exports carry every agent's instructions and group-level usage.
 assets/agents_*.json
 !assets/agents_skeleton.json
+!assets/permissions/agents_mocked.json
 
 # Profile snapshots name a real person and their group/space memberships.
 assets/profile_*.json

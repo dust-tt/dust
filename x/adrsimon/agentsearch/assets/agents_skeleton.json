@@ -35,7 +35,6 @@
         }
       ],
       "nonPodSpaceIds": ["vlt_AAAAAAAAAAAA"],
-      "nonPodSpaceCount": 1,
       "podSpaceIds": ["vlt_BBBBBBBBBBBB"],
       "usage": {
         "periodDays": 30,

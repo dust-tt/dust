@@ -11,5 +11,12 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true
   },
-  "include": ["scripts/ingest.ts", "scripts/search.ts"]
+  "include": [
+    "scripts/eval.ts",
+    "scripts/generate_queries.ts",
+    "scripts/ingest.ts",
+    "scripts/search.ts",
+    "scripts/test_permissions.ts",
+    "scripts/sweep_bm25.ts"
+  ]
 }

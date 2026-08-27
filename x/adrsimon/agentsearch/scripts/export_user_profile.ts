@@ -46,6 +46,7 @@ makeScript(
 
     const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
       includeConversationsSpace: true,
+      includeProjectSpaces: true,
     });
     const readableSpaces = spaces.filter((space) => space.canRead(auth));
 
@@ -91,6 +92,7 @@ makeScript(
         path,
         groupCount: profile.groups.length,
         readableSpaceCount: readableSpaces.length,
+        readablePodSpaceCount: profile.readablePodSpaces.length,
       },
       "Profile exported"
     );

@@ -4,7 +4,11 @@ import { parseArgs } from "node:util";
 
 import { DEFAULT_ES_URL, DEFAULT_INDEX, esRequest } from "./es.ts";
 import type { MatchMode, NameFallback } from "./query.ts";
-import { buildAgentSearchQuery, contextFromProfile } from "./query.ts";
+import {
+  buildAgentSearchQuery,
+  contextFromProfile,
+  fetchReferencedSpaces,
+} from "./query.ts";
 import { contentTerms, documentTerms } from "./text.ts";
 import type {
   EvalMetrics,
@@ -56,6 +60,7 @@ const includeInstructions = values["with-instructions"];
 const minShouldMatch = values["min-should-match"];
 const matchMode = values["match-mode"] as MatchMode;
 const nameFallback = values["name-fallback"] as NameFallback;
+const referencedSpaces = await fetchReferencedSpaces(values.es, values.index);
 const maxQueries = Number(values["max-queries"]);
 const queries =
   maxQueries > 0 ? querySet.queries.slice(0, maxQueries) : querySet.queries;
@@ -118,13 +123,13 @@ async function runBatch(
         query: buildAgentSearchQuery({
           ...context,
           searchTerm: query.query,
-          scopes: [],
           excludeGlobal,
           includeInstructions,
           minShouldMatch,
           matchMode,
           nameFallback,
           groupBoost,
+          referencedSpaces,
         }),
         size: CUTOFF,
         _source: ["name", "description"],

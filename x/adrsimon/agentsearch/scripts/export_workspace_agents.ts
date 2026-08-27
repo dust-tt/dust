@@ -252,8 +252,11 @@ makeScript(
     const spaceById = new Map(spaces.map((s) => [s.sId, s]));
 
     const isPod = (sId: string) => spaceById.get(sId)?.isProject() ?? false;
+    // An unresolvable space still has to land in a class: dropped from both, no clause can
+    // deny it and the agent becomes visible to anyone reading its remaining spaces, where
+    // `canReadRequestedSpaces` hides it from everyone.
     const nonPodSpaceIdsFor = (spaceIds: string[]) =>
-      spaceIds.filter((sId) => spaceById.has(sId) && !isPod(sId));
+      spaceIds.filter((sId) => !isPod(sId));
     const podSpaceIdsFor = (spaceIds: string[]) => spaceIds.filter(isPod);
 
     const unresolvedSpaceAgents = agentConfigurations.filter((agent) =>
@@ -293,7 +296,6 @@ makeScript(
           kind: spaceById.get(sId)?.kind ?? null,
         })),
         nonPodSpaceIds: nonPodSpaceIdsFor(agent.requestedSpaceIds),
-        nonPodSpaceCount: nonPodSpaceIdsFor(agent.requestedSpaceIds).length,
         podSpaceIds: podSpaceIdsFor(agent.requestedSpaceIds),
         usage: {
           periodDays: days,
