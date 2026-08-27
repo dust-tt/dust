@@ -331,11 +331,6 @@ async function buildConversationWindow(
   const interactions = groupMessagesIntoInteractions(
     prepared.messagesWithTokens
   );
-  if (source.kind === "checkpoint_continuation" && interactions.length > 1) {
-    return new Err(
-      new Error("A checkpoint continuation must belong to one interaction")
-    );
-  }
   const budgetForInteractions = input.allowedTokenCount - baseTokens;
   const pruningTargetCeiling =
     input.model.contextSize * PRUNING_TARGET_CONTEXT_UTILIZATION - baseTokens;
