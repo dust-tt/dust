@@ -24,7 +24,8 @@ import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import * as tar from "tar-stream";
 
-export const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024;
+// If you change this value, also update the limitation message in lib/connector_providers_ui.ts
+export const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024;
 const MAX_CONCURRENT_GCS_UPLOADS = 400;
 const MAX_TARBALL_SPOOL_RETRIES = 3;
 const MAX_TARBALL_EXTRACTION_RETRIES = 3;
