@@ -24,18 +24,13 @@ function createTestExtra(auth: Authenticator, runContext?: unknown) {
 
 describe("workspace_analytics tools", () => {
   it.each([
-    "get_top_agents",
-    "get_top_users",
-    "get_top_agent_tags",
-    "get_top_models",
     "get_agent_details",
-    "get_top_skills",
-    "get_top_tools",
-    "get_source_breakdown",
     "get_credit_usage",
     "get_credit_timeseries",
     "get_usage_timeseries",
     "get_top_entities_by_credits",
+    "get_top_entities_by_message_count",
+    "get_top_entities_by_execution_count",
   ])("%s refuses callers below manager", async (toolName) => {
     const workspace = await WorkspaceFactory.basic();
     await GroupFactory.defaults(workspace);

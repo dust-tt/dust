@@ -1,4 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   ToolHandlerResult,
   ToolHandlers,
@@ -6,7 +7,11 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { workspaceManagerGuard } from "@app/lib/actions/mcp_internal_actions/utils";
 import { WORKSPACE_ANALYTICS_TOOLS_METADATA } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
-import type { ResolvedTimeWindow } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import type {
+  ConsumptionFilterInput,
+  ResolvedTimeWindow,
+  TimeWindowInput,
+} from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import {
   DEFAULT_CREDIT_GROUPS,
   DEFAULT_RESULTS,
@@ -14,6 +19,10 @@ import {
   toConsumptionPeriod,
   toConsumptionScope,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import type {
+  ConsumptionTopDimension,
+  ConsumptionTopRankBy,
+} from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_TOP_DIMENSION_UNIT } from "@app/lib/api/analytics/consumption/scope";
 import {
   fetchConsumptionTopGroups,
@@ -21,28 +30,13 @@ import {
 } from "@app/lib/api/analytics/consumption/top";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import {
-  fetchContextOriginBreakdown,
-  toLabeledSources,
-} from "@app/lib/api/assistant/observability/context_origin";
-import {
   fetchCreditTimeseries,
   fetchCreditTimeseriesBreakdown,
   fetchCreditUsage,
 } from "@app/lib/api/assistant/observability/credit_usage";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
-import {
-  fetchAvailableSkills,
-  fetchSkillUsageMetrics,
-} from "@app/lib/api/assistant/observability/skill_usage";
-import {
-  fetchAvailableTools,
-  fetchToolUsageMetrics,
-  resolveServerDisplayNames,
-} from "@app/lib/api/assistant/observability/tool_usage";
-import { fetchTopAgentTags } from "@app/lib/api/assistant/observability/top_agent_tags";
-import { fetchTopAgents } from "@app/lib/api/assistant/observability/top_agents";
-import { fetchTopModels } from "@app/lib/api/assistant/observability/top_models";
-import { fetchTopUsers } from "@app/lib/api/assistant/observability/top_users";
+import { fetchSkillUsageMetrics } from "@app/lib/api/assistant/observability/skill_usage";
+import { fetchToolUsageMetrics } from "@app/lib/api/assistant/observability/tool_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
@@ -118,286 +112,94 @@ function renderExecutionSeries<
   ]);
 }
 
+async function renderRanking(
+  auth: Authenticator,
+  {
+    dimension,
+    rankBy,
+    limit,
+    input,
+  }: {
+    dimension: ConsumptionTopDimension;
+    rankBy: ConsumptionTopRankBy;
+    limit: number | undefined;
+    input: TimeWindowInput & ConsumptionFilterInput;
+  }
+): Promise<ToolHandlerResult> {
+  const window = resolveTimeWindow(input);
+  if (window.isErr()) {
+    return new Err(new MCPError(window.error, { tracked: false }));
+  }
+  const { filter, agentTagIds } = toConsumptionScope(input);
+
+  const result = await fetchConsumptionTopGroups(auth, {
+    dimension,
+    period: toConsumptionPeriod(window.value),
+    limit: limit ?? DEFAULT_RESULTS,
+    filter,
+    agentTagIds,
+    rankBy,
+    includePreviousCredits: false,
+    includeTotalCount: false,
+  });
+
+  if (result.isErr()) {
+    return new Err(
+      new MCPError(
+        `Failed to rank ${dimension} by ${rankBy}: ${result.error.message}`
+      )
+    );
+  }
+
+  const { label, timezone: tz } = window.value;
+  const { totalCredits } = result.value;
+  const groups =
+    dimension === "tool"
+      ? result.value.groups.filter(
+          (group) => group.key !== SKILL_MANAGEMENT_SERVER_NAME
+        )
+      : result.value.groups;
+  const skillManagementCredits =
+    dimension === "tool"
+      ? (result.value.groups.find(
+          (group) => group.key === SKILL_MANAGEMENT_SERVER_NAME
+        )?.credits ?? 0)
+      : 0;
+
+  if (groups.length === 0) {
+    const noun = rankBy === "credits" ? "consumption" : "activity";
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `No ${dimension} ${noun} recorded for ${label} (${tz}).`,
+      },
+    ]);
+  }
+
+  const rows = await resolveConsumptionGroupLabels(auth, dimension, groups);
+  const unit = CONSUMPTION_TOP_DIMENSION_UNIT[dimension];
+  const lines = rows.map(
+    (row, index) =>
+      `${index + 1}. ${row.name} [${row.key}] — ` +
+      `${row.credits.toFixed(2)} credits, ` +
+      `${row.count} ${unit}${pluralize(row.count)} ` +
+      `(${row.avgCredits.toFixed(4)} per ${unit})`
+  );
+
+  return new Ok([
+    {
+      type: "text" as const,
+      text:
+        `Top ${dimension} for ${label} (${tz}), ` +
+        `${rankBy === "credits" ? "most expensive" : `most ${unit}s`} first:\n` +
+        `${lines.join("\n")}\n\n` +
+        `Credits over the whole window, every row included: ` +
+        `${(totalCredits - skillManagementCredits).toFixed(2)}.`,
+    },
+  ]);
+}
+
 const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
-  get_top_agents: async (
-    {
-      limit,
-      period,
-      startDate,
-      endDate,
-      timezone,
-      source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    },
-    { auth }
-  ) => {
-    const deniedError = workspaceManagerGuard(auth);
-    if (deniedError) {
-      return new Err(deniedError);
-    }
-
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
-    if (window.isErr()) {
-      return new Err(new MCPError(window.error, { tracked: false }));
-    }
-
-    const result = await fetchTopAgents(auth, {
-      startDate: window.value.startDate,
-      endDate: window.value.endDate,
-      limit: limit ?? DEFAULT_RESULTS,
-      contextOrigin: source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    });
-
-    if (result.isErr()) {
-      return new Err(
-        new MCPError(`Failed to retrieve top agents: ${result.error.message}`)
-      );
-    }
-
-    const { label, timezone: tz } = window.value;
-
-    if (result.value.length === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `No agent activity recorded for ${label} (${tz}).`,
-        },
-      ]);
-    }
-
-    const lines = result.value.map(
-      (agent, index) =>
-        `${index + 1}. ${agent.name} [${agent.agentId}] — ` +
-        `${agent.messageCount} messages, ${agent.userCount} users`
-    );
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text:
-          `Top agents for ${label} (${tz}), most used first:\n` +
-          lines.join("\n"),
-      },
-    ]);
-  },
-
-  get_top_users: async (
-    {
-      limit,
-      period,
-      startDate,
-      endDate,
-      timezone,
-      source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    },
-    { auth }
-  ) => {
-    const deniedError = workspaceManagerGuard(auth);
-    if (deniedError) {
-      return new Err(deniedError);
-    }
-
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
-    if (window.isErr()) {
-      return new Err(new MCPError(window.error, { tracked: false }));
-    }
-
-    const result = await fetchTopUsers(auth, {
-      startDate: window.value.startDate,
-      endDate: window.value.endDate,
-      limit: limit ?? DEFAULT_RESULTS,
-      contextOrigin: source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    });
-
-    if (result.isErr()) {
-      return new Err(
-        new MCPError(`Failed to retrieve top users: ${result.error.message}`)
-      );
-    }
-
-    const { label, timezone: tz } = window.value;
-
-    if (result.value.length === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `No user activity recorded for ${label} (${tz}).`,
-        },
-      ]);
-    }
-
-    const lines = result.value.map(
-      (user, index) =>
-        `${index + 1}. ${user.name} [${user.userId}] — ` +
-        `${user.messageCount} messages, ${user.agentCount} agents`
-    );
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text:
-          `Top users for ${label} (${tz}), most active first:\n` +
-          lines.join("\n"),
-      },
-    ]);
-  },
-
-  get_top_agent_tags: async (
-    {
-      limit,
-      period,
-      startDate,
-      endDate,
-      timezone,
-      source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    },
-    { auth }
-  ) => {
-    const deniedError = workspaceManagerGuard(auth);
-    if (deniedError) {
-      return new Err(deniedError);
-    }
-
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
-    if (window.isErr()) {
-      return new Err(new MCPError(window.error, { tracked: false }));
-    }
-
-    const result = await fetchTopAgentTags(auth, {
-      startDate: window.value.startDate,
-      endDate: window.value.endDate,
-      limit: limit ?? DEFAULT_RESULTS,
-      contextOrigin: source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    });
-
-    if (result.isErr()) {
-      return new Err(
-        new MCPError(`Failed to retrieve top tags: ${result.error.message}`)
-      );
-    }
-
-    const { label, timezone: tz } = window.value;
-
-    if (result.value.length === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `No agent tag activity recorded for ${label} (${tz}).`,
-        },
-      ]);
-    }
-
-    const lines = result.value.map(
-      (tag, index) =>
-        `${index + 1}. ${tag.name} [${tag.tagId}] — ` +
-        `${tag.messageCount} messages, ${tag.agentCount} agents`
-    );
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text:
-          `Top agent tags for ${label} (${tz}), most used first:\n` +
-          lines.join("\n"),
-      },
-    ]);
-  },
-
-  get_top_models: async (
-    {
-      limit,
-      period,
-      startDate,
-      endDate,
-      timezone,
-      source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    },
-    { auth }
-  ) => {
-    const deniedError = workspaceManagerGuard(auth);
-    if (deniedError) {
-      return new Err(deniedError);
-    }
-
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
-    if (window.isErr()) {
-      return new Err(new MCPError(window.error, { tracked: false }));
-    }
-
-    const result = await fetchTopModels(auth, {
-      startDate: window.value.startDate,
-      endDate: window.value.endDate,
-      limit: limit ?? DEFAULT_RESULTS,
-      contextOrigin: source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    });
-
-    if (result.isErr()) {
-      return new Err(
-        new MCPError(`Failed to retrieve top models: ${result.error.message}`)
-      );
-    }
-
-    const { label, timezone: tz } = window.value;
-
-    if (result.value.length === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `No model activity recorded for ${label} (${tz}).`,
-        },
-      ]);
-    }
-
-    const lines = result.value.map((model, index) => {
-      const provider = model.providerId ? ` (${model.providerId})` : "";
-      return (
-        `${index + 1}. ${model.name}${provider} [${model.modelId}] — ` +
-        `${model.messageCount} messages, ${model.agentCount} agents, ` +
-        `${model.userCount} users`
-      );
-    });
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text:
-          `Top models for ${label} (${tz}), most used first:\n` +
-          lines.join("\n"),
-      },
-    ]);
-  },
-
   get_agent_details: async ({ agentId }, { auth }) => {
     const deniedError = workspaceManagerGuard(auth);
     if (deniedError) {
@@ -451,216 +253,6 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
           `- Tools: ${toolNames || "none"}\n\n` +
           "Instructions (full system prompt):\n" +
           `${agent.instructions ?? "(no instructions)"}`,
-      },
-    ]);
-  },
-
-  get_top_skills: async (
-    {
-      limit,
-      period,
-      startDate,
-      endDate,
-      timezone,
-      source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    },
-    { auth }
-  ) => {
-    const deniedError = workspaceManagerGuard(auth);
-    if (deniedError) {
-      return new Err(deniedError);
-    }
-
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
-    if (window.isErr()) {
-      return new Err(new MCPError(window.error, { tracked: false }));
-    }
-
-    const baseQuery = scopedBaseQuery(auth, window.value, {
-      source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    });
-
-    const result = await fetchAvailableSkills(baseQuery);
-    if (result.isErr()) {
-      return new Err(
-        new MCPError(`Failed to retrieve skill usage: ${result.error.message}`)
-      );
-    }
-
-    const { label, timezone: tz } = window.value;
-    const skills = result.value.slice(0, limit ?? DEFAULT_RESULTS);
-
-    if (skills.length === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `No skill usage recorded for ${label} (${tz}).`,
-        },
-      ]);
-    }
-
-    const lines = skills.map(
-      (skill, index) =>
-        `${index + 1}. ${skill.skillName} — ${skill.totalExecutions} executions`
-    );
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text:
-          `Most-used skills for ${label} (${tz}), most used first:\n` +
-          lines.join("\n"),
-      },
-    ]);
-  },
-
-  get_top_tools: async (
-    {
-      limit,
-      period,
-      startDate,
-      endDate,
-      timezone,
-      source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    },
-    { auth }
-  ) => {
-    const deniedError = workspaceManagerGuard(auth);
-    if (deniedError) {
-      return new Err(deniedError);
-    }
-
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
-    if (window.isErr()) {
-      return new Err(new MCPError(window.error, { tracked: false }));
-    }
-
-    const baseQuery = scopedBaseQuery(auth, window.value, {
-      source,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    });
-
-    const result = await fetchAvailableTools(baseQuery);
-    if (result.isErr()) {
-      return new Err(
-        new MCPError(`Failed to retrieve tool usage: ${result.error.message}`)
-      );
-    }
-
-    const { label, timezone: tz } = window.value;
-    const top = result.value.slice(0, limit ?? DEFAULT_RESULTS);
-
-    if (top.length === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `No tool usage recorded for ${label} (${tz}).`,
-        },
-      ]);
-    }
-
-    const displayNames = await resolveServerDisplayNames(
-      auth,
-      top.map((tool) => tool.serverName)
-    );
-
-    const lines = top.map((tool, index) => {
-      const displayName = displayNames.get(tool.serverName) ?? tool.displayName;
-      const name =
-        displayName === tool.serverName
-          ? displayName
-          : `${displayName} [${tool.serverName}]`;
-      return `${index + 1}. ${name} — ${tool.totalExecutions} executions`;
-    });
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text:
-          `Most-used tools for ${label} (${tz}), most used first:\n` +
-          lines.join("\n"),
-      },
-    ]);
-  },
-
-  get_source_breakdown: async (
-    {
-      period,
-      startDate,
-      endDate,
-      timezone,
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    },
-    { auth }
-  ) => {
-    const deniedError = workspaceManagerGuard(auth);
-    if (deniedError) {
-      return new Err(deniedError);
-    }
-
-    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
-    if (window.isErr()) {
-      return new Err(new MCPError(window.error, { tracked: false }));
-    }
-
-    const baseQuery = scopedBaseQuery(auth, window.value, {
-      agentIds,
-      userIds,
-      agentTagIds,
-      modelIds,
-    });
-
-    const result = await fetchContextOriginBreakdown(baseQuery);
-    if (result.isErr()) {
-      return new Err(
-        new MCPError(
-          `Failed to retrieve source breakdown: ${result.error.message}`
-        )
-      );
-    }
-
-    const { label, timezone: tz } = window.value;
-    const sources = toLabeledSources(result.value);
-
-    if (sources.length === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `No source activity recorded for ${label} (${tz}).`,
-        },
-      ]);
-    }
-
-    const total = sources.reduce((sum, source) => sum + source.count, 0);
-    const lines = sources.map((source, index) => {
-      const percent = total > 0 ? Math.round((source.count / total) * 100) : 0;
-      return `${index + 1}. ${source.label} — ${source.count} messages (${percent}%)`;
-    });
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text:
-          `Message sources for ${label} (${tz}), most used first:\n` +
-          lines.join("\n"),
       },
     ]);
   },
@@ -982,6 +574,28 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
         return assertNever(selectedMetric);
     }
   },
+  get_top_entities_by_message_count: async (
+    { dimension, limit, ...input },
+    { auth }
+  ) => {
+    const denied = workspaceManagerGuard(auth);
+    if (denied) {
+      return new Err(denied);
+    }
+    return renderRanking(auth, { dimension, rankBy: "count", limit, input });
+  },
+
+  get_top_entities_by_execution_count: async (
+    { dimension, limit, ...input },
+    { auth }
+  ) => {
+    const denied = workspaceManagerGuard(auth);
+    if (denied) {
+      return new Err(denied);
+    }
+    return renderRanking(auth, { dimension, rankBy: "count", limit, input });
+  },
+
   get_top_entities_by_credits: async (
     { dimension, limit, ...input },
     { auth }
@@ -990,64 +604,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     if (deniedError) {
       return new Err(deniedError);
     }
-
-    const window = resolveTimeWindow(input);
-    if (window.isErr()) {
-      return new Err(new MCPError(window.error, { tracked: false }));
-    }
-    const { filter, agentTagIds } = toConsumptionScope(input);
-
-    const result = await fetchConsumptionTopGroups(auth, {
-      dimension,
-      period: toConsumptionPeriod(window.value),
-      limit: limit ?? DEFAULT_RESULTS,
-      filter,
-      agentTagIds,
-      // A single window has no vs-previous column to fill, and the lookup is a
-      // second round trip.
-      includePreviousCredits: false,
-    });
-
-    if (result.isErr()) {
-      return new Err(
-        new MCPError(
-          `Failed to rank ${dimension} by credits: ${result.error.message}`
-        )
-      );
-    }
-
-    const { label, timezone: tz } = window.value;
-    const { groups, totalCredits } = result.value;
-
-    if (groups.length === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `No ${dimension} consumption recorded for ${label} (${tz}).`,
-        },
-      ]);
-    }
-
-    const rows = await resolveConsumptionGroupLabels(auth, dimension, groups);
-    const unit = CONSUMPTION_TOP_DIMENSION_UNIT[dimension];
-    const lines = rows.map(
-      (row, index) =>
-        `${index + 1}. ${row.name} [${row.key}] — ` +
-        `${row.credits.toFixed(2)} credits, ` +
-        `${row.count} ${unit}${pluralize(row.count)} ` +
-        `(${row.avgCredits.toFixed(4)} per ${unit})`
-    );
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text:
-          `Top ${dimension} by credits for ${label} (${tz}), most expensive ` +
-          `first:\n${lines.join("\n")}\n\n` +
-          `Credits over the whole window, every row included: ` +
-          `${totalCredits.toFixed(2)}.`,
-      },
-    ]);
+    return renderRanking(auth, { dimension, rankBy: "credits", limit, input });
   },
 };
 

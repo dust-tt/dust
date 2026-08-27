@@ -5,11 +5,11 @@ import { previousConsumptionPeriod } from "@app/lib/api/analytics/consumption/pe
 import type {
   ConsumptionScopeFilter,
   ConsumptionTopDimension,
+  ConsumptionTopRankBy,
   ConsumptionTopSortOrder,
   ConsumptionTopUnit,
 } from "@app/lib/api/analytics/consumption/scope";
 import {
-  AGENT_MESSAGE_ID_FIELD,
   agentTagIdsFilter,
   buildConsumptionScopeQuery,
   CARDINALITY_PRECISION_THRESHOLD,
@@ -17,6 +17,7 @@ import {
   CONSUMPTION_TOP_DIMENSION_FIELDS,
   CONSUMPTION_TOP_DIMENSION_UNIT,
   CREDIT_MICRO_FIELD,
+  uniqueMessagesCardinalityAgg,
 } from "@app/lib/api/analytics/consumption/scope";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
@@ -75,7 +76,7 @@ function subAggs(unit: ConsumptionTopUnit) {
   return {
     [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
     ...(unit === "message"
-      ? { [MESSAGES_AGG]: { cardinality: { field: AGENT_MESSAGE_ID_FIELD } } }
+      ? { [MESSAGES_AGG]: uniqueMessagesCardinalityAgg() }
       : {}),
   };
 }
@@ -183,18 +184,41 @@ async function resolveConsumptionTopSearchFilter(
   );
 }
 
+function rankingOrder(
+  dimension: ConsumptionTopDimension,
+  rankBy: ConsumptionTopRankBy,
+  sortOrder: ConsumptionTopSortOrder
+): Record<string, ConsumptionTopSortOrder> {
+  if (rankBy === "credits") {
+    return { [CREDIT_AGG]: sortOrder };
+  }
+
+  switch (CONSUMPTION_TOP_DIMENSION_UNIT[dimension]) {
+    case "message":
+      return { [MESSAGES_AGG]: sortOrder };
+    case "invocation":
+      return { _count: sortOrder };
+    default:
+      return assertNever(CONSUMPTION_TOP_DIMENSION_UNIT[dimension]);
+  }
+}
+
 function buildConsumptionTopAggregations({
   dimension,
   bucketCount,
   excludedKeys,
   searchFilter,
   sortOrder,
+  rankBy,
+  includeTotalCount,
 }: {
   dimension: ConsumptionTopDimension;
   bucketCount: number;
   excludedKeys: string[];
   searchFilter: estypes.QueryDslQueryContainer | null;
   sortOrder: ConsumptionTopSortOrder;
+  rankBy: ConsumptionTopRankBy;
+  includeTotalCount: boolean;
 }): Record<string, estypes.AggregationsAggregationContainer> {
   const unit = CONSUMPTION_TOP_DIMENSION_UNIT[dimension];
   const dimensionField = CONSUMPTION_TOP_DIMENSION_FIELDS[dimension];
@@ -204,17 +228,21 @@ function buildConsumptionTopAggregations({
       terms: {
         field: dimensionField,
         size: bucketCount,
-        order: { [CREDIT_AGG]: sortOrder },
+        order: rankingOrder(dimension, rankBy, sortOrder),
         ...(excludedKeys.length > 0 ? { exclude: excludedKeys } : {}),
       },
       aggs: subAggs(unit),
     },
-    [TOTAL_COUNT_AGG]: {
-      cardinality: {
-        field: dimensionField,
-        precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
-      },
-    },
+    ...(includeTotalCount
+      ? {
+          [TOTAL_COUNT_AGG]: {
+            cardinality: {
+              field: dimensionField,
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+        }
+      : {}),
   } satisfies Record<string, estypes.AggregationsAggregationContainer>;
 
   const rankingRootAggregations = searchFilter
@@ -317,7 +345,9 @@ export async function fetchConsumptionTopGroups(
     filter,
     agentTagIds,
     sortOrder = "desc",
+    rankBy = "credits",
     includePreviousCredits = true,
+    includeTotalCount = true,
   }: {
     dimension: ConsumptionTopDimension;
     period: ConsumptionPeriod;
@@ -327,7 +357,9 @@ export async function fetchConsumptionTopGroups(
     filter?: ConsumptionScopeFilter;
     agentTagIds?: string[];
     sortOrder?: ConsumptionTopSortOrder;
+    rankBy?: ConsumptionTopRankBy;
     includePreviousCredits?: boolean;
+    includeTotalCount?: boolean;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
   const searchFilter = await resolveConsumptionTopSearchFilter(auth, {
@@ -364,6 +396,8 @@ export async function fetchConsumptionTopGroups(
       excludedKeys: rankedGroups.map((group) => group.key),
       searchFilter,
       sortOrder,
+      rankBy,
+      includeTotalCount,
     });
     const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
       aggregations,
