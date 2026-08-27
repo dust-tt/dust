@@ -11,7 +11,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
 import { defineCacheOperations } from "@app/lib/utils/cache_operations";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import type {
   CapabilitySpec,
@@ -639,7 +639,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       return [];
     }
 
-    const statsDClient = getStatsDClient();
+    const statsDClient = statsDMetrics;
     const uniqueGroupModelIds = [...new Set(groupModelIds)];
 
     try {
@@ -699,7 +699,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     groupModelIds: ModelId[]
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
-    const statsDClient = getStatsDClient();
+    const statsDClient = statsDMetrics;
     try {
       const redis = await getRedisCacheClient({
         origin: "group_permissions_cache",

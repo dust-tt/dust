@@ -1,4 +1,4 @@
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 interface ToolSearchLogContext {
@@ -28,7 +28,7 @@ export function logToolSearchRequest({
     `${providerName} tool search query`
   );
 
-  getStatsDClient().increment("llm_tool_search.requests", 1, [
+  statsDMetrics.increment("llm_tool_search.requests", 1, [
     `tool_name:${toolName}`,
     ...tags,
   ]);

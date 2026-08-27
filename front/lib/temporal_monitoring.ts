@@ -1,6 +1,6 @@
 import { queryTracker } from "@app/lib/api/query_tracker";
 import { runWithTemporalActivityContext } from "@app/lib/temporal_activity_context";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import type logger from "@app/logger/logger";
 import type { Logger } from "@app/logger/logger";
 
@@ -119,7 +119,7 @@ export class ActivityInboundLogInterceptor
         );
 
         tags.push(`error_type:${errorType}`);
-        getStatsDClient().increment("activity_failed.count", 1, tags);
+        statsDMetrics.increment("activity_failed.count", 1, tags);
       } else {
         this.logger.info(
           {
@@ -128,7 +128,7 @@ export class ActivityInboundLogInterceptor
           },
           "Activity completed."
         );
-        getStatsDClient().increment("activities_success.count", 1, tags);
+        statsDMetrics.increment("activities_success.count", 1, tags);
       }
     }
   }

@@ -61,7 +61,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type {
@@ -1232,12 +1232,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             }),
           ]);
 
-          getStatsDClient().increment(
+          statsDMetrics.increment(
             "mcp_output_items.fetch.count",
             gcsItems.length,
             ["storage:gcs"]
           );
-          getStatsDClient().increment(
+          statsDMetrics.increment(
             "mcp_output_items.fetch.count",
             legacyItems.length,
             ["storage:legacy"]
@@ -1253,7 +1253,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                 gcsPath: item.contentGcsPath!,
               }))
             );
-            getStatsDClient().distribution(
+            statsDMetrics.distribution(
               "mcp_output_items.gcs_hydrate.duration_ms",
               Date.now() - gcsStartMs
             );
@@ -1266,7 +1266,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                 }
               }
             } else {
-              getStatsDClient().increment(
+              statsDMetrics.increment(
                 "mcp_output_items.gcs_fallback_db.count",
                 gcsItems.length
               );

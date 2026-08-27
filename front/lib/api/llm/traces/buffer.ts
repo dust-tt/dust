@@ -14,7 +14,7 @@ import type {
 import type { SystemPromptInput } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getLLMTracesBucket } from "@app/lib/file_storage";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
@@ -197,19 +197,15 @@ export class LLMTraceBuffer {
 
     const { cacheCreationTokens, cachedTokens, inputTokens } = tokenUsage;
     if (cachedTokens) {
-      getStatsDClient().distribution(
-        "llm_cache.tokens_read",
-        cachedTokens,
-        tags
-      );
-      getStatsDClient().distribution(
+      statsDMetrics.distribution("llm_cache.tokens_read", cachedTokens, tags);
+      statsDMetrics.distribution(
         "llm_cache.token_hit_ratio",
         cachedTokens / inputTokens,
         tags
       );
     }
     if (cacheCreationTokens) {
-      getStatsDClient().distribution(
+      statsDMetrics.distribution(
         "llm_cache.tokens_written",
         cacheCreationTokens,
         tags

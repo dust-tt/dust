@@ -15,7 +15,7 @@ import {
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
 import type {
@@ -499,38 +499,38 @@ export class RunResource extends BaseResource<RunModel> {
         `model_id:${usage.modelId}`,
       ];
 
-      getStatsDClient().increment(
+      statsDMetrics.increment(
         "run_usage.prompt_tokens",
         usage.promptTokens,
         tags
       );
-      getStatsDClient().increment(
+      statsDMetrics.increment(
         "run_usage.completion_tokens",
         usage.completionTokens,
         tags
       );
-      getStatsDClient().increment(
+      statsDMetrics.increment(
         "run_usage.cost_micro_usd",
         usage.costMicroUsd,
         tags
       );
 
       if (usage.cachedTokens) {
-        getStatsDClient().increment(
+        statsDMetrics.increment(
           "run_usage.cached_tokens",
           usage.cachedTokens,
           tags
         );
       }
       if (usage.cacheCreationTokens) {
-        getStatsDClient().increment(
+        statsDMetrics.increment(
           "run_usage.cache_creation_tokens",
           usage.cacheCreationTokens,
           tags
         );
       }
       if (usage.reasoningTokens) {
-        getStatsDClient().increment(
+        statsDMetrics.increment(
           "run_usage.reasoning_tokens",
           usage.reasoningTokens,
           tags

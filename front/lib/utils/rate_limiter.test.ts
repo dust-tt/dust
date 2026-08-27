@@ -15,11 +15,11 @@ import {
 vi.unmock("@app/lib/api/redis");
 
 vi.mock("@app/lib/utils/statsd", () => ({
-  getStatsDClient: () => ({
+  statsDMetrics: {
     decrement: vi.fn(),
     distribution: vi.fn(),
     increment: vi.fn(),
-  }),
+  },
 }));
 
 const logger = {

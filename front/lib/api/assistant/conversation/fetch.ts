@@ -13,7 +13,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import type {
   AgentMessageType,
   CompactionMessageType,
@@ -252,7 +252,7 @@ async function _getConversation<V extends "light" | "full">(
     );
 
     // Purely observational, see TOOL_OUTPUT_FETCH_BATCH_SIZE above.
-    getStatsDClient().distribution(
+    statsDMetrics.distribution(
       "conversation.interactions_count",
       interactions.length
     );

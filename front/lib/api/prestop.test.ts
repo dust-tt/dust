@@ -14,7 +14,7 @@ const { childLogger, statsDClient } = vi.hoisted(() => ({
 }));
 
 vi.mock("@app/lib/utils/statsd", () => ({
-  getStatsDClient: () => statsDClient,
+  statsDMetrics: statsDClient,
 }));
 
 vi.mock("@app/logger/logger", () => ({

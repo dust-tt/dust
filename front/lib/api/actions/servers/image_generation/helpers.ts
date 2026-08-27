@@ -18,7 +18,7 @@ import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import type { ImageModelIdType } from "@app/types/assistant/models/models";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
@@ -171,7 +171,7 @@ export async function checkImageGenerationRateLimit(
   });
 
   if (remaining <= 0) {
-    getStatsDClient().increment("tools.image_generation.rate_limit_hit", 1, [
+    statsDMetrics.increment("tools.image_generation.rate_limit_hit", 1, [
       `provider:${providerId}`,
     ]);
 
@@ -198,12 +198,12 @@ export function trackTokenUsage({
   outputTokens: number;
   providerId: ModelProviderIdType;
 }): void {
-  getStatsDClient().increment(
+  statsDMetrics.increment(
     "tools.image_generation.usage.input_tokens",
     inputTokens,
     [`provider:${providerId}`]
   );
-  getStatsDClient().increment(
+  statsDMetrics.increment(
     "tools.image_generation.usage.output_tokens",
     outputTokens,
     [`provider:${providerId}`]
@@ -428,7 +428,7 @@ async function processSingleImageFile(
       "generate_image: File size exceeds maximum allowed size"
     );
 
-    getStatsDClient().increment(
+    statsDMetrics.increment(
       "tools.image_generation.file_size_limit_exceeded",
       1,
       [`provider:${providerId}`]

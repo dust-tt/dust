@@ -29,10 +29,10 @@ vi.mock("@app/lib/tokenization", () => ({
 }));
 
 vi.mock("@app/lib/utils/statsd", () => ({
-  getStatsDClient: () => ({
+  statsDMetrics: {
     distribution: vi.fn(),
     increment: vi.fn(),
-  }),
+  },
 }));
 
 function emptyState(): ConversationWindowStateSnapshot {
