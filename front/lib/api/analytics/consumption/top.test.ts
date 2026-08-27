@@ -1,6 +1,7 @@
 import { listConsumptionFacetCatalogDimension } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import { fetchConsumptionTopGroups as fetchConsumptionTopGroupBuckets } from "@app/lib/api/analytics/consumption/top";
 import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
 import { fetchConsumptionTopApiKeys } from "@app/lib/api/analytics/consumption/top_api_keys";
 import { fetchConsumptionTopConversations } from "@app/lib/api/analytics/consumption/top_conversations";
@@ -871,5 +872,46 @@ describe("consumption top rankings", () => {
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
       order: { credit_micro: "asc" },
     });
+  });
+});
+
+// The two options the analytics tools rely on and the page never sets.
+describe("fetchConsumptionTopGroups options", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("skips the previous-period search when the caller opts out", async () => {
+    const { auth } = await setup();
+    mockAggs({
+      buckets: [{ key: "a", credit_micro: { value: 1 } }],
+      totalMicro: 1,
+    });
+
+    await fetchConsumptionTopGroupBuckets(auth, {
+      dimension: "agent",
+      period: PERIOD,
+      limit: 5,
+      includePreviousCredits: false,
+    });
+
+    expect(vi.mocked(searchConsumptionAnalytics)).toHaveBeenCalledTimes(1);
+  });
+
+  it("scopes on extraFilters the filter keys do not cover", async () => {
+    const { auth } = await setup();
+    mockAggs({ buckets: [], totalMicro: 0 });
+    const tagClause = { terms: { "agent.tag_ids": ["tag_1"] } };
+
+    await fetchConsumptionTopGroupBuckets(auth, {
+      dimension: "agent",
+      period: PERIOD,
+      limit: 5,
+      extraFilters: [tagClause],
+      includePreviousCredits: false,
+    });
+
+    const [query] = lastSearchCall();
+    expect(query.bool?.filter).toContainEqual(tagClause);
   });
 });

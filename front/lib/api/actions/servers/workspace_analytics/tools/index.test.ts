@@ -35,6 +35,7 @@ describe("workspace_analytics tools", () => {
     "get_credit_usage",
     "get_credit_timeseries",
     "get_usage_timeseries",
+    "get_top_entities_by_credits",
   ])("%s refuses callers below manager", async (toolName) => {
     const workspace = await WorkspaceFactory.basic();
     await GroupFactory.defaults(workspace);

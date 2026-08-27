@@ -3,7 +3,6 @@ import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/label
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { previousConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
-  ConsumptionScopeDimension,
   ConsumptionScopeFilter,
   ConsumptionTopDimension,
   ConsumptionTopSortOrder,
@@ -17,6 +16,7 @@ import {
   CONSUMPTION_TOP_DIMENSION_FIELDS,
   CONSUMPTION_TOP_DIMENSION_UNIT,
   CREDIT_MICRO_FIELD,
+  isConsumptionScopeDimension,
 } from "@app/lib/api/analytics/consumption/scope";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
@@ -152,7 +152,7 @@ async function resolveConsumptionTopSearchFilter(
     search?: string;
   }
 ): Promise<estypes.QueryDslQueryContainer | null> {
-  if (dimension === "conversation") {
+  if (!isConsumptionScopeDimension(dimension)) {
     return null;
   }
 
@@ -245,11 +245,13 @@ async function fetchConsumptionPreviousCredits(
     dimension,
     previousPeriod,
     filter,
+    extraFilters,
     keys,
   }: {
     dimension: ConsumptionTopDimension;
     previousPeriod: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
+    extraFilters?: estypes.QueryDslQueryContainer[];
     keys: string[];
   }
 ): Promise<Result<Map<string, number>, ElasticsearchError>> {
@@ -262,6 +264,7 @@ async function fetchConsumptionPreviousCredits(
     startDate: previousPeriod.startDate,
     endDate: previousPeriod.endDate,
     filter,
+    extraFilters,
   });
 
   const result = await searchConsumptionAnalytics<never, PreviousCreditsAggs>(
@@ -312,7 +315,9 @@ export async function fetchConsumptionTopGroups(
     offset = 0,
     search,
     filter,
+    extraFilters,
     sortOrder = "desc",
+    includePreviousCredits = true,
   }: {
     dimension: ConsumptionTopDimension;
     period: ConsumptionPeriod;
@@ -320,7 +325,9 @@ export async function fetchConsumptionTopGroups(
     offset?: number;
     search?: string;
     filter?: ConsumptionScopeFilter;
+    extraFilters?: estypes.QueryDslQueryContainer[];
     sortOrder?: ConsumptionTopSortOrder;
+    includePreviousCredits?: boolean;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
   const searchFilter = await resolveConsumptionTopSearchFilter(auth, {
@@ -333,6 +340,7 @@ export async function fetchConsumptionTopGroups(
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
+    extraFilters,
   });
 
   const requestedBucketCount = offset + limit;
@@ -395,7 +403,8 @@ export async function fetchConsumptionTopGroups(
     dimension,
     previousPeriod: previousConsumptionPeriod(period),
     filter,
-    keys: pagedGroups.map((group) => group.key),
+    extraFilters,
+    keys: includePreviousCredits ? pagedGroups.map((group) => group.key) : [],
   });
   // The prior-period lookup only feeds the vs-prev display column: a failure
   // there should not take down the current-period ranking, which already
@@ -451,7 +460,7 @@ export type ResolvedConsumptionGroup = {
 
 export async function resolveConsumptionGroupLabels(
   auth: Authenticator,
-  dimension: ConsumptionScopeDimension,
+  dimension: ConsumptionTopDimension,
   groups: ConsumptionTopGroup[]
 ): Promise<ResolvedConsumptionGroup[]> {
   const labels = await resolveDimensionLabels(

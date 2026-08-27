@@ -1128,6 +1128,21 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "break down credit spending by agent",
     expected: "workspace_analytics.get_credit_usage",
+    // get_top_entities_by_credits is the tool that replaces this one, so it
+    // legitimately competes. Drop back to rank 1 once this one is gone.
+    maxRank: 2,
+  },
+  {
+    query: "which agents cost the most credits this month",
+    expected: "workspace_analytics.get_top_entities_by_credits",
+  },
+  {
+    query: "which conversations were the most expensive",
+    expected: "workspace_analytics.get_top_entities_by_credits",
+  },
+  {
+    query: "attribute credit spend to our API keys",
+    expected: "workspace_analytics.get_top_entities_by_credits",
   },
   {
     query: "show the credit spending trend over the last 30 days",

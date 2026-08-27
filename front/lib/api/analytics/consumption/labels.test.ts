@@ -13,6 +13,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
@@ -94,6 +95,31 @@ describe("resolveDimensionDisplayNames", () => {
   it("returns nothing for an empty breakdown", async () => {
     expect(await resolveDimensionDisplayNames(auth, "agent", [])).toEqual(
       new Map()
+    );
+  });
+
+  it("names agent tags from their tag names", async () => {
+    const workspace = auth.getNonNullableWorkspace();
+    const tag = await TagFactory.create(workspace, { name: "Support" });
+
+    const names = await resolveDimensionDisplayNames(auth, "tag", [tag.sId]);
+
+    expect(names.get(tag.sId)).toBe("Support");
+  });
+
+  it("falls back to the key for a tag or conversation it cannot read", async () => {
+    const tags = await resolveDimensionDisplayNames(auth, "tag", [
+      "deleted_tag",
+    ]);
+    const conversations = await resolveDimensionDisplayNames(
+      auth,
+      "conversation",
+      ["deleted_conversation"]
+    );
+
+    expect(tags.get("deleted_tag")).toBe("deleted_tag");
+    expect(conversations.get("deleted_conversation")).toBe(
+      "deleted_conversation"
     );
   });
 });

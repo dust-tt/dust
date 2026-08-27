@@ -11,7 +11,14 @@ import {
   DEFAULT_CREDIT_GROUPS,
   DEFAULT_RESULTS,
   resolveTimeWindow,
+  toConsumptionPeriod,
+  toConsumptionScope,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import { CONSUMPTION_TOP_DIMENSION_UNIT } from "@app/lib/api/analytics/consumption/scope";
+import {
+  fetchConsumptionTopGroups,
+  resolveConsumptionGroupLabels,
+} from "@app/lib/api/analytics/consumption/top";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import {
   fetchContextOriginBreakdown,
@@ -41,6 +48,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import moment from "moment-timezone";
 
 function scopedBaseQuery(
@@ -973,6 +981,73 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       default:
         return assertNever(selectedMetric);
     }
+  },
+  get_top_entities_by_credits: async (
+    { dimension, limit, ...input },
+    { auth }
+  ) => {
+    const denied = workspaceManagerGuard(auth);
+    if (denied) {
+      return new Err(denied);
+    }
+
+    const window = resolveTimeWindow(input);
+    if (window.isErr()) {
+      return new Err(new MCPError(window.error, { tracked: false }));
+    }
+    const { filter, extraFilters } = toConsumptionScope(input);
+
+    const result = await fetchConsumptionTopGroups(auth, {
+      dimension,
+      period: toConsumptionPeriod(window.value),
+      limit: limit ?? DEFAULT_RESULTS,
+      filter,
+      extraFilters,
+      // A single window has no vs-previous column to fill, and the lookup is a
+      // second round trip.
+      includePreviousCredits: false,
+    });
+
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to rank ${dimension} by credits: ${result.error.message}`
+        )
+      );
+    }
+
+    const { label, timezone: tz } = window.value;
+    const { groups, totalCredits } = result.value;
+
+    if (groups.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `No ${dimension} consumption recorded for ${label} (${tz}).`,
+        },
+      ]);
+    }
+
+    const rows = await resolveConsumptionGroupLabels(auth, dimension, groups);
+    const unit = CONSUMPTION_TOP_DIMENSION_UNIT[dimension];
+    const lines = rows.map(
+      (row, index) =>
+        `${index + 1}. ${row.name} [${row.key}] — ` +
+        `${row.credits.toFixed(2)} credits, ` +
+        `${row.count} ${unit}${pluralize(row.count)} ` +
+        `(${row.avgCredits.toFixed(4)} per ${unit})`
+    );
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `Top ${dimension} by credits for ${label} (${tz}), most expensive ` +
+          `first:\n${lines.join("\n")}\n\n` +
+          `Credits over the whole window, every row included: ` +
+          `${totalCredits.toFixed(2)}.`,
+      },
+    ]);
   },
 };
 

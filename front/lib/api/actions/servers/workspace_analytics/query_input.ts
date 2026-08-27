@@ -1,7 +1,11 @@
+import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import { AGENT_TAG_IDS_FIELD } from "@app/lib/api/analytics/consumption/scope";
 import { isValidTimezone, timezoneSchema } from "@app/lib/api/timezone";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 import { z } from "zod";
 
@@ -94,6 +98,116 @@ export const usageFilterSchema = {
         "model id (e.g. 'claude-sonnet-4-5'), as returned by get_top_models."
     ),
 };
+
+// Filters for the consumption-index tools. Every key narrows the same scope the
+// workspace Analytics page filters on, so any value a ranking returns can be fed
+// straight back in. The legacy `usageFilterSchema` above stays until the tools
+// still reading the old index are gone.
+export const consumptionFilterSchema = {
+  sources: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Restrict to these message origins — where a message came in from. Many " +
+        "origins exist (channels, integrations, triggers, and more); do not " +
+        "assume a fixed short list, take the values from a 'source' ranking."
+    ),
+  agentIds: z
+    .array(z.string())
+    .optional()
+    .describe("Restrict to these agent sIds."),
+  userIds: z
+    .array(z.string())
+    .optional()
+    .describe("Restrict to these user sIds."),
+  agentTagIds: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Restrict to agents carrying any of these agent tag sIds, as returned " +
+        "by a 'tag' ranking."
+    ),
+  modelIds: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Restrict to these models, identified by their model id (e.g. " +
+        "'claude-sonnet-4-5'), as returned by a 'model' ranking."
+    ),
+  apiKeyNames: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Restrict to these API key names, as returned by an 'api_key' ranking."
+    ),
+  groupIds: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Restrict to members of these group sIds, as returned by a 'group' ranking."
+    ),
+  toolNames: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Restrict to these MCP server names, as returned by a 'tool' ranking."
+    ),
+  skillIds: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Restrict to these skill sIds, as returned by a 'skill' ranking."
+    ),
+};
+
+const consumptionFilterInputSchema = z.object(consumptionFilterSchema);
+
+export type ConsumptionFilterInput = z.input<
+  typeof consumptionFilterInputSchema
+>;
+
+export type ConsumptionScope = {
+  filter: ConsumptionScopeFilter;
+  extraFilters: estypes.QueryDslQueryContainer[];
+};
+
+// Agent tags are the one input with no filter key: a document carries its
+// agent's tags but no dimension is defined over them, so they go through as a
+// raw clause.
+export function toConsumptionScope(
+  input: ConsumptionFilterInput
+): ConsumptionScope {
+  const agentTagIds = input.agentTagIds?.filter((id) => id.length > 0) ?? [];
+
+  return {
+    filter: {
+      sources: input.sources,
+      agents: input.agentIds,
+      users: input.userIds,
+      models: input.modelIds,
+      api_keys: input.apiKeyNames,
+      groups: input.groupIds,
+      tools: input.toolNames,
+      skills: input.skillIds,
+    },
+    extraFilters:
+      agentTagIds.length > 0
+        ? [{ terms: { [AGENT_TAG_IDS_FIELD]: agentTagIds } }]
+        : [],
+  };
+}
+
+// `resolveTimeWindow` reports an inclusive end instant, because the legacy index
+// is queried with `lte`. The consumption index uses a half-open range, so its
+// bound is the following millisecond. Goes away with the last legacy tool.
+export function toConsumptionPeriod(
+  window: ResolvedTimeWindow
+): ConsumptionPeriod {
+  return {
+    startDate: window.startDate,
+    endDate: new Date(new Date(window.endDate).getTime() + 1).toISOString(),
+  };
+}
 
 type TimeWindowInput = z.input<typeof timeWindowInputSchema>;
 
