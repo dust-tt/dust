@@ -52,8 +52,6 @@ export interface RunUsageType {
   cacheCreationTokens?: number | null;
   costMicroUsd: number;
   isBatch: boolean;
-  // Provider-reported processing tier this response was billed at. Like isBatch, it changes the
-  // token prices applied, so it is persisted alongside the tokens it priced.
   serviceTier?: ServiceTier | null;
 }
 
@@ -127,7 +125,6 @@ export class RunResource extends BaseResource<RunModel> {
           cacheCreationTokens: null,
           costMicroUsd: 0,
           isBatch: false,
-          // Only known once the provider reports the tier it served on.
           serviceTier: null,
           usageType: usage.usageType,
           usageState: "pending",

@@ -97,10 +97,6 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
 
   declare costMicroUsd: number;
   declare isBatch: boolean;
-  // Processing tier the provider reported having billed the response at. Like
-  // isBatch and region, it changes the token prices we are charged, so it is
-  // persisted to keep run usages reconcilable against the provider bill. Null
-  // when the provider does not report a tier (or for legacy rows).
   declare serviceTier: ServiceTier | null;
 
   // Immutable billing usage type (free / user / programmatic), set when the
