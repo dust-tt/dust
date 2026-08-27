@@ -27,9 +27,9 @@ export function UserAutomationsDialog({
           <DialogTitle>Automations</DialogTitle>
         </DialogHeader>
         {/* Plain flex body instead of DialogContainer so the empty state can
-         * fill the fixed-height dialog (percentage heights don't chain through
-         * DialogContainer's ScrollArea). */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+         * fill the dialog height. Flex growth, not percentage heights: with
+         * `grow` the dialog only has a min-height, which percentages ignore. */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-4">
           <UserAutomationsTable owner={owner} />
         </div>
       </DialogContent>

@@ -397,7 +397,7 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
     !hasActiveQuery;
 
   return (
-    <div className="flex min-h-full flex-col gap-2">
+    <div className="flex flex-1 flex-col gap-2">
       {!showEmptyState && (
         <>
           <div className="flex items-center gap-2">
