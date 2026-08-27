@@ -49,7 +49,7 @@ vi.mock("@app/types/assistant/models/custom_models.generated", async () => {
     },
   };
 
-  // Mirrors the infra config layout: index 0 is bound to the chawi agents,
+  // Mirrors the infra config layout: index 0 is bound to the dust-next agents,
   // index 1 is unbound.
   mockCustomModels.configs = [
     {
@@ -136,7 +136,7 @@ describe("getGlobalAgents custom model agents", () => {
 
     const agents = await getGlobalAgents(
       auth,
-      [GLOBAL_AGENTS_SID.DUST_CHAWI],
+      [GLOBAL_AGENTS_SID.DUST_NEXT],
       "light"
     );
 
@@ -152,9 +152,9 @@ describe("getGlobalAgents custom model agents", () => {
     const agents = await getGlobalAgents(
       auth,
       [
-        GLOBAL_AGENTS_SID.DUST_CHAWI,
-        GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
-        GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
+        GLOBAL_AGENTS_SID.DUST_NEXT,
+        GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
+        GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
       ],
       "light"
     );
@@ -168,21 +168,61 @@ describe("getGlobalAgents custom model agents", () => {
       }))
     ).toEqual([
       {
-        sId: GLOBAL_AGENTS_SID.DUST_CHAWI,
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT,
         providerId: "openai",
         modelId: CUSTOM_MODEL_ID,
         reasoningEffort: "light",
       },
       {
-        sId: GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
         providerId: "openai",
         modelId: CUSTOM_MODEL_ID,
         reasoningEffort: "medium",
       },
       {
-        sId: GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
         providerId: "openai",
         modelId: CUSTOM_MODEL_ID,
+        reasoningEffort: "high",
+      },
+    ]);
+  });
+
+  it("resolves retired chawi agent variants to the GPT-5.5 fallback", async () => {
+    const auth = await createAuthenticatorWithFlags([
+      "dust_internal_global_agents",
+    ]);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [
+        GLOBAL_AGENTS_SID.DUST_CHAWI,
+        GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
+        GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
+      ],
+      "light"
+    );
+
+    expect(
+      agents.map((agent) => ({
+        sId: agent.sId,
+        modelId: agent.model.modelId,
+        reasoningEffort: agent.model.reasoningEffort,
+      }))
+    ).toEqual([
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_CHAWI,
+        modelId: GPT_5_5_MODEL_ID,
+        reasoningEffort: "light",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
+        modelId: GPT_5_5_MODEL_ID,
+        reasoningEffort: "medium",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
+        modelId: GPT_5_5_MODEL_ID,
         reasoningEffort: "high",
       },
     ]);
@@ -245,9 +285,9 @@ describe("getGlobalAgents custom model agents", () => {
       const agents = await getGlobalAgents(
         auth,
         [
-          GLOBAL_AGENTS_SID.DUST_CHAWI,
-          GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
-          GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
+          GLOBAL_AGENTS_SID.DUST_NEXT,
+          GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
+          GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,
         ],
         "light"
       );
