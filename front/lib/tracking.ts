@@ -82,9 +82,9 @@ export type TrackingAction =
 export type TrackingExtra = Record<string, string | number | boolean>;
 
 interface TrackEventParams {
-  area: TrackingArea | string;
+  area: TrackingArea;
   object: string;
-  action?: TrackingAction | string;
+  action?: TrackingAction;
   extra?: TrackingExtra;
 }
 
