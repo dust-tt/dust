@@ -293,7 +293,7 @@ export function UserMenu({
       <Dialog open={analyticsOpen} onOpenChange={setAnalyticsOpen}>
         <DialogContent
           size="full"
-          className="flex h-full max-h-full overflow-hidden rounded-none p-0"
+          className="flex h-full max-h-full overflow-hidden rounded-none border-none p-0 focus:outline-none"
         >
           <UserAnalyticsPopover
             key={owner.sId}
