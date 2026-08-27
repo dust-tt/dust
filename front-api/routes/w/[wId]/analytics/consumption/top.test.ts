@@ -20,6 +20,10 @@ import {
   type GetConsumptionTopModelsResponse,
 } from "@app/lib/api/analytics/consumption/top_models";
 import {
+  fetchConsumptionTopReasoningEfforts,
+  type GetConsumptionTopReasoningEffortsResponse,
+} from "@app/lib/api/analytics/consumption/top_reasoning_efforts";
+import {
   fetchConsumptionTopSkills,
   type GetConsumptionTopSkillsResponse,
 } from "@app/lib/api/analytics/consumption/top_skills";
@@ -69,6 +73,13 @@ vi.mock(
   async (orig) => {
     const mod = await orig();
     return { ...mod, fetchConsumptionTopModels: vi.fn() };
+  }
+);
+vi.mock(
+  import("@app/lib/api/analytics/consumption/top_reasoning_efforts"),
+  async (orig) => {
+    const mod = await orig();
+    return { ...mod, fetchConsumptionTopReasoningEfforts: vi.fn() };
   }
 );
 vi.mock(
@@ -196,6 +207,23 @@ const TOP_MODELS: GetConsumptionTopModelsResponse = {
   ],
 };
 
+const TOP_REASONING_EFFORTS: GetConsumptionTopReasoningEffortsResponse = {
+  period: PERIOD,
+  totalCredits: 5000,
+  totalCount: 2,
+  hasMore: false,
+  reasoningEfforts: [
+    {
+      reasoningEffort: "medium",
+      name: "Medium",
+      credits: 300,
+      previousCredits: null,
+      messageCount: 6,
+      avgCreditsPerMessage: 50,
+    },
+  ],
+};
+
 const TOP_SOURCES: GetConsumptionTopSourcesResponse = {
   period: PERIOD,
   totalCredits: 5000,
@@ -303,6 +331,16 @@ const RANKINGS = [
         .mocked(fetchConsumptionTopModels)
         .mockResolvedValue(new Ok(TOP_MODELS)),
     lastCall: () => vi.mocked(fetchConsumptionTopModels).mock.lastCall,
+  },
+  {
+    path: "top-reasoning-efforts",
+    body: TOP_REASONING_EFFORTS,
+    arrangeOk: () =>
+      vi
+        .mocked(fetchConsumptionTopReasoningEfforts)
+        .mockResolvedValue(new Ok(TOP_REASONING_EFFORTS)),
+    lastCall: () =>
+      vi.mocked(fetchConsumptionTopReasoningEfforts).mock.lastCall,
   },
   {
     path: "top-sources",

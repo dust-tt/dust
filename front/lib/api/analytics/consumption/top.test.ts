@@ -6,6 +6,7 @@ import { fetchConsumptionTopApiKeys } from "@app/lib/api/analytics/consumption/t
 import { fetchConsumptionTopConversations } from "@app/lib/api/analytics/consumption/top_conversations";
 import { fetchConsumptionTopGroups } from "@app/lib/api/analytics/consumption/top_groups";
 import { fetchConsumptionTopModels } from "@app/lib/api/analytics/consumption/top_models";
+import { fetchConsumptionTopReasoningEfforts } from "@app/lib/api/analytics/consumption/top_reasoning_efforts";
 import { fetchConsumptionTopSkills } from "@app/lib/api/analytics/consumption/top_skills";
 import { fetchConsumptionTopSources } from "@app/lib/api/analytics/consumption/top_sources";
 import { fetchConsumptionTopTools } from "@app/lib/api/analytics/consumption/top_tools";
@@ -592,6 +593,52 @@ describe("consumption top rankings", () => {
     expect(lastSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject({
       field: "model.model_id",
     });
+  });
+
+  it("ranks reasoning efforts per message for the selected model", async () => {
+    const { auth } = await setup();
+    mockAggs({
+      buckets: [
+        {
+          key: "medium",
+          doc_count: 6,
+          credit_micro: { value: 2_000_000 },
+          messages: { value: 4 },
+        },
+      ],
+      totalMicro: 2_000_000,
+    });
+
+    const result = await fetchConsumptionTopReasoningEfforts(auth, {
+      period: PERIOD,
+      limit: 3,
+      filter: { models: ["claude-sonnet-4-6"] },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.reasoningEfforts).toEqual([
+      {
+        reasoningEffort: "medium",
+        name: "Medium",
+        credits: 2,
+        previousCredits: 2,
+        messageCount: 4,
+        avgCreditsPerMessage: 0.5,
+      },
+    ]);
+    const [query, options] = rankingSearchCall();
+    expect(query.bool?.filter).toContainEqual({
+      term: { "model.model_id": "claude-sonnet-4-6" },
+    });
+    expect(options?.aggregations?.by_group?.terms).toMatchObject({
+      field: "model.reasoning_effort",
+    });
+    expect(
+      options?.aggregations?.by_group?.aggs?.messages?.cardinality?.field
+    ).toBe("agent_message_id");
   });
 
   it("keys sources on the raw context origin so the row can be filtered on", async () => {

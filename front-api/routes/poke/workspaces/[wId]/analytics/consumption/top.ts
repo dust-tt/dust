@@ -12,6 +12,7 @@ import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/con
 import type { GetConsumptionTopApiKeysResponse } from "@app/lib/api/analytics/consumption/top_api_keys";
 import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
 import type { GetConsumptionTopModelsResponse } from "@app/lib/api/analytics/consumption/top_models";
+import type { GetConsumptionTopReasoningEffortsResponse } from "@app/lib/api/analytics/consumption/top_reasoning_efforts";
 import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/consumption/top_skills";
 import type { GetConsumptionTopSourcesResponse } from "@app/lib/api/analytics/consumption/top_sources";
 import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/consumption/top_tools";
@@ -28,6 +29,7 @@ type ConsumptionTopResponse =
   | GetConsumptionTopApiKeysResponse
   | GetConsumptionTopGroupsResponse
   | GetConsumptionTopModelsResponse
+  | GetConsumptionTopReasoningEffortsResponse
   | GetConsumptionTopSkillsResponse
   | GetConsumptionTopSourcesResponse
   | GetConsumptionTopToolsResponse

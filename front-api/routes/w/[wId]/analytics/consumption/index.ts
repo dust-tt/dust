@@ -16,6 +16,7 @@ import topApiKeys from "./top-api-keys";
 import topConversations from "./top-conversations";
 import topGroups from "./top-groups";
 import topModels from "./top-models";
+import topReasoningEfforts from "./top-reasoning-efforts";
 import topSkills from "./top-skills";
 import topSources from "./top-sources";
 import topTools from "./top-tools";
@@ -33,6 +34,7 @@ function mountSharedConsumptionRoutes(
   app.route("/timeseries", timeseries);
   app.route("/top-api-keys", topApiKeys);
   app.route("/top-models", topModels);
+  app.route("/top-reasoning-efforts", topReasoningEfforts);
   app.route("/top-skills", topSkills);
   app.route("/top-sources", topSources);
   app.route("/top-tools", topTools);

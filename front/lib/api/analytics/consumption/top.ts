@@ -26,6 +26,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { microCreditsToCredits } from "@app/lib/credits/units";
 import logger from "@app/logger/logger";
+import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -158,6 +159,15 @@ async function resolveConsumptionTopSearchFilter(
   const normalizedSearch = search?.trim().toLowerCase();
   if (!normalizedSearch) {
     return null;
+  }
+
+  if (dimension === "reasoning_effort") {
+    return buildConsumptionTopSearchTermsQuery(
+      CONSUMPTION_TOP_DIMENSION_FIELDS[dimension],
+      ORDERED_REASONING_EFFORTS.filter((effort) =>
+        effort.includes(normalizedSearch)
+      )
+    );
   }
 
   // TODO(2026-08-14 aubin): Store searchable dimension names in consumption

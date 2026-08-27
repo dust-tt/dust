@@ -1,4 +1,3 @@
-import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { EMPTY_FACET_OPTIONS } from "@app/components/workspace/analytics/usageFilter";
 import type { UseConsumptionFacetsParams } from "@app/hooks/useConsumptionFacets";
 import { toConsumptionFacetOptions } from "@app/hooks/useConsumptionFacets";
@@ -6,6 +5,7 @@ import type { UseConsumptionOverviewParams } from "@app/hooks/useConsumptionOver
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { UseConsumptionTimeseriesParams } from "@app/hooks/useConsumptionTimeseries";
 import type {
+  ConsumptionTopDimension,
   ConsumptionTopResponse,
   ConsumptionTopRow,
   UseConsumptionTopParams,
@@ -34,11 +34,12 @@ const CONSUMPTION_TOP_ENDPOINTS = {
   user: "top-users",
   group: "top-groups",
   model: "top-models",
+  reasoning_effort: "top-reasoning-efforts",
   tool: "top-tools",
   skill: "top-skills",
   source: "top-sources",
   api_key: "top-api-keys",
-} as const satisfies Record<ConsumptionDimension, string>;
+} as const satisfies Record<ConsumptionTopDimension, string>;
 
 function toPokeConsumptionTopRows(
   data: ConsumptionTopResponse,

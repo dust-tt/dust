@@ -13,10 +13,13 @@ import { CONSUMPTION_DIMENSION_CONFIG } from "./consumptionDimensions";
 export const CONSUMPTION_ATTRIBUTION_BREAKDOWN_LIMIT = 3;
 
 const BREAKDOWN_DIMENSIONS = ["model", "tool", "user"] as const;
-type BreakdownDimension = (typeof BREAKDOWN_DIMENSIONS)[number];
+type BreakdownDimension =
+  | (typeof BREAKDOWN_DIMENSIONS)[number]
+  | "reasoning_effort";
 
 const BREAKDOWN_LABELS: Record<BreakdownDimension, string> = {
   model: "By model",
+  reasoning_effort: "By reasoning effort",
   tool: "By tools",
   user: "By users",
 };
@@ -57,17 +60,17 @@ export interface ConsumptionAttributionBreakdownColumnProps {
   analyticsScope?: ConsumptionAnalyticsScope;
   disabled?: boolean;
   selectedRowName: string;
-  onViewAll: () => void;
+  onViewAll?: () => void;
 }
 
 interface ConsumptionAttributionBreakdownColumnViewProps {
   dimension: BreakdownDimension;
   selectedRowName: string;
-  onViewAll: () => void;
   rows: ConsumptionTopRow[];
   totalCredits: number;
   isTopLoading: boolean;
   isTopError: boolean;
+  onViewAll?: () => void;
 }
 
 export function ConsumptionAttributionBreakdownColumnView({
@@ -85,13 +88,15 @@ export function ConsumptionAttributionBreakdownColumnView({
         <h4 className="text-sm font-medium text-muted-foreground">
           {BREAKDOWN_LABELS[dimension]}
         </h4>
-        <Button
-          label="View all"
-          variant="highlight-ghost"
-          size="xs"
-          aria-label={`View all ${CONSUMPTION_DIMENSION_CONFIG[dimension].label.toLowerCase()} for ${selectedRowName}`}
-          onClick={onViewAll}
-        />
+        {dimension !== "reasoning_effort" && onViewAll && (
+          <Button
+            label="View all"
+            variant="highlight-ghost"
+            size="xs"
+            aria-label={`View all ${CONSUMPTION_DIMENSION_CONFIG[dimension].label.toLowerCase()} for ${selectedRowName}`}
+            onClick={onViewAll}
+          />
+        )}
       </div>
       {isTopLoading ? (
         <BreakdownColumnSkeleton />
@@ -201,16 +206,22 @@ export function ConsumptionAttributionBreakdownView({
       dimension !== selectedDimension &&
       (analyticsScope.kind !== "personal" || dimension !== "user")
   );
+  const modelBreakdownDimensions: BreakdownDimension[] =
+    selectedDimension === "model" ? ["reasoning_effort"] : [];
+  const allVisibleDimensions = [
+    ...visibleDimensions,
+    ...modelBreakdownDimensions,
+  ];
 
   return (
     <div
       className={cn(
         "grid gap-20",
-        visibleDimensions.length === 2 ? "grid-cols-2" : "grid-cols-3",
+        allVisibleDimensions.length === 2 ? "grid-cols-2" : "grid-cols-3",
         "border-b border-separator px-2 pb-6 pt-4"
       )}
     >
-      {visibleDimensions.map((dimension) => (
+      {allVisibleDimensions.map((dimension) => (
         <BreakdownColumnComponent
           key={dimension}
           workspaceId={workspaceId}
@@ -220,7 +231,11 @@ export function ConsumptionAttributionBreakdownView({
           analyticsScope={analyticsScope}
           disabled={disabled}
           selectedRowName={selectedRow.name}
-          onViewAll={() => onViewAll(dimension, selectedRow)}
+          onViewAll={
+            dimension === "reasoning_effort"
+              ? undefined
+              : () => onViewAll(dimension, selectedRow)
+          }
         />
       ))}
     </div>
