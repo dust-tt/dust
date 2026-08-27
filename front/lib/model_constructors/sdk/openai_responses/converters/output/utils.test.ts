@@ -161,12 +161,15 @@ function completedResponse(
 describe("rawOutputToEvents", () => {
   // The tier the response was served on is what OpenAI bills, and it can differ
   // from the one we asked for: a refused flex request is replayed on standard
-  // processing.
+  // processing. OpenAI's own tier names collapse into the two provider-agnostic
+  // ones, since flex is the only tier that changes the rate.
   it.each([
-    { serviceTier: "flex" },
-    { serviceTier: "default" },
-    { serviceTier: "priority" },
-  ] as const)("reports the $serviceTier tier the response was served on", async ({
+    { reportedTier: "flex", serviceTier: "flex" },
+    { reportedTier: "default", serviceTier: "auto" },
+    { reportedTier: "scale", serviceTier: "auto" },
+    { reportedTier: "priority", serviceTier: "auto" },
+  ] as const)("reports $reportedTier as the $serviceTier tier", async ({
+    reportedTier,
     serviceTier,
   }) => {
     const events = [];
@@ -175,7 +178,7 @@ describe("rawOutputToEvents", () => {
         {
           type: "response.completed",
           sequence_number: 0,
-          response: completedResponse(serviceTier, {
+          response: completedResponse(reportedTier, {
             input_tokens: 10,
             input_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 },
             output_tokens: 5,

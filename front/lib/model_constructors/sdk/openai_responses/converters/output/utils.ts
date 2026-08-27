@@ -100,7 +100,7 @@ export interface OutputEventConverters {
   usageToTokenUsageEvent(
     metadata: EndpointMetadata,
     usage: ResponseUsage,
-    serviceTier?: ServiceTier
+    reportedTier?: OpenAIResponse["service_tier"]
   ): TokenUsageEvent;
   streamErrorToErrorEvent(
     metadata: EndpointMetadata,
@@ -236,11 +236,25 @@ export function toolSearchItemToProviderPassthroughEvent(
   };
 }
 
+// The Responses API reports the tier it served on with its own vocabulary
+// (`default`, `scale`, `priority`, ...). Flex is the only one that changes what
+// we are billed, so every other tier normalizes to the standard path.
+function toServiceTier(
+  reportedTier: OpenAIResponse["service_tier"]
+): ServiceTier | undefined {
+  if (reportedTier === null || reportedTier === undefined) {
+    return undefined;
+  }
+
+  return reportedTier === "flex" ? "flex" : "auto";
+}
+
 export function usageToTokenUsageEvent(
   metadata: EndpointMetadata,
   usage: ResponseUsage,
-  serviceTier?: ServiceTier
+  reportedTier?: OpenAIResponse["service_tier"]
 ): TokenUsageEvent {
+  const serviceTier = toServiceTier(reportedTier);
   const cacheHit = usage.input_tokens_details?.cached_tokens ?? 0;
   const cacheCreated = usage.input_tokens_details?.cache_write_tokens ?? 0;
   const reasoning = usage.output_tokens_details?.reasoning_tokens;
@@ -496,7 +510,7 @@ export async function* rawOutputToEvents(
 ): AsyncGenerator<ModelResponseEvent> {
   const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
   let usage: ResponseUsage | null = null;
-  let serviceTier: ServiceTier | undefined = undefined;
+  let reportedTier: OpenAIResponse["service_tier"] = undefined;
   let stopReason: string | null = null;
 
   while (true) {
@@ -569,7 +583,7 @@ export async function* rawOutputToEvents(
         break;
       case "response.completed":
         usage = event.response.usage ?? null;
-        serviceTier = event.response.service_tier ?? undefined;
+        reportedTier = event.response.service_tier;
         // Recorded for diagnostics: the Responses API has no stop reason, so the
         // response status is the closest signal for a turn that came back with
         // nothing usable (`incomplete` surfaces as an error event below).
@@ -664,7 +678,7 @@ export async function* rawOutputToEvents(
   }
 
   if (usage !== null) {
-    yield converters.usageToTokenUsageEvent(metadata, usage, serviceTier);
+    yield converters.usageToTokenUsageEvent(metadata, usage, reportedTier);
   }
 
   yield {
@@ -740,7 +754,7 @@ export function responseToEvents(
       converters.usageToTokenUsageEvent(
         metadata,
         response.usage,
-        response.service_tier ?? undefined
+        response.service_tier
       )
     );
   }

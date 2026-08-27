@@ -38,15 +38,13 @@ export const toolSpecificationSchema = z.object({
 });
 export type ToolSpecification = z.infer<typeof toolSpecificationSchema>;
 
-// In practice we use only flex and auto but others are included for completeness.
-// Only used by OpenAI
-const serviceTierSchema = z.enum([
-  "auto",
-  "default",
-  "flex",
-  "scale",
-  "priority",
-]);
+// Provider-agnostic processing tier: `auto` is whatever standard path the
+// provider picks for us, `flex` trades latency for a cheaper rate. Labs expose
+// richer vocabularies of their own (OpenAI also has `default`, `scale`,
+// `priority`); each client translates in both directions, so the tier a
+// provider reports having served on is normalized back to these two.
+const serviceTierSchema = z.enum(["auto", "flex"]);
+
 export type ServiceTier = z.infer<typeof serviceTierSchema>;
 
 export const inputConfigSchema = z.object({
