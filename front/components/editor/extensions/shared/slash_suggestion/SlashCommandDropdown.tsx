@@ -152,6 +152,7 @@ export const SlashCommandDropdown = forwardRef<
     const [selectedIndex, setSelectedIndex] = useState(() =>
       getDefaultSelectedIndex(!!subMenuNavigation, items.length)
     );
+    const [showSkillNameTooltips, setShowSkillNameTooltips] = useState(true);
     const listRef = useRef<HTMLDivElement>(null);
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
       useState<React.CSSProperties>({});
@@ -319,7 +320,12 @@ export const SlashCommandDropdown = forwardRef<
               {emptyMessage}
             </div>
           ) : (
-            <div ref={listRef} className={listMaxHeightClassName}>
+            <div
+              ref={listRef}
+              className={listMaxHeightClassName}
+              onPointerMove={() => setShowSkillNameTooltips(true)}
+              onWheel={() => setShowSkillNameTooltips(false)}
+            >
               {subMenuNavigation ? (
                 <DropdownMenuItem
                   icon={ArrowLeft}
@@ -386,27 +392,28 @@ export const SlashCommandDropdown = forwardRef<
                       />
                     );
 
-                    const itemContent = item.tooltipLabel ? (
-                      <Tooltip
-                        delayDuration={SKILL_NAME_TOOLTIP_DELAY_MS}
-                        label={item.tooltipLabel}
-                        tooltipTriggerAsChild
-                        trigger={
-                          <span className="block w-full">{menuItem}</span>
-                        }
-                      />
-                    ) : item.tooltip ? (
-                      <DropdownTooltipTrigger
-                        description={item.tooltip.description}
-                        media={item.tooltip.media}
-                        side="right"
-                        sideOffset={8}
-                      >
-                        {menuItem}
-                      </DropdownTooltipTrigger>
-                    ) : (
-                      menuItem
-                    );
+                    const itemContent =
+                      item.tooltipLabel && showSkillNameTooltips ? (
+                        <Tooltip
+                          delayDuration={SKILL_NAME_TOOLTIP_DELAY_MS}
+                          label={item.tooltipLabel}
+                          tooltipTriggerAsChild
+                          trigger={
+                            <span className="block w-full">{menuItem}</span>
+                          }
+                        />
+                      ) : item.tooltip ? (
+                        <DropdownTooltipTrigger
+                          description={item.tooltip.description}
+                          media={item.tooltip.media}
+                          side="right"
+                          sideOffset={8}
+                        >
+                          {menuItem}
+                        </DropdownTooltipTrigger>
+                      ) : (
+                        menuItem
+                      );
 
                     return <Fragment key={item.id}>{itemContent}</Fragment>;
                   };
@@ -492,25 +499,28 @@ export const SlashCommandDropdown = forwardRef<
                     />
                   );
 
-                  const itemContent = item.tooltipLabel ? (
-                    <Tooltip
-                      delayDuration={SKILL_NAME_TOOLTIP_DELAY_MS}
-                      label={item.tooltipLabel}
-                      tooltipTriggerAsChild
-                      trigger={<span className="block w-full">{menuItem}</span>}
-                    />
-                  ) : item.tooltip ? (
-                    <DropdownTooltipTrigger
-                      description={item.tooltip.description}
-                      media={item.tooltip.media}
-                      side="right"
-                      sideOffset={8}
-                    >
-                      {menuItem}
-                    </DropdownTooltipTrigger>
-                  ) : (
-                    menuItem
-                  );
+                  const itemContent =
+                    item.tooltipLabel && showSkillNameTooltips ? (
+                      <Tooltip
+                        delayDuration={SKILL_NAME_TOOLTIP_DELAY_MS}
+                        label={item.tooltipLabel}
+                        tooltipTriggerAsChild
+                        trigger={
+                          <span className="block w-full">{menuItem}</span>
+                        }
+                      />
+                    ) : item.tooltip ? (
+                      <DropdownTooltipTrigger
+                        description={item.tooltip.description}
+                        media={item.tooltip.media}
+                        side="right"
+                        sideOffset={8}
+                      >
+                        {menuItem}
+                      </DropdownTooltipTrigger>
+                    ) : (
+                      menuItem
+                    );
 
                   return <Fragment key={item.id}>{itemContent}</Fragment>;
                 })
