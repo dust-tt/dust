@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
   Spinner,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import type React from "react";
@@ -44,6 +45,8 @@ const DEFAULT_EMPTY_MESSAGE = "No commands found";
 const DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME =
   SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME;
 
+const SKILL_NAME_TOOLTIP_DELAY_MS = 1000;
+
 function SlashCommandDropdownLoadingState({ message }: { message: string }) {
   return (
     <div className="flex h-14 items-center justify-center">
@@ -65,6 +68,7 @@ export interface SlashCommand {
   id: string;
   label: string;
   tooltip?: SlashCommandTooltip;
+  tooltipLabel?: string;
 }
 
 interface SlashCommandSubMenuNavigation {
@@ -148,6 +152,7 @@ export const SlashCommandDropdown = forwardRef<
     const [selectedIndex, setSelectedIndex] = useState(() =>
       getDefaultSelectedIndex(!!subMenuNavigation, items.length)
     );
+    const [showSkillNameTooltips, setShowSkillNameTooltips] = useState(true);
     const listRef = useRef<HTMLDivElement>(null);
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
       useState<React.CSSProperties>({});
@@ -315,7 +320,12 @@ export const SlashCommandDropdown = forwardRef<
               {emptyMessage}
             </div>
           ) : (
-            <div ref={listRef} className={listMaxHeightClassName}>
+            <div
+              ref={listRef}
+              className={listMaxHeightClassName}
+              onPointerMove={() => setShowSkillNameTooltips(true)}
+              onWheel={() => setShowSkillNameTooltips(false)}
+            >
               {subMenuNavigation ? (
                 <DropdownMenuItem
                   icon={ArrowLeft}
@@ -364,7 +374,16 @@ export const SlashCommandDropdown = forwardRef<
                           ) : undefined
                         }
                         onClick={() => selectEntry(index)}
-                        onFocus={() => setSelectedIndex(index)}
+                        onFocus={(event) => {
+                          if (
+                            item.tooltipLabel &&
+                            event.currentTarget.matches(":hover")
+                          ) {
+                            // Menu items focus on pointer move, which would bypass the tooltip delay.
+                            event.stopPropagation();
+                          }
+                          setSelectedIndex(index);
+                        }}
                         className={cn(
                           "group",
                           index === selectedIndex &&
@@ -373,18 +392,28 @@ export const SlashCommandDropdown = forwardRef<
                       />
                     );
 
-                    const itemContent = item.tooltip ? (
-                      <DropdownTooltipTrigger
-                        description={item.tooltip.description}
-                        media={item.tooltip.media}
-                        side="right"
-                        sideOffset={8}
-                      >
-                        {menuItem}
-                      </DropdownTooltipTrigger>
-                    ) : (
-                      menuItem
-                    );
+                    const itemContent =
+                      item.tooltipLabel && showSkillNameTooltips ? (
+                        <Tooltip
+                          delayDuration={SKILL_NAME_TOOLTIP_DELAY_MS}
+                          label={item.tooltipLabel}
+                          tooltipTriggerAsChild
+                          trigger={
+                            <span className="block w-full">{menuItem}</span>
+                          }
+                        />
+                      ) : item.tooltip ? (
+                        <DropdownTooltipTrigger
+                          description={item.tooltip.description}
+                          media={item.tooltip.media}
+                          side="right"
+                          sideOffset={8}
+                        >
+                          {menuItem}
+                        </DropdownTooltipTrigger>
+                      ) : (
+                        menuItem
+                      );
 
                     return <Fragment key={item.id}>{itemContent}</Fragment>;
                   };
@@ -452,7 +481,16 @@ export const SlashCommandDropdown = forwardRef<
                         ) : undefined
                       }
                       onClick={() => selectEntry(entryIndex)}
-                      onFocus={() => setSelectedIndex(entryIndex)}
+                      onFocus={(event) => {
+                        if (
+                          item.tooltipLabel &&
+                          event.currentTarget.matches(":hover")
+                        ) {
+                          // Menu items focus on pointer move, which would bypass the tooltip delay.
+                          event.stopPropagation();
+                        }
+                        setSelectedIndex(entryIndex);
+                      }}
                       className={cn(
                         "group",
                         entryIndex === selectedIndex &&
@@ -461,18 +499,28 @@ export const SlashCommandDropdown = forwardRef<
                     />
                   );
 
-                  const itemContent = item.tooltip ? (
-                    <DropdownTooltipTrigger
-                      description={item.tooltip.description}
-                      media={item.tooltip.media}
-                      side="right"
-                      sideOffset={8}
-                    >
-                      {menuItem}
-                    </DropdownTooltipTrigger>
-                  ) : (
-                    menuItem
-                  );
+                  const itemContent =
+                    item.tooltipLabel && showSkillNameTooltips ? (
+                      <Tooltip
+                        delayDuration={SKILL_NAME_TOOLTIP_DELAY_MS}
+                        label={item.tooltipLabel}
+                        tooltipTriggerAsChild
+                        trigger={
+                          <span className="block w-full">{menuItem}</span>
+                        }
+                      />
+                    ) : item.tooltip ? (
+                      <DropdownTooltipTrigger
+                        description={item.tooltip.description}
+                        media={item.tooltip.media}
+                        side="right"
+                        sideOffset={8}
+                      >
+                        {menuItem}
+                      </DropdownTooltipTrigger>
+                    ) : (
+                      menuItem
+                    );
 
                   return <Fragment key={item.id}>{itemContent}</Fragment>;
                 })
