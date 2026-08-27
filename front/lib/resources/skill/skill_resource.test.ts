@@ -1430,7 +1430,7 @@ describe("SkillResource", () => {
   });
 
   describe("archive and restore", () => {
-    it("suspends editor grants when archiving and restores them when restoring", async () => {
+    it("keeps the editor grants active when archiving, so editors are still listed", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill To Archive",
       });
@@ -1459,17 +1459,47 @@ describe("SkillResource", () => {
         testContext.authenticator
       );
       expect(archiveCount).toBe(1);
-      expect((await memberships()).every((m) => m.status === "suspended")).toBe(
+
+      // Archiving leaves the memberships alone: an archived skill keeps its editors, both on the
+      // in-memory resource and on a freshly fetched one.
+      expect((await memberships()).every((m) => m.status === "active")).toBe(
         true
       );
+      expect(
+        (await skill.listEditors(testContext.authenticator))?.map((e) => e.id)
+      ).toEqual([testContext.user.id]);
 
-      const { affectedCount: restoreCount } = await skill.restore(
+      const archivedSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        skill.sId
+      );
+      assert(archivedSkill);
+      expect(
+        (await archivedSkill.listEditors(testContext.authenticator))?.map(
+          (e) => e.id
+        )
+      ).toEqual([testContext.user.id]);
+
+      const editorsMap = await SkillResource.batchListEditors(
+        testContext.authenticator,
+        [archivedSkill]
+      );
+      expect(editorsMap.get(skill.sId)?.map((e) => e.id)).toEqual([
+        testContext.user.id,
+      ]);
+
+      const { affectedCount: restoreCount } = await archivedSkill.restore(
         testContext.authenticator
       );
       expect(restoreCount).toBe(1);
       expect((await memberships()).every((m) => m.status === "active")).toBe(
         true
       );
+      expect(
+        (await archivedSkill.listEditors(testContext.authenticator))?.map(
+          (e) => e.id
+        )
+      ).toEqual([testContext.user.id]);
     });
 
     it("archives multiple skills sharing the same name without a unique constraint violation", async () => {
@@ -2799,6 +2829,30 @@ describe("SkillResource", () => {
 
       expect(editorsMap.get(skillA.sId)).not.toBeNull();
       expect(editorsMap.get(skillB.sId)).not.toBeNull();
+    });
+
+    it("returns editors for a mix of active and archived skills", async () => {
+      const activeSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Active Skill Editors",
+      });
+      const skillToArchive = await SkillFactory.create(
+        testContext.authenticator,
+        { name: "Archived Skill Editors" }
+      );
+      await skillToArchive.archive(testContext.authenticator);
+
+      const editorsMap = await SkillResource.batchListEditors(
+        testContext.authenticator,
+        [activeSkill, skillToArchive]
+      );
+
+      // Archiving keeps the editor memberships, so the archived skill still lists its editors.
+      expect(editorsMap.get(activeSkill.sId)?.map((e) => e.id)).toEqual([
+        testContext.user.id,
+      ]);
+      expect(editorsMap.get(skillToArchive.sId)?.map((e) => e.id)).toEqual([
+        testContext.user.id,
+      ]);
     });
 
     it("returns empty map for empty input", async () => {

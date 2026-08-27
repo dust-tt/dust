@@ -252,6 +252,17 @@ app.patch(
       });
     }
 
+    // An archived skill is frozen: POST /skills/:sId/restore is the only change it accepts.
+    if (skill.status === "archived") {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "An archived skill cannot be updated. Restore it first.",
+        },
+      });
+    }
+
     // Editing a skill remains editor-only; non-editors holding the publish permission use
     // PATCH /skills/:sId/availability to publish or unpublish without editing.
     if (!skill.canWrite(auth)) {

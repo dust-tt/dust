@@ -279,6 +279,57 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
   });
 
+  it("should return 400 for an archived skill, which only restore can change", async () => {
+    const { workspace, skill, skillOwnerAuth } = await setupTest({
+      requestUserRole: "admin",
+      skillOwnerRole: "admin",
+    });
+
+    await skill.archive(skillOwnerAuth);
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: "Renamed While Archived",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
+      instructions: "Updated instructions",
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "An archived skill cannot be updated. Restore it first.",
+      },
+    });
+
+    const untouched = await SkillResource.fetchById(skillOwnerAuth, skill.sId);
+    expect(untouched?.name).toBe(skill.name);
+    expect(untouched?.instructions).not.toBe("Updated instructions");
+
+    // Restoring is the one change it accepts, and editing works again afterwards.
+    const restoreResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/skills/${skill.sId}/restore`,
+      { method: "POST" }
+    );
+    expect(restoreResponse.status).toBe(200);
+
+    const patchAfterRestore = await patchSkill(workspace, skill.sId, {
+      name: "Renamed After Restore",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
+      instructions: "Updated instructions",
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+    expect(patchAfterRestore.status).toBe(200);
+  });
+
   it("should return 400 for duplicate skill name", async () => {
     const { workspace, skill, requestUserAuth } = await setupTest({
       requestUserRole: "admin",

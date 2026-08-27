@@ -2608,31 +2608,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new Ok(undefined);
   }
 
-  // Archive/restore suspend and restore the editor memberships; the per-user grant group holds the
-  // same people, so it has to follow (see `writeEditorUserGrants`).
-  private async suspendOrRestoreEditorGrantGroup(
-    auth: Authenticator,
-    operation: "suspend" | "restore",
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
-    const grantGroup =
-      await GroupPermissionResource.findRegularAutoGroupForGrant(auth, {
-        grantType: SKILL_EDITOR_GRANT_TYPE,
-        resourceType: "skill",
-        resourceId: this.id,
-        transaction,
-      });
-    if (!grantGroup) {
-      return;
-    }
-
-    if (operation === "suspend") {
-      await grantGroup.suspendMembers(auth, { transaction });
-    } else {
-      await grantGroup.restoreMembers(auth, { transaction });
-    }
-  }
-
   private async upsertCurrentUserAsEditor(auth: Authenticator): Promise<void> {
     const user = auth.user();
     if (!user) {
@@ -3077,12 +3052,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           },
           { transaction }
         );
-
-        // Suspend the memberships of the per-user grant group: editors lose their permissions on
-        // the skill, and only admins keep the "admin" permission to unarchive it.
-        await this.suspendOrRestoreEditorGrantGroup(auth, "suspend", {
-          transaction,
-        });
       }
 
       return count;
@@ -3122,11 +3091,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           },
           { transaction }
         );
-
-        // Restore the editors (suspended → active).
-        await this.suspendOrRestoreEditorGrantGroup(auth, "restore", {
-          transaction,
-        });
       }
 
       return count;
