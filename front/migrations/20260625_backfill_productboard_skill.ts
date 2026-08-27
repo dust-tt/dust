@@ -6,7 +6,6 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
-import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -341,34 +340,10 @@ async function addAgentEditorsToSkill(
     return;
   }
 
-  const skillEditorLink = await GroupSkillModel.findOne({
-    where: {
-      workspaceId: owner.id,
-      skillConfigurationId: skill.id,
-    },
-  });
-
-  if (!skillEditorLink) {
-    throw new Error(
-      `Could not find editor group for skill "${PRODUCTBOARD_SKILL_NAME}" in workspace ${owner.sId}.`
-    );
-  }
-
-  const groups = await GroupResource.fetchByModelIds(auth, [
-    skillEditorLink.groupId,
-    ...agentEditorGroupModelIds,
-  ]);
-  const groupByModelId = new Map(groups.map((group) => [group.id, group]));
-
-  const skillEditorGroup = groupByModelId.get(skillEditorLink.groupId);
-  if (!skillEditorGroup) {
-    throw new Error(
-      `Could not fetch editor group for skill "${PRODUCTBOARD_SKILL_NAME}" in workspace ${owner.sId}.`
-    );
-  }
-  const agentEditorGroups = agentEditorGroupModelIds
-    .map((groupModelId) => groupByModelId.get(groupModelId) ?? null)
-    .filter((group): group is GroupResource => group !== null);
+  const agentEditorGroups = await GroupResource.fetchByModelIds(
+    auth,
+    agentEditorGroupModelIds
+  );
 
   const activeAgentEditorMemberships =
     await GroupResource.getActiveMembershipsForGroups(auth, agentEditorGroups);
@@ -395,7 +370,7 @@ async function addAgentEditorsToSkill(
       .map((membership) => membership.userId)
   );
 
-  const existingSkillEditors = await skillEditorGroup.getActiveMembers(auth);
+  const existingSkillEditors = (await skill.listEditors(auth)) ?? [];
   const existingSkillEditorModelIds = new Set(
     existingSkillEditors.map((user) => user.id)
   );
@@ -418,9 +393,8 @@ async function addAgentEditorsToSkill(
     return;
   }
 
-  const result = await skillEditorGroup.dangerouslyAddMembers(auth, {
-    users: usersToAdd.map((user) => user.toJSON()),
-  });
+  // Editors are per-user `editor` grants on the skill, so go through the resource.
+  const result = await skill.addEditors(auth, usersToAdd);
   if (result.isErr()) {
     throw result.error;
   }

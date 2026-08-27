@@ -15,7 +15,7 @@ export async function getAuthForWorkspace(
     );
   }
   // The auth needs access to all groups to access conversations in projects, including
-  // skill_editors groups (excluded by default) to create skill suggestions.
+  // agent_editors groups (excluded by default) to create skill suggestions.
   return Authenticator.internalAdminForWorkspace(workspaceId, {
     dangerouslyRequestAllGroups: true,
     groupKinds: GROUP_KINDS.filter((k) => !isAgentEditorGroupKind(k)),

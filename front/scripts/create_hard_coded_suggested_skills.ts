@@ -3,8 +3,6 @@ import {
   SkillConfigurationModel,
   SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
-import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -12,7 +10,6 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
-import { AGENT_GROUP_PREFIX } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
 import * as fs from "fs";
@@ -273,26 +270,6 @@ async function createSuggestedSkills(
               requestedSpaceIds: [],
               icon: skill.icon,
               availability: DEFAULT_SKILL_AVAILABILITY,
-            },
-            { transaction }
-          );
-
-          // Create the skill editors group (without adding any user to it)
-          const editorGroup = await GroupResource.makeNew(
-            {
-              workspaceId: workspace.id,
-              name: `${AGENT_GROUP_PREFIX} ${skill.name} (skill:${createdSkill.id})`,
-              kind: "agent_editors",
-            },
-            { transaction }
-          );
-
-          // Link the group to the skill
-          await GroupSkillModel.create(
-            {
-              groupId: editorGroup.id,
-              skillConfigurationId: createdSkill.id,
-              workspaceId: workspace.id,
             },
             { transaction }
           );

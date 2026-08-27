@@ -1060,8 +1060,8 @@ async function handleUserRemovedFromGroup(
   }
 
   // No canWrite guard here — `auth` is always internalAdminForWorkspace
-  // (trusted SCIM/directory sync), and canWrite returns false for agent_editors/
-  // skill_editors groups (their admin role lacks "write"), which would wrongly abort
+  // (trusted SCIM/directory sync), and canWrite returns false for agent_editors
+  // groups (their admin role lacks "write"), which would wrongly abort
   // deprovisioning. dangerouslyRemoveMember is the intended trusted path.
   const res = await group.dangerouslyRemoveMember(auth, {
     user: user.toJSON(),
@@ -1342,7 +1342,7 @@ async function revokeWorkOSUserMembership(
 
   for (const group of groups) {
     // No canWrite guard here — see handleUserRemovedFromGroup. `auth` is
-    // internalAdminForWorkspace, and canWrite is false for agent_editors/skill_editors
+    // internalAdminForWorkspace, and canWrite is false for agent_editors
     // groups, which would wrongly abort deprovisioning of editor users.
     const removeResult = await group.dangerouslyRemoveMember(auth, {
       user: user.toJSON(),

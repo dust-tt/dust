@@ -33,7 +33,6 @@ import {
   GROUP_KINDS,
   isAgentEditorGroupKind,
   isRegularManualGroupKind,
-  isSkillEditorGroupKind,
 } from "@app/types/groups";
 import type { AccessControlList } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -116,9 +115,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Excludes agent_editors which are per-agent
   // and not relevant to system auth.
   private static readonly groupKindsFromSystemKey: GroupKind[] =
-    GROUP_KINDS.filter(
-      (k) => !isAgentEditorGroupKind(k) && !isSkillEditorGroupKind(k)
-    );
+    GROUP_KINDS.filter((k) => !isAgentEditorGroupKind(k));
 
   private static readonly workspaceGroupsFromSystemKeyCacheKeyResolver = (
     workspaceModelId: ModelId
@@ -708,9 +705,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Use with care as this gives access to all groups in the workspace.
   static async internalFetchAllWorkspaceGroups({
     workspaceId,
-    groupKinds = GROUP_KINDS.filter(
-      (k) => !isAgentEditorGroupKind(k) && !isSkillEditorGroupKind(k)
-    ),
+    groupKinds = GROUP_KINDS.filter((k) => !isAgentEditorGroupKind(k)),
     transaction,
   }: {
     workspaceId: ModelId;
