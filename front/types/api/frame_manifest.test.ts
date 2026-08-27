@@ -2,6 +2,7 @@ import {
   FRAME_DEFAULT_UI_ENTRY_POINT,
   FrameManifestSchema,
   isSafeFrameRelativePath,
+  MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH,
   parseFrameManifest,
 } from "@app/types/api/frame_manifest";
 import { describe, expect, it } from "vitest";
@@ -89,6 +90,20 @@ describe("FrameManifestSchema", () => {
     const parsed = FrameManifestSchema.safeParse({
       ...MANIFEST,
       functions: [{ ...FUNCTION, name: "Add Task" }],
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects function descriptions that cannot be persisted", () => {
+    const parsed = FrameManifestSchema.safeParse({
+      ...MANIFEST,
+      functions: [
+        {
+          ...FUNCTION,
+          description: "a".repeat(MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH + 1),
+        },
+      ],
     });
 
     expect(parsed.success).toBe(false);

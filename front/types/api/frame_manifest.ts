@@ -1,4 +1,7 @@
-import { validateJsonSchema } from "@app/lib/utils/json_schemas";
+import {
+  isJSONSchemaObject,
+  validateJsonSchema,
+} from "@app/lib/utils/json_schemas";
 import { SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX } from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -12,6 +15,7 @@ export const FRAME_MANIFEST_VERSION = 1;
 export const FRAME_DEFAULT_UI_ENTRY_POINT = "index.tsx";
 export const MAX_FRAME_NAME_LENGTH = 128;
 export const MAX_FRAME_FUNCTION_NAME_LENGTH = 128;
+export const MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH = 255;
 
 /** Manifest paths are always relative to the Frame source folder. */
 export function isSafeFrameRelativePath(path: string): boolean {
@@ -34,10 +38,7 @@ const FrameRelativePathSchema = z
   });
 
 const JsonSchemaSchema = z.custom<JSONSchema>(
-  (value) =>
-    typeof value === "object" &&
-    value !== null &&
-    validateJsonSchema(value).isValid,
+  (value) => isJSONSchemaObject(value) && validateJsonSchema(value).isValid,
   { message: "Invalid JSON schema" }
 );
 
@@ -49,7 +50,7 @@ export const FrameFunctionManifestSchema = z.object({
       message:
         "Function name must be lowercase alphanumeric with single hyphen separators.",
     }),
-  description: z.string(),
+  description: z.string().max(MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH),
   entryPoint: FrameRelativePathSchema,
   inputSchema: JsonSchemaSchema,
   outputSchema: JsonSchemaSchema,
