@@ -305,6 +305,8 @@ export function MarkdownEditor({
           <BubbleMenu
             editor={editor}
             className={cn("flex", isMobile && "hidden")}
+            options={{ strategy: "fixed" }}
+            appendTo={() => document.body}
           >
             <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
               <ToolBarContent editor={editor} />

@@ -1745,6 +1745,8 @@ const InputBarContainer = ({
           <BubbleMenu
             editor={editor ?? undefined}
             className={cn("flex", isMobile && "hidden")}
+            options={{ strategy: "fixed" }}
+            appendTo={() => document.body}
           >
             {editor && (
               <Toolbar className={cn("inline-flex", isMobile && "hidden")}>

@@ -98,7 +98,12 @@ function UserMessageEditor({
         className="inline-block max-h-[40vh] min-h-14 w-full overflow-y-auto whitespace-pre-wrap scrollbar-hide"
       />
 
-      <BubbleMenu editor={editor} className={cn("flex", isMobile && "hidden")}>
+      <BubbleMenu
+        editor={editor}
+        className={cn("flex", isMobile && "hidden")}
+        options={{ strategy: "fixed" }}
+        appendTo={() => document.body}
+      >
         {editor && (
           <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
             <ToolBarContent editor={editor} />
