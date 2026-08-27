@@ -3,7 +3,13 @@ import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { usePokeGlobalAgentFeedbacks } from "@app/hooks/usePokeGlobalAgentFeedbacks";
 import type { GlobalAgentFeedbackItem } from "@app/lib/api/poke/global_agent_feedbacks";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
-import { Button, Chip, LinkWrapper, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  CheckboxWithText,
+  Chip,
+  LinkWrapper,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
@@ -157,15 +163,11 @@ export function GlobalAgentFeedbacksPage() {
         </div>
 
         <div className="mb-4 flex items-center gap-4">
-          <label className="flex items-center gap-2 text-sm text-primary-700">
-            <input
-              type="checkbox"
-              checked={includeEmpty}
-              onChange={handleIncludeEmptyChange}
-              className="rounded"
-            />
-            Include feedback without content
-          </label>
+          <CheckboxWithText
+            text="Include feedback without content"
+            checked={includeEmpty}
+            onCheckedChange={handleIncludeEmptyChange}
+          />
         </div>
 
         {isLoading ? (
