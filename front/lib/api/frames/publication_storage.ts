@@ -111,6 +111,16 @@ export async function storeFramePublication(
       )
     );
   }
+  for (const fn of manifest.functions) {
+    if (!sourcePaths.has(fn.entryPoint)) {
+      return new Err(
+        new FramePublicationError(
+          "invalid_source",
+          `Frame function entry point not found: ${fn.name} (${fn.entryPoint})`
+        )
+      );
+    }
+  }
 
   const identity = {
     ...frameIdentity.value,
