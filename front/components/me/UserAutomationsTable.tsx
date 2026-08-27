@@ -56,10 +56,12 @@ import { useCallback, useMemo, useState } from "react";
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const TRIGGERS_PAGE_SIZE = 10;
 
-// TODO(2026-08-25 AUTOMATIONS): links to be provided.
+// TODO(2026-08-25 AUTOMATIONS): link to be provided.
 const SETUP_TRIGGER_URL = "#";
-const TRIGGERS_DOC_URL = "#";
-const WAKEUPS_DOC_URL = "#";
+const TRIGGERS_DOC_URL =
+  "https://docs.dust.tt/docs/user-documentation/agents/triggers/schedules";
+const WAKEUPS_DOC_URL =
+  "https://docs.dust.tt/docs/user-documentation/agents/tools/wake-ups";
 
 interface TriggerRowData extends BaseTriggerRowData, PoolRowFields {
   isStatusPending: boolean;
