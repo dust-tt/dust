@@ -187,6 +187,29 @@ export async function loadFramePublicationManifest(
   return manifest;
 }
 
+export async function activateFramePublication(
+  auth: Authenticator,
+  {
+    frame,
+    publicationId,
+  }: {
+    frame: FileResource;
+    publicationId: string;
+  }
+): Promise<Result<void, FramePublicationError>> {
+  const manifest = await loadFramePublicationManifest(auth, {
+    frame,
+    publicationId,
+  });
+  if (manifest.isErr()) {
+    return manifest;
+  }
+
+  await frame.setActiveFramePublication(publicationId);
+
+  return new Ok(undefined);
+}
+
 export async function loadFramePublicationSourceFile(
   auth: Authenticator,
   {

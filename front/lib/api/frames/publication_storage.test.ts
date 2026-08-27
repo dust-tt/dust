@@ -1,10 +1,11 @@
 import {
+  activateFramePublication,
   loadFramePublicationManifest,
   loadFramePublicationSourceFile,
   storeFramePublication,
 } from "@app/lib/api/frames/publication_storage";
 import type { Authenticator } from "@app/lib/auth";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -263,5 +264,62 @@ describe("Frame publication reads", () => {
     });
 
     expect(result.isErr() && result.error.code).toBe("invalid_source");
+  });
+});
+
+describe("activateFramePublication", () => {
+  it("activates a committed publication", async () => {
+    const { auth, frame } = await setupFrame();
+    const stored = await storeFramePublication(auth, {
+      frame,
+      manifest,
+      sourceFiles,
+    });
+    expect(stored.isOk()).toBe(true);
+    if (stored.isErr()) {
+      return;
+    }
+
+    const activated = await activateFramePublication(auth, {
+      frame,
+      publicationId: stored.value.publicationId,
+    });
+
+    expect(activated.isOk()).toBe(true);
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
+      stored.value.publicationId
+    );
+  });
+
+  it("keeps the active publication when validation fails", async () => {
+    const { auth, frame } = await setupFrame();
+    const stored = await storeFramePublication(auth, {
+      frame,
+      manifest,
+      sourceFiles,
+    });
+    expect(stored.isOk()).toBe(true);
+    if (stored.isErr()) {
+      return;
+    }
+    await activateFramePublication(auth, {
+      frame,
+      publicationId: stored.value.publicationId,
+    });
+    fileStorageMock.setFetchFileContentNotFound(() => true);
+
+    const activation = await activateFramePublication(auth, {
+      frame,
+      publicationId: "b8c2b796-534a-4ad2-a5ad-071da692ca0b",
+    });
+
+    expect(activation.isErr() && activation.error.code).toBe(
+      "publication_not_found"
+    );
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
+      stored.value.publicationId
+    );
   });
 });
