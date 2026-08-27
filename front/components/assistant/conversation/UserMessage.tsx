@@ -13,6 +13,7 @@ import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdo
 import { ConfirmContext } from "@app/components/Confirm";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
+import { useBubbleMenuOptions } from "@app/components/editor/useBubbleMenuOptions";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useHover } from "@app/hooks/useHover";
@@ -61,13 +62,6 @@ import { cva } from "class-variance-authority";
 import type React from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
 
-// Stable reference: the BubbleMenu plugin re-runs its update effect whenever
-// `options` changes identity, so an inline literal here would cause an
-// infinite render loop. `strategy: "fixed"` positions the toolbar relative to
-// the viewport, letting it escape overflow-clipping ancestors without
-// portaling out of the message's stacking context.
-const BUBBLE_MENU_OPTIONS = { strategy: "fixed" as const };
-
 interface UserMessageEditorProps {
   editor: Editor | null;
   editorService: EditorService;
@@ -84,6 +78,8 @@ function UserMessageEditor({
   onSave,
 }: UserMessageEditorProps) {
   const isMobile = useIsMobile();
+  const { options: bubbleMenuOptions, isPositioned: isBubbleMenuPositioned } =
+    useBubbleMenuOptions();
 
   if (!editor) {
     return null;
@@ -107,11 +103,24 @@ function UserMessageEditor({
 
       <BubbleMenu
         editor={editor}
-        className={cn("z-50 flex", isMobile && "hidden")}
-        options={BUBBLE_MENU_OPTIONS}
+        className={cn(
+          // !fixed overrides the inline position:absolute the tiptap plugin
+          // sets before the first computePosition; without it the first
+          // coordinates are computed relative to the editor wrapper and the
+          // menu lands at the wrong spot on first show.
+          "z-50 flex !fixed",
+          isMobile && "hidden"
+        )}
+        options={bubbleMenuOptions}
       >
         {editor && (
-          <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
+          <Toolbar
+            className={cn(
+              "inline-flex",
+              isMobile && "hidden",
+              !isBubbleMenuPositioned && "opacity-0"
+            )}
+          >
             <ToolBarContent editor={editor} />
           </Toolbar>
         )}

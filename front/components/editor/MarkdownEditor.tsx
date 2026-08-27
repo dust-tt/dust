@@ -1,5 +1,6 @@
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
+import { useBubbleMenuOptions } from "@app/components/editor/useBubbleMenuOptions";
 import { buildMarkdownEditorExtensions } from "@app/lib/editor/build_markdown_editor_extensions";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { cn, Toolbar } from "@dust-tt/sparkle";
@@ -15,13 +16,6 @@ import { useEffect, useMemo, useRef } from "react";
 const DEFAULT_MARKDOWN_EDITOR_DEBOUNCE_MS = 250;
 /** Default classes for the TipTap editable surface (scroll + max height). */
 const DEFAULT_MARKDOWN_EDITOR_CLASSNAME = "max-h-96";
-// Stable reference: the BubbleMenu plugin re-runs its update effect whenever
-// `options` changes identity, so an inline literal here would cause an
-// infinite render loop. `strategy: "fixed"` positions the toolbar relative to
-// the viewport, letting it escape overflow-clipping ancestors without
-// portaling out of the editor's stacking context.
-const BUBBLE_MENU_OPTIONS = { strategy: "fixed" as const };
-
 const editorVariants = cva(
   [
     "overflow-auto p-2 resize-y min-h-60",
@@ -262,6 +256,8 @@ export function MarkdownEditor({
   editorClassName,
 }: MarkdownEditorProps) {
   const isMobile = useIsMobile();
+  const { options: bubbleMenuOptions, isPositioned: isBubbleMenuPositioned } =
+    useBubbleMenuOptions();
   const { editor } = useMarkdownEditor({
     content: value,
     onChange,
@@ -310,10 +306,23 @@ export function MarkdownEditor({
         {shouldShowFormattingMenu && editor ? (
           <BubbleMenu
             editor={editor}
-            className={cn("z-50 flex", isMobile && "hidden")}
-            options={BUBBLE_MENU_OPTIONS}
+            className={cn(
+              // !fixed overrides the inline position:absolute the tiptap
+              // plugin sets before the first computePosition; without it the
+              // first coordinates are computed relative to the editor wrapper
+              // and the menu lands at the wrong spot on first show.
+              "z-50 flex !fixed",
+              isMobile && "hidden"
+            )}
+            options={bubbleMenuOptions}
           >
-            <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
+            <Toolbar
+              className={cn(
+                "inline-flex",
+                isMobile && "hidden",
+                !isBubbleMenuPositioned && "opacity-0"
+              )}
+            >
               <ToolBarContent editor={editor} />
               {toolbarExtra}
             </Toolbar>

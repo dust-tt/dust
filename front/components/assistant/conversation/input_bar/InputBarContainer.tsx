@@ -37,6 +37,7 @@ import useCustomEditor, {
 } from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
+import { useBubbleMenuOptions } from "@app/components/editor/useBubbleMenuOptions";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
@@ -139,12 +140,6 @@ function narrowToKnownSlashCommand(
 }
 
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
-// Stable reference: the BubbleMenu plugin re-runs its update effect whenever
-// `options` changes identity, so an inline literal here would cause an
-// infinite render loop. `strategy: "fixed"` positions the toolbar relative to
-// the viewport, letting it escape the input bar card's overflow-hidden
-// without portaling out of the input bar's stacking context.
-const BUBBLE_MENU_OPTIONS = { strategy: "fixed" as const };
 const EMPTY_SPACE_IDS: string[] = [];
 const EMPTY_SELECTABLE_SPACES: SelectableConversationSpaceType[] = [];
 const acceptSelectedSpaceIds = async (spaceIds: string[]) => spaceIds;
@@ -328,6 +323,8 @@ const InputBarContainer = ({
   onVoiceActiveChange,
 }: InputBarContainerProps) => {
   const { setOverlayOpen } = useInputBarOverlayTracker(onOverlayOpenChange);
+  const { options: bubbleMenuOptions, isPositioned: isBubbleMenuPositioned } =
+    useBubbleMenuOptions();
   const onSuggestionActiveChangeRef = useRef<(active: boolean) => void>(
     () => {}
   );
@@ -1750,11 +1747,24 @@ const InputBarContainer = ({
           </div>
           <BubbleMenu
             editor={editor ?? undefined}
-            className={cn("z-50 flex", isMobile && "hidden")}
-            options={BUBBLE_MENU_OPTIONS}
+            className={cn(
+              // !fixed overrides the inline position:absolute the tiptap
+              // plugin sets before the first computePosition; without it the
+              // first coordinates are computed relative to the editor wrapper
+              // and the menu lands at the wrong spot on first show.
+              "z-50 flex !fixed",
+              isMobile && "hidden"
+            )}
+            options={bubbleMenuOptions}
           >
             {editor && (
-              <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
+              <Toolbar
+                className={cn(
+                  "inline-flex",
+                  isMobile && "hidden",
+                  !isBubbleMenuPositioned && "opacity-0"
+                )}
+              >
                 <ToolBarContent editor={editor} />
               </Toolbar>
             )}
