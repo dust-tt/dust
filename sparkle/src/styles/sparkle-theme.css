@@ -38,6 +38,18 @@
 @utility h-2xl {
   height: 1024px;
 }
+@utility min-h-md {
+  min-height: 448px;
+}
+@utility min-h-lg {
+  min-height: 576px;
+}
+@utility min-h-xl {
+  min-height: 768px;
+}
+@utility min-h-2xl {
+  min-height: 1024px;
+}
 
 /* Rainbow gradient background (was theme.extend.backgroundImage). */
 @utility bg-rainbow-gradient {

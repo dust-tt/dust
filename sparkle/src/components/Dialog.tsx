@@ -64,6 +64,16 @@ const heightClasses: Record<DialogHeightType, string> = {
   "2xl": "sm:h-2xl",
 };
 
+const DIALOG_MIN_HEIGHTS = ["md", "lg", "xl", "2xl"] as const;
+type DialogMinHeightType = (typeof DIALOG_MIN_HEIGHTS)[number];
+
+const minHeightClasses: Record<DialogMinHeightType, string> = {
+  md: "sm:min-h-md",
+  lg: "sm:min-h-lg",
+  xl: "sm:min-h-xl",
+  "2xl": "sm:min-h-2xl",
+};
+
 const DIALOG_VARIANTS = ["default", "command"] as const;
 type DialogVariantType = (typeof DIALOG_VARIANTS)[number];
 
@@ -95,6 +105,7 @@ const dialogVariants = cva(
     variants: {
       size: sizeClasses,
       height: heightClasses,
+      minHeight: minHeightClasses,
       variant: variantClasses,
     },
     defaultVariants: {
@@ -110,6 +121,8 @@ interface DialogContentProps
   size?: DialogSizeType;
   /** Fixed height of the dialog: "md" | "lg" | "xl" | "2xl"; unset grows with content up to 90vh. */
   height?: DialogHeightType;
+  /** Minimum height of the dialog: "md" | "lg" | "xl" | "2xl" (same scale as height); the dialog still grows with content up to 90vh. */
+  minHeight?: DialogMinHeightType;
   /** "default" centers vertically; "command" pins near the top with a slide-in (command-palette style). */
   variant?: DialogVariantType;
   /** Traps keyboard focus inside the dialog while open. */
@@ -133,6 +146,7 @@ const DialogContent = React.forwardRef<
       children,
       size,
       height,
+      minHeight,
       variant,
       trapFocusScope,
       isAlertDialog,
@@ -159,7 +173,10 @@ const DialogContent = React.forwardRef<
         <FocusScope trapped={trapFocusScope} asChild>
           <DialogPrimitive.Content
             ref={ref}
-            className={cn(dialogVariants({ size, height, variant }), className)}
+            className={cn(
+              dialogVariants({ size, height, minHeight, variant }),
+              className
+            )}
             onInteractOutside={
               isAlertDialog
                 ? (e) => e.preventDefault()
