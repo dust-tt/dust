@@ -44,18 +44,18 @@ interface CommandPaletteSearchPhaseProps {
 }
 
 function getFlatItems(
-  commands: CommandPaletteCommand[],
   agents: LightAgentConfigurationType[],
   pods: PodType[],
-  skills: SkillWithoutInstructionsAndToolsType[]
+  skills: SkillWithoutInstructionsAndToolsType[],
+  commands: CommandPaletteCommand[]
 ): CommandPaletteItem[] {
   return [
-    ...commands.map(
-      (command): CommandPaletteItem => ({ kind: "command", command })
-    ),
     ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
     ...pods.map((pod): CommandPaletteItem => ({ kind: "pod", pod })),
     ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
+    ...commands.map(
+      (command): CommandPaletteItem => ({ kind: "command", command })
+    ),
   ];
 }
 
@@ -76,8 +76,8 @@ export function CommandPaletteSearchPhase({
   onClose,
 }: CommandPaletteSearchPhaseProps) {
   const flatItems = useMemo(
-    () => getFlatItems(commands, agents, pods, skills),
-    [commands, agents, pods, skills]
+    () => getFlatItems(agents, pods, skills, commands),
+    [agents, pods, skills, commands]
   );
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -185,31 +185,11 @@ export function CommandPaletteSearchPhase({
           </ItemEmptyState>
         )}
 
-        {commands.length > 0 && (
-          <div>
-            <ItemTitle>Commands</ItemTitle>
-            {commands.map((command, i) => (
-              <ItemRow
-                key={command.id}
-                ref={(el) => {
-                  itemRefs.current[i] = el;
-                }}
-                isSelected={selectedIndex === i}
-                onClick={() => onItemSelect({ kind: "command", command })}
-                onMouseMove={() => onSelectedIndexChange(i)}
-              >
-                <Icon visual={command.icon} size="xs" />
-                <span className="font-medium">{command.label}</span>
-              </ItemRow>
-            ))}
-          </div>
-        )}
-
         {agents.length > 0 && (
           <div>
             <ItemTitle>Agents</ItemTitle>
             {agents.map((agent, i) => {
-              const globalIndex = commands.length + i;
+              const globalIndex = i;
               return (
                 <ItemRow
                   key={agent.sId}
@@ -243,7 +223,7 @@ export function CommandPaletteSearchPhase({
           <div>
             <ItemTitle>Pods</ItemTitle>
             {pods.map((pod, i) => {
-              const globalIndex = commands.length + agents.length + i;
+              const globalIndex = agents.length + i;
               return (
                 <ItemRow
                   key={pod.sId}
@@ -283,8 +263,7 @@ export function CommandPaletteSearchPhase({
           <div>
             <ItemTitle>Skills</ItemTitle>
             {skills.map((skill, i) => {
-              const globalIndex =
-                commands.length + agents.length + pods.length + i;
+              const globalIndex = agents.length + pods.length + i;
               const SkillAvatar = getSkillAvatarIcon(skill);
               return (
                 <ItemRow
@@ -312,6 +291,30 @@ export function CommandPaletteSearchPhase({
                 More skills available. Type to filter.
               </div>
             )}
+          </div>
+        )}
+
+        {commands.length > 0 && (
+          <div>
+            <ItemTitle>Commands</ItemTitle>
+            {commands.map((command, i) => {
+              const globalIndex =
+                agents.length + pods.length + skills.length + i;
+              return (
+                <ItemRow
+                  key={command.id}
+                  ref={(el) => {
+                    itemRefs.current[globalIndex] = el;
+                  }}
+                  isSelected={selectedIndex === globalIndex}
+                  onClick={() => onItemSelect({ kind: "command", command })}
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                >
+                  <Icon visual={command.icon} size="xs" />
+                  <span className="font-medium">{command.label}</span>
+                </ItemRow>
+              );
+            })}
           </div>
         )}
       </div>
