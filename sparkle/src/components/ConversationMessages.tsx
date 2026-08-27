@@ -1,4 +1,5 @@
 import { Avatar } from "@sparkle/components/Avatar";
+import { CARD_SHADOW } from "@sparkle/components/Card";
 import { CitationGrid } from "@sparkle/components/Citation";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
@@ -105,7 +106,11 @@ export const ConversationMessageContent = React.forwardRef<
             ref={ref}
             className={cn(
               "flex min-w-0 flex-col gap-1",
-              type === "user" && "rounded-2xl bg-muted-background px-4 py-3",
+              type === "user" &&
+                cn(
+                  "rounded-full border border-gray-100 bg-gray-50 px-3 py-2",
+                  CARD_SHADOW
+                ),
               className
             )}
             {...props}
