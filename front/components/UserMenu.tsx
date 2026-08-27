@@ -35,8 +35,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
 import {
-  CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY,
-  FIREFOX_EXTENSION_LAST_USED_AT_METADATA_KEY,
+  EXTENSION_LAST_USED_AT_METADATA_KEY,
   shouldShowExtensionMenu,
 } from "@app/types/extension";
 import type { SubscriptionType } from "@app/types/plan";
@@ -118,13 +117,10 @@ export function UserMenu({
 
   const isFirefox =
     typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
-  const extensionLastUsedAtMetadataKey = isFirefox
-    ? FIREFOX_EXTENSION_LAST_USED_AT_METADATA_KEY
-    : CHROME_EXTENSION_LAST_USED_AT_METADATA_KEY;
   const {
     metadata: extensionLastUsedAt,
     isMetadataLoading: isExtensionLastUsedAtLoading,
-  } = useUserMetadata(extensionLastUsedAtMetadataKey);
+  } = useUserMetadata(EXTENSION_LAST_USED_AT_METADATA_KEY);
   const showExtensionMenu =
     !isExtensionLastUsedAtLoading &&
     shouldShowExtensionMenu(extensionLastUsedAt?.value);
