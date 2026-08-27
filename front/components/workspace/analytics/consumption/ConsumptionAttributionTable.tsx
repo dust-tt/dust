@@ -69,7 +69,7 @@ import {
   useReducedMotion,
 } from "framer-motion";
 import type { ComponentType, Dispatch, ReactNode, SetStateAction } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type {
   AttributionRowData,
   ConsumptionAttributionRowsTableProps,
@@ -813,9 +813,20 @@ export function ConsumptionAttributionTableView({
   onConversationNavigate,
   AttributionRowsComponent,
 }: ConsumptionAttributionTableViewProps) {
-  const { inputValue, debouncedValue, setValue } = useDebounce("", {
+  const { inputValue, debouncedValue, setValue, flush } = useDebounce("", {
     delay: SEARCH_DEBOUNCE_DELAY_MS,
   });
+
+  // The search usually targeted the row being pinned; keeping it would leave
+  // the freshly filtered table narrowed by a stale search.
+  const handleAddFilter = useCallback(
+    (row: ConsumptionTopRow) => {
+      setValue("");
+      flush();
+      onAddFilter(row);
+    },
+    [setValue, flush, onAddFilter]
+  );
   const [isConversationSelected, setIsConversationSelected] = useState(false);
   const isPersonal = analyticsScope.kind === "personal";
   const activeDimension =
@@ -949,7 +960,7 @@ export function ConsumptionAttributionTableView({
                       filter={filter}
                       analyticsScope={analyticsScope}
                       disabled={disabled}
-                      onAddFilter={onAddFilter}
+                      onAddFilter={handleAddFilter}
                       onAgentClick={onAgentClick}
                       onRemoveFilter={onRemoveFilter}
                       onSkillClick={onSkillClick}
