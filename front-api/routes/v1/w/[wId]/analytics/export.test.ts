@@ -4,13 +4,13 @@ import { honoApp } from "@front-api/app";
 import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/api/assistant/observability/messages_metrics", async () => ({
-  fetchMessageMetrics: vi.fn(
+vi.mock("@app/lib/api/analytics/usage_metrics_export", async () => ({
+  fetchUsageMetricsExportRows: vi.fn(
     async () =>
       new Ok([
         {
-          timestamp: 1717200000000,
-          count: 12,
+          date: "2024-06-01",
+          messages: 12,
           conversations: 3,
           activeUsers: 2,
         },
