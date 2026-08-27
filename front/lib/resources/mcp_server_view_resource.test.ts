@@ -7,7 +7,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -101,8 +100,8 @@ describe("MCPServerViewResource", () => {
         await GroupFactory.defaults(workspace1);
       const user1 = await UserFactory.superUser();
       await MembershipFactory.associate(workspace1, user1, { role: "user" });
-      await GroupSpaceFactory.associate(systemSpace1, systemGroup);
-      await GroupSpaceFactory.associate(space1, globalGroup);
+      await SpaceFactory.attachGroup(systemSpace1, systemGroup);
+      await SpaceFactory.attachGroup(space1, globalGroup);
 
       const auth = await Authenticator.fromUserIdAndWorkspaceId(
         user1.sId,

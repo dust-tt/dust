@@ -33,7 +33,6 @@ import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -2620,7 +2619,7 @@ describe("postUserMessage", () => {
     });
 
     it("should allow posting a message without an auth user to an open Pod when user association is disabled", async () => {
-      await GroupSpaceFactory.associate(
+      await SpaceFactory.attachGroup(
         projectSpace,
         globalGroup,
         "project_viewer"
@@ -2666,7 +2665,7 @@ describe("postUserMessage", () => {
     });
 
     it("should reject posting a message without an auth user to an open Pod when user association is enabled", async () => {
-      await GroupSpaceFactory.associate(
+      await SpaceFactory.attachGroup(
         projectSpace,
         globalGroup,
         "project_viewer"

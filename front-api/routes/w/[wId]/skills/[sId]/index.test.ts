@@ -8,7 +8,6 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -564,7 +563,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
 
     const childSkill = await SkillFactory.create(requestUserAuth, {
       name: "Referenced Pod Skill",
@@ -735,7 +734,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
     // An open space confers read through the global group's `reader` grant, and an Authenticator
     // resolves its grants once, at construction. `requestUserAuth` predates the space, so refresh
     // it before reading a skill that requests it — `SkillResource` drops skills whose spaces it
@@ -858,7 +857,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
 
     await skill.updateSkill(requestUserAuth, {
       agentFacingDescription: skill.agentFacingDescription,
@@ -895,7 +894,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
 
     const selfReferenceInstructions = `Recurse with ${SkillFactory.serializeSkillReferenceTag(skill)}.`;
 

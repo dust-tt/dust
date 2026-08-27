@@ -3,7 +3,6 @@ import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_m
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -18,7 +17,7 @@ describe("GET /api/w/:wId/spaces/:spaceId/mcp_views/not_activated", () => {
       await createPrivateApiMockRequest({ role: "admin" });
 
     const space = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(space, globalGroup);
+    await SpaceFactory.attachGroup(space, globalGroup);
 
     const mcpServer1 = await RemoteMCPServerFactory.create(workspace, {
       name: "Test Server 1",

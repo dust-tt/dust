@@ -1,6 +1,5 @@
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { buildDiscoverToolsInstructions } from "@app/lib/resources/skill/code_defined/system/discover_tools";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -19,7 +18,7 @@ describe("buildDiscoverToolsInstructions", () => {
     description: string
   ): Promise<MCPServerViewResource> {
     const space = await SpaceFactory.regular(testContext.workspace);
-    await GroupSpaceFactory.associate(space, testContext.globalGroup);
+    await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
     const server = await RemoteMCPServerFactory.create(testContext.workspace, {
       name,
