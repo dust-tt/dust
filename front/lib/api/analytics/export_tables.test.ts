@@ -496,7 +496,10 @@ describe("exportTable active_users", () => {
           { term: { workspace_id: workspace.sId } },
           {
             range: {
-              completed_at: { gte: "2023-12-05", lt: "2024-01-03" },
+              completed_at: {
+                gte: "2023-12-05T00:00:00.000Z",
+                lt: "2024-01-03T00:00:00.000Z",
+              },
             },
           },
         ],
@@ -507,6 +510,55 @@ describe("exportTable active_users", () => {
       { date: "2024-01-01", dau: 1, wau: 1, mau: 1 },
       { date: "2024-01-02", dau: 2, wau: 2, mau: 2 },
     ]);
+  });
+
+  it("resolves the completed_at range from timezone-local day boundaries, not UTC", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      new Ok({
+        took: 1,
+        timed_out: false,
+        _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+        hits: { total: { value: 0, relation: "eq" }, hits: [] },
+        aggregations: { by_user_day: { buckets: [] } },
+      })
+    );
+
+    await exportTable({
+      auth: authenticator,
+      table: "active_users",
+      startDate: "2024-01-01",
+      endDate: "2024-01-02",
+      // UTC-8: local midnight on 2024-01-01 is 2024-01-01T08:00:00.000Z, not
+      // 2024-01-01T00:00:00.000Z. A bare-date range filter is parsed by
+      // Elasticsearch as UTC midnight, which would disagree with the
+      // composite aggregation's timezone-local day buckets and cut off the
+      // first/last local day's early-morning activity.
+      timezone: "America/Los_Angeles",
+      owner: workspace,
+      includeHiddenAgents: false,
+    });
+
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
+    const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(query).toEqual({
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          {
+            range: {
+              completed_at: {
+                gte: "2023-12-05T08:00:00.000Z",
+                lt: "2024-01-03T08:00:00.000Z",
+              },
+            },
+          },
+        ],
+      },
+    });
   });
 });
 

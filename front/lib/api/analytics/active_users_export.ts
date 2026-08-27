@@ -87,14 +87,19 @@ export async function fetchActiveUsersExportRows(
 ): Promise<Result<ActiveUsersExportRow[], Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
-  const extendedStart = moment
+  // Resolved to timezone-local instants, not bare "YYYY-MM-DD" strings:
+  // Elasticsearch parses a bare date as UTC midnight, which would disagree
+  // with the composite aggregation's timezone-local day buckets below.
+  const extendedStartInstant = moment
     .tz(startDate, timezone)
     .subtract(MAU_WINDOW_DAYS - 1, "days")
-    .format("YYYY-MM-DD");
-  const exclusiveEndDate = moment
-    .utc(endDate)
+    .startOf("day")
+    .toISOString();
+  const exclusiveEndInstant = moment
+    .tz(endDate, timezone)
     .add(1, "day")
-    .format("YYYY-MM-DD");
+    .startOf("day")
+    .toISOString();
   const cutoffTimestamp = moment
     .tz(startDate, timezone)
     .startOf("day")
@@ -107,8 +112,8 @@ export async function fetchActiveUsersExportRows(
         {
           range: {
             [COMPLETED_AT_FIELD]: {
-              gte: extendedStart,
-              lt: exclusiveEndDate,
+              gte: extendedStartInstant,
+              lt: exclusiveEndInstant,
             },
           },
         },
