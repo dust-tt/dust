@@ -2,11 +2,13 @@ import { useMemo, useState } from "react";
 
 export const BUBBLE_MENU_APPEND_TO = () => document.body;
 
-// Inline complement to the z-50 class: the menu element is created by the
-// tiptap plugin outside React's tree, so the inline style is the channel
-// guaranteed to reach it regardless of how the class syncs. Same value as
-// z-50 so overlays that follow it in the DOM (dialogs, popovers) still win.
-export const BUBBLE_MENU_STYLE = { zIndex: 50 };
+// Inline because the menu element is created by the tiptap plugin outside
+// React's tree, so the inline style is the channel guaranteed to reach it.
+// Above the z-50 overlay band: overlays are body portals appended after this
+// element, so an equal z-index loses the tie by DOM order and the toolbar
+// paints behind them. The menu auto-hides on editor blur before any dialog
+// or popover needs the front.
+export const BUBBLE_MENU_STYLE = { zIndex: 60 };
 
 /**
  * Options for Tiptap's BubbleMenu plus an `isPositioned` flag to gate the

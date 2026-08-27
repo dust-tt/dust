@@ -1751,7 +1751,7 @@ const InputBarContainer = ({
           </div>
           <BubbleMenu
             editor={editor ?? undefined}
-            className={cn("z-50 flex", isMobile && "hidden")}
+            className={cn("flex", isMobile && "hidden")}
             style={BUBBLE_MENU_STYLE}
             appendTo={BUBBLE_MENU_APPEND_TO}
             options={bubbleMenuOptions}
