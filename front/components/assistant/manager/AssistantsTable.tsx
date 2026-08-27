@@ -70,7 +70,7 @@ type RowData = {
 };
 
 const ASSISTANTS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
-  { length: 10 },
+  { length: 20 },
   (_, index) => ({
     sId: `assistant-skeleton-${index}`,
     name: "",

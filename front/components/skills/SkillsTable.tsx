@@ -62,7 +62,7 @@ type RowData = {
 };
 
 const SKILLS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
-  { length: 10 },
+  { length: 20 },
   (_, index) => ({
     sId: `skill-skeleton-${index}`,
     name: "",
