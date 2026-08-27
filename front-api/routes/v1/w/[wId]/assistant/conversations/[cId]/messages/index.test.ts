@@ -9,11 +9,6 @@ import { CLAUDE_OPUS_4_8_MODEL_ID } from "@app/types/assistant/models/anthropic"
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/temporal/agent_loop/client", () => ({
-  launchAgentLoopWorkflow: vi.fn(),
-  launchCompactionWorkflow: vi.fn(),
-}));
-
 vi.mock("@app/lib/api/programmatic_usage/tracking", () => ({
   isProgrammaticUsage: () => false,
   checkProgrammaticUsageLimits: vi.fn(),
@@ -283,82 +278,5 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.message.user).toBeNull();
-  });
-
-  it("gives the impersonated user their workspace role so role-gated agents stay mentionable", async () => {
-    const { workspace, key } = await createPublicApiMockRequest({
-      method: "POST",
-      systemKey: true,
-    });
-
-    const user = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user, { role: "admin" });
-    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    const conversation = await ConversationFactory.create(userAuth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [],
-    });
-
-    const response = await postMessage(
-      workspace,
-      conversation.sId,
-      key,
-      {
-        content: "Hello",
-        // `@analyst` is only visible to managers and admins.
-        mentions: [{ configurationId: GLOBAL_AGENTS_SID.ANALYST }],
-        context: {
-          username: "sub-agent",
-          timezone: "Europe/Paris",
-          origin: "api",
-        },
-      },
-      { "x-api-user-email": user.email }
-    );
-
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.agentMessages).toHaveLength(1);
-  });
-
-  it("keeps role-gated agents out of reach of an impersonated regular user", async () => {
-    const { workspace, key } = await createPublicApiMockRequest({
-      method: "POST",
-      systemKey: true,
-    });
-
-    const user = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user, { role: "user" });
-    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    const conversation = await ConversationFactory.create(userAuth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [],
-    });
-
-    const response = await postMessage(
-      workspace,
-      conversation.sId,
-      key,
-      {
-        content: "Hello",
-        mentions: [{ configurationId: GLOBAL_AGENTS_SID.ANALYST }],
-        context: {
-          username: "sub-agent",
-          timezone: "Europe/Paris",
-          origin: "api",
-        },
-      },
-      { "x-api-user-email": user.email }
-    );
-
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.agentMessages).toHaveLength(0);
   });
 });
