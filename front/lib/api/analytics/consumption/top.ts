@@ -297,6 +297,7 @@ export async function fetchConsumptionTopGroups(
   auth: Authenticator,
   {
     dimension,
+    excludedDimensionValues = [],
     period,
     limit,
     offset = 0,
@@ -305,6 +306,7 @@ export async function fetchConsumptionTopGroups(
     sortOrder = "desc",
   }: {
     dimension: ConsumptionTopDimension;
+    excludedDimensionValues?: string[];
     period: ConsumptionPeriod;
     limit: number;
     offset?: number;
@@ -323,6 +325,23 @@ export async function fetchConsumptionTopGroups(
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
+    extraFilters:
+      excludedDimensionValues.length > 0
+        ? [
+            {
+              bool: {
+                must_not: [
+                  {
+                    terms: {
+                      [CONSUMPTION_TOP_DIMENSION_FIELDS[dimension]]:
+                        excludedDimensionValues,
+                    },
+                  },
+                ],
+              },
+            },
+          ]
+        : [],
   });
 
   const requestedBucketCount = offset + limit;

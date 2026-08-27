@@ -1,5 +1,4 @@
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
-import { getEnabledSkillIdsFromAction } from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
 import { listAgenticAncestors } from "@app/lib/api/assistant/conversation/agentic_ancestors";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
@@ -69,7 +68,6 @@ export type AgentMessageConsumptionAnalyticsInput =
     actions: AgentMCPActionResource[];
     billedCredits: number;
     dustRunIds: string[];
-    enabledSkillIdsByActionId: ReadonlyMap<string, string[]>;
     items: AgentMessageConsumptionItemResource[];
     runs: RunResource[];
     skills: SkillResource[];
@@ -236,17 +234,6 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     (await AgentMCPActionResource.listByAgentMessageIds(auth, [
       agentMessage.agentMessageModelId,
     ]));
-  const actionsWithOutputs =
-    await AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
-      actions,
-      ignoreContent: false,
-    });
-  const enabledSkillIdsByActionId = new Map(
-    actionsWithOutputs.flatMap((action) => {
-      const skillIds = getEnabledSkillIdsFromAction(action);
-      return skillIds.length > 0 ? [[action.sId, skillIds] as const] : [];
-    })
-  );
   const stepContents = await AgentStepContentResource.fetchByAgentMessages(
     auth,
     { agentMessageIds: [agentMessage.agentMessageModelId] }
@@ -300,7 +287,6 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     contextOrigin: triggeringUserMessage.origin,
     conversationId: conversation.conversationId,
     dustRunIds,
-    enabledSkillIdsByActionId,
     items,
     messageStatus: agentMessage.status,
     messageVersion: agentMessage.version,

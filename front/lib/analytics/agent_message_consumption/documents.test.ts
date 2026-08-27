@@ -768,7 +768,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     ).toBe(5_000_000);
   });
 
-  it("associates an enable-skill action with the skill it enables", async () => {
+  it("does not associate an enable-skill action with the skill it enables", async () => {
     const context = await setupSettledMessage();
     const skill = await SkillFactory.create(context.auth, {
       name: "Enabled by tool",
@@ -830,7 +830,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       (document) => document.tool?.action_id === action.sId
     );
 
-    expect(toolDocument?.tool?.attributed_skill_ids).toEqual([skill.sId]);
+    expect(toolDocument?.tool?.attributed_skill_ids).toEqual([]);
     expect(
       documents.reduce((total, document) => total + document.credit_micro, 0)
     ).toBe(5_000_000);

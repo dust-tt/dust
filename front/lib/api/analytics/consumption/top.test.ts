@@ -329,7 +329,7 @@ describe("consumption top rankings", () => {
     expect(termsClauses[1]?.terms?.["agent.attributed_id"]).toHaveLength(1);
   });
 
-  it("counts tool invocations as documents, with no message sub-agg", async () => {
+  it("counts visible tool invocations and excludes skill management", async () => {
     const { auth } = await setup();
     vi.mocked(resolveDimensionLabels).mockResolvedValue(
       new Map([
@@ -378,6 +378,13 @@ describe("consumption top rankings", () => {
     ]);
     // The tools are a slice of the period, not all of it.
     expect(result.value.totalCredits).toBe(10);
+
+    const [query] = rankingSearchCall();
+    expect(query.bool?.filter).toContainEqual({
+      bool: {
+        must_not: [{ terms: { "tool.server_name": ["skill_management"] } }],
+      },
+    });
 
     const [, options] = lastSearchCall();
     expect(options?.aggregations?.by_group?.terms).toMatchObject({

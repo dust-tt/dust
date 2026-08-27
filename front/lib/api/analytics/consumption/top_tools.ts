@@ -1,3 +1,4 @@
+import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
   ConsumptionScopeFilter,
@@ -65,6 +66,8 @@ export async function fetchConsumptionTopTools(
 ): Promise<Result<ConsumptionTopTools, ElasticsearchError>> {
   const result = await fetchConsumptionTopGroups(auth, {
     dimension: "tool",
+    // Skill enablement is orchestration rather than a user-facing tool to analyze.
+    excludedDimensionValues: [SKILL_MANAGEMENT_SERVER_NAME],
     period,
     limit,
     offset,
