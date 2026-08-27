@@ -342,6 +342,7 @@ async function _getConversation<V extends "light" | "full">(
       })
     );
 
+    // TODO(seb) Instead of building it from scratch and duplicate logic, we should use enrichWithParticipationAndReadState and then ConversationResource.toJSON().
     const conversationType: LightConversationType & {
       hasMore?: boolean;
       lastValue?: number | null;
@@ -364,6 +365,7 @@ async function _getConversation<V extends "light" | "full">(
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
       isRunningAgentLoop: conversation.isRunningAgentLoop,
+      isParticipant: !!lastReadAt, // Not really true but mostly harmless here, the user could be a participant but not have read the conversation yet (eg: added by someone else) see TODO above.
       ...(forkingData && { forkingData }),
     };
 
@@ -442,6 +444,7 @@ async function _getConversation<V extends "light" | "full">(
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
       isRunningAgentLoop: conversation.isRunningAgentLoop,
+      isParticipant: !!lastReadAt, // Not really true but mostly harmless here, the user could be a participant but not have read the conversation yet (eg: added by someone else) see TODO above.
       ...(forkingData && { forkingData }),
     };
 

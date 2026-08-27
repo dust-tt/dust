@@ -118,6 +118,7 @@ app.get(
         spaceId: c.space?.sId ?? null,
         metadata: c.metadata,
         isRunningAgentLoop: c.isRunningAgentLoop,
+        isParticipant: false,
       }));
     } else {
       return apiError(ctx, {

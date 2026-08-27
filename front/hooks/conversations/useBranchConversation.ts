@@ -113,6 +113,7 @@ export function useBranchConversation({
             unread: false,
             updated: nowMs,
             isRunningAgentLoop: false,
+            isParticipant: false,
           };
 
           void mutateConversations(

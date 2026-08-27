@@ -195,6 +195,7 @@ describe("renderAllMessages", () => {
       triggerId: null,
       metadata: {},
       isRunningAgentLoop: false,
+      isParticipant: false,
     } as ConversationType;
   }
 
