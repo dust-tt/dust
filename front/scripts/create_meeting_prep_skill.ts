@@ -3,12 +3,10 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import {
-  SkillConfigurationModel,
-  SkillMCPServerConfigurationModel,
-} from "@app/lib/models/skill";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
@@ -16,7 +14,6 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { Transaction } from "sequelize";
 
 const CORE_SERVERS: readonly InternalMCPServerNameType[] = [
   "web_search_&_browse",
@@ -339,42 +336,38 @@ async function createMeetingPrepSkill(
     return;
   }
 
-  await frontSequelize.transaction(async (transaction: Transaction) => {
-    const createdSkill = await SkillConfigurationModel.create(
-      {
-        workspaceId: workspace.id,
-        name: SKILL_NAME,
-        agentFacingDescription: DESCRIPTION_FOR_AGENTS,
-        userFacingDescription: DESCRIPTION_FOR_HUMANS,
-        instructions,
-        status: "suggested",
-        editedBy: null,
-        requestedSpaceIds: [],
-        icon: SKILL_ICON,
-        availability: DEFAULT_SKILL_AVAILABILITY,
-      },
-      { transaction }
-    );
+  // Go through the resource: it creates the skill, its tool configurations and its grants
+  // in one transaction. `makeSuggestion` never adds a creator as editor.
+  const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
+    auth,
+    selectedViewIds
+  );
 
-    await SkillMCPServerConfigurationModel.bulkCreate(
-      selectedViewIds.map((mcpServerViewId) => ({
-        workspaceId: workspace.id,
-        skillConfigurationId: createdSkill.id,
-        mcpServerViewId,
-      })),
-      { transaction }
-    );
+  const skillRes = await SkillResource.makeSuggestion(
+    auth,
+    {
+      name: SKILL_NAME,
+      agentFacingDescription: DESCRIPTION_FOR_AGENTS,
+      userFacingDescription: DESCRIPTION_FOR_HUMANS,
+      instructions,
+      icon: SKILL_ICON,
+      availability: DEFAULT_SKILL_AVAILABILITY,
+    },
+    { mcpServerViewIds: mcpServerViews.map((view) => view.sId) }
+  );
+  if (skillRes.isErr()) {
+    throw skillRes.error;
+  }
 
-    logger.info(
-      {
-        skillId: createdSkill.id,
-        servers: selectedServers,
-        suiteName,
-        workspaceId: workspace.sId,
-      },
-      "Successfully created Meeting Prep skill"
-    );
-  });
+  logger.info(
+    {
+      skillId: skillRes.value.sId,
+      servers: selectedServers,
+      suiteName,
+      workspaceId: workspace.sId,
+    },
+    "Successfully created Meeting Prep skill"
+  );
 }
 
 makeScript(
