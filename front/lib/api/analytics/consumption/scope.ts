@@ -122,16 +122,6 @@ export const CONSUMPTION_TOP_DIMENSION_UNIT: Record<
   reasoning_effort: "message",
 };
 
-// Conversation and tag can be ranked but carry no filter key, so anything keyed
-// by scope dimension — filters, facets — has to narrow first.
-export function isConsumptionScopeDimension(
-  dimension: ConsumptionTopDimension
-): dimension is ConsumptionScopeDimension {
-  return CONSUMPTION_SCOPE_DIMENSIONS.some(
-    (scopeDimension) => scopeDimension === dimension
-  );
-}
-
 export const CONSUMPTION_METRICS = ["credit_micro"] as const;
 
 export type ConsumptionMetric = (typeof CONSUMPTION_METRICS)[number];

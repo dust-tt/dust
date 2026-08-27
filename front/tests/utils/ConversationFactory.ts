@@ -187,6 +187,17 @@ export class ConversationFactory {
     );
   }
 
+  static async setRequestedSpaceIdsForTest(
+    conversationId: ModelId,
+    workspaceId: ModelId,
+    requestedSpaceIds: ModelId[]
+  ): Promise<void> {
+    await ConversationModel.update(
+      { requestedSpaceIds },
+      { where: { id: conversationId, workspaceId } }
+    );
+  }
+
   static async setUpdatedAtForTest(
     auth: Authenticator,
     conversationId: ModelId,

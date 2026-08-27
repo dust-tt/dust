@@ -16,7 +16,6 @@ import {
   CONSUMPTION_TOP_DIMENSION_FIELDS,
   CONSUMPTION_TOP_DIMENSION_UNIT,
   CREDIT_MICRO_FIELD,
-  isConsumptionScopeDimension,
 } from "@app/lib/api/analytics/consumption/scope";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
@@ -152,7 +151,7 @@ async function resolveConsumptionTopSearchFilter(
     search?: string;
   }
 ): Promise<estypes.QueryDslQueryContainer | null> {
-  if (!isConsumptionScopeDimension(dimension)) {
+  if (dimension === "conversation" || dimension === "tag") {
     return null;
   }
 
@@ -469,7 +468,12 @@ export async function resolveConsumptionGroupLabels(
     groups.map((group) => group.key)
   );
 
-  return groups.map((group) => ({
+  const visibleGroups =
+    dimension === "conversation"
+      ? groups.filter((group) => labels.has(group.key))
+      : groups;
+
+  return visibleGroups.map((group) => ({
     key: group.key,
     name: labels.get(group.key)?.name ?? group.key,
     pictureUrl: labels.get(group.key)?.pictureUrl ?? null,

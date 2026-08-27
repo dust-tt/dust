@@ -1,7 +1,10 @@
 import { listConsumptionFacetCatalogDimension } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import { fetchConsumptionTopGroups as fetchConsumptionTopGroupBuckets } from "@app/lib/api/analytics/consumption/top";
+import {
+  fetchConsumptionTopGroups as fetchConsumptionTopGroupBuckets,
+  resolveConsumptionGroupLabels,
+} from "@app/lib/api/analytics/consumption/top";
 import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
 import { fetchConsumptionTopApiKeys } from "@app/lib/api/analytics/consumption/top_api_keys";
 import { fetchConsumptionTopConversations } from "@app/lib/api/analytics/consumption/top_conversations";
@@ -913,5 +916,42 @@ describe("fetchConsumptionTopGroups options", () => {
 
     const [query] = lastSearchCall();
     expect(query.bool?.filter).toContainEqual(tagClause);
+  });
+});
+
+describe("resolveConsumptionGroupLabels", () => {
+  it("drops a conversation row resolveDimensionLabels omitted, rather than falling back to its id", async () => {
+    const { auth } = await setup();
+    mockLabels({ readable_conversation: "Readable" });
+
+    const rows = await resolveConsumptionGroupLabels(auth, "conversation", [
+      {
+        key: "private_conversation",
+        credits: 12,
+        count: 3,
+        previousCredits: null,
+      },
+      {
+        key: "readable_conversation",
+        credits: 4,
+        count: 1,
+        previousCredits: null,
+      },
+    ]);
+
+    expect(rows.map((row) => row.key)).toEqual(["readable_conversation"]);
+  });
+
+  it("falls back to the raw key for every other dimension", async () => {
+    const { auth } = await setup();
+    mockLabels({});
+
+    const rows = await resolveConsumptionGroupLabels(auth, "model", [
+      { key: "deleted-model", credits: 4, count: 1, previousCredits: null },
+    ]);
+
+    expect(rows).toEqual([
+      expect.objectContaining({ key: "deleted-model", name: "deleted-model" }),
+    ]);
   });
 });

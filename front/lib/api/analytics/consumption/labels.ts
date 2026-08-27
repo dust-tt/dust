@@ -19,6 +19,7 @@ import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
+import capitalize from "lodash/capitalize";
 
 /**
  * Resolve display names / labels (and pictureUrl where applicable)
@@ -194,8 +195,6 @@ export async function resolveDimensionLabels(
       );
 
     case "conversation": {
-      // Deleted conversations still hold consumption, so keep them and let the
-      // key stand in for a title we can no longer read.
       const conversations = await ConversationResource.fetchByIds(auth, keys, {
         includeDeleted: true,
       });
@@ -209,9 +208,7 @@ export async function resolveDimensionLabels(
           }),
         ])
       );
-      return labelsFromNames(
-        new Map(keys.map((key) => [key, titlesById.get(key) ?? key]))
-      );
+      return labelsFromNames(titlesById);
     }
 
     case "tag": {
@@ -221,6 +218,11 @@ export async function resolveDimensionLabels(
         new Map(keys.map((key) => [key, namesById.get(key) ?? key]))
       );
     }
+
+    case "reasoning_effort":
+      return labelsFromNames(
+        new Map(keys.map((key) => [key, capitalize(key)]))
+      );
 
     default:
       assertNever(dimension);
