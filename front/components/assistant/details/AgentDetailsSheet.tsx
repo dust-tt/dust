@@ -209,7 +209,10 @@ export function AgentDetailsSheet({
   );
 
   const showInsightsTabs =
-    agentId != null && (agentConfiguration?.canEdit || isManager(owner));
+    agentId != null &&
+    (agentConfiguration?.scope === "global" ||
+      agentConfiguration?.canEdit ||
+      isManager(owner));
 
   const DescriptionSection = () => {
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];

@@ -99,7 +99,7 @@ export function createAgentConsumptionRoutes() {
       });
     }
 
-    if (!agent.canEdit && !auth.isManager()) {
+    if (agent.scope !== "global" && !agent.canEdit && !auth.isManager()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

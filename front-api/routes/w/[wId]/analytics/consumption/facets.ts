@@ -19,7 +19,7 @@ const app = consumptionAnalyticsApp();
  * /api/w/{wId}/analytics/consumption/facets:
  *   post:
  *     summary: List consumption analytics facets
- *     description: Lists current entities and historical indexed values present in the selected period for each consumption dimension. The workspace route requires a manager; the /me route is restricted server-side to the authenticated member; the agent route is restricted server-side to workspace managers and editors of the selected agent. A facet is disabled when it has no indexed document in that period after applying every active filter except the facet's own dimension.
+ *     description: Lists current entities and historical indexed values present in the selected period for each consumption dimension. The workspace route requires a manager; the /me route is restricted server-side to the authenticated member; the agent route is restricted server-side to workspace managers, editors of the selected agent, and members viewing a global agent. A facet is disabled when it has no indexed document in that period after applying every active filter except the facet's own dimension.
  *     tags:
  *       - Private Analytics
  *     parameters:

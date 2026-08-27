@@ -126,9 +126,9 @@ describe("POST /api/w/:wId/analytics/consumption/overview", () => {
     );
   });
 
-  it("lets managers read a global agent's consumption", async () => {
+  it("lets members read a global agent's consumption", async () => {
     vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
-    const { workspace } = await setupTest({ role: "manager" });
+    const { workspace } = await setupTest({ role: "user" });
 
     const response = await postAgentOverviewRequest(
       workspace.sId,
