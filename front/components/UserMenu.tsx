@@ -293,7 +293,9 @@ export function UserMenu({
       <Dialog open={analyticsOpen} onOpenChange={setAnalyticsOpen}>
         <DialogContent
           size="2xl"
-          className="focus:outline-none sm:min-h-[min(768px,90vh)]"
+          height="xl"
+          grow
+          className="focus:outline-none"
         >
           <UserAnalyticsPopover
             key={owner.sId}
