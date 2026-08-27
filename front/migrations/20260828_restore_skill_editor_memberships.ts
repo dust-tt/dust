@@ -26,13 +26,23 @@ import { Op } from "sequelize";
 
 const WORKSPACE_CONCURRENCY = 8;
 
-// The regular_auto groups holding a skill `editor` grant. Read straight from the model: the skills
-// involved may reference restricted or deleted spaces, which makes them unfetchable through
-// `SkillResource`, and their editors need the backfill too.
-async function listSkillEditorGrantGroups(
+// The regular_auto groups holding a skill `editor` grant, restricted to those that still have a
+// suspended membership to bring back. Two queries for the whole workspace, no per-group count.
+//
+// Read straight from the models: the skills involved may reference restricted or deleted spaces,
+// which makes them unfetchable through `SkillResource`, and their editors need the backfill too.
+async function listGroupsToRestore(
   auth: Authenticator,
   workspaceModelId: ModelId
-): Promise<GroupResource[]> {
+): Promise<{
+  groups: GroupResource[];
+  suspendedCountByGroupId: Map<ModelId, number>;
+}> {
+  const empty = {
+    groups: [],
+    suspendedCountByGroupId: new Map<ModelId, number>(),
+  };
+
   const grants = await GroupPermissionModel.findAll({
     attributes: ["groupId"],
     where: {
@@ -42,31 +52,39 @@ async function listSkillEditorGrantGroups(
     },
   });
   if (grants.length === 0) {
-    return [];
+    return empty;
   }
 
-  return GroupResource.fetchByModelIds(
-    auth,
-    [...new Set(grants.map((grant) => grant.groupId))],
-    { groupKinds: ["regular_auto"] }
-  );
-}
-
-async function countSuspendedMembers(
-  group: GroupResource,
-  workspaceModelId: ModelId
-): Promise<number> {
   const now = new Date();
-
-  return GroupMembershipModel.count({
+  const suspendedMemberships = await GroupMembershipModel.findAll({
+    attributes: ["groupId", "userId"],
     where: {
-      groupId: group.id,
       workspaceId: workspaceModelId,
+      groupId: [...new Set(grants.map((grant) => grant.groupId))],
       status: "suspended",
       startAt: { [Op.lte]: now },
       [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
     },
   });
+  if (suspendedMemberships.length === 0) {
+    return empty;
+  }
+
+  const suspendedCountByGroupId = new Map<ModelId, number>();
+  for (const membership of suspendedMemberships) {
+    suspendedCountByGroupId.set(
+      membership.groupId,
+      (suspendedCountByGroupId.get(membership.groupId) ?? 0) + 1
+    );
+  }
+
+  const groups = await GroupResource.fetchByModelIds(
+    auth,
+    [...suspendedCountByGroupId.keys()],
+    { groupKinds: ["regular_auto"] }
+  );
+
+  return { groups, suspendedCountByGroupId };
 }
 
 async function restoreWorkspaceSkillEditors(
@@ -81,42 +99,33 @@ async function restoreWorkspaceSkillEditors(
   });
   const workspaceModelId = auth.getNonNullableWorkspace().id;
 
-  const groups = await listSkillEditorGrantGroups(auth, workspaceModelId);
+  const { groups, suspendedCountByGroupId } = await listGroupsToRestore(
+    auth,
+    workspaceModelId
+  );
   if (groups.length === 0) {
     return;
   }
 
-  let groupsWritten = 0;
   let membershipsRestored = 0;
 
   for (const group of groups) {
-    if (!execute) {
-      const suspendedCount = await countSuspendedMembers(
-        group,
-        workspaceModelId
-      );
-      if (suspendedCount > 0) {
-        groupsWritten += 1;
-        membershipsRestored += suspendedCount;
+    const suspendedCount = suspendedCountByGroupId.get(group.id) ?? 0;
 
-        logger.info(
-          {
-            workspaceId: workspace.sId,
-            groupId: group.id,
-            editorCount: suspendedCount,
-          },
-          "Dry run: would restore the skill's suspended editor memberships"
-        );
-      }
+    if (!execute) {
+      membershipsRestored += suspendedCount;
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          groupId: group.id,
+          editorCount: suspendedCount,
+        },
+        "Dry run: would restore the skill's suspended editor memberships"
+      );
       continue;
     }
 
     const restoredUserIds = await group.restoreMembers(auth);
-    if (restoredUserIds.length === 0) {
-      continue;
-    }
-
-    groupsWritten += 1;
     membershipsRestored += restoredUserIds.length;
 
     logger.info(
@@ -133,7 +142,6 @@ async function restoreWorkspaceSkillEditors(
     {
       workspaceId: workspace.sId,
       groups: groups.length,
-      groupsWritten,
       membershipsRestored,
     },
     "Completed skill editor membership restoration for workspace"
