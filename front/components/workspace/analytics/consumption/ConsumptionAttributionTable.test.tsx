@@ -437,6 +437,50 @@ describe("ConsumptionAttributionTable", () => {
     });
   });
 
+  it("clears the search when a row is added to the filters", async () => {
+    const onAddFilter = vi.fn();
+    const row = {
+      id: "user-1",
+      name: "Jane Doe",
+      pictureUrl: null,
+      credits: 100,
+      avgCredits: 10,
+    };
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [row],
+      totalCredits: 100,
+      totalCount: 1,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="user"
+        onDimensionChange={vi.fn()}
+        onAddFilter={onAddFilter}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    const searchInput = screen.getByPlaceholderText("Search…");
+    fireEvent.change(searchInput, { target: { value: "Jane" } });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add Jane Doe to filters" })
+    );
+
+    expect(onAddFilter).toHaveBeenCalledWith(expect.objectContaining(row));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Search…")).toHaveValue("");
+    });
+  });
+
   it("selects the API key dimension with a pointer", () => {
     const onDimensionChange = vi.fn();
     mockUseConsumptionTop.mockReturnValue({
