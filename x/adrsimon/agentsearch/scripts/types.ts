@@ -37,7 +37,6 @@ export interface ExportedAgent {
   requestedSpaceIds: string[];
   spaces: { sId: string; name: string | null; kind: SpaceKind | null }[];
   nonPodSpaceIds: string[];
-  nonPodSpaceCount: number;
   podSpaceIds: string[];
   usage: AgentUsage;
 }
@@ -61,11 +60,10 @@ export interface AgentSearchDocument {
   status: string;
   author: string | null;
   editors: string[];
-  requested_space_ids: string[];
-  requested_space_count: number;
   non_pod_space_ids: string[];
   non_pod_space_count: number;
   pod_space_ids: string[];
+  pod_space_count: number;
   usage: {
     messages: number;
     conversations: number;

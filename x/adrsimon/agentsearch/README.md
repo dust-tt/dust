@@ -16,6 +16,7 @@ agentsearch/
 ├── assets/
 │   ├── agents_skeleton.json          shape of an agent export   (committed, no real data)
 │   ├── profile_skeleton.json         shape of a user profile    (committed, no real data)
+│   ├── permissions/                  mocked permission corpus and user scenarios
 │   ├── agents_<wId>.json             a real export   (gitignored, you produce it)
 │   ├── profile_<userSId>.json        a real profile  (gitignored, you produce it)
 │   ├── eval_queries_<name>.json      a generated eval set (gitignored)
@@ -26,6 +27,7 @@ agentsearch/
 │   ├── export_workspace_agents.ts    dumps a workspace's agents  — RUNS IN front/, not here
 │   ├── export_user_profile.ts        dumps a user's Authenticator — RUNS IN front/, not here
 │   ├── ingest.ts                     export JSON -> local ES
+│   ├── test_permissions.ts           exhaustive permission-model integration test
 │   ├── query.ts                      the query builder, shared by search and eval
 │   ├── search.ts                     query CLI
 │   ├── generate_queries.ts           builds a known-item eval set from the corpus
@@ -51,7 +53,7 @@ npm run search -- --q sales --spaces vlt_ZqMdUAzI0OTf --groups grp_gXHmJEbOCeCy
 
 ## Producing an export
 
-**Nothing real is committed.** An agent export carries every agent's full instructions and group-level usage; a profile names a real person and their memberships. Both are gitignored, and only the skeletons are tracked. Two scripts produce them.
+**Nothing real is committed.** An agent export carries every agent's full instructions and group-level usage; a profile names a real person and their memberships. Both are gitignored. The skeletons and mocked permission fixtures are safe to commit. Two scripts produce the real files.
 
 Neither runs from this directory — they import `@app/...`. On prodbox:
 
@@ -78,6 +80,10 @@ npm run search -- --profile assets/profile_<userSId>.json --q "pull request"
 
 `--profile` overrides `--spaces` and `--groups`. It does not make the search permission-correct — see below — it just stops you hand-assembling ids that drift.
 
+Profiles exported before pods were added to `readablePodSpaces` list zero of them, which silently hides every agent that requests a pod. Re-export rather than patch: `readablePodSpaces: []` on a workspace that has projects is the tell.
+
+The export enumerates every space the caller can read, pods included. That is fine for a snapshot of one user and is exactly what a request path must not do — see the space filter below.
+
 ### What the export contains
 
 Agent configuration comes from `getAgentConfigurationsForView` with `dangerouslySkipPermissionFiltering`, so unpublished agents and spaces the caller cannot read are included — this is an admin-side corpus.
@@ -88,23 +94,20 @@ See `assets/agents_skeleton.json` for the exact shape.
 
 ## The permission model
 
-The harness reproduces what `/manage/agents` (and the `@` mention picker) show, which is `getAgentConfigurationsForView` with the `manage` / `list` view. Two filters:
+The harness reproduces the `list` view used by agent discovery and the `@` mention picker. It applies the same two gates as front: every requested space must be readable, and the agent must be visible, global, or hidden with the caller as an editor. The `manage` view differs only by retaining inactive global agents.
 
-**Spaces** — `filterAgentsByRequestedSpaces` (`front/lib/api/assistant/configuration/agent.ts`) keeps an agent only when *every* space it requests is readable by the caller. Pods included; there is no carve-out. That is a `terms_set` with the required count stored on the document:
+The Elasticsearch space filter handles pods and non-pods independently. For each class it chooses between a positive `terms_set` and a negative `terms` clause, keeping the query within Lucene's clause budget without weakening the access rule. [PERMISSIONS.md](PERMISSIONS.md) contains the derivation, scale measurements, fixture contract, and known view differences.
 
-```json
-{ "terms_set": { "requested_space_ids": {
-    "terms": ["<every space the caller can read, pods included>"],
-    "minimum_should_match_field": "requested_space_count" } } }
+Profiles are snapshots. A stale profile answers with the memberships recorded at `generatedAt`, not the user's current access.
+
+### Permission model tests
+
+The committed dataset under `assets/permissions/` contains 21 mocked agents and 14 named user scenarios. The harness exercises the production query builder for every subset of the five mocked spaces, checks its clause shapes, runs a 10,001-space clause-budget query, and verifies that over-listing referenced spaces is safe. [PERMISSIONS.md](PERMISSIONS.md) documents the fixture contract, coverage, and limits.
+
+```bash
+npm run es:up
+npm run test:permissions
 ```
-
-A second `should` branch matches `requested_space_count: 0` for agents that require nothing.
-
-**Visibility** — `scope` in `visible` / `global`, plus `hidden` agents where the caller is an editor (`editors` holds emails, and the profile carries the caller's). `--exclude-global` drops the globals, which is what the default *All custom* tab of `/manage/agents` displays. Passing `--scope` explicitly bypasses the visibility filter entirely.
-
-The index also carries `non_pod_space_ids` / `non_pod_space_count`, the projection skill search uses (PRs #30452 / #30450). Skill search excludes pods from the query because a user's project memberships are potentially unbounded: it over-fetches a bounded candidate window and authorizes pods afterwards against Postgres. Those fields are indexed here for comparison but are not what the default filter uses.
-
-A profile is also a **snapshot**. Memberships change; a stale profile answers as the user was on `generatedAt`, not as they are now.
 
 ## Ranking
 
@@ -154,7 +157,6 @@ BM25 sums over the terms a document *matches* and never penalizes the ones it mi
 | `--match-mode` | `hybrid` (default), `best_fields`, or `bool_prefix` |
 | `--name-fallback` | typo tolerance on `name`: `fuzzy` (default), `subsequence`, `both`, `off` |
 | `--exclude-global` | drop global agents, matching the *All custom* tab |
-| `--scope` | restrict to `visible`, `hidden`, `global`; bypasses the visibility filter |
 | `--limit` | number of hits (default 10) |
 | `--explain` | dump the ES explanation for the top hit |
 | `--es`, `--index` | point elsewhere |
@@ -250,7 +252,7 @@ Against the Dust workspace (2,566 agents, 30-day window):
 - **Two precision bugs the eval could not see.** Group adjacency shared a `should` list with the text clauses under `minimum_should_match: 1`, so it satisfied the match by itself and every agent with group usage matched every query. And the `description.subsequence` wildcard matched nearly anything. Together they made `--q invoice` and `--q datadog` return the same agents. Fixing both moved the eval by +0.003 — it measures whether the target ranks, not whether junk ranks with it. `--q invoice` now returns 0 hits.
 - **Subsequence wildcards blow up past ~24 characters.** Lucene refuses to determinize the automaton (`would require more than 10000 effort`), and the whole query errors — not just that clause. The clause is also pointless for multi-word input, since the field holds the full name and a space in the pattern demands a literal space in the name. Now gated on both length and token count.
 - **Global agents swamp anything usage-weighted.** `dust` alone accounts for 42k of the workspace's messages. `--exclude-global` filters them out.
-- **The manage list reproduces.** With no query, `adrien@dust.tt` gets 389 hits, or 341 with `--exclude-global` — against 350 observed in `/manage/agents`. The residual is export drift: the corpus is a snapshot, the page is live.
+- **The historical list comparison was close.** With no query, the old profile returned 389 hits, or 341 with `--exclude-global`, against 350 observed in `/manage/agents`. The profile predates pod export support, so those numbers are not a current correctness check.
 - **82% of the corpus is dead.** 2,108 of 2,566 agents saw zero messages in the window, and 2,141 are `hidden`. BM25 will happily surface a well-written agent nobody has ever used.
 - **Programmatic traffic has no groups.** 25 agents have usage but no group attribution at all (`CodingRules`: 1,568 messages, 0 users) — API-key runs carry no `user.group_ids`, so adjacency scores them zero no matter how popular.
 - **Group sums exceed agent totals** by 2-4x, since `user.group_ids` is multi-valued. Good as a per-group signal, wrong as a denominator.
