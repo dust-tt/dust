@@ -8,6 +8,7 @@ import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import {
   GCS_CONTENT_CACHE_TTL_MS,
@@ -407,6 +408,85 @@ describe("listBlockedActionsForConversation", () => {
       action.sId
     );
     expect(reloadedAction?.status).toBe("blocked_validation_required");
+  });
+
+  it("excludes sandbox child actions from conversation-visible metadata", async () => {
+    const agentMessage = await AgentMessageModel.create({
+      conversationId: conversation.id,
+      workspaceId: workspace.id,
+      agentConfigurationId: "test-agent",
+      agentConfigurationVersion: 0,
+      status: "created",
+      skipToolsValidation: false,
+    });
+    const { action: parentAction } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+    await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.id,
+      parentAction,
+      sandboxChildActionInfo: { parentActionId: parentAction.sId },
+    });
+
+    const visibleActions =
+      await AgentMCPActionResource.fetchVisibleByLatestStepContents(auth, [
+        agentMessage.id,
+      ]);
+
+    expect(visibleActions.map(({ sId }) => sId)).toEqual([parentAction.sId]);
+  });
+
+  it("returns only actions linked to canonical function calls", async () => {
+    const agentMessage = await AgentMessageModel.create({
+      conversationId: conversation.id,
+      workspaceId: workspace.id,
+      agentConfigurationId: "test-agent",
+      agentConfigurationVersion: 0,
+      status: "created",
+      skipToolsValidation: false,
+    });
+    const { action: supersededAction } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+    const { action: canonicalAction } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+    const { action: removedAction } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+
+    await AgentStepContentModel.update(
+      {
+        step: supersededAction.stepContent.step,
+        index: supersededAction.stepContent.index,
+        version: supersededAction.stepContent.version + 1,
+      },
+      {
+        where: {
+          id: canonicalAction.stepContent.id,
+          workspaceId: workspace.id,
+        },
+      }
+    );
+    await AgentStepContentModel.create({
+      workspaceId: workspace.id,
+      agentMessageId: agentMessage.id,
+      step: removedAction.stepContent.step,
+      index: removedAction.stepContent.index,
+      version: removedAction.stepContent.version + 1,
+      dustRunId: null,
+      type: "text_content",
+      value: { type: "text_content", value: "The retry did not call a tool" },
+    });
+
+    const visibleActions =
+      await AgentMCPActionResource.fetchVisibleByLatestStepContents(auth, [
+        agentMessage.id,
+      ]);
+
+    expect(visibleActions.map(({ sId }) => sId)).toEqual([canonicalAction.sId]);
   });
 
   it("does not rewind a final action through a stale sandbox parent resource", async () => {

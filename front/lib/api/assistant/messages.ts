@@ -1,6 +1,7 @@
 import { renderAgentMessageContentView } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { fetchCheckpointAgentMessageContentHydration } from "@app/lib/api/assistant/conversation_rendering/checkpoint_message_hydration";
 import {
   resolvedModelFromAgentMessageRow,
   resolvedModelFromUserMessageRow,
@@ -312,6 +313,62 @@ async function batchRenderUserMessages(
 
 type RenderedAgentMessage = AgentMessageType | LightAgentMessageType;
 
+type AgentMessageContentHydration = {
+  stepContents: AgentStepContentResource[];
+  actionsWithOutputContent: AgentMCPActionResource[];
+  actionsWithoutOutputContent: AgentMCPActionResource[];
+};
+
+type FetchAgentMessageContentHydration = (
+  agentMessageModelIds: ModelId[]
+) => Promise<AgentMessageContentHydration>;
+
+async function fetchFullAgentMessageContentHydration(
+  auth: Authenticator,
+  {
+    agentMessageModelIds,
+    messagesWithToolOutputContent,
+    textContentOnly,
+    viewType,
+  }: {
+    agentMessageModelIds: ModelId[];
+    messagesWithToolOutputContent: Set<ModelId> | null;
+    textContentOnly: boolean;
+    viewType: RenderMessageVariant;
+  }
+): Promise<AgentMessageContentHydration> {
+  const stepContents = await AgentStepContentResource.fetchByAgentMessages(
+    auth,
+    {
+      agentMessageIds: agentMessageModelIds,
+      textContentOnly,
+    }
+  );
+  const actions = await AgentMCPActionResource.fetchByStepContents(auth, {
+    stepContents,
+  });
+  const actionsWithOutputContent: AgentMCPActionResource[] = [];
+  const actionsWithoutOutputContent: AgentMCPActionResource[] = [];
+
+  for (const action of actions) {
+    if (
+      viewType === "light" ||
+      (messagesWithToolOutputContent &&
+        !messagesWithToolOutputContent.has(action.agentMessageId))
+    ) {
+      actionsWithoutOutputContent.push(action);
+    } else {
+      actionsWithOutputContent.push(action);
+    }
+  }
+
+  return {
+    stepContents,
+    actionsWithOutputContent,
+    actionsWithoutOutputContent,
+  };
+}
+
 /**
  * Render user messages without mentions or reactions.
  * No DB calls beyond the provided transaction — safe to use inside an advisory lock.
@@ -361,6 +418,70 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     ConversationError
   >
 > {
+  return batchRenderAgentMessagesWithContentHydration(
+    auth,
+    messages,
+    viewType,
+    mentionsByMessageId,
+    (agentMessageModelIds) =>
+      fetchFullAgentMessageContentHydration(auth, {
+        agentMessageModelIds,
+        messagesWithToolOutputContent,
+        textContentOnly,
+        viewType,
+      })
+  );
+}
+
+async function renderAgentMessageForCheckpoint(
+  auth: Authenticator,
+  message: MessageModel,
+  mentionsByMessageId: Map<ModelId, MentionResource[]>,
+  {
+    agentMessageModelId,
+    targetStep,
+  }: {
+    agentMessageModelId: ModelId;
+    targetStep: number;
+  }
+): Promise<Result<AgentMessageType, ConversationError>> {
+  const result = await batchRenderAgentMessagesWithContentHydration(
+    auth,
+    [message],
+    "full",
+    mentionsByMessageId,
+    () =>
+      fetchCheckpointAgentMessageContentHydration(auth, {
+        agentMessageModelId,
+        targetStep,
+      })
+  );
+  if (result.isErr()) {
+    return result;
+  }
+
+  const renderedMessage = result.value[0];
+  if (!renderedMessage) {
+    return new Err(new ConversationError("message_not_found"));
+  }
+
+  return new Ok(renderedMessage);
+}
+
+async function batchRenderAgentMessagesWithContentHydration<
+  V extends RenderMessageVariant,
+>(
+  auth: Authenticator,
+  messages: MessageModel[],
+  viewType: V,
+  mentionsByMessageId: Map<ModelId, MentionResource[]>,
+  fetchContentHydration: FetchAgentMessageContentHydration
+): Promise<
+  Result<
+    V extends "full" ? AgentMessageType[] : LightAgentMessageType[],
+    ConversationError
+  >
+> {
   const agentMessages = messages.filter((m) => !!m.agentMessage);
 
   if (agentMessages.length === 0) {
@@ -371,7 +492,7 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     );
   }
 
-  const agentMessageIds = removeNulls(
+  const agentMessageModelIds = removeNulls(
     agentMessages.map((m) => m.agentMessageId ?? null)
   );
 
@@ -428,31 +549,27 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     agentConfigurations.map((a) => [a.sId, a])
   );
 
-  const stepContentAndReactionTasks: Array<
+  const contentHydrationAndReactionTasks: Array<
     () => Promise<
-      AgentStepContentResource[] | Record<ModelId, MessageReactionType[]>
+      AgentMessageContentHydration | Record<ModelId, MessageReactionType[]>
     >
   > = [
-    async () =>
-      AgentStepContentResource.fetchByAgentMessages(auth, {
-        agentMessageIds,
-        textContentOnly,
-      }),
+    async () => fetchContentHydration(agentMessageModelIds),
     async () =>
       getMessagesReactions(auth, {
         messageIds: agentMessages.map((m) => m.id),
       }),
   ];
 
-  const [stepContents, reactionsByMessageId] = (await concurrentExecutor(
-    stepContentAndReactionTasks,
+  const [contentHydration, reactionsByMessageId] = (await concurrentExecutor(
+    contentHydrationAndReactionTasks,
     (
       task
     ): Promise<
-      AgentStepContentResource[] | Record<ModelId, MessageReactionType[]>
+      AgentMessageContentHydration | Record<ModelId, MessageReactionType[]>
     > => task(),
     { concurrency: 2 }
-  )) as [AgentStepContentResource[], Record<ModelId, MessageReactionType[]>];
+  )) as [AgentMessageContentHydration, Record<ModelId, MessageReactionType[]>];
 
   if (!agentConfigurations) {
     return new Err(
@@ -460,40 +577,22 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     );
   }
 
-  const allAgentMCPActions = await AgentMCPActionResource.fetchByStepContents(
-    auth,
-    {
-      stepContents,
-    }
-  );
-
-  let agentMCPActionsWithContent: AgentMCPActionResource[] = [];
-  let agentMCPActionsWithoutContent: AgentMCPActionResource[] = [];
-
-  for (const action of allAgentMCPActions) {
-    // Light messages always exclude tool output content for all actions.
-    // Otherwise, for full messages, we only include content for the actions that are in the optional outputItemContentOnlyForMessageIds.
-    if (
-      viewType === "light" ||
-      (messagesWithToolOutputContent &&
-        !messagesWithToolOutputContent.has(action.agentMessageId))
-    ) {
-      agentMCPActionsWithoutContent.push(action);
-    } else {
-      agentMCPActionsWithContent.push(action);
-    }
-  }
+  const {
+    actionsWithOutputContent,
+    actionsWithoutOutputContent,
+    stepContents,
+  } = contentHydration;
 
   const [actionsWithOutputs, actionsWithoutOutputs] = await concurrentExecutor(
     [
       async () =>
         AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
-          actions: agentMCPActionsWithContent,
+          actions: actionsWithOutputContent,
           ignoreContent: false,
         }),
       async () =>
         AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
-          actions: agentMCPActionsWithoutContent,
+          actions: actionsWithoutOutputContent,
           ignoreContent: true,
         }),
     ],
@@ -904,24 +1003,7 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
     ConversationError
   >
 > {
-  const mentionsByMessageId = new Map<ModelId, MentionResource[]>();
-  const mentionableMessageIds = messages
-    .filter((message) => message.userMessage || message.agentMessage)
-    .map((message) => message.id);
-
-  if (mentionableMessageIds.length > 0) {
-    const mentionRows = await MentionResource.listByMessageModelIds(auth, {
-      messageModelIds: mentionableMessageIds,
-    });
-
-    for (const mentionRow of mentionRows) {
-      const messageMentions =
-        mentionsByMessageId.get(mentionRow.messageId) ?? [];
-      messageMentions.push(mentionRow);
-      mentionsByMessageId.set(mentionRow.messageId, messageMentions);
-    }
-  }
-
+  const mentionsByMessageId = await fetchMentionsByMessageId(auth, messages);
   const userMessages = await batchRenderUserMessages(
     auth,
     messages,
@@ -1001,6 +1083,97 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
           ? LightMessageType[]
           : never
   );
+}
+
+export async function renderMessagesForCheckpoint(
+  auth: Authenticator,
+  messages: MessageModel[],
+  {
+    agentMessageId,
+    targetStep,
+    userMessageId,
+  }: {
+    agentMessageId: string;
+    targetStep: number;
+    userMessageId: string;
+  }
+): Promise<
+  Result<
+    { agentMessage: AgentMessageType; userMessage: UserMessageType },
+    ConversationError
+  >
+> {
+  const agentMessage = messages.find(
+    (message) =>
+      message.sId === agentMessageId &&
+      message.agentMessageId !== null &&
+      message.agentMessage !== null &&
+      message.agentMessage !== undefined
+  );
+  if (!agentMessage || agentMessage.agentMessageId === null) {
+    return new Err(new ConversationError("message_not_found"));
+  }
+  const userMessage = messages.find(
+    (message) =>
+      message.sId === userMessageId &&
+      message.userMessage !== null &&
+      message.userMessage !== undefined
+  );
+  if (!userMessage) {
+    return new Err(new ConversationError("message_not_found"));
+  }
+
+  const mentionsByMessageId = await fetchMentionsByMessageId(auth, messages);
+  const userMessages = await batchRenderUserMessages(
+    auth,
+    [userMessage],
+    mentionsByMessageId
+  );
+  const agentMessageResult = await renderAgentMessageForCheckpoint(
+    auth,
+    agentMessage,
+    mentionsByMessageId,
+    { agentMessageModelId: agentMessage.agentMessageId, targetStep }
+  );
+  if (agentMessageResult.isErr()) {
+    return agentMessageResult;
+  }
+
+  const renderedUserMessage = userMessages[0];
+  if (!renderedUserMessage) {
+    return new Err(new ConversationError("message_not_found"));
+  }
+
+  return new Ok({
+    agentMessage: agentMessageResult.value,
+    userMessage: renderedUserMessage,
+  });
+}
+
+async function fetchMentionsByMessageId(
+  auth: Authenticator,
+  messages: MessageModel[]
+): Promise<Map<ModelId, MentionResource[]>> {
+  const mentionsByMessageId = new Map<ModelId, MentionResource[]>();
+  const mentionableMessageIds = messages
+    .filter((message) => message.userMessage || message.agentMessage)
+    .map((message) => message.id);
+
+  if (mentionableMessageIds.length === 0) {
+    return mentionsByMessageId;
+  }
+
+  const mentionRows = await MentionResource.listByMessageModelIds(auth, {
+    messageModelIds: mentionableMessageIds,
+  });
+
+  for (const mentionRow of mentionRows) {
+    const messageMentions = mentionsByMessageId.get(mentionRow.messageId) ?? [];
+    messageMentions.push(mentionRow);
+    mentionsByMessageId.set(mentionRow.messageId, messageMentions);
+  }
+
+  return mentionsByMessageId;
 }
 
 type MessageVariant = "legacy-light" | "light";
