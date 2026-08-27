@@ -1102,12 +1102,8 @@ const QUERIES: LabeledQuery[] = [
     expected: "workspace_analytics.get_agent_details",
   },
   {
-    query: "how many AWU credits did the workspace consume this month",
-    expected: "workspace_analytics.get_credit_usage",
-  },
-  {
     query: "break down credit spending by agent",
-    expected: "workspace_analytics.get_credit_usage",
+    expected: "workspace_analytics.get_top_entities_by_credits",
   },
   {
     query: "which skills are executed most in the workspace",
@@ -1136,6 +1132,10 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "rank credit spend by tool",
     expected: "workspace_analytics.get_top_entities_by_credits",
+  },
+  {
+    query: "how many credits did the workspace consume this month",
+    expected: "workspace_analytics.get_consumption_overview",
   },
   {
     query: "show the credit spending trend over the last 30 days",

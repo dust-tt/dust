@@ -1,12 +1,9 @@
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
-import type {
-  ConsumptionPeriod,
-  ConsumptionPeriodInput,
-} from "@app/lib/api/analytics/consumption/period";
-import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import {
   AGENT_MESSAGE_ID_FIELD,
+  agentTagIdsFilter,
   buildConsumptionScopeQuery,
   CARDINALITY_PRECISION_THRESHOLD,
   COMPLETED_AT_FIELD,
@@ -79,13 +76,8 @@ function lastRecordAtFromAgg(
 }
 
 async function fetchPoolCapCredits(
-  auth: Authenticator,
-  periodInput: ConsumptionPeriodInput
+  auth: Authenticator
 ): Promise<number | null> {
-  if (periodInput.kind !== "cycle") {
-    return null;
-  }
-
   const poolResult = await getAwuPoolSummary(auth);
   if (poolResult.isErr()) {
     return null;
@@ -144,29 +136,38 @@ async function topAgentFromAgg(
 export async function fetchConsumptionOverview(
   auth: Authenticator,
   {
-    periodInput,
+    period,
     filter,
+    agentTagIds,
     includeWorkspaceContext = true,
+    withCreditCap,
   }: {
-    periodInput: ConsumptionPeriodInput;
+    period: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
+    agentTagIds?: string[];
     includeWorkspaceContext?: boolean;
+    withCreditCap: boolean;
   }
 ): Promise<Result<ConsumptionOverview, ElasticsearchError>> {
   const workspace = auth.getNonNullableWorkspace();
-  const period = await resolveConsumptionPeriod(auth, periodInput);
 
   const query = buildConsumptionScopeQuery({
     auth: auth,
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
+    extraFilters: agentTagIdsFilter(agentTagIds ?? []),
   });
 
   const [searchResult, totalMembers, capCredits] = await Promise.all([
     searchConsumptionAnalytics<never, OverviewAggs>(query, {
       aggregations: {
-        active_members: { cardinality: { field: "user.id" } },
+        active_members: {
+          cardinality: {
+            field: CONSUMPTION_DIMENSION_FIELDS.user,
+            precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+          },
+        },
         message_count: {
           cardinality: {
             field: AGENT_MESSAGE_ID_FIELD,
@@ -191,8 +192,8 @@ export async function fetchConsumptionOverview(
     includeWorkspaceContext
       ? MembershipResource.countActiveMembersForWorkspace({ workspace })
       : Promise.resolve(0),
-    includeWorkspaceContext
-      ? fetchPoolCapCredits(auth, periodInput)
+    includeWorkspaceContext && withCreditCap
+      ? fetchPoolCapCredits(auth)
       : Promise.resolve(null),
   ]);
 
