@@ -134,11 +134,12 @@ describe("Authenticator.getWorkspacePermissions", () => {
 
   it("returns every type-level verb for an admin", async () => {
     // Admins hold every type-level capability by default; instance-only domains
-    // (space, models_tier) stay empty.
+    // (space, models_tier) stay empty. `read` on skills comes from the global group's `reader`
+    // grant, which every workspace holds (see WorkspaceFactory / seedWorkspaceCapabilities).
     expect(await adminAuth.getWorkspacePermissions()).toEqual({
       ...emptyWorkspacePermissions(),
       agent: ["create", "publish"],
-      skill: ["create", "publish", "make_discoverable"],
+      skill: ["read", "create", "publish", "make_discoverable"],
       frame: ["invite", "publish"],
       billing: ["admin"],
       security: ["admin"],
@@ -150,9 +151,12 @@ describe("Authenticator.getWorkspacePermissions", () => {
   it("returns no permissions for a regular user without grants", async () => {
     const auth = await memberAuthInGroup();
 
-    expect(await auth.getWorkspacePermissions()).toEqual(
-      emptyWorkspacePermissions()
-    );
+    // Every workspace member reads skills through the global group's `reader` grant; nothing else
+    // is granted to a member by default.
+    expect(await auth.getWorkspacePermissions()).toEqual({
+      ...emptyWorkspacePermissions(),
+      skill: ["read"],
+    });
   });
 
   it("reflects a capability granted to everyone", async () => {
@@ -165,6 +169,7 @@ describe("Authenticator.getWorkspacePermissions", () => {
     expect(await auth.getWorkspacePermissions()).toEqual({
       ...emptyWorkspacePermissions(),
       agent: ["create"],
+      skill: ["read"],
     });
   });
 
@@ -180,6 +185,7 @@ describe("Authenticator.getWorkspacePermissions", () => {
     expect(await auth.getWorkspacePermissions()).toEqual({
       ...emptyWorkspacePermissions(),
       agent: ["publish"],
+      skill: ["read"],
     });
   });
 });
