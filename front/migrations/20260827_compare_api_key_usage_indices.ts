@@ -75,65 +75,6 @@ function assertCompleteAggregation(
   }
 }
 
-async function fetchCreditsMicroByApiKeyName({
-  creditsField,
-  creditsToMicro,
-  fromDate,
-  indexName,
-  search,
-  timestampField,
-  toDate,
-  workspaceId,
-}: {
-  creditsField: string;
-  creditsToMicro: (credits: number) => number;
-  fromDate: Date;
-  indexName: string;
-  search: typeof searchAnalytics;
-  timestampField: string;
-  toDate: Date;
-  workspaceId: string;
-}): Promise<Map<string, number>> {
-  const result = await search<never, ApiKeyCreditsAggs>(
-    {
-      bool: {
-        filter: [
-          { term: { workspace_id: workspaceId } },
-          {
-            range: {
-              [timestampField]: {
-                gte: fromDate.toISOString(),
-                lte: toDate.toISOString(),
-              },
-            },
-          },
-        ],
-      },
-    },
-    {
-      aggregations: {
-        by_api_key_name: {
-          terms: { field: "api_key_name", size: MAX_API_KEY_NAMES },
-          aggs: { credits: { sum: { field: creditsField } } },
-        },
-      },
-      size: 0,
-    }
-  );
-  if (result.isErr()) {
-    throw new Error(`Failed to query ${indexName}: ${result.error.message}`);
-  }
-
-  const aggregation = result.value.aggregations?.by_api_key_name;
-  assertCompleteAggregation(aggregation, indexName);
-  return new Map(
-    bucketsToArray<ApiKeyCreditsBucket>(aggregation?.buckets).map((bucket) => [
-      String(bucket.key),
-      creditsToMicro(bucket.credits?.value ?? 0),
-    ])
-  );
-}
-
 function totalMicroCredits(creditsByApiKeyName: Map<string, number>): number {
   return [...creditsByApiKeyName.values()].reduce(
     (total, creditsMicro) => total + creditsMicro,
@@ -172,28 +113,94 @@ makeScript(
       throw new Error("--fromDate must precede --toDate");
     }
 
-    const [legacyByApiKeyName, consumptionByApiKeyName] = await Promise.all([
-      fetchCreditsMicroByApiKeyName({
-        creditsField: "cost.billable_awu",
-        creditsToMicro: roundCreditsToMicroCredits,
-        fromDate: parsedFromDate,
-        indexName: ANALYTICS_ALIAS_NAME,
-        search: searchAnalytics,
-        timestampField: "timestamp",
-        toDate: parsedToDate,
-        workspaceId: workspace.sId,
-      }),
-      fetchCreditsMicroByApiKeyName({
-        creditsField: "credit_micro",
-        creditsToMicro: Math.round,
-        fromDate: parsedFromDate,
-        indexName: CONSUMPTION_ANALYTICS_ALIAS_NAME,
-        search: searchConsumptionAnalytics,
-        timestampField: "completed_at",
-        toDate: parsedToDate,
-        workspaceId: workspace.sId,
-      }),
+    const [legacyResult, consumptionResult] = await Promise.all([
+      searchAnalytics<never, ApiKeyCreditsAggs>(
+        {
+          bool: {
+            filter: [
+              { term: { workspace_id: workspace.sId } },
+              {
+                range: {
+                  timestamp: {
+                    gte: parsedFromDate.toISOString(),
+                    lte: parsedToDate.toISOString(),
+                  },
+                },
+              },
+            ],
+          },
+        },
+        {
+          aggregations: {
+            by_api_key_name: {
+              terms: { field: "api_key_name", size: MAX_API_KEY_NAMES },
+              aggs: { credits: { sum: { field: "cost.billable_awu" } } },
+            },
+          },
+          size: 0,
+        }
+      ),
+      searchConsumptionAnalytics<never, ApiKeyCreditsAggs>(
+        {
+          bool: {
+            filter: [
+              { term: { workspace_id: workspace.sId } },
+              {
+                range: {
+                  completed_at: {
+                    gte: parsedFromDate.toISOString(),
+                    lte: parsedToDate.toISOString(),
+                  },
+                },
+              },
+            ],
+          },
+        },
+        {
+          aggregations: {
+            by_api_key_name: {
+              terms: { field: "api_key_name", size: MAX_API_KEY_NAMES },
+              aggs: { credits: { sum: { field: "credit_micro" } } },
+            },
+          },
+          size: 0,
+        }
+      ),
     ]);
+
+    if (legacyResult.isErr()) {
+      throw new Error(
+        `Failed to query ${ANALYTICS_ALIAS_NAME}: ${legacyResult.error.message}`
+      );
+    }
+    if (consumptionResult.isErr()) {
+      throw new Error(
+        `Failed to query ${CONSUMPTION_ANALYTICS_ALIAS_NAME}: ${consumptionResult.error.message}`
+      );
+    }
+
+    const legacyAggregation = legacyResult.value.aggregations?.by_api_key_name;
+    const consumptionAggregation =
+      consumptionResult.value.aggregations?.by_api_key_name;
+    assertCompleteAggregation(legacyAggregation, ANALYTICS_ALIAS_NAME);
+    assertCompleteAggregation(
+      consumptionAggregation,
+      CONSUMPTION_ANALYTICS_ALIAS_NAME
+    );
+
+    const legacyByApiKeyName = new Map(
+      bucketsToArray<ApiKeyCreditsBucket>(legacyAggregation?.buckets).map(
+        (bucket) => [
+          String(bucket.key),
+          roundCreditsToMicroCredits(bucket.credits?.value ?? 0),
+        ]
+      )
+    );
+    const consumptionByApiKeyName = new Map(
+      bucketsToArray<ApiKeyCreditsBucket>(consumptionAggregation?.buckets).map(
+        (bucket) => [String(bucket.key), Math.round(bucket.credits?.value ?? 0)]
+      )
+    );
     const apiKeyNames = [
       ...new Set([
         ...legacyByApiKeyName.keys(),
