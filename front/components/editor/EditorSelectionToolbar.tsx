@@ -1,7 +1,7 @@
 import { cn } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 const TOOLBAR_Z_INDEX = 60;
@@ -57,6 +57,8 @@ export function EditorSelectionToolbar({
       return;
     }
 
+    syncPosition();
+
     editor.on("transaction", syncPosition);
     editor.on("focus", syncPosition);
     editor.on("blur", syncPosition);
@@ -82,7 +84,7 @@ export function EditorSelectionToolbar({
     };
   }, [position, syncPosition]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!position) {
       setHasEntered(false);
       return;
