@@ -4,6 +4,7 @@ import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -120,6 +121,26 @@ describe("POST /api/w/:wId/analytics/consumption/overview", () => {
       expect.anything(),
       expect.objectContaining({
         filter: { agents: [agent.sId], sources: ["slack"] },
+        includeWorkspaceContext: false,
+      })
+    );
+  });
+
+  it("lets managers read a global agent's consumption", async () => {
+    vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
+    const { workspace } = await setupTest({ role: "manager" });
+
+    const response = await postAgentOverviewRequest(
+      workspace.sId,
+      GLOBAL_AGENTS_SID.DUST,
+      { filter: { agents: ["another-agent"], sources: ["slack"] } }
+    );
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionOverview)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        filter: { agents: [GLOBAL_AGENTS_SID.DUST], sources: ["slack"] },
         includeWorkspaceContext: false,
       })
     );
