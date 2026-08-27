@@ -90,6 +90,7 @@ export async function fetchConsumptionTopTools(
 
   return new Ok({
     period,
+    // Keep consumption-share percentages based only on the visible tools.
     totalCredits: totalCredits - skillManagementCredits,
     hasMore,
     totalCount,
