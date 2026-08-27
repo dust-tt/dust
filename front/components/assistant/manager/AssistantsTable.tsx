@@ -70,7 +70,7 @@ type RowData = {
 };
 
 const ASSISTANTS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
-  { length: 5 },
+  { length: 10 },
   (_, index) => ({
     sId: `assistant-skeleton-${index}`,
     name: "",
@@ -91,6 +91,8 @@ const ASSISTANTS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
 );
 
 function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
+  const rowVariant = rowIndex % 5;
+
   switch (columnId) {
     case "select":
       return (
@@ -108,7 +110,7 @@ function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
                 <LoadingBlock
                   className={classNames(
                     "h-3 max-w-full",
-                    ["w-32", "w-40", "w-28", "w-36", "w-44"][rowIndex]
+                    ["w-32", "w-40", "w-28", "w-36", "w-44"][rowVariant]
                   )}
                 />
               </div>
@@ -116,7 +118,7 @@ function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
                 <LoadingBlock
                   className={classNames(
                     "h-3 max-w-full",
-                    ["w-56", "w-64", "w-48", "w-60", "w-52"][rowIndex]
+                    ["w-56", "w-64", "w-48", "w-60", "w-52"][rowVariant]
                   )}
                 />
               </div>
@@ -132,7 +134,7 @@ function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
             <LoadingBlock
               className={classNames(
                 "ml-2 hidden h-3 @xl:block",
-                ["w-20", "w-24", "w-16", "w-28", "w-20"][rowIndex]
+                ["w-20", "w-24", "w-16", "w-28", "w-20"][rowVariant]
               )}
             />
           </div>
@@ -144,7 +146,7 @@ function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
           <LoadingBlock
             className={classNames(
               "h-6 rounded-[9px]",
-              ["w-20", "w-24", "w-20", "w-24", "w-20"][rowIndex]
+              ["w-20", "w-24", "w-20", "w-24", "w-20"][rowVariant]
             )}
           />
         </DataTable.CellContent>
@@ -168,7 +170,7 @@ function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
           <LoadingBlock
             className={classNames(
               "h-3 max-w-full",
-              ["w-14", "w-20", "w-12", "w-24", "w-16"][rowIndex]
+              ["w-14", "w-20", "w-12", "w-24", "w-16"][rowVariant]
             )}
           />
         </DataTable.CellContent>
@@ -180,7 +182,7 @@ function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
           <LoadingBlock
             className={classNames(
               "h-3",
-              ["w-7", "w-9", "w-6", "w-8", "w-10"][rowIndex]
+              ["w-7", "w-9", "w-6", "w-8", "w-10"][rowVariant]
             )}
           />
         </DataTable.CellContent>
@@ -191,7 +193,7 @@ function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
           <LoadingBlock
             className={classNames(
               "h-3",
-              ["w-14", "w-16", "w-20", "w-16", "w-14"][rowIndex]
+              ["w-14", "w-16", "w-20", "w-16", "w-14"][rowVariant]
             )}
           />
         </DataTable.CellContent>
