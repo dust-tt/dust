@@ -12,9 +12,8 @@ import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/me
 import { computeActivationFromCells } from "@app/lib/api/activation/evaluator";
 import type { UserDayCell } from "@app/lib/api/activation/evaluator";
 import {
-  ANALYTICS_ALIAS_NAME,
-  CONSUMPTION_ANALYTICS_ALIAS_NAME,
-  getClient,
+  searchAnalytics,
+  searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
@@ -47,66 +46,173 @@ interface UserDayCellsAggregations {
   };
 }
 
-async function fetchIndexUserDayCells({
-  additionalFilters,
-  dauFilter,
-  hvucFilter,
-  index,
-  timestampField,
-  userField,
-  userIds,
-  windowEnd,
-  windowStart,
-  workspaceId,
-}: {
-  additionalFilters: estypes.QueryDslQueryContainer[];
-  dauFilter: estypes.QueryDslQueryContainer;
-  hvucFilter: estypes.QueryDslQueryContainer;
-  index: string;
-  timestampField: string;
-  userField: string;
+interface FetchUserDayCellsArgs {
   userIds: string[];
   windowEnd: Date;
   windowStart: Date;
   workspaceId: string;
-}): Promise<UserDayCell[]> {
-  const client = await getClient();
+}
+
+function bucketsToCells(buckets: CompositeDayBucket[]): UserDayCell[] {
+  return buckets.map((bucket) => ({
+    userId: bucket.key.user_id,
+    dayMs: bucket.key.day,
+    isDau: (bucket.dau?.doc_count ?? 0) > 0,
+    isHvuc: (bucket.hvuc_signal?.doc_count ?? 0) > 0,
+  }));
+}
+
+async function fetchLegacyUserDayCells({
+  userIds,
+  windowEnd,
+  windowStart,
+  workspaceId,
+}: FetchUserDayCellsArgs): Promise<UserDayCell[]> {
   const cells: UserDayCell[] = [];
   const query: estypes.QueryDslQueryContainer = {
     bool: {
       filter: [
         { term: { workspace_id: workspaceId } },
-        ...(userIds.length > 0 ? [{ terms: { [userField]: userIds } }] : []),
+        ...(userIds.length > 0 ? [{ terms: { user_id: userIds } }] : []),
         { terms: { context_origin: USER_USAGE_ORIGINS } },
         {
           range: {
-            [timestampField]: {
+            timestamp: {
               gte: windowStart.toISOString(),
               lt: windowEnd.toISOString(),
             },
           },
         },
-        ...additionalFilters,
+        { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
       ],
     },
   };
 
   let afterKey: { user_id: string; day: number } | undefined;
   do {
-    const response = await client.search<never, UserDayCellsAggregations>({
-      index,
+    const result = await searchAnalytics<never, UserDayCellsAggregations>(
       query,
+      {
+        size: 0,
+        aggregations: {
+          by_user_day: {
+            composite: {
+              size: COMPOSITE_PAGE_SIZE,
+              sources: [
+                { user_id: { terms: { field: "user_id" } } },
+                {
+                  day: {
+                    date_histogram: {
+                      field: "timestamp",
+                      calendar_interval: "1d",
+                      time_zone: "UTC",
+                    },
+                  },
+                },
+              ],
+              ...(afterKey ? { after: afterKey } : {}),
+            },
+            aggregations: {
+              dau: {
+                filter: {
+                  terms: { context_origin: DAILY_ACTIVE_USER_ORIGINS },
+                },
+              },
+              hvuc_signal: {
+                filter: {
+                  nested: {
+                    path: "tools_used",
+                    query: {
+                      bool: {
+                        filter: [
+                          { term: { "tools_used.status": "succeeded" } },
+                        ],
+                        should: [
+                          {
+                            range: {
+                              "tools_used.cost_awu": {
+                                gte: TOOL_COST_CATEGORY_AWU_WEIGHTS.advanced,
+                              },
+                            },
+                          },
+                          {
+                            term: {
+                              "tools_used.server_name":
+                                INTERACTIVE_CONTENT_SERVER_NAME,
+                            },
+                          },
+                          {
+                            term: {
+                              "tools_used.server_name": RUN_AGENT_SERVER_NAME,
+                            },
+                          },
+                        ],
+                        minimum_should_match: 1,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }
+    );
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    const aggregation = result.value.aggregations?.by_user_day;
+    const buckets = aggregation?.buckets ?? [];
+    cells.push(...bucketsToCells(buckets));
+    afterKey = buckets.length > 0 ? aggregation?.after_key : undefined;
+  } while (afterKey);
+
+  return cells;
+}
+
+async function fetchConsumptionUserDayCells({
+  userIds,
+  windowEnd,
+  windowStart,
+  workspaceId,
+}: FetchUserDayCellsArgs): Promise<UserDayCell[]> {
+  const cells: UserDayCell[] = [];
+  const query: estypes.QueryDslQueryContainer = {
+    bool: {
+      filter: [
+        { term: { workspace_id: workspaceId } },
+        ...(userIds.length > 0 ? [{ terms: { "user.id": userIds } }] : []),
+        { terms: { context_origin: USER_USAGE_ORIGINS } },
+        {
+          range: {
+            completed_at: {
+              gte: windowStart.toISOString(),
+              lt: windowEnd.toISOString(),
+            },
+          },
+        },
+      ],
+    },
+  };
+
+  let afterKey: { user_id: string; day: number } | undefined;
+  do {
+    const result = await searchConsumptionAnalytics<
+      never,
+      UserDayCellsAggregations
+    >(query, {
       size: 0,
-      aggs: {
+      aggregations: {
         by_user_day: {
           composite: {
             size: COMPOSITE_PAGE_SIZE,
             sources: [
-              { user_id: { terms: { field: userField } } },
+              { user_id: { terms: { field: "user.id" } } },
               {
                 day: {
                   date_histogram: {
-                    field: timestampField,
+                    field: "completed_at",
                     calendar_interval: "1d",
                     time_zone: "UTC",
                   },
@@ -115,24 +221,55 @@ async function fetchIndexUserDayCells({
             ],
             ...(afterKey ? { after: afterKey } : {}),
           },
-          aggs: {
-            dau: { filter: dauFilter },
-            hvuc_signal: { filter: hvucFilter },
+          aggregations: {
+            dau: {
+              filter: {
+                bool: {
+                  filter: [
+                    { term: { consumption_type: "llm" } },
+                    { terms: { context_origin: DAILY_ACTIVE_USER_ORIGINS } },
+                    { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
+                  ],
+                },
+              },
+            },
+            hvuc_signal: {
+              filter: {
+                bool: {
+                  filter: [
+                    { term: { consumption_type: "tool" } },
+                    { term: { status: "succeeded" } },
+                  ],
+                  should: [
+                    {
+                      range: {
+                        "gross_credit_micro.direct": {
+                          gte: ADVANCED_TOOL_CREDIT_AMOUNT_MICRO,
+                        },
+                      },
+                    },
+                    {
+                      term: {
+                        "tool.server_name": INTERACTIVE_CONTENT_SERVER_NAME,
+                      },
+                    },
+                    { term: { "tool.server_name": RUN_AGENT_SERVER_NAME } },
+                  ],
+                  minimum_should_match: 1,
+                },
+              },
+            },
           },
         },
       },
     });
+    if (result.isErr()) {
+      throw result.error;
+    }
 
-    const aggregation = response.aggregations?.by_user_day;
+    const aggregation = result.value.aggregations?.by_user_day;
     const buckets = aggregation?.buckets ?? [];
-    cells.push(
-      ...buckets.map((bucket) => ({
-        userId: bucket.key.user_id,
-        dayMs: bucket.key.day,
-        isDau: (bucket.dau?.doc_count ?? 0) > 0,
-        isHvuc: (bucket.hvuc_signal?.doc_count ?? 0) > 0,
-      }))
-    );
+    cells.push(...bucketsToCells(buckets));
     afterKey = buckets.length > 0 ? aggregation?.after_key : undefined;
   } while (afterKey);
 
@@ -223,85 +360,9 @@ makeScript(
 
     const windowEnd = parseEndDate(endDate);
     const windowStart = subDays(windowEnd, days);
-    const common = { userIds, windowEnd, windowStart, workspaceId };
-    const legacyCells = await fetchIndexUserDayCells({
-      ...common,
-      index: ANALYTICS_ALIAS_NAME,
-      userField: "user_id",
-      timestampField: "timestamp",
-      additionalFilters: [
-        { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
-      ],
-      dauFilter: { terms: { context_origin: DAILY_ACTIVE_USER_ORIGINS } },
-      hvucFilter: {
-        nested: {
-          path: "tools_used",
-          query: {
-            bool: {
-              filter: [{ term: { "tools_used.status": "succeeded" } }],
-              should: [
-                {
-                  range: {
-                    "tools_used.cost_awu": {
-                      gte: TOOL_COST_CATEGORY_AWU_WEIGHTS.advanced,
-                    },
-                  },
-                },
-                {
-                  term: {
-                    "tools_used.server_name": INTERACTIVE_CONTENT_SERVER_NAME,
-                  },
-                },
-                {
-                  term: { "tools_used.server_name": RUN_AGENT_SERVER_NAME },
-                },
-              ],
-              minimum_should_match: 1,
-            },
-          },
-        },
-      },
-    });
-    const consumptionCells = await fetchIndexUserDayCells({
-      ...common,
-      index: CONSUMPTION_ANALYTICS_ALIAS_NAME,
-      userField: "user.id",
-      timestampField: "completed_at",
-      additionalFilters: [],
-      dauFilter: {
-        bool: {
-          filter: [
-            { term: { consumption_type: "llm" } },
-            { terms: { context_origin: DAILY_ACTIVE_USER_ORIGINS } },
-            { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
-          ],
-        },
-      },
-      hvucFilter: {
-        bool: {
-          filter: [
-            { term: { consumption_type: "tool" } },
-            { term: { status: "succeeded" } },
-          ],
-          should: [
-            {
-              range: {
-                "gross_credit_micro.direct": {
-                  gte: ADVANCED_TOOL_CREDIT_AMOUNT_MICRO,
-                },
-              },
-            },
-            {
-              term: {
-                "tool.server_name": INTERACTIVE_CONTENT_SERVER_NAME,
-              },
-            },
-            { term: { "tool.server_name": RUN_AGENT_SERVER_NAME } },
-          ],
-          minimum_should_match: 1,
-        },
-      },
-    });
+    const queryArgs = { userIds, windowEnd, windowStart, workspaceId };
+    const legacyCells = await fetchLegacyUserDayCells(queryArgs);
+    const consumptionCells = await fetchConsumptionUserDayCells(queryArgs);
 
     const legacyByKey = new Map(
       legacyCells.map((cell) => [cellKey(cell), cell])
