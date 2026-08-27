@@ -1,16 +1,31 @@
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeListConversationItem } from "@app/lib/api/poke/conversations";
+import type { AgentConversationsOrderColumn } from "@app/lib/resources/conversation_resource";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { usePokeAgentConversations } from "@app/poke/swr/conversation";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, Chip, IconButton, Input, LinkWrapper } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
-import type { ColumnDef } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 import { useState } from "react";
 
 const PAGE_SIZE = 25;
+
+// The sortable columns, keyed by the `accessorKey` the table reports.
+const ORDER_COLUMN_BY_TABLE_COLUMN: Record<
+  string,
+  AgentConversationsOrderColumn
+> = {
+  sId: "sId",
+  created: "createdAt",
+  title: "title",
+};
 
 interface ConversationAgentDataTableProps {
   owner: LightWorkspaceType;
@@ -102,32 +117,52 @@ export function ConversationAgentDataTable({
   owner,
   agentId,
 }: ConversationAgentDataTableProps) {
-  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: PAGE_SIZE,
+  });
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "created", desc: true },
+  ]);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
-  // A narrower window makes the rows already loaded meaningless, so start over.
+  const resetToFirstPage = () =>
+    setPagination((current) => ({ ...current, pageIndex: 0 }));
+
+  // A different window or order makes the current page number meaningless.
   const handleFromChange = (value: string) => {
     setFrom(value);
-    setLimit(PAGE_SIZE);
+    resetToFirstPage();
   };
 
   const handleToChange = (value: string) => {
     setTo(value);
-    setLimit(PAGE_SIZE);
+    resetToFirstPage();
   };
 
   const handleClearDates = () => {
     setFrom("");
     setTo("");
-    setLimit(PAGE_SIZE);
+    resetToFirstPage();
   };
 
+  const handleSortingChange = (nextSorting: SortingState) => {
+    setSorting(nextSorting);
+    resetToFirstPage();
+  };
+
+  const sortColumn = sorting[0];
   const useConversationsWithAgent = (props: PokeConditionalFetchProps) =>
     usePokeAgentConversations({
       ...props,
       agentId,
-      limit,
+      limit: pagination.pageSize,
+      offset: pagination.pageIndex * pagination.pageSize,
+      orderColumn:
+        (sortColumn && ORDER_COLUMN_BY_TABLE_COLUMN[sortColumn.id]) ??
+        "createdAt",
+      orderDirection: sortColumn?.desc === false ? "asc" : "desc",
       from: from || undefined,
       to: to || undefined,
     });
@@ -161,24 +196,17 @@ export function ConversationAgentDataTable({
       }
       useSWRHook={useConversationsWithAgent}
     >
-      {({ conversations, hasMore, isLoadingMore }) => (
-        <div className="flex flex-col gap-3">
-          <PokeDataTable<PokeListConversationItem, unknown>
-            columns={makeColumnsForConversations(owner)}
-            data={conversations}
-            pageSize={PAGE_SIZE}
-          />
-          {hasMore && (
-            <div className="flex justify-center">
-              <Button
-                variant="outline"
-                label="Load more"
-                isLoading={isLoadingMore}
-                onClick={() => setLimit((current) => current + PAGE_SIZE)}
-              />
-            </div>
-          )}
-        </div>
+      {({ conversations, totalCount, isValidating }) => (
+        <PokeDataTable<PokeListConversationItem, unknown>
+          columns={makeColumnsForConversations(owner)}
+          data={conversations}
+          isValidating={isValidating}
+          serverSideRowCount={totalCount}
+          pagination={pagination}
+          onPaginationChange={setPagination}
+          sorting={sorting}
+          onSortingChange={handleSortingChange}
+        />
       )}
     </PokeDataTableConditionalFetch>
   );

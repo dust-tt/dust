@@ -17,6 +17,12 @@ const ListConversationsQuerySchema = z.object({
   // Only honored on the agent branch: the trigger and reinforced-skill listings are
   // already bounded by their own scope.
   limit: z.coerce.number().int().min(1).max(100).optional().default(25),
+  offset: z.coerce.number().int().nonnegative().optional().default(0),
+  orderColumn: z
+    .enum(["createdAt", "title", "sId"])
+    .optional()
+    .default("createdAt"),
+  orderDirection: z.enum(["asc", "desc"]).optional().default("desc"),
   // Inclusive `createdAt` day bounds, as YYYY-MM-DD interpreted in UTC.
   from: z.string().date().optional(),
   to: z.string().date().optional(),
@@ -41,17 +47,27 @@ app.get(
   validate("query", ListConversationsQuerySchema),
   async (ctx): HandlerResult<PokeListConversations> => {
     const auth = ctx.get("auth");
-    const { agentId, triggerId, reinforcedSkillId, limit, from, to } =
-      ctx.req.valid("query");
+    const {
+      agentId,
+      triggerId,
+      reinforcedSkillId,
+      limit,
+      offset,
+      orderColumn,
+      orderDirection,
+      from,
+      to,
+    } = ctx.req.valid("query");
 
     let conversations: PokeListConversationItem[];
-    let hasMore = false;
+    let totalCount: number;
 
     if (triggerId) {
       conversations = await ConversationResource.listConversationsForTrigger(
         auth,
         triggerId
       );
+      totalCount = conversations.length;
     } else if (reinforcedSkillId) {
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -62,22 +78,28 @@ app.get(
           reinforcedSkillId,
           { after: oneWeekAgo }
         );
+      totalCount = conversations.length;
     } else if (agentId) {
-      const { conversations: conversationResources, hasMore: hasMoreForAgent } =
-        await ConversationResource.listConversationsWithAgentPaginated(
-          auth,
-          {
-            agentConfigurationId: agentId,
-            limit,
-            createdAfter: from ? utcMidnight(from) : undefined,
-            // `to` names the last day to include, so the exclusive upper bound is the
-            // midnight that follows it.
-            createdBefore: to ? nextUtcMidnight(to) : undefined,
-          },
-          { includeDeleted: true }
-        );
+      const {
+        conversations: conversationResources,
+        totalCount: totalCountForAgent,
+      } = await ConversationResource.listConversationsWithAgentPaginated(
+        auth,
+        {
+          agentConfigurationId: agentId,
+          limit,
+          offset,
+          orderColumn,
+          orderDirection,
+          createdAfter: from ? utcMidnight(from) : undefined,
+          // `to` names the last day to include, so the exclusive upper bound is the
+          // midnight that follows it.
+          createdBefore: to ? nextUtcMidnight(to) : undefined,
+        },
+        { includeDeleted: true }
+      );
 
-      hasMore = hasMoreForAgent;
+      totalCount = totalCountForAgent;
       conversations = conversationResources.map((c) => ({
         id: c.id,
         created: c.createdAt.getTime(),
@@ -108,7 +130,7 @@ app.get(
       });
     }
 
-    return ctx.json({ conversations, hasMore });
+    return ctx.json({ conversations, totalCount });
   }
 );
 

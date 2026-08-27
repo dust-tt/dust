@@ -2,6 +2,7 @@ import type {
   PokeListConversationItem,
   PokeListConversations,
 } from "@app/lib/api/poke/conversations";
+import type { AgentConversationsOrderColumn } from "@app/lib/resources/conversation_resource";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { Fetcher } from "swr";
@@ -44,6 +45,9 @@ export function usePokeConversations({
 interface UsePokeAgentConversationsProps extends PokeConditionalFetchProps {
   agentId: string;
   limit: number;
+  offset: number;
+  orderColumn: AgentConversationsOrderColumn;
+  orderDirection: "asc" | "desc";
   // Inclusive `createdAt` day bounds, as YYYY-MM-DD.
   from?: string;
   to?: string;
@@ -54,13 +58,22 @@ export function usePokeAgentConversations({
   disabled,
   from,
   limit,
+  offset,
+  orderColumn,
+  orderDirection,
   owner,
   to,
 }: UsePokeAgentConversationsProps) {
   const { fetcher } = useFetcher();
   const conversationsFetcher: Fetcher<PokeListConversations> = fetcher;
 
-  const params = new URLSearchParams({ agentId, limit: limit.toString() });
+  const params = new URLSearchParams({
+    agentId,
+    limit: limit.toString(),
+    offset: offset.toString(),
+    orderColumn,
+    orderDirection,
+  });
   if (from) {
     params.set("from", from);
   }
@@ -78,8 +91,8 @@ export function usePokeAgentConversations({
     data: {
       conversations:
         data?.conversations ?? emptyArray<PokeListConversationItem>(),
-      hasMore: data?.hasMore ?? false,
-      isLoadingMore: isValidating && !!data,
+      totalCount: data?.totalCount ?? 0,
+      isValidating: isValidating && !!data,
     },
     isLoading: !error && !data && !disabled,
     isError: error,

@@ -90,6 +90,15 @@ type FetchConversationOptions = {
 
 type SpaceConversationsFilter = "all" | "group" | "with_me";
 
+export const AGENT_CONVERSATIONS_ORDER_COLUMNS = {
+  createdAt: `c."createdAt"`,
+  title: `c."title"`,
+  sId: `c."sId"`,
+} as const;
+
+export type AgentConversationsOrderColumn =
+  keyof typeof AGENT_CONVERSATIONS_ORDER_COLUMNS;
+
 interface UserParticipation {
   actionRequired: boolean;
   updated: number;
@@ -1707,29 +1716,36 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   /**
    * Page of the conversations in which `agentConfigurationId` produced at least one
-   * message, newest first, optionally restricted to a `createdAt` window
-   * (`createdAfter` inclusive, `createdBefore` exclusive). Paging happens in SQL: an
-   * active agent's conversation set is unbounded, so neither its conversation ids nor
-   * the hydrated conversations can be materialized in full.
+   * message, optionally restricted to a `createdAt` window (`createdAfter` inclusive,
+   * `createdBefore` exclusive). Paging and ordering happen in SQL: an active agent's
+   * conversation set is unbounded, so neither its conversation ids nor the hydrated
+   * conversations can be materialized in full.
    *
-   * `hasMore` is computed before visibility and permission filtering, so a page can hold
-   * fewer than `limit` conversations while still reporting that more can be loaded.
+   * `totalCount` is the size of the matching set before visibility and permission
+   * filtering, so it is an upper bound: a page can hold fewer than `limit`
+   * conversations when the caller cannot read some of them.
    */
   static async listConversationsWithAgentPaginated(
     auth: Authenticator,
     {
       agentConfigurationId,
       limit,
+      offset,
+      orderColumn = "createdAt",
+      orderDirection = "desc",
       createdAfter,
       createdBefore,
     }: {
       agentConfigurationId: string;
       limit: number;
+      offset: number;
+      orderColumn?: AgentConversationsOrderColumn;
+      orderDirection?: "asc" | "desc";
       createdAfter?: Date;
       createdBefore?: Date;
     },
     options?: FetchConversationOptions
-  ): Promise<{ conversations: ConversationResource[]; hasMore: boolean }> {
+  ): Promise<{ conversations: ConversationResource[]; totalCount: number }> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     // Static fragments, so the window stays out of the plan entirely when unbounded.
@@ -1738,8 +1754,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       createdBefore ? `AND c."createdAt" < :createdBefore` : "",
     ].join("\n       ");
 
+    // Never interpolated from caller input: both halves come from closed unions.
+    const direction = orderDirection === "asc" ? "ASC" : "DESC";
+    // `id` breaks ties so a row cannot drift between pages as the offset moves.
+    const orderBy = `${AGENT_CONVERSATIONS_ORDER_COLUMNS[orderColumn]} ${direction}, c."id" DESC`;
+
     // `agent_messages` carries `conversationId` since the side-table denormalization, so
-    // the agent's conversations resolve without joining `messages`.
+    // the agent's conversations resolve without joining `messages`. The window count is
+    // free: the full id set is already materialized to be sorted.
     const query = `
       WITH agent_conversations AS (
         SELECT DISTINCT am."conversationId"
@@ -1747,47 +1769,52 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         WHERE am."workspaceId" = :workspaceId
           AND am."agentConfigurationId" = :agentConfigurationId
       )
-      SELECT c."id"
+      SELECT c."id", COUNT(*) OVER () AS total_count
       FROM agent_conversations ac
       JOIN conversations c
         ON c."id" = ac."conversationId"
        AND c."workspaceId" = :workspaceId
        ${windowConditions}
-      ORDER BY c."createdAt" DESC, c."id" DESC
-      LIMIT :limit
+      ORDER BY ${orderBy}
+      LIMIT :limit OFFSET :offset
     `;
 
     // biome-ignore lint/plugin/noRawSql: no association from conversations to agent_messages.
-    const rows = await frontSequelize.query<{ id: ModelId }>(query, {
+    const rows = await frontSequelize.query<{
+      id: ModelId;
+      total_count: number;
+    }>(query, {
       type: QueryTypes.SELECT,
       replacements: {
         workspaceId,
         agentConfigurationId,
-        // One extra row tells us whether another page exists.
-        limit: limit + 1,
+        limit,
+        offset,
         ...(createdAfter && { createdAfter }),
         ...(createdBefore && { createdBefore }),
       },
     });
 
-    const conversationIds = rows.slice(0, limit).map((r) => r.id);
-    if (conversationIds.length === 0) {
-      return { conversations: [], hasMore: false };
+    if (rows.length === 0) {
+      return { conversations: [], totalCount: 0 };
     }
 
     const conversations = await this.baseFetchWithAuthorization(auth, options, {
       where: {
         id: {
-          [Op.in]: conversationIds,
+          [Op.in]: rows.map((r) => r.id),
         },
       },
-      order: [
-        ["createdAt", "DESC"],
-        ["id", "DESC"],
-      ],
     });
 
-    return { conversations, hasMore: rows.length > limit };
+    // Walk the SQL order, which the hydrating fetch does not preserve. Ids the fetch
+    // dropped on visibility or permissions simply fall out here.
+    const conversationById = new Map(conversations.map((c) => [c.id, c]));
+    const ordered = removeNulls(
+      rows.map((r) => conversationById.get(r.id) ?? null)
+    );
+
+    return { conversations: ordered, totalCount: rows[0].total_count };
   }
 
   /**

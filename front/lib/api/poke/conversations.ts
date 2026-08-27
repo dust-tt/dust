@@ -11,7 +11,10 @@ export type PokeListConversationItem = ConversationWithoutContentType & {
 
 export type PokeListConversations = {
   conversations: PokeListConversationItem[];
-  hasMore: boolean;
+  // Upper bound on the agent listing: counted before visibility and permission
+  // filtering. Equal to the returned length on the trigger and reinforced-skill
+  // listings, which are not paged.
+  totalCount: number;
 };
 
 export type PokeGetConversationConfig = {
