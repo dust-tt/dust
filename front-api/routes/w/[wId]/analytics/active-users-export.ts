@@ -1,5 +1,5 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
+import { fetchActiveUsersExportRows } from "@app/lib/api/analytics/active_users_export";
 import { daysToDateRange } from "@app/lib/api/assistant/observability/utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
@@ -20,10 +20,13 @@ app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 
   const { days } = ctx.req.valid("query");
-  const owner = auth.getNonNullableWorkspace();
 
   const { startDate, endDate } = daysToDateRange(days);
-  const result = await fetchActiveUsersMetrics(owner, startDate, endDate);
+  const result = await fetchActiveUsersExportRows(auth, {
+    startDate,
+    endDate,
+    timezone: "UTC",
+  });
 
   if (result.isErr()) {
     return apiError(ctx, {

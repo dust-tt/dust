@@ -1,3 +1,4 @@
+import { fetchActiveUsersExportRows } from "@app/lib/api/analytics/active_users_export";
 import type { AgentExportRow } from "@app/lib/api/analytics/agents_export";
 import {
   AGENT_EXPORT_HEADERS,
@@ -27,7 +28,6 @@ import {
   fetchUserExportRows,
   USER_EXPORT_HEADERS,
 } from "@app/lib/api/analytics/users_export";
-import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
 import { fetchContextOriginDailyBreakdown } from "@app/lib/api/assistant/observability/context_origin";
 import {
   fetchAvailableSkills,
@@ -200,7 +200,7 @@ export async function exportTable({
     case "usage_metrics":
       return exportUsageMetrics({ auth, startDate, endDate, timezone });
     case "active_users":
-      return exportActiveUsers({ startDate, endDate, timezone, owner });
+      return exportActiveUsers({ auth, startDate, endDate, timezone });
     case "source":
       return exportSource({ auth, startDate, endDate, timezone });
     case "agents":
@@ -320,22 +320,21 @@ async function exportUsageMetrics({
 }
 
 async function exportActiveUsers({
+  auth,
   startDate,
   endDate,
   timezone,
-  owner,
 }: {
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
-  owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
-  const result = await fetchActiveUsersMetrics(
-    owner,
+  const result = await fetchActiveUsersExportRows(auth, {
     startDate,
     endDate,
-    timezone
-  );
+    timezone,
+  });
 
   if (result.isErr()) {
     return new Err(
@@ -345,17 +344,10 @@ async function exportActiveUsers({
     );
   }
 
-  const rows: ActiveUsersRow[] = result.value.map((point) => ({
-    date: point.date,
-    dau: point.dau,
-    wau: point.wau,
-    mau: point.mau,
-  }));
-
   return new Ok({
     table: "active_users",
     headers: ACTIVE_USERS_HEADERS,
-    rows,
+    rows: result.value,
   });
 }
 

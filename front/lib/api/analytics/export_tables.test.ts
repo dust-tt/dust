@@ -432,6 +432,84 @@ describe("exportTable usage_metrics", () => {
   });
 });
 
+describe("exportTable active_users", () => {
+  beforeEach(() => {
+    vi.mocked(searchConsumptionAnalytics).mockReset();
+  });
+
+  it("queries the consumption index over an MAU-extended half-open completed_at range and computes rolling DAU/WAU/MAU", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    const day1 = Date.UTC(2024, 0, 1);
+    const day2 = Date.UTC(2024, 0, 2);
+
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      new Ok({
+        took: 1,
+        timed_out: false,
+        _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+        hits: { total: { value: 0, relation: "eq" }, hits: [] },
+        aggregations: {
+          by_user_day: {
+            buckets: [
+              { key: { day: day1, user: "user_1" }, doc_count: 3 },
+              { key: { day: day2, user: "user_1" }, doc_count: 2 },
+              { key: { day: day2, user: "user_2" }, doc_count: 1 },
+            ],
+          },
+        },
+      })
+    );
+
+    const result = await exportTable({
+      auth: authenticator,
+      table: "active_users",
+      startDate: "2024-01-01",
+      endDate: "2024-01-02",
+      timezone: "UTC",
+      owner: workspace,
+      includeHiddenAgents: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    if (result.value.table !== "active_users") {
+      throw new Error(
+        `Expected "active_users" table, got "${result.value.table}"`
+      );
+    }
+
+    // Regression: exportActiveUsers used to build its query against the
+    // legacy timestamp/user_id index. It must now query the consumption
+    // index's completed_at/user.id fields, extending the queried range back
+    // by the MAU window so the rolling windows on the first requested days
+    // are complete, with a half-open upper bound on the inclusive endDate.
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
+    const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(query).toEqual({
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          {
+            range: {
+              completed_at: { gte: "2023-12-05", lt: "2024-01-03" },
+            },
+          },
+        ],
+      },
+    });
+
+    expect(result.value.rows).toEqual([
+      { date: "2024-01-01", dau: 1, wau: 1, mau: 1 },
+      { date: "2024-01-02", dau: 2, wau: 2, mau: 2 },
+    ]);
+  });
+});
+
 describe("exportTable source", () => {
   beforeEach(() => {
     vi.mocked(searchConsumptionAnalytics).mockReset();
