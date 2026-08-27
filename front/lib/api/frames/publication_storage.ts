@@ -1,4 +1,9 @@
 import { randomUUID } from "node:crypto";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import {
   GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
@@ -206,6 +211,23 @@ export async function activateFramePublication(
   }
 
   await frame.setActiveFramePublication(publicationId);
+
+  void emitAuditLogEvent({
+    auth,
+    action: "frame.publication_activated",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("frame", {
+        sId: frame.sId,
+        name: frame.fileName,
+      }),
+    ],
+    context: getAuditLogContext(auth),
+    metadata: {
+      frame_id: frame.sId,
+      publication_id: publicationId,
+    },
+  });
 
   return new Ok(undefined);
 }

@@ -1,0 +1,12 @@
+{
+  "action": "frame.publication_activated",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "frame" }
+  ],
+  "metadata": {
+    "frame_id": "string",
+    "publication_id": "string",
+    "actor_type": "string"
+  }
+}
