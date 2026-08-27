@@ -91,3 +91,12 @@ export function getFramePublicationFunctionBundlePath(args: {
 }): string {
   return `${getFramePublicationFunctionBasePath(args)}bundle.js`;
 }
+
+export function getFramePublicationFunctionSchemaPath(args: {
+  workspaceId: string;
+  frameId: string;
+  publicationId: string;
+  functionName: string;
+}): string {
+  return `${getFramePublicationFunctionBasePath(args)}schema.json`;
+}

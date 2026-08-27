@@ -1,6 +1,7 @@
 import {
   getFrameBasePath,
   getFramePublicationFunctionBundlePath,
+  getFramePublicationFunctionSchemaPath,
   getFramePublicationManifestPath,
   getFramePublicationSourcePath,
 } from "@app/types/api/frame_storage";
@@ -33,6 +34,14 @@ describe("Frames v2 GCS paths", () => {
       })
     ).toBe(
       "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions/add-task/bundle.js"
+    );
+    expect(
+      getFramePublicationFunctionSchemaPath({
+        ...IDS,
+        functionName: "add-task",
+      })
+    ).toBe(
+      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions/add-task/schema.json"
     );
   });
 
