@@ -17,7 +17,7 @@ import { finalizeGracefullyStoppedAgentLoopActivity } from "@app/temporal/agent_
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
-  getAgentLoopDataWithAuth,
+  getFullAgentLoopDataWithAuth,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
@@ -216,7 +216,7 @@ async function writeSmoothShutdownRecap(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const dataRes = await getAgentLoopDataWithAuth(auth, agentLoopArgs);
+  const dataRes = await getFullAgentLoopDataWithAuth(auth, agentLoopArgs);
   if (dataRes.isErr()) {
     if (!isAgentLoopDataSoftDeleteError(dataRes.error)) {
       logger.warn(
