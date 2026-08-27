@@ -139,14 +139,12 @@ function narrowToKnownSlashCommand(
 }
 
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
-// Stable references: the BubbleMenu plugin re-runs its update effect whenever
-// `appendTo`/`options` change identity, so inline literals here would cause
-// an infinite render loop.
-const BUBBLE_MENU_APPEND_TO = () => document.body;
+// Stable reference: the BubbleMenu plugin re-runs its update effect whenever
+// `options` changes identity, so an inline literal here would cause an
+// infinite render loop. `strategy: "fixed"` positions the toolbar relative to
+// the viewport, letting it escape the input bar card's overflow-hidden
+// without portaling out of the input bar's stacking context.
 const BUBBLE_MENU_OPTIONS = { strategy: "fixed" as const };
-// Belt-and-suspenders over the z-50 class: guarantees the toolbar wins any
-// stacking tie against another element also at z-50, regardless of DOM order.
-const BUBBLE_MENU_STYLE = { zIndex: 2147483647 };
 const EMPTY_SPACE_IDS: string[] = [];
 const EMPTY_SELECTABLE_SPACES: SelectableConversationSpaceType[] = [];
 const acceptSelectedSpaceIds = async (spaceIds: string[]) => spaceIds;
@@ -1753,9 +1751,7 @@ const InputBarContainer = ({
           <BubbleMenu
             editor={editor ?? undefined}
             className={cn("z-50 flex", isMobile && "hidden")}
-            style={BUBBLE_MENU_STYLE}
             options={BUBBLE_MENU_OPTIONS}
-            appendTo={BUBBLE_MENU_APPEND_TO}
           >
             {editor && (
               <Toolbar className={cn("inline-flex", isMobile && "hidden")}>

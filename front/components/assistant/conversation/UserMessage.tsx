@@ -61,14 +61,12 @@ import { cva } from "class-variance-authority";
 import type React from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
 
-// Stable references: the BubbleMenu plugin re-runs its update effect whenever
-// `appendTo`/`options` change identity, so inline literals here would cause
-// an infinite render loop.
-const BUBBLE_MENU_APPEND_TO = () => document.body;
+// Stable reference: the BubbleMenu plugin re-runs its update effect whenever
+// `options` changes identity, so an inline literal here would cause an
+// infinite render loop. `strategy: "fixed"` positions the toolbar relative to
+// the viewport, letting it escape overflow-clipping ancestors without
+// portaling out of the message's stacking context.
 const BUBBLE_MENU_OPTIONS = { strategy: "fixed" as const };
-// Belt-and-suspenders over the z-50 class: guarantees the toolbar wins any
-// stacking tie against another element also at z-50, regardless of DOM order.
-const BUBBLE_MENU_STYLE = { zIndex: 2147483647 };
 
 interface UserMessageEditorProps {
   editor: Editor | null;
@@ -110,9 +108,7 @@ function UserMessageEditor({
       <BubbleMenu
         editor={editor}
         className={cn("z-50 flex", isMobile && "hidden")}
-        style={BUBBLE_MENU_STYLE}
         options={BUBBLE_MENU_OPTIONS}
-        appendTo={BUBBLE_MENU_APPEND_TO}
       >
         {editor && (
           <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
