@@ -1,12 +1,3 @@
-/**
- * Compare activation results from the legacy analytics index with the new
- * consumption analytics index. This script is read-only; `--execute` only
- * suppresses the standard migration dry-run warning.
- *
- * NODE_ENV=development npx tsx migrations/20260827_compare_activation_analytics_indices.ts \
- *   --workspaceId <workspace-sId> --days 28 --execute
- */
-
 import { INTERACTIVE_CONTENT_SERVER_NAME } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { computeActivationFromCells } from "@app/lib/api/activation/evaluator";
