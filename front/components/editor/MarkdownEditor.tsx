@@ -20,6 +20,9 @@ const DEFAULT_MARKDOWN_EDITOR_CLASSNAME = "max-h-96";
 // an infinite render loop.
 const BUBBLE_MENU_APPEND_TO = () => document.body;
 const BUBBLE_MENU_OPTIONS = { strategy: "fixed" as const };
+// Belt-and-suspenders over the z-50 class: guarantees the toolbar wins any
+// stacking tie against another element also at z-50, regardless of DOM order.
+const BUBBLE_MENU_STYLE = { zIndex: 2147483647 };
 
 const editorVariants = cva(
   [
@@ -310,6 +313,7 @@ export function MarkdownEditor({
           <BubbleMenu
             editor={editor}
             className={cn("z-50 flex", isMobile && "hidden")}
+            style={BUBBLE_MENU_STYLE}
             options={BUBBLE_MENU_OPTIONS}
             appendTo={BUBBLE_MENU_APPEND_TO}
           >

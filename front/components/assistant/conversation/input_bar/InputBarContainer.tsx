@@ -144,6 +144,9 @@ const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 // an infinite render loop.
 const BUBBLE_MENU_APPEND_TO = () => document.body;
 const BUBBLE_MENU_OPTIONS = { strategy: "fixed" as const };
+// Belt-and-suspenders over the z-50 class: guarantees the toolbar wins any
+// stacking tie against another element also at z-50, regardless of DOM order.
+const BUBBLE_MENU_STYLE = { zIndex: 2147483647 };
 const EMPTY_SPACE_IDS: string[] = [];
 const EMPTY_SELECTABLE_SPACES: SelectableConversationSpaceType[] = [];
 const acceptSelectedSpaceIds = async (spaceIds: string[]) => spaceIds;
@@ -1750,6 +1753,7 @@ const InputBarContainer = ({
           <BubbleMenu
             editor={editor ?? undefined}
             className={cn("z-50 flex", isMobile && "hidden")}
+            style={BUBBLE_MENU_STYLE}
             options={BUBBLE_MENU_OPTIONS}
             appendTo={BUBBLE_MENU_APPEND_TO}
           >
