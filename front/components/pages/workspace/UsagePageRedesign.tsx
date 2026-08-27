@@ -1066,6 +1066,7 @@ export function UsagePageRedesign() {
       sorting={sorting}
       setSorting={handleSetSorting}
       showGroupsColumn={false}
+      variant="compact"
       enableSelection={!isReadOnly}
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
