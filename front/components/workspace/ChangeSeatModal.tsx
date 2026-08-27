@@ -38,6 +38,7 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
+  Chip,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -243,11 +244,7 @@ export function ChangeSeatModal({
     info: SeatTypeInfo
   ): React.ReactNode {
     if (seatType === currentSeatType) {
-      return (
-        <span className="rounded-full border border-blue-400 px-2 py-0.5 text-xs font-medium text-highlight-600">
-          Current
-        </span>
-      );
+      return <Chip size="xs" color="highlight" label="Current" />;
     }
     const price =
       info.billingFrequency === "annual" ? (
