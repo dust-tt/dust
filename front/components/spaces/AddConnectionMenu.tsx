@@ -286,16 +286,6 @@ export const AddConnectionMenu = ({
           },
         });
         onCreated(createdManagedDataSource.dataSource);
-        // Track data source creation with ID
-        trackEvent({
-          area: TRACKING_AREAS.DATA_SOURCES,
-          object: "create",
-          action: "success",
-          extra: {
-            data_source_id: createdManagedDataSource.dataSource.sId,
-            provider: provider,
-          },
-        });
       } else {
         const error = await res.json();
         const errorMessage =

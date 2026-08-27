@@ -1,7 +1,11 @@
 import type { SelectionDisplay } from "@app/components/model_picker/modelPickerUtils";
 import type { ClientType } from "@app/lib/context/clientType";
 import type { TrackingExtra } from "@app/lib/tracking";
-import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 
 // PostHog instrumentation for the model picker. All events share the
@@ -73,7 +77,7 @@ export function trackModelPickerExposure(base: ModelPickerBaseProps): void {
   trackEvent({
     area: TRACKING_AREAS.ASSISTANT,
     object: TRACKING_OBJECT,
-    action: "exposure",
+    action: TRACKING_ACTIONS.VIEW,
     extra: baseExtra(base),
   });
 }
@@ -83,7 +87,7 @@ export function trackModelPickerOpen(base: ModelPickerBaseProps): void {
   trackEvent({
     area: TRACKING_AREAS.ASSISTANT,
     object: TRACKING_OBJECT,
-    action: "open",
+    action: TRACKING_ACTIONS.OPEN,
     extra: baseExtra(base),
   });
 }
@@ -101,7 +105,7 @@ export function trackModelPickerSelect({
   trackEvent({
     area: TRACKING_AREAS.ASSISTANT,
     object: TRACKING_OBJECT,
-    action: "select",
+    action: TRACKING_ACTIONS.SELECT,
     extra: {
       ...baseExtra(base),
       trigger,
