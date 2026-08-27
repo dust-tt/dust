@@ -297,7 +297,6 @@ export async function fetchConsumptionTopGroups(
   auth: Authenticator,
   {
     dimension,
-    excludedDimensionValues = [],
     period,
     limit,
     offset = 0,
@@ -306,7 +305,6 @@ export async function fetchConsumptionTopGroups(
     sortOrder = "desc",
   }: {
     dimension: ConsumptionTopDimension;
-    excludedDimensionValues?: string[];
     period: ConsumptionPeriod;
     limit: number;
     offset?: number;
@@ -327,10 +325,7 @@ export async function fetchConsumptionTopGroups(
     filter,
   });
 
-  const excludedDimensionValueSet = new Set(excludedDimensionValues);
-  // Over-fetch one bucket per hidden value so filtering in application code
-  // does not leave the requested page short.
-  const requestedBucketCount = offset + limit + excludedDimensionValueSet.size;
+  const requestedBucketCount = offset + limit;
   const rankedGroups: Omit<ConsumptionTopGroup, "previousCredits">[] = [];
   let buckets: GroupBucket[];
   let batchSize = 0;
@@ -384,11 +379,7 @@ export async function fetchConsumptionTopGroups(
     buckets.length === batchSize
   );
 
-  const visibleRankedGroups = rankedGroups.filter(
-    (group) => !excludedDimensionValueSet.has(group.key)
-  );
-  const pagedGroups = visibleRankedGroups.slice(offset, offset + limit);
-  const excludedGroupCount = rankedGroups.length - visibleRankedGroups.length;
+  const pagedGroups = rankedGroups.slice(offset, offset + limit);
 
   const previousCreditsResult = await fetchConsumptionPreviousCredits(auth, {
     dimension,
@@ -419,10 +410,8 @@ export async function fetchConsumptionTopGroups(
       ...group,
       previousCredits: previousCreditsByKey.get(group.key) ?? null,
     })),
-    hasMore:
-      totalCount > rankedGroups.length ||
-      visibleRankedGroups.length > offset + limit,
-    totalCount: totalCount - excludedGroupCount,
+    hasMore: totalCount > offset + limit,
+    totalCount,
     totalCredits,
   });
 }

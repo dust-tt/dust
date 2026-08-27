@@ -66,8 +66,6 @@ export async function fetchConsumptionTopTools(
 ): Promise<Result<ConsumptionTopTools, ElasticsearchError>> {
   const result = await fetchConsumptionTopGroups(auth, {
     dimension: "tool",
-    // Skill enablement is orchestration rather than a user-facing tool to analyze.
-    excludedDimensionValues: [SKILL_MANAGEMENT_SERVER_NAME],
     period,
     limit,
     offset,
@@ -80,7 +78,11 @@ export async function fetchConsumptionTopTools(
   }
   const { groups, hasMore, totalCount, totalCredits } = result.value;
 
-  const rows = await resolveConsumptionGroupLabels(auth, "tool", groups);
+  // Skill enablement is orchestration rather than a user-facing tool to analyze.
+  const visibleGroups = groups.filter(
+    (group) => group.key !== SKILL_MANAGEMENT_SERVER_NAME
+  );
+  const rows = await resolveConsumptionGroupLabels(auth, "tool", visibleGroups);
 
   return new Ok({
     period,
