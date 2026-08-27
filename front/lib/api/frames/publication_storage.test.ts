@@ -42,6 +42,19 @@ const manifest = FrameManifestSchema.parse({
   description: "Track tasks.",
 });
 
+const manifestWithFunction = FrameManifestSchema.parse({
+  version: 1,
+  name: "Task List",
+  description: "Track tasks.",
+  functions: [
+    {
+      name: "add-task",
+      description: "Add a task.",
+      entryPoint: "functions/add_task.ts",
+    },
+  ],
+});
+
 const sourceFiles = [
   {
     relativePath: "index.tsx",
@@ -111,6 +124,22 @@ describe("storeFramePublication", () => {
     });
 
     expect(result.isErr() && result.error.code).toBe("invalid_source");
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("rejects a publication whose function entry point is missing", async () => {
+    const { auth, frame } = await setupFrame();
+
+    const result = await storeFramePublication(auth, {
+      frame,
+      manifest: manifestWithFunction,
+      sourceFiles,
+    });
+
+    expect(result.isErr() && result.error.code).toBe("invalid_source");
+    expect(result.isErr() && result.error.message).toContain(
+      "add-task (functions/add_task.ts)"
+    );
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
