@@ -37,7 +37,10 @@ import useCustomEditor, {
 } from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
-import { useBubbleMenuOptions } from "@app/components/editor/useBubbleMenuOptions";
+import {
+  BUBBLE_MENU_APPEND_TO,
+  useBubbleMenuOptions,
+} from "@app/components/editor/useBubbleMenuOptions";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
@@ -1747,14 +1750,8 @@ const InputBarContainer = ({
           </div>
           <BubbleMenu
             editor={editor ?? undefined}
-            className={cn(
-              // !fixed overrides the inline position:absolute the tiptap
-              // plugin sets before the first computePosition; without it the
-              // first coordinates are computed relative to the editor wrapper
-              // and the menu lands at the wrong spot on first show.
-              "z-50 flex !fixed",
-              isMobile && "hidden"
-            )}
+            className={cn("z-50 flex", isMobile && "hidden")}
+            appendTo={BUBBLE_MENU_APPEND_TO}
             options={bubbleMenuOptions}
           >
             {editor && (

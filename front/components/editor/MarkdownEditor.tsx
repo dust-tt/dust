@@ -1,6 +1,9 @@
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
-import { useBubbleMenuOptions } from "@app/components/editor/useBubbleMenuOptions";
+import {
+  BUBBLE_MENU_APPEND_TO,
+  useBubbleMenuOptions,
+} from "@app/components/editor/useBubbleMenuOptions";
 import { buildMarkdownEditorExtensions } from "@app/lib/editor/build_markdown_editor_extensions";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { cn, Toolbar } from "@dust-tt/sparkle";
@@ -306,14 +309,8 @@ export function MarkdownEditor({
         {shouldShowFormattingMenu && editor ? (
           <BubbleMenu
             editor={editor}
-            className={cn(
-              // !fixed overrides the inline position:absolute the tiptap
-              // plugin sets before the first computePosition; without it the
-              // first coordinates are computed relative to the editor wrapper
-              // and the menu lands at the wrong spot on first show.
-              "z-50 flex !fixed",
-              isMobile && "hidden"
-            )}
+            className={cn("z-50 flex", isMobile && "hidden")}
+            appendTo={BUBBLE_MENU_APPEND_TO}
             options={bubbleMenuOptions}
           >
             <Toolbar

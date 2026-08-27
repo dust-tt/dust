@@ -13,7 +13,10 @@ import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdo
 import { ConfirmContext } from "@app/components/Confirm";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
-import { useBubbleMenuOptions } from "@app/components/editor/useBubbleMenuOptions";
+import {
+  BUBBLE_MENU_APPEND_TO,
+  useBubbleMenuOptions,
+} from "@app/components/editor/useBubbleMenuOptions";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useHover } from "@app/hooks/useHover";
@@ -103,14 +106,8 @@ function UserMessageEditor({
 
       <BubbleMenu
         editor={editor}
-        className={cn(
-          // !fixed overrides the inline position:absolute the tiptap plugin
-          // sets before the first computePosition; without it the first
-          // coordinates are computed relative to the editor wrapper and the
-          // menu lands at the wrong spot on first show.
-          "z-50 flex !fixed",
-          isMobile && "hidden"
-        )}
+        className={cn("z-50 flex", isMobile && "hidden")}
+        appendTo={BUBBLE_MENU_APPEND_TO}
         options={bubbleMenuOptions}
       >
         {editor && (
