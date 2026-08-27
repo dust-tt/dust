@@ -11,6 +11,7 @@ import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversati
 import { useDevMode } from "@app/hooks/useDevMode";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
+import { OPEN_USER_ANALYTICS_EVENT } from "@app/lib/analytics/events";
 import config from "@app/lib/api/config";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -75,7 +76,7 @@ import {
   Terminal,
   User01,
 } from "@dust-tt/sparkle";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 interface UserMenuProps {
   user: UserTypeWithWorkspaces;
@@ -118,6 +119,13 @@ export function UserMenu({
   const showExtensionMenu =
     !isExtensionLastUsedAtLoading &&
     shouldShowExtensionMenu(extensionLastUsedAt?.value);
+
+  useEffect(() => {
+    const openAnalytics = () => setAnalyticsOpen(true);
+    window.addEventListener(OPEN_USER_ANALYTICS_EVENT, openAnalytics);
+    return () =>
+      window.removeEventListener(OPEN_USER_ANALYTICS_EVENT, openAnalytics);
+  }, []);
 
   const sendNotification = useSendNotification();
   const devMode = useDevMode();
