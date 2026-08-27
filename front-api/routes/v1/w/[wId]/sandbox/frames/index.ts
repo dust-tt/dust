@@ -1,4 +1,7 @@
-import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
+import {
+  type FramePublicationError,
+  isFramePublicationError,
+} from "@app/lib/api/frames/publication_storage";
 import { publishFrameV2FromSource } from "@app/lib/api/frames/publish_from_source";
 import { registerFrameV2FromSource } from "@app/lib/api/frames/register_from_source";
 import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
@@ -27,7 +30,7 @@ type FrameLifecycleResponse = {
 function frameErrorStatus(
   error: FramePublicationError | SandboxFunctionError
 ): 400 | 403 | 500 {
-  if (error instanceof FramePublicationError) {
+  if (isFramePublicationError(error)) {
     return error.code === "unauthorized" ? 403 : 400;
   }
 
