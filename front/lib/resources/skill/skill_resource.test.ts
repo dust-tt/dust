@@ -30,6 +30,7 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -68,7 +69,7 @@ describe("SkillResource", () => {
   });
 
   describe("read grants", () => {
-    it("gives the global group the reader grant on creation", async () => {
+    it("reads a skill through the global group's workspace-wide reader grant", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With A Read Grant",
       });
@@ -82,9 +83,16 @@ describe("SkillResource", () => {
         grants.some(
           (grant) =>
             grant.groupId === testContext.globalGroup.id &&
-            grant.grantType === "reader"
+            grant.grantType === "reader" &&
+            grant.resourceId === WHOLE_TYPE_RESOURCE_ID
         )
       ).toBe(true);
+
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        testContext.user.sId,
+        testContext.workspace.sId
+      );
+      expect(skill.canRead(auth)).toBe(true);
     });
 
     it("lets any workspace member read a skill they did not create", async () => {
@@ -101,7 +109,8 @@ describe("SkillResource", () => {
         testContext.workspace.sId
       );
 
-      // Not an editor, so no `editor` grant: read comes from the global group's `reader` grant.
+      // Not an editor, so no `editor` grant: read comes from the role grants until they are
+      // dropped, and from the global group's workspace-wide `reader` grant after that.
       expect(skill.canRead(otherAuth)).toBe(true);
       expect(skill.canWrite(otherAuth)).toBe(false);
 

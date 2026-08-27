@@ -260,11 +260,6 @@ export interface SkillResource
 // The grant a skill's editors hold on the skill. Its verbs live in ROLE_REGISTRY.skill.
 const SKILL_EDITOR_GRANT_TYPE = "editor" as const;
 
-// The grant that makes a skill readable. Every skill gives it to the workspace global group, so
-// every workspace member can read every skill — the same reach the role grants have today, but
-// expressed as a group grant so readership can later be narrowed per skill.
-export const SKILL_READER_GRANT_TYPE = "reader" as const;
-
 const SKILL_ROLE_GRANTS: RoleGrant[] = [
   { role: "admin", permissions: ["read", "admin"] },
   { role: "manager", permissions: ["read"] },
@@ -501,8 +496,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         await this.grantCreatorAsEditor(auth, skill, { transaction });
       }
 
-      await this.grantGlobalGroupAsReader(auth, skill, { transaction });
-
       // MCP server configurations for the skill.
       await SkillMCPServerConfigurationModel.bulkCreate(
         mcpServerViews.map((mcpServerView) => ({
@@ -550,10 +543,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return skillResource;
     });
 
-    // Creating the skill wrote `group_permissions` (the global group's `reader` grant, and the
-    // creator's `editor` grant), so the grants `auth` resolved at construction are now stale and
-    // the caller could not even read the skill they just created. Refresh the snapshot now that the
-    // write has committed, as space creation does.
+    // Creating the skill wrote the creator's `editor` grant, so the grants `auth` resolved at
+    // construction are now stale and the caller would not be an editor of the skill they just
+    // created. Refresh the snapshot now that the write has committed, as space creation does.
     await auth.refresh();
 
     return skillResource;
@@ -604,35 +596,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     return new Ok(createdSuggestedSkill);
-  }
-
-  /**
-   * Gives the workspace global group the skill's `reader` grant: every workspace member is in that
-   * group, so this is what makes the skill readable (see `canRead`).
-   */
-  private static async grantGlobalGroupAsReader(
-    auth: Authenticator,
-    skill: SkillConfigurationModel,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    assert(
-      skill.workspaceId === workspace.id,
-      "Unexpected: skill and workspace mismatch"
-    );
-
-    const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
-    // Without the grant nobody could read the skill, so let the creation transaction roll back.
-    assert(globalGroupRes.isOk(), "Failed to fetch the global group.");
-
-    await GroupPermissionResource.grant(auth, {
-      group: globalGroupRes.value,
-      grantType: SKILL_READER_GRANT_TYPE,
-      resourceType: "skill",
-      resourceId: skill.id,
-      transaction,
-    });
   }
 
   /**
@@ -2206,9 +2169,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return true;
     }
 
-    // Read comes from the role grants and from the groups holding a `read` verb on the skill: the
-    // global group's `reader` grant (see `grantGlobalGroupAsReader`) and the editors' `editor`
-    // grant. Global skills declare their own role grants and carry no instance grant.
+    // Read comes from the role grants and from the groups holding a `read` verb on skills: the
+    // global group's workspace-wide `reader` grant (seeded by `seedWorkspaceCapabilities`) and the
+    // editors' own `editor` grant on this skill. `getGrantedVerbs` folds the type-wide grants in.
     return auth.hasPermission("read", this);
   }
 

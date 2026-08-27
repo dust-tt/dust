@@ -156,7 +156,8 @@ inserted_group_permissions AS (
       ('create', 'agent'),
       ('publish', 'agent'),
       ('invite', 'frame'),
-      ('publish', 'frame')
+      ('publish', 'frame'),
+      ('reader', 'skill')
   ) AS capability(grant_type, resource_type)
   RETURNING id
 ),
