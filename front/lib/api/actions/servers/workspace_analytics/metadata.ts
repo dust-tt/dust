@@ -1,5 +1,6 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
+  consumptionFilterSchema,
   DEFAULT_CREDIT_GROUPS,
   DEFAULT_RESULTS,
   MAX_CREDIT_GROUPS,
@@ -7,6 +8,7 @@ import {
   timeWindowSchemaShape,
   usageFilterSchema,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import { CONSUMPTION_TOP_DIMENSIONS } from "@app/lib/api/analytics/consumption/scope";
 import { z } from "zod";
 
 const topListSchema = (entityPlural: string) => ({
@@ -117,6 +119,31 @@ const getUsageTimeseriesSchema = {
     ),
 };
 
+const getTopEntitiesByCreditsSchema = {
+  dimension: z
+    .enum(CONSUMPTION_TOP_DIMENSIONS)
+    .describe(
+      "What to rank: 'agent', 'user', 'model', 'source' (where the traffic " +
+        "came in from), 'api_key', 'group' (a member group), 'tag' (an agent " +
+        "tag), 'tool', 'skill' or 'conversation'. Rows overlap and do not add " +
+        "up to the workspace total for 'model', 'skill', 'tag' and 'group', " +
+        "nor for 'tool' (tool credits exclude the surrounding model work); " +
+        "'user' and 'api_key' have no row for consumption with nobody behind it."
+    ),
+  ...timeWindowSchemaShape,
+  ...consumptionFilterSchema,
+  limit: z
+    .number()
+    .int()
+    .positive()
+    .max(MAX_RESULTS)
+    .optional()
+    .describe(
+      `Maximum number of rows to return ` +
+        `(default ${DEFAULT_RESULTS}, max ${MAX_RESULTS}).`
+    ),
+};
+
 export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
   {
     name: "get_top_agents",
@@ -214,7 +241,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       "Return the workspace's most-used skills over a time window (defaults " +
       "to the current calendar month), ranked by execution count. Optionally " +
       "filter by source (context_origin), agent, user, tag, or model. Use this " +
-      "to answer which skills are used most. Admin-only.",
+      "to answer which skills are executed or used most. Admin-only.",
     schema: getTopSkillsSchema,
     stake: "never_ask",
     displayLabels: {
@@ -322,6 +349,29 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     displayLabels: {
       running: "Retrieving usage time series",
       done: "Retrieved usage time series",
+    },
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
+  {
+    name: "get_top_entities_by_credits",
+    description:
+      "Rank what costs the most credits over a time window (defaults to the " +
+      "current calendar month): the most expensive agents, members, models, " +
+      "skills, tools, sources, API keys, member groups, agent tags or " +
+      "conversations. Each row carries its credits, its average credits per " +
+      "message, and how many messages or tool calls it covers. These are the " +
+      "rankings the workspace Analytics page shows, over billed credits, so " +
+      "the figures match the Usage page exactly. Use this to break credit " +
+      "spending down by agent, user or model, and for any spend, cost or " +
+      "expense question — where the budget goes, which agent is most " +
+      "expensive, which integration burns credits. Prefer it over " +
+      "get_credit_usage, whose figures are estimates. Admin-only.",
+    schema: getTopEntitiesByCreditsSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top consumers",
+      done: "Retrieved top consumers",
     },
     toolCostCategory: "basic",
     freeUsage: false,

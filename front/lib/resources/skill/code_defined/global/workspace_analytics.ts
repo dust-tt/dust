@@ -37,9 +37,10 @@ export const workspaceAnalyticsSkill = {
     "- Never build a trend by calling a snapshot tool (get_credit_usage, " +
     "get_top_*) once per day or in parallel per period — it is slower and " +
     "unnecessary, the timeseries tools already bucket over time.\n" +
-    "- Use get_credit_usage for a single window's total credits or to " +
-    "attribute spend to the top agents, users or models, not for per-day " +
-    "trends.\n" +
+    "- To attribute spend — which agents, users, models, tools, skills, " +
+    "sources, API keys, groups, tags or conversations cost the most — call " +
+    "get_top_entities_by_credits with that dimension. Use get_credit_usage " +
+    "only for a single window's total credits.\n" +
     "- For a credit trend split by agent, user or model (e.g. 'how did each " +
     "agent's spend evolve'), set breakdownBy on get_credit_timeseries — one " +
     "call returns the top groups plus an 'other' series. Do not make one " +
@@ -54,15 +55,12 @@ export const workspaceAnalyticsSkill = {
     `${GET_SKILL_DETAILS_TOOL_NAME} to inspect a single one.\n` +
     `- Listing the agents other members have not published is admin-only, so ` +
     `fall back to the default view if it reports an authorization error.\n` +
-    "- Chart timeseries results so the admin can see the trend.\n" +
-    "- Credit figures are estimates; when reporting them, tell the admin they " +
-    "are approximate and point to the workspace Usage page for exact billed " +
-    "amounts.",
+    "- Chart timeseries results so the admin can see the trend.",
   mcpServers: [
     { name: "workspace_analytics" },
     { name: WORKSPACE_MANAGEMENT_SERVER_NAME },
   ],
-  version: 5,
+  version: 6,
   icon: "ActionPieChartIcon",
   isRestricted: async (auth: Authenticator) => {
     if (!auth.isManager()) {
