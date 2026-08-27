@@ -325,11 +325,6 @@ export function ConversationContainerVirtuoso({
     <DropzoneContainer
       description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
       title="Attach files to the conversation"
-      className={
-        !activeConversationId && !isAgentsSectionVisible
-          ? "min-h-0 h-panel justify-center"
-          : undefined
-      }
     >
       {activeConversationId ? (
         <ConversationViewer

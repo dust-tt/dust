@@ -58,6 +58,7 @@ import {
   NavigationListItem,
   Page,
   Settings01,
+  SettingsList,
   SliderToggle,
   Spinner,
   Sun,
@@ -344,100 +345,96 @@ function CustomizationSection() {
         />
       }
     >
-      <div className="flex w-full gap-4">
-        <div className="flex-1">
-          <div className="mb-2">
-            <Label>Theme</Label>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                icon={
-                  localTheme === "light"
-                    ? Sun
-                    : localTheme === "dark"
-                      ? Moon01
-                      : Sun
-                }
-                label={
-                  localTheme === "light"
-                    ? "Light"
-                    : localTheme === "dark"
-                      ? "Dark"
-                      : "System"
-                }
-                isSelect
-                className="w-fit"
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent mountPortalContainer={portalContainer}>
-              <DropdownMenuItem
-                icon={Sun}
-                label="Light"
-                onClick={() => setLocalTheme("light")}
-              />
-              <DropdownMenuItem
-                icon={Moon01}
-                label="Dark"
-                onClick={() => setLocalTheme("dark")}
-              />
-              <DropdownMenuItem
-                icon={Sun}
-                label="System"
-                onClick={() => setLocalTheme("system")}
-              />
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        <div className="flex-1">
-          <div className="mb-2">
-            <Label>Keyboard Shortcuts</Label>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <div className="copy-sm flex items-center gap-2 text-foreground">
-                Send message:
+      <SettingsList>
+        <SettingsList.Row
+          title="Theme"
+          description="Choose how Dust looks on this device"
+          action={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  label={submitKey === "enter" ? "Enter (↵)" : modEnterLabel}
+                  size="sm"
+                  icon={
+                    localTheme === "light"
+                      ? Sun
+                      : localTheme === "dark"
+                        ? Moon01
+                        : Sun
+                  }
+                  label={
+                    localTheme === "light"
+                      ? "Light"
+                      : localTheme === "dark"
+                        ? "Dark"
+                        : "System"
+                  }
                   isSelect
-                  className="w-fit"
                 />
-              </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent mountPortalContainer={portalContainer}>
-              <DropdownMenuItem onClick={() => setSubmitKey("enter")}>
-                Enter
-                <DropdownMenuShortcut>↵</DropdownMenuShortcut>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSubmitKey("cmd+enter")}>
-                {modEnterMenuLabel}
-                <DropdownMenuShortcut>{modEnterShortcut}</DropdownMenuShortcut>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-
-      <div className="flex items-start justify-between gap-4 rounded-2xl border border-border dark:border-border-dark p-4">
-        <div className="flex flex-col gap-1">
-          <span className="heading-base text-foreground">
-            Show "Chat with..." on home
-          </span>
-          <span className="copy-sm text-muted-foreground">
-            Display your favorite and most used agents, and the agent search, on
-            the home page.
-          </span>
-        </div>
-        <SliderToggle
-          selected={localAgentsSectionVisible}
-          onClick={() =>
-            setLocalAgentsSectionVisible(!localAgentsSectionVisible)
+              </DropdownMenuTrigger>
+              <DropdownMenuContent mountPortalContainer={portalContainer}>
+                <DropdownMenuItem
+                  icon={Sun}
+                  label="Light"
+                  onClick={() => setLocalTheme("light")}
+                />
+                <DropdownMenuItem
+                  icon={Moon01}
+                  label="Dark"
+                  onClick={() => setLocalTheme("dark")}
+                />
+                <DropdownMenuItem
+                  icon={Sun}
+                  label="System"
+                  onClick={() => setLocalTheme("system")}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
           }
         />
-      </div>
+
+        <SettingsList.Row
+          title="Send message"
+          description="Keyboard shortcut to send a message"
+          action={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label={submitKey === "enter" ? "Enter (↵)" : modEnterLabel}
+                  isSelect
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent mountPortalContainer={portalContainer}>
+                <DropdownMenuItem onClick={() => setSubmitKey("enter")}>
+                  Enter
+                  <DropdownMenuShortcut>↵</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSubmitKey("cmd+enter")}>
+                  {modEnterMenuLabel}
+                  <DropdownMenuShortcut>
+                    {modEnterShortcut}
+                  </DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+        />
+
+        <SettingsList.Row
+          title={'Show "Chat with..." on home'}
+          description="Display your favorite and most used agents, and the agent search, on the home page"
+          action={
+            <SliderToggle
+              selected={localAgentsSectionVisible}
+              onClick={() =>
+                setLocalAgentsSectionVisible(!localAgentsSectionVisible)
+              }
+            />
+          }
+        />
+      </SettingsList>
     </SectionContent>
   );
 }
