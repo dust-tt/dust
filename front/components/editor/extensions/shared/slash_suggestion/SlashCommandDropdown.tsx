@@ -45,7 +45,7 @@ const DEFAULT_EMPTY_MESSAGE = "No commands found";
 const DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME =
   SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME;
 
-const SKILL_NAME_TOOLTIP_DELAY_MS = 1500;
+const SKILL_NAME_TOOLTIP_DELAY_MS = 1000;
 
 function SlashCommandDropdownLoadingState({ message }: { message: string }) {
   return (
