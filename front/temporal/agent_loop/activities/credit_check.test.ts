@@ -8,7 +8,7 @@ const {
   mockFromJson,
   mockCheckPoolCreditGate,
   mockCheckSpendCheckpointGate,
-  mockGetAgentLoopData,
+  mockGetFullAgentLoopDataWithAuth,
   mockIsAgentLoopDataSoftDeleteError,
   mockPublishConversationRelatedEvent,
   mockMessageModelFindOne,
@@ -18,7 +18,7 @@ const {
   mockFromJson: vi.fn(),
   mockCheckPoolCreditGate: vi.fn(),
   mockCheckSpendCheckpointGate: vi.fn(),
-  mockGetAgentLoopData: vi.fn(),
+  mockGetFullAgentLoopDataWithAuth: vi.fn(),
   mockIsAgentLoopDataSoftDeleteError: vi.fn(),
   mockPublishConversationRelatedEvent: vi.fn(),
   mockMessageModelFindOne: vi.fn(),
@@ -49,7 +49,7 @@ vi.mock("@app/lib/resources/conversation_resource", () => ({
 }));
 
 vi.mock("@app/types/assistant/agent_run", () => ({
-  getAgentLoopData: mockGetAgentLoopData,
+  getFullAgentLoopDataWithAuth: mockGetFullAgentLoopDataWithAuth,
   isAgentLoopDataSoftDeleteError: mockIsAgentLoopDataSoftDeleteError,
 }));
 
@@ -148,7 +148,7 @@ describe("checkSpendCheckpointActivity", () => {
     });
 
     expect(result).toEqual({ crossed: false, acknowledged: false });
-    expect(mockGetAgentLoopData).not.toHaveBeenCalled();
+    expect(mockGetFullAgentLoopDataWithAuth).not.toHaveBeenCalled();
     expect(mockPublishConversationRelatedEvent).not.toHaveBeenCalled();
   });
 
@@ -157,7 +157,7 @@ describe("checkSpendCheckpointActivity", () => {
       crossed: true,
       thresholdAwuCredits: 1500,
     });
-    mockGetAgentLoopData.mockResolvedValue({
+    mockGetFullAgentLoopDataWithAuth.mockResolvedValue({
       isErr: () => false,
       value: {
         agentConfiguration: { sId: "agent_config_id" },
@@ -192,7 +192,7 @@ describe("checkSpendCheckpointActivity", () => {
       crossed: true,
       thresholdAwuCredits: 1500,
     });
-    mockGetAgentLoopData.mockResolvedValue({
+    mockGetFullAgentLoopDataWithAuth.mockResolvedValue({
       isErr: () => true,
       error: new Error("agent_message_deleted"),
     });
@@ -211,7 +211,7 @@ describe("checkSpendCheckpointActivity", () => {
       crossed: true,
       thresholdAwuCredits: 1500,
     });
-    mockGetAgentLoopData.mockResolvedValue({
+    mockGetFullAgentLoopDataWithAuth.mockResolvedValue({
       isErr: () => true,
       error: new Error("transient_db_error"),
     });
@@ -232,7 +232,7 @@ describe("checkSpendCheckpointActivity", () => {
       crossed: true,
       thresholdAwuCredits: 1500,
     });
-    mockGetAgentLoopData.mockResolvedValue({
+    mockGetFullAgentLoopDataWithAuth.mockResolvedValue({
       isErr: () => false,
       value: {
         agentConfiguration: { sId: "agent_config_id" },

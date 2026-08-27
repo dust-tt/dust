@@ -14,7 +14,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
 import {
-  getAgentLoopData,
+  getFullAgentLoopDataWithAuth,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -78,7 +78,10 @@ export async function checkSpendCheckpointActivity(
     return { crossed: false, acknowledged: false };
   }
 
-  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  const runAgentDataRes = await getFullAgentLoopDataWithAuth(
+    auth,
+    agentLoopArgs
+  );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       return { crossed: true, acknowledged: false };
