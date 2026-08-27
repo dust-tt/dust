@@ -2,6 +2,7 @@ import {
   activateFramePublication,
   loadFramePublicationManifest,
   loadFramePublicationSourceFile,
+  publishFramePublication,
   storeFramePublication,
 } from "@app/lib/api/frames/publication_storage";
 import type { Authenticator } from "@app/lib/auth";
@@ -320,6 +321,44 @@ describe("activateFramePublication", () => {
     const reloaded = await FileResource.fetchById(auth, frame.sId);
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       stored.value.publicationId
+    );
+  });
+});
+
+describe("publishFramePublication", () => {
+  it("stores and activates a publication", async () => {
+    const { auth, frame } = await setupFrame();
+
+    const published = await publishFramePublication(auth, {
+      frame,
+      manifest,
+      sourceFiles,
+    });
+
+    expect(published.isOk()).toBe(true);
+    if (published.isErr()) {
+      return;
+    }
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
+      published.value.publicationId
+    );
+  });
+
+  it("keeps the active publication when storage fails", async () => {
+    const { auth, frame } = await setupFrame();
+    const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
+    await frame.setActiveFramePublication(activePublicationId);
+    fileStorageMock.setFileSaveFails((filePath) =>
+      filePath.endsWith("/manifest.json")
+    );
+
+    await expect(
+      publishFramePublication(auth, { frame, manifest, sourceFiles })
+    ).rejects.toThrow("Simulated GCS write failure");
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
+      activePublicationId
     );
   });
 });
