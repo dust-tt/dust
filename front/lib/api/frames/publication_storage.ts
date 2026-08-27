@@ -18,13 +18,20 @@ import {
   parseFrameManifest,
 } from "@app/types/api/frame_manifest";
 import {
+  getFramePublicationFunctionBundlePath,
+  getFramePublicationFunctionSchemaPath,
   getFramePublicationManifestPath,
   getFramePublicationSourcePath,
 } from "@app/types/api/frame_storage";
+import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
 import type { AllSupportedFileContentType } from "@app/types/files";
-import { frameV2ContentType } from "@app/types/files";
+import {
+  frameV2ContentType,
+  sandboxFunctionContentType,
+} from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const FRAME_PUBLICATION_UPLOAD_CONCURRENCY = 4;
 
@@ -34,10 +41,19 @@ export type FramePublicationSourceFile = {
   contentType: AllSupportedFileContentType;
 };
 
+export type FramePublicationFunctionArtifact = {
+  name: string;
+  bundleCode: string;
+  userIdentity: SandboxFunctionUserIdentityPolicy;
+  inputSchema: JSONSchema;
+  outputSchema: JSONSchema;
+};
+
 export class FramePublicationError extends Error {
   constructor(
     readonly code:
       | "invalid_frame"
+      | "invalid_function_artifact"
       | "invalid_manifest"
       | "invalid_source"
       | "publication_not_found"
@@ -70,10 +86,12 @@ export async function storeFramePublication(
   auth: Authenticator,
   {
     frame,
+    functionArtifacts,
     manifest,
     sourceFiles,
   }: {
     frame: FileResource;
+    functionArtifacts: FramePublicationFunctionArtifact[];
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
   }
@@ -122,30 +140,92 @@ export async function storeFramePublication(
     }
   }
 
+  const declaredFunctionNames = new Set(
+    manifest.functions.map((fn) => fn.name)
+  );
+  const artifactNames = new Set<string>();
+  for (const artifact of functionArtifacts) {
+    if (artifactNames.has(artifact.name)) {
+      return new Err(
+        new FramePublicationError(
+          "invalid_function_artifact",
+          `Duplicate Frame function artifact: ${artifact.name}`
+        )
+      );
+    }
+    if (!declaredFunctionNames.has(artifact.name)) {
+      return new Err(
+        new FramePublicationError(
+          "invalid_function_artifact",
+          `Frame function artifact is not declared in the manifest: ${artifact.name}`
+        )
+      );
+    }
+    artifactNames.add(artifact.name);
+  }
+  for (const fn of manifest.functions) {
+    if (!artifactNames.has(fn.name)) {
+      return new Err(
+        new FramePublicationError(
+          "invalid_function_artifact",
+          `Frame function artifact is missing: ${fn.name}`
+        )
+      );
+    }
+  }
+
   const identity = {
     ...frameIdentity.value,
     publicationId: randomUUID(),
   };
   const storage = getPrivateUploadBucket();
 
-  await concurrentExecutor(
-    sourceFiles,
-    (sourceFile) => {
-      const filePath = getFramePublicationSourcePath({
+  const publicationFiles = [
+    ...sourceFiles.map((sourceFile) => ({
+      filePath: getFramePublicationSourcePath({
         ...identity,
         relativePath: sourceFile.relativePath,
-      });
-      return storage.file(filePath).save(sourceFile.content, {
-        contentType: sourceFile.contentType,
+      }),
+      content: sourceFile.content,
+      contentType: sourceFile.contentType,
+    })),
+    ...functionArtifacts.flatMap((artifact) => [
+      {
+        filePath: getFramePublicationFunctionBundlePath({
+          ...identity,
+          functionName: artifact.name,
+        }),
+        content: artifact.bundleCode,
+        contentType: sandboxFunctionContentType,
+      },
+      {
+        filePath: getFramePublicationFunctionSchemaPath({
+          ...identity,
+          functionName: artifact.name,
+        }),
+        content: JSON.stringify({
+          userIdentity: artifact.userIdentity,
+          inputSchema: artifact.inputSchema,
+          outputSchema: artifact.outputSchema,
+        }),
+        contentType: "application/json",
+      },
+    ]),
+  ];
+
+  await concurrentExecutor(
+    publicationFiles,
+    ({ filePath, content, contentType }) =>
+      storage.file(filePath).save(content, {
+        contentType,
         preconditionOpts: {
           ifGenerationMatch: GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
         },
-      });
-    },
+      }),
     { concurrency: FRAME_PUBLICATION_UPLOAD_CONCURRENCY }
   );
 
-  // The manifest is the publication commit marker. Readers never observe a partial source write.
+  // The manifest is the publication commit marker. Readers never observe partial publication data.
   const manifestPath = getFramePublicationManifestPath(identity);
   await storage.file(manifestPath).save(Buffer.from(JSON.stringify(manifest)), {
     contentType: frameV2ContentType,
@@ -246,16 +326,19 @@ export async function publishFramePublication(
   auth: Authenticator,
   {
     frame,
+    functionArtifacts,
     manifest,
     sourceFiles,
   }: {
     frame: FileResource;
+    functionArtifacts: FramePublicationFunctionArtifact[];
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
   }
 ): Promise<Result<{ publicationId: string }, FramePublicationError>> {
   const publication = await storeFramePublication(auth, {
     frame,
+    functionArtifacts,
     manifest,
     sourceFiles,
   });
