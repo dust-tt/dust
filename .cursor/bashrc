@@ -1,0 +1,40 @@
+# Interactive shell defaults for the Dust dev container.
+
+case $- in
+  *i*) ;;
+  *) return ;;
+esac
+
+export SHELL=/bin/bash
+export LANG="${LANG:-C.UTF-8}"
+export LC_ALL="${LC_ALL:-C.UTF-8}"
+export TERM="${TERM:-xterm-256color}"
+export COLORTERM="${COLORTERM:-truecolor}"
+
+shopt -s checkwinsize histappend globstar 2>/dev/null || true
+
+HISTCONTROL=ignoreboth:erasedups
+HISTSIZE=10000
+HISTFILESIZE=20000
+
+if [ -x /usr/bin/dircolors ]; then
+  eval "$(dircolors -b)"
+  alias ls='ls --color=auto'
+  alias grep='grep --color=auto'
+fi
+
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+
+# Repo helper when /workspace is mounted.
+if [ -d /workspace/.git ]; then
+  alias cdust='cd /workspace'
+fi
+
+if [ -f /etc/bash_completion ]; then
+  # shellcheck disable=SC1091
+  source /etc/bash_completion
+fi
+
+PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '

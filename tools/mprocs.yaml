@@ -9,16 +9,10 @@
 
 procs:
   _check-start-script:
-    shell: |
-      if [ -z "$DUST_USE_START_MPROCS" ]; then
-        echo ""
-        echo "ERROR: Run tools/start-mprocs.sh instead of invoking mprocs directly."
-        echo "       It sets up nvm, clears stale build artifacts, and installs dependencies."
-        echo ""
-        exit 1
-      fi
-      echo "OK"
+    cwd: "<CONFIG_DIR>/.."
+    cmd: ["bash", "tools/check-start-mprocs.sh"]
     autostart: true
+    autorestart: false
 
   docker-infra:
     cwd: "<CONFIG_DIR>/.."
@@ -70,18 +64,13 @@ procs:
     cwd: "<CONFIG_DIR>/.."
     env:
       READY_FILE: "sdks/js/dist/client.esm.js.map"
-    shell: |
-      echo "Waiting for sdks-js to compile..."
-      echo "Expecting file: $READY_FILE"
-      while [ ! -f "$READY_FILE" ]; do sleep 1; done
-      echo "sdks-js ready. Starting migrations."
-      npm -w front run migration:apply
-      npm -w connectors run migration:apply
+    shell: "bash tools/run-migrations.sh"
 
   front-api-hono:
     cwd: "<CONFIG_DIR>/../front-api"
     env:
       NODE_ENV: "development"
+      HOSTNAME: "0.0.0.0"
       # Guard: throw if anything tries to load `next` at runtime.
       NODE_OPTIONS: "--require=./forbid-next.cjs"
       READY_FILE: "../sdks/js/dist/client.esm.js.map"
@@ -93,18 +82,15 @@ procs:
       npm run dev
 
   front-workers:
-    cwd: "<CONFIG_DIR>/../front"
-    shell: |
-      echo "Waiting for front to be ready..."
-      until curl -sf http://localhost:3000/api/healthz; do sleep 1; done
-      echo "front ready. Starting front-workers."
-      ./admin/dev_worker.sh
+    cwd: "<CONFIG_DIR>/.."
+    shell: "bash tools/wait-for-front-api.sh"
 
   connectors:
     cwd: "<CONFIG_DIR>/../connectors"
     env:
       READY_FILE: "../sdks/js/dist/client.esm.js.map"
     shell: |
+      bash ../tools/wait-for-temporal.sh
       echo "Waiting for sdks-js to compile..."
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       echo "sdks-js ready. Starting connectors."

@@ -1,0 +1,6 @@
+# Global mprocs defaults for the Dust dev container (~/.config/mprocs/mprocs.yaml).
+# Process definitions stay in tools/mprocs.yaml.
+
+scrollback: 20000
+mouse_scroll_speed: 3
+proc_list_width: 28
