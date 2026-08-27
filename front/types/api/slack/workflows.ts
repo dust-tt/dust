@@ -9,7 +9,7 @@ export const SLACK_WORKFLOW_GROUP_KINDS: GroupKind[] = [
 
 export type SlackWorkflowType = {
   botName: string;
-  groups: { sId: string; name: string }[];
+  spaces: { sId: string; name: string }[];
   createdAt: number;
 };
 

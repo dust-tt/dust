@@ -7,6 +7,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type {
   GetSlackWorkflowsResponseBody,
@@ -16,10 +17,12 @@ import { SLACK_WORKFLOW_GROUP_KINDS } from "@app/types/api/slack/workflows";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { EnrichedSpaceType } from "@app/types/space";
 
 type SlackWorkflowErrorType =
   | "slack_bot_not_connected"
   | "invalid_groups"
+  | "invalid_spaces"
   | "not_found"
   | "connectors_error";
 
@@ -57,6 +60,42 @@ async function fetchSlackBotDataSource(
   return new Ok({ dataSource, connectorId: dataSource.connectorId });
 }
 
+async function listSelectableSpaces(
+  auth: Authenticator
+): Promise<EnrichedSpaceType[]> {
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
+    includeProjectSpaces: true,
+  });
+
+  return SpaceResource.batchToJSONEnriched(
+    auth,
+    spaces.filter((space) => space.isRegular() || space.isProject())
+  );
+}
+
+function buildSpacesByGroupId(
+  spaces: EnrichedSpaceType[],
+  globalGroupId: string
+): Map<string, EnrichedSpaceType[]> {
+  const spacesByGroupId = new Map<string, EnrichedSpaceType[]>();
+
+  for (const space of spaces) {
+    for (const groupId of space.groupIds) {
+      if (groupId === globalGroupId) {
+        continue;
+      }
+      const existing = spacesByGroupId.get(groupId);
+      if (existing) {
+        existing.push(space);
+      } else {
+        spacesByGroupId.set(groupId, [space]);
+      }
+    }
+  }
+
+  return spacesByGroupId;
+}
+
 export async function listSlackWorkflows(
   auth: Authenticator
 ): Promise<Result<GetSlackWorkflowsResponseBody, SlackWorkflowError>> {
@@ -73,13 +112,12 @@ export async function listSlackWorkflows(
     logger
   );
 
-  const [whitelistRes, groups] = await Promise.all([
+  const [whitelistRes, spaces, globalGroupRes] = await Promise.all([
     connectorsAPI.getSlackBotSummoningWhitelist({
       connectorId: dataSourceRes.value.connectorId,
     }),
-    GroupResource.listAllWorkspaceGroups(auth, {
-      groupKinds: SLACK_WORKFLOW_GROUP_KINDS,
-    }),
+    listSelectableSpaces(auth),
+    GroupResource.fetchWorkspaceGlobalGroup(auth),
   ]);
 
   if (whitelistRes.isErr()) {
@@ -87,19 +125,64 @@ export async function listSlackWorkflows(
       new SlackWorkflowError("connectors_error", whitelistRes.error.message)
     );
   }
+  if (globalGroupRes.isErr()) {
+    return new Err(
+      new SlackWorkflowError(
+        "invalid_groups",
+        "Failed to fetch the workspace group."
+      )
+    );
+  }
 
-  const groupNameById = new Map(groups.map((g) => [g.sId, g.name]));
+  const spacesByGroupId = buildSpacesByGroupId(
+    spaces,
+    globalGroupRes.value.sId
+  );
 
-  const workflows: SlackWorkflowType[] = whitelistRes.value.bots.map((bot) => ({
-    botName: bot.botName,
-    groups: bot.groupIds.map((sId) => ({
-      sId,
-      name: groupNameById.get(sId) ?? sId,
-    })),
-    createdAt: bot.createdAt,
-  }));
+  const workflows: SlackWorkflowType[] = whitelistRes.value.bots.map((bot) => {
+    const spaceById = new Map(
+      bot.groupIds
+        .flatMap((groupId) => spacesByGroupId.get(groupId) ?? [])
+        .map((space) => [space.sId, space])
+    );
+
+    return {
+      botName: bot.botName,
+      spaces: [...spaceById.values()].map((space) => ({
+        sId: space.sId,
+        name: space.name,
+      })),
+      createdAt: bot.createdAt,
+    };
+  });
 
   return new Ok({ isSlackBotConnected: true, workflows });
+}
+
+export async function allowSlackWorkflowForSpaces(
+  auth: Authenticator,
+  { botName, spaceIds }: { botName: string; spaceIds: string[] }
+): Promise<Result<undefined, SlackWorkflowError>> {
+  const spaces = await listSelectableSpaces(auth);
+  const spaceById = new Map(spaces.map((space) => [space.sId, space]));
+
+  const unknownSpaceIds = spaceIds.filter((spaceId) => !spaceById.has(spaceId));
+  if (unknownSpaceIds.length > 0) {
+    return new Err(
+      new SlackWorkflowError(
+        "invalid_spaces",
+        `Unknown spaces: ${unknownSpaceIds.join(", ")}.`
+      )
+    );
+  }
+
+  const groupIds = [
+    ...new Set(
+      spaceIds.flatMap((spaceId) => spaceById.get(spaceId)?.groupIds ?? [])
+    ),
+  ];
+
+  return allowSlackWorkflow(auth, { botName, groupIds });
 }
 
 export async function allowSlackWorkflow(

@@ -12,10 +12,14 @@ vi.mock("@app/lib/api/audit/workos_audit", async () => {
 });
 
 import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
+import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { Err, Ok } from "@app/types/shared/result";
+import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 
 const CONNECTOR_ID = "1234";
@@ -46,6 +50,14 @@ async function setupTest({
   mockSlackBotDataSource({ connected: true });
 
   return setup;
+}
+
+async function createSpace(workspace: WorkspaceType) {
+  const space = await SpaceFactory.regular(workspace);
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const [enriched] = await SpaceResource.batchToJSONEnriched(auth, [space]);
+
+  return enriched;
 }
 
 function pokeSlackWorkflowsRequest(
@@ -79,8 +91,9 @@ describe("GET /api/poke/workspaces/[wId]/slack-workflows", () => {
     expect(whitelist).not.toHaveBeenCalled();
   });
 
-  it("lists the allowed workflows with their group names", async () => {
+  it("lists the allowed workflows with their spaces", async () => {
     const { workspace, globalGroup } = await setupTest();
+    const space = await createSpace(workspace);
     vi.spyOn(
       ConnectorsAPI.prototype,
       "getSlackBotSummoningWhitelist"
@@ -89,7 +102,7 @@ describe("GET /api/poke/workspaces/[wId]/slack-workflows", () => {
         bots: [
           {
             botName: BOT_NAME,
-            groupIds: [globalGroup.sId],
+            groupIds: [...space.groupIds, globalGroup.sId],
             createdAt: CREATED_AT,
           },
         ],
@@ -106,7 +119,7 @@ describe("GET /api/poke/workspaces/[wId]/slack-workflows", () => {
       workflows: [
         {
           botName: BOT_NAME,
-          groups: [{ sId: globalGroup.sId, name: globalGroup.name }],
+          spaces: [{ sId: space.sId, name: space.name }],
           createdAt: CREATED_AT,
         },
       ],
