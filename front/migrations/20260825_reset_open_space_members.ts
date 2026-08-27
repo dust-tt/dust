@@ -54,11 +54,14 @@ async function resetWorkspaceOpenSpaceMembers(
     return;
   }
 
-  // Resolved in bulk rather than per space: one query for the groups, one for their memberships.
+  // Resolved in bulk rather than per space: one query for the grants, one for the groups, one for
+  // their memberships.
+  const referencesBySpaceModelId =
+    await SpaceResource.listGrantReferencesBySpaceModelId(openRegularSpaces);
   const groupModelIds = [
     ...new Set(
-      openRegularSpaces.flatMap((space) =>
-        space.groups.map((ref) => ref.groupId)
+      [...referencesBySpaceModelId.values()].flatMap((references) =>
+        references.map((ref) => ref.groupId)
       )
     ),
   ];
@@ -77,7 +80,9 @@ async function resetWorkspaceOpenSpaceMembers(
 
   const spaceByGroupModelId = new Map(
     openRegularSpaces.flatMap((space) =>
-      space.groups.map((ref) => [ref.groupId, space] as const)
+      (referencesBySpaceModelId.get(space.id) ?? []).map(
+        (ref) => [ref.groupId, space] as const
+      )
     )
   );
 
