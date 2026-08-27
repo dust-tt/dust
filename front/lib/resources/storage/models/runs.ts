@@ -1,4 +1,5 @@
 import type { UsageType } from "@app/lib/metronome/types";
+import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
@@ -96,6 +97,11 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
 
   declare costMicroUsd: number;
   declare isBatch: boolean;
+  // Processing tier the provider reported having billed the response at. Like
+  // isBatch and region, it changes the token prices we are charged, so it is
+  // persisted to keep run usages reconcilable against the provider bill. Null
+  // when the provider does not report a tier (or for legacy rows).
+  declare serviceTier: ServiceTier | null;
 
   // Immutable billing usage type (free / user / programmatic), set when the
   // usage row is created. Nullable only for legacy rows written before every
@@ -158,6 +164,11 @@ RunUsageModel.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       allowNull: false,
+    },
+    serviceTier: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
     },
     usageType: {
       type: DataTypes.STRING,
