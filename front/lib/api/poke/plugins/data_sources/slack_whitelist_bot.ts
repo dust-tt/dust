@@ -152,10 +152,8 @@ export const slackWhitelistBotPlugin = createPlugin({
     }
 
     return new Ok({
-      display: "textWithLink",
+      display: "text",
       value: `Successfully whitelisted Slack bot "${botName}" for agent summoning in the selected groups and the Workspace group.`,
-      link: getMetabaseUrl(resource.connectorId),
-      linkText: "View all whitelisted bots for this workspace",
     });
   },
 });
