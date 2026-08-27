@@ -5,6 +5,10 @@ import {
   MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH,
   parseFrameManifest,
 } from "@app/types/api/frame_manifest";
+import {
+  DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+  DEFAULT_SANDBOX_FUNCTION_STAKE,
+} from "@app/types/api/sandbox_functions";
 import { describe, expect, it } from "vitest";
 
 const MANIFEST = {
@@ -17,16 +21,6 @@ const FUNCTION = {
   name: "add-task",
   description: "Add a task.",
   entryPoint: "functions/add_task.ts",
-  inputSchema: {
-    type: "object",
-    properties: { title: { type: "string" } },
-    required: ["title"],
-  },
-  outputSchema: {
-    type: "object",
-    properties: { id: { type: "string" } },
-    required: ["id"],
-  },
 };
 
 describe("FrameManifestSchema", () => {
@@ -56,7 +50,28 @@ describe("FrameManifestSchema", () => {
 
     expect(parsed.success).toBe(true);
     if (parsed.success) {
-      expect(parsed.data.functions).toEqual([FUNCTION]);
+      expect(parsed.data.functions).toEqual([
+        {
+          ...FUNCTION,
+          executionMode: DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+          defaultStake: DEFAULT_SANDBOX_FUNCTION_STAKE,
+        },
+      ]);
+    }
+  });
+
+  it("parses explicit function execution settings", () => {
+    const parsed = FrameManifestSchema.safeParse({
+      ...MANIFEST,
+      functions: [{ ...FUNCTION, executionMode: "fast", defaultStake: "high" }],
+    });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.functions[0]).toMatchObject({
+        executionMode: "fast",
+        defaultStake: "high",
+      });
     }
   });
 
@@ -102,20 +117,6 @@ describe("FrameManifestSchema", () => {
         {
           ...FUNCTION,
           description: "a".repeat(MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH + 1),
-        },
-      ],
-    });
-
-    expect(parsed.success).toBe(false);
-  });
-
-  it("rejects invalid function contracts", () => {
-    const parsed = FrameManifestSchema.safeParse({
-      ...MANIFEST,
-      functions: [
-        {
-          ...FUNCTION,
-          inputSchema: { type: "unsupported" },
         },
       ],
     });

@@ -1,12 +1,13 @@
 import {
-  isJSONSchemaObject,
-  validateJsonSchema,
-} from "@app/lib/utils/json_schemas";
-import { SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX } from "@app/types/api/sandbox_functions";
+  DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+  DEFAULT_SANDBOX_FUNCTION_STAKE,
+  SANDBOX_FUNCTION_EXECUTION_MODES,
+  SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX,
+  SANDBOX_FUNCTION_STAKES,
+} from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -37,11 +38,6 @@ const FrameRelativePathSchema = z
       "Path must be relative to the Frame folder, using forward slashes and no '.', '..' or empty segments.",
   });
 
-const JsonSchemaSchema = z.custom<JSONSchema>(
-  (value) => isJSONSchemaObject(value) && validateJsonSchema(value).isValid,
-  { message: "Invalid JSON schema" }
-);
-
 export const FrameFunctionManifestSchema = z.object({
   name: z
     .string()
@@ -52,8 +48,12 @@ export const FrameFunctionManifestSchema = z.object({
     }),
   description: z.string().max(MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH),
   entryPoint: FrameRelativePathSchema,
-  inputSchema: JsonSchemaSchema,
-  outputSchema: JsonSchemaSchema,
+  executionMode: z
+    .enum(SANDBOX_FUNCTION_EXECUTION_MODES)
+    .default(DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE),
+  defaultStake: z
+    .enum(SANDBOX_FUNCTION_STAKES)
+    .default(DEFAULT_SANDBOX_FUNCTION_STAKE),
 });
 
 export const FrameSourceManifestSchema = z
