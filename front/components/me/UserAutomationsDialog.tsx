@@ -23,7 +23,7 @@ export function UserAutomationsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* The portal has no forceMount, so this subtree unmounts when the dialog
        * closes. The table's SWR hooks need no `disabled` gating. */}
-      <DialogContent size="2xl">
+      <DialogContent size="2xl" className="sm:min-h-[768px]">
         <DialogHeader>
           <DialogTitle>Automations</DialogTitle>
         </DialogHeader>
