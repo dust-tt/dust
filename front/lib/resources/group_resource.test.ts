@@ -90,7 +90,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 function getCacheKeyForUser(userId: number, workspaceId: number): string {
   // The function name is empty because an anonymous arrow function is passed to cacheWithRedis
-  return `cacheWithRedis--groups:user:${userId}:workspace:${workspaceId}`;
+  return `cacheWithRedis--groups:v2:user:${userId}:workspace:${workspaceId}`;
 }
 
 function getCacheKeyForWorkspaceGroupsFromSystemKey(
@@ -147,26 +147,30 @@ describe("GroupResource", () => {
         users: [user.toJSON()],
       });
 
-      const groupIds = await GroupResource.dangerouslyListUserGroupsForAuth({
-        user,
-        workspace,
-      });
+      const { globalGroupModelId, groupModelIds } =
+        await GroupResource.dangerouslyListUserGroupsForAuth({
+          user,
+          workspace,
+        });
 
-      expect(groupIds.length).toBe(2);
-      expect(groupIds).toContain(globalGroup.id);
-      expect(groupIds).toContain(regularGroup.id);
+      expect(groupModelIds.length).toBe(2);
+      expect(groupModelIds).toContain(globalGroup.id);
+      expect(groupModelIds).toContain(regularGroup.id);
+      expect(globalGroupModelId).toBe(globalGroup.id);
     });
 
     it("returns global group for non-member (no membership check)", async () => {
       const nonMember = await UserFactory.basic();
 
-      const groupIds = await GroupResource.dangerouslyListUserGroupsForAuth({
-        user: nonMember,
-        workspace,
-      });
+      const { globalGroupModelId, groupModelIds } =
+        await GroupResource.dangerouslyListUserGroupsForAuth({
+          user: nonMember,
+          workspace,
+        });
 
-      expect(groupIds.length).toBe(1);
-      expect(groupIds).toContain(globalGroup.id);
+      expect(groupModelIds.length).toBe(1);
+      expect(groupModelIds).toContain(globalGroup.id);
+      expect(globalGroupModelId).toBe(globalGroup.id);
     });
 
     it("throws when global group is missing", async () => {
@@ -396,14 +400,15 @@ describe("GroupResource", () => {
         users: [user.toJSON()],
       });
 
-      const groupIds = await GroupResource.dangerouslyListUserGroupsForAuth({
-        user,
-        workspace,
-      });
+      const { groupModelIds } =
+        await GroupResource.dangerouslyListUserGroupsForAuth({
+          user,
+          workspace,
+        });
 
-      expect(groupIds.length).toBe(2);
-      expect(groupIds).toContain(globalGroup.id);
-      expect(groupIds).toContain(regularGroup.id);
+      expect(groupModelIds.length).toBe(2);
+      expect(groupModelIds).toContain(globalGroup.id);
+      expect(groupModelIds).toContain(regularGroup.id);
     });
 
     it("populates cache on first call", async () => {

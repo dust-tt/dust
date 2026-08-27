@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import logger from "@app/logger/logger";
 import type { SpaceCtx } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { createMiddleware } from "hono/factory";
@@ -89,23 +90,41 @@ export function withSpace(options: WithSpaceOptions) {
       });
     }
 
-    if (await space.isRestricted(auth)) {
-      void emitAuditLogEvent({
-        auth,
-        action: "space.accessed",
-        targets: [
-          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-          buildAuditLogTarget("space", space),
-        ],
-        context: getAuditLogContext(auth),
-        metadata: {
-          space_name: space.name,
-          space_kind: space.kind,
-          is_restricted: "true",
-          access_method: deriveAccessMethod(auth),
+    // The `space.accessed` audit log must not delay the request: resolving openness costs a query,
+    // and the emit is best-effort. Run the whole block off the critical path.
+    void (async () => {
+      // Only regular/project spaces are "restricted" (member-only); global and conversations spaces
+      // are workspace-wide and system is admin-only, so none of those is audited here. This is not
+      // simply `!isOpen`: a system space is not open, but is not restricted either.
+      const isRestricted =
+        (space.isRegular() || space.isProject()) && !(await space.isOpen(auth));
+      if (isRestricted) {
+        void emitAuditLogEvent({
+          auth,
+          action: "space.accessed",
+          targets: [
+            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+            buildAuditLogTarget("space", space),
+          ],
+          context: getAuditLogContext(auth),
+          metadata: {
+            space_name: space.name,
+            space_kind: space.kind,
+            is_restricted: "true",
+            access_method: deriveAccessMethod(auth),
+          },
+        });
+      }
+    })().catch((err) => {
+      logger.error(
+        {
+          err,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          spaceId: space.sId,
         },
-      });
-    }
+        "Failed to emit space.accessed audit log"
+      );
+    });
 
     ctx.set("space", space);
     await next();

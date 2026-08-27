@@ -2152,28 +2152,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   isRegular() {
     return this.kind === "regular";
   }
+
   isProject() {
     return this.kind === "project";
-  }
-
-  async isRegularAndRestricted(auth: Authenticator): Promise<boolean> {
-    return this.isRegular() && !(await this.isOpen(auth));
-  }
-
-  async isProjectAndRestricted(auth: Authenticator): Promise<boolean> {
-    return this.isProject() && !(await this.isOpen(auth));
-  }
-
-  async isRegularAndOpen(auth: Authenticator): Promise<boolean> {
-    return this.isRegular() && (await this.isOpen(auth));
-  }
-
-  // Whether the space is restricted (its data is visible only to its members). Only regular and
-  // project spaces can be restricted; the unique kinds (`global`/`conversations` are workspace-wide,
-  // `system` is admin-only and not a membership space) are never "restricted" in this sense. Note
-  // this is NOT `!isOpen()`: a `system` space is not open but is not restricted either.
-  async isRestricted(auth: Authenticator): Promise<boolean> {
-    return (this.isRegular() || this.isProject()) && !(await this.isOpen(auth));
   }
 
   // A space is open when the workspace global group holds a `reader` grant on it (that grant is what
@@ -2197,8 +2178,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return openSpaceModelIds;
     }
 
-    const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
-    if (globalGroupRes.isErr()) {
+    const globalGroupModelId = await auth.getGlobalGroupModelId();
+    if (globalGroupModelId === null) {
       return openSpaceModelIds;
     }
 
@@ -2208,7 +2189,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         resourceType: "space",
         resourceId: spaces.map((space) => space.id),
-        groupId: globalGroupRes.value.id,
+        groupId: globalGroupModelId,
         grantType: "reader",
       },
     });

@@ -129,6 +129,7 @@ export interface AuthenticatorType {
   attributionKey?: { id: ModelId; name: string };
   clientIp?: string;
   permissions?: GroupPermissionsJSON;
+  globalGroupModelId?: ModelId | null;
 }
 
 /**
@@ -154,6 +155,8 @@ export class Authenticator {
   _clientIp?: string;
   // Governance grants the caller holds, resolved by the factory (see `resolvePermissions`)
   _permissions: GroupPermissions;
+  // The workspace global group's model id. `undefined` = not resolved yet (resolved lazily on first use)
+  _globalGroupModelId: ModelId | null | undefined;
 
   // Should only be called from the static methods below.
   constructor({
@@ -168,6 +171,7 @@ export class Authenticator {
     providersHealth,
     clientIp,
     permissions,
+    globalGroupModelId,
   }: {
     workspace?: WorkspaceResource | null;
     user?: UserResource | null;
@@ -180,6 +184,7 @@ export class Authenticator {
     providersHealth?: ProvidersHealth | null;
     clientIp?: string;
     permissions: GroupPermissions;
+    globalGroupModelId?: ModelId | null;
   }) {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._workspace = workspace || null;
@@ -195,6 +200,7 @@ export class Authenticator {
     this._providersHealth = providersHealth ?? null;
     this._clientIp = clientIp;
     this._permissions = permissions;
+    this._globalGroupModelId = globalGroupModelId;
 
     if (user) {
       tracer.setUser({
@@ -271,11 +277,12 @@ export class Authenticator {
   }): Promise<{
     role: RoleType;
     groupModelIds: ModelId[];
+    globalGroupModelId: ModelId | null;
     subscription: SubscriptionResource | null;
   }> {
     const lightWorkspace = renderLightWorkspaceType({ workspace });
 
-    const [role, groupModelIds, subscription] = await Promise.all([
+    const [role, authGroups, subscription] = await Promise.all([
       MembershipResource.getActiveRoleForUserInWorkspace({
         user,
         workspace: lightWorkspace,
@@ -292,9 +299,11 @@ export class Authenticator {
       ),
     ]);
 
+    const isMember = Authenticator.isMember(role);
     return {
       role,
-      groupModelIds: Authenticator.isMember(role) ? groupModelIds : [],
+      groupModelIds: isMember ? authGroups.groupModelIds : [],
+      globalGroupModelId: isMember ? authGroups.globalGroupModelId : null,
       subscription,
     };
   }
@@ -319,6 +328,7 @@ export class Authenticator {
 
       let role = "none" as RoleType;
       let groupModelIds: ModelId[] = [];
+      let globalGroupModelId: ModelId | null = null;
       let subscription: SubscriptionResource | null = null;
 
       if (user && workspace) {
@@ -328,6 +338,7 @@ export class Authenticator {
         });
         role = authData.role;
         groupModelIds = authData.groupModelIds;
+        globalGroupModelId = authData.globalGroupModelId;
         subscription = authData.subscription;
       }
 
@@ -343,6 +354,7 @@ export class Authenticator {
         user,
         role,
         groupModelIds,
+        globalGroupModelId,
         subscription,
         providersHealth,
         permissions: await this.resolvePermissions({
@@ -382,13 +394,20 @@ export class Authenticator {
     // Reload group memberships for user-backed auths. Key auths carry a fixed group set derived
     // from the key (not from live membership), so their `_groupModelIds` are left as-is.
     if (this._user) {
-      this._groupModelIds = Authenticator.isMember(this._role)
-        ? await GroupResource.dangerouslyListUserGroupsForAuth({
+      if (Authenticator.isMember(this._role)) {
+        const authGroups = await GroupResource.dangerouslyListUserGroupsForAuth(
+          {
             user: this._user,
             workspace: renderLightWorkspaceType({ workspace: this._workspace }),
             transaction,
-          })
-        : [];
+          }
+        );
+        this._groupModelIds = authGroups.groupModelIds;
+        this._globalGroupModelId = authGroups.globalGroupModelId;
+      } else {
+        this._groupModelIds = [];
+        this._globalGroupModelId = null;
+      }
     }
 
     // Re-resolve grants from the current group set. Grants on those groups can change (backfill,
@@ -476,6 +495,7 @@ export class Authenticator {
 
     let role: RoleType = "none";
     let groupModelIds: ModelId[] = [];
+    let globalGroupModelId: ModelId | null = null;
     let subscription: SubscriptionResource | null = null;
 
     if (user && workspace) {
@@ -486,6 +506,7 @@ export class Authenticator {
       });
       role = authData.role;
       groupModelIds = authData.groupModelIds;
+      globalGroupModelId = authData.globalGroupModelId;
       subscription = authData.subscription;
     }
 
@@ -501,6 +522,7 @@ export class Authenticator {
       user,
       role,
       groupModelIds,
+      globalGroupModelId,
       subscription,
       providersHealth,
       permissions: await this.resolvePermissions({
@@ -1190,10 +1212,11 @@ export class Authenticator {
     }
 
     // Membership already verified above (activeMembership found).
-    const groupModelIds = await GroupResource.dangerouslyListUserGroupsForAuth({
-      user,
-      workspace: owner,
-    });
+    const { groupModelIds, globalGroupModelId } =
+      await GroupResource.dangerouslyListUserGroupsForAuth({
+        user,
+        workspace: owner,
+      });
 
     return new Authenticator({
       authMethod: auth.authMethod(),
@@ -1201,6 +1224,7 @@ export class Authenticator {
       // We limit scope to a user role.
       role: "user",
       groupModelIds,
+      globalGroupModelId,
       user,
       subscription: auth._subscription,
       workspace: auth._workspace,
@@ -1492,6 +1516,27 @@ export class Authenticator {
     return this._groupModelIds;
   }
 
+  // The workspace global group's model id, used by openness checks (see
+  // `SpaceResource.listOpenSpaceModelIds`). Resolved once by the factory from the caller's group
+  // fetch and cached on the instance; falls back to a lazy query for auths that did not provide it
+  // (e.g. system/internal auths). Returns null for a non-member or an auth with no workspace — a
+  // workspace always has a global group, so null is about this auth, not a missing group.
+  async getGlobalGroupModelId(): Promise<ModelId | null> {
+    if (this._globalGroupModelId !== undefined) {
+      return this._globalGroupModelId;
+    }
+    if (!this._workspace) {
+      this._globalGroupModelId = null;
+      return null;
+    }
+
+    const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(this);
+    this._globalGroupModelId = globalGroupRes.isOk()
+      ? globalGroupRes.value.id
+      : null;
+    return this._globalGroupModelId;
+  }
+
   hasGroup(groupId: string): boolean {
     const workspaceId = this._workspace?.id;
     // Group are always tied to a workspace, so we can't have a group without a workspace.
@@ -1737,6 +1782,7 @@ export class Authenticator {
       attributionKey: this._attributionKey,
       clientIp: this._clientIp,
       permissions: this._permissions.toJSON(),
+      globalGroupModelId: this._globalGroupModelId,
     };
   }
 
@@ -1790,6 +1836,7 @@ export class Authenticator {
       attributionKey: authType.attributionKey,
       providersHealth,
       clientIp: authType.clientIp,
+      globalGroupModelId: authType.globalGroupModelId,
       permissions: authType.permissions
         ? GroupPermissions.fromJSON(authType.permissions)
         : // Payloads serialized before governance grants existed (in-flight Temporal workflows

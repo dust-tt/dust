@@ -130,9 +130,7 @@ describe("governance seed script integration test", () => {
 
     // The restricted space holds the current user and Bob.
     expect(restrictedSpace).toBeDefined();
-    expect(await restrictedSpace!.isRegularAndRestricted(authenticator)).toBe(
-      true
-    );
+    expect(await restrictedSpace!.isOpen(authenticator)).toBe(false);
     const spaceMembers =
       await restrictedSpace!.fetchDistinctActiveManualGroupMembers(
         authenticator
@@ -179,9 +177,7 @@ describe("governance seed script integration test", () => {
 
     // The private space holds Alfred only: the current user is not a member.
     expect(privateSpace).toBeDefined();
-    expect(await privateSpace!.isRegularAndRestricted(authenticator)).toBe(
-      true
-    );
+    expect(await privateSpace!.isOpen(authenticator)).toBe(false);
     const privateSpaceMembers =
       await privateSpace!.fetchDistinctActiveManualGroupMembers(authenticator);
     expect(new Set(privateSpaceMembers.map((m) => m.sId))).toEqual(
