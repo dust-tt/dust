@@ -2,7 +2,6 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { ConfirmContext } from "@app/components/Confirm";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
-import { UsagePageRedesign } from "@app/components/pages/workspace/UsagePageRedesign";
 import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import { BulkEditSpendLimitModal } from "@app/components/workspace/BulkEditSpendLimitModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
@@ -212,7 +211,7 @@ function CreditPoolProgressBar({
 
 const DEFAULT_PAGE_SIZE = 25;
 
-function UsagePageLegacy() {
+export function UsagePageRedesign() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const router = useAppRouter();
@@ -316,6 +315,7 @@ function UsagePageLegacy() {
     []
   );
   const isWorkspaceAdmin = isAdmin(owner);
+  const modelsPickerEnabled = hasFeature("models_picker") && isWorkspaceAdmin;
   const [membersTab, setMembersTab] = useState<"members" | "requests">(
     "members"
   );
@@ -565,19 +565,19 @@ function UsagePageLegacy() {
 
   const { tiers: modelTiersCatalog } = useModelTiers({
     owner,
-    disabled: !isWorkspaceAdmin,
+    disabled: !modelsPickerEnabled,
   });
   const { users: userAllowedModelTiers } = useUserAllowedModelTiers({
     owner,
-    disabled: !isWorkspaceAdmin,
+    disabled: !modelsPickerEnabled,
   });
   const { groups: groupAllowedModelTiers } = useGroupAllowedModelTiers({
     owner,
-    disabled: !isWorkspaceAdmin,
+    disabled: !modelsPickerEnabled,
   });
   const { maxTierName: workspaceMaxTierName } = useWorkspaceAllowedModelTiers({
     owner,
-    disabled: !isWorkspaceAdmin,
+    disabled: !modelsPickerEnabled,
   });
   const modelTierDefinitionByName = useMemo(
     () => buildModelTierDefinitionByName(modelTiersCatalog),
@@ -1041,7 +1041,7 @@ function UsagePageLegacy() {
       readOnly={isReadOnly}
       seatActionsDisabled={isSubscriptionCancelled}
       showSpendLimit={!isFreePlanWorkspace}
-      showModelTiersColumn={isWorkspaceAdmin}
+      showModelTiersColumn={modelsPickerEnabled}
       userModelTierSelectionByUserId={userModelTierSelectionByUserId}
       userAllowedModelTiersByUserId={userAllowedModelTiersByUserId}
       groupModelTiersByGroupId={groupModelTiersByGroupId}
@@ -1373,7 +1373,7 @@ function UsagePageLegacy() {
                   {membersTab === "members" && (
                     <div className="flex flex-row items-center gap-2">
                       {groupsFilterDropdown}
-                      {isWorkspaceAdmin && groupFilter && (
+                      {modelsPickerEnabled && groupFilter && (
                         <GroupModelTierPickerDropdown
                           owner={owner}
                           groupId={groupFilter}
@@ -1387,8 +1387,8 @@ function UsagePageLegacy() {
                 <div className="flex flex-col gap-2 pt-2">
                   {membersTab === "members" ? (
                     <>
-                      {membersTable}
                       {selectionBanner}
+                      {membersTable}
                     </>
                   ) : (
                     <UpgradeRequestsTable
@@ -1409,7 +1409,7 @@ function UsagePageLegacy() {
             <GroupsUsageTable
               owner={owner}
               readOnly={isReadOnly}
-              showModelTiersColumn={isWorkspaceAdmin}
+              showModelTiersColumn={modelsPickerEnabled}
             />
           </TabsContent>
 
@@ -1427,7 +1427,7 @@ function UsagePageLegacy() {
                   readOnly={isReadOnly}
                   hasPool={hasPool}
                 />
-                {isWorkspaceAdmin && (
+                {modelsPickerEnabled && (
                   <ModelTiersSettingsCard owner={owner} readOnly={isReadOnly} />
                 )}
                 <LockedSection
@@ -1502,14 +1502,4 @@ function UsagePageLegacy() {
       />
     </>
   );
-}
-
-export function UsagePage() {
-  const { hasFeature } = useFeatureFlags();
-
-  if (hasFeature("usage_page_redesign")) {
-    return <UsagePageRedesign />;
-  }
-
-  return <UsagePageLegacy />;
 }

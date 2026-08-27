@@ -459,6 +459,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "tdraier",
   },
+  usage_page_redesign: {
+    description:
+      "Show the redesigned Usage page header (top-up placement, breakdown-in-analytics link, credit pool separator) while it's being rolled out.",
+    stage: "dust_only",
+    owner: "avervaet",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";
