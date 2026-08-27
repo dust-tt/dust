@@ -21,6 +21,7 @@ import {
   fetchSkillExportRows,
   SKILL_EXPORT_HEADERS,
 } from "@app/lib/api/analytics/skills_export";
+import { fetchUsageMetricsExportRows } from "@app/lib/api/analytics/usage_metrics_export";
 import type { UserExportRow } from "@app/lib/api/analytics/users_export";
 import {
   fetchUserExportRows,
@@ -28,7 +29,6 @@ import {
 } from "@app/lib/api/analytics/users_export";
 import { fetchActiveUsersMetrics } from "@app/lib/api/assistant/observability/active_users_metrics";
 import { fetchContextOriginDailyBreakdown } from "@app/lib/api/assistant/observability/context_origin";
-import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import {
   fetchAvailableSkills,
   fetchSkillUsageMetrics,
@@ -38,7 +38,6 @@ import {
   fetchToolUsageMetrics,
 } from "@app/lib/api/assistant/observability/tool_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
-import { formatDateFromMillis } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
@@ -199,7 +198,7 @@ export async function exportTable({
 }): Promise<Result<ExportTableData, Error>> {
   switch (table) {
     case "usage_metrics":
-      return exportUsageMetrics({ startDate, endDate, timezone, owner });
+      return exportUsageMetrics({ auth, startDate, endDate, timezone });
     case "active_users":
       return exportActiveUsers({ startDate, endDate, timezone, owner });
     case "source":
@@ -276,28 +275,22 @@ function buildExportConsumptionScopeQuery(
 }
 
 async function exportUsageMetrics({
+  auth,
   startDate,
   endDate,
   timezone,
-  owner,
 }: {
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
-  owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
+  const baseQuery = buildExportConsumptionScopeQuery(auth, {
     startDate,
     endDate,
   });
 
-  const result = await fetchMessageMetrics(
-    baseQuery,
-    "day",
-    ["conversations", "activeUsers"] as const,
-    timezone
-  );
+  const result = await fetchUsageMetricsExportRows(baseQuery, timezone);
 
   if (result.isErr()) {
     return new Err(
@@ -305,17 +298,10 @@ async function exportUsageMetrics({
     );
   }
 
-  const rows: UsageMetricsRow[] = result.value.map((point) => ({
-    date: formatDateFromMillis(point.timestamp, timezone),
-    messages: point.count,
-    conversations: point.conversations,
-    activeUsers: point.activeUsers,
-  }));
-
   return new Ok({
     table: "usage_metrics",
     headers: USAGE_METRICS_HEADERS,
-    rows,
+    rows: result.value,
   });
 }
 
