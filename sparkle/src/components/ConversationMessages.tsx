@@ -106,16 +106,28 @@ export const ConversationMessageContent = React.forwardRef<
             ref={ref}
             className={cn(
               "flex min-w-0 flex-col gap-1",
+              // Fixed radius equal to half the single-line bubble height
+              // (py-2 + text-base leading-6 = 40px), so a one-line message
+              // still reads as a full pill while a wrapped, multi-line
+              // message degrades to a normal rounded rectangle instead of
+              // the corners ballooning with rounded-full.
               type === "user" &&
                 cn(
-                  "rounded-full border border-gray-100 bg-gray-50 px-3 py-2",
+                  "rounded-[20px] border border-gray-100 bg-gray-50 px-3 py-2",
                   CARD_SHADOW
                 ),
               className
             )}
             {...props}
           >
-            <div className="text-base text-foreground">{children}</div>
+            <div
+              className={cn(
+                "min-w-0 break-words text-base text-foreground",
+                type === "user" && "text-balance"
+              )}
+            >
+              {children}
+            </div>
             {type === "agent" && citations && citations.length > 0 && (
               <CitationGrid>{citations}</CitationGrid>
             )}
