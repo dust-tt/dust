@@ -22,8 +22,7 @@
 }
 
 /* Fixed heights (was theme.extend.height). Defined as `@utility` because v4's
-   `h-*` utilities are otherwise driven by the dynamic spacing scale, plus
-   matching min-height floors for Dialog `grow`. */
+   `h-*` utilities are otherwise driven by the dynamic spacing scale. */
 @utility h-175 {
   height: 700px;
 }
@@ -38,18 +37,6 @@
 }
 @utility h-2xl {
   height: 1024px;
-}
-@utility min-h-md {
-  min-height: 448px;
-}
-@utility min-h-lg {
-  min-height: 576px;
-}
-@utility min-h-xl {
-  min-height: 768px;
-}
-@utility min-h-2xl {
-  min-height: 1024px;
 }
 
 /* Rainbow gradient background (was theme.extend.backgroundImage). */

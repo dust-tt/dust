@@ -65,13 +65,14 @@ const heightClasses: Record<DialogHeightType, string> = {
 };
 
 // With grow, the fixed height becomes a minimum: the h-* class is not
-// emitted, min-h keeps the height's size as the floor, and the base
-// max-h-[90vh] still caps the growth.
+// emitted and min-h keeps the height's size as the floor. min-height wins
+// over max-height in CSS, so the floor is itself capped at 90vh to never
+// exceed the base max-h-[90vh] on short viewports.
 const growHeightClasses: Record<DialogHeightType, string> = {
-  md: "sm:min-h-md",
-  lg: "sm:min-h-lg",
-  xl: "sm:min-h-xl",
-  "2xl": "sm:min-h-2xl",
+  md: "sm:min-h-[min(448px,90vh)]",
+  lg: "sm:min-h-[min(576px,90vh)]",
+  xl: "sm:min-h-[min(768px,90vh)]",
+  "2xl": "sm:min-h-[min(1024px,90vh)]",
 };
 
 const DIALOG_VARIANTS = ["default", "command"] as const;
