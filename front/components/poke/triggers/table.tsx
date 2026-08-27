@@ -109,7 +109,7 @@ export function TriggerDataTable({ owner }: TriggerDataTableProps) {
     if (nextStatus === "disabled") {
       const confirmed = await confirm({
         title: "Disable this automation?",
-        message: `"${trigger.name}" will stop running for ${trigger.editor.name}. A manager or admin will be able to re-enable it.`,
+        message: `"${trigger.name}" will stop running for ${trigger.owner.name}. A manager or admin will be able to re-enable it.`,
         validateVariant: "warning",
         validateLabel: "Disable",
         cancelLabel: "Cancel",

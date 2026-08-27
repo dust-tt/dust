@@ -112,25 +112,25 @@ function RunningCell({ row }: { row: TriggerRowData }) {
   }
 }
 
-function EditorCell({ editor }: { editor: AutomationTriggerRow["editor"] }) {
+function OwnerCell({ owner }: { owner: AutomationTriggerRow["owner"] }) {
   return (
     <Tooltip
       label={
         <div className="flex flex-col">
-          <span>{editor.name}</span>
-          {editor.email && <span>{editor.email}</span>}
+          <span>{owner.name}</span>
+          {owner.email && <span>{owner.email}</span>}
         </div>
       }
       tooltipTriggerAsChild
       trigger={
         <div className="flex gap-2 items-center">
           <Avatar
-            name={editor.name}
-            visual={editor.pictureUrl ?? undefined}
+            name={owner.name}
+            visual={owner.pictureUrl ?? undefined}
             size="xs"
             isRounded
           />
-          <span className="text-sm truncate">{editor.name}</span>
+          <span className="text-sm truncate">{owner.name}</span>
         </div>
       }
     />
@@ -165,13 +165,13 @@ function buildColumns({
     ...(showSelectionColumn ? [rowSelectionColumn()] : []),
     nameColumn(),
     {
-      id: "editor",
-      header: "Editor",
+      id: "owner",
+      header: "Owner",
       enableSorting: false,
-      meta: { className: "w-36", headerAlign: "center" },
+      meta: { className: "w-36", headerAlign: "left" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-start">
-          <EditorCell editor={info.row.original.editor} />
+          <OwnerCell owner={info.row.original.owner} />
         </DataTable.CellContent>
       ),
     },
@@ -323,7 +323,7 @@ export function AutomationsTriggersTable({
       if (nextStatus === "disabled") {
         const confirmed = await confirm({
           title: "Disable this automation?",
-          message: `"${trigger.name}" will stop running for ${trigger.editor.name}. A manager or admin will be able to re-enable it.`,
+          message: `"${trigger.name}" will stop running for ${trigger.owner.name}. A manager or admin will be able to re-enable it.`,
           validateVariant: "warning",
           validateLabel: "Disable",
           cancelLabel: "Cancel",
