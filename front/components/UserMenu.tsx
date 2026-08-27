@@ -24,7 +24,12 @@ import { serializeMention } from "@app/lib/mentions/format";
 import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { useUserMetadata } from "@app/lib/swr/user";
-import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
+import type { TrackingAction } from "@app/lib/tracking";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
@@ -85,10 +90,14 @@ interface UserMenuProps {
   creditUsageState?: CreditUsageState | null;
 }
 
-function trackUserMenuEvent(item: string) {
+function trackUserMenuEvent(
+  item: string,
+  action: TrackingAction = TRACKING_ACTIONS.CLICK
+) {
   trackEvent({
     area: TRACKING_AREAS.NAVIGATION,
     object: "user_menu_item",
+    action,
     extra: { item },
   });
 }
@@ -368,7 +377,13 @@ export function UserMenu({
             </>
           )}
 
-          <DropdownMenuSub>
+          <DropdownMenuSub
+            onOpenChange={(open) => {
+              if (open) {
+                trackUserMenuEvent("help", TRACKING_ACTIONS.OPEN);
+              }
+            }}
+          >
             <DropdownMenuSubTrigger label="Help" icon={Heart} />
             <DropdownMenuPortal>
               <DropdownMenuSubContent>
