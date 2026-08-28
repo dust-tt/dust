@@ -19,9 +19,15 @@ vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
 }));
 
 // Mock the ancestor resume so we can assert on it without launching workflows
-vi.mock("@app/lib/api/assistant/conversation/retry_blocked_actions", () => ({
-  retryBlockedActions: vi.fn(),
-}));
+vi.mock(
+  "@app/lib/api/assistant/conversation/retry_blocked_actions",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@app/lib/api/assistant/conversation/retry_blocked_actions")
+    >()),
+    retryBlockedActions: vi.fn(),
+  })
+);
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
