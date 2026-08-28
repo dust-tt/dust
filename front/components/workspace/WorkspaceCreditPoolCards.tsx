@@ -78,6 +78,48 @@ export function WorkspaceCreditPoolValueCards({
   );
 }
 
+interface WorkspaceExcessCreditsValueCardProps {
+  excessConsumedCredits: number | null;
+  currentCycleStartMs: number | null;
+  currentCycleEndMs: number | null;
+  isLoading: boolean;
+}
+
+// For workspaces with no credit pool (PAYG-only, "excess credit
+// consumption"): the pool's "remaining"/"consumed this cycle" pair doesn't
+// apply since there's nothing prepaid, so this shows a single figure instead.
+export function WorkspaceExcessCreditsValueCard({
+  excessConsumedCredits,
+  currentCycleStartMs,
+  currentCycleEndMs,
+  isLoading,
+}: WorkspaceExcessCreditsValueCardProps) {
+  const cycleDayLabel = formatCycleDayLabel(
+    currentCycleStartMs,
+    currentCycleEndMs
+  );
+  return (
+    <ValueCard
+      title="Consumed this cycle"
+      isLoading={isLoading}
+      content={
+        <div className="flex items-baseline gap-2">
+          <div className="truncate text-2xl text-foreground">
+            {typeof excessConsumedCredits === "number"
+              ? formatCredits(excessConsumedCredits)
+              : "—"}
+          </div>
+          {cycleDayLabel && (
+            <span className="copy-sm text-muted-foreground">
+              {cycleDayLabel}
+            </span>
+          )}
+        </div>
+      }
+    />
+  );
+}
+
 interface WorkspaceCreditPoolCycleHistoryTableProps {
   cycleBreakdown: AwuPoolCycleBreakdown[];
 }

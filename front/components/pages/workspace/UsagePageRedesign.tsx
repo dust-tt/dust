@@ -27,6 +27,7 @@ import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettings
 import {
   WorkspaceCreditPoolCycleHistoryTable,
   WorkspaceCreditPoolValueCards,
+  WorkspaceExcessCreditsValueCard,
 } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
@@ -474,6 +475,8 @@ export function UsagePageRedesign() {
     currentCycleStartMs,
     currentCycleEndMs,
     cycleBreakdown,
+    excessConsumedCredits,
+    excessCycleBreakdown,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
     mutateAwuPoolSummary,
@@ -903,6 +906,10 @@ export function UsagePageRedesign() {
 
   const initialTotalCredits = creditUsage?.capCredits ?? totalActiveCredits;
   const hasPool = totalActiveCredits > 0;
+  // No pool, but there's still PAYG excess consumption to show — either live
+  // (this cycle) or as history from previous invoices.
+  const hasExcessData =
+    excessConsumedCredits !== null || excessCycleBreakdown.length > 0;
 
   const usedPercentage =
     creditUsage?.status.usedPercentage ??
@@ -1271,9 +1278,13 @@ export function UsagePageRedesign() {
 
         {!showConsumptionAnalytics &&
         !isAwuPoolSummaryLoading &&
-        (isAwuPoolSummaryError || hasPool || isReadOnly) ? (
+        (isAwuPoolSummaryError || hasPool || isReadOnly || hasExcessData) ? (
           <Page.Vertical gap="xs" align="stretch">
-            <Page.H variant="h4">Workspace credit pool</Page.H>
+            <Page.H variant="h4">
+              {hasPool || isReadOnly
+                ? "Workspace credit pool"
+                : "Excess credit consumption"}
+            </Page.H>
 
             {isAwuPoolSummaryError ? (
               <ContentMessage
@@ -1289,7 +1300,7 @@ export function UsagePageRedesign() {
               <div className="flex justify-center py-8">
                 <Spinner />
               </div>
-            ) : (
+            ) : hasPool || isReadOnly ? (
               <>
                 <WorkspaceCreditPoolValueCards
                   totalRemainingCredits={totalRemainingCredits}
@@ -1317,6 +1328,24 @@ export function UsagePageRedesign() {
                 </div>
                 <WorkspaceCreditPoolCycleHistoryTable
                   cycleBreakdown={cycleBreakdown}
+                />
+                <div className="pt-2">
+                  <Page.Separator />
+                </div>
+                <div className="flex items-center justify-end pt-2">
+                  {topUpButton}
+                </div>
+              </>
+            ) : (
+              <>
+                <WorkspaceExcessCreditsValueCard
+                  excessConsumedCredits={excessConsumedCredits}
+                  currentCycleStartMs={currentCycleStartMs}
+                  currentCycleEndMs={currentCycleEndMs}
+                  isLoading={false}
+                />
+                <WorkspaceCreditPoolCycleHistoryTable
+                  cycleBreakdown={excessCycleBreakdown}
                 />
                 <div className="pt-2">
                   <Page.Separator />
