@@ -279,7 +279,7 @@ describe("DustFileSystem.forFrameSandboxProvisioning", () => {
     const sandboxOnlyMounts = [
       {
         kind: "frame_publications" as const,
-        id: frame.sId,
+        frameId: frame.sId,
         sandboxMountPoint: `/frames/${frame.sId}/publications`,
         readOnly: true,
       },
