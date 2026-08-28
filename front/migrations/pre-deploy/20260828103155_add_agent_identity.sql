@@ -21,12 +21,19 @@ CREATE UNIQUE INDEX CONCURRENTLY agents_s_id ON public.agents USING btree ("sId"
 /*
 Statement 2
 */
+SET SESSION statement_timeout = 1200000;
+SET SESSION lock_timeout = 3000;
+CREATE INDEX CONCURRENTLY agents_workspace_id ON public.agents USING btree ("workspaceId");
+
+/*
+Statement 3
+*/
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
 ALTER TABLE "public"."agent_configurations" ADD COLUMN "agentId" bigint;
 
 /*
-Statement 3
+Statement 4
   - INDEX_BUILD: Concurrent index builds avoid locking out writes on agent_configurations.
 */
 SET SESSION statement_timeout = 1200000;
@@ -34,28 +41,28 @@ SET SESSION lock_timeout = 3000;
 CREATE INDEX CONCURRENTLY agent_configurations_agent_id ON public.agent_configurations USING btree ("agentId");
 
 /*
-Statement 4
+Statement 5
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
 ALTER TABLE "public"."agent_configurations" ADD CONSTRAINT "agent_configurations_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES agents(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 /*
-Statement 5
+Statement 6
 */
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
 ALTER TABLE "public"."agent_configurations" VALIDATE CONSTRAINT "agent_configurations_agentId_fkey";
 
 /*
-Statement 6
+Statement 7
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
 ALTER TABLE "public"."agents" ADD CONSTRAINT "agents_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES workspaces(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 /*
-Statement 7
+Statement 8
 */
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;

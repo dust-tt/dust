@@ -47,7 +47,10 @@ AgentModel.init(
   {
     modelName: "agent",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["sId"], unique: true }],
+    indexes: [
+      { fields: ["sId"], unique: true },
+      { fields: ["workspaceId"], concurrently: true },
+    ],
   }
 );
 
