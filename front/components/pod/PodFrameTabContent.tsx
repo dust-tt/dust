@@ -2,6 +2,7 @@ import { PodFrameVisualization } from "@app/components/pod/PodFrameVisualization
 import { usePodFrameRenderableContent } from "@app/hooks/usePodFrameRenderableContent";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { RichSpaceType } from "@app/types/api/spaces";
+import { frameV2ContentType } from "@app/types/files";
 import type { PodFrameTab } from "@app/types/pod_frame_tab";
 import type { WorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
@@ -18,7 +19,7 @@ export function PodFrameTabContent({
   tab,
 }: PodFrameTabContentProps) {
   const { vizUrl } = useAuth();
-  const { fileId, fileContent, isLoading, isNotFound } =
+  const { fileId, fileContent, contentType, isLoading, isNotFound } =
     usePodFrameRenderableContent({
       owner,
       framePath: tab.path,
@@ -49,6 +50,7 @@ export function PodFrameTabContent({
           fileContent={fileContent}
           vizUrl={vizUrl}
           identifier={`viz-frame-tab-${fileId}`}
+          frameId={contentType === frameV2ContentType ? fileId : undefined}
           isPodEditor={podInfo.isEditor}
           isPodMember={podInfo.isMember}
           framePath={tab.path}
