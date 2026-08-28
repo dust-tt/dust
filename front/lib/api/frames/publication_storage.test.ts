@@ -173,6 +173,19 @@ function expectOneDeletedPublicationPrefix({
   );
 }
 
+function getStoredPublicationId(): string {
+  const descriptorWrite = fileStorageMock.saveFileCalls.find(({ filePath }) =>
+    filePath.endsWith("/publication.json")
+  );
+  const match = descriptorWrite?.filePath.match(
+    /\/publications\/([^/]+)\/publication\.json$/
+  );
+  if (!match?.[1]) {
+    throw new Error("Missing stored Frame publication descriptor write");
+  }
+  return match[1];
+}
+
 describe("storeFramePublication", () => {
   it("stores runtime artifacts without source before the publication commit marker", async () => {
     const { auth, frame, workspaceId } = await setupFrame();
@@ -1003,5 +1016,87 @@ describe("publishFramePublication", () => {
       activePublicationId
     );
     expectOneDeletedPublicationPrefix({ auth, deletedPrefixes, frame });
+  });
+
+  it("cleans artifacts when publication descriptor storage fails", async () => {
+    const { auth, frame } = await setupFrame();
+    const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
+    await frame.setActiveFramePublication(activePublicationId);
+    fileStorageMock.setFileSaveFails((filePath) =>
+      filePath.endsWith("/publication.json")
+    );
+    const deletedPrefixes = captureDeletedPublicationPrefixes();
+
+    await expect(
+      publishFramePublication(auth, {
+        frame,
+        functionArtifacts: [],
+        manifest,
+        sourceFiles,
+        uiBundleCode,
+      })
+    ).rejects.toThrow("Simulated GCS write failure");
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
+      activePublicationId
+    );
+    expectOneDeletedPublicationPrefix({ auth, deletedPrefixes, frame });
+  });
+
+  it("preserves the publication error when artifact cleanup fails", async () => {
+    const { auth, frame } = await setupFrame();
+    const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
+    await frame.setActiveFramePublication(activePublicationId);
+    fileStorageMock.setFileSaveFails((filePath) =>
+      filePath.endsWith("/publication.json")
+    );
+    fileStorageMock.setDeleteByPrefixFails(() => true);
+    const deletedPrefixes = captureDeletedPublicationPrefixes();
+
+    await expect(
+      publishFramePublication(auth, {
+        frame,
+        functionArtifacts: [],
+        manifest,
+        sourceFiles,
+        uiBundleCode,
+      })
+    ).rejects.toThrow(/Simulated GCS write failure: .*publication\.json/);
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
+      activePublicationId
+    );
+    expectOneDeletedPublicationPrefix({ auth, deletedPrefixes, frame });
+  });
+
+  it("does not clean a publication that became active", async () => {
+    const { auth, frame } = await setupFrame();
+    vi.mocked(reconcileFramePublicationDatabases).mockImplementationOnce(
+      async () => {
+        await frame.setActiveFramePublication(getStoredPublicationId());
+        return new Err(
+          new SandboxFunctionError(
+            "reconcile_blocked",
+            'Database "tasks": destructive change.'
+          )
+        );
+      }
+    );
+    const deletedPrefixes = captureDeletedPublicationPrefixes();
+
+    const published = await publishFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceFiles,
+      uiBundleCode,
+    });
+
+    expect(published.isErr() && published.error.code).toBe("reconcile_blocked");
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
+      getStoredPublicationId()
+    );
+    expect(deletedPrefixes).toEqual([]);
   });
 });

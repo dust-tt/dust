@@ -90,6 +90,7 @@ class FileStorageMock {
   private _subdirectoryNames: (prefix: string) => string[] | null = () => null;
   private _deletedPrefixes: string[] = [];
   private _onDeleteByPrefix: (prefix: string) => void = () => {};
+  private _deleteByPrefixShouldFail: (prefix: string) => boolean = () => false;
   private _ignoreDeleteByPrefixInListings = false;
 
   get writeStreamCalls(): readonly WriteStreamCall[] {
@@ -210,6 +211,14 @@ class FileStorageMock {
   }
 
   /**
+   * Makes `bucket.deleteByPrefix(prefix)` reject for prefixes matching the predicate. Defaults to
+   * never failing. Reset between tests via `reset()`.
+   */
+  setDeleteByPrefixFails(predicate: (prefix: string) => boolean): void {
+    this._deleteByPrefixShouldFail = predicate;
+  }
+
+  /**
    * Make `listSubdirectoryNames` ignore prior `deleteByPrefix` calls, so a prefix keeps being listed
    * after it was deleted. Simulates a silently-failed prefix wipe. Reset between tests via `reset()`.
    */
@@ -268,6 +277,7 @@ class FileStorageMock {
     this._subdirectoryNames = () => null;
     this._deletedPrefixes.length = 0;
     this._onDeleteByPrefix = () => {};
+    this._deleteByPrefixShouldFail = () => false;
     this._ignoreDeleteByPrefixInListings = false;
   }
 
@@ -550,6 +560,9 @@ class FileStorageMock {
       deleteByPrefix: vi.fn(async (prefix: string) => {
         this._deletedPrefixes.push(prefix);
         this._onDeleteByPrefix(prefix);
+        if (this._deleteByPrefixShouldFail(prefix)) {
+          throw new Error(`Simulated GCS prefix delete failure: ${prefix}`);
+        }
         for (const path of [...this._objectStore.keys()]) {
           if (path.startsWith(prefix)) {
             this._objectStore.delete(path);
