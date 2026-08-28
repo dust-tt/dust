@@ -1,13 +1,11 @@
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
-import type {
-  FileShareScope,
-  InteractiveContentFileContentType,
-} from "@app/types/files";
+import type { FileShareScope, FrameFileContentType } from "@app/types/files";
 import {
   fileShareScopeSchema,
   frameContentType,
   frameSlideshowContentType,
+  frameV2ContentType,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -17,7 +15,11 @@ import { z } from "zod";
 
 // Zod schema for VizAccessTokenPayload.
 const VizAccessTokenPayloadSchema = z.object({
-  contentType: z.enum([frameContentType, frameSlideshowContentType]),
+  contentType: z.enum([
+    frameContentType,
+    frameSlideshowContentType,
+    frameV2ContentType,
+  ]),
   fileToken: z.string(),
   shareScope: fileShareScopeSchema,
   userId: z.string().optional(),
@@ -33,7 +35,7 @@ export function generateVizAccessToken({
   shareScope,
   workspaceId,
 }: {
-  contentType: InteractiveContentFileContentType;
+  contentType: FrameFileContentType;
   fileToken: string;
   userId?: string;
   shareScope: FileShareScope;

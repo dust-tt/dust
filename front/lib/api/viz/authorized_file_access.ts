@@ -8,7 +8,6 @@ import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   AuthorizedFileAccessAllowlist,
@@ -101,17 +100,7 @@ export async function readFrameFileContent(
   const workspace = renderLightWorkspaceType({
     workspace: auth.getNonNullableWorkspace(),
   });
-  // Read what actually renders: a published frame's bundle (processed), else the source.
-  const readStream = frameFile.getSharedReadStream(
-    workspace,
-    frameFile.getRenderableVersion()
-  );
-  const bufferResult = await streamToBuffer(readStream);
-  if (bufferResult.isErr()) {
-    return null;
-  }
-
-  return bufferResult.value.toString("utf-8") || null;
+  return frameFile.getRenderableContent(workspace);
 }
 
 /**

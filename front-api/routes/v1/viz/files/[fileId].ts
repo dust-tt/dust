@@ -6,7 +6,6 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { isInteractiveContentType } from "@app/types/files";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -86,10 +85,7 @@ app.get("/:fileId", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  if (
-    !frameFile.isInteractiveContent ||
-    !isInteractiveContentType(frameFile.contentType)
-  ) {
+  if (!frameFile.isShareableFrame) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {

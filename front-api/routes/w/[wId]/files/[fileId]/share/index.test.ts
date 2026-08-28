@@ -4,7 +4,7 @@ import { GroupPermissionResource } from "@app/lib/resources/group_permission_res
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { frameContentType } from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import { honoApp } from "@front-api/app";
@@ -221,6 +221,27 @@ describe("share scope endpoint", () => {
       const file = await FileFactory.create(auth, user, {
         contentType: frameContentType,
         fileName: "test-frame.tsx",
+        fileSize: 1024,
+        status: "ready",
+        useCase: "conversation",
+      });
+
+      const response = await postShare(workspace, file.sId, {
+        shareScope: "workspace_and_emails",
+      });
+
+      expect(response.status).toBe(200);
+      expect((await response.json()).scope).toBe("workspace_and_emails");
+    });
+
+    it("uses the existing sharing model for Frames v2", async () => {
+      const { auth, user, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+      const file = await FileFactory.create(auth, user, {
+        contentType: frameV2ContentType,
+        fileName: "manifest.json",
         fileSize: 1024,
         status: "ready",
         useCase: "conversation",
