@@ -129,10 +129,13 @@ export function CommandPaletteSearchPhase({
   }, [selectedIndex, flatItems.length]);
 
   // Reset selection and trim stale refs when the results (or their order)
-  // change.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: commands.length, agents.length, pods.length, skills.length and commandsFirst are intentional triggers
+  // change. Sums the same counts as flatItems.length instead of depending
+  // on flatItems itself, since a new flatItems array is created every
+  // render and would defeat this effect's purpose.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: commandsFirst isn't read in the body, but a reorder (counts unchanged) must still reset the selection
   useEffect(() => {
-    itemRefs.current.length = flatItems.length;
+    itemRefs.current.length =
+      commands.length + agents.length + pods.length + skills.length;
     onSelectedIndexChange(0);
   }, [
     commands.length,
