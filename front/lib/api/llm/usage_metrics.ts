@@ -12,10 +12,10 @@
  * provider never reports.
  */
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 
 export function emitTokenUsageMetrics(usage: TokenUsage, tags: string[]): void {
-  const statsD = getStatsDClient();
+  const statsD = statsDMetrics;
 
   const cacheHit = usage.cachedTokens ?? 0;
   // The flat total is only set when the provider reports no per-duration breakdown. Otherwise

@@ -1,6 +1,6 @@
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import type {
   MaxAwuCreditsTimeframeType,
   MaxMessagesTimeframeType,
@@ -108,19 +108,19 @@ export async function rateLimiter({
     })) as number;
 
     const totalTimeMs = new Date().getTime() - now.getTime();
-    getStatsDClient().distribution(
+    statsDMetrics.distribution(
       "ratelimiter.latency.distribution",
       totalTimeMs,
       tags
     );
 
     if (remaining <= 0) {
-      getStatsDClient().increment("ratelimiter.exceeded.count", 1, tags);
+      statsDMetrics.increment("ratelimiter.exceeded.count", 1, tags);
     }
 
     return remaining;
   } catch (e) {
-    getStatsDClient().increment("ratelimiter.error.count", 1, tags);
+    statsDMetrics.increment("ratelimiter.error.count", 1, tags);
     logger.error(
       {
         key,
@@ -201,9 +201,7 @@ export async function addRateLimiterCount({
       arguments: [windowMs.toString(), member],
     });
   } catch (e) {
-    getStatsDClient().increment("ratelimiter.error.count", 1, [
-      "operation:add",
-    ]);
+    statsDMetrics.increment("ratelimiter.error.count", 1, ["operation:add"]);
     logger.error({ key, incrementBy, error: e }, "addRateLimiterCount error");
   }
 }
@@ -411,7 +409,7 @@ export async function addFixedWindowCount({
   // runs on the message-send path, so a bad increment must never throw and
   // break the send — log and skip instead.
   if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
-    getStatsDClient().increment("ratelimiter.error.count", 1, [
+    statsDMetrics.increment("ratelimiter.error.count", 1, [
       "operation:add_fixed_window",
     ]);
     logger.error(
@@ -441,7 +439,7 @@ export async function addFixedWindowCount({
       arguments: [incrementBy.toString(), expireAtMs.toString()],
     });
   } catch (e) {
-    getStatsDClient().increment("ratelimiter.error.count", 1, [
+    statsDMetrics.increment("ratelimiter.error.count", 1, [
       "operation:add_fixed_window",
     ]);
     logger.error(
@@ -492,7 +490,7 @@ export async function setFixedWindowCount({
     });
     return new Ok(undefined);
   } catch (e) {
-    getStatsDClient().increment("ratelimiter.error.count", 1, [
+    statsDMetrics.increment("ratelimiter.error.count", 1, [
       "operation:set_fixed_window",
     ]);
     logger.error(
@@ -569,7 +567,7 @@ export async function seedFixedWindowCountIfAbsent({
     }
     return new Ok(count);
   } catch (e) {
-    getStatsDClient().increment("ratelimiter.error.count", 1, [
+    statsDMetrics.increment("ratelimiter.error.count", 1, [
       "operation:seed_fixed_window",
     ]);
     logger.error(

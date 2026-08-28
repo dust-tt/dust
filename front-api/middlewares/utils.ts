@@ -1,4 +1,4 @@
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import { getSequelizeErrorDetails } from "@app/logger/withlogging";
@@ -67,7 +67,7 @@ export function apiError(
     span.setTag("error.stack", errorAttrs.stack);
   }
 
-  getStatsDClient().increment("api_errors.count", 1, [
+  statsDMetrics.increment("api_errors.count", 1, [
     `method:${ctx.req.method}`,
     `status_code:${err.status_code}`,
     `error_type:${err.api_error.type}`,
@@ -110,7 +110,7 @@ export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
       "Client API Error"
     );
 
-    getStatsDClient().increment("api_errors.count", 1, [
+    statsDMetrics.increment("api_errors.count", 1, [
       `method:${ctx.req.method}`,
       `status_code:${err.status}`,
       `error_type:${type}`,
@@ -143,7 +143,7 @@ export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
     "Unhandled API Error"
   );
 
-  getStatsDClient().increment("api_errors.count", 1, [
+  statsDMetrics.increment("api_errors.count", 1, [
     `method:${ctx.req.method}`,
     `status_code:500`,
     `error_type:unhandled_internal_server_error`,

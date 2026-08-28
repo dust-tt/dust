@@ -4,7 +4,7 @@
  */
 import type { LLMErrorType } from "@app/lib/api/llm/types/errors";
 import type { ErrorSource } from "@app/lib/model_constructors/types/output/events";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import type {
   ModelProviderIdType,
   ReasoningEffort,
@@ -56,7 +56,7 @@ export function emitLLMDurationMs({
       assertNever(outcomeTelemetry);
   }
 
-  getStatsDClient().distribution("llm_duration_ms", durationMs, durationTags);
+  statsDMetrics.distribution("llm_duration_ms", durationMs, durationTags);
 }
 
 export function emitLLMTimeToFirstEventMs(
@@ -66,7 +66,7 @@ export function emitLLMTimeToFirstEventMs(
   if (timeToFirstEventMs === undefined) {
     return;
   }
-  getStatsDClient().distribution(
+  statsDMetrics.distribution(
     "llm_time_to_first_event_ms",
     timeToFirstEventMs,
     tags
@@ -80,7 +80,7 @@ export function emitLLMTimeToFirstTokenMs(
   if (timeToFirstTokenMs === undefined) {
     return;
   }
-  getStatsDClient().distribution(
+  statsDMetrics.distribution(
     "llm_time_to_first_token_ms",
     timeToFirstTokenMs,
     tags

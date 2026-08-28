@@ -1,4 +1,4 @@
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 
 export class DurationRecorder {
   private readonly startTimeMs: number;
@@ -22,7 +22,7 @@ export class DurationRecorder {
 
   record(metricName: string): void {
     const durationMs = performance.now() - this.startTimeMs;
-    getStatsDClient().distribution(metricName, durationMs, this.tags);
+    statsDMetrics.distribution(metricName, durationMs, this.tags);
   }
 
   getElapsedMs(): number {

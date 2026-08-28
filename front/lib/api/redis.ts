@@ -1,7 +1,7 @@
 import { performance } from "node:perf_hooks";
 
 import config from "@app/lib/api/config";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import type { RedisClientType } from "redis";
@@ -119,15 +119,11 @@ async function createRedisClient({
       { origin, safeUri, elapsedMs: elapsed() },
       "Redis Client Connected"
     );
-    getStatsDClient().increment("redis.connection.count", 1, [
-      `origin:${origin}`,
-    ]);
+    statsDMetrics.increment("redis.connection.count", 1, [`origin:${origin}`]);
   });
   newClient.on("end", () => {
     logger.info({ origin, safeUri }, "Redis Client End");
-    getStatsDClient().decrement("redis.connection.count", 1, [
-      `origin:${origin}`,
-    ]);
+    statsDMetrics.decrement("redis.connection.count", 1, [`origin:${origin}`]);
   });
 
   logger.info({ origin, safeUri }, "Redis client connect starting");

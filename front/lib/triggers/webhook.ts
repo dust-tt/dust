@@ -18,7 +18,7 @@ import {
   checkTriggerForExecutionPerDayLimit,
   checkWebhookRequestForRateLimit,
 } from "@app/lib/triggers/rate_limits";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import { verifySignature } from "@app/lib/webhook_source_server";
 import logger from "@app/logger/logger";
 import { launchTriggersWorkflows } from "@app/temporal/triggers/webhook_client";
@@ -352,7 +352,7 @@ async function checkWorkspaceRateLimit({
   }
 
   if (block !== null) {
-    getStatsDClient().increment("webhook_workspace_rate_limit.hit.count", 1, [
+    statsDMetrics.increment("webhook_workspace_rate_limit.hit.count", 1, [
       `provider:${provider}`,
       `workspace_id:${workspaceId}`,
       `block_status:${block.status}`,
@@ -393,7 +393,7 @@ async function checkTriggerRateLimit({
       { workspaceId, webhookRequestId, triggerId: trigger.sId },
       result.message
     );
-    getStatsDClient().increment("webhook_trigger_rate_limit.hit.count", 1, [
+    statsDMetrics.increment("webhook_trigger_rate_limit.hit.count", 1, [
       `provider:${provider}`,
       `workspace_id:${workspaceId}`,
       `trigger_id:${trigger.sId}`,
@@ -429,7 +429,7 @@ function matchesPayloadFilter({
     `workspace_id:${workspaceId}`,
     `trigger_id:${trigger.sId}`,
   ];
-  getStatsDClient().increment("webhook_filter.events_processed.count", 1, tags);
+  statsDMetrics.increment("webhook_filter.events_processed.count", 1, tags);
 
   const parsedFilterResult = parseMatcherExpression(filter);
   if (parsedFilterResult.isErr()) {
@@ -447,7 +447,7 @@ function matchesPayloadFilter({
 
   const payloadMatchesFilter = matchPayload(body, parsedFilterResult.value);
   if (payloadMatchesFilter) {
-    getStatsDClient().increment("webhook_filter.events_passed.count", 1, tags);
+    statsDMetrics.increment("webhook_filter.events_passed.count", 1, tags);
     return true;
   }
 
@@ -597,7 +597,7 @@ async function storePayloadInGCS(
         "Webhook request payload was already stored in GCS"
       );
 
-      getStatsDClient().increment("webhook_gcs_precondition.count", 1, [
+      statsDMetrics.increment("webhook_gcs_precondition.count", 1, [
         `provider:${provider}`,
         `workspace_id:${auth.getNonNullableWorkspace().sId}`,
       ]);
@@ -616,7 +616,7 @@ async function storePayloadInGCS(
       "Failed to store webhook request"
     );
 
-    getStatsDClient().increment("webhook_error.count", 1, [
+    statsDMetrics.increment("webhook_error.count", 1, [
       `provider:${provider}`,
       `workspace_id:${auth.getNonNullableWorkspace().sId}`,
     ]);
