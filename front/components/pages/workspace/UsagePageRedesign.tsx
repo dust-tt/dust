@@ -24,11 +24,7 @@ import { ModelTiersSettingsCard } from "@app/components/workspace/usage/ModelTie
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
-import {
-  WorkspaceCreditPoolCycleHistoryTable,
-  WorkspaceCreditPoolValueCards,
-  WorkspaceExcessCreditsValueCard,
-} from "@app/components/workspace/WorkspaceCreditPoolCards";
+import { WorkspaceCreditPoolSection } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
 import {
@@ -124,7 +120,6 @@ import {
   Page,
   ProgressBar,
   SearchInput,
-  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -1276,77 +1271,40 @@ export function UsagePageRedesign() {
           </Page.Vertical>
         ) : null}
 
-        {!showConsumptionAnalytics &&
-        !isAwuPoolSummaryLoading &&
-        (isAwuPoolSummaryError || hasPool || isReadOnly || hasExcessData) ? (
-          <Page.Vertical gap="xs" align="stretch">
-            <Page.H variant="h4">
-              {hasPool || isReadOnly
-                ? "Workspace credit pool"
-                : "Excess credit consumption"}
-            </Page.H>
-
-            {isAwuPoolSummaryError ? (
-              <ContentMessage
-                title="Failed to load Workspace Credits Pool"
-                icon={AlertCircle}
-                variant="warning"
-              >
-                An error occurred while loading your Workspace Credits Pool
-                data. Please refresh the page or contact support if the issue
-                persists.
-              </ContentMessage>
-            ) : isAwuPoolSummaryLoading ? (
-              <div className="flex justify-center py-8">
-                <Spinner />
-              </div>
-            ) : hasPool || isReadOnly ? (
-              <>
-                <WorkspaceCreditPoolValueCards
-                  totalRemainingCredits={totalRemainingCredits}
-                  currentCycleConsumedCredits={currentCycleConsumedCredits}
-                  currentCycleStartMs={currentCycleStartMs}
-                  currentCycleEndMs={currentCycleEndMs}
-                  isLoading={false}
-                />
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    {isReadOnly ? (
+        {!showConsumptionAnalytics && (
+          <WorkspaceCreditPoolSection
+            isLoading={isAwuPoolSummaryLoading}
+            isError={!!isAwuPoolSummaryError}
+            showPoolBranch={hasPool || isReadOnly}
+            visible={hasPool || isReadOnly || hasExcessData}
+            totalRemainingCredits={totalRemainingCredits}
+            currentCycleConsumedCredits={currentCycleConsumedCredits}
+            currentCycleStartMs={currentCycleStartMs}
+            currentCycleEndMs={currentCycleEndMs}
+            cycleBreakdown={cycleBreakdown}
+            excessConsumedCredits={excessConsumedCredits}
+            excessCycleBreakdown={excessCycleBreakdown}
+            poolSecondaryContent={
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  {isReadOnly ? (
+                    <span className="copy-sm text-muted-foreground">
+                      {formatCredits(periodSpendCredits)} credits spent this
+                      period
+                    </span>
+                  ) : (
+                    overageCredits !== null &&
+                    overageCredits > 0 && (
                       <span className="copy-sm text-muted-foreground">
-                        {formatCredits(periodSpendCredits)} credits spent this
-                        period
+                        {formatCredits(overageCredits)} overage credits
                       </span>
-                    ) : (
-                      overageCredits !== null &&
-                      overageCredits > 0 && (
-                        <span className="copy-sm text-muted-foreground">
-                          {formatCredits(overageCredits)} overage credits
-                        </span>
-                      )
-                    )}
-                  </div>
+                    )
+                  )}
                 </div>
-                <WorkspaceCreditPoolCycleHistoryTable
-                  cycleBreakdown={cycleBreakdown}
-                />
-                <div className="pt-2">
-                  <Page.Separator />
-                </div>
-                <div className="flex items-center justify-end pt-2">
-                  {topUpButton}
-                </div>
-              </>
-            ) : (
+              </div>
+            }
+            footer={
               <>
-                <WorkspaceExcessCreditsValueCard
-                  excessConsumedCredits={excessConsumedCredits}
-                  currentCycleStartMs={currentCycleStartMs}
-                  currentCycleEndMs={currentCycleEndMs}
-                  isLoading={false}
-                />
-                <WorkspaceCreditPoolCycleHistoryTable
-                  cycleBreakdown={excessCycleBreakdown}
-                />
                 <div className="pt-2">
                   <Page.Separator />
                 </div>
@@ -1354,9 +1312,9 @@ export function UsagePageRedesign() {
                   {topUpButton}
                 </div>
               </>
-            )}
-          </Page.Vertical>
-        ) : null}
+            }
+          />
+        )}
 
         <Tabs
           value={usageTab}

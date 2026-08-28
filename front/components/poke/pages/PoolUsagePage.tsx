@@ -5,10 +5,8 @@ import {
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
-import {
-  WorkspaceCreditPoolCycleHistoryTable,
-  WorkspaceCreditPoolValueCards,
-} from "@app/components/workspace/WorkspaceCreditPoolCards";
+import { WorkspaceCreditPoolSection } from "@app/components/workspace/WorkspaceCreditPoolCards";
+import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
@@ -37,9 +35,7 @@ import {
   toBaseSeatType,
 } from "@app/types/memberships";
 import {
-  AlertCircle,
   Button,
-  ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -49,7 +45,6 @@ import {
   LinkWrapper,
   Page,
   SearchInput,
-  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -77,9 +72,11 @@ interface PoolCreditCardProps {
   isEnterprise: boolean;
 }
 
-// Mirrors the "Workspace credit pool" block of the redesigned usage page:
-// remaining/consumed-this-cycle figures plus a cycle-by-cycle consumption
-// history.
+// Mirrors the "Workspace credit pool" / "Excess credit consumption" block of
+// the redesigned usage page via the shared `WorkspaceCreditPoolSection` — see
+// [[WorkspaceCreditPoolCards.tsx]] — so that block can't drift between the
+// customer-facing page and this Poke mirror. Only the secondary line (credit
+// expiration / overage / enterprise-contract chips) is Poke-specific.
 function PoolCreditCard({ owner, isEnterprise }: PoolCreditCardProps) {
   const { awuPoolSummary, isAwuPoolSummaryLoading, isAwuPoolSummaryError } =
     usePokeAwuPoolSummary({ owner });
@@ -91,6 +88,9 @@ function PoolCreditCard({ owner, isEnterprise }: PoolCreditCardProps) {
     currentCycleConsumedCredits,
     currentCycleStartMs,
     currentCycleEndMs,
+    latestCreditExpirationMs,
+    excessConsumedCredits,
+    excessCycleBreakdown,
   } = awuPoolSummary ?? {
     totalRemainingCredits: 0,
     totalActiveCredits: 0,
@@ -99,58 +99,48 @@ function PoolCreditCard({ owner, isEnterprise }: PoolCreditCardProps) {
     currentCycleConsumedCredits: null,
     currentCycleStartMs: null,
     currentCycleEndMs: null,
+    latestCreditExpirationMs: null,
+    excessConsumedCredits: null,
+    excessCycleBreakdown: [] as AwuPoolCycleBreakdown[],
   };
 
   const hasPool = totalActiveCredits > 0;
-
-  if (!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && !hasPool) {
-    return null;
-  }
+  const hasExcessData =
+    excessConsumedCredits !== null || excessCycleBreakdown.length > 0;
 
   return (
-    <Page.Vertical gap="xs" align="stretch">
-      <Page.H variant="h4">Workspace credit pool</Page.H>
-
-      {isAwuPoolSummaryError ? (
-        <ContentMessage
-          title="Failed to load Workspace Credits Pool"
-          icon={AlertCircle}
-          variant="warning"
-        >
-          An error occurred while loading this workspace&apos;s credit pool
-          data.
-        </ContentMessage>
-      ) : isAwuPoolSummaryLoading ? (
-        <div className="flex justify-center py-8">
-          <Spinner />
+    <WorkspaceCreditPoolSection
+      isLoading={isAwuPoolSummaryLoading}
+      isError={!!isAwuPoolSummaryError}
+      showPoolBranch={hasPool}
+      visible={hasPool || hasExcessData}
+      totalRemainingCredits={totalRemainingCredits}
+      currentCycleConsumedCredits={currentCycleConsumedCredits}
+      currentCycleStartMs={currentCycleStartMs}
+      currentCycleEndMs={currentCycleEndMs}
+      cycleBreakdown={cycleBreakdown}
+      excessConsumedCredits={excessConsumedCredits}
+      excessCycleBreakdown={excessCycleBreakdown}
+      poolSecondaryContent={
+        <div className="flex items-center gap-2">
+          {latestCreditExpirationMs && (
+            <span className="copy-sm text-muted-foreground">
+              Credits expire {formatConsumptionDate(latestCreditExpirationMs)}
+            </span>
+          )}
+          {overageCredits !== null && overageCredits > 0 && (
+            <span className="copy-sm text-muted-foreground">
+              {formatCredits(overageCredits)} overage credits
+            </span>
+          )}
+          {isEnterprise && (
+            <span className="copy-sm text-muted-foreground">
+              Enterprise contract
+            </span>
+          )}
         </div>
-      ) : (
-        <>
-          <WorkspaceCreditPoolValueCards
-            totalRemainingCredits={totalRemainingCredits}
-            currentCycleConsumedCredits={currentCycleConsumedCredits}
-            currentCycleStartMs={currentCycleStartMs}
-            currentCycleEndMs={currentCycleEndMs}
-            isLoading={false}
-          />
-          <div className="flex items-center gap-2">
-            {overageCredits !== null && overageCredits > 0 && (
-              <span className="copy-sm text-muted-foreground">
-                {formatCredits(overageCredits)} overage credits
-              </span>
-            )}
-            {isEnterprise && (
-              <span className="copy-sm text-muted-foreground">
-                Enterprise contract
-              </span>
-            )}
-          </div>
-          <WorkspaceCreditPoolCycleHistoryTable
-            cycleBreakdown={cycleBreakdown}
-          />
-        </>
-      )}
-    </Page.Vertical>
+      }
+    />
   );
 }
 
