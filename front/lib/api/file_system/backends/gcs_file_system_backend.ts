@@ -711,6 +711,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
   private sandboxOnlyMountGCSPrefix(mount: SandboxOnlyMount): string {
     switch (mount.kind) {
+      case "frame_publications":
+        return `w/${this.workspaceId}/frames/${mount.id}/publications`;
+
       case "pod_sandbox_functions":
         return `w/${this.workspaceId}/pods/${mount.id}/sandbox-functions`;
 
@@ -726,6 +729,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     mount: SandboxOnlyMount
   ): GCSMountTarget["mountProfile"] {
     switch (mount.kind) {
+      case "frame_publications":
+        return "frame_publications";
+
       case "pod_sandbox_functions":
         return "pod_sandbox_functions";
 

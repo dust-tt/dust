@@ -32,6 +32,7 @@ import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { Authenticator } from "@app/lib/auth";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
@@ -412,6 +413,38 @@ export class DustFileSystem {
 
     return new Ok(
       new DustFileSystem(auth, [mount], backend, storageMode, sandboxOnlyMounts)
+    );
+  }
+
+  /**
+   * Build the publication-only filesystem mounted into a Frame-owned sandbox. Frame artifacts
+   * always live in GCS, independently of the storage mode used by the source conversation or Pod.
+   * No agent-visible source mount is included.
+   */
+  static async forFrameSandboxProvisioning(
+    auth: Authenticator,
+    frame: Pick<FileResource, "sId" | "workspaceId" | "isFrameV2">,
+    { sandboxOnlyMounts = [] }: { sandboxOnlyMounts?: SandboxOnlyMount[] } = {}
+  ): Promise<Result<DustFileSystem, DustFileSystemError>> {
+    const owner = auth.getNonNullableWorkspace();
+    if (frame.workspaceId !== owner.id || !frame.isFrameV2) {
+      return new Err(
+        new DustFileSystemError(
+          "unauthorized",
+          "Frame sandbox provisioning requires a Frames v2 resource in this workspace."
+        )
+      );
+    }
+
+    const backend = DustFileSystem.createBackend(
+      auth,
+      [],
+      "gcs",
+      sandboxOnlyMounts
+    );
+
+    return new Ok(
+      new DustFileSystem(auth, [], backend, "gcs", sandboxOnlyMounts)
     );
   }
 

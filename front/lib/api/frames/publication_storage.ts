@@ -28,7 +28,6 @@ import {
   getFramePublicationFunctionBundlePath,
   getFramePublicationFunctionSchemaPath,
   getFramePublicationManifestPath,
-  getFramePublicationSourcePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
@@ -85,7 +84,6 @@ export class FramePublicationError extends Error {
       | "invalid_source"
       | "allowlist_failed"
       | "publication_not_found"
-      | "source_not_found"
       | "ui_build_failed"
       | "unauthorized",
     message: string
@@ -238,14 +236,6 @@ export async function storeFramePublication(
       content: uiBundleCode,
       contentType: frameContentType,
     },
-    ...sourceFiles.map((sourceFile) => ({
-      filePath: getFramePublicationSourcePath({
-        ...identity,
-        relativePath: sourceFile.relativePath,
-      }),
-      content: sourceFile.content,
-      contentType: sourceFile.contentType,
-    })),
     ...functionArtifacts.flatMap((artifact) => [
       {
         filePath: getFramePublicationFunctionBundlePath({
@@ -282,7 +272,7 @@ export async function storeFramePublication(
     { concurrency: FRAME_PUBLICATION_UPLOAD_CONCURRENCY }
   );
 
-  // The manifest is the publication commit marker. Readers never observe partial publication data.
+  // publication.json is the commit marker. Readers never observe partial publication data.
   const manifestPath = getFramePublicationManifestPath(identity);
   await storage.file(manifestPath).save(Buffer.from(JSON.stringify(manifest)), {
     contentType: frameV2ContentType,
@@ -582,57 +572,4 @@ export async function publishFramePublication(
     30_000,
     { lockTtlMs: FRAME_PUBLISH_LOCK_TTL_MS }
   );
-}
-
-export async function loadFramePublicationSourceFile(
-  auth: Authenticator,
-  {
-    frame,
-    publicationId,
-    relativePath,
-  }: {
-    frame: FileResource;
-    publicationId: string;
-    relativePath: string;
-  }
-): Promise<Result<Buffer, FramePublicationError>> {
-  if (!isSafeFrameRelativePath(relativePath)) {
-    return new Err(
-      new FramePublicationError(
-        "invalid_source",
-        `Invalid Frame source path: ${relativePath}`
-      )
-    );
-  }
-
-  const manifest = await loadFramePublicationManifest(auth, {
-    frame,
-    publicationId,
-  });
-  if (manifest.isErr()) {
-    return manifest;
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-  const sourcePath = getFramePublicationSourcePath({
-    workspaceId: owner.sId,
-    frameId: frame.sId,
-    publicationId,
-    relativePath,
-  });
-  try {
-    const sourceBuffer =
-      await getPrivateUploadBucket().fetchFileBuffer(sourcePath);
-    return new Ok(Buffer.from(sourceBuffer));
-  } catch (error) {
-    if (isGCSNotFoundError(error)) {
-      return new Err(
-        new FramePublicationError(
-          "source_not_found",
-          `Frame publication source file not found: ${relativePath}`
-        )
-      );
-    }
-    throw error;
-  }
 }

@@ -72,7 +72,7 @@ function tokenUrl(index: number): string {
  *   users can access it; permissive file/dir modes. All agent-facing mounts
  *   are shared mutable filesystems, so namespace and metadata caching are
  *   disabled: writes from another sandbox or Front must be visible immediately.
- * - "pod_sandbox_functions": same access model as "workload", but without
+ * - "frame_publications" / "pod_sandbox_functions": same access model as "workload", but without
  *   caching so newly published or replaced functions are visible immediately.
  * - "pod_state_replica": mounted AS `dust-state` (via runuser) so the FUSE
  *   default — only the mounting user can access the fs — makes it invisible to
@@ -83,6 +83,7 @@ function tokenUrl(index: number): string {
  *   constructed when a pod sandbox (the sandbox-functions computer) boots.
  */
 export type GCSMountProfile =
+  | "frame_publications"
   | "workload"
   | "pod_sandbox_functions"
   | "pod_state_replica";
@@ -424,6 +425,7 @@ export function buildMountCommand({
   ];
 
   switch (target.mountProfile) {
+    case "frame_publications":
     case "workload":
     case "pod_sandbox_functions": {
       // allow_other lets the unprivileged sandbox user read the root-mounted fs. `ro` is only

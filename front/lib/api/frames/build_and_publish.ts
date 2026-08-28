@@ -61,8 +61,8 @@ async function buildFrameUiBundle({
 
 /**
  * Build the UI and every declared function from one captured source snapshot, then atomically
- * publish the source and artifacts. Function builds stage the snapshot in the invoking
- * conversation's DSBX. No publication storage is touched until every build has succeeded.
+ * publish its artifacts. Function builds stage the snapshot in the invoking conversation's DSBX;
+ * source stays in its authoring scope. No publication storage is touched until every build succeeds.
  */
 export async function buildAndPublishFramePublication(
   auth: Authenticator,
