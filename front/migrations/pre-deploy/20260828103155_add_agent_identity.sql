@@ -8,7 +8,8 @@ CREATE TABLE "public"."agents" (
     "updatedAt" timestamp with time zone NOT NULL,
     "sId" character varying(255) COLLATE "pg_catalog"."default" NOT NULL,
     "workspaceId" bigint NOT NULL,
-    "id" bigserial PRIMARY KEY
+    "id" bigserial PRIMARY KEY,
+    CONSTRAINT "agents_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES workspaces(id) ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
 /*
@@ -53,17 +54,3 @@ Statement 6
 SET SESSION statement_timeout = 1200000;
 SET SESSION lock_timeout = 3000;
 ALTER TABLE "public"."agent_configurations" VALIDATE CONSTRAINT "agent_configurations_agentId_fkey";
-
-/*
-Statement 7
-*/
-SET SESSION statement_timeout = 3000;
-SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."agents" ADD CONSTRAINT "agents_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES workspaces(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
-
-/*
-Statement 8
-*/
-SET SESSION statement_timeout = 1200000;
-SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."agents" VALIDATE CONSTRAINT "agents_workspaceId_fkey";
