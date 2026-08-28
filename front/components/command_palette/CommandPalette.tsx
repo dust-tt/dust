@@ -54,9 +54,9 @@ const THEME_ICONS: Record<Theme, typeof Sun> = {
 };
 
 const THEME_LABELS: Record<Theme, string> = {
-  system: "Switch to system appearance",
-  light: "Switch to light appearance",
-  dark: "Switch to dark appearance",
+  system: "System",
+  light: "Light",
+  dark: "Dark",
 };
 
 export function CommandPalette({ owner, user }: CommandPaletteProps) {

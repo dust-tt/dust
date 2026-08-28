@@ -10,7 +10,14 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { PodType } from "@app/types/space";
 import type { Sun } from "@dust-tt/sparkle";
-import { Avatar, cn, Icon, LoadingBlock, SearchInput } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  ChevronRight,
+  cn,
+  Icon,
+  LoadingBlock,
+  SearchInput,
+} from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
 export interface CommandPaletteCommand {
@@ -296,7 +303,7 @@ export function CommandPaletteSearchPhase({
 
         {commands.length > 0 && (
           <div>
-            <ItemTitle>Commands</ItemTitle>
+            <ItemTitle>Settings</ItemTitle>
             {commands.map((command, i) => {
               const globalIndex =
                 agents.length + pods.length + skills.length + i;
@@ -311,7 +318,13 @@ export function CommandPaletteSearchPhase({
                   onMouseMove={() => onSelectedIndexChange(globalIndex)}
                 >
                   <Icon visual={command.icon} size="xs" />
-                  <span className="font-medium">{command.label}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground">
+                      Change interface theme
+                    </span>
+                    <Icon visual={ChevronRight} size="xs" />
+                    <span className="font-medium">{command.label}</span>
+                  </div>
                 </ItemRow>
               );
             })}
