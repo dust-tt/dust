@@ -95,16 +95,45 @@ export const FramePublicationDescriptorSchema = z
       });
     }
 
-    const sourcePaths = new Set<string>();
+    const sourceHashesByPath = new Map<string, string>();
     publication.sourceFiles.forEach((sourceFile, index) => {
-      if (sourcePaths.has(sourceFile.path)) {
+      if (sourceHashesByPath.has(sourceFile.path)) {
         context.addIssue({
           code: "custom",
           message: `Duplicate source hash for '${sourceFile.path}'.`,
           path: ["sourceFiles", index, "path"],
         });
       }
-      sourcePaths.add(sourceFile.path);
+      sourceHashesByPath.set(sourceFile.path, sourceFile.contentSha256);
+    });
+
+    const referencedPaths = [
+      publication.manifest.uiEntryPoint,
+      ...publication.manifest.functions.map((fn) => fn.entryPoint),
+      ...publication.manifest.databases.map((database) => database.schema),
+    ];
+    referencedPaths.forEach((referencedPath) => {
+      if (!sourceHashesByPath.has(referencedPath)) {
+        context.addIssue({
+          code: "custom",
+          message: `Missing source hash for '${referencedPath}'.`,
+          path: ["sourceFiles"],
+        });
+      }
+    });
+
+    publication.manifest.databases.forEach((database, index) => {
+      const contract = publication.databases[index];
+      if (
+        contract &&
+        contract.schemaSha256 !== sourceHashesByPath.get(database.schema)
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: `Database contract hash does not match source '${database.schema}'.`,
+          path: ["databases", index, "schemaSha256"],
+        });
+      }
     });
   });
 
