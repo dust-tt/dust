@@ -8,7 +8,7 @@ import { getParentConversationTitleLabel } from "@app/components/assistant/conve
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useActivationPod } from "@app/lib/swr/activation";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
@@ -40,7 +40,6 @@ const MOBILE_FORKED_TITLE_TRUNCATE_LENGTH = 35;
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
   const { user } = useAuth();
-  const { hasFeature } = useFeatureFlags();
   const { togglePanel } = useConversationSidePanelContext();
   const { conversation } = useConversation({
     conversationId: activeConversationId,
@@ -179,15 +178,13 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           currentTitle={currentTitle}
         />
         <div className="flex items-center gap-2">
-          {hasFeature("conversation_consumption_details") && (
-            <Button
-              size="sm"
-              label={isMobile ? undefined : "Credit usage"}
-              icon={CoinsStacked01}
-              variant="ghost"
-              onClick={() => togglePanel({ type: "credits" })}
-            />
-          )}
+          <Button
+            size="sm"
+            label={isMobile ? undefined : "Credit usage"}
+            icon={CoinsStacked01}
+            variant="ghost"
+            onClick={() => togglePanel({ type: "credits" })}
+          />
           <Button
             size="sm"
             label={isMobile ? undefined : "Files"}
