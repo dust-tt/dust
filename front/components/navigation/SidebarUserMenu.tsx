@@ -52,9 +52,7 @@ export function SidebarUserMenu({
         }
       : null;
   const rollingCreditUsageState: CreditUsageState | null =
-    fairUseAwuCreditsState &&
-    fairUseAwuCreditsState.limit > 0 &&
-    fairUseAwuCreditsState.timeframe === "week"
+    fairUseAwuCreditsState && fairUseAwuCreditsState.limit > 0
       ? {
           kind: "rolling_window",
           usedCredits: fairUseAwuCreditsState.count,
