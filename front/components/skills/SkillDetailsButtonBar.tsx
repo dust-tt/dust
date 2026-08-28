@@ -9,6 +9,7 @@ import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
+  Clipboard,
   ClipboardCheck,
   DotsHorizontal,
   DropdownMenu,
@@ -16,7 +17,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Edit04,
-  Link01,
   Trash01,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -68,7 +68,7 @@ export function SkillDetailsButtonBar({
           size="sm"
           tooltip="Copy link"
           variant="outline"
-          icon={isSkillLinkCopied ? ClipboardCheck : Link01}
+          icon={isSkillLinkCopied ? ClipboardCheck : Clipboard}
           onClick={(e) => {
             e.stopPropagation();
             void copySkillLink(

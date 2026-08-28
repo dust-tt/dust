@@ -20,12 +20,12 @@ import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Checkbox,
   Chip,
+  Clipboard,
   ClipboardCheck,
   DataTable,
   Edit04,
   Eye,
   Label,
-  Link01,
   LoadingBlock,
   Tooltip,
   Trash01,
@@ -568,7 +568,7 @@ export function SkillsTable({
                   icon:
                     isSkillLinkCopied && copiedSkillId === skill.sId
                       ? ClipboardCheck
-                      : Link01,
+                      : Clipboard,
                   onClick: async (e: React.MouseEvent) => {
                     e.stopPropagation();
                     setCopiedSkillId(skill.sId);
