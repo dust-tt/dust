@@ -11,6 +11,7 @@ import React from "react";
 
 import type { MockSkill } from "../data/skills";
 import { KNOWLEDGE_LISTBOX_ID } from "./KnowledgeSuggestionPanel";
+import { PanelSectionHeader } from "./KnowledgeRow";
 
 export type SlashCommandId = "knowledge" | "upload";
 
@@ -21,29 +22,32 @@ export interface SlashCommand {
   icon: ComponentType<{ className?: string }>;
 }
 
-// The "/" trigger's first level: a Notion-style command menu, but skills
-// live right in it as regular entries — not behind their own sub-step —
-// since there's usually only a handful and picking one is a single action,
-// same as picking a command.
+// The "/" trigger's first level: a Notion-style command menu. Skills live
+// right in it rather than behind their own sub-step — there's usually only a
+// handful and picking one is a single action, same as picking a command —
+// but they get their own "Capabilities" section so the two kinds stay
+// visually distinct.
 export const SLASH_COMMANDS: SlashCommand[] = [
-  {
-    id: "knowledge",
-    label: "Attach knowledge",
-    description: "Search or browse spaces and folders",
-    icon: Attachment01,
-  },
   {
     id: "upload",
     label: "Upload file",
-    description: "Add a file from your computer",
+    description: "Upload a file from your device",
     icon: UploadCloud01,
+  },
+  {
+    id: "knowledge",
+    label: "Attach knowledge",
+    description: "Search knowledge and reference conversations",
+    icon: Attachment01,
   },
 ];
 
 // One flat list mixing commands and skills — typing filters both together,
 // and arrow-key navigation moves through them as a single sequence. `id` is
 // denormalized onto every entry so generic list code (active-item lookup,
-// keyboard nav) doesn't need to branch on `kind` just to find it.
+// keyboard nav) doesn't need to branch on `kind` just to find it. The
+// sections below are purely a rendering concern layered on top of this
+// order, which is what keeps the visual order and the nav order identical.
 export type SlashMenuEntry =
   | { kind: "command"; id: string; command: SlashCommand }
   | { kind: "skill"; id: string; skill: MockSkill };
@@ -70,7 +74,11 @@ export function buildSlashMenuEntries(
 ): SlashMenuEntry[] {
   return [
     ...commands.map(
-      (command): SlashMenuEntry => ({ kind: "command", id: command.id, command })
+      (command): SlashMenuEntry => ({
+        kind: "command",
+        id: command.id,
+        command,
+      })
     ),
     ...skills.map(
       (skill): SlashMenuEntry => ({ kind: "skill", id: skill.id, skill })
@@ -95,8 +103,19 @@ function SimpleListRow({
   onHover: () => void;
   onSelect: () => void;
 }) {
+  const rowRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (isActive) {
+      // "nearest" is a no-op when the row is already visible, so hovering
+      // never yanks the list around.
+      rowRef.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [isActive]);
+
   return (
     <div
+      ref={rowRef}
       id={id}
       role="option"
       aria-selected={isActive}
@@ -117,33 +136,6 @@ function SimpleListRow({
   );
 }
 
-function PanelFooterHints() {
-  return (
-    <div
-      className="flex items-center gap-3 border-t border-border px-2.5 py-1.5 text-xs text-muted-foreground"
-      onMouseDown={(e) => e.preventDefault()}
-    >
-      <span className="flex items-center gap-1">
-        <Kbd>↑↓</Kbd> Navigate
-      </span>
-      <span className="flex items-center gap-1">
-        <Kbd>↵</Kbd> Select
-      </span>
-      <span className="flex items-center gap-1">
-        <Kbd>Esc</Kbd> Close
-      </span>
-    </div>
-  );
-}
-
-function Kbd({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd className="rounded-md border border-border bg-muted-background px-1 font-sans text-[10px] leading-4">
-      {children}
-    </kbd>
-  );
-}
-
 function EmptyState({ message }: { message: string }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-3 text-center">
@@ -154,6 +146,13 @@ function EmptyState({ message }: { message: string }) {
     </div>
   );
 }
+
+// Order matters: it has to match the order `buildSlashMenuEntries` puts
+// entries in, or the sections would render out of keyboard-nav order.
+const SECTIONS: Array<{ kind: SlashMenuEntry["kind"]; label: string }> = [
+  { kind: "command", label: "Commands" },
+  { kind: "skill", label: "Capabilities" },
+];
 
 interface SlashCommandMenuProps {
   entries: SlashMenuEntry[];
@@ -173,32 +172,45 @@ export function SlashCommandMenu({
       <ScrollArea
         id={KNOWLEDGE_LISTBOX_ID}
         role="listbox"
-        className="h-auto max-h-72 px-1.5 py-1.5"
+        className="px-1.5 py-1.5"
+        viewportClassName="max-h-72"
         onMouseDown={(e) => e.preventDefault()}
       >
         {entries.length === 0 ? (
           <EmptyState message="No matching command" />
         ) : (
-          <div className="flex flex-col gap-0.5">
-            {entries.map((entry) => {
-              const id = entry.id;
+          <div className="flex flex-col gap-1.5">
+            {SECTIONS.map(({ kind, label }) => {
+              // Partitioning preserves the incoming order, and commands
+              // always precede skills in it — so each section stays a
+              // contiguous run and arrow-key order matches what's on screen.
+              const sectionEntries = entries.filter(
+                (entry) => entry.kind === kind
+              );
+              if (sectionEntries.length === 0) {
+                return null;
+              }
               return (
-                <SimpleListRow
-                  key={id}
-                  id={id}
-                  icon={getSlashMenuEntryIcon(entry)}
-                  label={getSlashMenuEntryLabel(entry)}
-                  description={getSlashMenuEntryDescription(entry)}
-                  isActive={id === activeId}
-                  onHover={() => onHover(id)}
-                  onSelect={() => onSelect(entry)}
-                />
+                <div key={kind} className="flex flex-col">
+                  <PanelSectionHeader label={label} />
+                  {sectionEntries.map((entry) => (
+                    <SimpleListRow
+                      key={entry.id}
+                      id={entry.id}
+                      icon={getSlashMenuEntryIcon(entry)}
+                      label={getSlashMenuEntryLabel(entry)}
+                      description={getSlashMenuEntryDescription(entry)}
+                      isActive={entry.id === activeId}
+                      onHover={() => onHover(entry.id)}
+                      onSelect={() => onSelect(entry)}
+                    />
+                  ))}
+                </div>
               );
             })}
           </div>
         )}
       </ScrollArea>
-      <PanelFooterHints />
     </div>
   );
 }

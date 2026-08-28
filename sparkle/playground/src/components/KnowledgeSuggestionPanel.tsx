@@ -1,10 +1,4 @@
-import {
-  Icon,
-  LoadingBlock,
-  ScrollArea,
-  SearchInput,
-  SearchMd,
-} from "@dust-tt/sparkle";
+import { Icon, LoadingBlock, ScrollArea, SearchMd } from "@dust-tt/sparkle";
 import React from "react";
 
 import type {
@@ -16,16 +10,18 @@ import {
   KnowledgeBrowseRow,
   KnowledgeFileRow,
   KnowledgeGroupHeader,
+  PanelSectionHeader,
 } from "./KnowledgeRow";
 
 export const KNOWLEDGE_LISTBOX_ID = "knowledge-suggestions-listbox";
 
 interface KnowledgeSuggestionPanelProps {
-  mode: "inline" | "button";
+  // Filtering always happens in the composer itself, right after the "/" —
+  // this panel only ever reflects that query, it never owns an input.
   query: string;
-  onQueryChange?: (query: string) => void;
-  onSearchKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  searchInputRef?: React.RefObject<HTMLInputElement | null>;
+
+  // Returns to the command menu — the step this panel was reached from.
+  onBack: () => void;
 
   isLoading: boolean;
   activeItemId: string | null;
@@ -47,11 +43,8 @@ interface KnowledgeSuggestionPanelProps {
 }
 
 export function KnowledgeSuggestionPanel({
-  mode,
   query,
-  onQueryChange,
-  onSearchKeyDown,
-  searchInputRef,
+  onBack,
   isLoading,
   activeItemId,
   onHoverItem,
@@ -69,18 +62,15 @@ export function KnowledgeSuggestionPanel({
 
   return (
     <div className="flex w-80 flex-col">
-      {mode === "button" && (
-        <div className="border-b border-border p-1.5">
-          <SearchInput
-            ref={searchInputRef}
-            name="knowledge-search"
-            placeholder="Search knowledge…"
-            value={query}
-            onChange={(value) => onQueryChange?.(value)}
-            onKeyDown={onSearchKeyDown}
-          />
-        </div>
-      )}
+      {/* The px-1.5 mirrors the ScrollArea's own padding, so the title lines
+          up with the section headers and row labels below it. */}
+      <div className="px-1.5 pt-1.5">
+        <PanelSectionHeader
+          label="Knowledge"
+          onBack={onBack}
+          backLabel="Back to commands"
+        />
+      </div>
       {!isFiltering && browseStack.length > 0 && (
         <div
           className="border-b border-border"
@@ -95,7 +85,7 @@ export function KnowledgeSuggestionPanel({
       <ScrollArea
         id={KNOWLEDGE_LISTBOX_ID}
         role="listbox"
-        className="h-72 px-1.5 py-1.5"
+        className="h-72 px-1.5 pb-1.5"
         onMouseDown={(e) => {
           // Rows guard their own mousedown, but the gaps between them and
           // the scroll padding don't — without this, a click that misses a
@@ -171,31 +161,6 @@ export function KnowledgeSuggestionPanel({
           </div>
         )}
       </ScrollArea>
-      <div
-        className="flex items-center gap-3 whitespace-nowrap border-t border-border px-2.5 py-1.5 text-xs text-muted-foreground"
-        onMouseDown={(e) => e.preventDefault()}
-      >
-        <span className="flex items-center gap-1">
-          <Kbd>↑↓</Kbd> Navigate
-        </span>
-        <span className="flex items-center gap-1">
-          <Kbd>↵</Kbd> Select
-        </span>
-        <span className="flex items-center gap-1">
-          <Kbd>⇧↵</Kbd> Attach
-        </span>
-        <span className="flex items-center gap-1">
-          <Kbd>Esc</Kbd> Close
-        </span>
-      </div>
     </div>
-  );
-}
-
-function Kbd({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd className="rounded-md border border-border bg-muted-background px-1 font-sans text-[10px] leading-4">
-      {children}
-    </kbd>
   );
 }

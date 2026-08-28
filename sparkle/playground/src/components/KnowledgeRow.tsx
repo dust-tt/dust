@@ -1,4 +1,11 @@
-import { Button, ChevronRight, Plus, cn, Icon } from "@dust-tt/sparkle";
+import {
+  Button,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  cn,
+  Icon,
+} from "@dust-tt/sparkle";
 import React from "react";
 
 import { splitByMatch } from "../data/knowledgeItems";
@@ -132,6 +139,40 @@ export function KnowledgeFileRow({
           />
         </>
       )}
+    </div>
+  );
+}
+
+interface PanelSectionHeaderProps {
+  label: string;
+  // When present a back chevron renders to the left of the label — the
+  // knowledge step uses it to return to the command menu. Shared with the
+  // slash menu's own section headers so the two read as the same thing.
+  onBack?: () => void;
+  backLabel?: string;
+}
+
+export function PanelSectionHeader({
+  label,
+  onBack,
+  backLabel,
+}: PanelSectionHeaderProps) {
+  return (
+    <div className="flex min-h-7 items-center gap-1 px-2 text-xs text-muted-foreground">
+      {onBack && (
+        <button
+          type="button"
+          aria-label={backLabel ?? "Go back"}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onBack}
+          // The icon is a 16px square, well under a comfortable tap target,
+          // so `before` stretches the hit area out past the visible bounds.
+          className="relative rounded p-0.5 before:absolute before:-inset-2 hover:bg-hover hover:text-foreground"
+        >
+          <Icon visual={ChevronLeft} size="xs" />
+        </button>
+      )}
+      <span className="truncate">{label}</span>
     </div>
   );
 }

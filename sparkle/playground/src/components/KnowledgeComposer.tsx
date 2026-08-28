@@ -51,14 +51,10 @@ export function KnowledgeComposer() {
   const [attachedItems, setAttachedItems] = useState<KnowledgeItem[]>([]);
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
 
-  const [isButtonPickerOpen, setIsButtonPickerOpen] = useState(false);
-  const [buttonQuery, setButtonQuery] = useState("");
   const [dismissedTriggerIndex, setDismissedTriggerIndex] = useState<
     number | null
   >(null);
 
-  // Only meaningful for the inline "/" flow — the button-triggered picker
-  // always goes straight to knowledge (see `activePanel` below).
   const [slashStep, setSlashStep] = useState<SlashStep>("menu");
 
   // The browse path: each entry is the space/folder whose children are
@@ -72,25 +68,16 @@ export function KnowledgeComposer() {
   const popoverContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const caretAnchorRef = useRef<HTMLDivElement>(null);
-  const attachButtonRef = useRef<HTMLButtonElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
-  const wasButtonPickerOpenRef = useRef(false);
 
   const slashTrigger = useSlashTrigger(value, selectionStart);
-  const isInlineActive =
+  const isPickerOpen =
     isTextareaFocused &&
     slashTrigger.isActive &&
     dismissedTriggerIndex !== slashTrigger.triggerIndex;
 
-  const mode: "inline" | "button" = isButtonPickerOpen ? "button" : "inline";
-  const isPickerOpen = isButtonPickerOpen || isInlineActive;
-  const activeQuery = mode === "button" ? buttonQuery : slashTrigger.query;
+  const activeQuery = slashTrigger.query;
   const isFiltering = activeQuery.trim().length > 0;
-
-  // The button-triggered picker only ever does knowledge; the inline "/"
-  // flow starts at the command menu and moves to whichever step was picked.
-  const activePanel: SlashStep = mode === "button" ? "knowledge" : slashStep;
 
   // Reset to the command menu every time a *new* "/" session starts — either
   // the trigger just went from inactive to active (typed a fresh "/", even
@@ -122,7 +109,7 @@ export function KnowledgeComposer() {
     textareaRef,
     value,
     selectionStart ?? 0,
-    isInlineActive
+    isPickerOpen
   );
 
   const attachedIds = useMemo(
@@ -173,13 +160,13 @@ export function KnowledgeComposer() {
     : browseChildren;
 
   const flatItems: Array<{ id: string }> =
-    activePanel === "menu" ? filteredMenuEntries : knowledgeFlatItems;
+    slashStep === "menu" ? filteredMenuEntries : knowledgeFlatItems;
 
   const activeItemId = flatItems[activeIndex]?.id ?? null;
 
   useEffect(() => {
     setActiveIndex(0);
-  }, [activeQuery, isPickerOpen, browseStack, activePanel]);
+  }, [activeQuery, isPickerOpen, browseStack, slashStep]);
 
   useEffect(() => {
     if (!isPickerOpen || hasLoadedOnce) {
@@ -193,49 +180,6 @@ export function KnowledgeComposer() {
     return () => clearTimeout(timeout);
   }, [isPickerOpen, hasLoadedOnce]);
 
-  // Autofocus the search input when the button-triggered picker opens, and
-  // return focus to the button when it closes — an overlay must never eat
-  // focus permanently.
-  useEffect(() => {
-    if (isButtonPickerOpen) {
-      // Deferred: Radix's own focus-scope handling for the popover also
-      // runs on mount and would otherwise win the race, leaving focus on
-      // the trigger button instead of the search input.
-      const timeout = setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 0);
-      wasButtonPickerOpenRef.current = true;
-      return () => clearTimeout(timeout);
-    }
-    if (wasButtonPickerOpenRef.current) {
-      attachButtonRef.current?.focus();
-      wasButtonPickerOpenRef.current = false;
-    }
-  }, [isButtonPickerOpen]);
-
-  // SearchInput doesn't forward arbitrary aria-* props, so the combobox
-  // wiring for screen readers is synced onto the underlying <input> directly.
-  useEffect(() => {
-    const el = searchInputRef.current;
-    if (!el) {
-      return;
-    }
-    if (mode === "button" && isPickerOpen) {
-      el.setAttribute("role", "combobox");
-      el.setAttribute("aria-expanded", "true");
-      el.setAttribute("aria-controls", KNOWLEDGE_LISTBOX_ID);
-      el.setAttribute("aria-autocomplete", "list");
-      if (activeItemId) {
-        el.setAttribute("aria-activedescendant", activeItemId);
-      } else {
-        el.removeAttribute("aria-activedescendant");
-      }
-    } else {
-      el.removeAttribute("aria-expanded");
-      el.removeAttribute("aria-activedescendant");
-    }
-  }, [mode, isPickerOpen, activeItemId]);
-
   // Escape / click-outside with nothing picked: just dismiss, leaving
   // whatever was typed in place.
   const closeInlinePicker = () => {
@@ -244,32 +188,48 @@ export function KnowledgeComposer() {
     setSlashStep("menu");
   };
 
+  const focusCaret = (caret: number) => {
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(caret, caret);
+    });
+  };
+
+  // "Attach knowledge" is just a second way to type "/": it inserts the
+  // trigger at the caret and lets the inline flow take over, so the button
+  // and the keystroke open the very same dropdown in the very same place.
+  const insertSlashTrigger = () => {
+    const caret = selectionStart ?? value.length;
+    const charBefore = caret === 0 ? "" : value[caret - 1];
+    // useSlashTrigger only recognises a "/" that starts a word, so a space
+    // goes in first when the caret sits right after other text.
+    const inserted = charBefore === "" || /\s/.test(charBefore) ? "/" : " /";
+    const nextCaret = caret + inserted.length;
+
+    setValue(value.slice(0, caret) + inserted + value.slice(caret));
+    setSelectionStart(nextCaret);
+    setDismissedTriggerIndex(null);
+    setBrowseStack([]);
+    setSlashStep("menu");
+    focusCaret(nextCaret);
+  };
+
   // Shared by every attach path (knowledge, skills, upload) — adds the chip
   // and closes the picker, same as picking a single result anywhere else.
   const attachItem = (item: KnowledgeItem) => {
     setAttachedItems((prev) => [...prev, item]);
-    if (mode === "inline") {
-      // Removes the "/" trigger itself (not just the typed query), which is
-      // what actually closes the picker — there's no active trigger left
-      // for useSlashTrigger to find.
-      if (selectionStart !== null) {
-        const start = slashTrigger.triggerIndex;
-        const end = selectionStart;
-        const nextValue = value.slice(0, start) + value.slice(end);
-        setValue(nextValue);
-        requestAnimationFrame(() => {
-          textareaRef.current?.setSelectionRange(start, start);
-          textareaRef.current?.focus();
-        });
-        setSelectionStart(start);
-      }
-      setBrowseStack([]);
-      setSlashStep("menu");
-    } else {
-      setIsButtonPickerOpen(false);
-      setButtonQuery("");
-      setBrowseStack([]);
+    // Removes the "/" trigger itself (not just the typed query), which is
+    // what actually closes the picker — there's no active trigger left
+    // for useSlashTrigger to find.
+    if (selectionStart !== null) {
+      const start = slashTrigger.triggerIndex;
+      const end = selectionStart;
+      setValue(value.slice(0, start) + value.slice(end));
+      setSelectionStart(start);
+      focusCaret(start);
     }
+    setBrowseStack([]);
+    setSlashStep("menu");
   };
 
   const handleSelectItemById = (id: string) => {
@@ -288,28 +248,18 @@ export function KnowledgeComposer() {
     });
   };
 
-  // Selecting a command strips whatever was typed to filter the menu
-  // (keeping the "/" itself) so the next step starts with an empty query at
-  // the same trigger position, then moves to that command's own step.
-  // Strips whatever was typed to filter (keeping the "/" itself, in inline
-  // mode) so the query starts empty again at the same trigger position —
-  // used both when a command is picked and when a search hit is opened.
+  // Strips whatever was typed to filter (keeping the "/" itself) so the
+  // query starts empty again at the same trigger position — used both when
+  // a command is picked and when a search hit is opened.
   const clearQuery = () => {
-    if (mode === "button") {
-      setButtonQuery("");
+    if (selectionStart === null) {
       return;
     }
-    if (selectionStart !== null) {
-      const start = slashTrigger.triggerIndex + 1;
-      const end = selectionStart;
-      const nextValue = value.slice(0, start) + value.slice(end);
-      setValue(nextValue);
-      requestAnimationFrame(() => {
-        textareaRef.current?.setSelectionRange(start, start);
-        textareaRef.current?.focus();
-      });
-      setSelectionStart(start);
-    }
+    const start = slashTrigger.triggerIndex + 1;
+    const end = selectionStart;
+    setValue(value.slice(0, start) + value.slice(end));
+    setSelectionStart(start);
+    focusCaret(start);
   };
 
   const handleSelectMenuEntry = (entry: SlashMenuEntry) => {
@@ -358,6 +308,14 @@ export function KnowledgeComposer() {
     }
   };
 
+  // Back out of the knowledge step, dropping the browse position and the
+  // filter text it accumulated so the menu reopens exactly as first shown.
+  const handleBackToMenu = () => {
+    clearQuery();
+    setBrowseStack([]);
+    setSlashStep("menu");
+  };
+
   const handleBreadcrumbNavigate = (depth: number) => {
     setBrowseStack((prev) => prev.slice(0, depth));
   };
@@ -372,15 +330,6 @@ export function KnowledgeComposer() {
         return next;
       });
     }, REMOVE_ANIMATION_MS);
-  };
-
-  const handleEscape = () => {
-    if (mode === "inline") {
-      closeInlinePicker();
-    } else {
-      setIsButtonPickerOpen(false);
-      setBrowseStack([]);
-    }
   };
 
   const handleListNavigationKeyDown = (e: React.KeyboardEvent) => {
@@ -399,7 +348,7 @@ export function KnowledgeComposer() {
           break;
         }
         e.preventDefault();
-        if (activePanel === "menu") {
+        if (slashStep === "menu") {
           handleSelectMenuEntry(item as SlashMenuEntry);
           break;
         }
@@ -424,7 +373,7 @@ export function KnowledgeComposer() {
         // query happens to be empty.
         if (
           e.shiftKey &&
-          activePanel === "knowledge" &&
+          slashStep === "knowledge" &&
           !isFiltering &&
           browseStack.length > 0
         ) {
@@ -434,7 +383,7 @@ export function KnowledgeComposer() {
         break;
       case "Escape":
         e.preventDefault();
-        handleEscape();
+        closeInlinePicker();
         break;
       default:
         break;
@@ -444,7 +393,7 @@ export function KnowledgeComposer() {
   const handleTextareaKeyDown = (
     e: React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
-    if (!isInlineActive) {
+    if (!isPickerOpen) {
       return;
     }
     handleListNavigationKeyDown(e);
@@ -473,17 +422,22 @@ export function KnowledgeComposer() {
           sharing the input's border/background. */}
       <div className="flex items-center justify-end">
         <Button
-          ref={attachButtonRef}
           size="sm"
           variant="outline"
           label="Attach knowledge"
           icon={Attachment01}
           isCounter={attachedItems.length > 0}
           counterValue={String(attachedItems.length)}
+          // Keeps focus in the textarea: without this the mousedown blurs
+          // it, which closes the picker the click is meant to open (and
+          // loses the caret position the "/" has to land on).
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
-            setIsButtonPickerOpen((open) => !open);
-            setButtonQuery("");
-            setBrowseStack([]);
+            if (isPickerOpen) {
+              closeInlinePicker();
+              return;
+            }
+            insertSlashTrigger();
           }}
         />
       </div>
@@ -510,27 +464,20 @@ export function KnowledgeComposer() {
             resize="vertical"
             placeholder="Describe what this skill should do…"
             className="border-none bg-transparent shadow-none focus-visible:ring-0"
-            role={isInlineActive ? "combobox" : undefined}
-            aria-expanded={isInlineActive || undefined}
-            aria-controls={isInlineActive ? KNOWLEDGE_LISTBOX_ID : undefined}
-            aria-autocomplete={isInlineActive ? "list" : undefined}
+            role={isPickerOpen ? "combobox" : undefined}
+            aria-expanded={isPickerOpen || undefined}
+            aria-controls={isPickerOpen ? KNOWLEDGE_LISTBOX_ID : undefined}
+            aria-autocomplete={isPickerOpen ? "list" : undefined}
             aria-activedescendant={
-              isInlineActive ? (activeItemId ?? undefined) : undefined
+              isPickerOpen ? (activeItemId ?? undefined) : undefined
             }
-            onFocus={() => {
-              setIsTextareaFocused(true);
-              // Focus moving into the textarea ends any button-triggered
-              // session — otherwise mode stays stuck on "button" and a new
-              // "/" trigger would keep showing the old picker state.
-              setIsButtonPickerOpen(false);
-            }}
+            onFocus={() => setIsTextareaFocused(true)}
             onBlur={(e) => {
               // Clicking a control inside the popover (a breadcrumb, a row)
               // moves focus there natively before our click handler runs.
               // That's still part of this same picker session, not a
               // real dismissal — only close it when focus lands truly
-              // outside the popover (e.g. back on the page, or on the
-              // Attach knowledge button, which has its own open/close logic).
+              // outside the popover.
               if (
                 popoverContainerRef.current?.contains(
                   e.relatedTarget as Node | null
@@ -548,7 +495,7 @@ export function KnowledgeComposer() {
             onKeyUp={(e) => syncSelection(e.currentTarget)}
             onKeyDown={handleTextareaKeyDown}
           />
-          {isInlineActive && (
+          {isPickerOpen && (
             <div
               ref={caretAnchorRef}
               className="pointer-events-none absolute h-4 w-px"
@@ -566,25 +513,18 @@ export function KnowledgeComposer() {
       <div ref={popoverContainerRef}>
         <AnchoredPopover
           open={isPickerOpen}
-          anchorRef={mode === "inline" ? caretAnchorRef : attachButtonRef}
-          align={mode === "inline" ? "start" : "end"}
+          anchorRef={caretAnchorRef}
+          align="start"
           side="bottom"
           sideOffset={8}
           className="w-auto p-0"
           onEscapeKeyDown={(e) => {
             e.preventDefault();
-            handleEscape();
+            closeInlinePicker();
           }}
-          onPointerDownOutside={() => {
-            if (mode === "inline") {
-              closeInlinePicker();
-            } else {
-              setIsButtonPickerOpen(false);
-              setBrowseStack([]);
-            }
-          }}
+          onPointerDownOutside={closeInlinePicker}
         >
-          {activePanel === "menu" ? (
+          {slashStep === "menu" ? (
             <SlashCommandMenu
               entries={filteredMenuEntries}
               activeId={activeItemId}
@@ -598,11 +538,8 @@ export function KnowledgeComposer() {
             />
           ) : (
             <KnowledgeSuggestionPanel
-              mode={mode}
               query={activeQuery}
-              onQueryChange={setButtonQuery}
-              onSearchKeyDown={handleListNavigationKeyDown}
-              searchInputRef={searchInputRef}
+              onBack={handleBackToMenu}
               isLoading={isLoading}
               activeItemId={activeItemId}
               onHoverItem={(id) => {
