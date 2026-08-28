@@ -10,6 +10,7 @@ import {
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
 import type { Authenticator } from "@app/lib/auth";
+import { distributedLock, distributedUnlock } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import {
   computeSandboxFunctionBundleSha256,
@@ -39,6 +40,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@app/lib/api/frames/database_reconciliation", () => ({
   reconcileFramePublicationDatabases: vi.fn(),
 }));
+
+vi.mock("@app/lib/lock", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/lock")>();
+  return {
+    ...actual,
+    distributedLock: vi.fn(),
+    distributedUnlock: vi.fn(),
+  };
+});
 
 async function setupFrame({
   ready = false,
@@ -142,6 +152,8 @@ function createDeferred() {
 }
 
 beforeEach(() => {
+  vi.mocked(distributedLock).mockResolvedValue("test-frame-publish-lock");
+  vi.mocked(distributedUnlock).mockResolvedValue(undefined);
   vi.mocked(reconcileFramePublicationDatabases).mockResolvedValue(
     new Ok(undefined)
   );
@@ -834,6 +846,31 @@ describe("activateFramePublication", () => {
 });
 
 describe("publishFramePublication", () => {
+  it("returns a typed conflict when another publication holds the lock", async () => {
+    const { auth, frame } = await setupFrame();
+    vi.mocked(distributedLock).mockResolvedValue(undefined);
+    vi.useFakeTimers();
+
+    try {
+      const publicationPromise = publishFramePublication(auth, {
+        frame,
+        functionArtifacts: [],
+        manifest,
+        sourceFiles,
+        uiBundleCode,
+      });
+      await vi.advanceTimersByTimeAsync(30_000);
+      const published = await publicationPromise;
+
+      expect(published.isErr() && published.error.code).toBe(
+        "publish_conflict"
+      );
+      expect(distributedUnlock).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("stores and activates a publication", async () => {
     const { auth, frame } = await setupFrame();
 

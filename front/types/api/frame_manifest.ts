@@ -18,6 +18,8 @@ export const FRAME_DEFAULT_UI_ENTRY_POINT = "index.tsx";
 export const MAX_FRAME_NAME_LENGTH = 128;
 export const MAX_FRAME_FUNCTION_NAME_LENGTH = 128;
 export const MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH = 255;
+// Each schema reconcile can take 60 seconds and runs under the 10-minute publication lease.
+export const MAX_FRAME_DATABASE_COUNT = 4;
 export const FRAME_DATABASE_NAME_REGEX = SANDBOX_DATABASE_NAME_REGEX;
 
 /** Manifest paths are always relative to the Frame source folder. */
@@ -73,7 +75,10 @@ export const FrameSourceManifestSchema = z
     description: z.string(),
     uiEntryPoint: FrameRelativePathSchema.optional(),
     functions: z.array(FrameFunctionManifestSchema).default([]),
-    databases: z.array(FrameDatabaseManifestSchema).default([]),
+    databases: z
+      .array(FrameDatabaseManifestSchema)
+      .max(MAX_FRAME_DATABASE_COUNT)
+      .default([]),
   })
   .superRefine((manifest, context) => {
     const functionNames = new Set<string>();

@@ -1,4 +1,5 @@
 import { INTERACTIVE_CONTENT_AUTHORING_PROSE_V2 } from "@app/lib/api/actions/servers/interactive_content/instructions_v2";
+import { MAX_FRAME_DATABASE_COUNT } from "@app/types/api/frame_manifest";
 
 export const FRAMES_V2_INSTRUCTIONS = `\
 # Frames v2
@@ -97,7 +98,7 @@ The manifest declares the UI entry point, every server function, and every datab
   import them with relative paths.
 - Each database declaration names Frame-owned SQLite state and points to its Drizzle schema file.
   Database names start with a lower-case letter and contain only lower-case letters, digits, and
-  underscores.
+  underscores. A Frame can declare up to ${MAX_FRAME_DATABASE_COUNT} databases.
 - \`executionMode\` defaults to \`durable\`. Use \`fast\` when the function never calls a Dust tool;
   use \`durable\` when it calls \`dsbx tools\`.
 - \`defaultStake\` defaults to \`low\`. \`never_ask\` runs unattended, \`low\` asks once and can be
