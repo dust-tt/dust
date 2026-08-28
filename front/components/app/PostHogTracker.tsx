@@ -34,6 +34,12 @@ const EXCLUDED_PATHS = [
   "/oauth/",
 ];
 
+function isTrackablePathname(pathname: string): boolean {
+  return !EXCLUDED_PATHS.some(
+    (path) => pathname.startsWith(path) || pathname.endsWith(path)
+  );
+}
+
 interface PostHogTrackerProps {
   children: React.ReactNode;
   // When true, assume cookies are accepted (logged in users).
@@ -136,10 +142,7 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     };
   }, [activeSubscription]);
 
-  const isTrackablePage = !EXCLUDED_PATHS.some((path) => {
-    const pathname = router.pathname;
-    return pathname.startsWith(path) || pathname.endsWith(path);
-  });
+  const isTrackablePage = isTrackablePathname(router.pathname);
 
   const lastIdentifiedWorkspaceId = useRef<string | null>(null);
   const lastPlanPropertiesString = useRef<string | null>(null);
@@ -200,6 +203,16 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
       property_denylist: ["$ip"],
       before_send: (event) => {
         if (!event) {
+          return null;
+        }
+
+        // isTrackablePage only gates initialization; with capture_pageview:
+        // "history_change" posthog-js captures client-side navigations on its
+        // own, so excluded paths have to be filtered per-event.
+        if (
+          event.event === "$pageview" &&
+          !isTrackablePathname(window.location.pathname)
+        ) {
           return null;
         }
 
