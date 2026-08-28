@@ -10,6 +10,7 @@ import {
 } from "@app/components/model_picker/modelPickerTracking";
 import type {
   MakerGroup,
+  ModelPickerView,
   ModelTierId,
   Selection,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -107,9 +108,8 @@ export function ModelPicker({
   const { isDark } = useTheme();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState("");
 
-  const [isMakersExpanded, setIsMakersExpanded] = useState(false);
+  const [view, setView] = useState<ModelPickerView>("root");
   const [activeMaker, setActiveMaker] = useState<ModelMakerIdType | null>(null);
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
@@ -224,8 +224,7 @@ export function ModelPicker({
   // through here rather than touching `setIsOpen` directly.
   const openMenu = () => {
     setIsOpen(true);
-    setSearch("");
-    setIsMakersExpanded(false);
+    setView("root");
     setActiveMaker(null);
     if (trackingSurface) {
       trackModelPickerOpen({ surface: trackingSurface, clientType });
@@ -274,18 +273,22 @@ export function ModelPicker({
     );
   };
 
-  const onToggleMakers = () => {
-    setIsMakersExpanded((expanded) => !expanded);
-    setActiveMaker(null);
-    setSearch("");
+  const onOpenMakers = () => {
+    setView("makers");
   };
 
   const onSelectMaker = (makerId: ModelMakerIdType) => {
     setActiveMaker(makerId);
+    setView("models");
   };
 
   const onBack = () => {
-    setActiveMaker(null);
+    if (view === "models") {
+      setActiveMaker(null);
+      setView("makers");
+    } else if (view === "makers") {
+      setView("root");
+    }
   };
 
   const onChangeEffort = (effort: ReasoningEffort) => {
@@ -370,13 +373,10 @@ export function ModelPicker({
         canRevert={canRevert}
         lockPremiumEfforts={lockPremiumEfforts}
         makerGroups={makerGroups}
-        allModels={allModels}
         streamModels={streamModels}
         streams={streams}
-        search={search}
-        onSearchChange={setSearch}
-        isMakersExpanded={isMakersExpanded}
-        onToggleMakers={onToggleMakers}
+        view={view}
+        onOpenMakers={onOpenMakers}
         activeMaker={activeMaker}
         onSelectMaker={onSelectMaker}
         onBack={onBack}

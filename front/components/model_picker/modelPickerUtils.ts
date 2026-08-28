@@ -176,6 +176,8 @@ export interface MakerGroup {
   models: ModelConfigurationType[];
 }
 
+export type ModelPickerView = "root" | "makers" | "models";
+
 export type EffortLockReason = "unsupported" | "premium" | "model_tier";
 
 // One stop of the reasoning-effort slider. A stop is `locked` when the level is
