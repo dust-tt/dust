@@ -11,6 +11,7 @@ import type {
   PostMemberGroupResponseBody,
 } from "@app/types/api/groups/manage";
 import type { PutGroupSpendLimitResponseBody } from "@app/types/api/groups/spend_limit";
+import type { GetKeyScopableGroupsResponseBody } from "@app/types/api/keys";
 import type { GroupKind } from "@app/types/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -63,6 +64,35 @@ export function useGroups({
     isGroupsLoading: !error && !data && !disabled,
     isGroupsError: !!error,
     mutateGroups: mutate,
+  };
+}
+
+// The groups the caller may scope a new API key to (the groups they are a
+// member of). Distinct from `useGroups`, which lists workspace groups by kind:
+// key scoping is gated on membership, not visibility.
+export function useKeyScopableGroups({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const groupsFetcher: Fetcher<GetKeyScopableGroupsResponseBody> = fetcher;
+
+  const {
+    data,
+    error,
+    mutate: mutateGroups,
+  } = useSWRWithDefaults(`/api/w/${owner.sId}/keys/groups`, groupsFetcher, {
+    disabled,
+  });
+
+  return {
+    groups: data?.groups ?? emptyArray(),
+    isGroupsLoading: !error && !data && !disabled,
+    isGroupsError: !!error,
+    mutateGroups,
   };
 }
 

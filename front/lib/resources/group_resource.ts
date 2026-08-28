@@ -493,6 +493,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok({ group, addedUsers: memberUsers });
   }
 
+  /**
+   * TODO(governance): to be removed, replaced by permissions checks
+   */
   static async findAgentIdsForGroups(
     auth: Authenticator,
     groupIds: ModelId[]
@@ -516,6 +519,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
+   * TODO(governance): to be removed, replaced by findRegularAutoGroupForGrant/listRegularAutoGroupsForResource
    * Finds the specific editor group associated with an agent configuration.
    */
   static async findEditorGroupForAgent(
@@ -563,6 +567,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
     });
 
+    // TODO(governance) group can be accessed if agent can be read
     const [group] = groups.filter((g) => g.canRead(auth));
     if (!group) {
       return new Err(
@@ -585,6 +590,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
+   * TODO(governance): to be removed, replaced by findRegularAutoGroupForGrant/listRegularAutoGroupsForResource
    * Finds the specific editor groups associated with a set of agent configuration.
    */
   static async findEditorGroupsForAgents(
@@ -618,6 +624,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
     });
 
+    // TODO(governance) group can be accessed if agent can be read
     const accessibleGroups = groups.filter((group) => group.canRead(auth));
     const groupMap: Record<ModelId, GroupResource> = {};
 
@@ -860,10 +867,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     id: string
   ): Promise<
-    Result<
-      GroupResource,
-      DustError<"group_not_found" | "unauthorized" | "invalid_id">
-    >
+    Result<GroupResource, DustError<"group_not_found" | "invalid_id">>
   > {
     const groupRes = await this.fetchByIds(auth, [id]);
 
@@ -878,10 +882,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     ids: string[]
   ): Promise<
-    Result<
-      GroupResource[],
-      DustError<"group_not_found" | "unauthorized" | "invalid_id">
-    >
+    Result<GroupResource[], DustError<"group_not_found" | "invalid_id">>
   > {
     const groupModelIds = removeNulls(
       ids.map((id) => getResourceIdFromSId(id))
@@ -903,25 +904,6 @@ export class GroupResource extends BaseResource<GroupModel> {
         new DustError(
           "group_not_found",
           ids.length === 1 ? "Group not found" : "Some groups were not found"
-        )
-      );
-    }
-
-    const unreadableGroups = groups.filter((group) => !group.canRead(auth));
-    if (unreadableGroups.length > 0) {
-      logger.error(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          unreadableGroupIds: unreadableGroups.map((g) => g.sId),
-          authRole: auth.role(),
-          authGroupIds: auth.groupIds(),
-        },
-        "[GroupResource.fetchByIds] User cannot read some groups"
-      );
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Only `admins` or members can view groups"
         )
       );
     }
@@ -982,6 +964,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
   }
 
+  /**
+   * TODO(governance): to be removed, replaced by findRegularAutoGroupForGrant/listRegularAutoGroupsForResource
+   */
   static async fetchByAgentConfiguration({
     auth,
     agentConfiguration,
@@ -1038,6 +1023,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     const [group] = groups;
 
+    // TODO(governance) group can be accessed if agent can be read
     if (!group.canRead(auth)) {
       return null;
     }
@@ -1095,15 +1081,29 @@ export class GroupResource extends BaseResource<GroupModel> {
     options: { groupKinds?: GroupKind[] } = {}
   ): Promise<GroupResource[]> {
     const { groupKinds = ["global", "regular_auto", "provisioned"] } = options;
-    const groups = await this.baseFetch(auth, {
+    // Visibility is a caller concern: callers pick which kinds to list (user-facing
+    // callers restrict to `USER_VISIBLE_GROUP_KINDS`, admin/poke callers may request
+    // anything). This method only scopes by kind and does not filter per-caller.
+    return this.baseFetch(auth, {
       where: {
         kind: {
           [Op.in]: groupKinds,
         },
       },
     });
+  }
 
-    return groups.filter((group) => group.canRead(auth));
+  /**
+   * The groups the caller is a member of. Membership (not visibility) is the rule
+   * here: e.g. an API key can only be scoped to groups its creator belongs to.
+   * Internal kinds (system, agent editors) are never surfaced.
+   */
+  static async listMemberGroups(auth: Authenticator): Promise<GroupResource[]> {
+    return this.fetchByModelIds(auth, auth.groupModelIds(), {
+      groupKinds: GROUP_KINDS.filter(
+        (k) => k !== "system" && !isAgentEditorGroupKind(k)
+      ),
+    });
   }
 
   /**

@@ -81,10 +81,6 @@ export async function updateMemberGroupMembership(
         return new Err(
           new GroupMembershipError("invalid_group_id", groupRes.error.message)
         );
-      case "unauthorized":
-        return new Err(
-          new GroupMembershipError("unauthorized", groupRes.error.message)
-        );
       case "group_not_found":
         return new Err(
           new GroupMembershipError("group_not_found", groupRes.error.message)

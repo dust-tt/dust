@@ -5,7 +5,11 @@ import {
   type PostGroupResponseBody,
 } from "@app/types/api/groups/manage";
 import type { GroupKind, GroupType } from "@app/types/groups";
-import { GroupKindCodec } from "@app/types/groups";
+import {
+  GroupKindCodec,
+  isUserVisibleGroupKind,
+  USER_VISIBLE_GROUP_KINDS,
+} from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
@@ -38,11 +42,16 @@ app.get(
     const auth = ctx.get("auth");
     const { kind, withMembers } = ctx.req.valid("query");
 
-    const groupKinds: GroupKind[] = kind
+    const requestedKinds: GroupKind[] = kind
       ? Array.isArray(kind)
         ? kind
         : [kind]
-      : ["global", "regular_auto"];
+      : [...USER_VISIBLE_GROUP_KINDS];
+
+    // This endpoint only ever exposes user-visible group kinds. Internal kinds
+    // (regular_auto, system, agent_editors) are never listed here, so we clamp
+    // whatever was requested to the visible set.
+    const groupKinds = requestedKinds.filter(isUserVisibleGroupKind);
 
     const groups = await GroupResource.listAllWorkspaceGroups(auth, {
       groupKinds,

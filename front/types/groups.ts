@@ -61,6 +61,20 @@ export function isManageableGroupKind(kind: GroupKind): boolean {
   return MANAGEABLE_GROUP_KINDS.some((k) => k === kind);
 }
 
+// Group kinds that any workspace member may see directly (e.g. in the workspace
+// Groups listing or when referencing a group by id). Internal kinds
+// (`regular_auto`, `system`, `agent_editors`) are never surfaced this way: they
+// are implementation details of spaces, permissions, and agent editors.
+export const USER_VISIBLE_GROUP_KINDS = [
+  "global",
+  "provisioned",
+  "regular_manual",
+] as const;
+
+export function isUserVisibleGroupKind(kind: GroupKind): boolean {
+  return USER_VISIBLE_GROUP_KINDS.some((k) => k === kind);
+}
+
 export function isGroupKind(value: unknown): value is GroupKind {
   return GROUP_KINDS.includes(value as GroupKind);
 }

@@ -24,6 +24,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import keyId from "./[id]";
+import keyGroups from "./groups";
 
 const MAX_API_KEY_CREATION_PER_DAY = 30;
 
@@ -174,6 +175,21 @@ app.post(
         : [];
 
     if (additionalGroupIds.length > 0) {
+      // A key can only be scoped to groups the caller is a member of.
+      const nonMemberGroupIds = additionalGroupIds.filter(
+        (gId) => !auth.hasGroup(gId)
+      );
+      if (nonMemberGroupIds.length > 0) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "You can only scope an API key to groups you are a member of.",
+          },
+        });
+      }
+
       const groupsRes = await GroupResource.fetchByIds(
         auth,
         additionalGroupIds
@@ -285,6 +301,7 @@ app.post(
   }
 );
 
+app.route("/groups", keyGroups);
 app.route("/:id", keyId);
 
 export default app;

@@ -15,7 +15,7 @@ import { formatCredits } from "@app/lib/client/credits";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useKeys } from "@app/lib/swr/apps";
-import { useGroups } from "@app/lib/swr/groups";
+import { useKeyScopableGroups } from "@app/lib/swr/groups";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import type { GroupType } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
@@ -124,7 +124,9 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
   const [editCapKey, setEditCapKey] = useState<KeyType | null>(null);
 
   const { isKeysError, isKeysLoading, keys } = useKeys(owner);
-  const { groups, isGroupsError, isGroupsLoading } = useGroups({ owner });
+  const { groups, isGroupsError, isGroupsLoading } = useKeyScopableGroups({
+    owner,
+  });
   const isDataLoading = isKeysLoading || isGroupsLoading;
   const isDataError = !!isKeysError || isGroupsError;
 
