@@ -1,16 +1,16 @@
 {
   "name": "dust-tt/dust",
   "build": {
-    "dockerfile": "Dockerfile",
+    "dockerfile": "../dev/Dockerfile",
     "context": ".."
   },
-  "install": "bash .cursor/scripts/install.sh",
-  "start": "bash .cursor/scripts/start-infra.sh",
+  "install": "bash dev/scripts/install.sh",
+  "start": "bash dev/scripts/infra.sh",
   "terminals": [
     {
       "name": "mprocs",
-      "command": "bash .cursor/scripts/start-mprocs.sh",
-      "description": "Dev stack via mprocs: npm install, sdks-js/sparkle watches, bacon Rust reload, all services"
+      "command": "bash dev/scripts/apps.sh",
+      "description": "Dev stack via mprocs: sdks-js/sparkle watches, bacon Rust reload, all services"
     }
   ],
   "ports": [

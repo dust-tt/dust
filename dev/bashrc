@@ -1,15 +1,25 @@
-# Interactive shell defaults for the Dust dev container.
+# Interactive shell defaults for the Dust shared dev container.
+# Secret env is loaded by /root/.bashrc (interactive bash does not use BASH_ENV).
 
 case $- in
   *i*) ;;
   *) return ;;
 esac
 
+# Belt-and-suspenders if this file is sourced without going through /root/.bashrc.
+if [ -f /tmp/dust-shell-env.sh ]; then
+  # shellcheck disable=SC1091
+  source /tmp/dust-shell-env.sh
+fi
+
 export SHELL=/bin/bash
 export LANG="${LANG:-C.UTF-8}"
 export LC_ALL="${LC_ALL:-C.UTF-8}"
 export TERM="${TERM:-xterm-256color}"
 export COLORTERM="${COLORTERM:-truecolor}"
+export FORCE_COLOR="${FORCE_COLOR:-1}"
+export CLICOLOR="${CLICOLOR:-1}"
+export CLICOLOR_FORCE="${CLICOLOR_FORCE:-1}"
 
 shopt -s checkwinsize histappend globstar 2>/dev/null || true
 
@@ -37,4 +47,5 @@ if [ -f /etc/bash_completion ]; then
   source /etc/bash_completion
 fi
 
-PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+# Explicit color prompt (docker/tmux sometimes report TERM without color by default).
+PS1='\[\e[01;32m\]\u@\h\[\e[00m\]:\[\e[01;34m\]\w\[\e[00m\]\$ '

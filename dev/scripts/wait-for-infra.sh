@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Block until start-infra.sh finishes (Cursor runs start + terminals in parallel).
+# Block until infra.sh finishes (Cursor runs start + terminals in parallel).
 set -euo pipefail
 
 DUST_DEV_SCRIPT_NAME=wait-for-infra
-# shellcheck source=.cursor/scripts/common.sh
+# shellcheck source=dev/scripts/common.sh
 source "$(dirname "$0")/common.sh"
-# shellcheck source=.cursor/scripts/env.defaults.sh
-source "$(dirname "$0")/env.defaults.sh"
+# shellcheck source=dev/scripts/env.sh
+source "$(dirname "$0")/env.sh"
 
 READY_FILE="${DUST_INFRA_LOG_DIR}/infra.ready"
 MAX_WAIT_SECONDS="${DUST_INFRA_WAIT_SECONDS:-900}"
@@ -17,7 +17,7 @@ if [ -f "$READY_FILE" ]; then
   exit 0
 fi
 
-log "Waiting for start-infra to finish (up to ${MAX_WAIT_SECONDS}s)..."
+log "Waiting for infra to finish (up to ${MAX_WAIT_SECONDS}s)..."
 log "Ready marker: ${READY_FILE}"
 
 attempt=0
@@ -38,7 +38,7 @@ while [ "$attempt" -lt "$max_attempts" ]; do
   sleep "$POLL_INTERVAL"
 done
 
-log "Timed out waiting for infra. Check the start-infra output and ${DUST_INFRA_LOG_DIR}/"
+log "Timed out waiting for infra. Check the infra output and ${DUST_INFRA_LOG_DIR}/"
 if [ -f "${DUST_INFRA_LOG_DIR}/init-elasticsearch.log" ]; then
   tail -20 "${DUST_INFRA_LOG_DIR}/init-elasticsearch.log"
 fi

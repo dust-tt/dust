@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # One-time / idempotent DB bootstrap: migrations only.
-# Dev-user seed runs from start-mprocs.sh where Cursor runtime secrets (DEV_WORKOS_*) are set.
+# Dev-user seed runs from apps.sh where runtime secrets (DEV_WORKOS_*) are set.
 set -euo pipefail
 
 DUST_DEV_SCRIPT_NAME=setup-dev-db
-# shellcheck source=.cursor/scripts/common.sh
+# shellcheck source=dev/scripts/common.sh
 source "$(dirname "$0")/common.sh"
-# shellcheck source=.cursor/scripts/env.defaults.sh
-source "$(dirname "$0")/env.defaults.sh"
-ensure_workspace_deps
+# shellcheck source=dev/scripts/env.sh
+source "$(dirname "$0")/env.sh"
+ensure_client_built
 
 core_schema_ready=$(
   PGPASSWORD=dev psql "$CORE_DATABASE_URI" -tAc \
