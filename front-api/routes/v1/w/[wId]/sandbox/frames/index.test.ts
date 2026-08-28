@@ -7,11 +7,22 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { createSandboxTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importActual) => {
+  const actual =
+    await importActual<typeof import("@app/lib/api/audit/workos_audit")>();
+  return { ...actual, emitAuditLogEvent: mockEmitAuditLogEvent };
+});
 
 vi.mock("@app/lib/lock", async (importActual) => {
   const actual = await importActual<typeof import("@app/lib/lock")>();
@@ -93,7 +104,11 @@ function requestFrameShare(
   workspaceId: string,
   token: string,
   sourceDirectoryPath: string,
-  emails: string[] = []
+  emails: string[] = [],
+  shareScope:
+    | "emails_only"
+    | "public"
+    | "workspace_and_emails" = "workspace_and_emails"
 ) {
   return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/share`, {
     method: "POST",
@@ -103,7 +118,7 @@ function requestFrameShare(
     },
     body: JSON.stringify({
       emails,
-      shareScope: "workspace_and_emails",
+      shareScope,
       sourceDirectoryPath,
     }),
   });
@@ -191,6 +206,7 @@ async function setupLegacyFrame() {
 
 beforeEach(() => {
   fileStorageMock.reset();
+  mockEmitAuditLogEvent.mockClear();
 });
 
 describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
@@ -327,6 +343,69 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
       sourceDirectoryPath,
     });
     expect(shared.shareUrl).toContain("/share/frame/");
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "frame.email_grant_added",
+        metadata: expect.objectContaining({ emails: user.email }),
+      })
+    );
+
+    mockEmitAuditLogEvent.mockClear();
+    const repeatedResponse = await requestFrameShare(
+      context.workspace.sId,
+      context.token,
+      sourceDirectoryPath,
+      [user.email]
+    );
+    expect(repeatedResponse.status).toBe(200);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: "frame.email_grant_added" })
+    );
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: "frame.share_scope_updated" })
+    );
+  });
+
+  it("preserves existing rights when authorized-file validation fails", async () => {
+    const context = await setup();
+    assert(context.frame);
+    const publishResponse = await requestFramePublish(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath
+    );
+    expect(publishResponse.status).toBe(200);
+    const published = await publishResponse.json();
+    await context.frame.setShareScope(context.auth, "emails_only");
+    fileStorageMock.setObject(
+      getFramePublicationUiBundlePath({
+        workspaceId: context.workspace.sId,
+        frameId: context.frame.sId,
+        publicationId: published.publicationId,
+      }),
+      'useFile("fil_ZZZZZZZZZZ");'
+    );
+
+    const sourceDirectoryPath = context.manifestPath.replace(
+      `/${FRAME_MANIFEST_FILE}`,
+      ""
+    );
+    const response = await requestFrameShare(
+      context.workspace.sId,
+      context.token,
+      sourceDirectoryPath,
+      [context.auth.getNonNullableUser().email],
+      "workspace_and_emails"
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        message: expect.stringContaining("cannot be verified"),
+      },
+    });
+    expect(await context.frame.getShareScope()).toBe("emails_only");
+    expect(await context.frame.listActiveSharingGrants()).toEqual([]);
   });
 
   it("publishes a legacy Frame through its existing publication flow", async () => {

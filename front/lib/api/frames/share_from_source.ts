@@ -12,16 +12,27 @@ import {
   checkFrameEmailGrantPermission,
   checkFrameShareScopePermission,
 } from "@app/lib/api/share/frame_sharing";
-import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
+import {
+  computeAuthorizedFileAccessForShare,
+  readFrameFileContent,
+} from "@app/lib/api/viz/authorized_file_access";
+import {
+  isAllowlistShareScopeStale,
+  isAllowlistStale,
+} from "@app/lib/api/viz/authorized_file_access_policy";
+import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { DustFileSystemError } from "@app/types/file_system";
-import type { FileShareScope } from "@app/types/files";
+import type {
+  ComputedAuthorizedFileAccess,
+  FileShareScope,
+} from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export class FrameSharingError extends Error {
   constructor(
@@ -133,6 +144,12 @@ export async function shareFrameV2FromSource(
         "The Frame source changed while sharing was being configured; retry from its current path."
       );
     }
+    if (!auth.user()) {
+      return sharingError(
+        "unauthorized",
+        "Frame sharing requires a workspace member."
+      );
+    }
 
     const scopePermission = await checkFrameShareScopePermission(
       auth,
@@ -146,32 +163,70 @@ export async function shareFrameV2FromSource(
       return sharingError("unauthorized", emailPermission.error.message);
     }
 
-    try {
-      await freshFrame.setShareScope(auth, shareScope);
-
-      const allowlist = await ensureAuthorizedFileAccessForShare(
-        auth,
-        freshFrame
+    const frameContent = await readFrameFileContent(auth, freshFrame);
+    if (frameContent === null) {
+      return sharingError(
+        "internal",
+        `Failed to read Frame content for authorized file access (Frame: ${freshFrame.sId}).`
       );
-      if (allowlist.isErr()) {
+    }
+
+    const [previousShareScope, activeAllowlist, activeAllowlistShareScope] =
+      await Promise.all([
+        freshFrame.getShareScope(),
+        freshFrame.getActiveAuthorizedFileAccessAllowlist(),
+        freshFrame.getActiveAuthorizedFileAccessShareScope(),
+      ]);
+    const shouldPersistAllowlist =
+      !activeAllowlist ||
+      isAllowlistStale(activeAllowlist, frameContent) ||
+      activeAllowlistShareScope === null ||
+      isAllowlistShareScopeStale(activeAllowlistShareScope, shareScope);
+
+    let authorizedFileAccess: ComputedAuthorizedFileAccess | null = null;
+    if (shouldPersistAllowlist) {
+      const computed = await computeAuthorizedFileAccessForShare(
+        auth,
+        freshFrame,
+        { frameContent }
+      );
+      if (computed.isErr()) {
         return sharingError(
-          allowlist.error.code === "invalid_request_error"
+          computed.error.code === "invalid_request_error"
             ? "invalid_source"
             : "internal",
-          allowlist.error.message
+          computed.error.message
         );
       }
+      authorizedFileAccess = computed.value;
+    }
 
-      const grants =
-        emails.length > 0
-          ? await freshFrame.addSharingGrants(auth, { emails })
-          : await freshFrame.listActiveSharingGrants();
-      const shareInfo = await freshFrame.getShareInfo();
-      if (!shareInfo) {
-        return sharingError("internal", "Frame sharing record not found.");
+    const createdEmails = await withTransaction(async (transaction) => {
+      if (previousShareScope !== shareScope) {
+        await freshFrame.setShareScope(auth, shareScope, transaction);
       }
+      if (authorizedFileAccess) {
+        await freshFrame.persistAuthorizedFileAccess(authorizedFileAccess, {
+          transaction,
+        });
+      }
+      return freshFrame.addSharingGrantsAndGetCreatedEmails(
+        auth,
+        { emails },
+        { transaction }
+      );
+    });
 
-      const frameName = path.posix.basename(sourceDirectory);
+    const [grants, shareInfo] = await Promise.all([
+      freshFrame.listActiveSharingGrants(),
+      freshFrame.getShareInfo(),
+    ]);
+    if (!shareInfo) {
+      throw new Error(`Frame sharing record not found for ${freshFrame.sId}.`);
+    }
+
+    const frameName = path.posix.basename(sourceDirectory);
+    if (previousShareScope !== shareScope) {
       void emitAuditLogEvent({
         auth,
         action: "frame.share_scope_updated",
@@ -188,34 +243,40 @@ export async function shareFrameV2FromSource(
           share_scope: shareScope,
         },
       });
-      if (emails.length > 0) {
-        void emitAuditLogEvent({
-          auth,
-          action: "frame.email_grant_added",
-          targets: [
-            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-            buildAuditLogTarget("frame", {
-              sId: freshFrame.sId,
-              name: frameName,
-            }),
-          ],
-          context: getAuditLogContext(auth),
-          metadata: {
-            emails: emails.join(","),
-            frame_name: frameName,
-          },
-        });
-      }
-
-      return new Ok({
-        emails: grants.map((grant) => grant.email),
-        frameId: freshFrame.sId,
-        shareScope: shareInfo.scope,
-        shareUrl: shareInfo.shareUrl,
-        sourceDirectoryPath: sourceDirectory,
-      });
-    } catch (error) {
-      return sharingError("internal", normalizeError(error).message);
     }
+    if (authorizedFileAccess) {
+      emitFrameAuthorizedFilesUpdatedAuditLog(
+        auth,
+        freshFrame,
+        authorizedFileAccess,
+        shareScope
+      );
+    }
+    if (createdEmails.length > 0) {
+      void emitAuditLogEvent({
+        auth,
+        action: "frame.email_grant_added",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("frame", {
+            sId: freshFrame.sId,
+            name: frameName,
+          }),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          emails: createdEmails.join(","),
+          frame_name: frameName,
+        },
+      });
+    }
+
+    return new Ok({
+      emails: grants.map((grant) => grant.email),
+      frameId: freshFrame.sId,
+      shareScope: shareInfo.scope,
+      shareUrl: shareInfo.shareUrl,
+      sourceDirectoryPath: sourceDirectory,
+    });
   });
 }
