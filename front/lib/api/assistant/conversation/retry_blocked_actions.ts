@@ -2,6 +2,7 @@ import { isBlockedActionEvent } from "@app/lib/actions/mcp";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
+import type { DustErrorCode } from "@app/lib/error";
 import { DustError } from "@app/lib/error";
 // TODO(2026-07-31 QOS): move these message fetches behind a resource method instead of using
 // models directly in lib/api.
@@ -17,6 +18,25 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+
+// Outcomes that mean the message has nothing left to resume, rather than a resume that failed:
+// the blocked actions were already consumed, or the agent message reached a terminal state.
+export const NOTHING_TO_RESUME_ERROR_CODES: DustErrorCode[] = [
+  "agent_message_not_resumable",
+  "no_blocked_actions",
+];
+
+// Clients replay the whole message stream on load, so any blocked-action event left behind keeps
+// re-prompting the user forever. Purge them:
+// - remove tool_approve_execution events (watch out as those events are not republished).
+// - remove tool_personal_auth_required events.
+async function purgeBlockedActionEvents(messageId: string): Promise<void> {
+  await getRedisHybridManager().removeEvent((event) => {
+    const payload = JSON.parse(event.message["payload"]);
+
+    return isBlockedActionEvent(payload);
+  }, getMessageChannelId(messageId));
+}
 
 async function findUserMessageForRetry(
   auth: Authenticator,
@@ -78,6 +98,10 @@ async function findUserMessageForRetry(
       agentMessageId: agentMessage.agentMessageId,
     });
 
+  // Purge before the early returns below: a message with nothing left to resume is exactly the
+  // case where stale events would otherwise keep the prompt on screen with no way to clear it.
+  await purgeBlockedActionEvents(messageId);
+
   if (blockedActions.length === 0) {
     // Not a failure: the message simply has nothing waiting on user input (already resumed, or
     // reached here through a handover whose caller was never blocked).
@@ -97,15 +121,6 @@ async function findUserMessageForRetry(
       )
     );
   }
-
-  // Purge blocked actions event message from the stream:
-  // - remove tool_approve_execution events (watch out as those events are not republished).
-  // - remove tool_personal_auth_required events.
-  await getRedisHybridManager().removeEvent((event) => {
-    const payload = JSON.parse(event.message["payload"]);
-
-    return isBlockedActionEvent(payload);
-  }, getMessageChannelId(messageId));
 
   return new Ok({
     agentMessageId: agentMessage.sId,

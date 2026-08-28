@@ -1,8 +1,12 @@
 import { retryAgentMessage } from "@app/lib/api/assistant/conversation";
-import { retryBlockedActions } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
+import {
+  NOTHING_TO_RESUME_ERROR_CODES,
+  retryBlockedActions,
+} from "@app/lib/api/assistant/conversation/retry_blocked_actions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -144,18 +148,34 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     if (retryBlockedActionsRes.isErr()) {
       const { error } = retryBlockedActionsRes;
 
-      if (
-        error instanceof DustError &&
-        error.code === "agent_loop_already_running"
-      ) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: error.message,
-          },
-        });
+      if (error instanceof DustError) {
+        // Nothing left to resume: the blocked actions the user acted on are already gone, and
+        // their stale events have just been purged. That is the outcome the caller asked for,
+        // so reporting a failure would leave the prompt on screen with no way to clear it.
+        if (NOTHING_TO_RESUME_ERROR_CODES.includes(error.code)) {
+          return ctx.json({ message });
+        }
+
+        if (error.code === "agent_loop_already_running") {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: error.message,
+            },
+          });
+        }
       }
+
+      logger.error(
+        {
+          conversationId: conversation.sId,
+          error,
+          messageId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+        },
+        "Failed to retry blocked actions"
+      );
 
       return apiError(ctx, {
         status_code: 500,

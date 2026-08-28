@@ -1,6 +1,9 @@
 import { listAgenticAncestors } from "@app/lib/api/assistant/conversation/agentic_ancestors";
 import { MAX_CONVERSATION_DEPTH } from "@app/lib/api/assistant/conversation/constants";
-import { retryBlockedActions } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
+import {
+  NOTHING_TO_RESUME_ERROR_CODES,
+  retryBlockedActions,
+} from "@app/lib/api/assistant/conversation/retry_blocked_actions";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustErrorCode } from "@app/lib/error";
 import { DustError } from "@app/lib/error";
@@ -12,8 +15,7 @@ import logger from "@app/logger/logger";
 // state. Higher ancestors may still be parked, so the walk continues.
 const NON_BLOCKING_RETRY_ERROR_CODES: DustErrorCode[] = [
   "agent_loop_already_running",
-  "agent_message_not_resumable",
-  "no_blocked_actions",
+  ...NOTHING_TO_RESUME_ERROR_CODES,
 ];
 
 /**
