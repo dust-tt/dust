@@ -39,13 +39,13 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/apps/:aId", () => {
       globalSpace
     );
 
-    const agentSId = generateRandomModelSId();
+    const agentId = generateRandomModelSId();
     const agentIdentity = await AgentModel.create({
-      sId: agentSId,
+      sId: agentId,
       workspaceId: workspace.id,
     });
     const agent = await AgentConfigurationModel.create({
-      sId: agentSId,
+      sId: agentId,
       agentId: agentIdentity.id,
       version: 0,
       status: "active",
