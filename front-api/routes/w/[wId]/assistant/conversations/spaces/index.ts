@@ -62,7 +62,7 @@ app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
     number,
     {
       unreadConversations: ConversationWithoutContentType[];
-      nonParticipantUnreadConversations: ConversationWithoutContentType[];
+      nonParticipantUnreadConversationIds: string[];
     }
   >();
 
@@ -72,7 +72,7 @@ app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
       if (spaceModelId && spaceIdToSpaceMap.has(spaceModelId)) {
         const existing = conversationsBySpace.get(spaceModelId) ?? {
           unreadConversations: [],
-          nonParticipantUnreadConversations: [],
+          nonParticipantUnreadConversationIds: [],
         };
         existing.unreadConversations.push(conversation.toJSON());
         conversationsBySpace.set(spaceModelId, existing);
@@ -86,9 +86,9 @@ app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
       if (spaceModelId && spaceIdToSpaceMap.has(spaceModelId)) {
         const existing = conversationsBySpace.get(spaceModelId) ?? {
           unreadConversations: [],
-          nonParticipantUnreadConversations: [],
+          nonParticipantUnreadConversationIds: [],
         };
-        existing.nonParticipantUnreadConversations.push(conversation.toJSON());
+        existing.nonParticipantUnreadConversationIds.push(conversation.sId);
         conversationsBySpace.set(spaceModelId, existing);
       }
     }
@@ -117,9 +117,9 @@ app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
       },
       unreadConversations:
         conversationsBySpace.get(space.id)?.unreadConversations ?? [],
-      nonParticipantUnreadConversations:
-        conversationsBySpace.get(space.id)?.nonParticipantUnreadConversations ??
-        [],
+      nonParticipantUnreadConversationIds:
+        conversationsBySpace.get(space.id)
+          ?.nonParticipantUnreadConversationIds ?? [],
     })),
   });
 });

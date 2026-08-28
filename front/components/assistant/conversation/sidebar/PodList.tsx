@@ -213,7 +213,7 @@ export function renderPodsList({
   }
 
   return filteredSummary.map(
-    ({ space, unreadConversations, nonParticipantUnreadConversations }) => (
+    ({ space, unreadConversations, nonParticipantUnreadConversationIds }) => (
       <PodListItem
         key={space.sId}
         pod={space}
@@ -221,7 +221,7 @@ export function renderPodsList({
         unreadCount={unreadConversations.length}
         hasUnread={
           unreadConversations.length > 0 ||
-          nonParticipantUnreadConversations.length > 0
+          nonParticipantUnreadConversationIds.length > 0
         }
         owner={owner}
         moveConversationToPod={moveConversationToPod}

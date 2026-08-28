@@ -6,7 +6,7 @@ export type GetBySpacesSummaryResponseBody = {
   summary: Array<{
     space: PodListItemType;
     unreadConversations: ConversationWithoutContentType[];
-    nonParticipantUnreadConversations: ConversationWithoutContentType[];
+    nonParticipantUnreadConversationIds: string[];
   }>;
 };
 

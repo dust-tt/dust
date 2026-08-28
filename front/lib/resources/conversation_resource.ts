@@ -2371,11 +2371,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         (c.userLastReadAt === null || c.updatedAt > c.userLastReadAt)
     );
 
-    // Hydrate next wake-up only for conversations returned to the summary (sidebar inbox).
-    await this.enrichWithNextWakeupAt(auth, [
-      ...unreadConversations,
-      ...nonParticipantUnreadConversations,
-    ]);
+    // Hydrate next wake-up only for participant unread conversations, which are
+    // serialized into the sidebar inbox. Non-participant unread IDs are only
+    // used for the activity badge.
+    await this.enrichWithNextWakeupAt(auth, unreadConversations);
 
     const lastUserActivityBySpace = new Map<number, Date>();
 
