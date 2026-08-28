@@ -59,13 +59,16 @@ type PoolLedgerEntry = {
   timestampMs: number;
 };
 
+// Customer-wide (`coveringDate: null`, no contract filter, `includeArchived`),
+// not scoped to the workspace's *current* `metronomeContractId` — a contract
+// renewal/switch gives the workspace a new contract id, but pool
+// credits/commits granted under a superseded contract are still real
+// consumption history and must stay counted.
 async function getPoolLedgerEntries({
   metronomeCustomerId,
-  metronomeContractId,
   poolCommitIds,
 }: {
   metronomeCustomerId: string;
-  metronomeContractId: string;
   poolCommitIds: Set<string>;
 }): Promise<Result<PoolLedgerEntry[], Error>> {
   const balancesResult = await listMetronomeBalances(metronomeCustomerId, {
@@ -80,10 +83,7 @@ async function getPoolLedgerEntries({
 
   const entries: PoolLedgerEntry[] = [];
   for (const source of balancesResult.value) {
-    if (
-      source.contract?.id !== metronomeContractId ||
-      !poolCommitIds.has(source.id)
-    ) {
+    if (!poolCommitIds.has(source.id)) {
       continue;
     }
     for (const item of source.ledger ?? []) {
@@ -113,14 +113,16 @@ function sumPoolLedgerEntriesForInvoice(
     .reduce((sum, entry) => sum + Math.abs(entry.amountCredits), 0);
 }
 
-// The set of commit/credit ids backing the workspace's pool on its current
-// contract, across both currently active and past grants.
+// The set of commit/credit ids backing the workspace's pool, across both
+// currently active and past (expired/fully-consumed, or granted under a
+// superseded contract) grants — invoices from 2-3 cycles ago can reference
+// commits that are no longer active, or no longer on the workspace's
+// *current* contract, today, hence `coveringDate: null` and no contract
+// filter (see `getPoolLedgerEntries`).
 async function getPoolCommitIds({
   metronomeCustomerId,
-  metronomeContractId,
 }: {
   metronomeCustomerId: string;
-  metronomeContractId: string;
 }): Promise<Result<Set<string>, Error>> {
   const poolBalancesResult = await listMetronomeBalances(metronomeCustomerId, {
     coveringDate: null,
@@ -130,13 +132,7 @@ async function getPoolCommitIds({
   if (poolBalancesResult.isErr()) {
     return new Err(poolBalancesResult.error);
   }
-  return new Ok(
-    new Set(
-      poolBalancesResult.value
-        .filter((entry) => entry.contract?.id === metronomeContractId)
-        .map((entry) => entry.id)
-    )
-  );
+  return new Ok(new Set(poolBalancesResult.value.map((entry) => entry.id)));
 }
 
 function computeCycleBreakdown({
@@ -217,7 +213,7 @@ export async function getAwuPoolSummary(
   ] = await Promise.all([
     listMetronomeBalances(metronomeCustomerId),
     listMetronomeDraftInvoices(metronomeCustomerId),
-    getPoolCommitIds({ metronomeCustomerId, metronomeContractId }),
+    getPoolCommitIds({ metronomeCustomerId }),
     listMetronomeFinalizedInvoices(metronomeCustomerId, {
       limit: cycleHistoryLimit + FINALIZED_INVOICES_FETCH_BUFFER,
     }),
@@ -256,7 +252,6 @@ export async function getAwuPoolSummary(
     poolCommitIds = poolCommitIdsResult.value;
     const ledgerEntriesResult = await getPoolLedgerEntries({
       metronomeCustomerId,
-      metronomeContractId,
       poolCommitIds,
     });
     if (ledgerEntriesResult.isErr()) {
@@ -340,10 +335,16 @@ export async function getAwuPoolSummary(
     }
   }
 
-  // Filter to active, non-seat AWU pool credits and commits on the
-  // workspace's current contract. The set of seat product IDs is derived
-  // from the contract's tagged subscriptions (via the `DUST_SEAT_TYPE`
-  // custom field) rather than a hardcoded list.
+  // Filter to active, non-seat AWU pool credits and commits. The set of
+  // seat product IDs is derived from the contract's tagged subscriptions
+  // (via the `DUST_SEAT_TYPE` custom field) rather than a hardcoded list.
+  //
+  // Not scoped to the workspace's *current* `metronomeContractId`, same as
+  // `getPoolLedgerEntries`/`getPoolCommitIds` above — a contract renewal
+  // gives the workspace a new contract id, but a pool grant issued under a
+  // superseded contract can still be the one actively covering `now`, and
+  // excluding it would incorrectly report the pool as exhausted (hasPool
+  // false) despite it holding a real, spendable balance.
   const activeContract = await getActiveContract(workspace.sId);
   const productSeatTypes = await getProductSeatTypes();
   const seatProductIds = activeContract
@@ -356,7 +357,6 @@ export async function getAwuPoolSummary(
     : new Set<string>();
   const awuBalances = balancesResult.value.filter(
     (entry) =>
-      entry.contract?.id === metronomeContractId &&
       entry.access_schedule?.credit_type?.id === awuCreditTypeId &&
       !seatProductIds.has(entry.product.id)
   );
