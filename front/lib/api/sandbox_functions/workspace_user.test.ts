@@ -181,4 +181,28 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
       user: expect.objectContaining({ sId: member.sId }),
     });
   });
+
+  it("uses the lifecycle scope instead of stale Frame location metadata", async () => {
+    const { workspace, adminAuth, space: oldSpace } = await setup();
+    const newSpace = await SpaceFactory.project(workspace);
+    const frame = await createFrame(adminAuth, oldSpace);
+    const member = await makeWorkspaceMember(workspace);
+    await addToSpaceGroup(adminAuth, oldSpace, "member", member);
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+
+    const authorization = await authorizeSandboxFunctionInvocation(memberAuth, {
+      userIdentity: "pod_member_required",
+      origin: "interactive_session",
+      owner: {
+        kind: "frame",
+        frame,
+        scope: { spaceId: newSpace.sId },
+      },
+    });
+
+    expect(authorization.authorized).toBe(false);
+  });
 });

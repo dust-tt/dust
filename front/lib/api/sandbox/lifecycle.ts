@@ -17,6 +17,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { ConversationSandboxScope } from "@app/lib/resources/conversation_sandbox_adapter";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import type { FrameSandboxScope } from "@app/lib/resources/frame_sandbox_adapter";
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import type {
@@ -297,7 +298,9 @@ export async function ensureFrameSandboxReady(
   auth: Authenticator,
   frame: FileResource,
   { requireRunning = false }: { requireRunning?: boolean } = {}
-): Promise<Result<EnsureSandboxReadyResult, Error>> {
+): Promise<
+  Result<EnsureSandboxReadyWithScopeResult<FrameSandboxScope>, Error>
+> {
   return ensureOwnerSandboxReady(auth, {
     ensureActive: () =>
       FrameSandboxAdapter.ensureSandboxActive(auth, frame, { requireRunning }),

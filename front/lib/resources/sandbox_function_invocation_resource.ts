@@ -10,6 +10,7 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { recordSandboxFunctionRun } from "@app/lib/api/sandbox/instrumentation";
+import type { EnsureSandboxReadyResult } from "@app/lib/api/sandbox/lifecycle";
 import {
   ensureFrameSandboxReady,
   ensurePodSandboxReady,
@@ -22,6 +23,7 @@ import {
   parseStdoutResultEnvelope,
   resolveSpilledResult,
 } from "@app/lib/api/sandbox_functions/result_delivery";
+import type { SandboxFunctionAuthorization } from "@app/lib/api/sandbox_functions/workspace_user";
 import {
   authorizeSandboxFunctionInvocation,
   getAuthenticatedWorkspaceUser,
@@ -29,6 +31,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { FrameSandboxScope } from "@app/lib/resources/frame_sandbox_adapter";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -621,7 +624,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // (requireRunning) readiness is a read with no side effect, so the two chains overlap to
       // take the slower one off the critical path. On the durable path readiness may create or
       // wake a sandbox, a paid side effect that stays gated behind the checks.
-      const runFunctionCheck = async () => {
+      const runFunctionCheck = async (): Promise<{
+        persistedFunction: SandboxFunctionModel;
+        podAuthorization: SandboxFunctionAuthorization | null;
+        errorMessage: string | null;
+      } | null> => {
         const persistedFunction = await SandboxFunctionModel.findOne({
           where: {
             id: this.sandboxFunctionId,
@@ -631,16 +638,35 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         if (!persistedFunction) {
           return null;
         }
+        if (frame) {
+          // Frame invocations always require a workspace member. This scope-independent check
+          // gates the paid wakeup; Pod membership and token scope are evaluated below from the
+          // lifecycle-locked scope, after a concurrent move can no longer change it.
+          const user = await getAuthenticatedWorkspaceUser(auth);
+          return {
+            persistedFunction,
+            podAuthorization: null,
+            errorMessage: user
+              ? null
+              : "This Frame function requires a logged-in user from its workspace.",
+          };
+        }
         const authorization = await authorizeSandboxFunctionInvocation(auth, {
           userIdentity: persistedFunction.userIdentity,
           origin: this.origin ?? "delegated",
-          owner: frame
-            ? { kind: "frame", frame }
-            : { kind: "pod", space: sandboxFunction.space },
+          owner: { kind: "pod", space: sandboxFunction.space },
         });
-        return { persistedFunction, authorization };
+        return {
+          persistedFunction,
+          podAuthorization: authorization,
+          errorMessage: authorization.authorized
+            ? null
+            : authorization.errorMessage,
+        };
       };
-      const runEnsure = () =>
+      const runEnsure = async (): Promise<
+        Result<EnsureSandboxReadyResult & { scope?: FrameSandboxScope }, Error>
+      > =>
         frame
           ? ensureFrameSandboxReady(auth, frame, { requireRunning: inline })
           : ensurePodSandboxReady(auth, sandboxFunction.space, {
@@ -656,7 +682,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         ]);
       } else {
         functionCheck = await runFunctionCheck();
-        if (functionCheck === null || !functionCheck.authorization.authorized) {
+        if (functionCheck === null || functionCheck.errorMessage !== null) {
           ensureResult = null;
         } else {
           ensureResult = await runEnsure();
@@ -665,10 +691,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       if (!functionCheck) {
         return new Err(new Error("The Pod Function no longer exists."));
       }
-      const { persistedFunction, authorization } = functionCheck;
-      if (!authorization.authorized) {
+      const { persistedFunction } = functionCheck;
+      if (functionCheck.errorMessage !== null) {
         return new Err(
-          new SandboxFunctionInvocationError(authorization.errorMessage)
+          new SandboxFunctionInvocationError(functionCheck.errorMessage)
         );
       }
       if (!ensureResult) {
@@ -677,6 +703,33 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       }
       if (ensureResult.isErr()) {
         return ensureResult;
+      }
+
+      let authorization: SandboxFunctionAuthorization | null;
+      if (frame) {
+        const { scope } = ensureResult.value;
+        if (!scope) {
+          return new Err(new Error("The Frame runtime scope is missing."));
+        }
+        authorization = await authorizeSandboxFunctionInvocation(auth, {
+          userIdentity: persistedFunction.userIdentity,
+          origin: this.origin ?? "delegated",
+          owner: {
+            kind: "frame",
+            frame,
+            scope,
+          },
+        });
+      } else {
+        authorization = functionCheck.podAuthorization;
+      }
+      if (!authorization) {
+        return new Err(new Error("The Pod function authorization is missing."));
+      }
+      if (!authorization.authorized) {
+        return new Err(
+          new SandboxFunctionInvocationError(authorization.errorMessage)
+        );
       }
 
       // No updateLastActivityAt here: ensurePodSandboxReady's ensureActive just wrote it.

@@ -224,7 +224,7 @@ async function setupFrameExecutionTest() {
     version: "0.0.0-test",
   });
   vi.mocked(ensureFrameSandboxReady).mockResolvedValue(
-    new Ok({ sandbox, freshlyCreated: false })
+    new Ok({ sandbox, freshlyCreated: false, scope: { spaceId: space.sId } })
   );
   vi.mocked(generateSandboxFunctionInvocationToken).mockResolvedValue(
     "sbt-frame-function-token"
@@ -912,6 +912,39 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(execOptions?.envVars).not.toHaveProperty("DUST_POD_DATABASES_DIR");
     expect(invocation.gcsPath).toBe(
       `w/${authenticator.getNonNullableWorkspace().sId}/frames/${frame.sId}/invocations/${invocation.sId}`
+    );
+  });
+
+  it("uses the lifecycle-locked Frame location for authorization and token scope", async () => {
+    const { authenticator, frame, invocation, sandbox, sandboxFunction } =
+      await setupFrameExecutionTest();
+    const movedSpace = await SpaceFactory.project(
+      authenticator.getNonNullableWorkspace()
+    );
+    vi.mocked(ensureFrameSandboxReady).mockResolvedValue(
+      new Ok({
+        sandbox,
+        freshlyCreated: false,
+        scope: { spaceId: movedSpace.sId },
+      })
+    );
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({ exitCode: 0, stdout: SUCCEEDED_STDOUT, stderr: "" })
+    );
+
+    const result = await invocation.execute(authenticator);
+
+    expect(result.isOk()).toBe(true);
+    expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
+      authenticator,
+      expect.objectContaining({
+        sandboxFunction,
+        owner: {
+          kind: "frame",
+          frameId: frame.sId,
+          spaceId: movedSpace.sId,
+        },
+      })
     );
   });
 

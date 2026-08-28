@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import type { FrameSandboxScope } from "@app/lib/resources/frame_sandbox_adapter";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -9,7 +10,7 @@ import type {
 } from "@app/types/api/sandbox_functions";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 
-type SandboxFunctionAuthorization =
+export type SandboxFunctionAuthorization =
   | {
       authorized: true;
       user: UserResource | null;
@@ -45,7 +46,11 @@ export async function authorizeSandboxFunctionInvocation(
     origin: SandboxFunctionInvocationOrigin;
     owner:
       | { kind: "pod"; space: SpaceResource }
-      | { kind: "frame"; frame: FileResource };
+      | {
+          kind: "frame";
+          frame: FileResource;
+          scope?: FrameSandboxScope;
+        };
   }
 ): Promise<SandboxFunctionAuthorization> {
   const user = await getAuthenticatedWorkspaceUser(auth);
@@ -63,7 +68,8 @@ export async function authorizeSandboxFunctionInvocation(
           "This Frame function requires a logged-in user from its workspace.",
       };
     }
-    const scope = await frame.resolveFrameScopedPathContext(auth);
+    const scope =
+      owner.scope ?? (await frame.resolveFrameScopedPathContext(auth));
     if (!scope.spaceId) {
       return {
         authorized: false,
