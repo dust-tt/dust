@@ -9,6 +9,7 @@ import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_fun
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -24,7 +25,11 @@ import type {
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
 import type { FileShareScope } from "@app/types/files";
-import { frameContentType, sandboxFunctionContentType } from "@app/types/files";
+import {
+  frameContentType,
+  frameV2ContentType,
+  sandboxFunctionContentType,
+} from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -156,6 +161,100 @@ async function setupSandboxFunction({
   );
 
   return { workspace, sandboxFunction, adminAuth, callerAuth, space, user };
+}
+
+async function createFramePublicationFunction({
+  adminAuth,
+  frame,
+  publicationId,
+}: {
+  adminAuth: Authenticator;
+  frame: Awaited<ReturnType<typeof FileFactory.create>>;
+  publicationId: string;
+}) {
+  await withTransaction((transaction) =>
+    SandboxFunctionResource.createForFramePublication(
+      adminAuth,
+      {
+        frame,
+        publicationId,
+        functions: [
+          {
+            name: "run-function",
+            description: "Run the Frame function.",
+            userIdentity: "optional",
+            executionMode: "durable",
+            defaultStake: "low",
+            bundleCode: "export default () => ({ ok: true });",
+            inputSchema,
+            outputSchema,
+          },
+        ],
+      },
+      transaction
+    )
+  );
+  const sandboxFunction =
+    await SandboxFunctionResource.fetchByFramePublicationAndSlug(adminAuth, {
+      frame,
+      publicationId,
+      slug: "run-function",
+    });
+  if (!sandboxFunction) {
+    throw new Error("Expected the Frame function to exist.");
+  }
+  return sandboxFunction;
+}
+
+async function setupFrameV2Function({
+  shareScope = "workspace_and_emails",
+  featureFlag = "frames_v2",
+}: {
+  shareScope?: FileShareScope;
+  featureFlag?: "frames_v2" | "sandbox_functions";
+} = {}) {
+  const { workspace, auth: adminAuth } = await createPrivateApiMockRequest({
+    role: "admin",
+  });
+  await FeatureFlagFactory.basic(adminAuth, featureFlag);
+  const space = await SpaceFactory.project(workspace);
+  const publicationId = "publication-1";
+  const frame = await FileFactory.create(adminAuth, null, {
+    contentType: frameV2ContentType,
+    fileName: "app.frame.json",
+    fileSize: 100,
+    status: "ready",
+    useCase: "conversation",
+    useCaseMetadata: {
+      spaceId: space.sId,
+      activePublicationId: publicationId,
+    },
+  });
+  await frame.setShareScope(adminAuth, shareScope);
+  const sandboxFunction = await createFramePublicationFunction({
+    adminAuth,
+    frame,
+    publicationId,
+  });
+
+  // The last mock request owns the route session.
+  const { user } = await createPrivateApiMockRequest({
+    role: "user",
+    workspace,
+  });
+  const callerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
+  return {
+    adminAuth,
+    callerAuth,
+    frame,
+    publicationId,
+    sandboxFunction,
+    user,
+    workspace,
+  };
 }
 
 // Creates a Pod app frame in `folderName` shared with the given scope, returning its share token —
@@ -369,6 +468,121 @@ function toolApprovalEvent({
 }
 
 describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () => {
+  it("invokes the active Frame publication with only frames_v2 enabled", async () => {
+    const { workspace, frame, sandboxFunction } = await setupFrameV2Function();
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${frame.sId}/run-function`,
+      body: { input: { message: "hello" } },
+    });
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.invocation).toMatchObject({
+      functionId: sandboxFunction.sId,
+      status: "created",
+    });
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        sandboxFunction: expect.objectContaining({
+          sId: sandboxFunction.sId,
+          publicationId: "publication-1",
+        }),
+        invocation: expect.objectContaining({
+          sId: body.invocation.sId,
+          origin: "interactive_session",
+        }),
+      }
+    );
+  });
+
+  it("keeps an in-flight Frame invocation streamable after a new publication activates", async () => {
+    const { adminAuth, workspace, frame, sandboxFunction } =
+      await setupFrameV2Function();
+    const invocationResponse = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${frame.sId}/run-function`,
+    });
+    expect(invocationResponse.status).toBe(201);
+    const { invocation } = await invocationResponse.json();
+
+    const nextPublicationId = "publication-2";
+    await createFramePublicationFunction({
+      adminAuth,
+      frame,
+      publicationId: nextPublicationId,
+    });
+    await frame.setActiveFramePublication(nextPublicationId);
+    const staleInvocation = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+    expect(staleInvocation.status).toBe(404);
+    mockInvocationEventStream([
+      {
+        type: "sandbox_function_invocation_result",
+        created: Date.now(),
+        invocationId: invocation.sId,
+        functionId: sandboxFunction.sId,
+        result: { ok: true },
+      },
+    ]);
+
+    const response = await honoApp.request(
+      `/api/sse/w/${workspace.sId}/sandbox-functions/${sandboxFunction.sId}/invocations/${invocation.sId}/events`
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('"result":{"ok":true}');
+  });
+
+  it("enforces Frame use rights independently from source access", async () => {
+    const { adminAuth, workspace, frame, user } = await setupFrameV2Function({
+      shareScope: "emails_only",
+    });
+
+    const denied = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${frame.sId}/run-function`,
+    });
+    expect(denied.status).toBe(404);
+
+    await frame.addSharingGrants(adminAuth, { emails: [user.email] });
+    const allowed = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${frame.sId}/run-function`,
+    });
+    expect(allowed.status).toBe(201);
+  });
+
+  it("does not expose Frame functions through the Pod Functions flag", async () => {
+    const { workspace, frame } = await setupFrameV2Function({
+      featureFlag: "sandbox_functions",
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${frame.sId}/run-function`,
+    });
+
+    expect(response.status).toBe(404);
+  });
+
+  it("does not expose Pod Functions through the Frames v2 flag", async () => {
+    const { workspace, sandboxFunction, adminAuth } =
+      await setupSandboxFunction({ withSandboxFunctionsFeatureFlag: false });
+    await FeatureFlagFactory.basic(adminAuth, "frames_v2");
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(404);
+  });
+
   it("creates an invocation and starts its workflow", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction();
 
