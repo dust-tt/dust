@@ -28,6 +28,14 @@ pub struct FrameDeleteRequest<'a> {
     pub source_directory_path: &'a str,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameShareRequest<'a> {
+    pub emails: &'a [String],
+    pub share_scope: &'a str,
+    pub source_directory_path: &'a str,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FramePublishResponse {
@@ -59,6 +67,16 @@ pub struct FrameMoveResponse {
 #[serde(rename_all = "camelCase")]
 pub struct FrameDeleteResponse {
     pub frame_id: String,
+    pub source_directory_path: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameShareResponse {
+    pub emails: Vec<String>,
+    pub frame_id: String,
+    pub share_scope: String,
+    pub share_url: String,
     pub source_directory_path: String,
 }
 

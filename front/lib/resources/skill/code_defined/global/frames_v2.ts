@@ -54,6 +54,19 @@ dsbx frame move /files/<source-scope>/<frame-folder> /files/<destination-scope>/
 Moving to a different runtime scope safely refreshes the Frame-owned sandbox. Do not move a
 registered Frame folder with raw filesystem commands.
 
+## Share a registered Frame
+
+Configure Frame use rights through the CLI. This does not change who can edit its source:
+
+\`\`\`bash
+dsbx frame share /files/<scope>/<frame-folder> --scope workspace-and-emails
+dsbx frame share /files/<scope>/<frame-folder> --scope emails-only --email user@example.com
+dsbx frame share /files/<scope>/<frame-folder> --scope public
+\`\`\`
+
+Use \`--email\` more than once for multiple invitees. Workspace policy and the invoking member's
+Frame sharing permissions still apply. The command returns the stable Frame ID and share URL.
+
 ## Delete a registered Frame
 
 Use the CLI to permanently remove the source folder, stable identity, publications, functions,
