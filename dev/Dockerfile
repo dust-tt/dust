@@ -10,12 +10,14 @@ FROM node:24.16.0-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-typecheck,front-circular,front-docs-check,connectors-lint-test-filenames,connectors-typecheck,lint-staged \
-    OP_ENVIRONMENT_ID=r6iqd3y67zqlbsxnotrj6bm25q  # pragma: allowlist secret \
     DUST_IN_CONTAINER=1 \
     RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH="/usr/local/cargo/bin:/root/.temporalio/bin:/opt/qdrant:${PATH}" \
     BASH_ENV=/tmp/dust-shell-env.sh
+
+# 1Password Environment id for shared cloud-agent / container secrets (not a credential).
+ENV OP_ENVIRONMENT_ID=r6iqd3y67zqlbsxnotrj6bm25q  # pragma: allowlist secret
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
