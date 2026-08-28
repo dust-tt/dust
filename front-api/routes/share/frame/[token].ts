@@ -6,7 +6,6 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { GetShareFrameMetadataResponseBody } from "@app/types/api/files/share";
-import { isInteractiveContentType } from "@app/types/files";
 import { createHono } from "@front-api/lib/hono";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -67,7 +66,7 @@ app.get(
     const { file, shareScope } = result.value;
 
     // Only allow Frame files.
-    if (!isInteractiveContentType(file.contentType)) {
+    if (!file.isShareableFrame) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {

@@ -3,7 +3,11 @@ import { PublicFrameRenderer } from "@app/components/assistant/conversation/inte
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/interactive_content/UnsupportedContentRenderer";
 import Custom404 from "@app/components/pages/Custom404";
 import { usePublicFrame } from "@app/lib/swr/frames";
-import { frameContentType, frameSlideshowContentType } from "@app/types/files";
+import {
+  frameContentType,
+  frameSlideshowContentType,
+  frameV2ContentType,
+} from "@app/types/files";
 import { Spinner } from "@dust-tt/sparkle";
 
 interface PublicInteractiveContentContainerProps {
@@ -48,6 +52,7 @@ export function PublicInteractiveContentContainer({
     switch (frameMetadata.contentType) {
       case frameContentType:
       case frameSlideshowContentType:
+      case frameV2ContentType:
         return (
           <PublicFrameRenderer
             fileId={frameMetadata.sId}

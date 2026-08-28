@@ -751,6 +751,10 @@ const FRAME_V2_FILE_FORMATS = {
 
 type FrameV2FileContentType = keyof typeof FRAME_V2_FILE_FORMATS;
 
+export type FrameFileContentType =
+  | InteractiveContentFileContentType
+  | FrameV2FileContentType;
+
 const SANDBOX_FUNCTION_FILE_FORMATS = {
   [sandboxFunctionContentType]: {
     cat: "code",
@@ -845,6 +849,14 @@ export function isFrameV2ContentType(
   contentType: string
 ): contentType is FrameV2FileContentType {
   return contentType === frameV2ContentType;
+}
+
+export function isFrameContentType(
+  contentType: string
+): contentType is FrameFileContentType {
+  return (
+    isInteractiveContentType(contentType) || isFrameV2ContentType(contentType)
+  );
 }
 
 export function isAllSupportedFileContentType(

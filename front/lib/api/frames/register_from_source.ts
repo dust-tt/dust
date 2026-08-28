@@ -37,7 +37,7 @@ async function existingFrameAtMountPath(
     );
   }
 
-  await existing.markFrameV2AsReadyFromMount();
+  await existing.markFrameV2AsReadyFromMount(auth);
   return new Ok(existing);
 }
 
@@ -146,7 +146,7 @@ export async function registerFrameV2FromSource(
       mountFilePath,
       fileSystemNodeId: null,
     });
-    await frame.markFrameV2AsReadyFromMount();
+    await frame.markFrameV2AsReadyFromMount(auth);
     return new Ok({ frame, created: true });
   } catch (error) {
     if (!(error instanceof UniqueConstraintError)) {

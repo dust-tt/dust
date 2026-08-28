@@ -16,7 +16,6 @@ import type { APIErrorResponse } from "@app/types/error";
 import {
   fileShareScopeSchema,
   isConversationFileUseCase,
-  isInteractiveContentType,
   isUnverifiableFrameFileRefsShareError,
 } from "@app/types/files";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -192,10 +191,7 @@ async function fetchShareableFile(
     }
   }
 
-  if (
-    !file.isInteractiveContent ||
-    !isInteractiveContentType(file.contentType)
-  ) {
+  if (!file.isShareableFrame) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {

@@ -17,6 +17,7 @@ import type { MockFileVersion } from "@app/tests/utils/mocks/file_storage";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AllSupportedFileContentType,
@@ -24,6 +25,7 @@ import type {
 } from "@app/types/files";
 import {
   frameContentType,
+  frameV2ContentType,
   isUnverifiableFrameFileRefsShareError,
   sandboxFunctionContentType,
 } from "@app/types/files";
@@ -94,6 +96,44 @@ describe("FileResource", () => {
       expect(result).not.toBeNull();
       expect(result?.file.id).toBe(frameFile.id);
       expect(result?.content).toEqual(expectedContent);
+    });
+
+    it("returns the active Frames v2 publication", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+      const publicationId = "active-publication";
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameV2ContentType,
+        fileName: "manifest.json",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: {
+          activePublicationId: publicationId,
+          conversationId: conversation.sId,
+        },
+      });
+      fileStorageMock.setObject(
+        getFramePublicationUiBundlePath({
+          workspaceId: workspace.sId,
+          frameId: frameFile.sId,
+          publicationId,
+        }),
+        expectedContent
+      );
+      const shareInfo = await frameFile.getShareInfo();
+      const token = shareInfo?.shareUrl.split("/").at(-1);
+      assert(token, "Share token should be defined");
+
+      const result = await FileResource.fetchByShareTokenWithContent(token);
+
+      expect(result?.file.id).toBe(frameFile.id);
+      expect(result?.content).toBe(expectedContent);
     });
 
     it("should return null for soft-deleted conversation", async () => {

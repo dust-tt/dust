@@ -1,7 +1,7 @@
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { frameContentType } from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -178,6 +178,30 @@ describe("POST /api/w/:wId/files/:fileId/export/pdf", () => {
     expect(response.headers.get("content-disposition")).toContain(
       'attachment; filename="test.pdf"'
     );
+  });
+
+  it("exports a Frames v2 publication", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date()],
+    });
+    const file = await FileFactory.create(auth, user, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const response = await postPdf(workspace, file.sId);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/pdf");
   });
 
   it("should export PDF successfully with landscape orientation", async () => {

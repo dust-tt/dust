@@ -3,7 +3,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { frameContentType } from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
@@ -88,6 +88,41 @@ describe("/api/v1/viz/content endpoint tests", () => {
       },
       isAuthenticatedMember: false,
     });
+  });
+
+  it("returns Frames v2 publication content", async () => {
+    const frameFile = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 1000,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: "conversation-A" },
+    });
+    const frameShareInfo = await frameFile.getShareInfo();
+    const fileToken = frameShareInfo?.shareUrl.split("/").at(-1);
+    if (!fileToken) {
+      throw new Error("No file token found");
+    }
+    const accessToken = generateVizAccessToken({
+      contentType: frameV2ContentType,
+      fileToken,
+      workspaceId: workspace.sId,
+      shareScope: "public",
+    });
+    mockFetchByShareToken(frameFile, { content: "active publication" });
+
+    const response = await request({
+      authorization: `Bearer ${accessToken}`,
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        content: "active publication",
+        contentType: frameV2ContentType,
+      })
+    );
   });
 
   it("should reject requests without Authorization header", async () => {
