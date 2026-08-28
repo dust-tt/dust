@@ -34,7 +34,10 @@ import {
   SEAT_TYPE_ORDER,
   toBaseSeatType,
 } from "@app/types/memberships";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Clock,
@@ -581,7 +584,16 @@ function buildModelTiersColumn(
     id: "modelTiers" as const,
     header: () => (
       <span className="flex items-center gap-1">
-        {variant === "compact" ? "Models" : "Models tier"}
+        {(() => {
+          switch (variant) {
+            case "compact":
+              return "Models";
+            case "legacy":
+              return "Models tier";
+            default:
+              return assertNever(variant);
+          }
+        })()}
         <ModelTiersInfoButton />
       </span>
     ),
@@ -828,9 +840,16 @@ function buildColumns({
     nameColumn,
     ...(showGroupsColumn ? [groupsColumn] : []),
     ...(showModelTiersColumn ? [buildModelTiersColumn(variant)] : []),
-    ...(variant === "compact"
-      ? [seatsIconColumn, seatUsageColumn]
-      : [seatTypeColumn]),
+    ...(() => {
+      switch (variant) {
+        case "compact":
+          return [seatsIconColumn, seatUsageColumn];
+        case "legacy":
+          return [seatTypeColumn];
+        default:
+          return assertNever(variant);
+      }
+    })(),
     {
       ...buildConsumedAwuCreditsColumn(creditsResetAt, variant),
       meta: { className: "w-64" },
@@ -956,10 +975,16 @@ export function MembersUsageTable({
           isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
           modelTiersSummary: (() => {
             const maxTierName = getMaxTierName(resolvedModelTiers?.tiers ?? []);
-            if (variant === "compact") {
-              return maxTierName ? getModelsTierDisplayName(maxTierName) : "--";
+            switch (variant) {
+              case "compact":
+                return maxTierName
+                  ? getModelsTierDisplayName(maxTierName)
+                  : "--";
+              case "legacy":
+                return formatModelTiersSummary(maxTierName);
+              default:
+                return assertNever(variant);
             }
-            return formatModelTiersSummary(maxTierName);
           })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
           menuItems: [
