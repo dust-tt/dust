@@ -1,6 +1,7 @@
 import {
   DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
   DEFAULT_SANDBOX_FUNCTION_STAKE,
+  SANDBOX_DATABASE_NAME_REGEX,
   SANDBOX_FUNCTION_EXECUTION_MODES,
   SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX,
   SANDBOX_FUNCTION_STAKES,
@@ -17,6 +18,7 @@ export const FRAME_DEFAULT_UI_ENTRY_POINT = "index.tsx";
 export const MAX_FRAME_NAME_LENGTH = 128;
 export const MAX_FRAME_FUNCTION_NAME_LENGTH = 128;
 export const MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH = 255;
+export const FRAME_DATABASE_NAME_REGEX = SANDBOX_DATABASE_NAME_REGEX;
 
 /** Manifest paths are always relative to the Frame source folder. */
 export function isSafeFrameRelativePath(path: string): boolean {
@@ -56,6 +58,14 @@ export const FrameFunctionManifestSchema = z.object({
     .default(DEFAULT_SANDBOX_FUNCTION_STAKE),
 });
 
+export const FrameDatabaseManifestSchema = z.object({
+  name: z.string().regex(FRAME_DATABASE_NAME_REGEX, {
+    message:
+      "Database name must start with a lowercase letter and contain only lowercase letters, digits, and underscores.",
+  }),
+  schema: FrameRelativePathSchema,
+});
+
 export const FrameSourceManifestSchema = z
   .object({
     version: z.literal(FRAME_MANIFEST_VERSION),
@@ -63,19 +73,32 @@ export const FrameSourceManifestSchema = z
     description: z.string(),
     uiEntryPoint: FrameRelativePathSchema.optional(),
     functions: z.array(FrameFunctionManifestSchema).default([]),
+    databases: z.array(FrameDatabaseManifestSchema).default([]),
   })
   .superRefine((manifest, context) => {
-    const names = new Set<string>();
+    const functionNames = new Set<string>();
 
     manifest.functions.forEach((fn, index) => {
-      if (names.has(fn.name)) {
+      if (functionNames.has(fn.name)) {
         context.addIssue({
           code: "custom",
           message: `Function name '${fn.name}' must be unique.`,
           path: ["functions", index, "name"],
         });
       }
-      names.add(fn.name);
+      functionNames.add(fn.name);
+    });
+
+    const databaseNames = new Set<string>();
+    manifest.databases.forEach((database, index) => {
+      if (databaseNames.has(database.name)) {
+        context.addIssue({
+          code: "custom",
+          message: `Database name '${database.name}' must be unique.`,
+          path: ["databases", index, "name"],
+        });
+      }
+      databaseNames.add(database.name);
     });
   });
 

@@ -1,4 +1,7 @@
-import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
+import {
+  FRAME_DATABASE_NAME_REGEX,
+  isSafeFrameRelativePath,
+} from "@app/types/api/frame_manifest";
 
 const SAFE_FRAME_STORAGE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
@@ -25,6 +28,21 @@ export function getFramePublicationsBasePath(args: {
   frameId: string;
 }): string {
   return `${getFrameBasePath(args)}publications/`;
+}
+
+export function getFrameDatabaseReplicaBasePath({
+  databaseName,
+  ...args
+}: {
+  workspaceId: string;
+  frameId: string;
+  databaseName: string;
+}): string {
+  if (!FRAME_DATABASE_NAME_REGEX.test(databaseName)) {
+    throw new Error("Invalid databaseName for Frame storage.");
+  }
+
+  return `${getFrameBasePath(args)}state/databases/${databaseName}.db/`;
 }
 
 export function getFramePublicationBasePath({

@@ -153,6 +153,16 @@ export async function storeFramePublication(
       );
     }
   }
+  for (const database of manifest.databases) {
+    if (!sourcePaths.has(database.schema)) {
+      return new Err(
+        new FramePublicationError(
+          "invalid_source",
+          `Frame database schema not found: ${database.name} (${database.schema})`
+        )
+      );
+    }
+  }
 
   const declaredFunctionNames = new Set(
     manifest.functions.map((fn) => fn.name)
