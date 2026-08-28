@@ -109,11 +109,13 @@ export async function readFrameFileContent(
  */
 export async function ensureAuthorizedFileAccessForShare(
   auth: Authenticator,
-  frameFile: FileResource
+  frameFile: FileResource,
+  { frameContent: suppliedFrameContent }: { frameContent?: string } = {}
 ): Promise<
   Result<ComputedAuthorizedFileAccess, AuthorizedFileAccessShareError>
 > {
-  const frameContent = await readFrameFileContent(auth, frameFile);
+  const frameContent =
+    suppliedFrameContent ?? (await readFrameFileContent(auth, frameFile));
   if (frameContent === null) {
     return new Err({
       name: "dust_error",

@@ -33,6 +33,7 @@ import {
   getPublicUploadBucket,
   getUpsertQueueBucket,
 } from "@app/lib/file_storage";
+import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -675,7 +676,7 @@ export class FileResource extends BaseResource<FileModel> {
     return isFrameContentType(this.contentType);
   }
 
-  private async ensureShareableFrame(auth: Authenticator): Promise<void> {
+  async ensureShareableFrame(auth: Authenticator): Promise<void> {
     if (!this.isShareableFrame) {
       return;
     }
@@ -778,6 +779,9 @@ export class FileResource extends BaseResource<FileModel> {
         })
       );
     } catch (error) {
+      if (!isGCSNotFoundError(error)) {
+        throw error;
+      }
       logger.error(
         {
           err: normalizeError(error),

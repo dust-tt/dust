@@ -4,6 +4,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import type { Authenticator } from "@app/lib/auth";
 import {
   GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
@@ -58,6 +59,7 @@ export class FramePublicationError extends Error {
       | "invalid_function_artifact"
       | "invalid_manifest"
       | "invalid_source"
+      | "allowlist_failed"
       | "publication_not_found"
       | "source_not_found"
       | "ui_build_failed"
@@ -315,6 +317,41 @@ export async function activateFramePublication(
   });
   if (manifest.isErr()) {
     return manifest;
+  }
+
+  const frameIdentity = getFrameIdentity(auth, frame);
+  if (frameIdentity.isErr()) {
+    return frameIdentity;
+  }
+
+  let uiBundleCode: string;
+  try {
+    uiBundleCode = await getPrivateUploadBucket().fetchFileContent(
+      getFramePublicationUiBundlePath({
+        ...frameIdentity.value,
+        publicationId,
+      })
+    );
+  } catch (error) {
+    if (!isGCSNotFoundError(error)) {
+      throw error;
+    }
+    return new Err(
+      new FramePublicationError(
+        "publication_not_found",
+        `Frame publication UI bundle not found: ${publicationId}`
+      )
+    );
+  }
+
+  await frame.ensureShareableFrame(auth);
+  const allowlist = await ensureAuthorizedFileAccessForShare(auth, frame, {
+    frameContent: uiBundleCode,
+  });
+  if (allowlist.isErr()) {
+    return new Err(
+      new FramePublicationError("allowlist_failed", allowlist.error.message)
+    );
   }
 
   await frame.setActiveFramePublication(publicationId);
