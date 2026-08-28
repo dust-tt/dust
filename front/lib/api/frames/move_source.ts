@@ -4,6 +4,10 @@ import { DustFileSystem, parseScopedPrefix } from "@app/lib/api/file_system";
 import type { GCSMountPoint } from "@app/lib/api/files/gcs_mount/files";
 import { emitGCSMountFileMovedAuditLog } from "@app/lib/api/files/gcs_mount/files";
 import { withFrameSourceAndPublishLock } from "@app/lib/api/frames/publication_storage";
+import {
+  MAX_FRAME_SOURCE_BYTES,
+  MAX_FRAME_SOURCE_FILE_COUNT,
+} from "@app/lib/api/frames/source_limits";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -203,6 +207,10 @@ function isSameGCSObject(source: File, destination: File): boolean {
 }
 
 type DestinationObject = { filePath: string; generation: string };
+type FrameSourceCopyFailure = {
+  destinationObjects: DestinationObject[];
+  error: FrameSourceMoveError;
+};
 
 async function cleanupDestinationObjects(
   objects: DestinationObject[]
@@ -236,15 +244,51 @@ async function copyFrameSourceAsNew({
   allowMatchingDestinationObjects: boolean;
   destinationMountPrefix: string;
   sourceMountPrefix: string;
-}): Promise<Result<DestinationObject[], FrameSourceMoveError>> {
+}): Promise<Result<DestinationObject[], FrameSourceCopyFailure>> {
   const bucket = getPrivateUploadBucket();
-  const [{ files: sourceFiles }, { files: destinationFiles }] =
-    await Promise.all([
-      bucket.getAllFilesByPrefix({ prefix: sourceMountPrefix }),
-      bucket.getAllFilesByPrefix({ prefix: destinationMountPrefix }),
-    ]);
+  const [sourceFiles, destinationFiles] = await Promise.all([
+    bucket.getFiles({
+      prefix: sourceMountPrefix,
+      maxResults: MAX_FRAME_SOURCE_FILE_COUNT + 1,
+    }),
+    bucket.getFiles({
+      prefix: destinationMountPrefix,
+      maxResults: MAX_FRAME_SOURCE_FILE_COUNT + 1,
+    }),
+  ]);
   if (sourceFiles.length === 0) {
-    return invalidSource("Frame source folder is empty or no longer exists.");
+    return new Err({
+      destinationObjects: [],
+      error: new FrameSourceMoveError(
+        "invalid_source",
+        "Frame source folder is empty or no longer exists."
+      ),
+    });
+  }
+  const totalSourceSize = sourceFiles.reduce(
+    (total, file) => total + Number(file.metadata.size ?? 0),
+    0
+  );
+  if (
+    sourceFiles.length > MAX_FRAME_SOURCE_FILE_COUNT ||
+    totalSourceSize > MAX_FRAME_SOURCE_BYTES
+  ) {
+    return new Err({
+      destinationObjects: [],
+      error: new FrameSourceMoveError(
+        "invalid_source",
+        "Frame source exceeds the move size limit."
+      ),
+    });
+  }
+  if (destinationFiles.length > MAX_FRAME_SOURCE_FILE_COUNT) {
+    return new Err({
+      destinationObjects: [],
+      error: new FrameSourceMoveError(
+        "conflict",
+        "Frame destination exceeds the move file count limit."
+      ),
+    });
   }
 
   const destinationByRelativePath = new Map(
@@ -322,15 +366,10 @@ async function copyFrameSourceAsNew({
     .map((result) => result.value);
   const failedCopy = copyResults.find((result) => result.isErr());
   if (failedCopy?.isErr()) {
-    const cleaned = await cleanupDestinationObjects(destinationObjects);
-    return cleaned
-      ? failedCopy
-      : new Err(
-          new FrameSourceMoveError(
-            "internal",
-            "The Frame source copy failed and its destination objects could not be cleaned up."
-          )
-        );
+    return new Err({
+      destinationObjects,
+      error: failedCopy.error,
+    });
   }
   return new Ok(destinationObjects);
 }
@@ -557,9 +596,20 @@ export async function moveFrameV2Source(
       sourceMountPrefix,
     });
     if (copyResult.isErr()) {
+      const cleaned = await cleanupDestinationObjects(
+        copyResult.error.destinationObjects
+      );
+      if (!cleaned) {
+        return new Err(
+          new FrameSourceMoveError(
+            "internal",
+            "The Frame source copy failed and its destination objects could not be cleaned up; retry the move."
+          )
+        );
+      }
       const restored = await restoreSourceReservation();
       return restored
-        ? copyResult
+        ? new Err(copyResult.error.error)
         : new Err(
             new FrameSourceMoveError(
               "internal",
@@ -626,11 +676,9 @@ export async function moveFrameV2Source(
           });
 
     if (updateResult.isErr()) {
-      const [cleaned, restored] = await Promise.all([
-        cleanupDestinationObjects(copyResult.value),
-        restoreSourceReservation(),
-      ]);
-      if (!cleaned || !restored) {
+      const cleaned = await cleanupDestinationObjects(copyResult.value);
+      const restored = cleaned ? await restoreSourceReservation() : false;
+      if (!restored) {
         logger.error(
           {
             destinationDirectoryPath: destination,
