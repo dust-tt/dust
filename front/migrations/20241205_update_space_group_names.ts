@@ -32,7 +32,7 @@ makeScript(
             const memberGroup = await pod.fetchManualMemberGroup(auth);
             const memberName = `${pod.isProject() ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${pod.name}`;
             if (execute) {
-              await memberGroup.updateName(auth, memberName);
+              await memberGroup.dangerouslyUpdateName(memberName);
             } else {
               logger.info(
                 `[Execute: ${execute}] Updating group ${memberGroup.id} to "${memberName}"`
@@ -43,7 +43,7 @@ makeScript(
             if (editorGroup) {
               const editorName = `${PROJECT_EDITOR_GROUP_PREFIX} ${pod.name}`;
               if (execute) {
-                await editorGroup.updateName(auth, editorName);
+                await editorGroup.dangerouslyUpdateName(editorName);
               } else {
                 logger.info(
                   `[Execute: ${execute}] Updating group ${editorGroup.id} to "${editorName}"`

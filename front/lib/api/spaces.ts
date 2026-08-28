@@ -786,11 +786,10 @@ export async function createSpaceAndGroup(
           break;
         }
 
-        // Add members to the member group in regular spaces
-        const users = (await UserResource.fetchByIds(params.memberIds)).map(
-          (user) => user.toJSON()
-        );
-        if (!membersGroup.canWrite(auth)) {
+        // Seeding a regular space's members requires administering it. The member
+        // group is a regular_auto group whose permissions are not checked directly,
+        // so gate on the space instead.
+        if (!space.canAdministrate(auth)) {
           return new Err(
             new DustError(
               "unauthorized",
@@ -798,6 +797,11 @@ export async function createSpaceAndGroup(
             )
           );
         }
+
+        // Add members to the member group in regular spaces
+        const users = (await UserResource.fetchByIds(params.memberIds)).map(
+          (user) => user.toJSON()
+        );
         const groupsResult = await membersGroup.dangerouslyAddMembers(auth, {
           users,
           transaction: t,
@@ -819,6 +823,15 @@ export async function createSpaceAndGroup(
       case "group":
         // For group-based spaces, we need to associate the selected groups with the space
         if (params.groupIds.length > 0) {
+          // Associating groups requires administering the space.
+          if (!space.canAdministrate(auth)) {
+            return new Err(
+              new DustError(
+                "unauthorized",
+                "Only admins can change group members"
+              )
+            );
+          }
           const selectedGroupsResult = await GroupResource.fetchByIds(
             auth,
             params.groupIds

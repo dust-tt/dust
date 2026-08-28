@@ -161,7 +161,7 @@ describe("setGroupSpendLimit", () => {
       kind: "provisioned",
       workOSGroupId: "fake-sales",
     });
-    await group.updatePoolCap(auth, 25_000);
+    await group.updatePoolCap(25_000);
 
     const result = await setGroupSpendLimit(auth, {
       groupId: group.sId,
@@ -235,7 +235,7 @@ describe("setGroupSpendLimit", () => {
       kind: "provisioned",
       workOSGroupId: "fake-sales",
     });
-    await group.updatePoolCap(auth, 10_000);
+    await group.updatePoolCap(10_000);
 
     const result = await setGroupSpendLimit(auth, {
       groupId: group.sId,

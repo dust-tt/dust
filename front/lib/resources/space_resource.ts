@@ -954,16 +954,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       // For regular spaces that only have a single group, update
       // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
       const regularGroup = await this.fetchManualMemberGroup(auth);
-      await regularGroup.updateName(
-        auth,
+      await regularGroup.dangerouslyUpdateName(
         `${this.isProject() ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${this.name}`
       );
 
       if (this.isProject()) {
         const spaceEditorGroup = await this.fetchManualEditorGroup(auth);
         if (spaceEditorGroup) {
-          await spaceEditorGroup.updateName(
-            auth,
+          await spaceEditorGroup.dangerouslyUpdateName(
             `${PROJECT_EDITOR_GROUP_PREFIX} ${this.name}`
           );
         }
