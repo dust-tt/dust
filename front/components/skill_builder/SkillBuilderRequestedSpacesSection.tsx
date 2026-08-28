@@ -60,11 +60,10 @@ export function SkillBuilderRequestedSpacesSection() {
       return;
     }
 
-    setDraftSelectedSpaces(
-      selectedAdditionalSpaces.filter(
-        (spaceId) => !spaceIdsUsedBySkill.has(spaceId)
-      )
-    );
+    // Keep every manually selected space in the draft, including the ones something in the skill
+    // also requires. The sheet renders those rows selected and locked, so they cannot be toggled
+    // off; dropping them here instead made saving the sheet forget that they were picked by hand.
+    setDraftSelectedSpaces(selectedAdditionalSpaces);
     setIsSheetOpen(true);
   };
 
