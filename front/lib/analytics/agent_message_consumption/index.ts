@@ -1,7 +1,10 @@
 import type { ConsumptionDocumentsSkipReason } from "@app/lib/analytics/agent_message_consumption/documents";
 import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/documents";
 import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
-import { upsertAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/store";
+import {
+  upsertAgentMessageConsumptionAnalyticsDocuments,
+  upsertVersionedAgentMessageConsumptionAnalyticsDocuments,
+} from "@app/lib/analytics/agent_message_consumption/store";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -40,4 +43,49 @@ export async function indexAgentMessageConsumptionAnalytics(
   }
 
   return upsertAgentMessageConsumptionAnalyticsDocuments(documentsResult.value);
+}
+
+/**
+ * @cc [owner:id13,label:backend;data-integrity] complete-consumption-snapshot
+ * The snapshot MUST NOT be indexed when document projection fails or produces no documents. The
+ * failure MUST be returned to the caller.
+ */
+export async function indexAgentMessageConsumptionSnapshot(
+  auth: Authenticator,
+  {
+    agentMessageModelId,
+    eventModelId,
+  }: {
+    agentMessageModelId: number;
+    eventModelId: number;
+  }
+): Promise<
+  Result<
+    { versionConflictCount: number },
+    ElasticsearchError | ConsumptionDocumentsSkipReason
+  >
+> {
+  const input = await loadAgentMessageConsumptionAnalyticsInput(auth, {
+    agentMessageModelId,
+    source: "consumption",
+  });
+  if (!input) {
+    return new Ok({ versionConflictCount: 0 });
+  }
+
+  const documentsResult = buildAgentMessageConsumptionAnalyticsDocuments(input);
+  if (documentsResult.isErr()) {
+    return documentsResult;
+  }
+  if (documentsResult.value.length === 0) {
+    return new Err({ code: "empty_documents", context: {} });
+  }
+
+  const versionedDocuments = documentsResult.value.map((document) => ({
+    document,
+    version: eventModelId,
+  }));
+  return upsertVersionedAgentMessageConsumptionAnalyticsDocuments(
+    versionedDocuments
+  );
 }
