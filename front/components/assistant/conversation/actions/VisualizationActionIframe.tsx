@@ -10,11 +10,9 @@ import type {
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { PodFunctionScope } from "@app/types/api/pod_function_reference";
-import {
-  podFunctionScopeFromFramePath,
-  resolvePodFunctionReference,
-} from "@app/types/api/pod_function_reference";
+import type { FrameFunctionReferenceScope } from "@app/types/api/frame_function_reference";
+import { resolveFrameFunctionReference } from "@app/types/api/frame_function_reference";
+import { podFunctionScopeFromFramePath } from "@app/types/api/pod_function_reference";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
@@ -398,7 +396,7 @@ function useVisualizationDataHandler({
   createSandboxFunctionInvocation,
   getFileBlob,
   onEditText,
-  podFunctionScope,
+  functionReferenceScope,
   setCodeDrawerOpened,
   setContentHeight,
   setErrorMessage,
@@ -416,7 +414,7 @@ function useVisualizationDataHandler({
     Result<PostSandboxFunctionInvocationResponseBody, SandboxFunctionCallError>
   >;
   getFileBlob: (fileId: string) => Promise<Blob | null>;
-  podFunctionScope: PodFunctionScope | null;
+  functionReferenceScope: FrameFunctionReferenceScope;
   onEditText?: EditTextFn;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
   setContentHeight: (v: SetStateAction<number>) => void;
@@ -486,11 +484,11 @@ function useVisualizationDataHandler({
 
       switch (data.command) {
         case "callFunction": {
-          // A Frame in an app folder may name its own functions by bare slug; qualify it here, the
-          // only layer that both knows which Frame is calling and is trusted about it.
-          const referenceRes = resolvePodFunctionReference(
+          // Qualify bare function names in the trusted host. Frames v2 bind to stable identity;
+          // legacy Frames keep their existing Pod app-folder resolution.
+          const referenceRes = resolveFrameFunctionReference(
             data.params.functionIdOrSlug,
-            podFunctionScope
+            functionReferenceScope
           );
           if (referenceRes.isErr()) {
             sendErrorToIframe(
@@ -613,7 +611,7 @@ function useVisualizationDataHandler({
     downloadFileFromBlob,
     getFileBlob,
     onEditText,
-    podFunctionScope,
+    functionReferenceScope,
     setContentHeight,
     setErrorMessage,
     setCodeDrawerOpened,
@@ -666,6 +664,8 @@ export interface VisualizationActionIframeProps {
    * bare name; without it, relative references are refused.
    */
   framePath?: string | null;
+  /** Stable identity of a Frames v2 resource. Omit for legacy Frames and raw visualizations. */
+  frameId?: string;
   isEditable?: boolean;
   isInDrawer?: boolean;
   onEditText?: EditTextFn;
@@ -695,6 +695,13 @@ export const VisualizationActionIframe = forwardRef<
   const podFunctionScope = useMemo(
     () => podFunctionScopeFromFramePath(props.framePath),
     [props.framePath]
+  );
+  const functionReferenceScope = useMemo<FrameFunctionReferenceScope>(
+    () =>
+      props.frameId
+        ? { kind: "v2", frameId: props.frameId }
+        : { kind: "legacy", podFunctionScope },
+    [podFunctionScope, props.frameId]
   );
 
   // In-flight sandbox function invocations. Each entry mounts a
@@ -937,7 +944,7 @@ export const VisualizationActionIframe = forwardRef<
     createSandboxFunctionInvocation,
     getFileBlob,
     onEditText,
-    podFunctionScope,
+    functionReferenceScope,
     setCodeDrawerOpened,
     setContentHeight,
     setErrorMessage,

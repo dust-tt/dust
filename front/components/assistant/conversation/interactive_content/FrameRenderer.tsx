@@ -485,6 +485,7 @@ export function FrameRenderer({
               conversationId={conversation?.sId ?? null}
               spaceId={frameSpaceId ?? undefined}
               framePath={framePath}
+              frameId={renderMode === "v2" ? fileId : undefined}
               isInDrawer={true}
               isEditable={renderMode === "legacy"}
               onEditText={renderMode === "legacy" ? handleEditText : undefined}

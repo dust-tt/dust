@@ -5,6 +5,7 @@ import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton
 import { PodFrameTabButton } from "@app/components/pod/files/PodFrameTabButton";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
+import { frameV2ContentType } from "@app/types/files";
 import type { PodFrameTab } from "@app/types/pod_frame_tab";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -164,6 +165,11 @@ export function PodFrameSheet({
                 conversationId={null}
                 spaceId={fileMetadata?.useCaseMetadata.spaceId}
                 framePath={framePath}
+                frameId={
+                  fileMetadata?.contentType === frameV2ContentType
+                    ? fileId
+                    : undefined
+                }
                 isInDrawer={true}
                 isPodEditor={isEditor}
                 isPodMember={isMember}

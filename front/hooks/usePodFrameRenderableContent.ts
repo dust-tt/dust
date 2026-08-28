@@ -1,4 +1,9 @@
-import { useFileContent, useFileIdFromPath } from "@app/lib/swr/files";
+import {
+  useFileContent,
+  useFileIdFromPath,
+  useFileMetadata,
+} from "@app/lib/swr/files";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
 /**
@@ -36,13 +41,24 @@ export function usePodFrameRenderableContent({
     owner,
     config: { disabled: isDisabled || !fileId },
   });
+  const { fileMetadata, isFileMetadataLoading, isFileMetadataError } =
+    useFileMetadata({
+      fileId: isDisabled ? null : fileId,
+      owner,
+    });
 
   return {
     fileId,
     fileContent: fileContent ?? null,
+    contentType: fileMetadata?.contentType ?? null,
     isLoading:
-      !isDisabled && (isFileIdLoading || (!!fileId && isFileContentLoading)),
+      !isDisabled &&
+      (isFileIdLoading ||
+        (!!fileId && (isFileContentLoading || isFileMetadataLoading))),
     isNotFound: isFileIdNotFound,
-    error: fileIdError ?? fileContentError,
+    error:
+      fileIdError ??
+      fileContentError ??
+      (isFileMetadataError ? normalizeError(isFileMetadataError) : null),
   };
 }
