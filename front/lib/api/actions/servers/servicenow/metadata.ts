@@ -1,5 +1,4 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { ALLOWED_TABLES } from "@app/lib/api/actions/servers/servicenow/client";
 import { z } from "zod";
 
 const ADDITIONAL_FIELDS_SCHEMA = {
@@ -202,12 +201,12 @@ export const SERVICENOW_TOOLS_METADATA = [
   {
     name: "list_records",
     description:
-      "List records from a ServiceNow table (incident, problem, change_request, sc_request, or kb_knowledge). Supports filtering with a ServiceNow encoded query.",
+      "List records from any ServiceNow table the connected account has access to (e.g. incident, problem, change_request, sc_request, kb_knowledge, or a custom table). Supports filtering with a ServiceNow encoded query.",
     schema: {
       table: z
-        .enum(ALLOWED_TABLES)
+        .string()
         .describe(
-          "The ServiceNow table to query: incident, problem, change_request, sc_request, or kb_knowledge."
+          "The ServiceNow table name to query, e.g. 'incident', 'problem', 'change_request', 'sc_request', 'kb_knowledge', or any other table (including custom 'u_*' tables) the connected account has access to. ServiceNow will reject the request if the table doesn't exist or the connected account lacks access to it."
         ),
       query: z
         .string()
@@ -264,12 +263,12 @@ export const SERVICENOW_TOOLS_METADATA = [
   {
     name: "get_record",
     description:
-      "Get a single record from a ServiceNow table (incident, problem, change_request, sc_request, or kb_knowledge) by its sys_id.",
+      "Get a single record from any ServiceNow table the connected account has access to (e.g. incident, problem, change_request, sc_request, kb_knowledge, or a custom table) by its sys_id.",
     schema: {
       table: z
-        .enum(ALLOWED_TABLES)
+        .string()
         .describe(
-          "The ServiceNow table to query: incident, problem, change_request, sc_request, or kb_knowledge."
+          "The ServiceNow table name to query, e.g. 'incident', 'problem', 'change_request', 'sc_request', 'kb_knowledge', or any other table (including custom 'u_*' tables) the connected account has access to. ServiceNow will reject the request if the table doesn't exist or the connected account lacks access to it."
         ),
       sysId: z
         .string()

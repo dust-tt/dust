@@ -24,19 +24,13 @@ function isValidSysId(value: string): boolean {
   return SYS_ID_REGEX.test(value);
 }
 
-// Server-side allowlist of tables exposed through the generic list_records/get_record tools.
-// Kept in sync with the `table` enum in metadata.ts.
-export const ALLOWED_TABLES = [
-  "incident",
-  "problem",
-  "change_request",
-  "sc_request",
-  "kb_knowledge",
-] as const;
-export type AllowedTable = (typeof ALLOWED_TABLES)[number];
-
-export function isAllowedTable(table: string): table is AllowedTable {
-  return (ALLOWED_TABLES as readonly string[]).includes(table);
+// The generic list_records/get_record tools accept any table name rather than a fixed
+// allowlist: access is enforced by ServiceNow itself (the connected account's own ACLs/roles),
+// not by Dust. `FIELD_NAME_REGEX` still gates what reaches the request, though — `table` is
+// interpolated directly into the request path unencoded, so it must be validated as a plain
+// identifier to rule out path/query injection (e.g. "incident/../sys_user").
+function isValidTableName(table: string): boolean {
+  return FIELD_NAME_REGEX.test(table);
 }
 
 export const IncidentSchema = z.object({
@@ -254,7 +248,7 @@ class ServiceNowClient {
   // and uses keyset pagination on `sys_id` (rather than sysparm_offset) so that records inserted
   // or deleted between calls can't cause a page to skip or duplicate rows.
   private async fetchPage<R extends { sys_id: string }>(
-    table: AllowedTable,
+    table: string,
     {
       query,
       fields,
@@ -274,10 +268,10 @@ class ServiceNowClient {
     },
     recordSchema: z.ZodType<R>
   ): Promise<Result<PageResult<R>, MCPError>> {
-    if (!isAllowedTable(table)) {
+    if (!isValidTableName(table)) {
       return new Err(
         new MCPError(
-          `Table "${table}" is not supported. Allowed tables: ${ALLOWED_TABLES.join(", ")}.`,
+          `Invalid table name: "${table}". Expected a ServiceNow table identifier, e.g. "incident" or "u_custom_table".`,
           { tracked: false }
         )
       );
@@ -378,7 +372,7 @@ class ServiceNowClient {
   // sysparm_no_count=false) since an exact count is a materially more expensive query on large
   // tables than the page fetch itself.
   private async getTotalCount(
-    table: AllowedTable,
+    table: string,
     encodedQuery: string
   ): Promise<Result<number, MCPError>> {
     const params = new URLSearchParams();
@@ -527,10 +521,10 @@ class ServiceNowClient {
     return new Ok(result.value.result);
   }
 
-  // Generic, read-only listing across the allowlisted tables. Shares the same keyset pagination,
-  // ordering, and field-projection behavior as `listIncidents`.
+  // Generic, read-only listing across any table the connected account has access to. Shares
+  // the same keyset pagination, ordering, and field-projection behavior as `listIncidents`.
   async listRecords(
-    table: AllowedTable,
+    table: string,
     {
       query,
       fields,
@@ -582,14 +576,14 @@ class ServiceNowClient {
   // Generic, read-only single-record lookup by sys_id, the one identifier that's both universal
   // across tables and safe to interpolate directly into the request path.
   async getRecord(
-    table: AllowedTable,
+    table: string,
     sysId: string,
     fields?: string[]
   ): Promise<Result<GenericRecord | null, MCPError>> {
-    if (!isAllowedTable(table)) {
+    if (!isValidTableName(table)) {
       return new Err(
         new MCPError(
-          `Table "${table}" is not supported. Allowed tables: ${ALLOWED_TABLES.join(", ")}.`,
+          `Invalid table name: "${table}". Expected a ServiceNow table identifier, e.g. "incident" or "u_custom_table".`,
           { tracked: false }
         )
       );

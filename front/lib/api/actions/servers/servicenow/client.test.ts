@@ -1,7 +1,4 @@
-import {
-  createServiceNowClient,
-  isAllowedTable,
-} from "@app/lib/api/actions/servers/servicenow/client";
+import { createServiceNowClient } from "@app/lib/api/actions/servers/servicenow/client";
 import { untrustedFetch } from "@app/lib/egress/server";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { Response } from "undici";
@@ -254,13 +251,64 @@ describe("ServiceNowClient generic table access (listRecords/getRecord)", () => 
     vi.clearAllMocks();
   });
 
-  it("isAllowedTable rejects tables outside the allowlist", () => {
-    expect(isAllowedTable("sys_user")).toBe(false);
-    expect(isAllowedTable("incident")).toBe(true);
-    expect(isAllowedTable("problem")).toBe(true);
-    expect(isAllowedTable("change_request")).toBe(true);
-    expect(isAllowedTable("sc_request")).toBe(true);
-    expect(isAllowedTable("kb_knowledge")).toBe(true);
+  it("accepts any well-formed table name, not just the built-in examples", async () => {
+    vi.mocked(untrustedFetch).mockResolvedValueOnce(
+      jsonResponse({ result: [] })
+    );
+
+    const client = getClient();
+    const result = await client.listRecords("u_custom_table", {});
+
+    expect(result.isOk()).toBe(true);
+    const url = new URL(requestedUrl());
+    expect(url.pathname).toBe("/api/now/table/u_custom_table");
+  });
+
+  it("rejects a malformed table name without making a request", async () => {
+    const client = getClient();
+    const result = await client.listRecords("incident/../sys_user", {});
+
+    expect(result.isErr()).toBe(true);
+    expect(untrustedFetch).not.toHaveBeenCalled();
+  });
+
+  it("surfaces ServiceNow's own error when the table doesn't exist or is inaccessible", async () => {
+    vi.mocked(untrustedFetch).mockResolvedValueOnce(
+      jsonResponse(
+        { error: { message: "Invalid table sys_user_password" } },
+        { status: 400 }
+      )
+    );
+
+    const client = getClient();
+    const result = await client.listRecords("sys_user_password", {});
+
+    expect(result.isErr()).toBe(true);
+    if (!result.isErr()) {
+      throw new Error("expected an error");
+    }
+    expect(result.error.code).toBe(400);
+    expect(result.error.message).toContain("Invalid table sys_user_password");
+  });
+
+  it("prefixes a 403 on a table the account has no access to as an ACL issue", async () => {
+    vi.mocked(untrustedFetch).mockResolvedValueOnce(
+      jsonResponse(
+        { error: { message: "Insufficient rights" } },
+        { status: 403 }
+      )
+    );
+
+    const client = getClient();
+    const result = await client.listRecords("sys_user", {});
+
+    expect(result.isErr()).toBe(true);
+    if (!result.isErr()) {
+      throw new Error("expected an error");
+    }
+    expect(result.error.code).toBe(403);
+    expect(result.error.message.toLowerCase()).toContain("acl");
+    expect(result.error.message).toContain("Insufficient rights");
   });
 
   it("builds a safe path for get_record and force-includes sys_id in projection", async () => {
