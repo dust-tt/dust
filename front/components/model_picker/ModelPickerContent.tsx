@@ -33,6 +33,7 @@ import {
   Icon,
   Lock01,
 } from "@dust-tt/sparkle";
+import { useLayoutEffect, useRef } from "react";
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
@@ -81,6 +82,14 @@ export function ModelPickerContent({
     (maker) => maker.makerId === activeMaker
   );
 
+  // The root view's own slide-in would otherwise also play on the very
+  // first paint, stacking on top of the dropdown's own open animation. Only
+  // animate it on a genuine swap back to root, not on the initial mount.
+  const isInitialRenderRef = useRef(true);
+  useLayoutEffect(() => {
+    isInitialRenderRef.current = false;
+  }, []);
+
   return (
     <DropdownMenuContent
       className="w-84 max-w-(--radix-dropdown-menu-content-available-width)"
@@ -125,7 +134,7 @@ export function ModelPickerContent({
       ) : (
         <div
           key="root"
-          className="max-h-[26rem] overflow-y-auto animate-in slide-in-from-left-4 duration-200 motion-reduce:animate-none"
+          className={`max-h-[26rem] overflow-y-auto animate-in duration-200 motion-reduce:animate-none ${isInitialRenderRef.current ? "" : "slide-in-from-left-4"}`}
         >
           <DropdownMenuLabel label="Recommendations" className="text-sm" />
 
