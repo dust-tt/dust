@@ -150,6 +150,29 @@ function getStoredDescriptor(path: string) {
   return FramePublicationDescriptorSchema.parse(JSON.parse(storedDescriptor));
 }
 
+function captureDeletedPublicationPrefixes() {
+  const deletedPrefixes: string[] = [];
+  fileStorageMock.setOnDeleteByPrefix((prefix) => deletedPrefixes.push(prefix));
+  return deletedPrefixes;
+}
+
+function expectOneDeletedPublicationPrefix({
+  auth,
+  deletedPrefixes,
+  frame,
+}: {
+  auth: Authenticator;
+  deletedPrefixes: string[];
+  frame: FileResource;
+}) {
+  expect(deletedPrefixes).toHaveLength(1);
+  expect(deletedPrefixes[0]).toMatch(
+    new RegExp(
+      `^w/${auth.getNonNullableWorkspace().sId}/frames/${frame.sId}/publications/[^/]+/$`
+    )
+  );
+}
+
 describe("storeFramePublication", () => {
   it("stores runtime artifacts without source before the publication commit marker", async () => {
     const { auth, frame, workspaceId } = await setupFrame();
@@ -899,6 +922,7 @@ describe("publishFramePublication", () => {
         )
       )
     );
+    const deletedPrefixes = captureDeletedPublicationPrefixes();
 
     const published = await publishFramePublication(auth, {
       frame,
@@ -920,6 +944,35 @@ describe("publishFramePublication", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       activePublicationId
     );
+    expectOneDeletedPublicationPrefix({ auth, deletedPrefixes, frame });
+  });
+
+  it("keeps the active publication when allowlist activation fails", async () => {
+    const { auth, frame } = await setupFrame();
+    const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
+    await frame.setActiveFramePublication(activePublicationId);
+    vi.spyOn(frame, "computeAuthorizedFileAccess").mockResolvedValue({
+      generatedByUserId: auth.getNonNullableUser().id,
+      frameContentHash: computeFrameContentHash(uiBundleCode),
+      refs: [],
+      unverifiableRefs: ["fil_ZZZZZZZZZZ"],
+    });
+    const deletedPrefixes = captureDeletedPublicationPrefixes();
+
+    const published = await publishFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceFiles,
+      uiBundleCode,
+    });
+
+    expect(published.isErr() && published.error.code).toBe("allowlist_failed");
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
+      activePublicationId
+    );
+    expectOneDeletedPublicationPrefix({ auth, deletedPrefixes, frame });
   });
 
   it("keeps the active publication when function artifact storage fails", async () => {
@@ -929,6 +982,7 @@ describe("publishFramePublication", () => {
     fileStorageMock.setFileSaveFails((filePath) =>
       filePath.endsWith("/functions/add-task.ts")
     );
+    const deletedPrefixes = captureDeletedPublicationPrefixes();
 
     await expect(
       publishFramePublication(auth, {
@@ -948,5 +1002,6 @@ describe("publishFramePublication", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       activePublicationId
     );
+    expectOneDeletedPublicationPrefix({ auth, deletedPrefixes, frame });
   });
 });

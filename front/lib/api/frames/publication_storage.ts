@@ -21,6 +21,7 @@ import type { FramePublicationFunctionDefinition } from "@app/lib/resources/sand
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
@@ -31,6 +32,7 @@ import {
   parseFramePublicationDescriptor,
 } from "@app/types/api/frame_publication";
 import {
+  getFramePublicationBasePath,
   getFramePublicationDescriptorPath,
   getFramePublicationFunctionBundlePath,
   getFramePublicationUiBundlePath,
@@ -44,6 +46,7 @@ import {
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const FRAME_PUBLICATION_UPLOAD_CONCURRENCY = 4;
@@ -169,6 +172,54 @@ export async function withFrameSourceAndPublishLock<T, E>(
 
 function sha256(content: string | Buffer): string {
   return createHash("sha256").update(content).digest("hex");
+}
+
+async function cleanupInactiveFramePublication(
+  auth: Authenticator,
+  {
+    frame,
+    publicationId,
+    reason,
+  }: {
+    frame: FileResource;
+    publicationId: string;
+    reason: "activation_failed" | "reconciliation_failed" | "storage_failed";
+  }
+): Promise<void> {
+  try {
+    const freshFrame = await frame.fetchFreshFrameV2(auth);
+    if (freshFrame?.useCaseMetadata?.activePublicationId === publicationId) {
+      logger.error(
+        {
+          frameId: frame.sId,
+          publicationId,
+          reason,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+        },
+        "Refusing to clean up an active Frame publication"
+      );
+      return;
+    }
+
+    await getPrivateUploadBucket().deleteByPrefix(
+      getFramePublicationBasePath({
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        frameId: frame.sId,
+        publicationId,
+      })
+    );
+  } catch (error) {
+    logger.error(
+      {
+        error: normalizeError(error),
+        frameId: frame.sId,
+        publicationId,
+        reason,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      "Failed to clean up an inactive Frame publication"
+    );
+  }
 }
 
 export function isFramePublicationError(
@@ -373,28 +424,54 @@ export async function storeFramePublication(
     })),
   ];
 
-  await concurrentExecutor(
+  const publicationFileWrites = await concurrentExecutor(
     publicationFiles,
-    ({ filePath, content, contentType }) =>
-      storage.file(filePath).save(content, {
-        contentType,
+    async ({ filePath, content, contentType }) => {
+      try {
+        await storage.file(filePath).save(content, {
+          contentType,
+          preconditionOpts: {
+            ifGenerationMatch: GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+          },
+        });
+        return new Ok(undefined);
+      } catch (error) {
+        return new Err(normalizeError(error));
+      }
+    },
+    { concurrency: FRAME_PUBLICATION_UPLOAD_CONCURRENCY }
+  );
+  const failedPublicationFile = publicationFileWrites.find((write) =>
+    write.isErr()
+  );
+  if (failedPublicationFile?.isErr()) {
+    await cleanupInactiveFramePublication(auth, {
+      frame,
+      publicationId: identity.publicationId,
+      reason: "storage_failed",
+    });
+    throw failedPublicationFile.error;
+  }
+
+  try {
+    // publication.json is the commit marker. Readers never observe partial publication data.
+    const descriptorPath = getFramePublicationDescriptorPath(identity);
+    await storage
+      .file(descriptorPath)
+      .save(Buffer.from(JSON.stringify(descriptor)), {
+        contentType: frameV2ContentType,
         preconditionOpts: {
           ifGenerationMatch: GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
         },
-      }),
-    { concurrency: FRAME_PUBLICATION_UPLOAD_CONCURRENCY }
-  );
-
-  // publication.json is the commit marker. Readers never observe partial publication data.
-  const descriptorPath = getFramePublicationDescriptorPath(identity);
-  await storage
-    .file(descriptorPath)
-    .save(Buffer.from(JSON.stringify(descriptor)), {
-      contentType: frameV2ContentType,
-      preconditionOpts: {
-        ifGenerationMatch: GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
-      },
+      });
+  } catch (error) {
+    await cleanupInactiveFramePublication(auth, {
+      frame,
+      publicationId: identity.publicationId,
+      reason: "storage_failed",
     });
+    throw error;
+  }
 
   return new Ok({ publicationId: identity.publicationId });
 }
@@ -686,23 +763,39 @@ export async function publishFramePublication(
       return publication;
     }
 
-    const reconciliation = await reconcileFramePublicationDatabases(auth, {
-      frame,
-      manifest,
-      sourceFiles,
-    });
-    if (reconciliation.isErr()) {
-      return reconciliation;
-    }
+    const publicationId = publication.value.publicationId;
+    let cleanupReason: "activation_failed" | "reconciliation_failed" =
+      "reconciliation_failed";
+    let publicationActivated = false;
+    try {
+      const reconciliation = await reconcileFramePublicationDatabases(auth, {
+        frame,
+        manifest,
+        sourceFiles,
+      });
+      if (reconciliation.isErr()) {
+        return reconciliation;
+      }
 
-    const activation = await activateFramePublication(auth, {
-      frame,
-      publicationId: publication.value.publicationId,
-    });
-    if (activation.isErr()) {
-      return activation;
-    }
+      cleanupReason = "activation_failed";
+      const activation = await activateFramePublication(auth, {
+        frame,
+        publicationId,
+      });
+      if (activation.isErr()) {
+        return activation;
+      }
 
-    return publication;
+      publicationActivated = true;
+      return publication;
+    } finally {
+      if (!publicationActivated) {
+        await cleanupInactiveFramePublication(auth, {
+          frame,
+          publicationId,
+          reason: cleanupReason,
+        });
+      }
+    }
   });
 }
