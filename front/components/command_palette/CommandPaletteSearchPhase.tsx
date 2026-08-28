@@ -21,8 +21,7 @@ import {
 import { useEffect, useMemo, useRef } from "react";
 
 export interface CommandPaletteCommand {
-  // The theme this command switches to when selected.
-  id: "light" | "dark" | "system";
+  theme: "light" | "dark" | "system";
   label: string;
   icon: typeof Sun;
 }
@@ -86,8 +85,6 @@ export function CommandPaletteSearchPhase({
   onItemSelect,
   onClose,
 }: CommandPaletteSearchPhaseProps) {
-  // When the query matches a Settings command, surface it above the
-  // fuzzy-matched entities instead of always burying it at the bottom.
   const commandsFirst = searchQuery.trim().length > 0 && commands.length > 0;
 
   const flatItems = useMemo(
@@ -128,10 +125,6 @@ export function CommandPaletteSearchPhase({
     }
   }, [selectedIndex, flatItems.length]);
 
-  // Reset selection and trim stale refs when the results (or their order)
-  // change. Sums the same counts as flatItems.length instead of depending
-  // on flatItems itself, since a new flatItems array is created every
-  // render and would defeat this effect's purpose.
   // biome-ignore lint/correctness/useExhaustiveDependencies: commandsFirst isn't read in the body, but a reorder (counts unchanged) must still reset the selection
   useEffect(() => {
     itemRefs.current.length =
@@ -182,7 +175,7 @@ export function CommandPaletteSearchPhase({
         const globalIndex = offsets.commands + i;
         return (
           <ItemRow
-            key={command.id}
+            key={command.theme}
             ref={(el) => {
               itemRefs.current[globalIndex] = el;
             }}

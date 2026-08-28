@@ -43,8 +43,6 @@ interface CommandPaletteProps {
 
 type Theme = "dark" | "light" | "system";
 
-// "system" is last so that, once the current theme is filtered out, it
-// always shows up as the second (last) option.
 const THEME_ORDER: Theme[] = ["light", "dark", "system"];
 
 const THEME_ICONS: Record<Theme, typeof Sun> = {
@@ -128,11 +126,10 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const MAX_DISPLAYED_PODS = 5;
   const MAX_DISPLAYED_SKILLS = 5;
 
-  // Offer the two themes the workspace isn't currently using.
   const allCommands: CommandPaletteCommand[] = useMemo(
     () =>
       THEME_ORDER.filter((t) => t !== theme).map((t) => ({
-        id: t,
+        theme: t,
         label: THEME_LABELS[t],
         icon: THEME_ICONS[t],
       })),
@@ -247,7 +244,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
       switch (item.kind) {
         case "command":
           close();
-          setTheme(item.command.id);
+          setTheme(item.command.theme);
           return;
         case "pod":
           close();
