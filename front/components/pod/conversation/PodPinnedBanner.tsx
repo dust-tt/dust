@@ -5,7 +5,6 @@ import { useScopedPodUiPreferences } from "@app/hooks/useScopedUIPreferences";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import logger from "@app/logger/logger";
 import type { RichSpaceType } from "@app/types/api/spaces";
-import { frameV2ContentType } from "@app/types/files";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -144,7 +143,7 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
     isEditor: podInfo.isEditor,
   });
 
-  const { fileId, fileContent, contentType, isLoading, isNotFound } =
+  const { fileId, fileContent, functionReferenceKind, isLoading, isNotFound } =
     usePodFrameRenderableContent({
       owner,
       framePath: pinnedFramePath,
@@ -193,7 +192,13 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
     );
   }
 
-  if (isNotFound || !fileId || !fileContent || !vizUrl) {
+  if (
+    isNotFound ||
+    !fileId ||
+    !fileContent ||
+    !functionReferenceKind ||
+    !vizUrl
+  ) {
     return null;
   }
 
@@ -203,7 +208,7 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
     fileContent,
     vizUrl,
     identifier: `viz-banner-${fileId}`,
-    frameId: contentType === frameV2ContentType ? fileId : undefined,
+    frameId: functionReferenceKind === "v2" ? fileId : undefined,
     isPodEditor: podInfo.isEditor,
     isPodMember: podInfo.isMember,
     framePath: pinnedFramePath,

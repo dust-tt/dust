@@ -3,6 +3,7 @@ import {
   useFileIdFromPath,
   useFileMetadata,
 } from "@app/lib/swr/files";
+import { getFrameFunctionReferenceKind } from "@app/types/api/frame_function_reference";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -50,7 +51,9 @@ export function usePodFrameRenderableContent({
   return {
     fileId,
     fileContent: fileContent ?? null,
-    contentType: fileMetadata?.contentType ?? null,
+    functionReferenceKind: getFrameFunctionReferenceKind(
+      fileMetadata?.contentType
+    ),
     isLoading:
       !isDisabled &&
       (isFileIdLoading ||
