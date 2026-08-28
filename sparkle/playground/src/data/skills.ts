@@ -8,6 +8,16 @@ export interface MockSkill {
 // so there's no need for the seeded-random machinery used elsewhere.
 export const mockSkills: MockSkill[] = [
   {
+    id: "skill-branded-frame",
+    name: "Create a branded frame",
+    description: "Build a frame using the workspace's brand kit",
+  },
+  {
+    id: "skill-dog-adoption-card",
+    name: "Write a dog adoption welcome card",
+    description: "Draft a warm welcome note for a newly adopted dog",
+  },
+  {
     id: "skill-summarize",
     name: "Summarize document",
     description: "Condense a long document into key points",

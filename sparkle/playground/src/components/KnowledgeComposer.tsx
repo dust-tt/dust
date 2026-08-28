@@ -1,30 +1,43 @@
 import {
   AnchoredPopover,
-  Attachment01,
   Button,
   cn,
   File01,
+  Folder,
+  Plus,
   PuzzlePiece01,
   TextArea,
 } from "@dust-tt/sparkle";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-import type { KnowledgeItem, KnowledgeTreeNode } from "../data/knowledgeItems";
+import type { KnowledgeTreeNode } from "../data/knowledgeItems";
 import {
   findNodePath,
   getBrowseChildren,
   getFilteredTreeGroups,
   mockKnowledgeTree,
 } from "../data/knowledgeItems";
+import { getDataSourceIcon } from "../data/dataSources";
 import { mockSkills } from "../data/skills";
 import { useCaretCoordinates } from "../hooks/useCaretCoordinates";
 import { useSlashTrigger } from "../hooks/useSlashTrigger";
-import { AttachedKnowledgeRow } from "./AttachedKnowledgeRow";
+import type { AttachedItem } from "./AttachedKnowledgeGroups";
+import { AttachedKnowledgeGroups } from "./AttachedKnowledgeGroups";
 import {
   KNOWLEDGE_LISTBOX_ID,
   KnowledgeSuggestionPanel,
 } from "./KnowledgeSuggestionPanel";
-import type { SlashMenuEntry } from "./SlashMenuPanel";
+import type {
+  SlashCommand,
+  SlashMenuEntry,
+  SlashSuggestion,
+} from "./SlashMenuPanel";
 import {
   SLASH_COMMANDS,
   SlashCommandMenu,
@@ -32,24 +45,84 @@ import {
 } from "./SlashMenuPanel";
 
 const LOADING_SIMULATION_MS = 220;
-const REMOVE_ANIMATION_MS = 100;
+
+// Attachments live in the text as "@Name" tokens. Highlighting them needs no
+// horizontal displacement, so the negative margin exactly cancels the padding
+// — otherwise every token after the first would drift off the real text.
+const TOKEN_CLASSES = "-mx-0.5 rounded-sm bg-muted-background px-0.5";
+
+function buildToken(name: string) {
+  return `@${name}`;
+}
+
+// Splits text on the attached tokens so the mirror can highlight them.
+function renderWithTokens(text: string, tokens: string[]) {
+  if (tokens.length === 0 || text.length === 0) {
+    return text;
+  }
+  // Longest first, so a token that contains a shorter one still wins.
+  const sorted = [...tokens].sort((a, b) => b.length - a.length);
+  const parts: React.ReactNode[] = [];
+  let cursor = 0;
+  let plainStart = 0;
+  while (cursor < text.length) {
+    const hit = sorted.find((token) => text.startsWith(token, cursor));
+    if (!hit) {
+      cursor += 1;
+      continue;
+    }
+    if (plainStart < cursor) {
+      parts.push(text.slice(plainStart, cursor));
+    }
+    parts.push(
+      <span key={cursor} className={TOKEN_CLASSES}>
+        {hit}
+      </span>
+    );
+    cursor += hit.length;
+    plainStart = cursor;
+  }
+  if (plainStart < text.length) {
+    parts.push(text.slice(plainStart));
+  }
+  return parts;
+}
 
 const attachedItemsById = new Map(
   mockKnowledgeTree.map((node) => [node.id, node])
 );
 
 // The "/" trigger's first step is always the command menu (commands and
-// skills together, flat); picking "Attach knowledge" is the only one that
+// skills together, flat); picking "Browse Knowledge" is the only one that
 // hands off to a further step.
 type SlashStep = "menu" | "knowledge";
 
-export function KnowledgeComposer() {
+export function KnowledgeComposer({
+  className,
+  minRows = 6,
+  placeholder = "Describe what this skill should do…",
+  onAddKnowledge,
+  commands = SLASH_COMMANDS,
+}: {
+  className?: string;
+  // The homepage input bar is compact; the skill builder's instructions
+  // field is not.
+  minRows?: number;
+  placeholder?: string;
+  // Hands the "Insert" action to the host, which then owns the button —
+  // the skill builder puts it on the section-title line. Mirrors
+  // SkillBuilderInstructionsSection's own onAddKnowledge wiring. When set,
+  // the composer stops rendering its own button.
+  onAddKnowledge?: (insert: () => void) => void;
+  // Which commands the menu offers — hosts differ (see
+  // SKILL_BUILDER_SLASH_COMMANDS).
+  commands?: SlashCommand[];
+}) {
   const [value, setValue] = useState("");
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [isTextareaFocused, setIsTextareaFocused] = useState(false);
 
-  const [attachedItems, setAttachedItems] = useState<KnowledgeItem[]>([]);
-  const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
+  const [attachedItems, setAttachedItems] = useState<AttachedItem[]>([]);
 
   const [dismissedTriggerIndex, setDismissedTriggerIndex] = useState<
     number | null
@@ -112,8 +185,17 @@ export function KnowledgeComposer() {
     isPickerOpen
   );
 
+  // A bare "/" reads as a typo; the hint says what the menu expects. It goes
+  // away the moment there's a query, since the real text takes its place.
+  const showInlineHint = isPickerOpen && slashTrigger.query.length === 0;
+
   const attachedIds = useMemo(
     () => new Set(attachedItems.map((item) => item.id)),
+    [attachedItems]
+  );
+
+  const tokens = useMemo(
+    () => attachedItems.map((item) => item.token),
     [attachedItems]
   );
 
@@ -136,9 +218,68 @@ export function KnowledgeComposer() {
     [currentBrowseNode, attachedIds]
   );
 
+  // A short "start here" list above the commands. Resolved from the mock data
+  // by name rather than hardcoded ids, since both are generated.
+  const suggestions = useMemo<SlashSuggestion[]>(() => {
+    const result: SlashSuggestion[] = [];
+
+    const pushSkill = (skillId: string, tag?: string) => {
+      const skill = mockSkills.find((candidate) => candidate.id === skillId);
+      if (!skill) {
+        return;
+      }
+      result.push({
+        id: `suggested-${skill.id}`,
+        label: skill.name,
+        description: skill.description,
+        icon: PuzzlePiece01,
+        tone: "skill",
+        target: { kind: "skill", skillId: skill.id },
+        tag,
+      });
+    };
+
+    pushSkill("skill-branded-frame", "New");
+
+    const designFolder = mockKnowledgeTree.find(
+      (node) => node.kind === "folder" && node.fileName === "Design"
+    );
+    if (designFolder) {
+      result.push({
+        id: `suggested-${designFolder.id}`,
+        label: designFolder.fileName,
+        description: designFolder.spaceName,
+        icon: getDataSourceIcon(designFolder) ?? Folder,
+        tone: "neutral",
+        target: { kind: "node", nodeId: designFolder.id },
+      });
+    }
+
+    pushSkill("skill-dog-adoption-card");
+
+    return result;
+  }, []);
+
+  const availableSuggestions = useMemo(
+    () =>
+      suggestions.filter((suggestion) => {
+        const { target } = suggestion;
+        const targetId =
+          target.kind === "node" ? target.nodeId : target.skillId;
+        return !attachedIds.has(targetId);
+      }),
+    [suggestions, attachedIds]
+  );
+
+  const availableSkills = useMemo(
+    () => mockSkills.filter((skill) => !attachedIds.has(skill.id)),
+    [attachedIds]
+  );
+
   const menuEntries = useMemo(
-    () => buildSlashMenuEntries(SLASH_COMMANDS, mockSkills),
-    []
+    () =>
+      buildSlashMenuEntries(availableSuggestions, commands, availableSkills),
+    [availableSuggestions, commands, availableSkills]
   );
 
   const filteredMenuEntries = useMemo(() => {
@@ -148,9 +289,11 @@ export function KnowledgeComposer() {
     }
     return menuEntries.filter((entry) => {
       const haystack =
-        entry.kind === "command"
-          ? entry.command.label
-          : `${entry.skill.name} ${entry.skill.description}`;
+        entry.kind === "suggestion"
+          ? `${entry.suggestion.label} ${entry.suggestion.description}`
+          : entry.kind === "command"
+            ? entry.command.label
+            : `${entry.skill.name} ${entry.skill.description}`;
       return haystack.toLowerCase().includes(trimmed);
     });
   }, [menuEntries, activeQuery]);
@@ -195,7 +338,7 @@ export function KnowledgeComposer() {
     });
   };
 
-  // "Attach knowledge" is just a second way to type "/": it inserts the
+  // "Insert" is just a second way to type "/": it inserts the
   // trigger at the caret and lets the inline flow take over, so the button
   // and the keystroke open the very same dropdown in the very same place.
   const insertSlashTrigger = () => {
@@ -214,19 +357,26 @@ export function KnowledgeComposer() {
     focusCaret(nextCaret);
   };
 
-  // Shared by every attach path (knowledge, skills, upload) — adds the chip
-  // and closes the picker, same as picking a single result anywhere else.
-  const attachItem = (item: KnowledgeItem) => {
-    setAttachedItems((prev) => [...prev, item]);
-    // Removes the "/" trigger itself (not just the typed query), which is
-    // what actually closes the picker — there's no active trigger left
-    // for useSlashTrigger to find.
+  // Shared by every attach path (knowledge, skills, upload). The "/" and the
+  // typed query are replaced by the item's token, so the attachment reads
+  // inline in the instructions — and closing the picker comes for free, since
+  // there's no trigger left for useSlashTrigger to find.
+  const attachItem = ({
+    id,
+    name,
+    icon,
+    group,
+  }: Omit<AttachedItem, "token">) => {
+    const token = buildToken(name);
+    setAttachedItems((prev) => [...prev, { id, name, icon, group, token }]);
+
     if (selectionStart !== null) {
       const start = slashTrigger.triggerIndex;
-      const end = selectionStart;
-      setValue(value.slice(0, start) + value.slice(end));
-      setSelectionStart(start);
-      focusCaret(start);
+      const inserted = `${token} `;
+      setValue(value.slice(0, start) + inserted + value.slice(selectionStart));
+      const nextCaret = start + inserted.length;
+      setSelectionStart(nextCaret);
+      focusCaret(nextCaret);
     }
     setBrowseStack([]);
     setSlashStep("menu");
@@ -240,11 +390,8 @@ export function KnowledgeComposer() {
     attachItem({
       id: node.id,
       name: node.fileName,
-      spaceName: node.spaceName,
-      icon: node.icon,
-      lastUsedAt: node.updatedAt,
-      usageCount: 0,
-      source: node.source,
+      icon: getDataSourceIcon(node),
+      group: "knowledge",
     });
   };
 
@@ -262,17 +409,31 @@ export function KnowledgeComposer() {
     focusCaret(start);
   };
 
+  const attachSkillById = (skillId: string) => {
+    const skill = mockSkills.find((candidate) => candidate.id === skillId);
+    if (!skill) {
+      return;
+    }
+    attachItem({
+      id: skill.id,
+      name: skill.name,
+      icon: PuzzlePiece01,
+      group: "capability",
+    });
+  };
+
   const handleSelectMenuEntry = (entry: SlashMenuEntry) => {
+    if (entry.kind === "suggestion") {
+      const { target } = entry.suggestion;
+      if (target.kind === "node") {
+        handleSelectItemById(target.nodeId);
+      } else {
+        attachSkillById(target.skillId);
+      }
+      return;
+    }
     if (entry.kind === "skill") {
-      attachItem({
-        id: entry.skill.id,
-        name: entry.skill.name,
-        spaceName: "Skill",
-        icon: PuzzlePiece01,
-        lastUsedAt: new Date(),
-        usageCount: 0,
-        source: "company",
-      });
+      attachSkillById(entry.skill.id);
       return;
     }
     if (entry.command.id === "upload") {
@@ -287,11 +448,8 @@ export function KnowledgeComposer() {
     attachItem({
       id: `upload-${file.name}-${file.size}`,
       name: file.name,
-      spaceName: "Uploaded",
       icon: File01,
-      lastUsedAt: new Date(),
-      usageCount: 0,
-      source: "company",
+      group: "file",
     });
   };
 
@@ -318,18 +476,6 @@ export function KnowledgeComposer() {
 
   const handleBreadcrumbNavigate = (depth: number) => {
     setBrowseStack((prev) => prev.slice(0, depth));
-  };
-
-  const handleRemoveItem = (item: KnowledgeItem) => {
-    setRemovingIds((prev) => new Set(prev).add(item.id));
-    setTimeout(() => {
-      setAttachedItems((prev) => prev.filter((entry) => entry.id !== item.id));
-      setRemovingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(item.id);
-        return next;
-      });
-    }, REMOVE_ANIMATION_MS);
   };
 
   const handleListNavigationKeyDown = (e: React.KeyboardEvent) => {
@@ -403,8 +549,28 @@ export function KnowledgeComposer() {
     setSelectionStart(target.selectionStart);
   };
 
+  const handleInsertClick = () => {
+    if (isPickerOpen) {
+      closeInlinePicker();
+      return;
+    }
+    insertSlashTrigger();
+  };
+
+  // The handler closes over this render's value/caret, so the host gets a
+  // stable wrapper reading the latest one instead of a new function each
+  // render (which would loop through the host's setState).
+  const insertClickRef = useRef(handleInsertClick);
+  useEffect(() => {
+    insertClickRef.current = handleInsertClick;
+  });
+  const publishedInsert = useCallback(() => insertClickRef.current(), []);
+  useEffect(() => {
+    onAddKnowledge?.(publishedInsert);
+  }, [onAddKnowledge, publishedInsert]);
+
   return (
-    <div className="flex w-full max-w-lg flex-col gap-1.5">
+    <div className={cn("flex w-full max-w-lg flex-col gap-1.5", className)}>
       <input
         ref={uploadInputRef}
         type="file"
@@ -419,28 +585,23 @@ export function KnowledgeComposer() {
       />
 
       {/* Outside the input box entirely — its own row above it, not
-          sharing the input's border/background. */}
-      <div className="flex items-center justify-end">
-        <Button
-          size="sm"
-          variant="outline"
-          label="Attach knowledge"
-          icon={Attachment01}
-          isCounter={attachedItems.length > 0}
-          counterValue={String(attachedItems.length)}
-          // Keeps focus in the textarea: without this the mousedown blurs
-          // it, which closes the picker the click is meant to open (and
-          // loses the caret position the "/" has to land on).
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => {
-            if (isPickerOpen) {
-              closeInlinePicker();
-              return;
-            }
-            insertSlashTrigger();
-          }}
-        />
-      </div>
+          sharing the input's border/background. Skipped when the host has
+          taken the action over. */}
+      {!onAddKnowledge && (
+        <div className="flex items-center justify-end">
+          <Button
+            size="sm"
+            variant="outline"
+            label="Insert"
+            icon={Plus}
+            // Keeps focus in the textarea: without this the mousedown blurs
+            // it, which closes the picker the click is meant to open (and
+            // loses the caret position the "/" has to land on).
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={handleInsertClick}
+          />
+        </div>
+      )}
 
       <div
         className={cn(
@@ -450,20 +611,50 @@ export function KnowledgeComposer() {
             : "border-border"
         )}
       >
-        <AttachedKnowledgeRow
-          items={attachedItems}
-          removingIds={removingIds}
-          onRemove={handleRemoveItem}
-        />
-
         <div className="relative">
+          {(showInlineHint || tokens.length > 0) && (
+            <div
+              aria-hidden="true"
+              // A mirror of the textarea's own text, not a label pinned to
+              // measured caret coordinates: an identical block produces
+              // identical line boxes, so the hint shares the real text's
+              // baseline by construction instead of by arithmetic. The
+              // padding/type classes are the textarea's own, and inset-px
+              // accounts for the padded wrapper TextArea puts around it.
+              className="pointer-events-none absolute inset-px overflow-hidden whitespace-pre-wrap break-words px-3 py-2 text-sm text-transparent"
+            >
+              {showInlineHint ? (
+                <>
+                  {renderWithTokens(
+                    value.slice(0, slashTrigger.triggerIndex),
+                    tokens
+                  )}
+                  {/* The hint text is absolutely positioned so it contributes
+                      no width: anything after the caret has to stay lined up
+                      with the real text, tokens included. */}
+                  <span className={cn(TOKEN_CLASSES, "relative")}>
+                    /
+                    <span className="absolute left-full top-0 whitespace-pre rounded-r-sm bg-muted-background pr-0.5 text-muted-foreground">
+                      Type to search
+                    </span>
+                  </span>
+                  {renderWithTokens(
+                    value.slice(slashTrigger.triggerIndex + 1),
+                    tokens
+                  )}
+                </>
+              ) : (
+                renderWithTokens(value, tokens)
+              )}
+            </div>
+          )}
           <TextArea
             ref={textareaRef}
             value={value}
-            minRows={6}
+            minRows={minRows}
             resize="vertical"
-            placeholder="Describe what this skill should do…"
-            className="border-none bg-transparent shadow-none focus-visible:ring-0"
+            placeholder={placeholder}
+            className="relative z-10 border-none bg-transparent shadow-none focus-visible:ring-0"
             role={isPickerOpen ? "combobox" : undefined}
             aria-expanded={isPickerOpen || undefined}
             aria-controls={isPickerOpen ? KNOWLEDGE_LISTBOX_ID : undefined}
@@ -488,8 +679,14 @@ export function KnowledgeComposer() {
               setIsTextareaFocused(false);
             }}
             onChange={(e) => {
-              setValue(e.target.value);
+              const nextValue = e.target.value;
+              setValue(nextValue);
               syncSelection(e.target);
+              // Erasing a token is how an attachment is removed — there is no
+              // delete control, so the text is the source of truth.
+              setAttachedItems((prev) =>
+                prev.filter((item) => nextValue.includes(item.token))
+              );
             }}
             onClick={(e) => syncSelection(e.currentTarget)}
             onKeyUp={(e) => syncSelection(e.currentTarget)}
@@ -502,13 +699,10 @@ export function KnowledgeComposer() {
               style={{ top: caretCoords.top, left: caretCoords.left }}
             />
           )}
-          {value.length === 0 && (
-            <span className="pointer-events-none absolute bottom-3 right-3 text-xs text-muted-foreground">
-              Type <span className="font-medium">/</span> for knowledge
-            </span>
-          )}
         </div>
       </div>
+
+      <AttachedKnowledgeGroups items={attachedItems} />
 
       <div ref={popoverContainerRef}>
         <AnchoredPopover

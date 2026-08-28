@@ -6,7 +6,6 @@ import type {
   KnowledgeTreeNode,
 } from "../data/knowledgeItems";
 import {
-  KnowledgeBreadcrumbBar,
   KnowledgeBrowseRow,
   KnowledgeFileRow,
   KnowledgeGroupHeader,
@@ -69,19 +68,12 @@ export function KnowledgeSuggestionPanel({
           label="Knowledge"
           onBack={onBack}
           backLabel="Back to commands"
+          // Search results carry their own full path per group, so the trail
+          // only means anything while browsing.
+          trail={isFiltering ? undefined : browseStack}
+          onNavigate={onBreadcrumbNavigate}
         />
       </div>
-      {!isFiltering && browseStack.length > 0 && (
-        <div
-          className="border-b border-border"
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          <KnowledgeBreadcrumbBar
-            stack={browseStack}
-            onNavigate={onBreadcrumbNavigate}
-          />
-        </div>
-      )}
       <ScrollArea
         id={KNOWLEDGE_LISTBOX_ID}
         role="listbox"

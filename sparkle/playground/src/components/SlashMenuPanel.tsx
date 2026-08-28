@@ -1,8 +1,9 @@
 import {
-  Attachment01,
+  Chip,
   Icon,
   PuzzlePiece01,
   ScrollArea,
+  Planet,
   SearchMd,
   UploadCloud01,
 } from "@dust-tt/sparkle";
@@ -11,7 +12,13 @@ import React from "react";
 
 import type { MockSkill } from "../data/skills";
 import { KNOWLEDGE_LISTBOX_ID } from "./KnowledgeSuggestionPanel";
-import { PanelSectionHeader } from "./KnowledgeRow";
+import type { RowAvatarTone } from "./KnowledgeRow";
+import {
+  PanelSectionHeader,
+  ROW_CLASSES,
+  ROW_DESCRIPTION_CLASSES,
+  RowAvatar,
+} from "./KnowledgeRow";
 
 export type SlashCommandId = "knowledge" | "upload";
 
@@ -27,19 +34,29 @@ export interface SlashCommand {
 // handful and picking one is a single action, same as picking a command —
 // but they get their own "Capabilities" section so the two kinds stay
 // visually distinct.
+const UPLOAD_COMMAND: SlashCommand = {
+  id: "upload",
+  label: "Upload file",
+  description: "Upload a file from your device",
+  icon: UploadCloud01,
+};
+
+const BROWSE_KNOWLEDGE_COMMAND: SlashCommand = {
+  id: "knowledge",
+  label: "Browse Knowledge",
+  description: "Search knowledge and reference conversations",
+  icon: Planet,
+};
+
 export const SLASH_COMMANDS: SlashCommand[] = [
-  {
-    id: "upload",
-    label: "Upload file",
-    description: "Upload a file from your device",
-    icon: UploadCloud01,
-  },
-  {
-    id: "knowledge",
-    label: "Attach knowledge",
-    description: "Search knowledge and reference conversations",
-    icon: Attachment01,
-  },
+  UPLOAD_COMMAND,
+  BROWSE_KNOWLEDGE_COMMAND,
+];
+
+// The skill builder has its own Files section, so offering an upload here too
+// would be a second, competing way to do the same thing.
+export const SKILL_BUILDER_SLASH_COMMANDS: SlashCommand[] = [
+  BROWSE_KNOWLEDGE_COMMAND,
 ];
 
 // One flat list mixing commands and skills — typing filters both together,
@@ -48,31 +65,87 @@ export const SLASH_COMMANDS: SlashCommand[] = [
 // keyboard nav) doesn't need to branch on `kind` just to find it. The
 // sections below are purely a rendering concern layered on top of this
 // order, which is what keeps the visual order and the nav order identical.
+// What a suggestion attaches when picked. Kept as data rather than a
+// callback so the menu stays a pure renderer.
+export type SlashSuggestionTarget =
+  | { kind: "node"; nodeId: string }
+  | { kind: "skill"; skillId: string };
+
+export interface SlashSuggestion {
+  id: string;
+  label: string;
+  description: string;
+  icon: ComponentType<{ className?: string }>;
+  tone: RowAvatarTone;
+  target: SlashSuggestionTarget;
+  // Small trailing tag, e.g. "New".
+  tag?: string;
+}
+
 export type SlashMenuEntry =
+  | { kind: "suggestion"; id: string; suggestion: SlashSuggestion }
   | { kind: "command"; id: string; command: SlashCommand }
   | { kind: "skill"; id: string; skill: MockSkill };
 
 function getSlashMenuEntryLabel(entry: SlashMenuEntry): string {
-  return entry.kind === "command" ? entry.command.label : entry.skill.name;
+  switch (entry.kind) {
+    case "suggestion":
+      return entry.suggestion.label;
+    case "command":
+      return entry.command.label;
+    case "skill":
+      return entry.skill.name;
+  }
 }
 
 function getSlashMenuEntryDescription(entry: SlashMenuEntry): string {
-  return entry.kind === "command"
-    ? entry.command.description
-    : entry.skill.description;
+  switch (entry.kind) {
+    case "suggestion":
+      return entry.suggestion.description;
+    case "command":
+      return entry.command.description;
+    case "skill":
+      return entry.skill.description;
+  }
 }
 
 function getSlashMenuEntryIcon(
   entry: SlashMenuEntry
 ): ComponentType<{ className?: string }> {
-  return entry.kind === "command" ? entry.command.icon : PuzzlePiece01;
+  switch (entry.kind) {
+    case "suggestion":
+      return entry.suggestion.icon;
+    case "command":
+      return entry.command.icon;
+    case "skill":
+      return PuzzlePiece01;
+  }
+}
+
+function getSlashMenuEntryTone(entry: SlashMenuEntry): RowAvatarTone {
+  switch (entry.kind) {
+    case "suggestion":
+      return entry.suggestion.tone;
+    case "command":
+      return "neutral";
+    case "skill":
+      return "skill";
+  }
 }
 
 export function buildSlashMenuEntries(
+  suggestions: SlashSuggestion[],
   commands: SlashCommand[],
   skills: MockSkill[]
 ): SlashMenuEntry[] {
   return [
+    ...suggestions.map(
+      (suggestion): SlashMenuEntry => ({
+        kind: "suggestion",
+        id: suggestion.id,
+        suggestion,
+      })
+    ),
     ...commands.map(
       (command): SlashMenuEntry => ({
         kind: "command",
@@ -89,16 +162,20 @@ export function buildSlashMenuEntries(
 function SimpleListRow({
   id,
   icon,
+  tone,
   label,
   description,
+  tag,
   isActive,
   onHover,
   onSelect,
 }: {
   id: string;
   icon: ComponentType<{ className?: string }>;
+  tone: RowAvatarTone;
   label: string;
   description: string;
+  tag?: string;
   isActive: boolean;
   onHover: () => void;
   onSelect: () => void;
@@ -123,15 +200,16 @@ function SimpleListRow({
       onMouseEnter={onHover}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onSelect}
-      className="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg px-2 transition-[background-color,transform] duration-100 ease-out motion-safe:active:scale-[0.98] data-[active]:bg-hover"
+      className={ROW_CLASSES}
     >
-      <Icon visual={icon} size="xs" className="shrink-0" />
+      <RowAvatar icon={icon} tone={tone} />
       <div className="flex min-w-0 grow flex-col">
-        <span className="truncate text-sm text-foreground">{label}</span>
-        <span className="truncate text-xs text-muted-foreground">
-          {description}
-        </span>
+        <span className="truncate">{label}</span>
+        <span className={ROW_DESCRIPTION_CLASSES}>{description}</span>
       </div>
+      {tag && (
+        <Chip size="mini" color="highlight" label={tag} className="shrink-0" />
+      )}
     </div>
   );
 }
@@ -150,6 +228,7 @@ function EmptyState({ message }: { message: string }) {
 // Order matters: it has to match the order `buildSlashMenuEntries` puts
 // entries in, or the sections would render out of keyboard-nav order.
 const SECTIONS: Array<{ kind: SlashMenuEntry["kind"]; label: string }> = [
+  { kind: "suggestion", label: "Suggested" },
   { kind: "command", label: "Commands" },
   { kind: "skill", label: "Capabilities" },
 ];
@@ -198,6 +277,12 @@ export function SlashCommandMenu({
                       key={entry.id}
                       id={entry.id}
                       icon={getSlashMenuEntryIcon(entry)}
+                      tone={getSlashMenuEntryTone(entry)}
+                      tag={
+                        entry.kind === "suggestion"
+                          ? entry.suggestion.tag
+                          : undefined
+                      }
                       label={getSlashMenuEntryLabel(entry)}
                       description={getSlashMenuEntryDescription(entry)}
                       isActive={entry.id === activeId}

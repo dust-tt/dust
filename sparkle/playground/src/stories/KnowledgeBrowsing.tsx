@@ -11,12 +11,9 @@ export default function KnowledgeBrowsingStory() {
           <h1 className="heading-2xl text-foreground">Skill instructions</h1>
           <p className="copy-sm text-muted-foreground">
             Type <span className="font-medium text-foreground">/</span> for a
-            command menu — attach knowledge, upload a file, or attach a
-            skill — or click{" "}
-            <span className="font-medium text-foreground">
-              Attach knowledge
-            </span>{" "}
-            to go straight to search.
+            command menu — attach knowledge, upload a file, or attach a skill —
+            or click <span className="font-medium text-foreground">Insert</span>{" "}
+            to drop a "/" at the cursor and open the same menu.
           </p>
         </div>
         <KnowledgeComposer />

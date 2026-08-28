@@ -47,6 +47,13 @@ export function useSlashTrigger(
     }
 
     const query = value.slice(triggerIndex + 1, selectionStart);
+    // A space typed straight after the "/" means the user wanted a literal
+    // slash, not a command: the trigger releases and the "/" is left behind
+    // as an ordinary character. Deleting the space brings the menu back,
+    // same as any other edit that reshapes the trigger.
+    if (/^\s/.test(query)) {
+      return INACTIVE;
+    }
     if (/\s{2,}/.test(query) || query.length > MAX_QUERY_LENGTH) {
       return INACTIVE;
     }
