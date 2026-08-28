@@ -26,7 +26,11 @@ const publication = {
   },
   publishedAt: "2026-08-28T12:00:00.000Z",
   publisherId: "usr_publisher",
-  sourceFiles: [{ path: "index.tsx", contentSha256: SHA256 }],
+  sourceFiles: [
+    { path: "index.tsx", contentSha256: SHA256 },
+    { path: "functions/add_task.ts", contentSha256: SHA256 },
+    { path: "databases/tasks.db.ts", contentSha256: SHA256 },
+  ],
   ui: { bundleSha256: SHA256 },
   functions: [
     {
@@ -67,6 +71,29 @@ describe("FramePublicationDescriptorSchema", () => {
     const result = FramePublicationDescriptorSchema.safeParse({
       ...publication,
       sourceFiles: [publication.sourceFiles[0], publication.sourceFiles[0]],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("requires hashes for every manifest-referenced source path", () => {
+    const result = FramePublicationDescriptorSchema.safeParse({
+      ...publication,
+      sourceFiles: publication.sourceFiles.slice(0, 1),
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("ties each database contract to its schema source hash", () => {
+    const result = FramePublicationDescriptorSchema.safeParse({
+      ...publication,
+      databases: [
+        {
+          ...publication.databases[0],
+          schemaSha256: "b".repeat(64),
+        },
+      ],
     });
 
     expect(result.success).toBe(false);
