@@ -840,18 +840,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const enabledCodeDefinedSkills = allCodeDefinedSkills.filter(
       (def) => !agentLoopData || !def.isDisabledForAgentLoop?.(agentLoopData)
     );
-    const enabledCodeDefinedSkillsWithMCPServers = await concurrentExecutor(
-      enabledCodeDefinedSkills,
-      async (def) => ({
-        def,
-        mcpServers: withTools
-          ? def.fetchMCPServers
-            ? await def.fetchMCPServers(auth)
-            : (def.mcpServers ?? [])
-          : [],
-      }),
-      { concurrency: 5 }
-    );
 
     const effectiveSpaceIds = providedEffectiveSpaceIds ?? [];
     const requestedSpaceModelIds = removeNulls(
@@ -862,8 +850,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     let mcpServerViews: MCPServerViewResource[] = [];
     if (withTools) {
       const mcpServerIds = uniq(
-        enabledCodeDefinedSkillsWithMCPServers.flatMap(({ mcpServers }) =>
-          mcpServers.map((server) => server.name)
+        enabledCodeDefinedSkills.flatMap(
+          (def) => def.mcpServers?.map((s) => s.name) ?? []
         )
       ).map((name) =>
         autoInternalMCPServerNameToSId({ name, workspaceId: workspace.id })
@@ -890,12 +878,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     const globalSkills = await concurrentExecutor(
-      enabledCodeDefinedSkillsWithMCPServers,
-      ({ def, mcpServers }) =>
+      enabledCodeDefinedSkills,
+      (def) =>
         this.fromGlobalSkill(auth, def, {
           agentLoopData,
           effectiveSpaceIds,
-          mcpServers,
           mcpServerViews,
           withInstructions,
         }),
@@ -2096,13 +2083,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       agentLoopData,
       effectiveSpaceIds,
-      mcpServers,
       mcpServerViews,
       withInstructions = true,
     }: {
       agentLoopData?: AgentLoopExecutionData;
       effectiveSpaceIds: string[];
-      mcpServers: NonNullable<SkillDefinition["mcpServers"]>;
       mcpServerViews: MCPServerViewResource[];
       withInstructions?: boolean;
     }
@@ -2118,14 +2103,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       "internalMCPServerId"
     );
 
-    const mcpServerConfigurations: SkillMCPServerConfiguration[] =
-      mcpServers.flatMap(({ name, childAgentId, serverNameOverride }) =>
-        (
-          viewsByServerId[
-            autoInternalMCPServerNameToSId({ name, workspaceId })
-          ] ?? []
-        ).map((view) => ({ view, childAgentId, serverNameOverride }))
-      );
+    const mcpServerConfigurations: SkillMCPServerConfiguration[] = (
+      def.mcpServers ?? []
+    ).flatMap(({ name, childAgentId, serverNameOverride }) =>
+      (
+        viewsByServerId[
+          autoInternalMCPServerNameToSId({ name, workspaceId })
+        ] ?? []
+      ).map((view) => ({ view, childAgentId, serverNameOverride }))
+    );
 
     const instructions = withInstructions
       ? def.fetchInstructions

@@ -40,7 +40,7 @@ export const framesSkill = {
     if (await hasFeatureFlag(auth, "frames_v2")) {
       return `# Frames v2
 
-Use the Computer and the \`dsbx frame\` CLI to publish Frames. Do not use the legacy interactive-content tools.
+Use the Computer and the \`dsbx frame\` CLI to publish Frames.
 
 ## Publish a Frame
 
@@ -56,9 +56,9 @@ For a legacy Frame, pass its entry source file instead:
 dsbx frame publish /files/<scope>/<frame>.tsx
 \`\`\`
 
-Publishing a Frames v2 manifest validates and atomically activates a complete source/function publication. Publishing a legacy Frame uses its existing build and publish flow. Fix any reported error and rerun the command.
+Publishing a Frames v2 manifest validates and atomically activates a complete source/function publication. Publishing a legacy Frame uses its existing build and publish flow. Fix any reported error and rerun the command. Do not use the \`publish_interactive_content_file\` tool: the CLI replaces it under Frames v2. Other interactive-content tools remain available for Frame operations that the CLI does not cover yet.
 
-Use \`dsbx frame --help\` as the authority for available operations. Never fall back to legacy Frame MCP tools. Do not use \`mv\` or \`cp\` on a registered Frame folder: move and clone are not supported in this initial scope.`;
+Use \`dsbx frame --help\` as the authority for available operations. Do not use \`mv\` or \`cp\` on a registered Frame folder: move and clone are not supported in this initial scope.`;
     }
 
     const conversation = params.agentLoopData?.conversation;
@@ -74,10 +74,7 @@ Use \`dsbx frame --help\` as the authority for available operations. Never fall 
       podFunctionsSkillName: POD_FUNCTIONS_SKILL_NAME,
     });
   },
-  fetchMCPServers: async (auth: Authenticator) =>
-    (await hasFeatureFlag(auth, "frames_v2"))
-      ? []
-      : [{ name: "interactive_content" }],
+  mcpServers: [{ name: "interactive_content" }],
   version: 4,
   icon: "ActionFrameIcon",
 } as const satisfies GlobalSkillDefinition;

@@ -12,7 +12,6 @@ import {
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { framesSkill } from "@app/lib/resources/skill/code_defined/global/frames";
 import { POD_FUNCTIONS_SKILL_NAME } from "@app/lib/resources/skill/code_defined/global/pod_functions";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -53,7 +52,7 @@ function agentLoopDataInPod(spaceId: string | null): AgentLoopExecutionData {
 }
 
 describe("framesSkill.fetchInstructions", () => {
-  it("uses only dsbx publish and hides the legacy MCP under Frames v2", async () => {
+  it("uses dsbx publish and keeps the remaining MCP tools under Frames v2", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "frames_v2");
 
@@ -66,18 +65,16 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("<frame>.tsx");
     expect(instructions).not.toContain("dsbx frame create");
     expect(instructions).not.toContain("dsbx frame register");
-    expect(instructions).not.toContain(
-      PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME
+    expect(instructions).toContain(
+      "Other interactive-content tools remain available"
     );
-    await expect(framesSkill.fetchMCPServers(auth)).resolves.toEqual([]);
-    const [resolvedSkill] = await SkillResource.fetchByIds(auth, ["frames"]);
-    expect(resolvedSkill?.mcpServerConfigurations).toEqual([]);
+    expect(framesSkill.mcpServers).toEqual([{ name: "interactive_content" }]);
     await expect(
       InternalMCPServerInMemoryResource.isRestrictedForWorkspace(
         auth,
         "interactive_content"
       )
-    ).resolves.toBe(true);
+    ).resolves.toBe(false);
   });
 
   it("teaches the computer-first flow when the Computer is enabled", async () => {
