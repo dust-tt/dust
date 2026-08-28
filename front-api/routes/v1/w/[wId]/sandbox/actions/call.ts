@@ -83,7 +83,7 @@ app.post(
       const result = await createSandboxFunctionMCPAction(auth, {
         sandboxFunctionId: claims.sandboxFunctionId,
         invocationId: claims.invocationId,
-        podSpaceId: claims.spaceId,
+        runtimeSpaceId: claims.spaceId,
         serverViewId,
         toolName,
         rawInputs: toolArgs ?? {},

@@ -162,8 +162,8 @@ export async function createSandboxFunctionInvocationTokenTestContext({
     sandbox: context.sandbox,
     sandboxFunction: {
       sId: "sfn_test",
-      space: { sId: context.globalSpace.sId },
     },
+    owner: { kind: "pod", spaceId: context.globalSpace.sId },
     invocationId: `test-invocation-${context.sandbox.sId}`,
     execId: `test-function-exec-${context.sandbox.sId}`,
   });
@@ -229,8 +229,8 @@ export async function createPersistedSandboxFunctionInvocationTokenTestContext({
     sandbox: context.sandbox,
     sandboxFunction: {
       sId: sandboxFunction.sId,
-      space: { sId: podSpace.sId },
     },
+    owner: { kind: "pod", spaceId: podSpace.sId },
     invocationId: invocation.sId,
     execId: `test-function-exec-${context.sandbox.sId}`,
     noTools,

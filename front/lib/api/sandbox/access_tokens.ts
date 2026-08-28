@@ -59,6 +59,7 @@ const SandboxTokenPayloadSchema = z
     mId: z.string().optional(),
     actionId: z.string().optional(),
     spaceId: z.string().optional(),
+    frameId: z.string().optional(),
     sandboxFunctionId: z.string().optional(),
     invocationId: z.string().optional(),
     filesystem: z.literal(true).optional(),
@@ -99,6 +100,12 @@ const SandboxTokenPayloadSchema = z
         message: "Incomplete sandbox function invocation token claims.",
       });
     }
+    if (payload.frameId !== undefined && !hasInvocation) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "A Frame claim is only valid on a function invocation token.",
+      });
+    }
     if (
       (payload.filesystem === true || payload.fileSystemRoots !== undefined) &&
       !hasFileSystem
@@ -132,6 +139,7 @@ export type SandboxExecTokenPayload = SandboxTokenPayload & {
 
 export type SandboxFunctionInvocationTokenPayload = SandboxTokenPayload & {
   spaceId: string;
+  frameId?: string;
   sandboxFunctionId: string;
   invocationId: string;
 };
@@ -236,6 +244,7 @@ export function isSandboxFileSystemTokenPayload(
     payload.mId === undefined &&
     payload.actionId === undefined &&
     payload.spaceId === undefined &&
+    payload.frameId === undefined &&
     payload.sandboxFunctionId === undefined &&
     payload.invocationId === undefined &&
     payload.noTools === undefined
@@ -353,6 +362,7 @@ export async function generateSandboxFunctionInvocationToken(
     conversationId,
     sandbox,
     sandboxFunction,
+    owner,
     invocationId,
     execId,
     noTools,
@@ -360,7 +370,10 @@ export async function generateSandboxFunctionInvocationToken(
   }: {
     conversationId?: string;
     sandbox: SandboxResource;
-    sandboxFunction: { sId: string; space: { sId: string } };
+    sandboxFunction: { sId: string };
+    owner:
+      | { kind: "pod"; spaceId: string }
+      | { kind: "frame"; frameId: string; spaceId: string };
     invocationId: string;
     execId: string;
     // Required rather than defaulted: a minting site that forgets it would silently hand out tool
@@ -375,7 +388,8 @@ export async function generateSandboxFunctionInvocationToken(
     cId: conversationId,
     sbId: sandbox.sId,
     execId,
-    spaceId: sandboxFunction.space.sId,
+    spaceId: owner.spaceId,
+    ...(owner.kind === "frame" ? { frameId: owner.frameId } : {}),
     sandboxFunctionId: sandboxFunction.sId,
     invocationId,
     ...(noTools ? { noTools: true as const } : {}),

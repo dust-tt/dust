@@ -116,14 +116,14 @@ export async function createSandboxFunctionMCPAction(
   {
     sandboxFunctionId,
     invocationId,
-    podSpaceId,
+    runtimeSpaceId,
     serverViewId,
     toolName,
     rawInputs,
   }: {
     sandboxFunctionId: string;
     invocationId: string;
-    podSpaceId: string;
+    runtimeSpaceId: string;
     serverViewId: string;
     toolName: string;
     rawInputs: Record<string, unknown>;
@@ -149,11 +149,11 @@ export async function createSandboxFunctionMCPAction(
     ],
   });
   // `fetchById` is workspace-scoped, so reproduce the listing endpoint's confinement: the view
-  // must be in the pod or global space (the spaces the listing queries) AND readable by the
-  // caller. The permission check keeps this correct if pod access is revoked within the token
+  // must be in the function's runtime or global space (the spaces the listing queries) AND
+  // readable by the caller. The permission check keeps this correct if access is revoked within the token
   // TTL; on its own it would not confine, since an admin can administrate any space. Out-of-scope
   // ids report as not-found so the sandbox cannot probe other spaces.
-  const inScope = view?.space.sId === podSpaceId || view?.space.isGlobal();
+  const inScope = view?.space.sId === runtimeSpaceId || view?.space.isGlobal();
   if (!view || !inScope || !view.canReadOrAdministrate(auth)) {
     return new Err(
       new SandboxFunctionMCPActionError(
