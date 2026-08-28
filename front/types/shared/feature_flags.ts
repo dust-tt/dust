@@ -455,7 +455,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   usage_page_redesign: {
     description:
-      "Show the redesigned Usage page header (top-up placement, breakdown-in-analytics link, credit pool separator) while it's being rolled out.",
+      "Show the redesigned Usage page header, while it's being rolled out.",
     stage: "dust_only",
     owner: "avervaet",
   },
