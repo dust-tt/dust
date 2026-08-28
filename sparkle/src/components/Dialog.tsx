@@ -80,7 +80,7 @@ type DialogVariantType = (typeof DIALOG_VARIANTS)[number];
 
 const overlayVariantClasses: Record<DialogVariantType, string> = {
   default: "duration-200 data-[state=closed]:duration-150",
-  command: "duration-150 data-[state=closed]:duration-100",
+  command: "duration-[220ms] data-[state=closed]:duration-[160ms]",
 };
 
 const variantClasses: Record<DialogVariantType, string> = {
@@ -91,7 +91,7 @@ const variantClasses: Record<DialogVariantType, string> = {
     "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
   ),
   command: cn(
-    "top-[20%] duration-150 ease-emphasized data-[state=closed]:duration-100 motion-reduce:animate-none",
+    "top-[20%] duration-[220ms] ease-[cubic-bezier(0.16,1,0.3,1)] data-[state=closed]:duration-[160ms] motion-reduce:animate-none",
     "data-[state=open]:animate-in data-[state=closed]:animate-out",
     "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
     "data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2"
