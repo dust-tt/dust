@@ -38,7 +38,11 @@ async function launchAgentMessageConsumptionAttributionAfterPersistingInputs(
   {
     creditArgs = agentLoopArgs,
   }: {
-    creditArgs?: { agentMessageId: string; dustRunIds?: string[] };
+    creditArgs?: {
+      agentMessageId: string;
+      dustRunIds?: string[];
+      rootAgentMessageId?: string;
+    };
   } = {}
 ): Promise<void> {
   await computeAndStoreAgentMessageCredits(auth, creditArgs);
@@ -183,7 +187,10 @@ export async function finalizeCreditStoppedAgentLoopActivity(
       auth,
       agentLoopArgs,
       {
-        creditArgs: { agentMessageId: agentLoopArgs.agentMessageId },
+        creditArgs: {
+          agentMessageId: agentLoopArgs.agentMessageId,
+          rootAgentMessageId: agentLoopArgs.rootAgentMessageId,
+        },
       }
     ),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
