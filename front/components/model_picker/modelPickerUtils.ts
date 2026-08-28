@@ -30,7 +30,7 @@ import capitalize from "lodash/capitalize";
 // Shown when a whole-premium model row or a premium reasoning-effort stop is
 // locked because the workspace is on a legacy (non usage-based) plan.
 export const PREMIUM_MODEL_LOCKED_TOOLTIP =
-  "Premium models are not available on your workspace. Please contact your administrator.";
+  "Your workspace's current plan doesn't include premium models. Contact your administrator to upgrade.";
 
 // Shown when a model row is locked because the model's tier is not enabled for
 // the workspace's current model-tier ceiling (independent of the plan: this
