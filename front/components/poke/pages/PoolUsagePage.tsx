@@ -6,7 +6,6 @@ import {
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import { WorkspaceCreditPoolSection } from "@app/components/workspace/WorkspaceCreditPoolCards";
-import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
@@ -88,7 +87,6 @@ function PoolCreditCard({ owner, isEnterprise }: PoolCreditCardProps) {
     currentCycleConsumedCredits,
     currentCycleStartMs,
     currentCycleEndMs,
-    latestCreditExpirationMs,
     excessConsumedCredits,
     excessCycleBreakdown,
   } = awuPoolSummary ?? {
@@ -99,7 +97,6 @@ function PoolCreditCard({ owner, isEnterprise }: PoolCreditCardProps) {
     currentCycleConsumedCredits: null,
     currentCycleStartMs: null,
     currentCycleEndMs: null,
-    latestCreditExpirationMs: null,
     excessConsumedCredits: null,
     excessCycleBreakdown: [] as AwuPoolCycleBreakdown[],
   };
@@ -123,11 +120,6 @@ function PoolCreditCard({ owner, isEnterprise }: PoolCreditCardProps) {
       excessCycleBreakdown={excessCycleBreakdown}
       poolSecondaryContent={
         <div className="flex items-center gap-2">
-          {latestCreditExpirationMs && (
-            <span className="copy-sm text-muted-foreground">
-              Credits expire {formatConsumptionDate(latestCreditExpirationMs)}
-            </span>
-          )}
           {overageCredits !== null && overageCredits > 0 && (
             <span className="copy-sm text-muted-foreground">
               {formatCredits(overageCredits)} overage credits
