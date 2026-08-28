@@ -4,7 +4,7 @@ import {
   moveFrameV2Source,
 } from "@app/lib/api/frames/move_source";
 import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
-import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import { isSandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { isDustFileSystemError } from "@app/types/file_system";
@@ -35,7 +35,7 @@ function frameMoveErrorStatus(error: MoveFrameV2SourceError): 400 | 403 | 500 {
   if (isFrameSourceMoveError(error)) {
     return error.code === "internal" ? 500 : 400;
   }
-  if (error instanceof SandboxFunctionError) {
+  if (isSandboxFunctionError(error)) {
     return error.code === "internal" ? 500 : 400;
   }
   return 500;

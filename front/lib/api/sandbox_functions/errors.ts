@@ -20,6 +20,12 @@ export class SandboxFunctionError extends Error {
   }
 }
 
+export function isSandboxFunctionError(
+  error: unknown
+): error is SandboxFunctionError {
+  return error instanceof SandboxFunctionError;
+}
+
 export class SandboxFunctionInvocationError extends Error {
   readonly code = "user_authentication_required";
 
