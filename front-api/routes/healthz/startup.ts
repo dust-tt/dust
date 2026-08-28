@@ -72,9 +72,12 @@ app.get("/", async (ctx) => {
       "Startup probe succeeded - dependencies connected"
     );
 
-    statsDMetrics.distribution("healthz.startup.duration_ms", durationMs, [
-      "status:success",
-    ]);
+    statsDMetrics.distribution(
+      "healthz.startup.duration_ms",
+      durationMs,
+      ["status:success"],
+      { includeHostTag: true }
+    );
 
     return ctx.json(
       { status: "ready", durationMs, dependencies: results },
@@ -87,9 +90,12 @@ app.get("/", async (ctx) => {
     `Startup probe failed - ${failed.map((r) => r.name).join(", ")} not ready`
   );
 
-  statsDMetrics.distribution("healthz.startup.duration_ms", durationMs, [
-    "status:failure",
-  ]);
+  statsDMetrics.distribution(
+    "healthz.startup.duration_ms",
+    durationMs,
+    ["status:failure"],
+    { includeHostTag: true }
+  );
 
   return ctx.json(
     { status: "not ready", durationMs, dependencies: results },
