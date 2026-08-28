@@ -2,20 +2,14 @@ import type { CreditUsageState } from "@app/components/app/CreditUsage";
 import { CreditUsage } from "@app/components/app/CreditUsage";
 import { FairUseCreditsUsage } from "@app/components/app/FairUseCreditsUsage";
 import { UserMenu } from "@app/components/UserMenu";
-import { AGENT_MESSAGE_COMPLETED_EVENT } from "@app/lib/notifications/events";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useMyUsage } from "@app/lib/swr/credits";
 import { useFairUseCredits } from "@app/lib/swr/fair_use_credits";
 import type { SubscriptionType } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
-import { useEffect, useRef } from "react";
 
 const DAY_DURATION_MS = 24 * 60 * 60 * 1000;
-
-// Credit accounting runs asynchronously after message completion; give it time to land before
-// refreshing the rolling usage.
-const MUTATE_DELAY_MS = 3000;
 
 interface SidebarUserMenuProps {
   user: UserTypeWithWorkspaces;
@@ -37,40 +31,10 @@ export function SidebarUserMenu({
     workspaceId: owner.sId,
     disabled: !isCreditBased,
   });
-  const { fairUseAwuCreditsState, mutateFairUseCredits } = useFairUseCredits({
+  const { fairUseAwuCreditsState } = useFairUseCredits({
     workspaceId: owner.sId,
     disabled: !hasRollingCreditUsage,
   });
-  const mutateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    if (!hasRollingCreditUsage) {
-      return;
-    }
-
-    const handleAgentMessageCompleted = () => {
-      if (mutateTimeoutRef.current) {
-        clearTimeout(mutateTimeoutRef.current);
-      }
-      mutateTimeoutRef.current = setTimeout(() => {
-        mutateTimeoutRef.current = null;
-        void mutateFairUseCredits();
-      }, MUTATE_DELAY_MS);
-    };
-    window.addEventListener(
-      AGENT_MESSAGE_COMPLETED_EVENT,
-      handleAgentMessageCompleted
-    );
-    return () => {
-      window.removeEventListener(
-        AGENT_MESSAGE_COMPLETED_EVENT,
-        handleAgentMessageCompleted
-      );
-      if (mutateTimeoutRef.current) {
-        clearTimeout(mutateTimeoutRef.current);
-      }
-    };
-  }, [hasRollingCreditUsage, mutateFairUseCredits]);
 
   const billingPeriodCreditUsageState: CreditUsageState | null =
     creditUsageStatus
