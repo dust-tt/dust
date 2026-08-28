@@ -557,7 +557,7 @@ function buildConsumedAwuCreditsColumn(
             size="xs"
             className="text-muted-foreground"
           />
-          Credits usage
+          Pool credit usage
         </span>
         {creditsResetAt && (
           <span className="text-xs font-normal text-muted-foreground">
@@ -593,6 +593,7 @@ function buildConsumedAwuCreditsColumn(
       </div>
     ),
     enableSorting: true,
+    sortDescFirst: true,
   };
 }
 
@@ -770,8 +771,15 @@ const seatsIconColumn: ColumnDef<RowData, string> = {
 const seatUsageColumn: ColumnDef<RowData, string> = {
   id: "seatUsage" as const,
   header: "Seat usage",
-  enableSorting: false,
-  accessorFn: (row) => row.seatType ?? "",
+  enableSorting: true,
+  sortDescFirst: true,
+  accessorFn: (row) =>
+    computeSeatUsage({
+      seatType: row.seatType,
+      memberUsageLimit: row.memberUsageLimit,
+      seatBalanceAwu: row.seatBalanceAwu,
+      consumedFromAllowanceAwuCredits: row.consumedFromAllowanceAwuCredits,
+    }).percent.toString(),
   cell: (info: Info) => {
     const { seatType, memberUsageLimit, seatBalanceAwu, isSeatChangePending } =
       info.row.original;

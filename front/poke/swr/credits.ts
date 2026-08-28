@@ -226,7 +226,8 @@ export function usePokeMembersUsage({
     | "email"
     | "consumedAwuCredits"
     | "seatType"
-    | "creditState";
+    | "creditState"
+    | "seatUsage";
   orderDirection?: "asc" | "desc";
   seatType?: MembershipSeatType;
   creditState?: UserCreditState;
