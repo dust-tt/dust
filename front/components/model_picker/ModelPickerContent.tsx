@@ -41,8 +41,6 @@ import { useRef } from "react";
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
-  // Vetoes the interaction-outside dismissal that a model/effort pick triggers,
-  // so the menu stays reachable after a pick.
   shouldBlockDismiss: () => boolean;
   shown: Selection;
   agentDefault: Selection;
@@ -65,15 +63,8 @@ interface ModelPickerContentProps {
   onRevert: () => void;
 }
 
-// Slide direction for the drill-down transition, root < makers < models.
 const VIEW_ORDER: ModelPickerView[] = ["root", "makers", "models"];
 
-// A small directional shift + fade between steps — not a full-width push.
-// `mode="wait"` means exactly one step is ever mounted (no overlap to worry
-// about), and the outer `layout` animation (below) handles the resize, so
-// this only has to carry "which way did we go": a light touch is enough.
-// Uses the shared dropdown/popover tokens so this reads as the same kind of
-// motion as every other Sparkle dropdown, rather than a bespoke curve.
 const STEP_ENTER_TRANSITION = {
   duration: MOTION_DURATIONS.enter,
   ease: MOTION_EASINGS.enter,
@@ -125,9 +116,6 @@ export function ModelPickerContent({
 }: ModelPickerContentProps) {
   const prefersReducedMotion = useReducedMotion();
 
-  // Derive the slide direction from the previous view: a plain ref survives
-  // across renders without triggering one, since it's only read during the
-  // transition that the `view` change itself already causes.
   const previousViewRef = useRef<ModelPickerView>(view);
   const direction =
     VIEW_ORDER.indexOf(view) >= VIEW_ORDER.indexOf(previousViewRef.current)
@@ -162,9 +150,6 @@ export function ModelPickerContent({
         }
       }}
     >
-      {/* `layout` makes Motion measure the box before/after each step swap and
-          animate the size difference itself — no manual ResizeObserver or
-          pinned-height state needed for a resize this simple. */}
       <motion.div layout={!prefersReducedMotion} className="overflow-hidden">
         <AnimatePresence mode="wait" initial={false} custom={direction}>
           {view === "root" && (

@@ -28,8 +28,6 @@ interface ModelPickerModelsViewProps {
   onRevert: () => void;
 }
 
-// The final step: one provider's models, each with its reasoning-effort
-// slider inline once selected.
 export function ModelPickerModelsView({
   makerId,
   models,

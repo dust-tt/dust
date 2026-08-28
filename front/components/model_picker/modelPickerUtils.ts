@@ -176,9 +176,6 @@ export interface MakerGroup {
   models: ModelConfigurationType[];
 }
 
-// The picker's drill-down navigation: "root" (tiers + "More models"), "makers"
-// (all providers, or a flat search across every model), and "models" (one
-// provider's models, effort included).
 export type ModelPickerView = "root" | "makers" | "models";
 
 export type EffortLockReason = "unsupported" | "premium" | "model_tier";

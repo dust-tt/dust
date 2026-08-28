@@ -36,10 +36,7 @@ interface ModelPickerMakersViewProps {
   allModels: ModelConfigurationType[];
   shown: Selection;
   agentDefault: Selection;
-  // Whether the active selection differs from the agent default.
   canRevert: boolean;
-  // When true, premium (model, effort) picks are locked (workspace not on a
-  // credit-based plan).
   lockPremiumEfforts: boolean;
   search: string;
   onSearchChange: (value: string) => void;
@@ -50,8 +47,6 @@ interface ModelPickerMakersViewProps {
   onRevert: () => void;
 }
 
-// The "More models" step: every provider, or (while searching) a flat list of
-// every model regardless of provider.
 export function ModelPickerMakersView({
   makerGroups,
   allModels,
@@ -69,10 +64,6 @@ export function ModelPickerMakersView({
 }: ModelPickerMakersViewProps) {
   const { isDark } = useTheme();
 
-  // Sparkle's own `autoFocus` calls `focus()` bare, which makes the browser
-  // scroll the input into view — and this step is mid-slide and clipped by the
-  // menu's animating height when that happens, so it visibly jumps. Focus it
-  // ourselves with `preventScroll` instead.
   const searchInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const timeout = window.setTimeout(
