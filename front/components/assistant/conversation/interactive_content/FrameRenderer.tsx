@@ -54,6 +54,7 @@ interface FrameRendererProps {
   owner: LightWorkspaceType;
   lastEditedByAgentConfigurationId?: string;
   contentHash?: string;
+  renderMode: "legacy" | "v2";
 }
 
 export function FrameRenderer({
@@ -63,6 +64,7 @@ export function FrameRenderer({
   owner,
   lastEditedByAgentConfigurationId,
   contentHash,
+  renderMode,
 }: FrameRendererProps) {
   const { vizUrl } = useAuth();
   const { hasFeature } = useFeatureFlags();
@@ -366,71 +368,77 @@ export function FrameRenderer({
   return (
     <div className="flex h-panel flex-col">
       <ConversationSidePanelHeader onClose={onClosePanel}>
-        <div className="flex w-full items-center justify-between">
-          <Button
-            icon={showCode ? Eye : Terminal}
-            onClick={() => setShowCode(!showCode)}
-            tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
-            variant="ghost"
-          />
-          <div className="flex items-center">
-            <ExportContentDropdown
-              iframeRef={iframeRef}
-              owner={owner}
-              fileId={fileId}
-              fileContent={fileContent ?? null}
-              fileName={fileMetadata?.fileName}
+        {renderMode === "legacy" && (
+          <div className="flex w-full items-center justify-between">
+            <Button
+              icon={showCode ? Eye : Terminal}
+              onClick={() => setShowCode(!showCode)}
+              tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
+              variant="ghost"
             />
-            <ShareFrameSheet
-              key={contentHash ?? fileId}
-              fileId={fileId}
-              owner={owner}
-              contentHash={contentHash}
-            />
-            <PinPodBannerButton
-              owner={owner}
-              spaceId={projectId ?? ""}
-              pinnedFramePath={projectInfo?.pinnedFramePath ?? null}
-              isEditor={projectInfo?.isEditor ?? false}
-              framePath={framePath}
-              fileName={fileMetadata?.fileName}
-              hidden={!isFrameInPod}
-            />
-            {hasFrameTabs && (
-              <PodFrameTabButton
+            <div className="flex items-center">
+              <ExportContentDropdown
+                iframeRef={iframeRef}
+                owner={owner}
+                fileId={fileId}
+                fileContent={fileContent ?? null}
+                fileName={fileMetadata?.fileName}
+              />
+              <ShareFrameSheet
+                key={contentHash ?? fileId}
+                fileId={fileId}
+                owner={owner}
+                contentHash={contentHash}
+              />
+              <PinPodBannerButton
                 owner={owner}
                 spaceId={projectId ?? ""}
-                frameTabs={projectInfo?.frameTabs ?? []}
-                tabsOrder={projectInfo?.tabsOrder ?? []}
+                pinnedFramePath={projectInfo?.pinnedFramePath ?? null}
                 isEditor={projectInfo?.isEditor ?? false}
                 framePath={framePath}
                 fileName={fileMetadata?.fileName}
                 hidden={!isFrameInPod}
               />
-            )}
-            {projectSaveState === "saved" && (
-              <Button
-                icon={CheckCircle}
-                variant="ghost"
-                disabled={true}
-                label={isMobile ? undefined : "Saved"}
-                tooltip={`Saved in "${projectInfo?.name ?? "unknown Pod"}"`}
-              />
-            )}
-            {projectSaveState === "supported" && (
-              <Button
-                icon={UploadCloud02}
-                variant="ghost"
-                label={
-                  isMobile ? undefined : isSavingToProject ? "Saving…" : "Save"
-                }
-                isLoading={isSavingToProject}
-                tooltip={`Save to "${projectInfo?.name ?? "unknown Pod"}"`}
-                onClick={handleSaveToProject}
-              />
-            )}
+              {hasFrameTabs && (
+                <PodFrameTabButton
+                  owner={owner}
+                  spaceId={projectId ?? ""}
+                  frameTabs={projectInfo?.frameTabs ?? []}
+                  tabsOrder={projectInfo?.tabsOrder ?? []}
+                  isEditor={projectInfo?.isEditor ?? false}
+                  framePath={framePath}
+                  fileName={fileMetadata?.fileName}
+                  hidden={!isFrameInPod}
+                />
+              )}
+              {projectSaveState === "saved" && (
+                <Button
+                  icon={CheckCircle}
+                  variant="ghost"
+                  disabled={true}
+                  label={isMobile ? undefined : "Saved"}
+                  tooltip={`Saved in "${projectInfo?.name ?? "unknown Pod"}"`}
+                />
+              )}
+              {projectSaveState === "supported" && (
+                <Button
+                  icon={UploadCloud02}
+                  variant="ghost"
+                  label={
+                    isMobile
+                      ? undefined
+                      : isSavingToProject
+                        ? "Saving…"
+                        : "Save"
+                  }
+                  isLoading={isSavingToProject}
+                  tooltip={`Save to "${projectInfo?.name ?? "unknown Pod"}"`}
+                  onClick={handleSaveToProject}
+                />
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </ConversationSidePanelHeader>
 
       <div className="flex-1 overflow-hidden">
@@ -458,11 +466,11 @@ export function FrameRenderer({
               }}
               key={`viz-${fileId}`}
               conversationId={conversation?.sId ?? null}
-              isEditable={true}
               spaceId={frameSpaceId ?? undefined}
               framePath={framePath}
               isInDrawer={true}
-              onEditText={handleEditText}
+              isEditable={renderMode === "legacy"}
+              onEditText={renderMode === "legacy" ? handleEditText : undefined}
               ref={iframeRef}
             />
             {conversation && (

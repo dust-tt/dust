@@ -1,12 +1,13 @@
 import { processAndStoreFile } from "@app/lib/api/files/processing";
+import { loadActiveFrameUiBundle } from "@app/lib/api/frames/publication_storage";
 import { addFileToProject } from "@app/lib/api/projects/context";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import { isConversationFileUseCase } from "@app/types/files";
+import { frameContentType, isConversationFileUseCase } from "@app/types/files";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { createHono } from "@front-api/lib/hono";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
@@ -71,7 +72,7 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  * /api/w/{wId}/files/{fileId}:
  *   get:
  *     summary: Get or download a file
- *     description: View or download a file. Skill attachments require read access to their associated skill. Use query parameters `version` (original, processed, public) and `action` (view, download).
+ *     description: View or download a file. Skill attachments require read access to their associated skill. Feature-flagged Frames v2 return the active published UI bundle when viewed. Use query parameters `version` (original, processed, public) and `action` (view, download).
  *     tags:
  *       - Private Files
  *     parameters:
@@ -221,6 +222,23 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
 
   const action = getSecureFileAction(ctx.req.query("action"), file);
   if (action === "view") {
+    if (file.isFrameV2 && (await hasFeatureFlag(auth, "frames_v2"))) {
+      const uiBundle = await loadActiveFrameUiBundle(auth, { frame: file });
+      if (uiBundle.isErr()) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "file_not_found",
+            message: "Published Frame not found.",
+          },
+        });
+      }
+
+      return ctx.body(uiBundle.value, 200, {
+        "Content-Type": frameContentType,
+      });
+    }
+
     const versionParam = ctx.req.query("version");
     // Default to the frame's renderable version (a published frame serves its built bundle);
     // non-frame files and unpublished frames resolve to "original". An explicit ?version wins.
