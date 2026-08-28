@@ -31,9 +31,11 @@ MyFrame/
     post-comment.ts
     lib/
       comments.ts
+  databases/
+    comments.db.ts
 \`\`\`
 
-The manifest declares the UI entry point and every server function:
+The manifest declares the UI entry point, every server function, and every database:
 
 \`\`\`json
 {
@@ -41,6 +43,12 @@ The manifest declares the UI entry point and every server function:
   "name": "Comments",
   "description": "Read and add comments.",
   "uiEntryPoint": "index.tsx",
+  "databases": [
+    {
+      "name": "comments",
+      "schema": "databases/comments.db.ts"
+    }
+  ],
   "functions": [
     {
       "name": "list-comments",
@@ -64,6 +72,9 @@ The manifest declares the UI entry point and every server function:
 - Function names are lower-case alphanumeric segments separated by single hyphens.
 - \`entryPoint\` paths are relative to the Frame folder. Keep shared helpers under that folder and
   import them with relative paths.
+- Each database declaration names Frame-owned SQLite state and points to its Drizzle schema file.
+  Database names start with a lower-case letter and contain only lower-case letters, digits, and
+  underscores.
 - \`executionMode\` defaults to \`durable\`. Use \`fast\` when the function never calls a Dust tool;
   use \`durable\` when it calls \`dsbx tools\`.
 - \`defaultStake\` defaults to \`low\`. \`never_ask\` runs unattended, \`low\` asks once and can be
@@ -78,10 +89,10 @@ the browser sandbox: calling a Dust tool, using a workspace secret, applying tru
 or running browser-incompatible logic. Keep presentation, filtering, sorting, and other local UI
 behavior in the React component.
 
-Frames v2 does not yet expose Frame-owned persistent databases. Do not pretend component state,
-module globals, the source folder, or a Pod database is the Frame's durable state. If the requested
-Frame requires durable shared state, explain that this part is not supported yet unless the user
-explicitly chooses a separate external system.
+Use a Frame-owned database whenever data must survive a reload or be shared by everyone who opens
+the Frame: task lists, trackers, backlogs, inventories, logs, notes, comments, form responses, and
+anything else users can add, edit, reorder, assign, or delete. Keep only throwaway UI state such as
+the selected tab, filter, or sort order in the React component.
 
 ## Authoring a function
 
@@ -118,18 +129,76 @@ used by several functions in \`functions/lib/\` rather than duplicating it. Publ
 entry point and its relative imports from one source snapshot. Editing any source or helper changes
 nothing for viewers until the whole Frame is published again.
 
-\`zod\` and \`@dust/pod\` are available to function source. Other npm packages are not guaranteed at
-build time.
+\`zod\`, \`drizzle-orm\`, and \`@dust/pod\` are available to function source. Other npm packages are
+not guaranteed at build time.
+
+## Persisting state in a Frame database
+
+A Frame owns its SQLite databases independently of its source folder and publications. Publishing
+reconciles the declared schemas but does not replace existing data. The runtime mounts neither the
+Frame source nor a writable data folder; functions access state only through the declared database
+handles.
+
+Keep one complete Drizzle schema file per database under \`databases/\`. Every function that uses a
+database imports the same table objects from that file and opens the database by its manifest name:
+
+\`\`\`ts
+// databases/comments.db.ts
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+export const comments = sqliteTable(
+  "comments",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    threadId: text("thread_id"),
+    authorId: text("author_id"),
+    body: text("body"),
+    createdAt: integer("created_at", { mode: "timestamp" }),
+  },
+  (table) => [index("comments_thread_idx").on(table.threadId)]
+);
+
+// functions/post-comment.ts
+import { db } from "@dust/pod";
+import { comments } from "../databases/comments.db.ts";
+
+const inserted = db("comments")
+  .insert(comments)
+  .values({ threadId, authorId, body, createdAt: new Date() })
+  .returning()
+  .get();
+\`\`\`
+
+Do not redefine tables inside function files, hand-write SQL schema changes, or keep durable state
+in module globals. The schema file is the source of truth for row serialization too, so keep column
+modes identical by always importing its table objects.
+
+Schema evolution is additive-only: add tables, nullable columns, and indexes. Do not drop, rename,
+or retype existing objects. In particular:
+
+- make new columns nullable unless they have a default;
+- give each table an \`id\` and \`createdAt\`;
+- avoid foreign keys, CHECK constraints, and UNIQUE constraints; enforce integrity in code and use
+  \`uniqueIndex()\` only when existing rows are known to satisfy it;
+- change a shape by adding a new column or table and reading with a fallback.
+
+For per-user state, require a caller, store \`currentUser().sId\`, index that column, and filter by it
+on every read and write. Fetching a row by primary key does not prove ownership.
 
 ### Fast and durable functions
 
-- \`fast\` runs synchronously and returns sooner, but cannot call Dust tools. Local computation,
-  local binaries, and allowed outbound HTTP still count against its shorter execution ceiling.
+- \`fast\` runs synchronously and returns sooner, but cannot call Dust tools. Frame databases, local
+  computation, local binaries, and allowed outbound HTTP still work, but count against its shorter
+  execution ceiling.
 - \`durable\` is required for \`dsbx tools\`. Tool calls can wait for user approval or personal
   authentication, so the invocation runs in the background and resumes when the user responds.
 
 The decision is mechanical: if a function calls \`dsbx tools\`, declare it \`durable\`; otherwise
 prefer \`fast\`. A durable call is visibly slower, so its UI needs a loading state.
+
+When polled UI data comes from a Dust tool and can be slightly stale, split the path: a durable
+function refreshes the Frame database and a fast function serves the stored snapshot. Keep the
+whole path durable only when every call must be live or the interaction itself is the tool action.
 
 ### Calling Dust tools from a function
 
@@ -208,8 +277,8 @@ loading, empty, and error states for every call. Function failures are
 ## Publish a Frame
 
 There is no separate v2 function publish. After every source change that should become visible,
-publish the manifest once; the UI source and all declared functions are validated, built, stored,
-and activated atomically:
+publish the manifest once; the UI source, all declared functions, and all declared database schemas
+are validated, built or reconciled, stored, and activated atomically:
 
 \`\`\`bash
 dsbx frame publish /files/<scope>/<frame-folder>/manifest.json

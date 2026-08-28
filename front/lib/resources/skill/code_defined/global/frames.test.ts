@@ -71,9 +71,9 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("### Fast and durable functions");
     expect(instructions).toContain("dsbx tools --json");
     expect(instructions).toContain("usePodFunctionMutation");
-    expect(instructions).toContain(
-      "does not yet expose Frame-owned persistent databases"
-    );
+    expect(instructions).toContain("## Persisting state in a Frame database");
+    expect(instructions).toContain('db("comments")');
+    expect(instructions).toContain("reconciles the declared schemas");
     expect(instructions).toContain("### React Component Rules");
     expect(instructions).toContain("legacy Frame");
     expect(instructions).toContain("<frame>.tsx");
