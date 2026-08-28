@@ -7,7 +7,7 @@ export function WithDustDeepSeekDeepSeekV4Flash0731Config<
   ) => object,
 >(Base: TBase) {
   abstract class DustDeepSeekDeepSeekV4Flash0731 extends Base {
-    static readonly displayName = "DeepSeek V4 Flash (Fireworks)";
+    static readonly displayName = "DeepSeek V4 Flash";
     static readonly description =
       "DeepSeek's V4 Flash Mixture-of-Experts model (284B total / 13B active) tuned for fast, cost-efficient reasoning, coding and agentic work, with 256k context (served via Fireworks).";
     // Product caps of the native 1040k/384k: long contexts degrade quality, so

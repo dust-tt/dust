@@ -1,15 +1,8 @@
-import type {
-  EffortStop,
-  ModelLockReason,
-} from "@app/components/model_picker/modelPickerUtils";
-import {
-  getEffortStopTooltip,
-  getModelLockTooltip,
-  getReasoningEffortLabel,
-} from "@app/components/model_picker/modelPickerUtils";
+import type { EffortStop } from "@app/components/model_picker/modelPickerUtils";
+import { getReasoningEffortLabel } from "@app/components/model_picker/modelPickerUtils";
 import { classNames } from "@app/lib/utils";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
-import { SliderSteps, Tooltip } from "@dust-tt/sparkle";
+import { SliderSteps } from "@dust-tt/sparkle";
 
 interface ReasoningEffortSliderProps {
   stops: EffortStop[];
@@ -21,7 +14,7 @@ interface ReasoningEffortSliderProps {
 // levels (Light/Medium/High); efforts the model does not support or the
 // workspace's tier does not grant are rendered locked (padlock) and skipped
 // when snapping. When at most one level is selectable there is nothing to
-// choose, so the whole slider is disabled and a tooltip explains why.
+// choose, so the whole slider is disabled.
 export function ReasoningEffortSlider({
   stops,
   value,
@@ -36,18 +29,8 @@ export function ReasoningEffortSlider({
   );
   const lastIndex = Math.max(stops.length - 1, 1);
   const unlockedStops = stops.filter((stop) => !stop.locked);
-  // With a single (or no) selectable level there is nothing to slide, so the
-  // slider is shown disabled with an explanatory tooltip.
+  // With a single (or no) selectable level there is nothing to slide.
   const isDisabled = unlockedStops.length <= 1;
-  const planLockReason: ModelLockReason | undefined = stops.some(
-    (stop) => stop.lockedReason === "premium"
-  )
-    ? "premium"
-    : stops.some((stop) => stop.lockedReason === "model_tier")
-      ? "model_tier"
-      : undefined;
-
-  const stopTooltip = (stop: EffortStop) => getEffortStopTooltip(stop);
 
   const selectStop = (stop: EffortStop) => {
     if (!isDisabled && !stop.locked && stop.effort !== value) {
@@ -55,7 +38,7 @@ export function ReasoningEffortSlider({
     }
   };
 
-  const slider = (
+  return (
     <div
       className="flex flex-col gap-1.5 px-2 py-1.5"
       // The slider lives inside a dropdown item region; stop the click from
@@ -67,7 +50,6 @@ export function ReasoningEffortSlider({
         value={valueIndex}
         lockedSteps={lockedSteps}
         disabled={isDisabled}
-        stepTooltips={isDisabled ? undefined : stops.map(stopTooltip)}
         onChange={(index) => {
           const next = stops[index];
           if (next) {
@@ -82,7 +64,7 @@ export function ReasoningEffortSlider({
           const isFirst = index === 0;
           const isLast = index === stops.length - 1;
           const buttonDisabled = stop.locked || isDisabled;
-          const labelButton = (
+          return (
             <button
               key={stop.effort}
               type="button"
@@ -111,39 +93,8 @@ export function ReasoningEffortSlider({
               {getReasoningEffortLabel(stop.effort)}
             </button>
           );
-
-          // When the whole slider is disabled it is already wrapped in the
-          // explanatory tooltip below; adding per-effort tooltips here would
-          // nest them, so only surface the blurbs on an interactive slider.
-          if (isDisabled) {
-            return labelButton;
-          }
-
-          return (
-            <Tooltip
-              key={stop.effort}
-              tooltipTriggerAsChild
-              trigger={labelButton}
-              label={stopTooltip(stop)}
-            />
-          );
         })}
       </div>
     </div>
-  );
-
-  if (!isDisabled) {
-    return slider;
-  }
-
-  const soleEffort = unlockedStops[0]?.effort;
-  const tooltipLabel = planLockReason
-    ? getModelLockTooltip(planLockReason)
-    : soleEffort
-      ? `${getReasoningEffortLabel(soleEffort)} is the only reasoning effort available for this model.`
-      : "Reasoning effort can't be adjusted for this model.";
-
-  return (
-    <Tooltip tooltipTriggerAsChild trigger={slider} label={tooltipLabel} />
   );
 }

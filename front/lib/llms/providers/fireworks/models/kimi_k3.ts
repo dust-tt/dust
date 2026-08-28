@@ -10,7 +10,7 @@ export function WithDustMoonshotAiKimiK3Config<
   ) => object,
 >(Base: TBase) {
   abstract class DustMoonshotAiKimiK3 extends Base {
-    static readonly displayName = "Kimi K3 (Fireworks)";
+    static readonly displayName = "Kimi K3";
     static readonly description =
       "Moonshot AI's flagship 2.8T Mixture-of-Experts model for complex coding and long-horizon agentic work, with 256k context and vision support (served via Fireworks).";
     // Dust caps usable context at 256k; the model itself supports 1040k.

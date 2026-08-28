@@ -6,7 +6,7 @@ export function WithDustMoonshotAiKimiK2Dot5Config<
   ) => object,
 >(Base: TBase) {
   abstract class DustMoonshotAiKimiK2Dot5 extends Base {
-    static readonly displayName = "Kimi K2.5 (Fireworks)";
+    static readonly displayName = "Kimi K2.5";
     static readonly description =
       "Moonshot AI's flagship agentic model with 262k context and vision support (served via Fireworks).";
     static readonly byok = false;

@@ -132,14 +132,6 @@ export function getDefaultTierId(
   return standard && !standard.isSelectable ? "fast" : "standard";
 }
 
-// Per reasoning-effort blurbs surfaced in the effort slider tooltip.
-const REASONING_EFFORT_INFO: Record<ReasoningEffort, string> = {
-  none: "No additional reasoning, for the fastest responses.",
-  light: "Light reasoning effort, faster responses.",
-  medium: "Medium reasoning effort, balancing speed and quality.",
-  high: "High reasoning effort, longer wait times but higher quality.",
-};
-
 export function getReasoningEffortLabel(effort: ReasoningEffort): string {
   return effort === "none" ? "None" : capitalize(effort);
 }
@@ -379,23 +371,6 @@ export function getModelLockTooltip(reason: ModelLockReason): string {
       assertNeverAndIgnore(reason);
       return "";
   }
-}
-
-export function getEffortStopTooltip(stop: EffortStop): string {
-  if (stop.locked) {
-    switch (stop.lockedReason) {
-      case "premium":
-        return PREMIUM_MODEL_LOCKED_TOOLTIP;
-      case "model_tier":
-        return MODEL_TIER_LOCKED_TOOLTIP;
-      case "unsupported":
-      case undefined:
-        break;
-      default:
-        assertNeverAndIgnore(stop.lockedReason);
-    }
-  }
-  return REASONING_EFFORT_INFO[stop.effort];
 }
 
 export function getModelWithReasoningEffortLabel(
