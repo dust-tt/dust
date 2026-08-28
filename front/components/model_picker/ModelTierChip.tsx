@@ -1,4 +1,3 @@
-import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import {
   getModelsTierDisplayName,
   getTierForModel,
@@ -8,15 +7,6 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import { Chip } from "@dust-tt/sparkle";
-import type React from "react";
-
-type ChipColor = NonNullable<React.ComponentProps<typeof Chip>["color"]>;
-
-const MODEL_TIER_CHIP_COLORS: Record<ModelsTierName, ChipColor> = {
-  cost_efficient: "success",
-  balanced: "info",
-  premium: "warning",
-};
 
 interface ModelTierChipProps {
   model: ModelConfigurationType;
@@ -32,11 +22,5 @@ export function ModelTierChip({
     return null;
   }
 
-  return (
-    <Chip
-      size="mini"
-      color={MODEL_TIER_CHIP_COLORS[tier]}
-      label={getModelsTierDisplayName(tier)}
-    />
-  );
+  return <Chip size="mini" label={getModelsTierDisplayName(tier)} />;
 }
