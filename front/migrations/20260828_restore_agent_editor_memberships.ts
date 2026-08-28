@@ -1,4 +1,3 @@
-import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -13,18 +12,9 @@ const WORKSPACE_CONCURRENCY = 8;
 
 // Restore every suspended agent-editors membership, not only archived agents: after this deploy
 // there is no valid path that suspends this group kind, and status-scoping would race restorations.
-async function listGroupsToRestore(
-  auth: Authenticator,
+async function listMembershipsToRestore(
   workspaceModelId: ModelId
-): Promise<{
-  groups: GroupResource[];
-  suspendedCountByGroupId: Map<ModelId, number>;
-}> {
-  const empty = {
-    groups: [],
-    suspendedCountByGroupId: new Map<ModelId, number>(),
-  };
-
+): Promise<GroupMembershipModel[]> {
   const editorGroups = await GroupModel.findAll({
     attributes: ["id"],
     where: {
@@ -33,12 +23,12 @@ async function listGroupsToRestore(
     },
   });
   if (editorGroups.length === 0) {
-    return empty;
+    return [];
   }
 
   const now = new Date();
-  const suspendedMemberships = await GroupMembershipModel.findAll({
-    attributes: ["groupId", "userId"],
+  return GroupMembershipModel.findAll({
+    attributes: ["id", "groupId", "userId"],
     where: {
       workspaceId: workspaceModelId,
       groupId: editorGroups.map((group) => group.id),
@@ -47,25 +37,6 @@ async function listGroupsToRestore(
       [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
     },
   });
-  if (suspendedMemberships.length === 0) {
-    return empty;
-  }
-
-  const suspendedCountByGroupId = new Map<ModelId, number>();
-  for (const membership of suspendedMemberships) {
-    suspendedCountByGroupId.set(
-      membership.groupId,
-      (suspendedCountByGroupId.get(membership.groupId) ?? 0) + 1
-    );
-  }
-
-  const groups = await GroupResource.fetchByModelIds(
-    auth,
-    [...suspendedCountByGroupId.keys()],
-    { groupKinds: ["agent_editors"] }
-  );
-
-  return { groups, suspendedCountByGroupId };
 }
 
 async function restoreWorkspaceAgentEditors(
@@ -73,55 +44,54 @@ async function restoreWorkspaceAgentEditors(
   logger: Logger,
   workspace: LightWorkspaceType
 ): Promise<void> {
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId, {
-    dangerouslyRequestAllGroups: true,
-  });
-  const workspaceModelId = auth.getNonNullableWorkspace().id;
-
-  const { groups, suspendedCountByGroupId } = await listGroupsToRestore(
-    auth,
-    workspaceModelId
-  );
-  if (groups.length === 0) {
+  const memberships = await listMembershipsToRestore(workspace.id);
+  if (memberships.length === 0) {
     return;
   }
 
-  let membershipsRestored = 0;
-
-  for (const group of groups) {
-    const suspendedCount = suspendedCountByGroupId.get(group.id) ?? 0;
-
-    if (!execute) {
-      membershipsRestored += suspendedCount;
-      logger.info(
-        {
-          workspaceId: workspace.sId,
-          groupId: group.id,
-          editorCount: suspendedCount,
-        },
-        "Dry run: would restore the agent's suspended editor memberships"
-      );
-      continue;
-    }
-
-    const restoredUserIds = await group.restoreMembers(auth);
-    membershipsRestored += restoredUserIds.length;
-
+  const groupCount = new Set(
+    memberships.map((membership) => membership.groupId)
+  ).size;
+  if (!execute) {
     logger.info(
       {
         workspaceId: workspace.sId,
-        groupId: group.id,
-        editorCount: restoredUserIds.length,
+        groups: groupCount,
+        membershipsRestored: memberships.length,
       },
-      "Restored the agent's suspended editor memberships"
+      "Dry run: would restore suspended agent editor memberships"
     );
+    return;
   }
+
+  const [, restoredMemberships] = await GroupMembershipModel.update(
+    { status: "active" },
+    {
+      where: {
+        id: memberships.map((membership) => membership.id),
+        workspaceId: workspace.id,
+        status: "suspended",
+      },
+      returning: true,
+    }
+  );
+  const userModelIds = [
+    ...new Set(restoredMemberships.map((membership) => membership.userId)),
+  ];
+  await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+    userModelIds.map((userModelId) => [
+      {
+        user: { id: userModelId },
+        workspace: { id: workspace.id },
+      },
+    ])
+  );
 
   logger.info(
     {
       workspaceId: workspace.sId,
-      groups: groups.length,
-      membershipsRestored,
+      groups: groupCount,
+      membershipsRestored: restoredMemberships.length,
     },
     "Completed agent editor membership restoration for workspace"
   );
