@@ -164,9 +164,7 @@ export function sandboxDatabaseExecEnvVars({
 } {
   return {
     DUST_POD_DATABASES_DIR: SANDBOX_STATE_DATABASES_DIR,
-    DUST_POD_DATABASE_MAX_SIZE_BYTES: String(
-      SANDBOX_DATABASE_MAX_SIZE_BYTES
-    ),
+    DUST_POD_DATABASE_MAX_SIZE_BYTES: String(SANDBOX_DATABASE_MAX_SIZE_BYTES),
     // Empty means unprefixed, which is what the shim reads an absent value as.
     DUST_POD_DATABASE_PREFIX: databasePrefix ?? "",
   };
