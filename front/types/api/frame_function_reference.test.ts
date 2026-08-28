@@ -1,4 +1,12 @@
-import { resolveFrameFunctionReference } from "@app/types/api/frame_function_reference";
+import {
+  getFrameFunctionReferenceKind,
+  resolveFrameFunctionReference,
+} from "@app/types/api/frame_function_reference";
+import {
+  frameContentType,
+  frameSlideshowContentType,
+  frameV2ContentType,
+} from "@app/types/files";
 import { describe, expect, it } from "vitest";
 
 describe("resolveFrameFunctionReference", () => {
@@ -31,5 +39,21 @@ describe("resolveFrameFunctionReference", () => {
     expect(result.isOk() && result.value).toBe(
       "pod_123/comments__list-comments"
     );
+  });
+});
+
+describe("getFrameFunctionReferenceKind", () => {
+  it("classifies only known Frame MIME types", () => {
+    expect(getFrameFunctionReferenceKind(frameV2ContentType)).toBe("v2");
+    expect(getFrameFunctionReferenceKind(frameContentType)).toBe("legacy");
+    expect(getFrameFunctionReferenceKind(frameSlideshowContentType)).toBe(
+      "legacy"
+    );
+  });
+
+  it("does not treat absent or unknown metadata as legacy", () => {
+    expect(getFrameFunctionReferenceKind(null)).toBeNull();
+    expect(getFrameFunctionReferenceKind(undefined)).toBeNull();
+    expect(getFrameFunctionReferenceKind("text/plain")).toBeNull();
   });
 });
