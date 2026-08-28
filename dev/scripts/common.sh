@@ -20,6 +20,20 @@ install_mprocs_config() {
   fi
 }
 
+# Chrome in Cursor Cloud is launched by computer-use, not by our Dockerfile.
+# Managed policies are the supported Linux way to disable the password manager
+# and history-based omnibox suggestions (see AGENTS.md).
+install_chrome_policies() {
+  local src="${DUST_REPO_ROOT}/dev/config/chrome-policies.json"
+  local dest_dir="/etc/opt/chrome/policies/managed"
+  if [ ! -f "$src" ]; then
+    return 0
+  fi
+  mkdir -p "$dest_dir"
+  cp "$src" "${dest_dir}/dust-cloud.json"
+  chmod 644 "${dest_dir}/dust-cloud.json"
+}
+
 ensure_node_path() {
   if command -v node >/dev/null 2>&1; then
     return 0
