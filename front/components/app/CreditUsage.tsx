@@ -1,13 +1,31 @@
 import type { CreditUsageCardVariant } from "@app/components/app/CreditUsageCard";
 import { CreditUsageCard } from "@app/components/app/CreditUsageCard";
+import { formatCredits } from "@app/lib/client/credits";
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import { Button } from "@dust-tt/sparkle";
 
-export interface CreditUsageState {
+interface CreditUsageStateBase {
   usedPercentage: number;
-  resetInDays: number;
   target: CreditUsageTarget;
 }
+
+interface BillingPeriodCreditUsageState extends CreditUsageStateBase {
+  kind: "billing_period";
+  resetInDays: number;
+}
+
+interface RollingWindowCreditUsageState extends CreditUsageStateBase {
+  kind: "rolling_window";
+  usedCredits: number;
+  limitCredits: number;
+  windowDays: number;
+}
+
+export type CreditUsageState =
+  | BillingPeriodCreditUsageState
+  | RollingWindowCreditUsageState;
 
 export const CREDIT_USAGE_LEARN_MORE_LABEL = "See your usage";
 
@@ -30,14 +48,33 @@ interface CreditUsageProps {
   onLearnMore?: () => void;
 }
 
+function getUsageDescription(
+  state: CreditUsageState,
+  variant: CreditUsageCardVariant
+): string {
+  switch (state.kind) {
+    case "billing_period": {
+      const resetUnit = state.resetInDays === 1 ? "day" : "days";
+      const companionStatusLabel =
+        variant === "companion" && state.target !== "on_target"
+          ? COMPANION_STATUS_LABELS[state.target]
+          : null;
+      const statusLabel = companionStatusLabel
+        ? `${companionStatusLabel} · `
+        : "";
+
+      return `${statusLabel}${RESET_LABEL_PREFIX[variant]} in ${state.resetInDays} ${resetUnit}`;
+    }
+    case "rolling_window":
+      return `${formatCredits(state.usedCredits)} / ${formatCredits(state.limitCredits)} credits over the past ${state.windowDays} day${pluralize(state.windowDays)}`;
+    default:
+      assertNeverAndIgnore(state);
+      return "";
+  }
+}
+
 export function CreditUsage({ state, variant, onLearnMore }: CreditUsageProps) {
-  const resetUnit = state.resetInDays === 1 ? "day" : "days";
-  const companionStatusLabel =
-    variant === "companion" && state.target !== "on_target"
-      ? COMPANION_STATUS_LABELS[state.target]
-      : null;
-  const statusLabel = companionStatusLabel ? `${companionStatusLabel} · ` : "";
-  const resetLabel = `${statusLabel}${RESET_LABEL_PREFIX[variant]} in ${state.resetInDays} ${resetUnit}`;
+  const usageDescription = getUsageDescription(state, variant);
 
   return (
     <CreditUsageCard
@@ -48,7 +85,7 @@ export function CreditUsage({ state, variant, onLearnMore }: CreditUsageProps) {
     >
       {onLearnMore ? (
         <div className="flex flex-col gap-2">
-          <span>{resetLabel}</span>
+          <span>{usageDescription}</span>
           <Button
             label={CREDIT_USAGE_LEARN_MORE_LABEL}
             variant="outline"
@@ -58,7 +95,7 @@ export function CreditUsage({ state, variant, onLearnMore }: CreditUsageProps) {
           />
         </div>
       ) : (
-        resetLabel
+        usageDescription
       )}
     </CreditUsageCard>
   );
