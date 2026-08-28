@@ -90,6 +90,15 @@ type FetchConversationOptions = {
 
 type SpaceConversationsFilter = "all" | "group" | "with_me";
 
+export const AGENT_CONVERSATIONS_ORDER_COLUMNS = {
+  createdAt: `c."createdAt"`,
+  title: `c."title"`,
+  sId: `c."sId"`,
+} as const;
+
+export type AgentConversationsOrderColumn =
+  keyof typeof AGENT_CONVERSATIONS_ORDER_COLUMNS;
+
 interface UserParticipation {
   actionRequired: boolean;
   updated: number;
@@ -1706,6 +1715,109 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
+   * Page of the conversations in which `agentConfigurationId` produced at least one
+   * message, optionally restricted to a `createdAt` window (`createdAfter` inclusive,
+   * `createdBefore` exclusive). Paging and ordering happen in SQL: an active agent's
+   * conversation set is unbounded, so neither its conversation ids nor the hydrated
+   * conversations can be materialized in full.
+   *
+   * `totalCount` is the size of the matching set before visibility and permission
+   * filtering, so it is an upper bound: a page can hold fewer than `limit`
+   * conversations when the caller cannot read some of them.
+   */
+  static async listConversationsWithAgentPaginated(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      limit,
+      offset,
+      orderColumn = "createdAt",
+      orderDirection = "desc",
+      createdAfter,
+      createdBefore,
+    }: {
+      agentConfigurationId: string;
+      limit: number;
+      offset: number;
+      orderColumn?: AgentConversationsOrderColumn;
+      orderDirection?: "asc" | "desc";
+      createdAfter?: Date;
+      createdBefore?: Date;
+    },
+    options?: FetchConversationOptions
+  ): Promise<{ conversations: ConversationResource[]; totalCount: number }> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Static fragments, so the window stays out of the plan entirely when unbounded.
+    const windowConditions = [
+      createdAfter ? `AND c."createdAt" >= :createdAfter` : "",
+      createdBefore ? `AND c."createdAt" < :createdBefore` : "",
+    ].join("\n       ");
+
+    // Never interpolated from caller input: both halves come from closed unions.
+    const direction = orderDirection === "asc" ? "ASC" : "DESC";
+    // `id` breaks ties so a row cannot drift between pages as the offset moves.
+    const orderBy = `${AGENT_CONVERSATIONS_ORDER_COLUMNS[orderColumn]} ${direction}, c."id" DESC`;
+
+    // `agent_messages` carries `conversationId` since the side-table denormalization, so
+    // the agent's conversations resolve without joining `messages`. The window count is
+    // free: the full id set is already materialized to be sorted.
+    const query = `
+      WITH agent_conversations AS (
+        SELECT DISTINCT am."conversationId"
+        FROM agent_messages am
+        WHERE am."workspaceId" = :workspaceId
+          AND am."agentConfigurationId" = :agentConfigurationId
+      )
+      SELECT c."id", COUNT(*) OVER () AS total_count
+      FROM agent_conversations ac
+      JOIN conversations c
+        ON c."id" = ac."conversationId"
+       AND c."workspaceId" = :workspaceId
+       ${windowConditions}
+      ORDER BY ${orderBy}
+      LIMIT :limit OFFSET :offset
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: no association from conversations to agent_messages.
+    const rows = await frontSequelize.query<{
+      id: ModelId;
+      total_count: number;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId,
+        agentConfigurationId,
+        limit,
+        offset,
+        ...(createdAfter && { createdAfter }),
+        ...(createdBefore && { createdBefore }),
+      },
+    });
+
+    if (rows.length === 0) {
+      return { conversations: [], totalCount: 0 };
+    }
+
+    const conversations = await this.baseFetchWithAuthorization(auth, options, {
+      where: {
+        id: {
+          [Op.in]: rows.map((r) => r.id),
+        },
+      },
+    });
+
+    // Walk the SQL order, which the hydrating fetch does not preserve. Ids the fetch
+    // dropped on visibility or permissions simply fall out here.
+    const conversationById = new Map(conversations.map((c) => [c.id, c]));
+    const ordered = removeNulls(
+      rows.map((r) => conversationById.get(r.id) ?? null)
+    );
+
+    return { conversations: ordered, totalCount: rows[0].total_count };
+  }
+
+  /**
    * For each agent, returns the sIds of qualifying conversations in the window
    * createdAt >= cutoffDate. With excludeHumanOutOfTheLoop, removes conversations where
    * triggerId IS NOT NULL and no user messages are present.
@@ -1945,30 +2057,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new ConversationError("conversation_not_found"));
     }
 
-    const { actionRequired, lastReadAt } =
-      await ConversationResource.getActionRequiredAndLastReadAtForUser(
-        auth,
-        conversation.id
-      );
+    await this.enrichWithParticipationAndReadState(auth, [conversation]);
 
-    return new Ok({
-      actionRequired,
-      created: conversation.createdAt.getTime(),
-      depth: conversation.depth,
-      hasError: conversation.hasError,
-      id: conversation.id,
-      lastReadMs: lastReadAt?.getTime() ?? null,
-      metadata: conversation.metadata,
-      requestedGroupIds: [],
-      requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
-      sId: conversation.sId,
-      spaceId: conversation.space?.sId ?? null,
-      title: conversation.title,
-      triggerId: conversation.triggerSId,
-      unread: lastReadAt === null || conversation.updatedAt > lastReadAt,
-      updated: conversation.updatedAt.getTime(),
-      isRunningAgentLoop: conversation.isRunningAgentLoop,
-    });
+    return new Ok(conversation.toJSON());
   }
 
   private static async update(
@@ -2264,21 +2355,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       };
     }
 
-    const participationMap = await this.fetchParticipationMapForUser(
-      auth,
-      conversations.map((c) => c.id)
-    );
-    const participantConversationIds = new Set(participationMap.keys());
-
-    // Attach participation data and read state to all resources.
-    conversations.forEach((c) => {
-      const participation = participationMap.get(c.id);
-      if (participation) {
-        c.userParticipation = participation;
-      }
-    });
-
-    await this.enrichWithReadState(auth, conversations);
+    await this.enrichWithParticipationAndReadState(auth, conversations);
 
     // These conversations are used to display the unread count in the sidebar.
     // We do not count conversations the user does not participate in.
@@ -2290,7 +2367,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const nonParticipantUnreadConversations = conversations.filter(
       (c) =>
-        !participantConversationIds.has(c.id) &&
+        !c.userParticipation &&
         (c.userLastReadAt === null || c.updatedAt > c.userLastReadAt)
     );
 
@@ -2720,6 +2797,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         depth: c.depth,
         metadata: c.metadata,
         isRunningAgentLoop: c.isRunningAgentLoop,
+        isParticipant: !!participation,
       };
     });
   }
@@ -2781,6 +2859,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       depth: c.depth,
       metadata: c.metadata,
       isRunningAgentLoop: c.isRunningAgentLoop,
+      isParticipant: false,
     }));
   }
 
@@ -5233,6 +5312,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         this.userLastReadAt === null || this.updatedAt > this.userLastReadAt,
       updated: this.updatedAt.getTime(),
       isRunningAgentLoop: this.isRunningAgentLoop,
+      isParticipant: !!this.userParticipation,
     };
   }
 

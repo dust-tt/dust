@@ -432,6 +432,420 @@ describe("exportTable usage_metrics", () => {
   });
 });
 
+describe("exportTable active_users", () => {
+  beforeEach(() => {
+    vi.mocked(searchConsumptionAnalytics).mockReset();
+  });
+
+  it("queries the consumption index over an MAU-extended half-open completed_at range and computes rolling DAU/WAU/MAU", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    const day1 = Date.UTC(2024, 0, 1);
+    const day2 = Date.UTC(2024, 0, 2);
+
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      new Ok({
+        took: 1,
+        timed_out: false,
+        _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+        hits: { total: { value: 0, relation: "eq" }, hits: [] },
+        aggregations: {
+          by_user_day: {
+            buckets: [
+              { key: { day: day1, user: "user_1" }, doc_count: 3 },
+              { key: { day: day2, user: "user_1" }, doc_count: 2 },
+              { key: { day: day2, user: "user_2" }, doc_count: 1 },
+            ],
+          },
+        },
+      })
+    );
+
+    const result = await exportTable({
+      auth: authenticator,
+      table: "active_users",
+      startDate: "2024-01-01",
+      endDate: "2024-01-02",
+      timezone: "UTC",
+      owner: workspace,
+      includeHiddenAgents: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    if (result.value.table !== "active_users") {
+      throw new Error(
+        `Expected "active_users" table, got "${result.value.table}"`
+      );
+    }
+
+    // Regression: exportActiveUsers used to build its query against the
+    // legacy timestamp/user_id index. It must now query the consumption
+    // index's completed_at/user.id fields, extending the queried range back
+    // by the MAU window so the rolling windows on the first requested days
+    // are complete, with a half-open upper bound on the inclusive endDate.
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
+    const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(query).toEqual({
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          {
+            range: {
+              completed_at: {
+                gte: "2023-12-05T00:00:00.000Z",
+                lt: "2024-01-03T00:00:00.000Z",
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    expect(result.value.rows).toEqual([
+      { date: "2024-01-01", dau: 1, wau: 1, mau: 1 },
+      { date: "2024-01-02", dau: 2, wau: 2, mau: 2 },
+    ]);
+  });
+
+  it("resolves the completed_at range from timezone-local day boundaries, not UTC", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      new Ok({
+        took: 1,
+        timed_out: false,
+        _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+        hits: { total: { value: 0, relation: "eq" }, hits: [] },
+        aggregations: { by_user_day: { buckets: [] } },
+      })
+    );
+
+    await exportTable({
+      auth: authenticator,
+      table: "active_users",
+      startDate: "2024-01-01",
+      endDate: "2024-01-02",
+      // UTC-8: local midnight on 2024-01-01 is 2024-01-01T08:00:00.000Z, not
+      // 2024-01-01T00:00:00.000Z. A bare-date range filter is parsed by
+      // Elasticsearch as UTC midnight, which would disagree with the
+      // composite aggregation's timezone-local day buckets and cut off the
+      // first/last local day's early-morning activity.
+      timezone: "America/Los_Angeles",
+      owner: workspace,
+      includeHiddenAgents: false,
+    });
+
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
+    const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(query).toEqual({
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          {
+            range: {
+              completed_at: {
+                gte: "2023-12-05T08:00:00.000Z",
+                lt: "2024-01-03T08:00:00.000Z",
+              },
+            },
+          },
+        ],
+      },
+    });
+  });
+});
+
+describe("exportTable skill_usage", () => {
+  beforeEach(() => {
+    vi.mocked(searchConsumptionAnalytics).mockReset();
+  });
+
+  it("queries the consumption index with a half-open completed_at range and resolves skill names by id", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    const skill = await SkillFactory.create(authenticator, {
+      name: "Test Skill",
+    });
+
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      new Ok({
+        took: 1,
+        timed_out: false,
+        _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+        hits: { total: { value: 0, relation: "eq" }, hits: [] },
+        aggregations: {
+          by_skill: {
+            buckets: [
+              {
+                key: skill.sId,
+                doc_count: 5,
+                by_date: {
+                  buckets: [
+                    {
+                      key: Date.UTC(2024, 0, 15),
+                      doc_count: 5,
+                      unique_users: { value: 2 },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      })
+    );
+
+    const result = await exportTable({
+      auth: authenticator,
+      table: "skill_usage",
+      startDate: "2024-01-01",
+      endDate: "2024-01-31",
+      timezone: "UTC",
+      owner: workspace,
+      includeHiddenAgents: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    if (result.value.table !== "skill_usage") {
+      throw new Error(
+        `Expected "skill_usage" table, got "${result.value.table}"`
+      );
+    }
+
+    // Regression: exportSkillUsage used to build its query with the legacy,
+    // timestamp-based buildAgentAnalyticsBaseQuery. It must now query the
+    // consumption index with a half-open [startDate, endDate) `completed_at`
+    // range, and resolve the skill's display name from the flat
+    // tool.attributed_skill_ids id since (unlike the old nested index) the
+    // consumption index only stores skill ids.
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
+    const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(query).toEqual({
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          {
+            range: {
+              completed_at: {
+                gte: "2024-01-01T00:00:00.000Z",
+                lt: "2024-02-01T00:00:00.000Z",
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    expect(result.value.rows).toEqual([
+      {
+        date: "2024-01-15",
+        skillName: "Test Skill",
+        executions: 5,
+        uniqueUsers: 2,
+      },
+    ]);
+  });
+
+  it("resolves the completed_at range from timezone-local day boundaries, not UTC", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      new Ok({
+        took: 1,
+        timed_out: false,
+        _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+        hits: { total: { value: 0, relation: "eq" }, hits: [] },
+        aggregations: { by_skill: { buckets: [] } },
+      })
+    );
+
+    await exportTable({
+      auth: authenticator,
+      table: "skill_usage",
+      startDate: "2024-01-01",
+      endDate: "2024-01-31",
+      // UTC-8: local midnight on 2024-01-01 is 2024-01-01T08:00:00.000Z, not
+      // 2024-01-01T00:00:00.000Z. A bare-date range filter is parsed by
+      // Elasticsearch as UTC midnight, which would disagree with the
+      // date_histogram aggregation's timezone-local day buckets and cut off
+      // the first/last local day's early-morning activity.
+      timezone: "America/Los_Angeles",
+      owner: workspace,
+      includeHiddenAgents: false,
+    });
+
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
+    const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(query).toEqual({
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          {
+            range: {
+              completed_at: {
+                gte: "2024-01-01T08:00:00.000Z",
+                lt: "2024-02-01T08:00:00.000Z",
+              },
+            },
+          },
+        ],
+      },
+    });
+  });
+});
+
+describe("exportTable tool_usage", () => {
+  beforeEach(() => {
+    vi.mocked(searchConsumptionAnalytics).mockReset();
+  });
+
+  it("queries the consumption index with a half-open completed_at range and returns raw server names", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      new Ok({
+        took: 1,
+        timed_out: false,
+        _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+        hits: { total: { value: 0, relation: "eq" }, hits: [] },
+        aggregations: {
+          by_tool: {
+            buckets: [
+              {
+                key: "search",
+                doc_count: 5,
+                by_date: {
+                  buckets: [
+                    {
+                      key: Date.UTC(2024, 0, 15),
+                      doc_count: 5,
+                      unique_users: { value: 3 },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      })
+    );
+
+    const result = await exportTable({
+      auth: authenticator,
+      table: "tool_usage",
+      startDate: "2024-01-01",
+      endDate: "2024-01-31",
+      timezone: "UTC",
+      owner: workspace,
+      includeHiddenAgents: false,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    if (result.value.table !== "tool_usage") {
+      throw new Error(
+        `Expected "tool_usage" table, got "${result.value.table}"`
+      );
+    }
+
+    // Regression: exportToolUsage used to build its query with the legacy,
+    // timestamp-based buildAgentAnalyticsBaseQuery, looping once per tool.
+    // It must now query the consumption index with a single
+    // terms+date_histogram aggregation over a half-open [startDate, endDate)
+    // `completed_at` range; doc_count within a (tool, date) bucket is
+    // already the execution count since the consumption index has one
+    // document per tool call invocation.
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
+    const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(query).toEqual({
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          {
+            range: {
+              completed_at: {
+                gte: "2024-01-01T00:00:00.000Z",
+                lt: "2024-02-01T00:00:00.000Z",
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    expect(result.value.rows).toEqual([
+      { date: "2024-01-15", toolName: "search", executions: 5, uniqueUsers: 3 },
+    ]);
+  });
+
+  it("resolves the completed_at range from timezone-local day boundaries, not UTC", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      new Ok({
+        took: 1,
+        timed_out: false,
+        _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+        hits: { total: { value: 0, relation: "eq" }, hits: [] },
+        aggregations: { by_tool: { buckets: [] } },
+      })
+    );
+
+    await exportTable({
+      auth: authenticator,
+      table: "tool_usage",
+      startDate: "2024-01-01",
+      endDate: "2024-01-31",
+      // UTC-8: local midnight on 2024-01-01 is 2024-01-01T08:00:00.000Z, not
+      // 2024-01-01T00:00:00.000Z. A bare-date range filter is parsed by
+      // Elasticsearch as UTC midnight, which would disagree with the
+      // date_histogram aggregation's timezone-local day buckets and cut off
+      // the first/last local day's early-morning activity.
+      timezone: "America/Los_Angeles",
+      owner: workspace,
+      includeHiddenAgents: false,
+    });
+
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
+    const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+    expect(query).toEqual({
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          {
+            range: {
+              completed_at: {
+                gte: "2024-01-01T08:00:00.000Z",
+                lt: "2024-02-01T08:00:00.000Z",
+              },
+            },
+          },
+        ],
+      },
+    });
+  });
+});
+
 describe("exportTable source", () => {
   beforeEach(() => {
     vi.mocked(searchConsumptionAnalytics).mockReset();

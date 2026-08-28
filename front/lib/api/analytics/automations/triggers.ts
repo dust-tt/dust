@@ -51,7 +51,7 @@ export type AutomationTriggerRow = {
     modelId: string | null;
     modelDisplayName: string | null;
   };
-  editor: {
+  owner: {
     name: string;
     email: string | null;
     pictureUrl: string | null;
@@ -366,7 +366,7 @@ export async function buildAutomationTriggerRows(
         modelId: agentLabel?.modelId ?? null,
         modelDisplayName: agentLabel?.modelDisplayName ?? null,
       },
-      editor: {
+      owner: {
         name: getUserDisplayName(editor),
         email: editor?.email ?? null,
         pictureUrl: editor?.imageUrl ?? null,

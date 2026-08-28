@@ -1,0 +1,135 @@
+import { DustFileSystem } from "@app/lib/api/file_system";
+import { validatePodFrameTabs } from "@app/lib/api/projects/frame_tabs";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { DustFileSystemError } from "@app/types/file_system";
+import { frameContentType } from "@app/types/files";
+import { DEFAULT_POD_FRAME_TAB_ICON } from "@app/types/pod_frame_tab";
+import { Err, Ok } from "@app/types/shared/result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+describe("validatePodFrameTabs", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("skips file existence checks for existing frame tab paths", async () => {
+    const {
+      authenticator: auth,
+      workspace,
+      user,
+    } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id);
+    const stalePath = `pod-${pod.sId}/frames/Activity.tsx`;
+    const newPath = `pod-${pod.sId}/frames/New.tsx`;
+
+    const stat = vi.fn(async (path: string) => {
+      if (path === newPath) {
+        return new Ok({ contentType: frameContentType, sizeBytes: 100 });
+      }
+      return new Ok(null);
+    });
+
+    vi.spyOn(DustFileSystem, "forPod").mockResolvedValue(
+      new Ok({ stat } as unknown as DustFileSystem)
+    );
+
+    const result = await validatePodFrameTabs(
+      auth,
+      pod,
+      [
+        {
+          path: stalePath,
+          title: "Activity",
+          icon: DEFAULT_POD_FRAME_TAB_ICON,
+        },
+        {
+          path: newPath,
+          title: "New",
+          icon: DEFAULT_POD_FRAME_TAB_ICON,
+        },
+      ],
+      [
+        "conversations",
+        "tasks",
+        "files",
+        "apps",
+        "connected_data",
+        stalePath,
+        newPath,
+      ],
+      { existingFrameTabPaths: new Set([stalePath]) }
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(stat).not.toHaveBeenCalledWith(stalePath);
+    expect(stat).toHaveBeenCalledWith(newPath);
+  });
+
+  it("rejects new frame tabs whose files are missing", async () => {
+    const {
+      authenticator: auth,
+      workspace,
+      user,
+    } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id);
+    const missingPath = `pod-${pod.sId}/frames/Missing.tsx`;
+
+    vi.spyOn(DustFileSystem, "forPod").mockResolvedValue(
+      new Ok({
+        stat: vi.fn(async () => new Ok(null)),
+      } as unknown as DustFileSystem)
+    );
+
+    const result = await validatePodFrameTabs(
+      auth,
+      pod,
+      [
+        {
+          path: missingPath,
+          title: "Missing",
+          icon: DEFAULT_POD_FRAME_TAB_ICON,
+        },
+      ],
+      ["conversations", "tasks", "files", "apps", "connected_data", missingPath]
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        `Frame tab file not found: ${missingPath}`
+      );
+    }
+  });
+
+  it("returns an error when the file system cannot be initialized", async () => {
+    const {
+      authenticator: auth,
+      workspace,
+      user,
+    } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id);
+
+    vi.spyOn(DustFileSystem, "forPod").mockResolvedValue(
+      new Err(new DustFileSystemError("unauthorized", "Unauthorized"))
+    );
+
+    const result = await validatePodFrameTabs(
+      auth,
+      pod,
+      [],
+      ["conversations", "tasks", "files", "apps", "connected_data"]
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe("Failed to initialize file system.");
+    }
+  });
+});

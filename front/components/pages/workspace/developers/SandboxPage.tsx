@@ -1,5 +1,6 @@
 import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
 import { NetworkSection } from "@app/components/pages/workspace/developers/sections/NetworkSection";
+import { AgentRequestedDomainsSetting } from "@app/components/sandbox/AgentRequestedDomainsSetting";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { ContentMessage, InfoCircle, Page } from "@dust-tt/sparkle";
@@ -28,6 +29,7 @@ export function SandboxPage() {
 
     return (
       <>
+        <AgentRequestedDomainsSetting />
         <NetworkSection />
         <EnvironmentSection />
       </>

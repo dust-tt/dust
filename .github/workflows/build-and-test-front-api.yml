@@ -94,3 +94,6 @@ jobs:
       - name: Build
         working-directory: front-api
         run: npm run build
+      - name: Check bundled runtime deps are declared
+        working-directory: front-api
+        run: npm run check:bundled-deps

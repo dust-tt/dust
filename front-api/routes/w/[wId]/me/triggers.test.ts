@@ -1,4 +1,3 @@
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -17,8 +16,6 @@ const EVERY_MONDAY_9AM = {
 describe("GET /api/w/:wId/me/triggers", () => {
   it("lists a trigger on a deprecated (model-only) global agent such as gemini-pro", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest();
-
-    await FeatureFlagFactory.basic(auth, "models_picker");
 
     await TriggerFactory.schedule(auth, {
       name: "Weekly gemini digest",

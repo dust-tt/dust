@@ -553,23 +553,36 @@ export async function toPodConversationListItem(
         })
       );
 
+      let unreadMessageCount =
+        rawMessagesByConversationId[conv.id]?.filter(
+          (message) =>
+            (message.agentMessage?.completedAt?.getTime() ??
+              message.updatedAt.getTime()) > (convJSON.lastReadMs ?? 0)
+        ).length ?? 0;
+
+      // The official rule for unread conversation is that it's updated AFTER the last read time as we don't look at individual messages timings.
+      // However, as here we are retrieving the exact count of unread messages, we DO look at the individual messages timings.
+      // In certain case, the user marked the conversation as read after the last message completion but something updated the conversation after that without adding a new message (for example, a title update).
+      // In this case, we force a unread count of 1 to make sure the conversation is displayed as unread in the Pod converations list.
+      if (
+        unreadMessageCount === 0 &&
+        conv.updatedAt > new Date(convJSON.lastReadMs ?? 0)
+      ) {
+        unreadMessageCount = 1;
+      }
+
       return {
         id: conv.sId,
         title: getConversationDisplayTitle(convJSON),
         created: conv.createdAt.getTime(),
         updated: conv.updatedAt.getTime(),
         replyCount: (rawMessagesByConversationId[conv.id]?.length ?? 1) - 1,
-        unreadMessageCount:
-          rawMessagesByConversationId[conv.id]?.filter(
-            (message) =>
-              (message.agentMessage?.completedAt?.getTime() ??
-                message.updatedAt.getTime()) >
-              (convJSON.lastReadMs ?? Date.now())
-          ).length ?? 0,
+        unreadMessageCount,
         description: firstUserMessage?.userMessage?.content ?? "",
         creator: avatars[0],
         avatars: uniqBy(avatars.slice(1).reverse(), "name"),
         isRunningAgentLoop: conv.isRunningAgentLoop,
+        isParticipant: convJSON.isParticipant,
       };
     })
   );

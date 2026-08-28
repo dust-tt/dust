@@ -6,7 +6,7 @@ import type { SlashMenuStackFrame } from "@app/components/editor/extensions/shar
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useModels } from "@app/lib/swr/models";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import { getModelMaker } from "@app/types/assistant/models/providers";
@@ -42,16 +42,11 @@ export const PickModelSubMenuDropdown = forwardRef<
     const dropdownRef = useRef<{
       onKeyDown: (props: { event: KeyboardEvent }) => boolean;
     }>(null);
-    const { hasFeature } = useFeatureFlags();
-    const hasModelsPicker = hasFeature("models_picker");
     const { subscription } = useAuth();
     const lockPremiumEfforts = !isCreditPricedPlan(subscription.plan);
     const { isDark } = useTheme();
 
-    const { models, streams, isModelsLoading } = useModels({
-      owner,
-      disabled: !hasModelsPicker,
-    });
+    const { models, streams, isModelsLoading } = useModels({ owner });
 
     const getModelIcon = useMemo(() => {
       return (model: EnabledModelConfigurationType) =>

@@ -158,7 +158,7 @@ export function AgentPicker({
                       <Button
                         icon={DotsHorizontal}
                         variant="outline"
-                        size="mini"
+                        size="xmini"
                         className="opacity-0 group-hover:opacity-100"
                         onClick={(e) => {
                           e.stopPropagation();

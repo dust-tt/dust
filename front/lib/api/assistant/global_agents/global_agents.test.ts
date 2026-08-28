@@ -302,7 +302,7 @@ describe("getGlobalAgents custom model agents", () => {
 });
 
 describe("getGlobalAgents OpenAI Dust agents", () => {
-  it("uses GPT 5.6 Luna with high reasoning as the Dust default", async () => {
+  it("uses the member's Auto stream as the Dust default", async () => {
     const auth = await createAuthenticatorWithFlags([]);
 
     const agents = await getGlobalAgents(
@@ -313,13 +313,13 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
 
     expect(agents).toHaveLength(1);
     expect(agents[0].model).toMatchObject({
-      providerId: "openai",
-      modelId: GPT_5_6_LUNA_MODEL_ID,
-      reasoningEffort: "high",
+      providerId: AUTO_MODEL_ID,
+      modelId: AUTO_MODEL_ID,
+      reasoningEffort: "none",
     });
   });
 
-  it("keeps Sonnet 5 at medium reasoning when the Sonnet 5 default flag is set", async () => {
+  it("keeps the Auto stream default over the Sonnet 5 default flag", async () => {
     const auth = await createAuthenticatorWithFlags([
       "dust_agent_sonnet_5_default",
     ]);
@@ -332,9 +332,9 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
 
     expect(agents).toHaveLength(1);
     expect(agents[0].model).toMatchObject({
-      providerId: "anthropic",
-      modelId: CLAUDE_SONNET_5_MODEL_ID,
-      reasoningEffort: "medium",
+      providerId: AUTO_MODEL_ID,
+      modelId: AUTO_MODEL_ID,
+      reasoningEffort: "none",
     });
   });
 
@@ -566,7 +566,6 @@ describe("getGlobalAgents Dust Auto default", () => {
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    await FeatureFlagFactory.basic(adminAuth, "models_picker");
 
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });

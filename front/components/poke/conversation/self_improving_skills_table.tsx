@@ -130,7 +130,6 @@ export function SelfImprovingSkillsConversationDataTable({
     <PokeDataTableConditionalFetch
       header="Self-improving skills conversations"
       owner={owner}
-      showSensitiveDataWarning={true}
       useSWRHook={useReinforcementSkillsConversations}
     >
       {(conversations) => {

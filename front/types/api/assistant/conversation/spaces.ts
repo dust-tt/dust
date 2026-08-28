@@ -18,6 +18,7 @@ export type PodConversationListItemType = {
   replyCount: number;
   unreadMessageCount: number;
   isRunningAgentLoop: boolean;
+  isParticipant: boolean;
   description: string;
   creator: {
     name: string;

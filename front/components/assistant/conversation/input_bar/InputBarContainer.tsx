@@ -14,6 +14,7 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
+import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { getAvailableInputBarSlashCommands } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
@@ -47,10 +48,9 @@ import {
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceLiveTranscriberService } from "@app/hooks/useVoiceLiveTranscriberService";
-import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
@@ -76,10 +76,7 @@ import {
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
-import {
-  assertNever,
-  assertNeverAndIgnore,
-} from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -107,7 +104,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
 import React, {
   useCallback,
   useContext,
@@ -428,10 +424,8 @@ const InputBarContainer = ({
   onNodeSelectRef.current = onNodeSelect;
   const includeAttachKnowledgeRef = useRef(actions.includes("attachment"));
   includeAttachKnowledgeRef.current = actions.includes("attachment");
-  const { hasFeature } = useFeatureFlags();
   const includePickModelRef = useRef(false);
-  includePickModelRef.current =
-    hasFeature("models_picker") && actions.includes("model-picker");
+  includePickModelRef.current = actions.includes("model-picker");
   const modelSelectionCommitRef = useRef<
     ((selection: Selection) => void) | null
   >(null);
@@ -1012,42 +1006,7 @@ const InputBarContainer = ({
     });
   }, [attachedNodes]);
 
-  const isLiveStt = hasFeature("live_speech_to_text");
-
-  const voiceTranscriberService = useVoiceTranscriberService({
-    owner,
-    fileUploaderService,
-    onTranscribeComplete: (transcript) => {
-      for (const message of transcript) {
-        switch (message.type) {
-          case "text":
-            editorService.insertText(message.text);
-            break;
-          case "mention": {
-            const agent = agentsById.get(message.id);
-            if (agent) {
-              handleSingleAgentSelect(toRichAgentMentionType(agent));
-            }
-            break;
-          }
-          default:
-            assertNever(message);
-        }
-      }
-      if (isCompactRef.current) {
-        void submitCompactVoiceMessageRef.current?.();
-      }
-    },
-    onError: (error) => {
-      sendNotification({
-        type: "error",
-        title: "Failed to transcribe voice",
-        description: normalizeError(error).message,
-      });
-    },
-  });
-
-  const voiceLiveTranscriberService = useVoiceLiveTranscriberService({
+  const activeVoiceService = useVoiceLiveTranscriberService({
     owner,
     onPartialTranscript: (text) => {
       editorService.setVoicePartialText(text);
@@ -1069,10 +1028,6 @@ const InputBarContainer = ({
       });
     },
   });
-
-  const activeVoiceService = isLiveStt
-    ? voiceLiveTranscriberService
-    : voiceTranscriberService;
 
   // Keep the editor non-editable while the input is fully disabled (e.g. a
   // non-owner viewing a conversation with an active wake-up). The placeholder
@@ -1742,16 +1697,13 @@ const InputBarContainer = ({
               )}
             />
           </div>
-          <BubbleMenu
-            editor={editor ?? undefined}
-            className={cn("flex", isMobile && "hidden")}
-          >
+          <EditorSelectionToolbar editor={editor} disabled={isMobile}>
             {editor && (
-              <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
+              <Toolbar className="inline-flex">
                 <ToolBarContent editor={editor} />
               </Toolbar>
             )}
-          </BubbleMenu>
+          </EditorSelectionToolbar>
           <div
             className={cn("mt-auto flex w-full flex-col", "pt-2 pb-3")}
             style={{

@@ -70,3 +70,33 @@ export function getFramePublicationSourcePath({
 
   return `${getFramePublicationSourceBasePath(args)}${relativePath}`;
 }
+
+export function getFramePublicationFunctionBasePath({
+  functionName,
+  ...args
+}: {
+  workspaceId: string;
+  frameId: string;
+  publicationId: string;
+  functionName: string;
+}): string {
+  return `${getFramePublicationBasePath(args)}functions/${safeSegment(functionName, "functionName")}/`;
+}
+
+export function getFramePublicationFunctionBundlePath(args: {
+  workspaceId: string;
+  frameId: string;
+  publicationId: string;
+  functionName: string;
+}): string {
+  return `${getFramePublicationFunctionBasePath(args)}bundle.js`;
+}
+
+export function getFramePublicationFunctionSchemaPath(args: {
+  workspaceId: string;
+  frameId: string;
+  publicationId: string;
+  functionName: string;
+}): string {
+  return `${getFramePublicationFunctionBasePath(args)}schema.json`;
+}

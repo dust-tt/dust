@@ -297,7 +297,7 @@ export function PodConversationsTab({
                   <Button
                     size="sm"
                     variant="outline"
-                    icon={hideTriggeredConversations ? Zap : ZapOff}
+                    icon={hideTriggeredConversations ? ZapOff : Zap}
                     tooltip={
                       hideTriggeredConversations
                         ? "Show triggered"

@@ -17,7 +17,6 @@ export function PodConversationListItem({
 }: PodConversationListItemProps) {
   const router = useAppRouter();
   const time = moment(conversation.updated).fromNow();
-
   return (
     <>
       <ConversationListItem

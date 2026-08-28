@@ -1,5 +1,5 @@
 import {
-  getAttachmentFromContentFragment,
+  getAttachmentFromContentNodeContentFragment,
   isContentNodeAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
@@ -27,6 +27,10 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/assistant";
 import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { FileSystemDirectoryEntry } from "@app/types/api/file_system/types";
+import {
+  isContentNodeContentFragment,
+  isExpiredContentFragment,
+} from "@app/types/content_fragment";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { ConnectorProvider } from "@app/types/data_source";
 import { DustFileSystemError, podScopedPath } from "@app/types/file_system";
@@ -99,6 +103,8 @@ export async function listProjectContextAttachments(
   const merged = new Map<string, ConversationAttachmentType>();
 
   for (const fragment of fragments) {
+    // File-backed project files are served by the GCS-backed endpoints, so only content nodes are
+    // turned into attachments here. Their capabilities do not depend on the conversation.
     if (fragment.fileId != null) {
       continue;
     }
@@ -111,10 +117,11 @@ export async function listProjectContextAttachments(
         file: null,
       }
     );
-    const attachment = getAttachmentFromContentFragment(cf);
-    if (!attachment || !isContentNodeAttachmentType(attachment)) {
+    if (isExpiredContentFragment(cf) || !isContentNodeContentFragment(cf)) {
       continue;
     }
+
+    const attachment = getAttachmentFromContentNodeContentFragment({ cf });
 
     const key = attachment.contentFragmentId;
     if (merged.has(key)) {

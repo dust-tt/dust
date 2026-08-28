@@ -9,7 +9,6 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -26,7 +25,7 @@ import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("SpaceResource", () => {
   describe("updatePermissions", () => {
@@ -523,9 +522,9 @@ describe("SpaceResource", () => {
           regularSpace.sId
         );
         expect(updatedSpace).not.toBeNull();
-        const associatedGroupIds = updatedSpace!.groups.map(
-          (group) => group.groupId
-        );
+        const associatedGroupIds = (
+          await updatedSpace!.fetchGrantReferences()
+        ).map((group) => group.groupId);
         expect(associatedGroupIds).toContain(provisionedGroup1.id);
         expect(associatedGroupIds).toContain(provisionedGroup2.id);
       });
@@ -578,9 +577,9 @@ describe("SpaceResource", () => {
           adminAuth,
           regularSpace.sId
         );
-        const associatedGroupIds = refetchedSpace!.groups.map(
-          (group) => group.groupId
-        );
+        const associatedGroupIds = (
+          await refetchedSpace!.fetchGrantReferences()
+        ).map((group) => group.groupId);
         expect(associatedGroupIds).not.toContain(provisionedGroup1.id);
         expect(associatedGroupIds).toContain(provisionedGroup2.id);
         expect(associatedGroupIds).toContain(regularGroup.id); // Regular group should still be there
@@ -791,9 +790,9 @@ describe("SpaceResource", () => {
           adminAuth,
           regularSpace.sId
         );
-        const associatedGroupIds = updatedSpace!.groups.map(
-          (group) => group.groupId
-        );
+        const associatedGroupIds = (
+          await updatedSpace!.fetchGrantReferences()
+        ).map((group) => group.groupId);
         expect(associatedGroupIds).toContain(globalGroup.id);
       });
 
@@ -834,9 +833,9 @@ describe("SpaceResource", () => {
           adminAuth,
           regularSpace.sId
         );
-        const associatedGroupIds = refetchedSpace!.groups.map(
-          (group) => group.groupId
-        );
+        const associatedGroupIds = (
+          await refetchedSpace!.fetchGrantReferences()
+        ).map((group) => group.groupId);
         expect(associatedGroupIds).not.toContain(globalGroup.id);
       });
 
@@ -854,9 +853,9 @@ describe("SpaceResource", () => {
           adminAuth,
           regularSpace.sId
         );
-        const globalGroupPresentBefore = spaceBefore!.groups.some(
-          (group) => group.groupId === globalGroup.id
-        );
+        const globalGroupPresentBefore = (
+          await spaceBefore!.fetchGrantReferences()
+        ).some((group) => group.groupId === globalGroup.id);
 
         // Update but keep restricted
         await regularSpace.updatePermissions(adminAuth, {
@@ -871,9 +870,9 @@ describe("SpaceResource", () => {
           adminAuth,
           regularSpace.sId
         );
-        const globalGroupPresentAfter = spaceAfter!.groups.some(
-          (group) => group.groupId === globalGroup.id
-        );
+        const globalGroupPresentAfter = (
+          await spaceAfter!.fetchGrantReferences()
+        ).some((group) => group.groupId === globalGroup.id);
 
         expect(globalGroupPresentBefore).toBe(globalGroupPresentAfter);
       });
@@ -1567,9 +1566,9 @@ describe("SpaceResource", () => {
             adminAuth,
             projectSpace.sId
           );
-          const associatedGroupIds = refetchedSpace!.groups.map(
-            (group) => group.groupId
-          );
+          const associatedGroupIds = (
+            await refetchedSpace!.fetchGrantReferences()
+          ).map((group) => group.groupId);
           // The new provisioned member group is associated.
           expect(associatedGroupIds).toContain(newProvisionedMemberGroup.id);
           // The editor group is still associated.
@@ -1701,10 +1700,9 @@ describe("SpaceResource", () => {
       expect(spaces.some((s) => s.id === regularSpace.id)).toBe(true);
     });
 
-    it("hydrates group references from the space's group_permissions grants", async () => {
+    it("loads group references from the space's group_permissions grants on demand", async () => {
       const regularSpace = await SpaceFactory.regular(workspace);
-      const [groupReference] = regularSpace.groups;
-      const findAllSpy = vi.spyOn(SpaceModel, "findAll");
+      const [groupReference] = await regularSpace.fetchGrantReferences();
 
       const fetchedSpace = await SpaceResource.fetchById(
         adminAuth,
@@ -1712,33 +1710,21 @@ describe("SpaceResource", () => {
       );
 
       expect(fetchedSpace).not.toBeNull();
-      expect(findAllSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          include: expect.arrayContaining([
-            expect.objectContaining({
-              as: "spaceGrants",
-              model: GroupPermissionModel,
-            }),
-          ]),
-        })
-      );
-      expect(fetchedSpace?.groups).toEqual([
+      // Grants are no longer eagerly included on the space fetch; they are loaded on demand.
+      expect(await fetchedSpace?.fetchGrantReferences()).toEqual([
         expect.objectContaining({
           groupId: groupReference.groupId,
           grantType: "member",
           workspaceId: workspace.id,
         }),
       ]);
-      // groupIds/isRestricted are no longer on `toJSON`; they are loaded on demand from
-      // group_permissions via `batchToJSONEnriched`.
+      // groupIds/isRestricted are likewise loaded on demand (via `batchToJSONEnriched`).
       const [enrichedSpace] = await SpaceResource.batchToJSONEnriched(
         adminAuth,
         [regularSpace]
       );
       expect(enrichedSpace.groupIds).toEqual([groupReference.groupSId]);
       expect(enrichedSpace.isRestricted).toBe(true);
-
-      findAllSpy.mockRestore();
     });
 
     it("should include conversations space when includeConversationsSpace is true", async () => {

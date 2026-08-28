@@ -33,6 +33,7 @@ import type { ConsumptionDimension } from "./consumptionDimensions";
 export type AttributionRowData = ConsumptionTopRow & {
   onClick: () => void;
   onAddFilter: () => void;
+  onNameClick?: () => void;
   onRemoveFilter: () => void;
 };
 

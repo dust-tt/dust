@@ -63,6 +63,7 @@ function createConversation(owner: LightWorkspaceType): ConversationType {
     metadata: {},
     requestedSpaceIds: [],
     isRunningAgentLoop: true,
+    isParticipant: false,
     owner,
     visibility: "unlisted",
     content: [],
@@ -312,6 +313,53 @@ describe("seeded conversation window", () => {
       auth,
       expect.objectContaining({ conversation: continuation })
     );
+  });
+
+  it("appends new interactions created within a checkpoint continuation", async () => {
+    const conversation = createConversation(workspace);
+    const continuation = {
+      ...createConversation(workspace),
+      sId: "continuation",
+    };
+    const continuationMessages = [
+      assistantMessage("tool call"),
+      functionMessage("tool", "tool result"),
+      userMessage("enabled skill"),
+    ];
+    vi.mocked(renderAllMessages).mockResolvedValue(continuationMessages);
+    mockTokenCounter({
+      byContains: {
+        "tool call": 10,
+        "tool result": 10,
+        "enabled skill": 10,
+      },
+    });
+
+    const result = await renderConversationWindow(
+      auth,
+      {
+        model,
+        prompt: "PROMPT",
+        enabledSkills: [],
+        tools: "TOOLS",
+        allowedTokenCount: 100_000,
+      },
+      {
+        kind: "checkpoint_continuation",
+        conversation,
+        continuation,
+        checkpoint: checkpoint([userMessage("saved user")]),
+      }
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.modelConversation.messages).toEqual([
+      userMessage("saved user"),
+      ...continuationMessages,
+    ]);
   });
 
   it("matches a full replay when a continuation crosses a pruning checkpoint", async () => {

@@ -164,6 +164,51 @@ describe("GET /api/w/:wId/skills", () => {
     expect(skillNames).not.toContain("Someone Else's Unpublished Skill");
   });
 
+  // Archiving no longer suspends the editor memberships, so an archived editors-only skill
+  // stays visible to its editors — otherwise it would vanish from the archived tab for
+  // everyone, leaving nobody able to restore it.
+  it("lists archived editors-only skills to members of their editor group", async () => {
+    const { workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const mySkill = await SkillFactory.create(auth, {
+      name: "My Archived Unpublished Skill",
+      availability: "editors",
+    });
+    await mySkill.archive(auth);
+
+    // Archived by another user: the requester is not one of its editors.
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, {
+      role: "manager",
+    });
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+    const otherSkill = await SkillFactory.create(otherAuth, {
+      name: "Someone Else's Archived Unpublished Skill",
+      availability: "editors",
+    });
+    await otherSkill.archive(otherAuth);
+
+    const response = await getSkills(workspace, { status: "archived" });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    const skillNames = data.skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
+    expect(skillNames).toContain("My Archived Unpublished Skill");
+    expect(skillNames).not.toContain(
+      "Someone Else's Archived Unpublished Skill"
+    );
+  });
+
   // Suggestions are created with an empty editor group (SkillResource.makeSuggestion), and
   // they get editors-only availability. Without the status exemption the editor-visibility
   // rule would hide them from everyone.
@@ -740,6 +785,34 @@ describe("GET /api/w/:wId/skills", () => {
 });
 
 describe("GET /api/w/:wId/skills?withRelations=true", () => {
+  it("returns the editors of archived skills", async () => {
+    const { workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const skill = await SkillFactory.create(auth, {
+      name: "Archived Skill With Editors",
+    });
+    await skill.archive(auth);
+
+    const response = await getSkills(workspace, {
+      withRelations: "true",
+      status: "archived",
+    });
+    expect(response.status).toBe(200);
+
+    const responseBody: GetSkillsWithRelationsResponseBody =
+      await response.json();
+    const archivedSkill = responseBody.skills.find((s) => s.sId === skill.sId);
+    // Archiving keeps the editor memberships: the skill stays visible to its editors (it is
+    // unpublished, so that visibility comes from editorship) and still lists them.
+    expect(archivedSkill?.relations.editors?.map((e) => e.sId)).toEqual([
+      user.sId,
+    ]);
+  });
+
   it("should return the number of messages using each skill", async () => {
     const { workspace, user } = await setupTest();
 

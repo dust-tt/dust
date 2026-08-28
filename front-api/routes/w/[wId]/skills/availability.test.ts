@@ -98,6 +98,41 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
     expect(untouchedSkill?.editedBy).toBe(skillOwner.id);
   });
 
+  it("refuses the batch when one of the skills is archived", async () => {
+    const { workspace, requestUserAuth, skillOwnerAuth } = await setupTest();
+
+    const activeSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Active Batch Skill",
+      availability: "editors",
+    });
+    const archivedSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Archived Batch Skill",
+      availability: "editors",
+    });
+    await archivedSkill.archive(skillOwnerAuth);
+
+    const response = await patchSkillsAvailability(workspace, {
+      skillIds: [activeSkill.sId, archivedSkill.sId],
+      availability: "workspace_users",
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message:
+          "Archived skills cannot be updated: Archived Batch Skill. Restore them first.",
+      },
+    });
+
+    // The whole batch is rejected: the active skill keeps its availability too.
+    const untouchedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      activeSkill.sId
+    );
+    expect(untouchedSkill?.availability).toBe("editors");
+  });
+
   it("snapshots a version of each updated skill", async () => {
     const { workspace, requestUserAuth, skillOwnerAuth } = await setupTest();
 

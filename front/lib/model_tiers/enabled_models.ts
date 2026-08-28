@@ -1,7 +1,6 @@
 import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
 import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { resolveAllowedTierNames } from "@app/lib/model_tiers/allowed_tiers";
 import type {
   EnabledModelConfigurationType,
@@ -87,15 +86,6 @@ export async function withModelSelectability(
   auth: Authenticator,
   { models }: { models: ModelConfigurationType[] }
 ): Promise<EnabledModelConfigurationType[]> {
-  const featureFlags = await getFeatureFlags(auth);
-
-  if (!featureFlags.includes("models_picker")) {
-    return models.map((model) => ({
-      ...model,
-      isSelectable: true,
-    }));
-  }
-
   const { tiers: allowedTierNames } = await resolveAllowedTierNames(auth);
   const allowedTierNamesSet = new Set(allowedTierNames);
 

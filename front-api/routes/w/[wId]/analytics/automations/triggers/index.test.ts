@@ -39,7 +39,7 @@ const TRIGGERS: GetAutomationTriggersResponse = {
         modelId: "claude-opus-5",
         modelDisplayName: "Claude Opus 5",
       },
-      editor: {
+      owner: {
         name: "Nic Siegle",
         email: "nic@dust.tt",
         pictureUrl: null,
@@ -65,7 +65,7 @@ const TRIGGERS: GetAutomationTriggersResponse = {
         modelId: "claude-opus-5",
         modelDisplayName: "Claude Opus 5",
       },
-      editor: {
+      owner: {
         name: "Adrien Simon",
         email: "adrien@dust.tt",
         pictureUrl: null,

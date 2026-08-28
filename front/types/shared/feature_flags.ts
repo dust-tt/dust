@@ -28,12 +28,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "tdraier",
   },
-  live_speech_to_text: {
-    description:
-      "Enable real-time speech-to-text in the input bar via ElevenLabs WebSocket streaming",
-    stage: "dust_only",
-    owner: "adrsimon",
-  },
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",
@@ -368,12 +362,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Whitelabel frames: customize the workspace logo, favicon and OG image shown on shared Frames.",
     stage: "self_serve",
     owner: "flvndvd",
-  },
-  models_picker: {
-    description:
-      "Model picker in the conversation input bar: keep Auto (the agent's configured model) or pick a specific model and reasoning effort.",
-    stage: "self_serve",
-    owner: "Nils-Fedrigo",
   },
   activation_force_nudge: {
     description:

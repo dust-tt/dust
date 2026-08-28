@@ -44,7 +44,6 @@ type WorkspaceAccessCase = {
   name: string;
   plan: PlanType | null;
   withModelFeatureFlag?: boolean;
-  withModelsPicker?: boolean;
   expected: WorkspaceAccessExpectations;
 };
 
@@ -151,20 +150,6 @@ const WORKSPACE_ACCESS_CASES: WorkspaceAccessCase[] = [
     },
   },
   {
-    name: "workspace without a plan and with models_picker",
-    plan: null,
-    withModelsPicker: true,
-    expected: {
-      standardNonLarge: true,
-      standardLarge: false,
-      featureGatedNonLarge: false,
-      featureGatedLarge: false,
-      advancedNonLarge: false,
-      opus: false,
-      sol: false,
-    },
-  },
-  {
     name: "free workspace without an entitlement",
     plan: createMockPlan(FREE_NO_PLAN_CODE),
     expected: {
@@ -202,20 +187,6 @@ const WORKSPACE_ACCESS_CASES: WorkspaceAccessCase[] = [
       featureGatedNonLarge: false,
       featureGatedLarge: false,
       advancedNonLarge: true,
-      opus: false,
-      sol: false,
-    },
-  },
-  {
-    name: "free workspace with models_picker",
-    plan: createMockPlan(FREE_NO_PLAN_CODE),
-    withModelsPicker: true,
-    expected: {
-      standardNonLarge: true,
-      standardLarge: false,
-      featureGatedNonLarge: false,
-      featureGatedLarge: false,
-      advancedNonLarge: false,
       opus: false,
       sol: false,
     },
@@ -263,20 +234,6 @@ const WORKSPACE_ACCESS_CASES: WorkspaceAccessCase[] = [
     },
   },
   {
-    name: "free-upgraded workspace with models_picker",
-    plan: createMockPlan(FREE_UPGRADED_PLAN_CODE),
-    withModelsPicker: true,
-    expected: {
-      standardNonLarge: true,
-      standardLarge: true,
-      featureGatedNonLarge: false,
-      featureGatedLarge: false,
-      advancedNonLarge: false,
-      opus: false,
-      sol: false,
-    },
-  },
-  {
     name: "legacy paid workspace without an entitlement",
     plan: createMockPlan(PRO_PLAN_SEAT_29_CODE),
     expected: {
@@ -316,20 +273,6 @@ const WORKSPACE_ACCESS_CASES: WorkspaceAccessCase[] = [
       advancedNonLarge: true,
       opus: true,
       sol: true,
-    },
-  },
-  {
-    name: "legacy paid workspace with models_picker",
-    plan: createMockPlan(PRO_PLAN_SEAT_29_CODE),
-    withModelsPicker: true,
-    expected: {
-      standardNonLarge: true,
-      standardLarge: true,
-      featureGatedNonLarge: false,
-      featureGatedLarge: false,
-      advancedNonLarge: false,
-      opus: false,
-      sol: false,
     },
   },
   {
@@ -374,20 +317,6 @@ const WORKSPACE_ACCESS_CASES: WorkspaceAccessCase[] = [
       sol: true,
     },
   },
-  {
-    name: "credit-priced workspace with models_picker",
-    plan: createMockPlan(CREDIT_PRICED_BUSINESS_PLAN_CODE),
-    withModelsPicker: true,
-    expected: {
-      standardNonLarge: true,
-      standardLarge: true,
-      featureGatedNonLarge: false,
-      featureGatedLarge: false,
-      advancedNonLarge: false,
-      opus: true,
-      sol: true,
-    },
-  },
 ];
 
 function getFeatureFlagsForAccessCase(
@@ -401,10 +330,6 @@ function getFeatureFlagsForAccessCase(
     if (featureFlag) {
       featureFlags.push(featureFlag);
     }
-  }
-
-  if (accessCase.withModelsPicker) {
-    featureFlags.push("models_picker");
   }
 
   return featureFlags;

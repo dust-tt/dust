@@ -26,7 +26,6 @@ export function ProjectConversationDataTable({
     <PokeDataTableConditionalFetch
       header="Conversations"
       owner={owner}
-      showSensitiveDataWarning={true}
       useSWRHook={useConversationsForProject}
     >
       {({ conversations, hasMore, isLoadingMore }) => (

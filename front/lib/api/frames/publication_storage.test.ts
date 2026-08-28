@@ -1,3 +1,4 @@
+import type { FramePublicationFunctionArtifact } from "@app/lib/api/frames/publication_storage";
 import {
   activateFramePublication,
   loadFramePublicationManifest,
@@ -12,10 +13,15 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { FrameManifestSchema } from "@app/types/api/frame_manifest";
 import {
+  getFramePublicationFunctionBundlePath,
+  getFramePublicationFunctionSchemaPath,
   getFramePublicationManifestPath,
   getFramePublicationSourcePath,
 } from "@app/types/api/frame_storage";
-import { frameV2ContentType } from "@app/types/files";
+import {
+  frameV2ContentType,
+  sandboxFunctionContentType,
+} from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -42,6 +48,19 @@ const manifest = FrameManifestSchema.parse({
   description: "Track tasks.",
 });
 
+const manifestWithFunction = FrameManifestSchema.parse({
+  version: 1,
+  name: "Task List",
+  description: "Track tasks.",
+  functions: [
+    {
+      name: "add-task",
+      description: "Add a task.",
+      entryPoint: "functions/add_task.ts",
+    },
+  ],
+});
+
 const sourceFiles = [
   {
     relativePath: "index.tsx",
@@ -55,6 +74,33 @@ const sourceFiles = [
   },
 ];
 
+const sourceFilesWithFunction = [
+  ...sourceFiles,
+  {
+    relativePath: "functions/add_task.ts",
+    content: Buffer.from("export async function run() {}"),
+    contentType: "text/typescript" as const,
+  },
+];
+
+const functionArtifacts = [
+  {
+    name: "add-task",
+    bundleCode: "export async function run() {}",
+    userIdentity: "workspace_user_required",
+    inputSchema: {
+      type: "object",
+      properties: { title: { type: "string" } },
+      required: ["title"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: { id: { type: "string" } },
+      required: ["id"],
+    },
+  },
+] satisfies FramePublicationFunctionArtifact[];
+
 beforeEach(() => {
   fileStorageMock.reset();
 });
@@ -65,6 +111,7 @@ describe("storeFramePublication", () => {
 
     const result = await storeFramePublication(auth, {
       frame,
+      functionArtifacts: [],
       manifest,
       sourceFiles,
     });
@@ -101,16 +148,129 @@ describe("storeFramePublication", () => {
     ).toBe(false);
   });
 
+  it("stores function artifacts before the manifest commit marker", async () => {
+    const { auth, frame, workspaceId } = await setupFrame();
+
+    const result = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest: manifestWithFunction,
+      sourceFiles: sourceFilesWithFunction,
+    });
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+
+    const identity = {
+      workspaceId,
+      frameId: frame.sId,
+      publicationId: result.value.publicationId,
+    };
+    const bundlePath = getFramePublicationFunctionBundlePath({
+      ...identity,
+      functionName: "add-task",
+    });
+    const schemaPath = getFramePublicationFunctionSchemaPath({
+      ...identity,
+      functionName: "add-task",
+    });
+    const savedPaths = fileStorageMock.saveFileCalls.map(
+      ({ filePath }) => filePath
+    );
+
+    expect(savedPaths).toContain(bundlePath);
+    expect(savedPaths).toContain(schemaPath);
+    expect(savedPaths.at(-1)).toBe(getFramePublicationManifestPath(identity));
+    expect(fileStorageMock.getObject(bundlePath)).toBe(
+      functionArtifacts[0].bundleCode
+    );
+    expect(fileStorageMock.getObject(schemaPath)).toBe(
+      JSON.stringify({
+        userIdentity: functionArtifacts[0].userIdentity,
+        inputSchema: functionArtifacts[0].inputSchema,
+        outputSchema: functionArtifacts[0].outputSchema,
+      })
+    );
+    expect(
+      fileStorageMock.saveFileCalls.find(
+        ({ filePath }) => filePath === bundlePath
+      )?.contentType
+    ).toBe(sandboxFunctionContentType);
+    expect(
+      fileStorageMock.saveFileCalls.find(
+        ({ filePath }) => filePath === schemaPath
+      )?.contentType
+    ).toBe("application/json");
+  });
+
   it("rejects a publication whose UI entry point is missing", async () => {
     const { auth, frame } = await setupFrame();
 
     const result = await storeFramePublication(auth, {
       frame,
+      functionArtifacts: [],
       manifest,
       sourceFiles: sourceFiles.slice(1),
     });
 
     expect(result.isErr() && result.error.code).toBe("invalid_source");
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("rejects a publication whose function entry point is missing", async () => {
+    const { auth, frame } = await setupFrame();
+
+    const result = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest: manifestWithFunction,
+      sourceFiles,
+    });
+
+    expect(result.isErr() && result.error.code).toBe("invalid_source");
+    expect(result.isErr() && result.error.message).toContain(
+      "add-task (functions/add_task.ts)"
+    );
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it.each([
+    {
+      name: "missing",
+      manifest: manifestWithFunction,
+      sourceFiles: sourceFilesWithFunction,
+      functionArtifacts: [],
+    },
+    {
+      name: "undeclared",
+      manifest,
+      sourceFiles,
+      functionArtifacts,
+    },
+    {
+      name: "duplicate",
+      manifest: manifestWithFunction,
+      sourceFiles: sourceFilesWithFunction,
+      functionArtifacts: [...functionArtifacts, ...functionArtifacts],
+    },
+  ])("rejects $name function artifacts before writing", async ({
+    manifest,
+    sourceFiles,
+    functionArtifacts,
+  }) => {
+    const { auth, frame } = await setupFrame();
+
+    const result = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest,
+      sourceFiles,
+    });
+
+    expect(result.isErr() && result.error.code).toBe(
+      "invalid_function_artifact"
+    );
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
@@ -122,6 +282,7 @@ describe("storeFramePublication", () => {
 
     const result = await storeFramePublication(auth, {
       frame,
+      functionArtifacts: [],
       manifest,
       sourceFiles: invalidSourceFiles,
     });
@@ -136,6 +297,7 @@ describe("storeFramePublication", () => {
 
     const result = await storeFramePublication(otherAuth, {
       frame,
+      functionArtifacts: [],
       manifest,
       sourceFiles,
     });
@@ -151,7 +313,12 @@ describe("storeFramePublication", () => {
     );
 
     await expect(
-      storeFramePublication(auth, { frame, manifest, sourceFiles })
+      storeFramePublication(auth, {
+        frame,
+        functionArtifacts: [],
+        manifest,
+        sourceFiles,
+      })
     ).rejects.toThrow("Simulated GCS write failure");
     expect(
       fileStorageMock.saveFileCalls.some(({ filePath }) =>
@@ -166,6 +333,7 @@ describe("Frame publication reads", () => {
     const { auth, frame } = await setupFrame();
     const stored = await storeFramePublication(auth, {
       frame,
+      functionArtifacts: [],
       manifest,
       sourceFiles,
     });
@@ -237,6 +405,7 @@ describe("Frame publication reads", () => {
     const { auth, frame } = await setupFrame();
     const stored = await storeFramePublication(auth, {
       frame,
+      functionArtifacts: [],
       manifest,
       sourceFiles,
     });
@@ -273,6 +442,7 @@ describe("activateFramePublication", () => {
     const { auth, frame } = await setupFrame();
     const stored = await storeFramePublication(auth, {
       frame,
+      functionArtifacts: [],
       manifest,
       sourceFiles,
     });
@@ -297,6 +467,7 @@ describe("activateFramePublication", () => {
     const { auth, frame } = await setupFrame();
     const stored = await storeFramePublication(auth, {
       frame,
+      functionArtifacts: [],
       manifest,
       sourceFiles,
     });
@@ -331,6 +502,7 @@ describe("publishFramePublication", () => {
 
     const published = await publishFramePublication(auth, {
       frame,
+      functionArtifacts: [],
       manifest,
       sourceFiles,
     });
@@ -345,17 +517,27 @@ describe("publishFramePublication", () => {
     );
   });
 
-  it("keeps the active publication when storage fails", async () => {
+  it("keeps the active publication when function artifact storage fails", async () => {
     const { auth, frame } = await setupFrame();
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
     await frame.setActiveFramePublication(activePublicationId);
     fileStorageMock.setFileSaveFails((filePath) =>
-      filePath.endsWith("/manifest.json")
+      filePath.endsWith("/schema.json")
     );
 
     await expect(
-      publishFramePublication(auth, { frame, manifest, sourceFiles })
+      publishFramePublication(auth, {
+        frame,
+        functionArtifacts,
+        manifest: manifestWithFunction,
+        sourceFiles: sourceFilesWithFunction,
+      })
     ).rejects.toThrow("Simulated GCS write failure");
+    expect(
+      fileStorageMock.saveFileCalls.some(({ filePath }) =>
+        filePath.endsWith("/manifest.json")
+      )
+    ).toBe(false);
     const reloaded = await FileResource.fetchById(auth, frame.sId);
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       activePublicationId

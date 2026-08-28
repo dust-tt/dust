@@ -293,25 +293,6 @@ describe("isModelAvailable", () => {
     ).toBe(false);
   });
 
-  it("should not grant advanced model access through models_picker", () => {
-    const model = createMockModel({
-      availableIfOneOf: { plansWithAdvancedModels: true },
-      largeModel: false,
-    });
-    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE, {
-      hasAdvancedModelAccess: false,
-    });
-
-    expect(
-      isModelAvailable(model, {
-        featureFlags: ["models_picker"],
-        plan,
-        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
-        region: TEST_REGION,
-      })
-    ).toBe(false);
-  });
-
   it("should return true when both plansWithAdvancedModels and featureFlag are set, with advanced model access", () => {
     const model = createMockModel({
       availableIfOneOf: {
@@ -392,7 +373,7 @@ describe("isModelReleased", () => {
 });
 
 describe("filterEnabledModels", () => {
-  it("excludes advanced models when models_picker is enabled without plan access", async () => {
+  it("excludes advanced models when the plan lacks advanced model access", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const model = createMockModel({
@@ -402,7 +383,7 @@ describe("filterEnabledModels", () => {
     });
 
     const result = filterEnabledModels([model], {
-      featureFlags: ["models_picker"],
+      featureFlags: [],
       plan: { ...auth.plan()!, hasAdvancedModelAccess: false },
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,
