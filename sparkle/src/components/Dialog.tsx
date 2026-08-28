@@ -32,7 +32,7 @@ const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     className={cn(
-      "fixed inset-0 z-50 duration-200 ease-emphasized data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:duration-150 motion-reduce:animate-none",
+      "fixed inset-0 z-50 ease-emphasized data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:animate-none",
       "bg-muted-foreground/75 dark:bg-muted-background/75",
       className
     )}
@@ -78,6 +78,13 @@ const growHeightClasses: Record<DialogHeightType, string> = {
 const DIALOG_VARIANTS = ["default", "command"] as const;
 type DialogVariantType = (typeof DIALOG_VARIANTS)[number];
 
+// The overlay fades in/out in lockstep with the content, so its duration
+// must match the content's duration per variant (see variantClasses below).
+const overlayVariantClasses: Record<DialogVariantType, string> = {
+  default: "duration-200 data-[state=closed]:duration-150",
+  command: "duration-150 data-[state=closed]:duration-100",
+};
+
 const variantClasses: Record<DialogVariantType, string> = {
   default: cn(
     "top-[50%] translate-y-[-50%] duration-200 ease-emphasized data-[state=closed]:duration-150 motion-reduce:animate-none",
@@ -86,7 +93,9 @@ const variantClasses: Record<DialogVariantType, string> = {
     "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
   ),
   command: cn(
-    "top-[20%] duration-200 ease-emphasized data-[state=closed]:duration-150 motion-reduce:animate-none",
+    // Command palette opens on every keyboard shortcut invocation, so it
+    // gets a snappier timing than the default modal variant.
+    "top-[20%] duration-150 ease-emphasized data-[state=closed]:duration-100 motion-reduce:animate-none",
     "data-[state=open]:animate-in data-[state=closed]:animate-out",
     "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
     "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
@@ -172,7 +181,9 @@ const DialogContent = React.forwardRef<
 
     return (
       <DialogPortal container={mountPortalContainer}>
-        <DialogOverlay />
+        <DialogOverlay
+          className={overlayVariantClasses[variant ?? "default"]}
+        />
         <FocusScope trapped={trapFocusScope} asChild>
           <DialogPrimitive.Content
             ref={ref}
