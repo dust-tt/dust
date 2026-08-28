@@ -10,6 +10,7 @@ import {
 } from "@app/components/model_picker/modelPickerTracking";
 import type {
   MakerGroup,
+  ModelPickerView,
   ModelTierId,
   Selection,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -109,11 +110,11 @@ export function ModelPicker({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
 
-  // Inline-expansion state, only used on width-constrained clients.
-  const [moreModelsExpanded, setMoreModelsExpanded] = useState(false);
-  const [expandedMaker, setExpandedMaker] = useState<ModelMakerIdType | null>(
-    null
-  );
+  // Drill-down navigation: "More models" and each maker replace the current
+  // dropdown content with the next step instead of opening a submenu, so the
+  // whole flow (root -> makers -> a maker's models) reads as one guided path.
+  const [view, setView] = useState<ModelPickerView>("root");
+  const [activeMaker, setActiveMaker] = useState<ModelMakerIdType | null>(null);
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
@@ -228,8 +229,8 @@ export function ModelPicker({
   const openMenu = () => {
     setIsOpen(true);
     setSearch("");
-    setMoreModelsExpanded(false);
-    setExpandedMaker(null);
+    setView("root");
+    setActiveMaker(null);
     if (trackingSurface) {
       trackModelPickerOpen({ surface: trackingSurface, clientType });
     }
@@ -240,11 +241,10 @@ export function ModelPicker({
   }
 
   // Picking a concrete model (or nudging its effort slider) must keep the menu
-  // and its open submenus visible so the effort can still be adjusted. The
-  // click briefly moves focus/pointer in a way Radix treats as an
-  // interaction-outside and dismisses the (sub)menu; we record the pick time
-  // and veto the close that immediately follows it (see `onOpenChange` and the
-  // submenu guards in `ModelPickerMoreModels`).
+  // visible so the effort can still be adjusted. The click briefly moves
+  // focus/pointer in a way Radix treats as an interaction-outside and
+  // dismisses the menu; we record the pick time and veto the close that
+  // immediately follows it (see `onOpenChange` below).
   const lastModelInteractionAtMsRef = useRef(0);
 
   const shouldBlockDismiss = () =>
@@ -276,6 +276,26 @@ export function ModelPicker({
       },
       "model"
     );
+  };
+
+  const onOpenMakers = () => {
+    setSearch("");
+    setView("makers");
+  };
+
+  const onSelectMaker = (makerId: ModelMakerIdType) => {
+    setActiveMaker(makerId);
+    setView("models");
+  };
+
+  const onBack = () => {
+    if (view === "models") {
+      setActiveMaker(null);
+      setView("makers");
+    } else if (view === "makers") {
+      setSearch("");
+      setView("root");
+    }
   };
 
   const onChangeEffort = (effort: ReasoningEffort) => {
@@ -365,12 +385,11 @@ export function ModelPicker({
         streams={streams}
         search={search}
         onSearchChange={setSearch}
-        moreModelsExpanded={moreModelsExpanded}
-        onToggleMoreModels={() => setMoreModelsExpanded((v) => !v)}
-        expandedMaker={expandedMaker}
-        onToggleMaker={(makerId) =>
-          setExpandedMaker((current) => (current === makerId ? null : makerId))
-        }
+        view={view}
+        activeMaker={activeMaker}
+        onOpenMakers={onOpenMakers}
+        onSelectMaker={onSelectMaker}
+        onBack={onBack}
         onSelectTier={onSelectTier}
         onSelectModel={onSelectModel}
         onChangeEffort={onChangeEffort}
