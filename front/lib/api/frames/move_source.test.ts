@@ -221,62 +221,98 @@ describe("moveFrameV2Source", () => {
     ).toMatchObject({ id: sandbox.id, status: "deleted" });
   });
 
-  it("atomically reserves one destination across concurrent Frame moves", async () => {
+  it("does not overwrite a destination object created during the move", async () => {
     const context = await setup();
-    const otherDirectoryPath = `conversation-${context.conversation.sId}/Other`;
-    const otherGcsDirectoryPath = `${getConversationFilesBasePath({
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/Collision`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
       workspaceId: context.workspace.sId,
       conversationId: context.conversation.sId,
-    })}Other`;
-    const otherFrame = await FileFactory.create(context.auth, null, {
-      contentType: frameV2ContentType,
-      fileName: FRAME_MANIFEST_FILE,
-      fileSize: Buffer.byteLength(manifest),
-      status: "created",
-      useCase: "conversation",
-      useCaseMetadata: { conversationId: context.conversation.sId },
-      mountFilePath: `${otherGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`,
-    });
-    await otherFrame.markFrameV2AsReadyFromMount(context.auth);
-    fileStorageMock.setFilesByPrefix((prefix) => {
-      const sourcePrefix = [
-        `${context.sourceGcsDirectoryPath}/`,
-        `${otherGcsDirectoryPath}/`,
-      ].find((candidate) => candidate === prefix);
-      return sourcePrefix
-        ? [
-            {
-              name: `${sourcePrefix}${FRAME_MANIFEST_FILE}`,
-              metadata: {
-                contentType: frameV2ContentType,
-                generation: "1",
-                md5Hash: "manifest",
-                size: String(Buffer.byteLength(manifest)),
-              },
-            },
-          ]
-        : null;
-    });
-    const destinationDirectoryPath = `conversation-${context.conversation.sId}/Destination`;
+    })}Collision`;
+    const destinationManifestPath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    fileStorageMock.setObject(destinationManifestPath, "raw destination");
+    fileStorageMock.setFileMetadata((filePath) =>
+      filePath === destinationManifestPath
+        ? {
+            contentType: frameV2ContentType,
+            generation: "1",
+            md5Hash: "raw",
+            size: "15",
+          }
+        : null
+    );
 
-    const results = await Promise.all([
-      moveFrameV2Source(context.auth, {
-        conversation: context.conversation,
-        destinationDirectoryPath,
-        sourceDirectoryPath: context.sourceDirectoryPath,
-      }),
-      moveFrameV2Source(context.auth, {
-        conversation: context.conversation,
-        destinationDirectoryPath,
-        sourceDirectoryPath: otherDirectoryPath,
-      }),
-    ]);
-
-    expect(results.filter((result) => result.isOk())).toHaveLength(1);
-    expect(results.filter((result) => result.isErr())).toHaveLength(1);
-    expect(results.find((result) => result.isErr())?.error).toMatchObject({
-      code: "conflict",
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
     });
+
+    expect(moved.isErr() && moved.error).toMatchObject({ code: "conflict" });
+    const reloaded = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reloaded?.mountFilePath).toBe(
+      `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
+    );
+    expect(fileStorageMock.getObject(destinationManifestPath)).toBe(
+      "raw destination"
+    );
+    expect(fileStorageMock.deleteCalls).not.toContainEqual(
+      expect.objectContaining({ filePath: destinationManifestPath })
+    );
+    expect(fileStorageMock.deleteCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          options: expect.objectContaining({
+            ifGenerationMatch: expect.any(String),
+          }),
+        }),
+      ])
+    );
+  });
+
+  it("keeps the recovery reservation when exact-generation cleanup fails", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/Retry`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}Retry`;
+    const destinationMountFilePath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    fileStorageMock.setCopyFileFails((sourcePath) =>
+      sourcePath.endsWith(`/${FRAME_MANIFEST_FILE}`)
+    );
+    fileStorageMock.setDeleteFails((filePath) =>
+      filePath.endsWith("/index.tsx")
+    );
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    expect(moved.isErr() && moved.error).toMatchObject({ code: "internal" });
+    const reloaded = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reloaded?.mountFilePath).toBe(destinationMountFilePath);
+    expect(reloaded?.useCaseMetadata?.pendingFrameSourceMove).toEqual({
+      destinationMountFilePath,
+      sourceMountFilePath: `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+    });
+    expect(fileStorageMock.deleteCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          filePath: `${destinationGcsDirectoryPath}/index.tsx`,
+          options: expect.objectContaining({
+            ifGenerationMatch: expect.any(String),
+          }),
+        }),
+      ])
+    );
   });
 
   it("resumes an interrupted move from its destination reservation", async () => {

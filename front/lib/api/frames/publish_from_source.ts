@@ -8,6 +8,10 @@ import {
   FramePublicationError,
   withFrameSourceLock,
 } from "@app/lib/api/frames/publication_storage";
+import {
+  MAX_FRAME_SOURCE_BYTES,
+  MAX_FRAME_SOURCE_FILE_COUNT,
+} from "@app/lib/api/frames/source_limits";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import type { PublishFrameError } from "@app/lib/api/viz/publish_frame";
@@ -31,8 +35,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 const FRAME_SOURCE_READ_CONCURRENCY = 8;
-const MAX_FRAME_SOURCE_FILE_COUNT = 1024;
-const MAX_FRAME_SOURCE_BYTES = 100 * 1024 * 1024;
 
 function frameError(code: FramePublicationError["code"], message: string) {
   return new Err(new FramePublicationError(code, message));
