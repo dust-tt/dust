@@ -22,11 +22,16 @@ bash dev/scripts/docker-run.sh --shell
 | Script | Role |
 |--------|------|
 | `install.sh` | `npm install` + lefthook |
+| `wait-for-workspace.sh` | Wait for the git tree (Cloud warm-fork race), then `--then` exec infra/apps |
 | `infra.sh` | Postgres/Redis/Qdrant/ES/Temporal + materialize 1Password + migrations |
 | `apps.sh` | Wait for infra, optional WorkOS seed, mprocs |
 | `up.sh` | `install?` → `infra` → `apps` (serial entry for laptop / non-Cursor agents) |
 | `refresh-op-env.sh` | Re-fetch 1Password Environment into `/tmp` for all shells |
 | `docker-run.sh` | Local container launcher |
+
+## Cursor Cloud `start` / `terminals`
+
+`.cursor/environment.json` points `start` and the mprocs terminal at `wait-for-workspace.sh --then …` (with a short `until [ -f … ]` bootstrap, because the waiter itself lives in the checkout). That avoids exit 127 when Cursor fires those commands before `/workspace` has the git tree on warm-fork `gitSetup: reuse`. Laptop `docker-run.sh` / `up.sh` do not use the waiter.
 
 ## Secrets
 
