@@ -14,6 +14,7 @@ import type {
   PatchPodMetadataResponseBody,
 } from "@app/types/api/projects/metadata";
 import { PatchPodMetadataBodySchema } from "@app/types/api/spaces";
+import { resolveCanonicalScopedPath } from "@app/types/mount_path";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -157,11 +158,27 @@ app.patch(
         });
       }
 
+      const existingMetadata = await ProjectMetadataResource.fetchBySpace(
+        auth,
+        space
+      );
+      const existingFrameTabPaths = new Set(
+        (existingMetadata?.frameTabs ?? [])
+          .map((tab) =>
+            resolveCanonicalScopedPath(tab.path, {
+              conversationId: null,
+              spaceId: space.sId,
+            })
+          )
+          .filter((path): path is string => path !== null)
+      );
+
       const validation = await validatePodFrameTabs(
         auth,
         space,
         body.frameTabs,
-        body.tabsOrder
+        body.tabsOrder,
+        { existingFrameTabPaths }
       );
       if (validation.isErr()) {
         return apiError(ctx, {
