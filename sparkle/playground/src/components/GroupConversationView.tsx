@@ -108,6 +108,7 @@ import { ConversationTopSection } from "./ConversationTopSection";
 import { EmptyState } from "./EmptyState";
 import { DataTable } from "./DataTableDnd";
 import { FilePreviewPanel } from "./FilePreviewPanel";
+import { FrameSheetHeader } from "./FrameSheetHeader";
 import {
   DATA_SOURCE_FILE_DRAG_MIME,
   DATA_SOURCE_FILE_NAME_DRAG_MIME,
@@ -1548,6 +1549,10 @@ export function GroupConversationView({
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSource | null>(null);
   const [isDocumentSheetOpen, setIsDocumentSheetOpen] = useState(false);
+  const [isFrameFullscreen, setIsFrameFullscreen] = useState(false);
+  const [pinnedBannerFileId, setPinnedBannerFileId] = useState<string | null>(
+    null
+  );
 
   // Members tab state
   const [membersSearchText, setMembersSearchText] = useState("");
@@ -1839,11 +1844,6 @@ export function GroupConversationView({
   }, [space.id, isNew, spaceMemberIds, users, avatarCount]);
 
   const hasHistory = expandedConversations.length > 0;
-  const projectPageTitlePrefix = space.name.endsWith("s")
-    ? `${space.name}'`
-    : `${space.name}'s`;
-  const getProjectPageTitle = (pageTitle: string) =>
-    `${projectPageTitlePrefix} ${pageTitle}`;
 
   const conversationTitleById = useMemo(() => {
     const titleMap = new Map<string, string>();
@@ -3613,7 +3613,7 @@ export function GroupConversationView({
           value="conversations"
           topBox={
             <>
-              {renderPodGreeting("Conversations")}
+              {renderPodGreeting("Chat")}
               <InputBar
                 autoFocus
                 placeholder="What are we working on?"
@@ -4527,12 +4527,12 @@ export function GroupConversationView({
         )}
 
         {/* Settings Tab */}
-        <GroupConversationTabContent value="settings" contentClassName="gap-8">
-          {/* pod Name Section */}
-          <div className="flex gap-2">
-            <h3 className="heading-lg flex-1">
-              {getProjectPageTitle("settings")}
-            </h3>
+        <GroupConversationTabContent
+          value="settings"
+          contentClassName="gap-8"
+          topBox={renderPodGreeting("Settings")}
+        >
+          <div className="flex justify-end">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" icon={DotsHorizontal} />
@@ -4571,6 +4571,7 @@ export function GroupConversationView({
                 }}
                 placeholder="Enter room name"
                 containerClassName="flex-1"
+                className="has-[input:not(:placeholder-shown)]:border-border-form [&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-background"
               />
               {isEditingName && (
                 <>
@@ -4604,6 +4605,7 @@ export function GroupConversationView({
                 }}
                 placeholder="Enter room description"
                 containerClassName="flex-1"
+                className="has-[input:not(:placeholder-shown)]:border-border-form [&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-background"
               />
               {isEditingDescription && (
                 <>
@@ -4630,7 +4632,7 @@ export function GroupConversationView({
 
           <div className="flex w-full flex-col gap-2">
             <h3 className="heading-lg">Visibility</h3>
-            <div className="flex items-start items-center justify-between gap-4 border-y border py-4">
+            <div className="flex items-start items-center justify-between gap-4 border-y py-4">
               <div className="flex flex-col">
                 <div className="heading-sm text-foreground">
                   Opened to everyone
@@ -4690,7 +4692,7 @@ export function GroupConversationView({
             )}
           </div>
 
-          <div className="flex w-full flex-col gap-8 border-t border pt-8">
+          <div className="flex w-full flex-col gap-8 border-t pt-8">
             <div className="flex w-full flex-col gap-3">
               <h3 className="heading-lg">Danger Zone</h3>
               <h4 className="heading-base">Archive</h4>
@@ -4989,15 +4991,71 @@ export function GroupConversationView({
           setIsDocumentSheetOpen(open);
           if (!open) {
             setSelectedDataSource(null);
+            setIsFrameFullscreen(false);
           }
         }}
       >
-        <SheetContent size="3xl" side="right">
-          <SheetContainer>
-            {selectedDataSource ? (
-              <FilePreviewPanel dataSource={selectedDataSource} />
-            ) : null}
-          </SheetContainer>
+        <SheetContent
+          size="3xl"
+          side="right"
+          className={cn(
+            selectedDataSource?.fileType === "frame" &&
+              isFrameFullscreen &&
+              "inset-0 sm:max-w-none"
+          )}
+          onEscapeKeyDown={(event) => {
+            if (selectedDataSource?.fileType === "frame" && isFrameFullscreen) {
+              event.preventDefault();
+              setIsFrameFullscreen(false);
+            }
+          }}
+        >
+          {selectedDataSource?.fileType === "frame" ? (
+            <>
+              <FrameSheetHeader
+                title={selectedDataSource.fileName}
+                isFullscreen={isFrameFullscreen}
+                isPinnedAsBanner={pinnedBannerFileId === selectedDataSource.id}
+                onToggleFullscreen={() =>
+                  setIsFrameFullscreen((previous) => !previous)
+                }
+                onAddToTopBar={
+                  onAddFileToTopbar
+                    ? () => onAddFileToTopbar(selectedDataSource.id)
+                    : undefined
+                }
+                onAddAsBanner={() =>
+                  setPinnedBannerFileId((previous) =>
+                    previous === selectedDataSource.id
+                      ? null
+                      : selectedDataSource.id
+                  )
+                }
+              />
+              <SheetContainer isListSelector noScroll>
+                <FilePreviewPanel
+                  dataSource={selectedDataSource}
+                  variant="document"
+                />
+              </SheetContainer>
+            </>
+          ) : (
+            <>
+              <SheetHeader>
+                <SheetTitle>
+                  {selectedDataSource?.fileName ?? "File"}
+                </SheetTitle>
+              </SheetHeader>
+              <SheetContainer isListSelector noScroll>
+                {selectedDataSource ? (
+                  <FilePreviewPanel
+                    dataSource={selectedDataSource}
+                    variant="document"
+                  />
+                ) : null}
+              </SheetContainer>
+            </>
+          )}
         </SheetContent>
       </Sheet>
 

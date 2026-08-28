@@ -85,7 +85,7 @@ export function PanelTopBar({
   return (
     <header
       className={[
-        "flex h-[52px] flex-none items-center justify-between gap-2 overflow-hidden whitespace-nowrap border-b px-2 transition-colors duration-200",
+        "group/topbar flex h-[52px] flex-none items-center justify-between gap-2 overflow-hidden whitespace-nowrap border-b px-2 transition-colors duration-200",
         hasBorder ? "border-separator" : "border-transparent",
       ].join(" ")}
     >

@@ -857,9 +857,7 @@ DataTable.Row = function Row({
           "group/dt-row justify-center transition-colors duration-300 ease-out",
           !hideBottomBorder && ["border-b"],
           (onClick || onDoubleClick) &&
-            props["data-selected"] &&
-            rowData?.draggable &&
-            "cursor-grab active:cursor-grabbing",
+            "cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:bg-muted-background",
           rowData?.isDragging && "opacity-50",
           rowData?.isDropHighlight && widthClassName,
           className

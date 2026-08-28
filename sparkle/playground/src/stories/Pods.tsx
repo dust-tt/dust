@@ -10,11 +10,16 @@ import {
   Cube01,
   CubeOutline,
   Dialog,
+  DialogContainer,
   DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSearchbar,
   DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
@@ -26,6 +31,7 @@ import {
   DropdownMenuTrigger,
   Edit04,
   Eye,
+  File02,
   Heart,
   Lightbulb04,
   Link01,
@@ -60,7 +66,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgentBuilderView } from "../components/AgentBuilderView";
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
-import { FreeButtonSwitch } from "../components/FreeButtonSwitch";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
 import {
@@ -93,7 +98,10 @@ import {
   type Space,
   type User,
 } from "../data";
-import { getDataSourcesBySpaceId } from "../data/dataSources";
+import {
+  getDataSourceIcon,
+  getDataSourcesBySpaceId,
+} from "../data/dataSources";
 import { getRandomGreetingForName } from "../data/greetings";
 import {
   buildPodTabOptions,
@@ -120,6 +128,11 @@ type PodTabsState = {
 };
 
 type SelectedCitation = { title: string; icon?: string };
+
+type PendingTopbarFile = {
+  id: string;
+  fileName: string;
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -223,12 +236,18 @@ function Pods() {
   const [draggingPodFileId, setDraggingPodFileId] = useState<string | null>(
     null
   );
-  const [draggingPodFileName, setDraggingPodFileName] = useState<string | null>(
-    null
-  );
   const [fileToRevealInKnowledge, setFileToRevealInKnowledge] = useState<
     string | null
   >(null);
+  const [isAddFileMenuOpen, setIsAddFileMenuOpen] = useState(false);
+  const [addFileSearch, setAddFileSearch] = useState("");
+  const [pendingTopbarFile, setPendingTopbarFile] =
+    useState<PendingTopbarFile | null>(null);
+  const [tabContextMenu, setTabContextMenu] = useState<{
+    value: string;
+    x: number;
+    y: number;
+  } | null>(null);
 
   // ── Sidebar UI state ──────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
@@ -440,31 +459,6 @@ function Pods() {
     });
   }, [podContext]);
 
-  const handlePodTabReorder = useCallback(
-    (nextOptions: PodTabOption[]) => {
-      if (!podContext) {
-        return;
-      }
-
-      const mainTabOrder = nextOptions
-        .filter((option) => option.pinned !== "end")
-        .map((option) => option.value);
-
-      setPodTabsBySpaceId((prev) => {
-        const existing = prev.get(podContext.spaceId) ?? {
-          mainTabOrder: getDefaultMainTabOrder(podContext.variant),
-          dynamicFileTabs: [],
-        };
-
-        return new Map(prev).set(podContext.spaceId, {
-          ...existing,
-          mainTabOrder,
-        });
-      });
-    },
-    [podContext]
-  );
-
   const handlePodFileDrop = useCallback(
     (fileId: string) => {
       if (!podContext) {
@@ -509,18 +503,13 @@ function Pods() {
       });
       setActivePodTab(fileTabValue);
       setDraggingPodFileId(null);
-      setDraggingPodFileName(null);
     },
     [podContext, setActivePodTab]
   );
 
-  const handlePodFileDragChange = useCallback(
-    (fileId: string | null, fileName?: string | null) => {
-      setDraggingPodFileId(fileId);
-      setDraggingPodFileName(fileName ?? null);
-    },
-    []
-  );
+  const handlePodFileDragChange = useCallback((fileId: string | null) => {
+    setDraggingPodFileId(fileId);
+  }, []);
 
   const handlePodRemoveTab = useCallback(
     (tabValue: string) => {
@@ -591,6 +580,32 @@ function Pods() {
       };
     });
   }, [basePodTabOptions, handlePodRemoveTab, handleShowFileInFiles]);
+
+  const addablePodFiles = useMemo(() => {
+    if (!podContext) {
+      return [];
+    }
+
+    const pinnedIds = new Set(dynamicFileTabIds);
+    return getDataSourcesBySpaceId(podContext.spaceId).filter(
+      (item) => item.kind === "file" && !pinnedIds.has(item.id)
+    );
+  }, [dynamicFileTabIds, podContext]);
+
+  const filteredAddablePodFiles = useMemo(() => {
+    const query = addFileSearch.trim().toLowerCase();
+    if (!query) {
+      return addablePodFiles;
+    }
+
+    return addablePodFiles.filter((file) =>
+      file.fileName.toLowerCase().includes(query)
+    );
+  }, [addFileSearch, addablePodFiles]);
+
+  const tabContextMenuOption = tabContextMenu
+    ? podTabOptions.find((option) => option.value === tabContextMenu.value)
+    : undefined;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleRoomNameNext = (name: string, isPublic: boolean) => {
@@ -872,16 +887,162 @@ function Pods() {
   );
 
   const podTopBarLeft = podContext ? (
-    <FreeButtonSwitch
-      value={activePodTab}
-      onValueChange={setActivePodTab}
-      options={podTabOptions}
-      onOptionsReorder={handlePodTabReorder}
-      onDropCreateOption={handlePodFileDrop}
-      onRemoveOption={handlePodRemoveTab}
-      isFileDragActive={draggingPodFileId !== null}
-      draggingFileLabel={draggingPodFileName}
-    />
+    <div
+      className={
+        "flex min-w-0 flex-1 items-center gap-0.5 rounded-lg " +
+        (draggingPodFileId ? "bg-highlight-50" : "")
+      }
+      onDragOver={(event) => {
+        if (draggingPodFileId) {
+          event.preventDefault();
+        }
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        if (draggingPodFileId) {
+          handlePodFileDrop(draggingPodFileId);
+        }
+      }}
+    >
+      <NavTabPill
+        value={activePodTab}
+        onValueChange={setActivePodTab}
+        className="min-w-0 overflow-hidden"
+      >
+        <NavTabPillList>
+          {podTabOptions.map((option) => {
+            if (!option.icon) {
+              return null;
+            }
+
+            return (
+              <NavTabPillTrigger
+                key={option.value}
+                value={option.value}
+                icon={option.icon}
+                aria-label={option.tooltip ?? option.label}
+                onContextMenu={(event) => {
+                  if (!option.contextMenuItems?.length) {
+                    return;
+                  }
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setTabContextMenu({
+                    value: option.value,
+                    x: event.clientX,
+                    y: event.clientY,
+                  });
+                }}
+              >
+                {option.label}
+              </NavTabPillTrigger>
+            );
+          })}
+        </NavTabPillList>
+      </NavTabPill>
+      <DropdownMenu
+        modal={false}
+        open={isAddFileMenuOpen}
+        onOpenChange={(open) => {
+          setIsAddFileMenuOpen(open);
+          if (!open) {
+            setAddFileSearch("");
+          }
+        }}
+      >
+        <DropdownMenuTrigger asChild>
+          <Button
+            size="sm"
+            variant="ghost-secondary"
+            icon={Plus}
+            tooltip="Add file to top bar"
+            className={
+              "shrink-0 transition-opacity duration-150 " +
+              (isAddFileMenuOpen
+                ? "opacity-100"
+                : "opacity-0 group-hover/topbar:opacity-100 focus-within:opacity-100")
+            }
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          className="w-[280px]"
+          dropdownHeaders={
+            addablePodFiles.length > 0 ? (
+              <DropdownMenuSearchbar
+                autoFocus
+                name="add-file-search"
+                placeholder="Search files"
+                value={addFileSearch}
+                onChange={setAddFileSearch}
+              />
+            ) : undefined
+          }
+        >
+          {addablePodFiles.length === 0 ? (
+            <div className="flex h-16 items-center justify-center px-3 text-sm text-muted-foreground">
+              No files to add
+            </div>
+          ) : filteredAddablePodFiles.length === 0 ? (
+            <div className="flex h-16 items-center justify-center px-3 text-sm text-muted-foreground">
+              No files found
+            </div>
+          ) : (
+            filteredAddablePodFiles.map((file) => (
+              <DropdownMenuItem
+                key={file.id}
+                label={file.fileName}
+                icon={getDataSourceIcon(file) ?? File02}
+                onClick={() => {
+                  setIsAddFileMenuOpen(false);
+                  setAddFileSearch("");
+                  setPendingTopbarFile({
+                    id: file.id,
+                    fileName: file.fileName,
+                  });
+                }}
+              />
+            ))
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {tabContextMenu && tabContextMenuOption?.contextMenuItems && (
+        <DropdownMenu
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setTabContextMenu(null);
+            }
+          }}
+          modal
+        >
+          <DropdownMenuPortal>
+            <DropdownMenuContent
+              align="start"
+              className="whitespace-nowrap"
+              style={{
+                position: "fixed",
+                left: tabContextMenu.x,
+                top: tabContextMenu.y,
+              }}
+            >
+              {tabContextMenuOption.contextMenuItems.map((item) => (
+                <DropdownMenuItem
+                  key={item.label}
+                  label={item.label}
+                  icon={item.icon}
+                  variant={item.variant}
+                  onClick={() => {
+                    item.onClick?.();
+                    setTabContextMenu(null);
+                  }}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenu>
+      )}
+    </div>
   ) : null;
 
   const podTopBarRight = (() => {
@@ -1719,6 +1880,41 @@ function Pods() {
               onClose={() => setSelectedTemplateForBuilder(null)}
             />
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={pendingTopbarFile !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingTopbarFile(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Want to add to the top?</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            {pendingTopbarFile
+              ? `${pendingTopbarFile.fileName} will be added to the top bar.`
+              : null}
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "No",
+              variant: "outline",
+            }}
+            rightButtonProps={{
+              label: "Yes",
+              variant: "highlight",
+              onClick: () => {
+                if (pendingTopbarFile) {
+                  handlePodFileDrop(pendingTopbarFile.id);
+                  setPendingTopbarFile(null);
+                }
+              },
+            }}
+          />
         </DialogContent>
       </Dialog>
       <InviteUsersScreen
