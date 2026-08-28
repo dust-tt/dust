@@ -20,11 +20,10 @@ if ! command -v bacon >/dev/null 2>&1; then
   exit 1
 fi
 
-# Refresh materialized env (picks up new 1Password secrets + DEV_WORKOS_* from this terminal).
+# Refresh materialized 1Password env (Cursor runtime secrets are already in this process).
 materialize_dev_environment || log "1Password env not loaded; using defaults + host secrets only"
 # shellcheck disable=SC1090
 source "${DUST_SHELL_ENV_FILE}"
-export_op_runtime_secrets
 
 bash "${SCRIPT_DIR}/wait-for-infra.sh" || {
   log "Infra is not ready; fix start-infra first (see ${DUST_INFRA_LOG_DIR}/)"
