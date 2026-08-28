@@ -10,7 +10,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it } from "vitest";
@@ -41,9 +41,9 @@ const TEST_TOOLS_METADATA = [
 
 const handlers: ToolHandlers<typeof TEST_TOOLS_METADATA> = {
   guarded_tool: async (_params, { auth }) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const guard = workspaceManagerGuard(auth);
+    if (guard.isErr()) {
+      return guard;
     }
     return new Ok([{ type: "text" as const, text: "guarded ok" }]);
   },

@@ -14,6 +14,8 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { hasNoRequiredProperties } from "@app/lib/utils/json_schemas";
 import type { OAuthProvider } from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -25,31 +27,39 @@ export function makeInternalMCPServer(
   return new McpServer(serverInfo);
 }
 
-// Returns an MCPError when the caller is neither a workspace manager nor an
-// admin, null otherwise. For internal tools that expose workspace-wide data and
+// Returns an Err(MCPError) when the caller is neither a workspace manager nor an
+// admin, Ok(null) otherwise. For internal tools that expose workspace-wide data and
 // must enforce access independently of skill/agent/server visibility.
-export function workspaceManagerGuard(auth: Authenticator): MCPError | null {
+export function workspaceManagerGuard(
+  auth: Authenticator
+): Result<null, MCPError> {
   if (!auth.isManager()) {
-    return new MCPError(
-      "This tool is restricted to workspace admins and managers.",
-      {
-        tracked: false,
-      }
+    return new Err(
+      new MCPError(
+        "This tool is restricted to workspace admins and managers.",
+        {
+          tracked: false,
+        }
+      )
     );
   }
-  return null;
+  return new Ok(null);
 }
 
-// Returns an MCPError when the caller is not a workspace admin, null otherwise. For internal
-// tools whose scope goes beyond what a manager may see, e.g. unpublished agents belonging to
-// other members.
-export function workspaceAdminGuard(auth: Authenticator): MCPError | null {
+// Returns an Err(MCPError) when the caller is not a workspace admin, Ok(null) otherwise. For
+// internal tools whose scope goes beyond what a manager may see, e.g. unpublished agents
+// belonging to other members.
+export function workspaceAdminGuard(
+  auth: Authenticator
+): Result<null, MCPError> {
   if (!auth.isAdmin()) {
-    return new MCPError("This tool is restricted to workspace admins.", {
-      tracked: false,
-    });
+    return new Err(
+      new MCPError("This tool is restricted to workspace admins.", {
+        tracked: false,
+      })
+    );
   }
-  return null;
+  return new Ok(null);
 }
 
 export function makePersonalAuthenticationError(

@@ -14,6 +14,7 @@ import {
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentsGetViewType } from "@app/types/assistant/agent";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 function resolveAgentView(view: AgentViewType): {
@@ -42,18 +43,20 @@ function resolveAgentView(view: AgentViewType): {
 function guardAgentView(
   auth: Authenticator,
   view: AgentViewType
-): MCPError | null {
+): Result<null, MCPError> {
   if (view === "all_unrestricted") {
     return workspaceAdminGuard(auth);
   }
   // `list` filters on the caller's own agents, so it cannot run without one.
   if (view === "list" && !auth.user()) {
-    return new MCPError(
-      "The 'list' view requires an interactive user; use 'all' instead.",
-      { tracked: false }
+    return new Err(
+      new MCPError(
+        "The 'list' view requires an interactive user; use 'all' instead.",
+        { tracked: false }
+      )
     );
   }
-  return null;
+  return new Ok(null);
 }
 
 export async function listAgents(
@@ -70,9 +73,9 @@ export async function listAgents(
   },
   { auth }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const viewDenied = guardAgentView(auth, view);
-  if (viewDenied) {
-    return new Err(viewDenied);
+  const viewGuard = guardAgentView(auth, view);
+  if (viewGuard.isErr()) {
+    return viewGuard;
   }
 
   const { agentsGetView, dangerouslySkipPermissionFiltering } =

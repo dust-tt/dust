@@ -134,9 +134,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const guard = workspaceManagerGuard(auth);
+    if (guard.isErr()) {
+      return guard;
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -203,9 +203,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const guard = workspaceManagerGuard(auth);
+    if (guard.isErr()) {
+      return guard;
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -272,9 +272,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const guard = workspaceManagerGuard(auth);
+    if (guard.isErr()) {
+      return guard;
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -341,9 +341,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const guard = workspaceManagerGuard(auth);
+    if (guard.isErr()) {
+      return guard;
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -399,9 +399,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
   },
 
   get_agent_details: async ({ agentId }, { auth }) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const guard = workspaceManagerGuard(auth);
+    if (guard.isErr()) {
+      return guard;
     }
 
     const agents = await getAgentConfigurations(auth, {
@@ -470,9 +470,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const guard = workspaceManagerGuard(auth);
+    if (guard.isErr()) {
+      return guard;
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -537,9 +537,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const guard = workspaceManagerGuard(auth);
+    if (guard.isErr()) {
+      return guard;
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -611,9 +611,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const guard = workspaceManagerGuard(auth);
+    if (guard.isErr()) {
+      return guard;
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -681,9 +681,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const guard = workspaceManagerGuard(auth);
+    if (guard.isErr()) {
+      return guard;
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -764,9 +764,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const guard = workspaceManagerGuard(auth);
+    if (guard.isErr()) {
+      return guard;
     }
 
     const window = resolveTimeWindow(
@@ -900,9 +900,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const guard = workspaceManagerGuard(auth);
+    if (guard.isErr()) {
+      return guard;
     }
 
     const window = resolveTimeWindow(
@@ -986,9 +986,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     { dimension, limit, ...input },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const guard = workspaceManagerGuard(auth);
+    if (guard.isErr()) {
+      return guard;
     }
 
     const window = resolveTimeWindow(input);

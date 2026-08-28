@@ -295,9 +295,9 @@ export async function listWorkspaceMembers(
   },
   { auth }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const denied = workspaceManagerGuard(auth);
-  if (denied) {
-    return new Err(denied);
+  const guard = workspaceManagerGuard(auth);
+  if (guard.isErr()) {
+    return guard;
   }
 
   const filterCount = [userIds, jobType, groupId].filter(Boolean).length;
