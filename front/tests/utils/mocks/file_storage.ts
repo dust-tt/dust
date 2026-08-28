@@ -305,8 +305,10 @@ class FileStorageMock {
       copy: vi.fn().mockResolvedValue(undefined),
       createReadStream: vi.fn(() => {
         this._readStreamCalls.push(filePath ?? "unknown");
-        const content = this._contentForPath(filePath ?? "");
-        if (content !== null) {
+        const path = filePath ?? "";
+        const content =
+          this._objectStore.get(path) ?? this._contentForPath(path);
+        if (content !== null && content !== undefined) {
           return Readable.from([Buffer.from(content, "utf8")]);
         }
         return new PassThrough();
