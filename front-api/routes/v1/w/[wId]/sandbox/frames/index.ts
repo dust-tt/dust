@@ -16,6 +16,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
+import deleteFrame from "./delete";
 import move from "./move";
 import register from "./register";
 
@@ -69,6 +70,7 @@ function frameErrorStatus(error: PublishFrameFromSourceError): 400 | 403 | 500 {
 const app = sandboxApp();
 
 app.use("*", sandboxAuth({ allowedTokenKinds: ["action"] }));
+app.route("/delete", deleteFrame);
 app.route("/move", move);
 app.route("/register", register);
 

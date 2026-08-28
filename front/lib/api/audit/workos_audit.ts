@@ -176,6 +176,7 @@ export const AUDIT_ACTIONS = [
   // Files.
   "file.moved",
   "frame.authorized_files_updated",
+  "frame.deleted",
   "frame.deleted_admin",
   "frame.email_grant_added",
   "frame.email_grant_revoked",

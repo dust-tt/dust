@@ -1,4 +1,5 @@
 mod create;
+mod delete;
 mod move_frame;
 mod publish;
 mod register;
@@ -9,6 +10,7 @@ use anyhow::{bail, Context};
 use clap::Subcommand;
 
 pub use create::run as cmd_frame_create;
+pub use delete::run as cmd_frame_delete;
 pub use move_frame::run as cmd_frame_move;
 pub use publish::run as cmd_frame_publish;
 pub use register::run as cmd_frame_register;
@@ -27,6 +29,11 @@ pub enum FrameCommand {
         /// Frame description
         #[arg(long, default_value = "")]
         description: String,
+    },
+    /// Permanently delete a registered Frame, its source folder, and owned runtime data
+    Delete {
+        /// Existing Frame folder under /files
+        directory: PathBuf,
     },
     /// Register an existing Frame manifest and assign its stable identity
     Register {

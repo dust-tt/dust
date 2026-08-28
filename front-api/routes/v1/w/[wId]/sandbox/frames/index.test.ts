@@ -74,6 +74,21 @@ function requestFrameMove(
   });
 }
 
+function requestFrameDelete(
+  workspaceId: string,
+  token: string,
+  sourceDirectoryPath: string
+) {
+  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/delete`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ sourceDirectoryPath }),
+  });
+}
+
 async function setup({ registered = true }: { registered?: boolean } = {}) {
   const context = await createSandboxTokenTestContext();
   await FeatureFlagFactory.basic(context.auth, "frames_v2");
@@ -238,6 +253,33 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     expect(frame?.toScopedPath(context.auth)).toBe(
       `${destinationDirectoryPath}/${FRAME_MANIFEST_FILE}`
     );
+  });
+
+  it("deletes a registered Frames v2 package through the sandbox token", async () => {
+    const context = await setup();
+    assert(context.frame);
+    await context.frame.markFrameV2AsReadyFromMount(context.auth);
+    fileStorageMock.setFileExists((filePath) => filePath.endsWith("/"));
+    const sourceDirectoryPath = context.manifestPath.replace(
+      `/${FRAME_MANIFEST_FILE}`,
+      ""
+    );
+
+    const response = await requestFrameDelete(
+      context.workspace.sId,
+      context.token,
+      sourceDirectoryPath
+    );
+
+    const deleted = await response.json();
+    expect(response.status, JSON.stringify(deleted)).toBe(200);
+    expect(deleted).toEqual({
+      frameId: context.frame.sId,
+      sourceDirectoryPath,
+    });
+    await expect(
+      FileResource.fetchById(context.auth, context.frame.sId)
+    ).resolves.toBeNull();
   });
 
   it("publishes a legacy Frame through its existing publication flow", async () => {

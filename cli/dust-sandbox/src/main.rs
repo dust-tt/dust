@@ -34,7 +34,7 @@ enum Commands {
         #[command(subcommand)]
         command: commands::db::DbCommand,
     },
-    /// Create, register, and publish Frames
+    /// Manage Frames
     Frame {
         #[command(subcommand)]
         command: commands::frame::FrameCommand,
@@ -136,6 +136,9 @@ async fn run() -> anyhow::Result<()> {
                 name,
                 description,
             } => commands::cmd_frame_create(&directory, name.as_deref(), &description).await?,
+            commands::frame::FrameCommand::Delete { directory } => {
+                commands::cmd_frame_delete(&directory).await?
+            }
             commands::frame::FrameCommand::Register { manifest } => {
                 commands::cmd_frame_register(&manifest).await?
             }
@@ -526,6 +529,29 @@ mod tests {
                 );
             }
             Commands::Frame { .. } => panic!("expected move"),
+            _ => panic!("expected frame"),
+        }
+    }
+
+    #[test]
+    fn frame_delete_parses() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "frame",
+            "delete",
+            "/files/conversation-conv_123/Status",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Frame {
+                command: commands::frame::FrameCommand::Delete { directory },
+            } => {
+                assert_eq!(
+                    directory,
+                    std::path::PathBuf::from("/files/conversation-conv_123/Status")
+                );
+            }
+            Commands::Frame { .. } => panic!("expected delete"),
             _ => panic!("expected frame"),
         }
     }
