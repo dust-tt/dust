@@ -20,6 +20,40 @@ import type {
 } from "@app/types/assistant/models/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
+export class AgentModel extends WorkspaceAwareModel<AgentModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare sId: string;
+}
+
+AgentModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "agent",
+    sequelize: frontSequelize,
+    indexes: [
+      { fields: ["sId"], unique: true },
+      { fields: ["workspaceId"], concurrently: true },
+    ],
+  }
+);
+
 /**
  * Agent configuration
  */
@@ -29,6 +63,7 @@ export class AgentConfigurationModel extends WorkspaceAwareModel<AgentConfigurat
 
   declare sId: string;
   declare version: number;
+  declare agentId: ForeignKey<AgentModel["id"]> | null;
 
   declare status: AgentStatus;
   declare scope: Exclude<AgentConfigurationScope, "global">;
@@ -86,6 +121,10 @@ AgentConfigurationModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
+    },
+    agentId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     status: {
       type: DataTypes.STRING,
@@ -203,6 +242,7 @@ AgentConfigurationModel.init(
       },
       { fields: ["sId"] },
       { fields: ["sId", "version"], unique: true },
+      { fields: ["agentId"], concurrently: true },
       { fields: ["workspaceId", "authorId", "sId"] },
       {
         name: "agent_configuration_unique_active_name",
@@ -216,6 +256,15 @@ AgentConfigurationModel.init(
     ],
   }
 );
+
+AgentModel.hasMany(AgentConfigurationModel, {
+  foreignKey: { name: "agentId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+AgentConfigurationModel.belongsTo(AgentModel, {
+  foreignKey: { name: "agentId", allowNull: true },
+  onDelete: "RESTRICT",
+});
 
 // Agent config <> Author
 UserModel.hasMany(AgentConfigurationModel, {
