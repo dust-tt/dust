@@ -13,6 +13,8 @@ import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
+import { expandMaxTierName } from "@app/lib/client/model_tiers";
+import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import {
   usePokeAwuPoolSummary,
@@ -20,8 +22,14 @@ import {
 } from "@app/poke/swr/credits";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeGroups } from "@app/poke/swr/groups";
+import {
+  usePokeGroupAllowedModelTiers,
+  usePokeUserAllowedModelTiers,
+  usePokeWorkspaceAllowedModelTiers,
+} from "@app/poke/swr/model_tiers";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
 import type { AwuPoolCycleBreakdown } from "@app/types/api/credits/awu_pool_summary";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { isCapEligibleGroupKind } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";
 import {
@@ -236,6 +244,40 @@ export function PoolUsagePage() {
     (group) => group.sId === groupFilter
   )?.name;
 
+  const { users: userAllowedModelTiers } = usePokeUserAllowedModelTiers({
+    owner,
+  });
+  const { groups: groupAllowedModelTiers } = usePokeGroupAllowedModelTiers({
+    owner,
+  });
+  const { maxTierName: workspaceMaxTierName } =
+    usePokeWorkspaceAllowedModelTiers({ owner });
+  const workspaceAllowedModelTiers = useMemo(
+    () => expandMaxTierName(workspaceMaxTierName ?? DEFAULT_MAX_MODEL_TIER),
+    [workspaceMaxTierName]
+  );
+  const userAllowedModelTiersByUserId = useMemo(() => {
+    const map: Record<string, ModelsTierName[]> = {};
+    for (const entry of userAllowedModelTiers) {
+      map[entry.userId] = expandMaxTierName(entry.maxTierName);
+    }
+    return map;
+  }, [userAllowedModelTiers]);
+  const groupModelTiersByGroupId = useMemo(() => {
+    const map: Record<string, ModelsTierName[]> = {};
+    for (const entry of groupAllowedModelTiers) {
+      map[entry.groupId] = expandMaxTierName(entry.maxTierName);
+    }
+    return map;
+  }, [groupAllowedModelTiers]);
+  const groupNameToId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const group of allGroups) {
+      map.set(group.name, group.sId);
+    }
+    return map;
+  }, [allGroups]);
+
   const seatFilterDropdown = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -370,7 +412,12 @@ export function PoolUsagePage() {
                 sorting={sorting}
                 setSorting={handleSetSorting}
                 variant="compact"
-                showGroupsColumn={groups.length > 0}
+                showGroupsColumn={false}
+                showModelTiersColumn
+                userAllowedModelTiersByUserId={userAllowedModelTiersByUserId}
+                groupModelTiersByGroupId={groupModelTiersByGroupId}
+                workspaceAllowedModelTiers={workspaceAllowedModelTiers}
+                groupNameToId={groupNameToId}
               />
             </Page.Vertical>
           </TabsContent>
