@@ -1,3 +1,4 @@
+import { listKeyScopableGroups } from "@app/lib/api/keys/scopable_groups";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { GetKeyScopableGroupsResponseBody } from "@app/types/api/keys";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -14,9 +15,9 @@ app.get(
   async (ctx): HandlerResult<GetKeyScopableGroupsResponseBody> => {
     const auth = ctx.get("auth");
 
-    // A key can only be scoped to groups the caller is a member of, so we list
-    // those rather than every workspace group.
-    const groups = await GroupResource.listMemberGroups(auth);
+    // The groups the caller may scope a key to: their member groups, excluding
+    // pod-related groups (keys scope to regular spaces only).
+    const groups = await listKeyScopableGroups(auth);
 
     return ctx.json({
       groups: await GroupResource.toJSONWithMemberCounts(auth, groups),
