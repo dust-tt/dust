@@ -55,6 +55,7 @@ const conversation: ConversationListItemType = {
   unread: false,
   updated: 1,
   isRunningAgentLoop: false,
+  isParticipant: false,
 };
 
 function makeAuthBlockedAction(

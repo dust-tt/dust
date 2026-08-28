@@ -63,6 +63,7 @@ function createConversation(owner: LightWorkspaceType): ConversationType {
     metadata: {},
     requestedSpaceIds: [],
     isRunningAgentLoop: true,
+    isParticipant: false,
     owner,
     visibility: "unlisted",
     content: [],

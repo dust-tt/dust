@@ -601,6 +601,7 @@ export type ConversationListItemType = {
   unread: boolean;
   updated: number;
   isRunningAgentLoop: boolean;
+  isParticipant: boolean;
 };
 
 /**

@@ -7,6 +7,7 @@ function makeConversation(
 ): ConversationListItemType {
   return {
     actionRequired: false,
+    isParticipant: false,
     created: 1,
     hasError: false,
     isRunningAgentLoop: false,
