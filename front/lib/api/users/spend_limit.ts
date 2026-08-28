@@ -34,11 +34,11 @@ import {
   lifetimeSpendCycleUtc,
   resolveSpendLimitCycleBounds,
 } from "@app/lib/spend_limits/cycle";
-import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
   readFixedWindowCountWithLazySeed,
 } from "@app/lib/utils/rate_limiter";
+import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
   GetUserSpendLimitResponse,
