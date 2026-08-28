@@ -19,6 +19,7 @@ import { z } from "zod";
 import deleteFrame from "./delete";
 import move from "./move";
 import register from "./register";
+import share from "./share";
 
 const FramePublishRequestSchema = z.object({
   manifestPath: z.string().min(1),
@@ -73,6 +74,7 @@ app.use("*", sandboxAuth({ allowedTokenKinds: ["action"] }));
 app.route("/delete", deleteFrame);
 app.route("/move", move);
 app.route("/register", register);
+app.route("/share", share);
 
 /**
  * @ignoreswagger

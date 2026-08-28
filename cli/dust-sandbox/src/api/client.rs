@@ -11,7 +11,8 @@ use super::types::{
     parse_action_poll_response, ActionPollResponse, CallToolPostResponse, CallToolRequest,
     CallToolResponse, CallToolResult, FrameDeleteRequest, FrameDeleteResponse, FrameMoveRequest,
     FrameMoveResponse, FramePublishRequest, FramePublishResponse, FrameRegisterRequest,
-    FrameRegisterResponse, MCPServerView, SandboxServerViewsResponse,
+    FrameRegisterResponse, FrameShareRequest, FrameShareResponse, MCPServerView,
+    SandboxServerViewsResponse,
 };
 
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -182,6 +183,23 @@ impl DustApiClient {
                 source_directory_path,
             },
             POLL_MAX_DURATION,
+        )
+        .await
+    }
+
+    pub async fn share_frame(
+        &self,
+        source_directory_path: &str,
+        share_scope: &str,
+        emails: &[String],
+    ) -> anyhow::Result<FrameShareResponse> {
+        self.post(
+            "sandbox/frames/share",
+            &FrameShareRequest {
+                emails,
+                share_scope,
+                source_directory_path,
+            },
         )
         .await
     }

@@ -3,19 +3,38 @@ mod delete;
 mod move_frame;
 mod publish;
 mod register;
+mod share;
 
 use std::path::{Component, Path, PathBuf};
 
 use anyhow::{bail, Context};
-use clap::Subcommand;
+use clap::{Subcommand, ValueEnum};
 
 pub use create::run as cmd_frame_create;
 pub use delete::run as cmd_frame_delete;
 pub use move_frame::run as cmd_frame_move;
 pub use publish::run as cmd_frame_publish;
 pub use register::run as cmd_frame_register;
+pub use share::run as cmd_frame_share;
 
 const FRAME_MANIFEST_FILE: &str = "manifest.json";
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum FrameShareScope {
+    EmailsOnly,
+    Public,
+    WorkspaceAndEmails,
+}
+
+impl FrameShareScope {
+    fn as_api_value(self) -> &'static str {
+        match self {
+            Self::EmailsOnly => "emails_only",
+            Self::Public => "public",
+            Self::WorkspaceAndEmails => "workspace_and_emails",
+        }
+    }
+}
 
 #[derive(Subcommand)]
 pub enum FrameCommand {
@@ -46,6 +65,17 @@ pub enum FrameCommand {
         source: PathBuf,
         /// New Frame folder path under /files
         destination: PathBuf,
+    },
+    /// Configure who can use a registered Frame
+    Share {
+        /// Existing Frame folder under /files
+        directory: PathBuf,
+        /// Use-rights scope
+        #[arg(long, value_enum)]
+        scope: FrameShareScope,
+        /// Email to grant access to; repeat for multiple recipients
+        #[arg(long = "email")]
+        emails: Vec<String>,
     },
     /// Build and publish a Frame from its current source
     Publish {

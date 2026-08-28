@@ -142,6 +142,11 @@ async fn run() -> anyhow::Result<()> {
             commands::frame::FrameCommand::Register { manifest } => {
                 commands::cmd_frame_register(&manifest).await?
             }
+            commands::frame::FrameCommand::Share {
+                directory,
+                scope,
+                emails,
+            } => commands::cmd_frame_share(&directory, scope, &emails).await?,
             commands::frame::FrameCommand::Move {
                 source,
                 destination,
@@ -552,6 +557,43 @@ mod tests {
                 );
             }
             Commands::Frame { .. } => panic!("expected delete"),
+            _ => panic!("expected frame"),
+        }
+    }
+
+    #[test]
+    fn frame_share_parses() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "frame",
+            "share",
+            "/files/conversation-conv_123/Status",
+            "--scope",
+            "emails-only",
+            "--email",
+            "alice@example.com",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Frame {
+                command:
+                    commands::frame::FrameCommand::Share {
+                        directory,
+                        scope,
+                        emails,
+                    },
+            } => {
+                assert_eq!(
+                    directory,
+                    std::path::PathBuf::from("/files/conversation-conv_123/Status")
+                );
+                assert!(matches!(
+                    scope,
+                    commands::frame::FrameShareScope::EmailsOnly
+                ));
+                assert_eq!(emails, vec!["alice@example.com"]);
+            }
+            Commands::Frame { .. } => panic!("expected share"),
             _ => panic!("expected frame"),
         }
     }

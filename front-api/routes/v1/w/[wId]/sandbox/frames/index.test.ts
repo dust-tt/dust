@@ -89,6 +89,26 @@ function requestFrameDelete(
   });
 }
 
+function requestFrameShare(
+  workspaceId: string,
+  token: string,
+  sourceDirectoryPath: string,
+  emails: string[] = []
+) {
+  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/share`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      emails,
+      shareScope: "workspace_and_emails",
+      sourceDirectoryPath,
+    }),
+  });
+}
+
 async function setup({ registered = true }: { registered?: boolean } = {}) {
   const context = await createSandboxTokenTestContext();
   await FeatureFlagFactory.basic(context.auth, "frames_v2");
@@ -274,6 +294,39 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     await expect(
       FileResource.fetchById(context.auth, context.frame.sId)
     ).resolves.toBeNull();
+  });
+
+  it("configures Frame use rights through the sandbox token", async () => {
+    const context = await setup();
+    assert(context.frame);
+    const user = context.auth.getNonNullableUser();
+    const publishResponse = await requestFramePublish(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath
+    );
+    expect(publishResponse.status).toBe(200);
+    const sourceDirectoryPath = context.manifestPath.replace(
+      `/${FRAME_MANIFEST_FILE}`,
+      ""
+    );
+
+    const response = await requestFrameShare(
+      context.workspace.sId,
+      context.token,
+      sourceDirectoryPath,
+      [user.email]
+    );
+
+    const shared = await response.json();
+    expect(response.status, JSON.stringify(shared)).toBe(200);
+    expect(shared).toMatchObject({
+      emails: [user.email],
+      frameId: context.frame.sId,
+      shareScope: "workspace_and_emails",
+      sourceDirectoryPath,
+    });
+    expect(shared.shareUrl).toContain("/share/frame/");
   });
 
   it("publishes a legacy Frame through its existing publication flow", async () => {
