@@ -1,6 +1,6 @@
 import {
-  FRAME_DEFAULT_UI_ENTRY_POINT,
   FRAME_DATABASE_NAME_REGEX,
+  FRAME_DEFAULT_UI_ENTRY_POINT,
   FrameManifestSchema,
   isSafeFrameRelativePath,
   MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH,
@@ -129,9 +129,7 @@ describe("FrameManifestSchema", () => {
   it("parses database declarations", () => {
     const parsed = FrameManifestSchema.safeParse({
       ...MANIFEST,
-      databases: [
-        { name: "task_store", schema: "databases/task_store.db.ts" },
-      ],
+      databases: [{ name: "task_store", schema: "databases/task_store.db.ts" }],
     });
 
     expect(parsed.success).toBe(true);
