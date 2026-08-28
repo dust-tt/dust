@@ -34,7 +34,7 @@ enum Commands {
         #[command(subcommand)]
         command: commands::db::DbCommand,
     },
-    /// Publish Frames
+    /// Create, register, and publish Frames
     Frame {
         #[command(subcommand)]
         command: commands::frame::FrameCommand,
@@ -131,6 +131,14 @@ async fn run() -> anyhow::Result<()> {
             commands::db::DbCommand::Query { name } => commands::cmd_db_query(&name).await?,
         },
         Commands::Frame { command } => match command {
+            commands::frame::FrameCommand::Create {
+                directory,
+                name,
+                description,
+            } => commands::cmd_frame_create(&directory, name.as_deref(), &description).await?,
+            commands::frame::FrameCommand::Register { manifest } => {
+                commands::cmd_frame_register(&manifest).await?
+            }
             commands::frame::FrameCommand::Publish { source } => {
                 commands::cmd_frame_publish(&source).await?
             }
@@ -481,6 +489,7 @@ mod tests {
                     std::path::PathBuf::from("/files/pod-vlt_123/Status/manifest.json")
                 );
             }
+            Commands::Frame { .. } => panic!("expected publish"),
             _ => panic!("expected frame"),
         }
     }

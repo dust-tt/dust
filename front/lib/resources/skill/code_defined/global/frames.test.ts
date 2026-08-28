@@ -52,7 +52,7 @@ function agentLoopDataInPod(spaceId: string | null): AgentLoopExecutionData {
 }
 
 describe("framesSkill.fetchInstructions", () => {
-  it("uses dsbx publish and keeps the remaining MCP tools under Frames v2", async () => {
+  it("uses the dsbx lifecycle and keeps the remaining MCP tools under Frames v2", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "frames_v2");
 
@@ -61,6 +61,8 @@ describe("framesSkill.fetchInstructions", () => {
     });
 
     expect(instructions).toContain("dsbx frame publish");
+    expect(instructions).toContain("dsbx frame create");
+    expect(instructions).toContain("dsbx frame register");
     expect(instructions).toContain("package-like folder");
     expect(instructions).toContain("canonical Frame resource");
     expect(instructions).toContain("`index.tsx` by default");
@@ -77,8 +79,6 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("### React Component Rules");
     expect(instructions).toContain("legacy Frame");
     expect(instructions).toContain("<frame>.tsx");
-    expect(instructions).not.toContain("dsbx frame create");
-    expect(instructions).not.toContain("dsbx frame register");
     expect(instructions).toContain(
       "Other interactive-content tools remain available"
     );

@@ -9,8 +9,8 @@ use tokio::time::sleep;
 use super::error::DustApiError;
 use super::types::{
     parse_action_poll_response, ActionPollResponse, CallToolPostResponse, CallToolRequest,
-    CallToolResponse, CallToolResult, FramePublishRequest, FramePublishResponse, MCPServerView,
-    SandboxServerViewsResponse,
+    CallToolResponse, CallToolResult, FramePublishRequest, FramePublishResponse,
+    FrameRegisterRequest, FrameRegisterResponse, MCPServerView, SandboxServerViewsResponse,
 };
 
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -140,6 +140,17 @@ impl DustApiClient {
                 manifest_path: source_path,
             },
             POLL_MAX_DURATION,
+        )
+        .await
+    }
+
+    pub async fn register_frame(
+        &self,
+        manifest_path: &str,
+    ) -> anyhow::Result<FrameRegisterResponse> {
+        self.post(
+            "sandbox/frames/register",
+            &FrameRegisterRequest { manifest_path },
         )
         .await
     }

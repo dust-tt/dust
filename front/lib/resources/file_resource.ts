@@ -651,6 +651,21 @@ export class FileResource extends BaseResource<FileModel> {
     return updateResult;
   }
 
+  /**
+   * Mark a Frames v2 manifest that already exists at its mount path as ready.
+   * Unlike markAsReady(), this must not copy from the canonical upload path.
+   */
+  async markFrameV2AsReadyFromMount() {
+    assert(this.isFrameV2, "Only Frames v2 can be adopted from a mount path");
+    assert(this.mountFilePath, "A mounted Frames v2 manifest requires a path");
+
+    if (this.status === "ready") {
+      return;
+    }
+
+    return this.update({ status: "ready" });
+  }
+
   get isReady(): boolean {
     return this.status === "ready";
   }
