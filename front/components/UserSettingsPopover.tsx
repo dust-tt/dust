@@ -10,6 +10,7 @@ import {
 } from "@app/components/me/SoundNotificationPreferences";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibility";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -57,6 +58,7 @@ import {
   NavigationListItem,
   Page,
   Settings01,
+  SettingsList,
   SliderToggle,
   Spinner,
   Sun,
@@ -283,6 +285,11 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 function CustomizationSection() {
   const { theme: currentTheme, setTheme } = useTheme();
   const isMac = useIsMac();
+  const { isAgentsSectionVisible, setAgentsSectionVisible } =
+    useAgentsSectionVisibility();
+  const [localAgentsSectionVisible, setLocalAgentsSectionVisible] = useState(
+    isAgentsSectionVisible
+  );
 
   const modEnterLabel = useMemo(
     () => (isMac ? "Cmd + Enter (⌘ + ↵)" : "Ctrl + Enter"),
@@ -314,13 +321,15 @@ function CustomizationSection() {
     submitKey !==
       (typeof window !== "undefined"
         ? (localStorage.getItem("submitMessageKey") ?? "enter")
-        : "enter");
+        : "enter") ||
+    localAgentsSectionVisible !== isAgentsSectionVisible;
 
   const handleSave = () => {
     setTheme(localTheme as "light" | "dark" | "system");
     if (typeof window !== "undefined") {
       localStorage.setItem("submitMessageKey", submitKey);
     }
+    setAgentsSectionVisible(localAgentsSectionVisible);
   };
 
   return (
@@ -336,82 +345,96 @@ function CustomizationSection() {
         />
       }
     >
-      <div className="flex w-full gap-4">
-        <div className="flex-1">
-          <div className="mb-2">
-            <Label>Theme</Label>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                icon={
-                  localTheme === "light"
-                    ? Sun
-                    : localTheme === "dark"
-                      ? Moon01
-                      : Sun
-                }
-                label={
-                  localTheme === "light"
-                    ? "Light"
-                    : localTheme === "dark"
-                      ? "Dark"
-                      : "System"
-                }
-                isSelect
-                className="w-fit"
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent mountPortalContainer={portalContainer}>
-              <DropdownMenuItem
-                icon={Sun}
-                label="Light"
-                onClick={() => setLocalTheme("light")}
-              />
-              <DropdownMenuItem
-                icon={Moon01}
-                label="Dark"
-                onClick={() => setLocalTheme("dark")}
-              />
-              <DropdownMenuItem
-                icon={Sun}
-                label="System"
-                onClick={() => setLocalTheme("system")}
-              />
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        <div className="flex-1">
-          <div className="mb-2">
-            <Label>Keyboard Shortcuts</Label>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <div className="copy-sm flex items-center gap-2 text-foreground">
-                Send message:
+      <SettingsList>
+        <SettingsList.Row
+          title="Theme"
+          description="Choose how Dust looks on this device"
+          action={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
+                  size="sm"
+                  icon={
+                    localTheme === "light"
+                      ? Sun
+                      : localTheme === "dark"
+                        ? Moon01
+                        : Sun
+                  }
+                  label={
+                    localTheme === "light"
+                      ? "Light"
+                      : localTheme === "dark"
+                        ? "Dark"
+                        : "System"
+                  }
+                  isSelect
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent mountPortalContainer={portalContainer}>
+                <DropdownMenuItem
+                  icon={Sun}
+                  label="Light"
+                  onClick={() => setLocalTheme("light")}
+                />
+                <DropdownMenuItem
+                  icon={Moon01}
+                  label="Dark"
+                  onClick={() => setLocalTheme("dark")}
+                />
+                <DropdownMenuItem
+                  icon={Sun}
+                  label="System"
+                  onClick={() => setLocalTheme("system")}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+        />
+
+        <SettingsList.Row
+          title="Send message"
+          description="Keyboard shortcut to send a message"
+          action={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
                   label={submitKey === "enter" ? "Enter (↵)" : modEnterLabel}
                   isSelect
-                  className="w-fit"
                 />
-              </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent mountPortalContainer={portalContainer}>
-              <DropdownMenuItem onClick={() => setSubmitKey("enter")}>
-                Enter
-                <DropdownMenuShortcut>↵</DropdownMenuShortcut>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSubmitKey("cmd+enter")}>
-                {modEnterMenuLabel}
-                <DropdownMenuShortcut>{modEnterShortcut}</DropdownMenuShortcut>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent mountPortalContainer={portalContainer}>
+                <DropdownMenuItem onClick={() => setSubmitKey("enter")}>
+                  Enter
+                  <DropdownMenuShortcut>↵</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSubmitKey("cmd+enter")}>
+                  {modEnterMenuLabel}
+                  <DropdownMenuShortcut>
+                    {modEnterShortcut}
+                  </DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+        />
+
+        <SettingsList.Row
+          title="Show your agents on the home page"
+          description="Access your favorite and most-used agents, or search for one from the home page."
+          action={
+            <SliderToggle
+              selected={localAgentsSectionVisible}
+              onClick={() =>
+                setLocalAgentsSectionVisible(!localAgentsSectionVisible)
+              }
+            />
+          }
+        />
+      </SettingsList>
     </SectionContent>
   );
 }
