@@ -73,12 +73,12 @@ log "Initializing databases..."
 bash "${SCRIPT_DIR}/init-databases.sh" || exit 1
 
 log "Ensuring Elasticsearch indices..."
-bash "${SCRIPT_DIR}/init-elasticsearch-indices.sh" \
-  >"${DUST_INFRA_LOG_DIR}/init-elasticsearch.log" 2>&1 || {
+bash "${SCRIPT_DIR}/init-elasticsearch-indices.sh" 2>&1 | tee "${DUST_INFRA_LOG_DIR}/init-elasticsearch.log"
+es_init_status=${PIPESTATUS[0]}
+if [ "$es_init_status" -ne 0 ]; then
   log "Elasticsearch index init failed; see ${DUST_INFRA_LOG_DIR}/init-elasticsearch.log"
-  tail -40 "${DUST_INFRA_LOG_DIR}/init-elasticsearch.log"
   exit 1
-}
+fi
 
 # Materialize 1Password env + local overrides for every subsequent shell/command.
 materialize_dev_environment || log "Continuing without a full 1Password env"

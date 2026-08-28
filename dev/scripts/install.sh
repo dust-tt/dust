@@ -21,4 +21,6 @@ npm install
 log "Installing lefthook git hooks..."
 npx lefthook install -f
 
+ensure_elasticsearch_create_index_built
+
 log "Install complete"

@@ -219,7 +219,7 @@ async function initElasticsearchTS(
     const command = buildShell({
       sourceEnv: envShPath,
       sourceNvm: true,
-      run: `npx tsx ./scripts/create_elasticsearch_index.ts --index-name ${name} --index-version ${version} --skip-confirmation`,
+      run: `npx tsx ./scripts/create_elasticsearch_index.ts --index-name ${name} --index-version ${version} --skip-confirmation --execute`,
     });
 
     const proc = Bun.spawn(["bash", "-c", command], {
