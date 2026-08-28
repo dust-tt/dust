@@ -176,9 +176,7 @@ interface AwuUsageBarProps {
   seatBalanceAwu?: number | null;
   // The fully-resolved spend cap from `spendLimitAwuCredits` (member override,
   // group cap or workspace default, all including seat allowance). `null`
-  // means uncapped (no pool-limit configured for this seat type) — shown as
-  // "Unlimited" rather than coerced to 0, which would wrongly read as "no
-  // pool access at all".
+  // means uncapped
   effectiveLimit: number | null;
   // Where `effectiveLimit` comes from — shown as a tooltip on the limit figure.
   spendLimitSource: EffectiveSpendLimitSource;
@@ -263,9 +261,6 @@ export function AwuUsageBar({
   const overage =
     poolLimit !== null ? Math.max(0, consumedFromPool - poolLimit) : 0;
 
-  // Seats with no pool at all (poolLimit === 0, e.g. free seats) have nothing
-  // to show here in pool-only mode — seat allowance usage lives in its own
-  // column instead.
   if (poolOnly && poolLimit !== null && poolLimit <= 0) {
     return (
       <div className="flex w-full flex-col gap-1">
@@ -426,7 +421,7 @@ export function AwuUsageBar({
       : effectiveLimit !== null
         ? Math.min(consumed, effectiveLimit)
         : consumed;
-  // null means uncapped — shown as "Unlimited" rather than a number.
+  // null means uncapped
   const headlineLimit = poolOnly
     ? poolLimit
     : isFreeWithBalance
@@ -613,8 +608,6 @@ function buildModelTiersColumn(
   };
 }
 
-// Fraction of the seat allowance consumed, mirroring the free-seat lifetime
-// handling in AwuUsageBar so the two stay visually consistent.
 function computeSeatUsage({
   seatType,
   memberUsageLimit,
@@ -751,9 +744,6 @@ const seatUsageColumn: ColumnDef<RowData, string> = {
   cell: (info: Info) => {
     const { seatType, memberUsageLimit, seatBalanceAwu, isSeatChangePending } =
       info.row.original;
-    // Seats with no credit allowance at all (e.g. platform/workspace seats)
-    // have nothing to show a usage ring for — a bare "0%" would misleadingly
-    // suggest there's an allowance being tracked.
     if (
       isSeatChangePending ||
       !seatType ||
@@ -853,6 +843,7 @@ function buildColumns({
 // Models tier summary, a "Models" header instead of "Models tier", and the
 // combined seat column split into an icon-only Seats column plus a Seat
 // usage ring column. "legacy" keeps the current usage page unchanged.
+// TODO(arthur, 2026-08-28): drop the "legacy" variant and this flag once the flip is complete.
 export type MembersUsageTableVariant = "legacy" | "compact";
 
 interface MembersUsageTableProps {
