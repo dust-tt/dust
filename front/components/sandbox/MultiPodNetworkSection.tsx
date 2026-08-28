@@ -284,12 +284,15 @@ export function MultiPodNetworkSection({
     return success;
   };
 
-  const handleRemoveDomain = async (domain: string) => {
+  // Remove only from the scopes that actually own this row: the workspace when
+  // it's a selected workspace domain, plus the specific Pods listing it — not
+  // every selected scope.
+  const handleRemoveDomain = async (row: DomainRow) => {
     await bulkUpdateEgressDomain({
-      includeWorkspace,
-      pods: selectedPods,
+      includeWorkspace: includeWorkspace && row.inWorkspace,
+      pods: row.ownedByPods,
       operation: "remove",
-      domain,
+      domain: row.domain,
     });
     await revalidate();
   };
@@ -323,16 +326,16 @@ export function MultiPodNetworkSection({
       setRemoveTarget(row);
       return;
     }
-    void handleRemoveDomain(row.domain);
+    void handleRemoveDomain(row);
   };
 
   const handleConfirmRemove = async () => {
     if (!removeTarget) {
       return;
     }
-    const domain = removeTarget.domain;
+    const row = removeTarget;
     setRemoveTarget(null);
-    await handleRemoveDomain(domain);
+    await handleRemoveDomain(row);
   };
 
   // Scope badges only disambiguate once Pods are in the mix. In the
@@ -384,14 +387,14 @@ export function MultiPodNetworkSection({
                 request.scopeKind === "workspace" ? (
                   <Chip
                     size="xs"
-                    color="info"
+                    color="highlight"
                     label="Workspace"
                     icon={Building04}
                   />
                 ) : (
                   <Chip
                     size="xs"
-                    color="info"
+                    color="highlight"
                     label={request.pod.name}
                     icon={podIcon(request.pod)}
                   />
@@ -428,7 +431,7 @@ export function MultiPodNetworkSection({
               {showScopeBadges && row.inWorkspace ? (
                 <Chip
                   size="xs"
-                  color="info"
+                  color="highlight"
                   label="Workspace"
                   icon={Building04}
                 />
@@ -437,7 +440,7 @@ export function MultiPodNetworkSection({
                 <Chip
                   key={pod.sId}
                   size="xs"
-                  color="info"
+                  color="highlight"
                   label={pod.name}
                   icon={podIcon(pod)}
                 />

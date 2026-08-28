@@ -338,25 +338,23 @@ export async function removeOwnerPolicyDomain(
 ): Promise<
   Result<{ policy: EgressPolicy; removedDomain: string | null }, Error>
 > {
-  const parsedDomain = parseExactEgressDomain(domain);
-  if (parsedDomain.isErr()) {
-    return new Err(parsedDomain.error);
-  }
-
   const currentPolicy = await readOwnerPolicy(auth, ownerId);
   if (currentPolicy.isErr()) {
     return new Err(currentPolicy.error);
   }
 
-  // Skip the write entirely when the domain is absent so a no-op remove never
-  // creates an owner policy file — which would make an unconfigured Pod look
+  // Match the stored entry as-is: the domain comes straight from the existing
+  // allowlist, so there's nothing to validate or normalize — and matching as-is
+  // is what lets wildcards (`*.example.com`) be removed, which the exact-domain
+  // add parser rejects. A domain that isn't present is a no-op: never create an
+  // owner policy file for it, which would make an unconfigured Pod look
   // configured to listPodIdsWithEgressPolicy (file-existence based).
-  if (!currentPolicy.value.allowedDomains.includes(parsedDomain.value)) {
+  if (!currentPolicy.value.allowedDomains.includes(domain)) {
     return new Ok({ policy: currentPolicy.value, removedDomain: null });
   }
 
   const allowedDomains = currentPolicy.value.allowedDomains.filter(
-    (allowed) => allowed !== parsedDomain.value
+    (allowed) => allowed !== domain
   );
 
   const written = await writeOwnerPolicy(auth, {
@@ -367,7 +365,7 @@ export async function removeOwnerPolicyDomain(
     return new Err(written.error);
   }
 
-  return new Ok({ policy: written.value, removedDomain: parsedDomain.value });
+  return new Ok({ policy: written.value, removedDomain: domain });
 }
 
 // Workspace-scoped counterpart of removeOwnerPolicyDomain.
@@ -377,24 +375,20 @@ export async function removeWorkspacePolicyDomain(
 ): Promise<
   Result<{ policy: EgressPolicy; removedDomain: string | null }, Error>
 > {
-  const parsedDomain = parseExactEgressDomain(domain);
-  if (parsedDomain.isErr()) {
-    return new Err(parsedDomain.error);
-  }
-
   const currentPolicy = await readWorkspacePolicy(auth);
   if (currentPolicy.isErr()) {
     return new Err(currentPolicy.error);
   }
 
-  // Skip the write when the domain is absent (no-op remove), mirroring
-  // removeOwnerPolicyDomain.
-  if (!currentPolicy.value.allowedDomains.includes(parsedDomain.value)) {
+  // Match the stored entry as-is (see removeOwnerPolicyDomain): the domain comes
+  // from the existing allowlist, so there's nothing to normalize, and matching
+  // as-is lets wildcards be removed. Absent domain is a no-op.
+  if (!currentPolicy.value.allowedDomains.includes(domain)) {
     return new Ok({ policy: currentPolicy.value, removedDomain: null });
   }
 
   const allowedDomains = currentPolicy.value.allowedDomains.filter(
-    (allowed) => allowed !== parsedDomain.value
+    (allowed) => allowed !== domain
   );
 
   const written = await writeWorkspacePolicy(auth, {
@@ -404,7 +398,7 @@ export async function removeWorkspacePolicyDomain(
     return new Err(written.error);
   }
 
-  return new Ok({ policy: written.value, removedDomain: parsedDomain.value });
+  return new Ok({ policy: written.value, removedDomain: domain });
 }
 
 // Caps the pending-request section: the proxy re-reads this file on every

@@ -10,16 +10,26 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { bulkUpdateMock, mutatePodPoliciesMock, mutateWorkspaceMock } =
-  vi.hoisted(() => ({
+const {
+  bulkUpdateMock,
+  mutatePodPoliciesMock,
+  mutateWorkspaceMock,
+  podPoliciesState,
+} = vi.hoisted(() => {
+  const podPoliciesState: {
+    current: { podId: string; policy: EgressPolicy }[];
+  } = { current: [] };
+  return {
     bulkUpdateMock: vi.fn(),
     mutatePodPoliciesMock: vi.fn(),
     mutateWorkspaceMock: vi.fn(),
-  }));
+    podPoliciesState,
+  };
+});
 
 vi.mock("@app/lib/swr/sandbox", () => ({
   useBulkPodEgressPolicies: () => ({
-    podPolicies: [],
+    podPolicies: podPoliciesState.current,
     isPodPoliciesLoading: false,
     isPodPoliciesError: false,
     mutatePodPolicies: mutatePodPoliciesMock,
@@ -171,6 +181,37 @@ describe("buildPendingRequests", () => {
 describe("MultiPodNetworkSection mutation flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    podPoliciesState.current = [];
+  });
+
+  it("removes a Pod-only domain from just that Pod, not the workspace", async () => {
+    podPoliciesState.current = [
+      { podId: podA.sId, policy: policy(["*.example.com"]) },
+    ];
+    bulkUpdateMock.mockResolvedValue(true);
+
+    render(
+      <MultiPodNetworkSection
+        owner={{ sId: "wId" } as LightWorkspaceType}
+        includeWorkspace
+        selection={{ kind: "pods", podIds: [podA.sId] }}
+        selectedPods={[podA]}
+      />
+    );
+
+    // The row is Pod-owned (not a workspace domain), so removal is scoped and
+    // skips the workspace-confirm dialog — it must target only that Pod, never
+    // the workspace or other selected scopes.
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove *.example.com" })
+    );
+
+    expect(bulkUpdateMock).toHaveBeenCalledWith({
+      includeWorkspace: false,
+      pods: [podA],
+      operation: "remove",
+      domain: "*.example.com",
+    });
   });
 
   it("revalidates after a partial-failure add so changed scopes are not left stale", async () => {
