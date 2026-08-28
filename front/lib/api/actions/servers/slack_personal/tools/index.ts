@@ -39,7 +39,6 @@ import { SLACK_PERSONAL_TOOLS_METADATA } from "@app/lib/api/actions/servers/slac
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
@@ -51,8 +50,6 @@ import {
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import uniqBy from "lodash/uniqBy";
-
-const localLogger = logger.child({ module: "mcp_slack_personal" });
 
 type SlackSearchMatch = {
   author_id?: string;
@@ -131,100 +128,80 @@ export async function getSlackConnectionForMCPServer(
   });
 }
 
+// Slack answers 429 (or a `ratelimited` body error) when the workspace exceeds the search rate
+// limit. This is transient and unrelated to the token, so it must never be mistaken for an
+// authentication problem.
+const HTTP_TOO_MANY_REQUESTS = 429;
+const SLACK_RATE_LIMITED_ERROR = "ratelimited";
+
+class SlackRateLimitError extends Error {
+  constructor() {
+    super("Slack rate limited the search request.");
+    this.name = "SlackRateLimitError";
+  }
+
+  static is(error: unknown): error is SlackRateLimitError {
+    return error instanceof SlackRateLimitError;
+  }
+}
+
 const slackSearch = async (
   query: string,
   accessToken: string
 ): Promise<SlackSearchMatch[]> => {
-  // Try assistant.search.context first (requires special token and Slack AI enabled).
-  try {
-    const params = new URLSearchParams({
-      query,
-      sort: "score",
-      sort_dir: "desc",
-      limit: SLACK_SEARCH_ACTION_NUM_RESULTS.toString(),
-      channel_types: "public_channel,private_channel,mpim,im",
-    });
+  const params = new URLSearchParams({
+    query,
+    sort: "score",
+    sort_dir: "desc",
+    limit: SLACK_SEARCH_ACTION_NUM_RESULTS.toString(),
+    channel_types: "public_channel,private_channel,mpim,im",
+  });
 
-    // eslint-disable-next-line no-restricted-globals
-    const resp = await fetch(
-      `https://slack.com/api/assistant.search.context?${params.toString()}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
-
-    if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}`);
+  // eslint-disable-next-line no-restricted-globals
+  const resp = await fetch(
+    `https://slack.com/api/assistant.search.context?${params.toString()}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     }
+  );
 
-    const data: SlackSearchResponse =
-      (await resp.json()) as SlackSearchResponse;
-    if (!data.ok) {
-      // If invalid_action_token or other errors, throw to trigger fallback.
-      throw new Error(data.error ?? "unknown_error");
-    }
-
-    // Transform API response to match SlackSearchMatch format.
-    const rawMatches: SlackSearchMatch[] = (data.results.messages ?? []).map(
-      (msg) => ({
-        author_id: msg.author_id ?? msg.author_user_id,
-        author_name: msg.author_name,
-        channel_id: msg.channel_id,
-        channel_name: msg.channel_name,
-        message_ts: msg.message_ts,
-        content: msg.content,
-        permalink: msg.permalink,
-      })
-    );
-
-    // Filter out matches that don't have a text.
-    const matchesWithText = rawMatches.filter((match) => !!match.content);
-
-    // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
-    return matchesWithText.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
-  } catch (error) {
-    // Fallback to standard search.messages API if assistant.search.context fails.
-    // This typically happens when Slack AI is not enabled (local env) or the token doesn't have the required permissions.
-    localLogger.info(
-      { error },
-      "Failed to use assistant.search.context, falling back to search.messages"
-    );
-
-    const slackClient = await getSlackClient(accessToken);
-
-    const response = await slackClient.search.messages({
-      query,
-      sort: "score",
-      sort_dir: "desc",
-      count: SLACK_SEARCH_ACTION_NUM_RESULTS,
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to search messages");
-    }
-
-    const rawMatches = response.messages?.matches ?? [];
-
-    // Transform to match expected format.
-    const matches: SlackSearchMatch[] = rawMatches.map((match) => ({
-      author_id: match.user,
-      author_name: match.username,
-      channel_id: match.channel?.id,
-      channel_name: match.channel?.name,
-      message_ts: match.ts,
-      content: match.text,
-      permalink: match.permalink,
-    }));
-
-    // Filter out matches that don't have text.
-    const matchesWithText = matches.filter((match) => !!match.content);
-
-    // Keep only the top results.
-    return matchesWithText.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
+  if (resp.status === HTTP_TOO_MANY_REQUESTS) {
+    throw new SlackRateLimitError();
   }
+
+  if (!resp.ok) {
+    throw new Error(`HTTP ${resp.status}`);
+  }
+
+  const data: SlackSearchResponse = (await resp.json()) as SlackSearchResponse;
+  if (!data.ok) {
+    if (data.error === SLACK_RATE_LIMITED_ERROR) {
+      throw new SlackRateLimitError();
+    }
+    throw new Error(data.error ?? "unknown_error");
+  }
+
+  // Transform API response to match SlackSearchMatch format.
+  const rawMatches: SlackSearchMatch[] = (data.results.messages ?? []).map(
+    (msg) => ({
+      author_id: msg.author_id ?? msg.author_user_id,
+      author_name: msg.author_name,
+      channel_id: msg.channel_id,
+      channel_name: msg.channel_name,
+      message_ts: msg.message_ts,
+      content: msg.content,
+      permalink: msg.permalink,
+    })
+  );
+
+  // Filter out matches that don't have a text.
+  const matchesWithText = rawMatches.filter((match) => !!match.content);
+
+  // Keep only the top SLACK_SEARCH_ACTION_NUM_RESULTS matches.
+  return matchesWithText.slice(0, SLACK_SEARCH_ACTION_NUM_RESULTS);
 };
 
 // Helper function to format a Slack message match for display in the UI.
@@ -361,6 +338,28 @@ function handleSlackAuthError(error: unknown) {
   return null;
 }
 
+// Maps an error thrown while searching Slack to the result the search tools return. Rate limits
+// are transient and expected, so they are surfaced to the model without alerting.
+function handleSlackSearchError(error: unknown) {
+  if (SlackRateLimitError.is(error)) {
+    return new Err(
+      new MCPError(
+        "Slack rate limited the search request. Please retry in a few seconds.",
+        { tracked: false }
+      )
+    );
+  }
+
+  const authError = handleSlackAuthError(error);
+  if (authError) {
+    return authError;
+  }
+
+  return new Err(
+    new MCPError(`Error searching messages: ${normalizeError(error)}`)
+  );
+}
+
 interface SlackPersonalToolsResult {
   searchMessagesTool: ToolDefinition;
   semanticSearchMessagesTool: ToolDefinition;
@@ -478,13 +477,7 @@ export function createSlackPersonalTools(
           }))
         );
       } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error searching messages: ${normalizeError(error)}`)
-        );
+        return handleSlackSearchError(error);
       }
     },
 
@@ -558,13 +551,7 @@ export function createSlackPersonalTools(
           }))
         );
       } catch (error) {
-        const authError = handleSlackAuthError(error);
-        if (authError) {
-          return authError;
-        }
-        return new Err(
-          new MCPError(`Error searching messages: ${normalizeError(error)}`)
-        );
+        return handleSlackSearchError(error);
       }
     },
 
