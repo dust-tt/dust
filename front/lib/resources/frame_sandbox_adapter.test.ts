@@ -35,14 +35,12 @@ vi.mock("@app/lib/lock", () => ({
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
-import {
-  SandboxModel,
-  SandboxOwnerModel,
-} from "@app/lib/resources/storage/models/sandbox";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { frameV2ContentType } from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
 import { Ok } from "@app/types/shared/result";
 
 describe("FrameSandboxAdapter", () => {
@@ -118,14 +116,7 @@ describe("FrameSandboxAdapter", () => {
     expect(mockProviderCreate.mock.calls[0]?.[0].envVars).not.toHaveProperty(
       "SPACE_ID"
     );
-    expect(
-      await SandboxOwnerModel.count({
-        where: {
-          frameFileModelId: frame.id,
-          workspaceId: workspace.id,
-        },
-      })
-    ).toBe(1);
+    expect(await FrameSandboxAdapter.fetchSandbox(auth, frame)).not.toBeNull();
   });
 
   it("deletes the owned sandbox before deleting the Frame", async () => {
@@ -148,6 +139,7 @@ describe("FrameSandboxAdapter", () => {
     if (sandboxResult.isErr()) {
       throw sandboxResult.error;
     }
+    const sandboxModelId = sandboxResult.value.sandbox.id;
 
     const deleteResult = await frame.delete(auth);
 
@@ -158,14 +150,10 @@ describe("FrameSandboxAdapter", () => {
     expect(mockProviderDestroy).toHaveBeenCalledWith("frame-provider", {
       workspaceId: workspace.sId,
     });
+    expect(await FrameSandboxAdapter.fetchSandbox(auth, frame)).toBeNull();
     expect(
-      await SandboxOwnerModel.count({
-        where: { workspaceId: workspace.id },
-      })
-    ).toBe(0);
-    expect(
-      await SandboxModel.count({ where: { workspaceId: workspace.id } })
-    ).toBe(0);
+      await SandboxResource.fetchByModelIdForWorkspace(auth, sandboxModelId)
+    ).toBeNull();
   });
 
   it("deletes Frame sandboxes during a workspace scrub", async () => {
@@ -173,34 +161,40 @@ describe("FrameSandboxAdapter", () => {
       role: "admin",
     });
     const pod = await SpaceFactory.project(workspace);
-    const frame = await FileFactory.create(auth, null, {
-      contentType: frameV2ContentType,
-      fileName: "manifest.json",
-      fileSize: 1,
-      status: "created",
-      useCase: "project_context",
-      useCaseMetadata: { spaceId: pod.sId },
-    });
-    const sandboxResult = await FrameSandboxAdapter.ensureSandboxActive(
-      auth,
-      frame
+    const frames = await Promise.all(
+      ["first", "second"].map((name) =>
+        FileFactory.create(auth, null, {
+          contentType: frameV2ContentType,
+          fileName: `${name}/manifest.json`,
+          fileSize: 1,
+          status: "created",
+          useCase: "project_context",
+          useCaseMetadata: { spaceId: pod.sId },
+        })
+      )
     );
-    if (sandboxResult.isErr()) {
-      throw sandboxResult.error;
+    const sandboxModelIds: ModelId[] = [];
+    for (const frame of frames) {
+      const sandboxResult = await FrameSandboxAdapter.ensureSandboxActive(
+        auth,
+        frame
+      );
+      if (sandboxResult.isErr()) {
+        throw sandboxResult.error;
+      }
+      sandboxModelIds.push(sandboxResult.value.sandbox.id);
     }
 
     await FileResource.deleteAllForWorkspace(auth);
 
-    expect(mockProviderDestroy).toHaveBeenCalledWith("frame-provider", {
-      workspaceId: workspace.sId,
-    });
-    expect(
-      await SandboxOwnerModel.count({
-        where: { workspaceId: workspace.id },
-      })
-    ).toBe(0);
-    expect(
-      await SandboxModel.count({ where: { workspaceId: workspace.id } })
-    ).toBe(0);
+    expect(mockProviderDestroy).toHaveBeenCalledTimes(2);
+    for (const frame of frames) {
+      expect(await FrameSandboxAdapter.fetchSandbox(auth, frame)).toBeNull();
+    }
+    for (const sandboxModelId of sandboxModelIds) {
+      expect(
+        await SandboxResource.fetchByModelIdForWorkspace(auth, sandboxModelId)
+      ).toBeNull();
+    }
   });
 });

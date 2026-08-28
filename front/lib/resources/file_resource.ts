@@ -256,6 +256,12 @@ export class FileResource extends BaseResource<FileModel> {
     return file ?? null;
   }
 
+  /** Re-fetch this stable identity and keep only a Frames v2 resource. */
+  async fetchFreshFrameV2(auth: Authenticator): Promise<FileResource | null> {
+    const fresh = await FileResource.fetchByModelIdWithAuth(auth, this.id);
+    return fresh?.isFrameV2 ? fresh : null;
+  }
+
   static async fetchByShareTokenWithContent(token: string): Promise<{
     file: FileResource;
     content: string;

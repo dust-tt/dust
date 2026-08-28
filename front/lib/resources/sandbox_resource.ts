@@ -29,6 +29,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { PokeSandboxType } from "@app/types/poke";
@@ -141,6 +142,7 @@ const LAST_ACTIVITY_WRITE_INTERVAL_MS = 30_000;
 // rollout forever. Generous enough that a transient GCS or daemon hiccup still
 // resolves on a later sweep — the reaper sweeps every 5 minutes.
 const KILL_REQUESTED_FLUSH_GRACE_MS = 60 * 60 * 1000;
+const WORKSPACE_SCRUB_PROVIDER_CONCURRENCY = 16;
 
 // Owner identity env vars are reserved for owner adapters. SandboxResource
 // only enforces the env contract and does not interpret owner types.
@@ -210,6 +212,23 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       sandboxModelId,
       workspaceModelId: auth.getNonNullableWorkspace().id,
     });
+  }
+
+  static async fetchByModelIdsForWorkspace(
+    auth: Authenticator,
+    sandboxModelIds: ModelId[]
+  ): Promise<SandboxResource[]> {
+    if (sandboxModelIds.length === 0) {
+      return [];
+    }
+
+    const sandboxes = await this.model.findAll({
+      where: {
+        id: { [Op.in]: sandboxModelIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    return sandboxes.map((sandbox) => new this(this.model, sandbox.get()));
   }
 
   static async dangerouslyFetchByModelIdForWorkspace({
@@ -550,6 +569,64 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return new Ok(undefined);
       }
     );
+  }
+
+  /**
+   * Batch cleanup for a workspace scrub, which already owns the workspace
+   * deletion boundary. Provider calls stay concurrent; owner links and
+   * sandbox rows are removed in two set-based statements.
+   */
+  static async deleteBatchForWorkspaceScrub(
+    auth: Authenticator,
+    {
+      deleteOwnerLinks,
+      sandboxes,
+    }: {
+      deleteOwnerLinks: (transaction: Transaction) => Promise<void>;
+      sandboxes: SandboxResource[];
+    }
+  ): Promise<Result<void, Error>> {
+    const liveSandboxes = sandboxes.filter(
+      (sandbox) => sandbox.status !== "deleted"
+    );
+    const provider = getSandboxProvider();
+    if (!provider && liveSandboxes.length > 0) {
+      return new Err(new Error("Sandbox provider not configured."));
+    }
+
+    if (provider) {
+      await concurrentExecutor(
+        liveSandboxes,
+        async (sandbox) => {
+          const result = await provider.destroy(sandbox.providerId, {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+          });
+          if (
+            result.isErr() &&
+            !(result.error instanceof SandboxNotFoundError)
+          ) {
+            logger.error(
+              { sandbox: sandbox.toLogJSON(), error: result.error.message },
+              "Failed to destroy sandbox at provider during workspace scrub; proceeding with DB cleanup."
+            );
+          }
+        },
+        { concurrency: WORKSPACE_SCRUB_PROVIDER_CONCURRENCY }
+      );
+    }
+
+    await withTransaction(async (transaction) => {
+      await deleteOwnerLinks(transaction);
+      await SandboxModel.destroy({
+        where: {
+          id: sandboxes.map((sandbox) => sandbox.id),
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      });
+    });
+
+    return new Ok(undefined);
   }
 
   // ---------------------------------------------------------------------------
