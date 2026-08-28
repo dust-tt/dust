@@ -9,10 +9,10 @@ use tokio::time::sleep;
 use super::error::DustApiError;
 use super::types::{
     parse_action_poll_response, ActionPollResponse, CallToolPostResponse, CallToolRequest,
-    CallToolResponse, CallToolResult, FrameDeleteRequest, FrameDeleteResponse, FrameMoveRequest,
-    FrameMoveResponse, FramePublishRequest, FramePublishResponse, FrameRegisterRequest,
-    FrameRegisterResponse, FrameShareRequest, FrameShareResponse, MCPServerView,
-    SandboxServerViewsResponse,
+    CallToolResponse, CallToolResult, FrameCloneRequest, FrameCloneResponse, FrameDeleteRequest,
+    FrameDeleteResponse, FrameMoveRequest, FrameMoveResponse, FramePublishRequest,
+    FramePublishResponse, FrameRegisterRequest, FrameRegisterResponse, FrameShareRequest,
+    FrameShareResponse, MCPServerView, SandboxServerViewsResponse,
 };
 
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -165,6 +165,22 @@ impl DustApiClient {
         self.post_with_timeout(
             "sandbox/frames/move",
             &FrameMoveRequest {
+                source_directory_path,
+                destination_directory_path,
+            },
+            POLL_MAX_DURATION,
+        )
+        .await
+    }
+
+    pub async fn clone_frame(
+        &self,
+        source_directory_path: &str,
+        destination_directory_path: &str,
+    ) -> anyhow::Result<FrameCloneResponse> {
+        self.post_with_timeout(
+            "sandbox/frames/clone",
+            &FrameCloneRequest {
                 source_directory_path,
                 destination_directory_path,
             },

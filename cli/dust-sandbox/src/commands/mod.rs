@@ -14,8 +14,8 @@ pub use env::cmd_env;
 pub use filesystem::{run as run_filesystem, FilesystemCommand};
 pub use forward::cmd_forward;
 pub use frame::{
-    cmd_frame_create, cmd_frame_delete, cmd_frame_move, cmd_frame_publish, cmd_frame_register,
-    cmd_frame_share,
+    cmd_frame_clone, cmd_frame_create, cmd_frame_delete, cmd_frame_move, cmd_frame_publish,
+    cmd_frame_register, cmd_frame_share,
 };
 pub use function::{cmd_function_build, cmd_function_get, cmd_function_run};
 pub use healthcheck::cmd_healthcheck;

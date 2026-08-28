@@ -24,6 +24,13 @@ pub struct FrameMoveRequest<'a> {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct FrameCloneRequest<'a> {
+    pub source_directory_path: &'a str,
+    pub destination_directory_path: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FrameDeleteRequest<'a> {
     pub source_directory_path: &'a str,
 }
@@ -61,6 +68,15 @@ pub struct FrameMoveResponse {
     pub frame_id: String,
     pub destination_directory_path: String,
     pub source_deletion_failed: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameCloneResponse {
+    pub frame_id: String,
+    pub publication_id: String,
+    pub source_directory_path: String,
+    pub destination_directory_path: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

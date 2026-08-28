@@ -1,3 +1,4 @@
+mod clone;
 mod create;
 mod delete;
 mod move_frame;
@@ -10,6 +11,7 @@ use std::path::{Component, Path, PathBuf};
 use anyhow::{bail, Context};
 use clap::{Subcommand, ValueEnum};
 
+pub use clone::run as cmd_frame_clone;
 pub use create::run as cmd_frame_create;
 pub use delete::run as cmd_frame_delete;
 pub use move_frame::run as cmd_frame_move;
@@ -38,6 +40,13 @@ impl FrameShareScope {
 
 #[derive(Subcommand)]
 pub enum FrameCommand {
+    /// Clone a registered Frame into a fresh identity, publication, sharing record, and state
+    Clone {
+        /// Existing Frame folder under /files
+        source: PathBuf,
+        /// New Frame folder path under /files
+        destination: PathBuf,
+    },
     /// Create and register a new Frame folder
     Create {
         /// Frame folder under /files/conversation-... or /files/pod-...
