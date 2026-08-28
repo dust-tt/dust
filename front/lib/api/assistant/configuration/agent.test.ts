@@ -102,34 +102,6 @@ describe("stable agent identities", () => {
     expect([...agentModelIds][0]).not.toBeNull();
   });
 
-  it("creates and attaches an identity when updating a legacy agent", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
-    const firstVersion =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
-    await AgentConfigurationModel.update(
-      { agentId: null },
-      { where: { sId: firstVersion.sId, workspaceId: workspace.id } }
-    );
-    await AgentModel.destroy({
-      where: { sId: firstVersion.sId, workspaceId: workspace.id },
-    });
-
-    await AgentConfigurationFactory.updateTestAgent(
-      authenticator,
-      firstVersion.sId
-    );
-
-    const versions = await AgentConfigurationModel.findAll({
-      where: { sId: firstVersion.sId, workspaceId: workspace.id },
-      attributes: ["agentId"],
-    });
-    expect(versions).toHaveLength(2);
-    expect(versions.every((version) => version.agentId !== null)).toBe(true);
-    expect(new Set(versions.map((version) => version.agentId)).size).toBe(1);
-  });
-
   it("deletes the identity only after its last version is deleted", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",

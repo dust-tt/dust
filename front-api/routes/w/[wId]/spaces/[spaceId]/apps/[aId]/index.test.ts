@@ -1,7 +1,10 @@
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import {
+  AgentConfigurationModel,
+  AgentModel,
+} from "@app/lib/models/agent/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -36,8 +39,14 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/apps/:aId", () => {
       globalSpace
     );
 
+    const agentSId = generateRandomModelSId();
+    const agentIdentity = await AgentModel.create({
+      sId: agentSId,
+      workspaceId: workspace.id,
+    });
     const agent = await AgentConfigurationModel.create({
-      sId: generateRandomModelSId(),
+      sId: agentSId,
+      agentId: agentIdentity.id,
       version: 0,
       status: "active",
       scope: "visible",
