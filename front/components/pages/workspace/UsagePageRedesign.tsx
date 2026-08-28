@@ -1295,13 +1295,6 @@ export function UsagePageRedesign() {
                   currentCycleEndMs={currentCycleEndMs}
                   isLoading={false}
                 />
-                {hasPool && (
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="copy-sm text-muted-foreground">
-                      {usedPercentage}% used
-                    </span>
-                  </div>
-                )}
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
                     {isReadOnly ? (
