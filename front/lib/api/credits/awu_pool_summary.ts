@@ -1,4 +1,7 @@
-import { getEsConsumedAwuCreditsForWorkspace } from "@app/lib/api/credits/members_usage";
+import {
+  getEsConsumedAwuCreditsForWorkspace,
+  getEsConsumedProgrammaticAwuCredits,
+} from "@app/lib/api/credits/members_usage";
 import type { Authenticator } from "@app/lib/auth";
 import { amountCents } from "@app/lib/metronome/amounts";
 import {
@@ -339,6 +342,8 @@ export async function getAwuPoolSummary(
   if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
     const excessConsumedCredits =
       await getEsConsumedAwuCreditsForWorkspace(workspace);
+    const programmaticConsumedCredits =
+      await getEsConsumedProgrammaticAwuCredits(auth, {});
     return new Ok({
       totalRemainingCredits: 0,
       totalActiveCredits: 0,
@@ -351,6 +356,7 @@ export async function getAwuPoolSummary(
       cycleBreakdown,
       excessConsumedCredits,
       excessCycleBreakdown,
+      programmaticConsumedCredits,
     });
   }
 
@@ -411,6 +417,32 @@ export async function getAwuPoolSummary(
         })
       : null;
 
+  // Unlike `excessConsumedCredits`, computed regardless of pool state — it's
+  // a distinct "not attributable to a member" figure shown alongside the
+  // per-cycle total whether or not the workspace has an active pool.
+  //
+  // This is ES-derived (all programmatic `cost.billable_awu` for the cycle,
+  // workspace-wide) while `currentCycleConsumedCredits` is ledger-derived
+  // (only what Metronome actually deducted from the pool) — two different
+  // sources measuring related but not identical things. Once the pool runs
+  // dry mid-cycle, further usage (including programmatic) spills into
+  // overage/PAYG, which the ES total still counts but the pool ledger never
+  // sees. Clamped to the ledger figure so this can never claim more
+  // programmatic pool draw than the pool actually recorded; `null` when the
+  // ledger read failed, since there's then no pool-draw figure to bound it by.
+  const rawProgrammaticConsumedCredits =
+    await getEsConsumedProgrammaticAwuCredits(auth, {
+      cycle: {
+        cycleStart: new Date(currentCycleStartMs),
+        cycleEnd: new Date(currentCycleEndMs),
+      },
+    });
+  const programmaticConsumedCredits =
+    rawProgrammaticConsumedCredits !== null &&
+    currentCycleConsumedCredits !== null
+      ? Math.min(rawProgrammaticConsumedCredits, currentCycleConsumedCredits)
+      : null;
+
   return new Ok({
     totalRemainingCredits,
     totalActiveCredits,
@@ -423,5 +455,6 @@ export async function getAwuPoolSummary(
     cycleBreakdown,
     excessConsumedCredits,
     excessCycleBreakdown,
+    programmaticConsumedCredits,
   });
 }

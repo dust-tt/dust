@@ -472,6 +472,7 @@ export function UsagePageRedesign() {
     cycleBreakdown,
     excessConsumedCredits,
     excessCycleBreakdown,
+    programmaticConsumedCredits,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
     mutateAwuPoolSummary,
@@ -1284,6 +1285,7 @@ export function UsagePageRedesign() {
             cycleBreakdown={cycleBreakdown}
             excessConsumedCredits={excessConsumedCredits}
             excessCycleBreakdown={excessCycleBreakdown}
+            programmaticConsumedCredits={programmaticConsumedCredits}
             poolSecondaryContent={
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">

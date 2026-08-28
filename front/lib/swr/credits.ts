@@ -260,6 +260,7 @@ export function useAwuPoolSummary({
     currentCycleEndMs: data?.currentCycleEndMs ?? null,
     excessConsumedCredits: data?.excessConsumedCredits ?? null,
     excessCycleBreakdown: data?.excessCycleBreakdown ?? [],
+    programmaticConsumedCredits: data?.programmaticConsumedCredits ?? null,
     isAwuPoolSummaryLoading: !error && !data && !disabled,
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,

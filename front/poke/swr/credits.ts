@@ -175,6 +175,7 @@ export function usePokeAwuPoolSummary({
         currentCycleEndMs: data.currentCycleEndMs ?? null,
         excessConsumedCredits: data.excessConsumedCredits ?? null,
         excessCycleBreakdown: data.excessCycleBreakdown ?? [],
+        programmaticConsumedCredits: data.programmaticConsumedCredits ?? null,
       }
     : null;
 

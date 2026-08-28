@@ -41,4 +41,13 @@ export type AwuPoolSummaryResponseBody = {
    * credit pool, where `cycleBreakdown` (pool-ledger based) is always empty.
    */
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
+  /**
+   * Live, Elasticsearch-derived AWU consumption for the current billing
+   * cycle from programmatic origins (API keys, webhooks, workflow/agent
+   * triggers) — usage not attributable to a member, so it doesn't appear in
+   * the members table's per-row totals but still draws from the same pool.
+   * `null` when there's no active cycle to resolve, or the analytics read
+   * failed.
+   */
+  programmaticConsumedCredits: number | null;
 };
