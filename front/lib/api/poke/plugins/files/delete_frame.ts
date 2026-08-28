@@ -82,7 +82,7 @@ export const deleteFramePlugin = createPlugin({
     requiredRoles: ["engineering", "support"],
   },
   execute: async (auth, file, args) => {
-    if (!file?.isInteractiveContent) {
+    if (!file?.isInteractiveContent || file.isFrameV2) {
       return new Err(new Error("Frame not found."));
     }
     if (args.confirmation !== "DELETE") {
@@ -117,5 +117,6 @@ export const deleteFramePlugin = createPlugin({
       value: `Frame "${frameName}" was permanently deleted.`,
     });
   },
-  isApplicableTo: (auth, file) => file?.isInteractiveContent === true,
+  isApplicableTo: (_auth, file) =>
+    file?.isInteractiveContent === true && !file.isFrameV2,
 });
