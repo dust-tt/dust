@@ -1094,19 +1094,6 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * The groups the caller is a member of. Membership (not visibility) is the rule
-   * here: e.g. an API key can only be scoped to groups its creator belongs to.
-   * Internal kinds (system, agent editors) are never surfaced.
-   */
-  static async listMemberGroups(auth: Authenticator): Promise<GroupResource[]> {
-    return this.fetchByModelIds(auth, auth.groupModelIds(), {
-      groupKinds: GROUP_KINDS.filter(
-        (k) => k !== "system" && !isAgentEditorGroupKind(k)
-      ),
-    });
-  }
-
-  /**
    * Group model ids the user was a member of at `at`, defaulting to now.
    *
    * Two caveats:

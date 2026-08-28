@@ -3,6 +3,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { listKeyScopableGroups } from "@app/lib/api/keys/scopable_groups";
 import {
   MAX_API_KEY_SPEND_LIMIT_AWU_CREDITS,
   MIN_API_KEY_SPEND_LIMIT_AWU_CREDITS,
@@ -175,17 +176,20 @@ app.post(
         : [];
 
     if (additionalGroupIds.length > 0) {
-      // A key can only be scoped to groups the caller is a member of.
-      const nonMemberGroupIds = additionalGroupIds.filter(
-        (gId) => !auth.hasGroup(gId)
+      // A key can only be scoped to groups of regular restricted spaces.
+      const scopableGroupIds = new Set(
+        (await listKeyScopableGroups(auth)).map((group) => group.sId)
       );
-      if (nonMemberGroupIds.length > 0) {
+      const invalidGroupIds = additionalGroupIds.filter(
+        (gId) => !scopableGroupIds.has(gId)
+      );
+      if (invalidGroupIds.length > 0) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
             message:
-              "You can only scope an API key to groups you are a member of.",
+              "An API key can only be scoped to groups of regular restricted spaces.",
           },
         });
       }

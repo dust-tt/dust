@@ -113,11 +113,11 @@ describe("POST /api/w/:wId/keys — role restrictions", () => {
 });
 
 describe("POST /api/w/:wId/keys — group scoping", () => {
-  it("rejects scoping to a group the caller is not a member of", async () => {
+  it("rejects scoping to a group not tied to a regular restricted space", async () => {
     const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
 
-    // The requesting admin is not a member of this group. Scoping is gated on
-    // membership, not on role or group visibility, so even an admin is rejected.
+    // This group is not associated to any regular restricted space, so it is
+    // not scopable — even for an admin.
     const group = await GroupFactory.regularManual(workspace, "Backend");
 
     const res = await honoApp.request(`/api/w/${workspace.sId}/keys`, {

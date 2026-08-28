@@ -66,9 +66,8 @@ export function isManageableGroupKind(kind: GroupKind): boolean {
 // (`regular_auto`, `system`, `agent_editors`) are never surfaced this way: they
 // are implementation details of spaces, permissions, and agent editors.
 export const USER_VISIBLE_GROUP_KINDS = [
+  ...MANAGEABLE_GROUP_KINDS,
   "global",
-  "provisioned",
-  "regular_manual",
 ] as const;
 
 export function isUserVisibleGroupKind(kind: GroupKind): boolean {

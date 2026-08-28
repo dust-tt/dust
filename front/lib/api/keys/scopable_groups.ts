@@ -3,26 +3,32 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
 /**
- * The groups a new API key may be scoped to: the groups the caller is a member
- * of, minus any group tied to a project (pod) space. Keys scope to regular
- * spaces only, so pod member/editor groups are excluded even though the caller
- * belongs to them.
+ * The groups a new API key may be scoped to: exactly the groups associated to
+ * the workspace's regular restricted spaces. Open spaces (readable by everyone
+ * via the global group) and non-regular spaces (system, global, conversations,
+ * projects/pods) are not scopable.
  */
 export async function listKeyScopableGroups(
   auth: Authenticator
 ): Promise<GroupResource[]> {
-  const memberGroups = await GroupResource.listMemberGroups(auth);
+  // `listWorkspaceSpaces` excludes projects/pods by default. The enriched
+  // serialization carries the canonical `isRestricted` flag and the space's
+  // grant `groupIds`, so we just filter and collect.
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth);
+  const enrichedSpaces = await SpaceResource.batchToJSONEnriched(auth, spaces);
 
-  // Groups attached to the caller's pod spaces (member and editor groups) are
-  // not scopable. One batched grant lookup gives every such group id.
-  const podSpaces = await SpaceResource.listWorkspacePodsAsMember(auth);
-  const podGroupRefsBySpace =
-    await SpaceResource.listGrantReferencesBySpaceModelId(podSpaces);
-  const podGroupModelIds = new Set(
-    [...podGroupRefsBySpace.values()]
-      .flat()
-      .map((reference) => reference.groupId)
-  );
+  const groupIds = new Set<string>();
+  for (const space of enrichedSpaces) {
+    if (space.kind === "regular" && space.isRestricted) {
+      for (const groupId of space.groupIds) {
+        groupIds.add(groupId);
+      }
+    }
+  }
 
-  return memberGroups.filter((group) => !podGroupModelIds.has(group.id));
+  const groupsRes = await GroupResource.fetchByIds(auth, [...groupIds]);
+  if (groupsRes.isErr()) {
+    throw groupsRes.error;
+  }
+  return groupsRes.value;
 }
