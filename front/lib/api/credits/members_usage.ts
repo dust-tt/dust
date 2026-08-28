@@ -632,6 +632,45 @@ async function fetchPerUserUsageCreditsForMembersTable({
   }
 }
 
+// Per-user AWU consumption for the current billing cycle, read live from
+// Metronome (via the cached `getPerUserAwuUsage`) instead of the analytics
+// index. Free-seat usage is billed under the free-prefixed Metronome user id
+// (`toFreeMetronomeUserId`), so both ids are queried per user and the one
+// matching the member's current seat type is picked. Degrades to 0 for a
+// user when Metronome isn't configured for the workspace or the read fails
+// (see `fetchPerUserUsageCreditsForMembersTable`).
+async function fetchConsumedAwuCreditsFromMetronomeByUserId({
+  workspaceId,
+  metronomeCustomerId,
+  metronomeContractId,
+  users,
+}: {
+  workspaceId: string;
+  metronomeCustomerId: string | null;
+  metronomeContractId: string | null;
+  users: { sId: string; seatType: MembershipSeatType | null }[];
+}): Promise<Map<string, number>> {
+  if (users.length === 0) {
+    return new Map();
+  }
+  const usageByMetronomeUserId = await fetchPerUserUsageCreditsForMembersTable({
+    workspaceId,
+    metronomeCustomerId,
+    metronomeContractId,
+    userIds: users.flatMap((u) => [u.sId, toFreeMetronomeUserId(u.sId)]),
+  });
+  const consumedByUserId = new Map<string, number>();
+  for (const u of users) {
+    const metronomeUserId =
+      u.seatType === "free" ? toFreeMetronomeUserId(u.sId) : u.sId;
+    consumedByUserId.set(
+      u.sId,
+      usageByMetronomeUserId.get(metronomeUserId) ?? 0
+    );
+  }
+  return consumedByUserId;
+}
+
 /** Exported for testing. */
 export async function fetchSeatDataForMembersTable({
   metronomeCustomerId,
@@ -1602,6 +1641,30 @@ export async function resolveMatchingMemberUserIds({
   return new Ok(result.value.users.map((u) => u.sId));
 }
 
+// Per-user data computed while resolving the sort key for "consumedAwuCredits"
+// / "seatUsage", keyed over the full matching set (a superset of whichever
+// page is ultimately returned). `getMembersUsage` reuses these instead of
+// re-fetching the same Metronome/ES data for just its page of users.
+// `perUserSpendLimits` is only populated with `includeAlertLinks: false`
+// (sorting never needs alert deep links) — callers must not reuse it when
+// they need alert links themselves.
+type MembersUsagePagePrefetch = {
+  consumedByUserId?: Map<string, number>;
+  seatDataByUserId?: Map<string, SeatData>;
+  freeSeatCredits?: {
+    freeBalanceByUserId: Map<string, number>;
+    freeStartingByUserId: Map<string, number>;
+  };
+  perUserSpendLimits?: Awaited<
+    ReturnType<typeof fetchEffectivePerUserSpendLimits>
+  >;
+  groupCapByUserModelId?: Awaited<
+    ReturnType<
+      typeof GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace
+    >
+  >;
+};
+
 // "name"/"email" live in the user search index, which owns sort + pagination
 // for those columns. Every other column is not indexed, so to sort by it we
 // fetch the full matching set with Elasticsearch `search_after`, rank it by
@@ -1616,19 +1679,29 @@ async function resolveMembersUsagePageUsers({
   workspace: LightWorkspaceType;
   paginationParams: MembersUsagePaginationInput;
   restrictToUserIds: string[] | undefined;
-}): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
+}): Promise<
+  Result<
+    {
+      users: UserResource[];
+      total: number;
+      prefetch: MembersUsagePagePrefetch;
+    },
+    Error
+  >
+> {
   const { orderColumn, orderDirection, offset, limit } = paginationParams;
   const searchTerm = paginationParams.search ?? "";
 
   // "name"/"email" are indexed: let Elasticsearch own sort and pagination.
   if (orderColumn === "name" || orderColumn === "email") {
-    return UserResource.searchUsers(auth, {
+    const result = await UserResource.searchUsers(auth, {
       searchTerm,
       offset,
       limit,
       orderBy: { field: orderColumn, direction: orderDirection },
       restrictToUserIds,
     });
+    return result.isOk() ? new Ok({ ...result.value, prefetch: {} }) : result;
   }
 
   const allUsersResult = await UserResource.searchAllUsers(auth, {
@@ -1655,6 +1728,7 @@ async function resolveMembersUsagePageUsers({
   // base seat allowance) breaks ties among members who've drawn the same
   // amount from the pool, independent of the column's own sort direction.
   const overageLimitByUserId = new Map<string, number>();
+  const prefetch: MembersUsagePagePrefetch = {};
   switch (orderColumn) {
     case "consumedAwuCredits": {
       // The column shows pool draw, not total consumption: sort on
@@ -1670,14 +1744,17 @@ async function resolveMembersUsagePageUsers({
       const [
         consumedByUserId,
         { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType },
-        { freeStartingByUserId },
+        freeSeatCredits,
         groupCapByUserModelId,
       ] = await Promise.all([
-        fetchConsumedAwuCreditsByUserId({
-          workspace,
-          userIds: allUsers.map((u) => u.sId),
-          freeSeatUserIds,
-          cycle: spendLimitCycleOverrideForAuth(auth),
+        fetchConsumedAwuCreditsFromMetronomeByUserId({
+          workspaceId: workspace.sId,
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
+          users: allUsers.map((u) => ({
+            sId: u.sId,
+            seatType: membershipByUserModelId.get(u.id)?.seatType ?? null,
+          })),
         }),
         fetchEffectivePerUserSpendLimits({
           metronomeCustomerId: workspace.metronomeCustomerId,
@@ -1699,6 +1776,16 @@ async function resolveMembersUsagePageUsers({
           userModelIds: allUsers.map((u) => u.id),
         }),
       ]);
+      const { freeStartingByUserId } = freeSeatCredits;
+      prefetch.consumedByUserId = consumedByUserId;
+      prefetch.perUserSpendLimits = {
+        perUserOverrideAlerts: new Map(),
+        defaultCapAwuCreditsBySeatType,
+        defaultCapAlertsBySeatType: {},
+        seatAllowanceBySeatType,
+      };
+      prefetch.freeSeatCredits = freeSeatCredits;
+      prefetch.groupCapByUserModelId = groupCapByUserModelId;
       for (const u of allUsers) {
         const membership = membershipByUserModelId.get(u.id);
         const seatType = membership?.seatType ?? null;
@@ -1771,11 +1858,15 @@ async function resolveMembersUsagePageUsers({
       );
       const [consumedByUserId, seatDataByUserId, freeSeatCredits] =
         await Promise.all([
-          fetchConsumedAwuCreditsByUserId({
-            workspace,
-            userIds: allUsers.map((u) => u.sId),
-            freeSeatUserIds,
-            cycle: spendLimitCycleOverrideForAuth(auth),
+          fetchConsumedAwuCreditsFromMetronomeByUserId({
+            workspaceId: workspace.sId,
+            metronomeCustomerId: workspace.metronomeCustomerId,
+            metronomeContractId:
+              auth.subscription()?.metronomeContractId ?? null,
+            users: allUsers.map((u) => ({
+              sId: u.sId,
+              seatType: membershipByUserModelId.get(u.id)?.seatType ?? null,
+            })),
           }),
           fetchSeatDataForMembersTable({
             metronomeCustomerId: workspace.metronomeCustomerId,
@@ -1792,6 +1883,9 @@ async function resolveMembersUsagePageUsers({
               }),
         ]);
       const { freeBalanceByUserId, freeStartingByUserId } = freeSeatCredits;
+      prefetch.consumedByUserId = consumedByUserId;
+      prefetch.seatDataByUserId = seatDataByUserId;
+      prefetch.freeSeatCredits = freeSeatCredits;
       // Mirrors `computeSeatUsage` in MembersUsageTable.tsx: free seats sort on
       // their live remaining balance (their real per-user credit, which a rep
       // can raise above the seat-type constant), every other seat on the
@@ -1856,7 +1950,11 @@ async function resolveMembersUsagePageUsers({
     return a.sId < b.sId ? -1 : a.sId > b.sId ? 1 : 0;
   });
 
-  return new Ok({ users: sortedUsers.slice(offset, offset + limit), total });
+  return new Ok({
+    users: sortedUsers.slice(offset, offset + limit),
+    total,
+    prefetch,
+  });
 }
 
 export async function getMembersUsage({
@@ -1907,7 +2005,7 @@ export async function getMembersUsage({
     return { members: [], total: 0, creditsResetAt };
   }
 
-  const { users, total } = usersResult.value;
+  const { users, total, prefetch } = usersResult.value;
 
   if (users.length === 0) {
     return { members: [], total, creditsResetAt };
@@ -1940,6 +2038,14 @@ export async function getMembersUsage({
       : []
   );
 
+  // Reuse whatever `resolveMembersUsagePageUsers` already fetched while
+  // ranking the full matching set (a superset of `users`) instead of
+  // re-fetching the same Metronome/ES data for just this page.
+  // `perUserSpendLimits` is only reusable when it was computed with the same
+  // `includeAlertLinks` value (sorting always uses `false`).
+  const canReusePerUserSpendLimits =
+    !includeAlertLinks && prefetch.perUserSpendLimits !== undefined;
+
   // Fetch Metronome data and consumed credits in parallel for the current page.
   const [
     perUserTotalConsumedCredits,
@@ -1951,19 +2057,21 @@ export async function getMembersUsage({
     groupNamesByUserModelId,
     groupCapByUserModelId,
   ] = await Promise.all([
-    fetchConsumedAwuCreditsByUserId({
-      workspace,
-      userIds: users.map((u) => u.sId),
-      freeSeatUserIds,
-      // Non-credit workspaces have no Metronome billing period to anchor the
-      // window on; fall back to the UTC calendar month (same window the spend
-      // caps use) so consumed (ES) reflects real usage instead of 0.
-      cycle: spendLimitCycleOverrideForAuth(auth),
-    }),
-    fetchSeatDataForMembersTable({
-      metronomeCustomerId: metronomeCustomerId ?? null,
-      metronomeContractId,
-    }),
+    prefetch.consumedByUserId ??
+      fetchConsumedAwuCreditsFromMetronomeByUserId({
+        workspaceId: workspace.sId,
+        metronomeCustomerId: metronomeCustomerId ?? null,
+        metronomeContractId,
+        users: users.map((u) => ({
+          sId: u.sId,
+          seatType: membershipByUserId.get(u.id)?.seatType ?? null,
+        })),
+      }),
+    prefetch.seatDataByUserId ??
+      fetchSeatDataForMembersTable({
+        metronomeCustomerId: metronomeCustomerId ?? null,
+        metronomeContractId,
+      }),
     // Paid (seat-managed) live balances — the expensive read, poke-only.
     includeSeatBalance
       ? fetchSeatBalancesForMembersTable({
@@ -1975,21 +2083,24 @@ export async function getMembersUsage({
     // Free-seat per-user credit balance + granted total. Needed on every surface
     // (customer usage page included) to show the member's real allowance, so it
     // runs whenever the page has free seats — independent of `includeSeatBalance`.
-    freeSeatUserIds.length > 0
-      ? fetchFreeSeatCreditsForMembersTable({
+    prefetch.freeSeatCredits ??
+      (freeSeatUserIds.length > 0
+        ? fetchFreeSeatCreditsForMembersTable({
+            metronomeCustomerId: metronomeCustomerId ?? null,
+          })
+        : Promise.resolve({
+            freeBalanceByUserId: new Map<string, number>(),
+            freeStartingByUserId: new Map<string, number>(),
+          })),
+    canReusePerUserSpendLimits
+      ? prefetch.perUserSpendLimits!
+      : fetchEffectivePerUserSpendLimits({
           metronomeCustomerId: metronomeCustomerId ?? null,
-        })
-      : Promise.resolve({
-          freeBalanceByUserId: new Map<string, number>(),
-          freeStartingByUserId: new Map<string, number>(),
+          workspaceId: workspace.sId,
+          defaultPoolCapAwuCredits:
+            creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
+          includeAlertLinks,
         }),
-    fetchEffectivePerUserSpendLimits({
-      metronomeCustomerId: metronomeCustomerId ?? null,
-      workspaceId: workspace.sId,
-      defaultPoolCapAwuCredits:
-        creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
-      includeAlertLinks,
-    }),
     // Free-seat balance-alert ids (low + empty) for deep-linking — poke-only,
     // gated on `includeAlertLinks` so the customer page doesn't pay the extra
     // alert-list call.
@@ -2004,10 +2115,11 @@ export async function getMembersUsage({
       userModelIds: users.map((u) => u.id),
       groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
     }),
-    GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
-      workspace,
-      userModelIds: users.map((u) => u.id),
-    }),
+    prefetch.groupCapByUserModelId ??
+      GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+        workspace,
+        userModelIds: users.map((u) => u.id),
+      }),
   ]);
   const freeCreditAlertIds =
     freeCreditAlertIdsByUserId?.isOk() === true
@@ -2079,24 +2191,12 @@ export async function getMembersUsage({
     }
   }
 
-  // Bulk-fetch each user's Metronome-side per-user AWU consumption (poke-only),
-  // shown next to the ES and rate-limiter figures to spot divergence. Reuses the
-  // resilient wrapper (empty map when Metronome isn't configured or on error).
-  const metronomeConsumedByUserId = new Map<string, number>();
-  if (includeAlertLinks) {
-    const usage = await fetchPerUserUsageCreditsForMembersTable({
-      workspaceId: workspace.sId,
-      metronomeCustomerId: metronomeCustomerId ?? null,
-      metronomeContractId,
-      userIds: users.flatMap((u) => [u.sId, toFreeMetronomeUserId(u.sId)]),
-    });
-    for (const u of users) {
-      const membership = membershipByUserId.get(u.id);
-      const metronomeUserId =
-        membership?.seatType === "free" ? toFreeMetronomeUserId(u.sId) : u.sId;
-      metronomeConsumedByUserId.set(u.sId, usage.get(metronomeUserId) ?? 0);
-    }
-  }
+  // `consumedAwuCredits` is itself Metronome-sourced now (see
+  // `fetchConsumedAwuCreditsFromMetronomeByUserId`), so the poke-only
+  // Metronome comparison column is the same data — no separate fetch needed.
+  const metronomeConsumedByUserId = includeAlertLinks
+    ? perUserTotalConsumedCredits
+    : new Map<string, number>();
 
   // Bulk-fetch each user's fair-use AWU credit usage (poke-only). This is a
   // bounded page (≤ 150) of Redis reads, so batch with `concurrentExecutor`.
