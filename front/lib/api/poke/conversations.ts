@@ -3,6 +3,7 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { PokeSandboxType } from "@app/types/poke";
 
 export type PokeListConversationItem = ConversationWithoutContentType & {
@@ -15,6 +16,10 @@ export type PokeListConversations = {
   // filtering. Equal to the returned length on the trigger and reinforced-skill
   // listings, which are not paged.
   totalCount: number;
+};
+
+export type PokeListConversationWakeUps = {
+  wakeUps: WakeUpType[];
 };
 
 export type PokeGetConversationConfig = {

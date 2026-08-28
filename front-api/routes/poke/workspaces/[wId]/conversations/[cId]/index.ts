@@ -10,6 +10,7 @@ import config from "./config";
 import consumption from "./consumption";
 import reinforcementTestCase from "./reinforcement_test_case";
 import render from "./render";
+import wakeups from "./wakeups";
 
 export type PokeGetConversationResponseBody = {
   conversation: PokeConversationType;
@@ -43,5 +44,6 @@ app.route("/config", config);
 app.route("/consumption", consumption);
 app.route("/reinforcement_test_case", reinforcementTestCase);
 app.route("/render", render);
+app.route("/wakeups", wakeups);
 
 export default app;
