@@ -206,17 +206,22 @@ export class FrameSandboxAdapter {
 
   static async ensureSandboxActive(
     auth: Authenticator,
-    frame: FrameSandboxScopeOwner
+    frame: FrameSandboxScopeOwner,
+    { requireRunning = false }: { requireRunning?: boolean } = {}
   ): Promise<Result<EnsureSandboxResult<FrameSandboxScope>, Error>> {
-    return SandboxResource.ensureActive(auth, {
-      lockKey: this.lockKey(frame),
-      resolveScope: () => this.resolveScope(auth, frame),
-      envVars: (scope) => this.buildFrameEnvVars(auth, frame, scope),
-      logLabel: "frame",
-      fetchSandbox: () => this.fetchSandboxByFrame(auth, frame),
-      createSandbox: (blob) =>
-        this.createSandboxRecordForFrame(auth, frame, blob),
-    });
+    return SandboxResource.ensureActive(
+      auth,
+      {
+        lockKey: this.lockKey(frame),
+        resolveScope: () => this.resolveScope(auth, frame),
+        envVars: (scope) => this.buildFrameEnvVars(auth, frame, scope),
+        logLabel: "frame",
+        fetchSandbox: () => this.fetchSandboxByFrame(auth, frame),
+        createSandbox: (blob) =>
+          this.createSandboxRecordForFrame(auth, frame, blob),
+      },
+      { requireRunning }
+    );
   }
 
   static async deleteSandbox(

@@ -10,7 +10,10 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { recordSandboxFunctionRun } from "@app/lib/api/sandbox/instrumentation";
-import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import {
+  ensureFrameSandboxReady,
+  ensurePodSandboxReady,
+} from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { podDatabasePrefixFromSlug } from "@app/lib/api/sandbox_functions/db_naming";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
@@ -56,6 +59,7 @@ import type {
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
 import {
+  getFramePublicationFunctionsMountPoint,
   getPodSandboxFunctionsMountPoint,
   podDatabaseExecEnvVars,
 } from "@app/types/mount_path";
@@ -236,7 +240,7 @@ function getSandboxFunctionUserIdentity(
   auth: Authenticator,
   user: UserResource | null,
   invocation: SandboxFunctionInvocationResource,
-  space: SpaceResource
+  pod: SpaceResource | null
 ) {
   const workspace = auth.getNonNullableWorkspace();
   if (
@@ -251,10 +255,10 @@ function getSandboxFunctionUserIdentity(
     workspaceId: workspace.sId,
     // Same predicate as the `isEditor` the pod UI serializes: pod editor group members plus
     // workspace admins via role.
-    isPodEditor: space.canAdministrate(auth),
+    isPodEditor: pod?.canAdministrate(auth) ?? false,
     // Same predicate as the pod UI's `isMember` and the `pod_member_required` policy: users in
     // any of the pod's groups. Workspace admins outside them are not members.
-    isPodMember: space.isMember(auth),
+    isPodMember: pod?.isMember(auth) ?? false,
     user: {
       sId: user.sId,
       firstName: user.firstName,
@@ -346,6 +350,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   private buildGcsPath(auth: Authenticator): string {
+    const frame = this.sandboxFunction.frame;
+    if (frame) {
+      return `w/${auth.getNonNullableWorkspace().sId}/frames/${frame.sId}/invocations/${this.sId}`;
+    }
     return `w/${auth.getNonNullableWorkspace().sId}/sandbox_functions/${this.sandboxFunction.sId}/invocations/${this.sId}`;
   }
 
@@ -599,10 +607,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
     try {
       const { sandboxFunction } = this;
+      const frame = sandboxFunction.frame;
+      const publicationId = sandboxFunction.publicationId;
       if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
         return new Err(
           new SandboxFunctionInvocationError(
-            "This Pod Function belongs to another workspace."
+            `This ${frame ? "Frame function" : "Pod Function"} belongs to another workspace.`
           )
         );
       }
@@ -624,16 +634,18 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         const authorization = await authorizeSandboxFunctionInvocation(auth, {
           userIdentity: persistedFunction.userIdentity,
           origin: this.origin ?? "delegated",
-          // The space is fixed at creation, so the in-memory copy is safe to reuse alongside
-          // the re-fetched row.
-          space: sandboxFunction.space,
+          owner: frame
+            ? { kind: "frame", frame }
+            : { kind: "pod", space: sandboxFunction.space },
         });
         return { persistedFunction, authorization };
       };
       const runEnsure = () =>
-        ensurePodSandboxReady(auth, sandboxFunction.space, {
-          requireRunning: inline,
-        });
+        frame
+          ? ensureFrameSandboxReady(auth, frame, { requireRunning: inline })
+          : ensurePodSandboxReady(auth, sandboxFunction.space, {
+              requireRunning: inline,
+            });
 
       let functionCheck;
       let ensureResult;
@@ -682,6 +694,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const token = await generateSandboxFunctionInvocationToken(auth, {
         sandbox,
         sandboxFunction,
+        owner: frame
+          ? {
+              kind: "frame",
+              frameId: frame.sId,
+              spaceId: authorization.runtimeSpaceId,
+            }
+          : { kind: "pod", spaceId: authorization.runtimeSpaceId },
         invocationId: this.sId,
         execId,
         noTools,
@@ -712,22 +731,40 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         auth,
         authorization.user,
         this,
-        sandboxFunction.space
+        authorization.pod
       );
+
+      let functionsDirectory: string;
+      if (frame) {
+        if (!publicationId) {
+          return new Err(
+            new Error("The Frame function has no publication identity.")
+          );
+        }
+        functionsDirectory = getFramePublicationFunctionsMountPoint({
+          frameId: frame.sId,
+          publicationId,
+        });
+      } else {
+        functionsDirectory = getPodSandboxFunctionsMountPoint(
+          sandboxFunction.space.sId
+        );
+      }
+      const databaseEnvVars = frame
+        ? {}
+        : podDatabaseExecEnvVars({
+            databasePrefix: podDatabasePrefixFromSlug(sandboxFunction.slug),
+          });
 
       const execStartedAtMs = Date.now();
       const execResult = await sandbox.exec(auth, command, {
         workingDirectory: SANDBOX_FUNCTION_WORKING_DIRECTORY,
         envVars: {
           DUST_API_URL: `${dustAPIBaseUrlForSandbox()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
-          DUST_FUNCTIONS_DIR: getPodSandboxFunctionsMountPoint(
-            sandboxFunction.space.sId
-          ),
+          DUST_FUNCTIONS_DIR: functionsDirectory,
           // The app prefix comes from the slug, so `db("chat")` in the bundle resolves to this
           // app's own database without the source naming the app.
-          ...podDatabaseExecEnvVars({
-            databasePrefix: podDatabasePrefixFromSlug(sandboxFunction.slug),
-          }),
+          ...databaseEnvVars,
           DUST_SANDBOX_TOKEN: token,
           // Durable functions may still spawn tool clients that inherit the function process's
           // native environment. Keep them cold until all tool calls read the invocation context;
@@ -813,7 +850,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         logger.error(
           {
             workspaceId: auth.getNonNullableWorkspace().sId,
-            spaceId: sandboxFunction.space.sId,
+            ...(frame
+              ? { frameId: frame.sId }
+              : { spaceId: sandboxFunction.space.sId }),
             sandboxFunctionId: sandboxFunction.sId,
             slug: sandboxFunction.slug,
             invocationId: this.sId,
@@ -1153,9 +1192,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         if (!viewer) {
           return [];
         }
-        viewerModelId = sandboxFunction.space.canAdministrate(auth)
-          ? undefined
-          : viewer.id;
+        viewerModelId = sandboxFunction.frame
+          ? viewer.id
+          : sandboxFunction.space.canAdministrate(auth)
+            ? undefined
+            : viewer.id;
         break;
       }
       case "system":

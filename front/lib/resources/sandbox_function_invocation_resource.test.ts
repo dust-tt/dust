@@ -1,7 +1,10 @@
 import { formatSandboxFunctionInvocations } from "@app/lib/api/actions/servers/sandbox_functions/tools/inspect_invocations";
 import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/access_tokens";
 import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
-import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import {
+  ensureFrameSandboxReady,
+  ensurePodSandboxReady,
+} from "@app/lib/api/sandbox/lifecycle";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import type {
   NormalizedSandboxFunctionOutcome,
@@ -14,6 +17,7 @@ import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_fu
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_functions/client";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -26,12 +30,16 @@ import type {
   SandboxFunctionInvocationOrigin,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
-import { sandboxFunctionContentType } from "@app/types/files";
+import {
+  frameV2ContentType,
+  sandboxFunctionContentType,
+} from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
+  ensureFrameSandboxReady: vi.fn(),
   ensurePodSandboxReady: vi.fn(),
 }));
 
@@ -162,6 +170,79 @@ async function setupExecutionTest(
     sandboxFunction,
     sandbox,
     invocation,
+  };
+}
+
+async function setupFrameExecutionTest() {
+  const { authenticator, workspace } = await createResourceTest({
+    role: "admin",
+  });
+  const space = await SpaceFactory.project(workspace);
+  const publicationId = "publication-1";
+  const frame = await FileFactory.create(authenticator, null, {
+    contentType: frameV2ContentType,
+    fileName: "tasks.frame.json",
+    fileSize: 100,
+    status: "ready",
+    useCase: "conversation",
+    useCaseMetadata: { spaceId: space.sId, activePublicationId: publicationId },
+  });
+  await withTransaction((transaction) =>
+    SandboxFunctionResource.createForFramePublication(
+      authenticator,
+      {
+        frame,
+        publicationId,
+        functions: [
+          {
+            name: "add-task",
+            description: "Add a task.",
+            userIdentity: "optional",
+            executionMode: "durable",
+            defaultStake: "low",
+            bundleCode: "export default () => 'ok';",
+            inputSchema,
+            outputSchema,
+          },
+        ],
+      },
+      transaction
+    )
+  );
+  const sandboxFunction =
+    await SandboxFunctionResource.fetchByFramePublicationAndSlug(
+      authenticator,
+      { frame, publicationId, slug: "add-task" }
+    );
+  if (!sandboxFunction) {
+    throw new Error("Expected the Frame function to exist.");
+  }
+  const sandbox = await SandboxResource.makeNew(authenticator, {
+    providerId: "test-frame-provider-id",
+    status: "running",
+    baseImage: "dust-base",
+    version: "0.0.0-test",
+  });
+  vi.mocked(ensureFrameSandboxReady).mockResolvedValue(
+    new Ok({ sandbox, freshlyCreated: false })
+  );
+  vi.mocked(generateSandboxFunctionInvocationToken).mockResolvedValue(
+    "sbt-frame-function-token"
+  );
+  const invocation = await SandboxFunctionInvocationResource.makeNew(
+    authenticator,
+    { sandboxFunction, input: { message: "hello" } }
+  );
+
+  return {
+    authenticator,
+    frame,
+    invocation,
+    publicationId,
+    sandbox,
+    sandboxFunction,
+    space,
+    workspace,
   };
 }
 
@@ -728,6 +809,7 @@ describe("SandboxFunctionInvocationResource", () => {
       {
         sandbox,
         sandboxFunction,
+        owner: { kind: "pod", spaceId: space.sId },
         invocationId: invocation.sId,
         execId: expect.any(String),
         noTools: false,
@@ -785,6 +867,67 @@ describe("SandboxFunctionInvocationResource", () => {
       encoding: "utf8",
       bundleSha256: TEST_BUNDLE_SHA256,
     });
+  });
+
+  it("executes a Frame function from its exact immutable publication", async () => {
+    const {
+      authenticator,
+      frame,
+      invocation,
+      publicationId,
+      sandbox,
+      sandboxFunction,
+      space,
+    } = await setupFrameExecutionTest();
+    const execSpy = vi
+      .spyOn(sandbox, "exec")
+      .mockResolvedValue(
+        new Ok({ exitCode: 0, stdout: SUCCEEDED_STDOUT, stderr: "" })
+      );
+
+    const result = await invocation.execute(authenticator);
+
+    expect(result.isOk()).toBe(true);
+    expect(ensureFrameSandboxReady).toHaveBeenCalledWith(authenticator, frame, {
+      requireRunning: false,
+    });
+    expect(ensurePodSandboxReady).not.toHaveBeenCalled();
+    expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
+      authenticator,
+      expect.objectContaining({
+        sandbox,
+        sandboxFunction,
+        owner: {
+          kind: "frame",
+          frameId: frame.sId,
+          spaceId: space.sId,
+        },
+      })
+    );
+    const execOptions = execSpy.mock.calls[0]?.[2];
+    expect(execOptions?.envVars).toMatchObject({
+      DUST_FUNCTIONS_DIR: `/frames/${frame.sId}/publications/${publicationId}/functions`,
+      DUST_SANDBOX_TOKEN: "sbt-frame-function-token",
+    });
+    expect(execOptions?.envVars).not.toHaveProperty("DUST_POD_DATABASES_DIR");
+    expect(invocation.gcsPath).toBe(
+      `w/${authenticator.getNonNullableWorkspace().sId}/frames/${frame.sId}/invocations/${invocation.sId}`
+    );
+  });
+
+  it("denies a userless Frame invocation before sandbox wakeup", async () => {
+    const { sandboxFunction, workspace } = await setupFrameExecutionTest();
+    const userlessAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const result = await sandboxFunction.invoke(userlessAuth, {});
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("logged-in user");
+    }
+    expect(ensureFrameSandboxReady).not.toHaveBeenCalled();
   });
 
   it("reads back a spilled result and delivers the full output", async () => {

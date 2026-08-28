@@ -106,6 +106,17 @@ export function getFramePublicationsMountPoint(frameId: string): string {
   return `/frames/${frameId}/publications`;
 }
 
+/** Exact immutable function directory selected for one Frame invocation. */
+export function getFramePublicationFunctionsMountPoint({
+  frameId,
+  publicationId,
+}: {
+  frameId: string;
+  publicationId: string;
+}): string {
+  return `${getFramePublicationsMountPoint(frameId)}/${publicationId}/functions`;
+}
+
 /**
  * Absolute in-sandbox path of the pod's live SQLite databases (`{name}.db` files opened by
  * `@dust/pod`'s `db()`). Local disk, not a gcsfuse mount — Litestream replicates it to GCS.

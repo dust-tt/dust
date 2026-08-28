@@ -2,10 +2,12 @@ import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functio
 import { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { frameV2ContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
@@ -51,7 +53,7 @@ async function authorizePodMemberRequired(
   return authorizeSandboxFunctionInvocation(auth, {
     userIdentity: "pod_member_required",
     origin: "interactive_session",
-    space,
+    owner: { kind: "pod", space },
   });
 }
 
@@ -122,5 +124,61 @@ describe("authorizeSandboxFunctionInvocation with pod_member_required", () => {
     const authorization = await authorizePodMemberRequired(userlessAuth, space);
 
     expect(authorization.authorized).toBe(false);
+  });
+});
+
+describe("authorizeSandboxFunctionInvocation for Frames", () => {
+  async function createFrame(adminAuth: Authenticator, space: SpaceResource) {
+    return FileFactory.create(adminAuth, null, {
+      contentType: frameV2ContentType,
+      fileName: "tasks.frame.json",
+      fileSize: 10,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+  }
+
+  it("requires a workspace member even when identity is optional", async () => {
+    const { workspace, adminAuth, space } = await setup();
+    const frame = await createFrame(adminAuth, space);
+    const userlessAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const authorization = await authorizeSandboxFunctionInvocation(
+      userlessAuth,
+      {
+        userIdentity: "optional",
+        origin: "delegated",
+        owner: { kind: "frame", frame },
+      }
+    );
+
+    expect(authorization.authorized).toBe(false);
+  });
+
+  it("resolves the Frame runtime scope and Pod membership", async () => {
+    const { workspace, adminAuth, space } = await setup();
+    const frame = await createFrame(adminAuth, space);
+    const member = await makeWorkspaceMember(workspace);
+    await addToSpaceGroup(adminAuth, space, "member", member);
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+
+    const authorization = await authorizeSandboxFunctionInvocation(memberAuth, {
+      userIdentity: "pod_member_required",
+      origin: "interactive_session",
+      owner: { kind: "frame", frame },
+    });
+
+    expect(authorization).toMatchObject({
+      authorized: true,
+      runtimeSpaceId: space.sId,
+      pod: expect.objectContaining({ sId: space.sId }),
+      user: expect.objectContaining({ sId: member.sId }),
+    });
   });
 });

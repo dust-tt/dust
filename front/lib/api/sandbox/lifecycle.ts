@@ -295,10 +295,12 @@ export async function ensurePodSandboxReady(
 
 export async function ensureFrameSandboxReady(
   auth: Authenticator,
-  frame: FileResource
+  frame: FileResource,
+  { requireRunning = false }: { requireRunning?: boolean } = {}
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
   return ensureOwnerSandboxReady(auth, {
-    ensureActive: () => FrameSandboxAdapter.ensureSandboxActive(auth, frame),
+    ensureActive: () =>
+      FrameSandboxAdapter.ensureSandboxActive(auth, frame, { requireRunning }),
     deriveConfig: (scope) => ({
       getFileSystem: () =>
         DustFileSystem.forFrameSandboxProvisioning(auth, frame, {
