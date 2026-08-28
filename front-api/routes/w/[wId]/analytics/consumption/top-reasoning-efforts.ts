@@ -10,8 +10,6 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { consumptionAnalyticsApp } from "./context";
 
-export type { GetConsumptionTopReasoningEffortsResponse };
-
 // Mounted at /api/w/:wId/analytics/consumption/top-reasoning-efforts.
 // Also mounted at /api/w/:wId/me/analytics/consumption/top-reasoning-efforts.
 // Also mounted at /api/w/:wId/assistant/agent_configurations/:aId/analytics/consumption/top-reasoning-efforts.

@@ -2,6 +2,7 @@ import {
   FairUsageModal,
   fairUseSeatLimitFromPlan,
 } from "@app/components/FairUsageModal";
+import { formatLimitTimeframe } from "@app/lib/client/credits";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
@@ -73,21 +74,6 @@ export function getWorkspaceLimitForSubmitError(
     default:
       assertNeverAndIgnore(type);
       return null;
-  }
-}
-
-function formatLimitTimeframe(timeframe: string): string {
-  switch (timeframe) {
-    case "day":
-      return "over the past 24 hours";
-    case "week":
-      return "over the past 7 days";
-    case "month":
-      return "over the past 30 days";
-    case "lifetime":
-      return "for your current plan";
-    default:
-      return `per ${timeframe}`;
   }
 }
 
