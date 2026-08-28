@@ -656,6 +656,13 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
 
     try {
+      const [exists] = await getPrivateUploadBucket().file(gcsPath).exists();
+      if (!exists) {
+        return new Err(
+          new DustFileSystemError("not_found", `Path not found: ${scopedPath}`)
+        );
+      }
+
       const url = await getCachedPrivateUploadSignedUrl(gcsPath, {
         expirationDelayMs: opts?.expiresInMs,
       });
