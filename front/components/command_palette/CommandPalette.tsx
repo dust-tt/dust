@@ -57,21 +57,6 @@ const THEME_LABELS: Record<Theme, string> = {
   dark: "Dark",
 };
 
-const COMMON_COMMAND_KEYWORDS = [
-  "settings",
-  "appearance",
-  "theme",
-  "interface",
-  "color scheme",
-  "display",
-];
-
-const COMMAND_SEARCH_KEYWORDS: Record<Theme, string[]> = {
-  system: [...COMMON_COMMAND_KEYWORDS, "system"],
-  light: [...COMMON_COMMAND_KEYWORDS, "light"],
-  dark: [...COMMON_COMMAND_KEYWORDS, "dark", "dark mode", "night mode"],
-};
-
 export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const { isOpen, close } = useCommandPalette();
   const router = useAppRouter();
@@ -157,9 +142,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     }
     const lowerQuery = debouncedQuery.toLowerCase();
     return allCommands.filter((c) =>
-      COMMAND_SEARCH_KEYWORDS[c.theme].some((keyword) =>
-        keyword.includes(lowerQuery)
-      )
+      subFilter(lowerQuery, `change interface theme ${c.label}`.toLowerCase())
     );
   }, [allCommands, debouncedQuery]);
 
