@@ -47,7 +47,6 @@ import {
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import {
   isCreditPricedFreePlan,
-  isEnterprisePlanPrefix,
   isFreePlan,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
@@ -82,7 +81,6 @@ import {
 import { useUsageSettings } from "@app/lib/swr/usage_settings";
 import {
   useAwuUsageFromAnalytics,
-  useMetronomeContract,
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
@@ -473,10 +471,6 @@ export function UsagePageRedesign() {
     workspaceId: owner.sId,
   });
 
-  const { contract: metronomeContract } = useMetronomeContract({
-    workspaceId: owner.sId,
-  });
-
   // TODO(2026-08-24): add back logic to show consumption here.
   const showConsumptionAnalytics = false;
 
@@ -861,7 +855,6 @@ export function UsagePageRedesign() {
   const { usageSettings } = useUsageSettings({ workspaceId: owner.sId });
 
   const plan = subscription.plan;
-  const isEnterprise = isEnterprisePlanPrefix(plan.code);
   const isFreePlanWorkspace = isFreePlan(plan.code);
 
   const isManualInvitationsEnabled =
@@ -1064,7 +1057,7 @@ export function UsagePageRedesign() {
       totalRowCount={totalMembersUsage}
       sorting={sorting}
       setSorting={handleSetSorting}
-      showGroupsColumn={groups.length > 0}
+      showGroupsColumn={false}
       enableSelection={!isReadOnly}
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
@@ -1310,14 +1303,6 @@ export function UsagePageRedesign() {
                     <span className="copy-sm text-muted-foreground">
                       {usedPercentage}% used
                     </span>
-                    {metronomeContract?.contractEndingAtMs && (
-                      <span className="copy-sm text-muted-foreground">
-                        End of contract{" "}
-                        {formatConsumptionDate(
-                          metronomeContract.contractEndingAtMs
-                        )}
-                      </span>
-                    )}
                   </div>
                 )}
                 <div className="flex items-center justify-between gap-4">
@@ -1328,19 +1313,12 @@ export function UsagePageRedesign() {
                         period
                       </span>
                     ) : (
-                      <>
-                        {overageCredits !== null && overageCredits > 0 && (
-                          <span className="copy-sm text-muted-foreground">
-                            {formatCredits(overageCredits)} overage credits
-                          </span>
-                        )}
-                        {isEnterprise && (
-                          <span className="copy-sm text-muted-foreground">
-                            Contact your Dust sales representative to buy
-                            credits
-                          </span>
-                        )}
-                      </>
+                      overageCredits !== null &&
+                      overageCredits > 0 && (
+                        <span className="copy-sm text-muted-foreground">
+                          {formatCredits(overageCredits)} overage credits
+                        </span>
+                      )
                     )}
                   </div>
                 </div>

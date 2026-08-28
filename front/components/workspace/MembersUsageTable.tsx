@@ -19,7 +19,6 @@ import {
   toUserModelTierSelection,
 } from "@app/lib/client/model_tier_options";
 import {
-  formatModelTiersSummary,
   formatUserModelTierInheritLabel,
   resolveModelTiersForUser,
 } from "@app/lib/client/model_tiers";
@@ -27,6 +26,7 @@ import type { ModelsTierDefinition } from "@app/lib/model_tiers/allowed_tiers";
 import { getMaxTierName } from "@app/lib/model_tiers/tier_order";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
+import { getModelsTierDisplayName } from "@app/types/assistant/models/model_tiers";
 import type { MembershipSeatType } from "@app/types/memberships";
 import {
   isPaidSeatType,
@@ -706,9 +706,10 @@ export function MembersUsageTable({
             m.sId
           ),
           isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
-          modelTiersSummary: formatModelTiersSummary(
-            getMaxTierName(resolvedModelTiers?.tiers ?? [])
-          ),
+          modelTiersSummary: (() => {
+            const maxTierName = getMaxTierName(resolvedModelTiers?.tiers ?? []);
+            return maxTierName ? getModelsTierDisplayName(maxTierName) : "--";
+          })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
           menuItems: [
             ...(!m.seatType || m.seatType === "none"
