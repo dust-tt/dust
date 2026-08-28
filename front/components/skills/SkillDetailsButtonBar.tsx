@@ -1,6 +1,11 @@
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { SkillFavoriteButton } from "@app/components/skills/SkillFavoriteButton";
-import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import { useSendNotification } from "@app/hooks/useNotification";
+import config from "@app/lib/api/config";
+import {
+  getManageSkillsRoute,
+  getSkillBuilderRoute,
+} from "@app/lib/utils/router";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -11,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Edit04,
+  Link01,
   Trash01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -34,6 +40,7 @@ export function SkillDetailsButtonBar({
   onFavoriteChange,
 }: SkillDetailsButtonBarProps) {
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const sendNotification = useSendNotification();
 
   if (!skill.canAdministrate && !onFavoriteChange) {
     return null;
@@ -81,6 +88,20 @@ export function SkillDetailsButtonBar({
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
+              <DropdownMenuItem
+                label="Copy link"
+                icon={Link01}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  await navigator.clipboard.writeText(
+                    `${config.getAppUrl()}${getManageSkillsRoute(owner.sId, skill.sId)}`
+                  );
+                  sendNotification({
+                    type: "success",
+                    title: "Skill link copied to clipboard",
+                  });
+                }}
+              />
               <DropdownMenuItem
                 label="Archive"
                 icon={Trash01}
