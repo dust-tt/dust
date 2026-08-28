@@ -142,7 +142,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     }
     const lowerQuery = debouncedQuery.toLowerCase();
     return allCommands.filter((c) =>
-      subFilter(lowerQuery, `change interface theme ${c.label}`.toLowerCase())
+      subFilter(lowerQuery, c.label.toLowerCase())
     );
   }, [allCommands, debouncedQuery]);
 
