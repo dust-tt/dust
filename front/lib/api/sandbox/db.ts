@@ -14,7 +14,11 @@ import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
-import { getPodStateBasePath } from "@app/types/mount_path";
+import {
+  getPodStateBasePath,
+  SANDBOX_STATE_DATABASES_DIR,
+  SANDBOX_STATE_REPLICA_MOUNT_POINT,
+} from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -45,10 +49,6 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  *    daemon, its control socket, the mounts and the database files.
  */
 
-export const POD_STATE_DATABASES_DIR = "/pod-state/databases";
-const POD_STATE_REPLICA_DIR = "/pod-state/replica";
-/** In-sandbox mount point of the state replica gcsfuse mount. */
-export const POD_STATE_REPLICA_MOUNT_POINT = POD_STATE_REPLICA_DIR;
 /** System user running the litestream daemon and owning the replica mount. */
 const POD_STATE_USER = "dust-state";
 
@@ -267,7 +267,7 @@ async function listReplicaDatabases(
   const result = await sandbox.execRoot(
     auth,
     asPodStateUser(FIND_BIN, [
-      POD_STATE_REPLICA_DIR,
+      SANDBOX_STATE_REPLICA_MOUNT_POINT,
       "-mindepth",
       "1",
       "-maxdepth",
@@ -291,10 +291,10 @@ async function restorePodDatabase(
   sandbox: SandboxResource,
   name: string
 ): Promise<Result<void, Error>> {
-  const dbPath = `${POD_STATE_DATABASES_DIR}/${name}.db`;
-  const tmpPath = `${POD_STATE_DATABASES_DIR}/.restore-${name}.db`;
+  const dbPath = `${SANDBOX_STATE_DATABASES_DIR}/${name}.db`;
+  const tmpPath = `${SANDBOX_STATE_DATABASES_DIR}/.restore-${name}.db`;
   // Replica subdir named by database FILENAME (directory watcher layout).
-  const replicaUrl = `file://${POD_STATE_REPLICA_DIR}/${name}.db`;
+  const replicaUrl = `file://${SANDBOX_STATE_REPLICA_MOUNT_POINT}/${name}.db`;
 
   const failAndCleanup = async (err: Error): Promise<Result<void, Error>> => {
     // Best effort: a leftover temp file is invisible to enumeration (dotfile)
@@ -555,7 +555,7 @@ export async function ensurePodStateHealthOnSleep(
 
   // 4. Sync each database through the daemon control socket.
   for (const name of names) {
-    const dbPath = `${POD_STATE_DATABASES_DIR}/${name}.db`;
+    const dbPath = `${SANDBOX_STATE_DATABASES_DIR}/${name}.db`;
     const syncResult = await sandbox.execRoot(
       auth,
       rootCommand.exec(LITESTREAM_BIN, [
@@ -611,7 +611,12 @@ async function checkReplicaMountLiveness(
   // including root. `stat -f -c %t` prints the statfs filesystem magic.
   const result = await sandbox.execRoot(
     auth,
-    asPodStateUser(STAT_BIN, ["-f", "-c", "%t", POD_STATE_REPLICA_MOUNT_POINT]),
+    asPodStateUser(STAT_BIN, [
+      "-f",
+      "-c",
+      "%t",
+      SANDBOX_STATE_REPLICA_MOUNT_POINT,
+    ]),
     { timeoutMs: PROBE_EXEC_TIMEOUT_MS }
   );
   if (result.isErr()) {
@@ -637,7 +642,7 @@ async function listLiveDatabases(
   const result = await sandbox.execRoot(
     auth,
     rootCommand.exec(FIND_BIN, [
-      POD_STATE_DATABASES_DIR,
+      SANDBOX_STATE_DATABASES_DIR,
       "-mindepth",
       "1",
       "-maxdepth",
@@ -679,7 +684,7 @@ async function listValidLiveDatabases(
 
   const valid: string[] = [];
   for (const name of namesResult.value) {
-    const dbPath = `${POD_STATE_DATABASES_DIR}/${name}.db`;
+    const dbPath = `${SANDBOX_STATE_DATABASES_DIR}/${name}.db`;
     const headResult = await sandbox.execRoot(
       auth,
       rootCommand.exec(HEAD_BIN, ["-c", "15", "--", dbPath]),

@@ -285,7 +285,9 @@ describe("Frame sandbox mount wiring", () => {
     expect(rules.every((tokenRules) => tokenRules.length === 3)).toBe(true);
     const serializedRules = JSON.stringify(rules);
     expect(serializedRules).toContain("w/ws1/frames/fil_frame/publications/");
-    expect(serializedRules).toContain("w/ws1/frames/fil_frame/state/");
+    expect(serializedRules).toContain(
+      "w/ws1/frames/fil_frame/state/databases/"
+    );
     expect(serializedRules).not.toContain("/conversations/");
     expect(serializedRules).not.toContain("/pods/");
   });

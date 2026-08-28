@@ -1,6 +1,7 @@
 import {
   getFrameBasePath,
   getFrameDatabaseReplicaBasePath,
+  getFrameDatabaseReplicasBasePath,
   getFramePublicationDescriptorPath,
   getFramePublicationFunctionBundlePath,
   getFramePublicationUiBundlePath,
@@ -33,6 +34,9 @@ describe("Frames v2 GCS paths", () => {
   });
 
   it("keeps SQLite replica state outside publications", () => {
+    expect(getFrameDatabaseReplicasBasePath(IDS)).toBe(
+      "w/w_123/frames/fil_456/state/databases/"
+    );
     expect(
       getFrameDatabaseReplicaBasePath({
         workspaceId: IDS.workspaceId,
