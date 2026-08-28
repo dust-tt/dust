@@ -2,6 +2,8 @@ import { FRAME_DATABASE_NAME_REGEX } from "@app/types/api/frame_manifest";
 
 const SAFE_FRAME_STORAGE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
+export const FRAME_PUBLICATION_FILE = "publication.json";
+
 function safeSegment(value: string, label: string): string {
   if (!SAFE_FRAME_STORAGE_SEGMENT.test(value)) {
     throw new Error(`Invalid ${label} for Frame storage.`);
@@ -74,7 +76,7 @@ export function getFramePublicationDescriptorPath(args: {
   frameId: string;
   publicationId: string;
 }): string {
-  return `${getFramePublicationBasePath(args)}publication.json`;
+  return `${getFramePublicationBasePath(args)}${FRAME_PUBLICATION_FILE}`;
 }
 
 export function getFramePublicationUiBundlePath(args: {

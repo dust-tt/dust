@@ -94,7 +94,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base and sbx bedrock image tags", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.100",
+      tag: "0.8.101",
     });
     expect(getDustBaseImage().baseImage).toEqual({
       type: "docker",
@@ -673,7 +673,7 @@ describe("sandbox image registry", () => {
         expect.objectContaining({ name: "drizzle-orm", version: "0.45.2" }),
         expect.objectContaining({ name: "drizzle-kit", version: "0.31.10" }),
         expect.objectContaining({ name: "@libsql/client", version: "0.17.4" }),
-        expect.objectContaining({ name: "@dust/pod", version: "0.3.0" }),
+        expect.objectContaining({ name: "@dust/pod", version: "0.3.1" }),
       ])
     );
   });

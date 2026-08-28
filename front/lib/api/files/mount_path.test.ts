@@ -5,6 +5,8 @@ import {
   getBaseMountPathForWorkspace,
   getConversationFilePath,
   getConversationFilesBasePath,
+  getFramePublicationDescriptorMountPoint,
+  getFramePublicationFunctionsMountPoint,
   getPodFilesBasePath,
   getPodSandboxFunctionsBasePath,
   getPodStateBasePath,
@@ -69,6 +71,22 @@ describe("mount_path helpers", () => {
     it("should return a dedicated prefix separate from pod files and functions", () => {
       expect(getPodStateBasePath({ workspaceId: "ws1", podId: "spc1" })).toBe(
         "w/ws1/pods/spc1/state/"
+      );
+    });
+  });
+
+  describe("Frame publication mount paths", () => {
+    it("selects one immutable publication", () => {
+      const identity = {
+        frameId: "fil_123",
+        publicationId: "pub_456",
+      };
+
+      expect(getFramePublicationDescriptorMountPoint(identity)).toBe(
+        "/frames/fil_123/publications/pub_456/publication.json"
+      );
+      expect(getFramePublicationFunctionsMountPoint(identity)).toBe(
+        "/frames/fil_123/publications/pub_456/functions"
       );
     });
   });

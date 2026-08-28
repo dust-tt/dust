@@ -26,7 +26,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.100";
+const DUST_BASE_IMAGE_VERSION = "0.8.101";
 const DSBX_CLI_VERSION = "0.1.53";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
@@ -583,7 +583,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     name: POD_PACKAGE_NAME,
     version: POD_PACKAGE_VERSION,
     description:
-      "Pod database access: db(name) returns a drizzle instance over the pod's SQLite database",
+      "Frame and Pod database access: db(name) returns a Drizzle instance over the owner's SQLite database",
     runtime: "node",
   })
   .runCmd(`mkdir -p ${PROFILE_DIR}`, { user: "root" })

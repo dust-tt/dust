@@ -1,8 +1,8 @@
 {
   "name": "@dust/pod",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
-  "description": "Runtime library for code running in a Dust pod sandbox.",
+  "description": "Runtime library for code running in a Dust Pod or Frame sandbox.",
   "type": "module",
   "main": "index.ts",
   "exports": { ".": "./index.ts" },
