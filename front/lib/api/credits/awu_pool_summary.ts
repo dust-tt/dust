@@ -30,6 +30,12 @@ import { z } from "zod";
 
 const DEFAULT_CYCLE_HISTORY_LIMIT = 5;
 const MAX_CYCLE_HISTORY_LIMIT = 24;
+// `computeCycleBreakdown` drops zero-consumption cycles (e.g. an invoice
+// with no pool-tagged usage line), so fetching only `cycleHistoryLimit`
+// finalized invoices can leave fewer than `cycleHistoryLimit` real data
+// points. Over-fetch by this buffer so a few zero-usage cycles don't starve
+// the breakdown.
+const FINALIZED_INVOICES_FETCH_BUFFER = 7;
 
 export const AwuPoolSummaryQuerySchema = z.object({
   cycleHistoryLimit: z.coerce
@@ -213,7 +219,7 @@ export async function getAwuPoolSummary(
     listMetronomeDraftInvoices(metronomeCustomerId),
     getPoolCommitIds({ metronomeCustomerId, metronomeContractId }),
     listMetronomeFinalizedInvoices(metronomeCustomerId, {
-      limit: cycleHistoryLimit,
+      limit: cycleHistoryLimit + FINALIZED_INVOICES_FETCH_BUFFER,
     }),
   ]);
 
