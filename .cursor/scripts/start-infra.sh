@@ -74,26 +74,21 @@ bash "$(dirname "$0")/init-elasticsearch-indices.sh" \
   exit 1
 }
 
-if require_op_credentials; then
-  log "Running DB migrations via op run..."
-  bash "$(dirname "$0")/with-op-run.sh" bash "$(dirname "$0")/setup-dev-db.sh" \
-    >"${DUST_INFRA_LOG_DIR}/setup-dev-db.log" 2>&1 || {
-    log "setup-dev-db failed; see ${DUST_INFRA_LOG_DIR}/setup-dev-db.log"
-    tail -30 "${DUST_INFRA_LOG_DIR}/setup-dev-db.log"
-    exit 1
-  }
+# Materialize 1Password env + local overrides for every subsequent shell/command
+# (BASH_ENV=/tmp/dust-shell-env.sh and .cursor/bashrc source the same files).
+materialize_dev_environment || log "Continuing without a full 1Password env"
 
-  log "Ensuring Temporal namespaces exist..."
-  bash "$(dirname "$0")/with-op-run.sh" bash "$(dirname "$0")/ensure-temporal.sh" \
-    >"${DUST_INFRA_LOG_DIR}/temporal-namespaces.log" 2>&1 || true
-else
-  log "Skipping op-backed DB setup (OP_SERVICE_ACCOUNT_TOKEN missing)"
-  bash "$(dirname "$0")/setup-dev-db.sh" >"${DUST_INFRA_LOG_DIR}/setup-dev-db.log" 2>&1 || {
-    log "setup-dev-db failed; see ${DUST_INFRA_LOG_DIR}/setup-dev-db.log"
-    tail -30 "${DUST_INFRA_LOG_DIR}/setup-dev-db.log"
-    exit 1
-  }
-fi
+log "Running DB migrations..."
+bash "$(dirname "$0")/setup-dev-db.sh" \
+  >"${DUST_INFRA_LOG_DIR}/setup-dev-db.log" 2>&1 || {
+  log "setup-dev-db failed; see ${DUST_INFRA_LOG_DIR}/setup-dev-db.log"
+  tail -30 "${DUST_INFRA_LOG_DIR}/setup-dev-db.log"
+  exit 1
+}
+
+log "Ensuring Temporal namespaces exist..."
+bash "$(dirname "$0")/ensure-temporal.sh" \
+  >"${DUST_INFRA_LOG_DIR}/temporal-namespaces.log" 2>&1 || true
 
 log "Infra ready. App services run in Cursor terminals."
 log "Infra logs: ${DUST_INFRA_LOG_DIR}/"

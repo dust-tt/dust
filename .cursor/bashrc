@@ -5,6 +5,13 @@ case $- in
   *) return ;;
 esac
 
+# 1Password Environment + local-dev overrides (materialized by start-infra / refresh-op-env).
+# Non-interactive bash uses the same file via BASH_ENV (see .cursor/Dockerfile).
+if [ -f /tmp/dust-shell-env.sh ]; then
+  # shellcheck disable=SC1091
+  source /tmp/dust-shell-env.sh
+fi
+
 export SHELL=/bin/bash
 export LANG="${LANG:-C.UTF-8}"
 export LC_ALL="${LC_ALL:-C.UTF-8}"

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Run a command with 1Password environment secrets plus host-injected runtime secrets.
+# Compatibility wrapper: load materialized 1Password + local-dev env, then run a command.
+# Prefer relying on BASH_ENV / .cursor/bashrc (populated by start-infra) so plain
+# terminals and scripts already see these variables without this wrapper.
 set -euo pipefail
 
 DUST_DEV_SCRIPT_NAME=with-op-run
@@ -8,32 +10,9 @@ source "$(dirname "$0")/common.sh"
 # shellcheck source=.cursor/scripts/env.defaults.sh
 source "$(dirname "$0")/env.defaults.sh"
 
-require_op_credentials
-
+materialize_dev_environment || log "Dev env materialize incomplete; continuing with what is available"
+# shellcheck disable=SC1090
+source "$DUST_SHELL_ENV_FILE"
 write_gcp_service_account_file
-export_local_dev_infra
 
-exec op run --no-masking --environment "$OP_ENVIRONMENT_ID" -- env \
-  DUST_REPO_ROOT="$DUST_REPO_ROOT" \
-  SERVICE_ACCOUNT="${SERVICE_ACCOUNT:-}" \
-  GCP_SERVICE_ACCOUNT="${GCP_SERVICE_ACCOUNT:-}" \
-  DEV_WORKOS_USER_EMAIL="${DEV_WORKOS_USER_EMAIL:-}" \
-  DEV_WORKOS_USER_PASSWORD="${DEV_WORKOS_USER_PASSWORD:-}" \
-  DEV_WORKOS_USER_ID="${DEV_WORKOS_USER_ID:-}" \
-  NODE_ENV="development" \
-  FRONT_DATABASE_URI="$FRONT_DATABASE_URI" \
-  FRONT_DATABASE_READ_REPLICA_URI="$FRONT_DATABASE_READ_REPLICA_URI" \
-  CORE_DATABASE_URI="$CORE_DATABASE_URI" \
-  CORE_DATABASE_READ_REPLICA_URI="$CORE_DATABASE_READ_REPLICA_URI" \
-  CONNECTORS_DATABASE_URI="$CONNECTORS_DATABASE_URI" \
-  CONNECTORS_DATABASE_READ_REPLICA_URI="$CONNECTORS_DATABASE_READ_REPLICA_URI" \
-  OAUTH_DATABASE_URI="$OAUTH_DATABASE_URI" \
-  REDIS_URI="$REDIS_URI" \
-  REDIS_CACHE_URI="$REDIS_CACHE_URI" \
-  TEMPORAL_ADDRESS="$TEMPORAL_ADDRESS" \
-  ELASTICSEARCH_URL="$ELASTICSEARCH_URL" \
-  ELASTICSEARCH_USERNAME="$ELASTICSEARCH_USERNAME" \
-  ELASTICSEARCH_PASSWORD="$ELASTICSEARCH_PASSWORD" \
-  DUST_FRONT_API="$DUST_FRONT_API" \
-  DUST_AUTH_REDIRECT_BASE_URL="$DUST_AUTH_REDIRECT_BASE_URL" \
-  "$@"
+exec "$@"

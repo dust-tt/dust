@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Launch mprocs with 1Password + host runtime secrets.
-# Secrets are loaded into this shell first — mprocs must not run under `op run`
-# (op masks stdout/stderr and corrupts the TUI).
+# Secrets are materialized to /tmp and loaded into this shell — mprocs must not run under
+# `op run` (op masks stdout/stderr and corrupts the TUI).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -20,8 +20,10 @@ if ! command -v bacon >/dev/null 2>&1; then
   exit 1
 fi
 
-write_gcp_service_account_file
-load_op_environment || log "1Password env not loaded; using defaults + host secrets only"
+# Refresh materialized env (picks up new 1Password secrets + DEV_WORKOS_* from this terminal).
+materialize_dev_environment || log "1Password env not loaded; using defaults + host secrets only"
+# shellcheck disable=SC1090
+source "${DUST_SHELL_ENV_FILE}"
 export_op_runtime_secrets
 
 bash "${SCRIPT_DIR}/wait-for-infra.sh" || {

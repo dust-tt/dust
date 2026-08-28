@@ -52,6 +52,9 @@ export NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL="${NEXT_PUBLIC_DUST_STATIC_WEBSITE_UR
 
 export NODE_ENV="${NODE_ENV:-development}"
 
+# Non-interactive bash loads materialized 1Password + local-dev env via BASH_ENV.
+export BASH_ENV="${BASH_ENV:-/tmp/dust-shell-env.sh}"
+
 # front-api/esbuild.dev.ts binds the dev proxy to $HOSTNAME. Docker sets HOSTNAME to the
 # container id, so health checks against localhost:3000 never reach front-api.
 export HOSTNAME="${DUST_DEV_BIND_HOST:-0.0.0.0}"

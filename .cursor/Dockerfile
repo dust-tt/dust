@@ -12,7 +12,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     OP_ENVIRONMENT_ID=r6iqd3y67zqlbsxnotrj6bm25q \
     RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
-    PATH="/usr/local/cargo/bin:/root/.temporalio/bin:/opt/qdrant:${PATH}"
+    PATH="/usr/local/cargo/bin:/root/.temporalio/bin:/opt/qdrant:${PATH}" \
+    BASH_ENV=/tmp/dust-shell-env.sh
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
@@ -73,7 +74,7 @@ RUN curl -fsSL "https://artifacts.elastic.co/downloads/elasticsearch/elasticsear
   && mkdir -p /opt/es/data /opt/es/logs \
   && chown -R elasticsearch:elasticsearch /opt/es
 
-# 1Password CLI beta — `op run --environment` requires >= 2.33.0-beta.02 (stable apt pkg lacks it)
+# 1Password CLI beta — `op environment read` requires >= 2.33.0-beta.02 (stable apt pkg lacks it)
 ARG OP_CLI_VERSION=2.39.1-beta.01
 RUN curl -sSfLo /tmp/op.zip \
       "https://cache.agilebits.com/dist/1P/op2/pkg/v${OP_CLI_VERSION}/op_linux_amd64_v${OP_CLI_VERSION}.zip" \
@@ -88,6 +89,10 @@ RUN service postgresql start \
   && service postgresql stop
 
 RUN mkdir -p /tmp/dust-infra /opt/temporal /root/.config/mprocs \
+  && printf '%s\n' \
+    '# Sourced via BASH_ENV until start-infra materializes 1Password + local-dev env.' \
+    'return 0 2>/dev/null || true' \
+    > /tmp/dust-shell-env.sh \
   && printf '%s\n' \
     '# Source repo-local shell config when /workspace is mounted.' \
     'if [ -f /workspace/.cursor/bashrc ]; then' \
