@@ -138,25 +138,45 @@ export_local_dev_infra() {
   apply_local_overrides
 }
 
+# Install /root shell rc so interactive login shells get secrets + colored PS1.
+# Interactive bash does NOT load BASH_ENV — only non-interactive bash does — so
+# /root/.bashrc must source the materialized env directly.
+write_root_shell_rc() {
+  cat >/root/.bashrc <<EOF
+# Dust shared dev container — kept in sync by materialize_dev_environment.
+export BASH_ENV=${DUST_SHELL_ENV_FILE}
+
+# Interactive shells skip BASH_ENV; load materialized 1Password + local overrides here.
+if [ -f ${DUST_SHELL_ENV_FILE} ]; then
+  # shellcheck disable=SC1091
+  . ${DUST_SHELL_ENV_FILE}
+fi
+
+if [ -f /workspace/dev/bashrc ]; then
+  # shellcheck disable=SC1091
+  . /workspace/dev/bashrc
+fi
+EOF
+
+  # Prefer bash_profile for login shells that skip .profile.
+  cat >/root/.bash_profile <<'EOF'
+# Dust shared dev container login shell.
+if [ -f ~/.bashrc ]; then
+  # shellcheck disable=SC1091
+  . ~/.bashrc
+fi
+EOF
+}
+
 # Ensure BASH_ENV is set for child bash processes even on images built before the
 # Dockerfile ENV landed.
 ensure_bash_env_global() {
   export BASH_ENV="${DUST_SHELL_ENV_FILE}"
+  write_root_shell_rc
 
   if [ -f /root/.profile ] && ! grep -qF "BASH_ENV=${DUST_SHELL_ENV_FILE}" /root/.profile 2>/dev/null; then
     printf '\n# Dust materialized secrets for non-interactive bash\nexport BASH_ENV=%s\n' \
       "$DUST_SHELL_ENV_FILE" >>/root/.profile
-  fi
-
-  if [ -f /root/.bashrc ] && ! grep -qF "export BASH_ENV=${DUST_SHELL_ENV_FILE}" /root/.bashrc 2>/dev/null; then
-    local tmp
-    tmp="$(mktemp)"
-    {
-      printf '# Dust: ensure child bash processes load materialized secrets\n'
-      printf 'export BASH_ENV=%s\n' "$DUST_SHELL_ENV_FILE"
-      cat /root/.bashrc
-    } >"$tmp"
-    mv "$tmp" /root/.bashrc
   fi
 }
 

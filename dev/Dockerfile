@@ -98,11 +98,25 @@ RUN mkdir -p /tmp/dust-infra /opt/temporal /root/.config/mprocs \
     'return 0 2>/dev/null || true' \
     > /tmp/dust-shell-env.sh \
   && printf '%s\n' \
-    '# Source repo-local shell config when /workspace is mounted.' \
+    '# Dust shared dev container — refreshed by materialize_dev_environment at runtime.' \
+    'export BASH_ENV=/tmp/dust-shell-env.sh' \
+    '' \
+    '# Interactive shells skip BASH_ENV; load materialized secrets here.' \
+    'if [ -f /tmp/dust-shell-env.sh ]; then' \
+    '  # shellcheck disable=SC1091' \
+    '  . /tmp/dust-shell-env.sh' \
+    'fi' \
+    '' \
     'if [ -f /workspace/dev/bashrc ]; then' \
     '  # shellcheck disable=SC1091' \
-    '  source /workspace/dev/bashrc' \
+    '  . /workspace/dev/bashrc' \
     'fi' \
-    > /root/.bashrc
+    > /root/.bashrc \
+  && printf '%s\n' \
+    'if [ -f ~/.bashrc ]; then' \
+    '  # shellcheck disable=SC1091' \
+    '  . ~/.bashrc' \
+    'fi' \
+    > /root/.bash_profile
 
 WORKDIR /workspace

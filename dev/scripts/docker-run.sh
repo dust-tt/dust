@@ -135,7 +135,9 @@ if [ "$SHELL_ONLY" = 1 ]; then
     exit 1
   fi
   collect_env_args
-  exec_interactive bash -l
+  # -i: interactive shells skip BASH_ENV, so bashrc must run (colored PS1 + op env).
+  # -l: load profile/bash_profile so /root/.bashrc is reached consistently.
+  exec_interactive bash -il
 fi
 
 if [ "$BUILD" = 1 ] || ! docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
