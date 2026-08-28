@@ -66,6 +66,12 @@ export class FramePublicationError extends Error {
   }
 }
 
+export function isFramePublicationError(
+  error: unknown
+): error is FramePublicationError {
+  return error instanceof FramePublicationError;
+}
+
 function getFrameIdentity(
   auth: Authenticator,
   frame: FileResource

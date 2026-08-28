@@ -17,7 +17,7 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 
@@ -37,7 +37,7 @@ export async function buildAndPublishFramePublication(
     manifest,
     sourceFiles,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];

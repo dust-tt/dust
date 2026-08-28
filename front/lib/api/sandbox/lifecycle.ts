@@ -22,7 +22,7 @@ import type {
 } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 
@@ -223,14 +223,14 @@ async function ensureOwnerSandboxReady<TScope>(
 
 export async function ensureConversationSandboxReady(
   auth: Authenticator,
-  conversation: ConversationType
+  conversation: ConversationWithoutContentType
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
   return ensureConversationSandboxReadyWithScope(auth, conversation);
 }
 
 export async function ensureConversationSandboxReadyWithScope(
   auth: Authenticator,
-  conversation: ConversationType
+  conversation: ConversationWithoutContentType
 ): Promise<
   Result<EnsureSandboxReadyWithScopeResult<ConversationSandboxScope>, Error>
 > {

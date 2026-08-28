@@ -34,6 +34,11 @@ enum Commands {
         #[command(subcommand)]
         command: commands::db::DbCommand,
     },
+    /// Publish Frames
+    Frame {
+        #[command(subcommand)]
+        command: commands::frame::FrameCommand,
+    },
     /// Mount the Dust filesystem
     Filesystem {
         #[command(subcommand)]
@@ -124,6 +129,11 @@ async fn run() -> anyhow::Result<()> {
             }
             commands::db::DbCommand::List => commands::cmd_db_list()?,
             commands::db::DbCommand::Query { name } => commands::cmd_db_query(&name).await?,
+        },
+        Commands::Frame { command } => match command {
+            commands::frame::FrameCommand::Publish { source } => {
+                commands::cmd_frame_publish(&source).await?
+            }
         },
         Commands::Filesystem { command } => commands::run_filesystem(command)?,
         Commands::Tools {
@@ -450,6 +460,28 @@ mod tests {
                 _ => panic!("expected build"),
             },
             _ => panic!("expected function"),
+        }
+    }
+
+    #[test]
+    fn frame_publish_parses() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "frame",
+            "publish",
+            "/files/pod-vlt_123/Status/manifest.json",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Frame {
+                command: commands::frame::FrameCommand::Publish { source },
+            } => {
+                assert_eq!(
+                    source,
+                    std::path::PathBuf::from("/files/pod-vlt_123/Status/manifest.json")
+                );
+            }
+            _ => panic!("expected frame"),
         }
     }
 }
