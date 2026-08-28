@@ -15,6 +15,7 @@ import {
 } from "@app/types/assistant/triggers";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { DAY_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { ScheduleOptions, ScheduleSpec } from "@temporalio/client";
 import {
@@ -22,8 +23,6 @@ import {
   ScheduleOverlapPolicy,
 } from "@temporalio/client";
 import moment from "moment-timezone";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Convert local hour/minute in a given IANA timezone to a UTC-based

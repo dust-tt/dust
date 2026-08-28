@@ -19,6 +19,7 @@ import type { MembershipSeatType } from "@app/types/memberships";
 import { isMembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { DAY_MS, HOUR_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import Metronome, { BadRequestError, ConflictError } from "@metronome/sdk";
@@ -67,9 +68,6 @@ export function getMetronomeClient(): Metronome {
 }
 
 // Metronome requires dates on specific boundaries (hour for contracts, midnight for usage).
-const HOUR_MS = 3_600_000;
-const DAY_MS = 24 * HOUR_MS;
-
 export function floorToHourISO(date: Date): string {
   return new Date(Math.floor(date.getTime() / HOUR_MS) * HOUR_MS).toISOString();
 }

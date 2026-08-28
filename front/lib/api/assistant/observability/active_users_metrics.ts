@@ -5,6 +5,7 @@ import {
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
@@ -45,7 +46,6 @@ interface ActiveUsersAggs {
 const WAU_WINDOW_DAYS = 7;
 const MAU_WINDOW_DAYS = 28;
 const COMPOSITE_AGG_SIZE = 10000;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
  * Computes the count of unique users over a rolling window ending at the given timestamp.
@@ -55,7 +55,7 @@ function computeRollingActiveUsers(
   endTimestamp: number,
   windowDays: number
 ): number {
-  const startMs = endTimestamp - (windowDays - 1) * MS_PER_DAY;
+  const startMs = endTimestamp - (windowDays - 1) * DAY_MS;
   const uniqueUsers = new Set<string>();
 
   for (const [ts, users] of usersByDay) {

@@ -10,12 +10,10 @@ import { useMyUsage, useSeatPlan } from "@app/lib/swr/credits";
 import { useFairUseCredits } from "@app/lib/swr/fair_use_credits";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import { isCreditPricedPlan } from "@app/types/plan";
-import { ordinalDay } from "@app/types/shared/utils/date_utils";
+import { DAY_MS, ordinalDay } from "@app/types/shared/utils/date_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { ProgressBar, Separator, Spinner, Stars02 } from "@dust-tt/sparkle";
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 interface PersonalUsageCardProps {
   owner: WorkspaceType;
@@ -93,7 +91,7 @@ export function PersonalUsageCard({
       now.getUTCDate()
     );
     const daysUntilAvailable = Math.round(
-      (availableDayMs - currentDayMs) / MS_PER_DAY
+      (availableDayMs - currentDayMs) / DAY_MS
     );
 
     if (daysUntilAvailable === 0) {

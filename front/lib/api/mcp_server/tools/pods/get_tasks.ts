@@ -1,11 +1,10 @@
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
+import { DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { mcpError, mcpJsonResponse } from "../response";
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const inputSchema = {
   podId: z.string().describe("Pod id to list tasks for."),
@@ -67,7 +66,7 @@ export function registerPodsGetTasksTool(server: McpServer) {
         });
       }
 
-      const cutoff = new Date(Date.now() - daysAgo * MS_PER_DAY);
+      const cutoff = new Date(Date.now() - daysAgo * DAY_MS);
 
       if (statusFilter === "open") {
         rows = rows.filter((task) => task.status !== "done");

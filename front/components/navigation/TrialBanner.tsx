@@ -5,13 +5,12 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
+import { DAY_MS } from "@app/types/shared/utils/date_utils";
 import { Button, cn } from "@dust-tt/sparkle";
 import { useMemo, useRef } from "react";
 
 const SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS = 30;
-const THRESHOLD_MS =
-  SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
+const THRESHOLD_MS = SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS * DAY_MS;
 
 function isSubscriptionManagementRoute(path: string) {
   return (

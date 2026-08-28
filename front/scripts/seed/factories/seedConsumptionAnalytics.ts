@@ -22,6 +22,7 @@ import type {
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
+import { DAY_MS, HOUR_MS } from "@app/types/shared/utils/date_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 import type { SeedContext } from "./types";
@@ -42,8 +43,6 @@ const SEED_CONSUMPTION_KEY_PREFIX = "seed-consumption";
 const DEFAULT_DAYS_BACK = 90;
 const DEFAULT_MESSAGES_PER_DAY = 12;
 const BULK_CHUNK_SIZE = 500;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-const MS_PER_HOUR = 60 * 60 * 1000;
 
 const LLM_CREDIT_RANGE = { min: 0.2, max: 8 };
 const TOOL_DIRECT_CREDIT_RANGE = { min: 0.01, max: 0.4 };
@@ -248,7 +247,7 @@ function planDayMessages(
     const index = startIndex + messages.length;
     const completedAtMs = Math.min(
       dayStartMs +
-        randomInt(random, FIRST_HOUR_UTC, LAST_HOUR_UTC) * MS_PER_HOUR +
+        randomInt(random, FIRST_HOUR_UTC, LAST_HOUR_UTC) * HOUR_MS +
         randomInt(random, 0, 59) * 60 * 1000,
       nowMs
     );
@@ -498,12 +497,12 @@ function planDocuments(
 ): AgentMessageConsumptionAnalyticsData[] {
   const random = makeRandom(daysBack * 1000 + messagesPerDay);
   const nowMs = Date.now();
-  const todayStartMs = Math.floor(nowMs / MS_PER_DAY) * MS_PER_DAY;
+  const todayStartMs = Math.floor(nowMs / DAY_MS) * DAY_MS;
   const documents: AgentMessageConsumptionAnalyticsData[] = [];
   let messageIndex = 0;
 
   for (let dayOffset = daysBack - 1; dayOffset >= 0; dayOffset--) {
-    const dayStartMs = todayStartMs - dayOffset * MS_PER_DAY;
+    const dayStartMs = todayStartMs - dayOffset * DAY_MS;
     const dayOfWeek = new Date(dayStartMs).getUTCDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     // A trend and a weekly rhythm, rather than noise around a flat line.

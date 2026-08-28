@@ -13,6 +13,7 @@ import type {
   MaxMessagesTimeframeType,
 } from "@app/types/plan";
 import { Err, Ok } from "@app/types/shared/result";
+import { DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE = 100;
@@ -92,7 +93,6 @@ export const makeFairUseAwuCreditsRateLimitKeyForUser = (
 
 export const PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK = 25;
 export const PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS = 7 * 24 * 60 * 60;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export const makePremiumModelMessageRateLimitKeyForUser = (
   workspace: Pick<LightWorkspaceType, "id">,
@@ -162,7 +162,7 @@ function getPremiumModelDailyUsage({
   for (
     let dayStartMs = firstDayStartMs;
     dayStartMs <= lastDayStartMs;
-    dayStartMs += MS_PER_DAY
+    dayStartMs += DAY_MS
   ) {
     const date = new Date(dayStartMs).toISOString().slice(0, 10);
     dailyUsage.push({ date, usedMessages: usageByDay.get(date) ?? 0 });

@@ -37,6 +37,7 @@ import logger from "@app/logger/logger";
 import type { PlanType } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { DAY_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 // One-off free AWU credit granted per workspace member at migration time. The
@@ -124,8 +125,6 @@ export function migrationDateInWindow(
   return null;
 }
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
 /**
  * Resolve the migration instant for a workspace inside the rollout window.
  *  - monthly: the workspace's own monthly renewal boundary that lands in the
@@ -180,7 +179,7 @@ export function remainingPrepaidDays(
 ): number {
   return Math.max(
     0,
-    Math.ceil((currentPeriodEndMs - migrationDate.getTime()) / MS_PER_DAY)
+    Math.ceil((currentPeriodEndMs - migrationDate.getTime()) / DAY_MS)
   );
 }
 

@@ -6,8 +6,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { PodRestrictionImpactType } from "@app/types/api/projects/restriction_impact";
 import { POD_RESTRICTION_IMPACT_WINDOW_DAYS } from "@app/types/api/projects/restriction_impact";
 import type { ModelId } from "@app/types/shared/model_id";
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
+import { DAY_MS } from "@app/types/shared/utils/date_utils";
 
 // Who still reaches the Pod once the global group is gone: its own member and editor groups, plus
 // workspace admins, who administrate every space. Function reads go through
@@ -48,7 +47,7 @@ export async function getPodRestrictionImpact(
 ): Promise<PodRestrictionImpactType> {
   const sandboxFunctions = await SandboxFunctionResource.listBySpace(auth, pod);
   const since = new Date(
-    Date.now() - POD_RESTRICTION_IMPACT_WINDOW_DAYS * MS_PER_DAY
+    Date.now() - POD_RESTRICTION_IMPACT_WINDOW_DAYS * DAY_MS
   );
   const countsByUserModelId =
     await SandboxFunctionInvocationResource.countByUserSince(auth, {

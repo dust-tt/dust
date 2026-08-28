@@ -28,6 +28,7 @@ import type { AwuUsageAnalyticsResponse } from "@app/lib/api/analytics/awu_usage
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { useAwuUsageFromAnalytics } from "@app/lib/swr/workspaces";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { DAY_MS } from "@app/types/shared/utils/date_utils";
 import {
   Button,
   Chip,
@@ -101,8 +102,6 @@ function getColorClassName(
   }
   return getIndexedColor(groupKey, allKeys);
 }
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 function formatUtcMonthDay(date: Date): string {
   return date.toLocaleDateString("en-US", {
