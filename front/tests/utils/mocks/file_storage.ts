@@ -88,6 +88,8 @@ class FileStorageMock {
   ) => { name: string; metadata: Record<string, unknown> }[] | null = () =>
     null;
   private _subdirectoryNames: (prefix: string) => string[] | null = () => null;
+  private _listSubdirectoryNamesShouldFail: (prefix: string) => boolean = () =>
+    false;
   private _deletedPrefixes: string[] = [];
   private _onDeleteByPrefix: (prefix: string) => void = () => {};
   private _deleteByPrefixShouldFail: (prefix: string) => boolean = () => false;
@@ -202,6 +204,10 @@ class FileStorageMock {
     this._subdirectoryNames = fn;
   }
 
+  setListSubdirectoryNamesFails(predicate: (prefix: string) => boolean): void {
+    this._listSubdirectoryNamesShouldFail = predicate;
+  }
+
   /**
    * Observe every `bucket.deleteByPrefix(prefix)` call, e.g. to assert the order of a delete
    * sequence. Reset between tests via `reset()`.
@@ -275,6 +281,7 @@ class FileStorageMock {
     this._deleteShouldFail = () => false;
     this._filesByPrefix = () => null;
     this._subdirectoryNames = () => null;
+    this._listSubdirectoryNamesShouldFail = () => false;
     this._deletedPrefixes.length = 0;
     this._onDeleteByPrefix = () => {};
     this._deleteByPrefixShouldFail = () => false;
@@ -583,6 +590,11 @@ class FileStorageMock {
           )
       ),
       listSubdirectoryNames: vi.fn(({ prefix }: { prefix: string }) => {
+        if (this._listSubdirectoryNamesShouldFail(prefix)) {
+          return Promise.reject(
+            new Error(`Simulated GCS subdirectory list failure: ${prefix}`)
+          );
+        }
         const normalized = prefix.endsWith("/") ? prefix : `${prefix}/`;
         const names = (this._subdirectoryNames(prefix) ?? []).filter(
           (name) =>

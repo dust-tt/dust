@@ -953,6 +953,21 @@ describe("publishFramePublication", () => {
     ]);
   });
 
+  it("publishes when stale artifact discovery fails", async () => {
+    const { auth, frame } = await setupFrame();
+    fileStorageMock.setListSubdirectoryNamesFails(() => true);
+
+    const published = await publishFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceFiles,
+      uiBundleCode,
+    });
+
+    expect(published.isOk()).toBe(true);
+  });
+
   it("reconciles declared databases before activation", async () => {
     const { auth, frame } = await setupFrame();
     const databaseSchema = {

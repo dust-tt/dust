@@ -54,6 +54,8 @@ const FRAME_PUBLICATION_UPLOAD_CONCURRENCY = 4;
 const FRAME_PUBLICATION_READ_CONCURRENCY = 4;
 const FRAME_PUBLISH_LOCK_ACQUIRE_TIMEOUT_MS = 30_000;
 const FRAME_PUBLISH_LOCK_RETRY_INTERVAL_MS = 100;
+// Publication work is synchronous and bounded. Lease expiry defines an abandoned publisher;
+// stale-prefix recovery may remove its uncommitted artifacts once a new publisher owns the lock.
 const FRAME_PUBLISH_LOCK_TTL_MS = 10 * 60_000;
 
 export type FramePublicationSourceFile = {
