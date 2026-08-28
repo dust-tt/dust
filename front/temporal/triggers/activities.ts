@@ -5,6 +5,7 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
+import { resolvedModelFromUserMessageRow } from "@app/lib/api/assistant/models";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -444,10 +445,12 @@ export async function runWakeUpActivity({
     return;
   }
 
-  const clientSideMCPServerIds =
-    await conversationResource.getClientSideMCPServerIdsFromLatestNonWakeUpUserMessage(
-      auth
-    );
+  const { clientSideMCPServerIds, ...latestUserMessageModel } =
+    await conversationResource.getContextFromLatestNonWakeUpUserMessage(auth);
+
+  const requestedModel = resolvedModelFromUserMessageRow(
+    latestUserMessageModel
+  );
 
   const postMessageResult = await postUserMessage(auth, {
     conversationResource: conversationResource,
@@ -463,6 +466,7 @@ export async function runWakeUpActivity({
       clientSideMCPServerIds,
     },
     skipToolsValidation: false,
+    modelSelection: requestedModel ?? undefined,
   });
 
   if (postMessageResult.isErr()) {

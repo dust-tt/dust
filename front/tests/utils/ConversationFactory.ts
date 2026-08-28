@@ -256,6 +256,8 @@ export class ConversationFactory {
     agenticMessageType,
     agenticOriginMessageId,
     authorless = false,
+    clientSideMCPServerIds = [],
+    requestedModel = null,
   }: {
     auth: Authenticator;
     workspace: WorkspaceType;
@@ -268,6 +270,8 @@ export class ConversationFactory {
     authorless?: boolean;
     agenticMessageType?: "run_agent" | "agent_handover";
     agenticOriginMessageId?: string;
+    clientSideMCPServerIds?: string[];
+    requestedModel?: ResolvedRequestedModel | null;
   }): Promise<{ messageRow: MessageModel; userMessage: UserMessageType }> {
     const userMessageRow = await UserMessageModel.create({
       userId: authorless ? null : auth.getNonNullableUser().id,
@@ -280,9 +284,12 @@ export class ConversationFactory {
       userContextEmail: "test@example.com",
       userContextProfilePictureUrl: null,
       userContextOrigin: origin,
-      clientSideMCPServerIds: [],
+      clientSideMCPServerIds,
       agenticMessageType: agenticMessageType ?? null,
       agenticOriginMessageId: agenticOriginMessageId ?? null,
+      requestedProviderId: requestedModel?.providerId ?? null,
+      requestedModelId: requestedModel?.modelId ?? null,
+      requestedReasoningEffort: requestedModel?.reasoningEffort ?? null,
     });
 
     const messageRow = await MessageModel.create({
@@ -324,7 +331,7 @@ export class ConversationFactory {
         }),
       rank: messageRow.rank,
       reactions: [],
-      requestedModel: null,
+      requestedModel,
     };
 
     return { messageRow, userMessage };
