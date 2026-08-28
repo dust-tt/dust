@@ -363,7 +363,6 @@ export async function getAwuPoolSummary(
       currentCycleEndMs: null,
       currentCycleConsumedCredits,
       cycleBreakdown,
-      latestCreditExpirationMs: null,
       excessConsumedCredits,
       excessCycleBreakdown,
     });
@@ -401,11 +400,6 @@ export async function getAwuPoolSummary(
 
   let totalRemainingCredits = 0;
   let totalActiveCredits = 0;
-  // Furthest-out expiration among the schedule items that are active right
-  // now — i.e. when the pool's currently granted credits actually run out,
-  // as opposed to when the surrounding contract ends (grants can expire
-  // well before the contract does).
-  let latestCreditExpirationMs: number | null = null;
   for (const entry of awuBalances) {
     const scheduleItems = entry.access_schedule?.schedule_items ?? [];
     const activeItems = scheduleItems.filter((item) => {
@@ -417,15 +411,6 @@ export async function getAwuPoolSummary(
       totalRemainingCredits += entry.balance ?? 0;
       for (const item of scheduleItems) {
         totalActiveCredits += item.amount;
-      }
-      for (const item of activeItems) {
-        const itemEndMs = new Date(item.ending_before).getTime();
-        if (
-          latestCreditExpirationMs === null ||
-          itemEndMs > latestCreditExpirationMs
-        ) {
-          latestCreditExpirationMs = itemEndMs;
-        }
       }
     }
   }
@@ -455,7 +440,6 @@ export async function getAwuPoolSummary(
     currentCycleEndMs,
     currentCycleConsumedCredits,
     cycleBreakdown,
-    latestCreditExpirationMs,
     excessConsumedCredits,
     excessCycleBreakdown,
   });

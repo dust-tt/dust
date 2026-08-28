@@ -258,7 +258,6 @@ export function useAwuPoolSummary({
     currentCycleConsumedCredits: data?.currentCycleConsumedCredits ?? null,
     currentCycleStartMs: data?.currentCycleStartMs ?? null,
     currentCycleEndMs: data?.currentCycleEndMs ?? null,
-    latestCreditExpirationMs: data?.latestCreditExpirationMs ?? null,
     excessConsumedCredits: data?.excessConsumedCredits ?? null,
     excessCycleBreakdown: data?.excessCycleBreakdown ?? [],
     isAwuPoolSummaryLoading: !error && !data && !disabled,

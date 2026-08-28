@@ -25,12 +25,6 @@ export type AwuPoolSummaryResponseBody = {
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
   /**
-   * Furthest-out expiration (ms epoch) among the workspace's currently
-   * active AWU pool credit grants — when the currently available pool
-   * credits will lapse if left unused. `null` when there's no active grant.
-   */
-  latestCreditExpirationMs: number | null;
-  /**
    * Live, Elasticsearch-derived total AWU consumption for the current
    * billing cycle, summed across every member — the same figure the members
    * table's "Credits usage" column shows per row. Only computed for
