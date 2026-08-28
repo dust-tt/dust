@@ -26,7 +26,7 @@ import tracer from "@app/logger/tracer";
 import { SCOPED_PREFIX_POD } from "@app/types/file_system";
 import {
   POD_SANDBOX_DATABASES_DIR,
-  podDatabaseExecEnvVars,
+  sandboxDatabaseExecEnvVars,
   TOOL_OUTPUTS_FOLDER_NAME,
 } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
@@ -136,7 +136,7 @@ async function execDbCommand<S extends z.ZodTypeAny>(
 
   const execResult = await sandbox.exec(auth, command, {
     timeoutMs: DB_EXEC_TIMEOUT_MS,
-    envVars: { ...podDatabaseExecEnvVars(), ...envVars },
+    envVars: { ...sandboxDatabaseExecEnvVars(), ...envVars },
     user: "agent-proxied",
     stdin,
   });

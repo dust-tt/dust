@@ -1,5 +1,5 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { ensurePodStateHealthOnSleep } from "@app/lib/api/sandbox/db";
+import type { ensureSandboxStateHealthOnSleep } from "@app/lib/api/sandbox/db";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
@@ -15,7 +15,7 @@ import { Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockEnsurePodStateHealthOnSleep,
+  mockEnsureSandboxStateHealthOnSleep,
   mockExecuteWithLock,
   mockGetSandboxImage,
   mockGetSandboxProvider,
@@ -23,7 +23,7 @@ const {
   mockProviderDestroy,
   mockProviderSleep,
 } = vi.hoisted(() => ({
-  mockEnsurePodStateHealthOnSleep: vi.fn(),
+  mockEnsureSandboxStateHealthOnSleep: vi.fn(),
   mockExecuteWithLock: vi.fn(),
   mockGetSandboxImage: vi.fn(),
   mockGetSandboxProvider: vi.fn(),
@@ -52,7 +52,8 @@ vi.mock("@app/lib/api/sandbox/db", async (importOriginal) => {
     await importOriginal<typeof import("@app/lib/api/sandbox/db")>();
   return {
     ...actual,
-    ensurePodStateHealthOnSleep: mockEnsurePodStateHealthOnSleep,
+    ensurePodStateHealthOnSleep: mockEnsureSandboxStateHealthOnSleep,
+    ensureSandboxStateHealthOnSleep: mockEnsureSandboxStateHealthOnSleep,
   };
 });
 
@@ -68,8 +69,8 @@ describe("reapSandboxPhaseActivity", () => {
     mockExecuteWithLock.mockImplementation(
       async (_key: string, fn: () => Promise<unknown>) => fn()
     );
-    mockEnsurePodStateHealthOnSleep.mockImplementation(
-      async (...args: Parameters<typeof ensurePodStateHealthOnSleep>) => {
+    mockEnsureSandboxStateHealthOnSleep.mockImplementation(
+      async (...args: Parameters<typeof ensureSandboxStateHealthOnSleep>) => {
         const refreshMountCredential = args[2]?.refreshMountCredential;
         if (!refreshMountCredential) {
           throw new Error("Expected a mount credential refresh callback.");
@@ -150,7 +151,7 @@ describe("reapSandboxPhaseActivity", () => {
       workspaceId: workspace.sId,
     });
     // Pod sleeps run the pre-sleep state health check; conversations don't.
-    expect(mockEnsurePodStateHealthOnSleep).toHaveBeenCalledTimes(1);
+    expect(mockEnsureSandboxStateHealthOnSleep).toHaveBeenCalledTimes(1);
     expect(DustFileSystem.prototype.refreshSandboxMount).toHaveBeenCalledTimes(
       1
     );
@@ -266,6 +267,10 @@ describe("reapSandboxPhaseActivity", () => {
     expect(mockProviderSleep).toHaveBeenCalledWith("frame-provider", {
       workspaceId: workspace.sId,
     });
+    expect(mockEnsureSandboxStateHealthOnSleep).toHaveBeenCalledTimes(1);
+    expect(DustFileSystem.prototype.refreshSandboxMount).toHaveBeenCalledTimes(
+      1
+    );
   });
 
   it("skips kill-requested sleeping sandboxes in the awake kill phase", async () => {

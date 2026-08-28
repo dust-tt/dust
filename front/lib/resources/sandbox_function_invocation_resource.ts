@@ -64,7 +64,7 @@ import type {
 import {
   getFramePublicationFunctionsMountPoint,
   getPodSandboxFunctionsMountPoint,
-  podDatabaseExecEnvVars,
+  sandboxDatabaseExecEnvVars,
 } from "@app/types/mount_path";
 import { isDevelopment } from "@app/types/shared/env";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -804,8 +804,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         );
       }
       const databaseEnvVars = frame
-        ? {}
-        : podDatabaseExecEnvVars({
+        ? sandboxDatabaseExecEnvVars()
+        : sandboxDatabaseExecEnvVars({
             databasePrefix: podDatabasePrefixFromSlug(sandboxFunction.slug),
           });
 

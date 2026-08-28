@@ -118,7 +118,14 @@ export function getFramePublicationFunctionsMountPoint({
 }
 
 /**
- * Absolute in-sandbox path of the pod's live SQLite databases (`{name}.db` files opened by
+ * Frame-owned SQLite uses the same isolated local runtime directories as Pod SQLite. A Frame has
+ * its own sandbox, so the live files cannot overlap another Frame or a Pod; only its Litestream
+ * replica is durable, under the stable Frame identity in GCS.
+ */
+export const SANDBOX_STATE_REPLICA_MOUNT_POINT = "/pod-state/replica";
+
+/**
+ * Absolute in-sandbox path of the owner's live SQLite databases (`{name}.db` files opened by
  * `@dust/pod`'s `db()`). Local disk, not a gcsfuse mount — Litestream replicates it to GCS.
  * Front is the only layer that hardcodes this location (the paths-env.v1 contract): it is
  * passed per exec to `dsbx function run` as `DUST_POD_DATABASES_DIR`, dsbx forwards it to
@@ -140,16 +147,17 @@ export const POD_SANDBOX_DATABASES_DIR = "/pod-state/databases";
 const POD_SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
 
 /**
- * The env vars every pod-database exec (`dsbx function run` and every `dsbx db` subcommand)
+ * The env vars every sandbox-database exec (`dsbx function run` and every `dsbx db` subcommand)
  * must carry so the bun child resolves the databases dir and the size quota. Returned as a
  * fresh object so callers can spread it into their own env without sharing a reference.
  *
- * `databasePrefix` is the app prefix that namespaces the databases the exec resolves by their
+ * The `DUST_POD_*` names are the existing DSBX/@dust/pod ABI and also apply to Frame-owned state.
+ * `databasePrefix` is the Pod app prefix that namespaces the databases the exec resolves by their
  * app-relative name, i.e. `@dust/pod`'s `db("chat")` inside a published function (see
  * `podDatabasePrefixFromSlug`). Omit it for execs that address databases by their on-disk name —
  * every `dsbx db` subcommand does, since front resolves the name before running them.
  */
-export function podDatabaseExecEnvVars({
+export function sandboxDatabaseExecEnvVars({
   databasePrefix,
 }: {
   databasePrefix?: string | null;
