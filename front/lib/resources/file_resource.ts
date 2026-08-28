@@ -37,6 +37,7 @@ import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   AuthorizedFileAccessModel,
@@ -45,6 +46,7 @@ import {
   ShareableFileModel,
   SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
+import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -121,6 +123,7 @@ const FRAME_CONTENT_TYPES = new Set([
 ]);
 
 const BATCH_DESTROY_SIZE = 10_000;
+const FRAME_FUNCTION_DELETE_BATCH_SIZE = 1_000;
 
 export interface FileUploadedRequestResponseBody {
   file: FileType & {
@@ -436,6 +439,8 @@ export class FileResource extends BaseResource<FileModel> {
   static async deleteAllForWorkspace(auth: Authenticator) {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
+    await this.deleteAllFrameFunctionsForWorkspace(workspaceId);
+
     await AuthorizedFileAccessModel.destroy({
       where: { workspaceId },
     });
@@ -500,6 +505,71 @@ export class FileResource extends BaseResource<FileModel> {
     return deletedCount;
   }
 
+  private static async deleteFrameFunctionModelIds(
+    workspaceModelId: ModelId,
+    sandboxFunctionModelIds: ModelId[]
+  ): Promise<number> {
+    if (sandboxFunctionModelIds.length === 0) {
+      return 0;
+    }
+
+    await SandboxFunctionInvocationResource.deleteAllForSandboxFunctionModelIds(
+      { workspaceModelId, sandboxFunctionModelIds }
+    );
+
+    return SandboxFunctionModel.destroy({
+      where: {
+        id: sandboxFunctionModelIds,
+        workspaceId: workspaceModelId,
+      },
+    });
+  }
+
+  private static async deleteAllFrameFunctionsForWorkspace(
+    workspaceModelId: ModelId
+  ): Promise<void> {
+    for (;;) {
+      const sandboxFunctions = await SandboxFunctionModel.findAll({
+        attributes: ["id"],
+        where: {
+          workspaceId: workspaceModelId,
+          publicationId: { [Op.ne]: null },
+        },
+        limit: FRAME_FUNCTION_DELETE_BATCH_SIZE,
+      });
+      if (sandboxFunctions.length === 0) {
+        return;
+      }
+
+      await this.deleteFrameFunctionModelIds(
+        workspaceModelId,
+        sandboxFunctions.map(({ id }) => id)
+      );
+    }
+  }
+
+  private async deleteFrameFunctions(auth: Authenticator): Promise<void> {
+    assert(this.isFrameV2, "Frame function cleanup requires a Frames v2 file.");
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    assert(
+      this.workspaceId === workspaceModelId,
+      "The Frame must belong to the authenticated workspace."
+    );
+
+    const sandboxFunctions = await SandboxFunctionModel.findAll({
+      attributes: ["id"],
+      where: {
+        workspaceId: workspaceModelId,
+        fileId: this.id,
+        publicationId: { [Op.ne]: null },
+      },
+    });
+    await FileResource.deleteFrameFunctionModelIds(
+      workspaceModelId,
+      sandboxFunctions.map(({ id }) => id)
+    );
+  }
+
   static async deleteAllForUser(
     auth: Authenticator,
     user: UserType,
@@ -534,6 +604,10 @@ export class FileResource extends BaseResource<FileModel> {
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
     try {
+      if (this.isFrameV2) {
+        await this.deleteFrameFunctions(auth);
+      }
+
       if (this.isReady) {
         await maybeDeleteCoreArtifactsForIndexedFile(auth, this);
 

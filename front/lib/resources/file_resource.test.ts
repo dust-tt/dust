@@ -4,11 +4,13 @@ import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import {
   AuthorizedFileAccessModel,
   FileModel,
 } from "@app/lib/resources/storage/models/files";
 import { copyContent } from "@app/lib/utils/files";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -31,6 +33,44 @@ import {
 } from "@app/types/files";
 import { Readable } from "stream";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
+
+async function createFrameWithFunction(
+  auth: Authenticator,
+  publicationId: string
+): Promise<FileResource> {
+  const frame = await FileFactory.create(auth, null, {
+    contentType: frameV2ContentType,
+    fileName: "manifest.json",
+    fileSize: 100,
+    status: "created",
+    useCase: "conversation",
+    useCaseMetadata: { conversationId: "conv-frame-delete" },
+  });
+  await withTransaction((transaction) =>
+    SandboxFunctionResource.createForFramePublication(
+      auth,
+      {
+        frame,
+        publicationId,
+        functions: [
+          {
+            name: "delete-task",
+            description: "Delete a task.",
+            userIdentity: "workspace_user_required",
+            executionMode: "durable",
+            defaultStake: "low",
+            bundleCode: "export default async function run() {}",
+            inputSchema: { type: "object" },
+            outputSchema: { type: "object" },
+          },
+        ],
+      },
+      transaction
+    )
+  );
+
+  return frame;
+}
 
 // Mock copyContent from utils/files.ts
 vi.mock("@app/lib/utils/files", () => ({
@@ -1708,5 +1748,43 @@ describe("FileResource", () => {
         await FileModel.count({ where: { workspaceId: otherWorkspace.id } })
       ).toBe(1);
     });
+
+    it("deletes Frames v2 function rows before workspace files", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const frame = await createFrameWithFunction(auth, "workspace-delete");
+      expect(
+        await SandboxFunctionResource.listByFramePublication(auth, {
+          frame,
+          publicationId: "workspace-delete",
+        })
+      ).toHaveLength(1);
+
+      const deletedCount = await FileResource.deleteAllForWorkspace(auth);
+
+      expect(deletedCount).toBe(1);
+      expect(await FileResource.fetchById(auth, frame.sId)).toBeNull();
+    });
+  });
+
+  it("deletes Frames v2 function rows before the Frame file", async () => {
+    const { authenticator: auth } = await createResourceTest({
+      role: "admin",
+    });
+    const frame = await createFrameWithFunction(auth, "frame-delete");
+    expect(
+      await SandboxFunctionResource.listByFramePublication(auth, {
+        frame,
+        publicationId: "frame-delete",
+      })
+    ).toHaveLength(1);
+
+    const result = await frame.delete(auth);
+
+    expect(result.isOk(), result.isErr() ? result.error.message : "").toBe(
+      true
+    );
+    expect(await FileResource.fetchById(auth, frame.sId)).toBeNull();
   });
 });

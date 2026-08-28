@@ -17,6 +17,7 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FramePublicationFunctionDefinition } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import {
@@ -42,7 +43,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import type { Transaction } from "sequelize";
 import { z } from "zod";
 
 const FRAME_PUBLICATION_UPLOAD_CONCURRENCY = 4;
@@ -50,7 +50,10 @@ const FRAME_PUBLICATION_READ_CONCURRENCY = 4;
 const FRAME_PUBLISH_LOCK_TTL_MS = 10 * 60_000;
 
 const jsonSchemaValue = z.custom<JSONSchema>(
-  (value) => typeof value === "object" && value !== null
+  (value) =>
+    typeof value === "object" &&
+    value !== null &&
+    validateJsonSchema(value).isValid
 );
 
 const FramePublicationFunctionSchemaArtifactSchema = z.object({
@@ -81,7 +84,6 @@ export class FramePublicationError extends Error {
       | "invalid_manifest"
       | "invalid_source"
       | "allowlist_failed"
-      | "activation_failed"
       | "publication_not_found"
       | "source_not_found"
       | "ui_build_failed"
@@ -442,8 +444,7 @@ export async function activateFramePublication(
   }: {
     frame: FileResource;
     publicationId: string;
-  },
-  { transaction }: { transaction?: Transaction } = {}
+  }
 ): Promise<Result<void, FramePublicationError>> {
   const manifest = await loadFramePublicationManifest(auth, {
     frame,
@@ -497,35 +498,21 @@ export async function activateFramePublication(
   }
   const shareScope = await frame.getShareScope();
 
-  try {
-    await withTransaction(async (activationTransaction) => {
-      // Updating the Frame first serializes concurrent activations. None of the
-      // new publication state becomes visible until the transaction commits.
-      await frame.setActiveFramePublication(
+  await withTransaction(async (transaction) => {
+    // Updating the Frame first serializes concurrent activations. None of the
+    // new publication state becomes visible until the transaction commits.
+    await frame.setActiveFramePublication(publicationId, transaction);
+    await frame.persistAuthorizedFileAccess(allowlist.value, { transaction });
+    await SandboxFunctionResource.createForFramePublication(
+      auth,
+      {
+        frame,
+        functions: functionDefinitions.value,
         publicationId,
-        activationTransaction
-      );
-      await frame.persistAuthorizedFileAccess(allowlist.value, {
-        transaction: activationTransaction,
-      });
-      await SandboxFunctionResource.createForFramePublication(
-        auth,
-        {
-          frame,
-          functions: functionDefinitions.value,
-          publicationId,
-        },
-        activationTransaction
-      );
-    }, transaction);
-  } catch (error) {
-    return new Err(
-      new FramePublicationError(
-        "activation_failed",
-        `Failed to activate Frame publication ${publicationId}: ${normalizeError(error).message}`
-      )
+      },
+      transaction
     );
-  }
+  });
 
   emitFrameAuthorizedFilesUpdatedAuditLog(
     auth,
