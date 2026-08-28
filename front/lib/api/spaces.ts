@@ -383,23 +383,8 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           (k) => !dataSourceViewIdSet.has(k.dataSourceView.id)
         );
 
-        // TODO(skills-manual-spaces): read `manuallyRequestedSpaceIds` here once every skill has
-        // been backfilled, and drop this inference.
-        const previousComputedRequestedSpaceIds =
-          await SkillResource.computeRequestedSpaceIds(auth, {
-            mcpServerViews: skill.mcpServerViews,
-            attachedKnowledge,
-          });
-        const previousComputedRequestedSpaceIdSet = new Set(
-          previousComputedRequestedSpaceIds
-        );
-        const additionalRequestedSpaceIds = skill.requestedSpaceIds.filter(
-          (spaceId) =>
-            spaceId !== space.id &&
-            !previousComputedRequestedSpaceIdSet.has(spaceId)
-        );
-
-        // A deleted space cannot stay a manual choice: nothing can grant access to it any more
+        // A deleted space cannot stay a manual choice: nothing can grant access to it any more,
+        // and an id pointing at a missing space would hide the skill from everyone.
         const manuallyRequestedSpaceIds =
           skill.manuallyRequestedSpaceIds.filter(
             (spaceId) => spaceId !== space.id
@@ -413,7 +398,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           });
         const requestedSpaceIds = uniq([
           ...computedRequestedSpaceIds,
-          ...additionalRequestedSpaceIds,
+          ...manuallyRequestedSpaceIds,
         ]);
 
         // Log an error if the deleted space is still in requestedSpaceIds.

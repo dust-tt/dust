@@ -910,15 +910,16 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     const openSpace = await SpaceFactory.regular(workspace);
     await SpaceFactory.attachGroup(openSpace, globalGroup);
 
+    // The space was picked by hand, which is what the write paths now record alongside the union.
     await skill.updateSkill(requestUserAuth, {
       agentFacingDescription: skill.agentFacingDescription,
       attachedKnowledge: [],
       icon: skill.icon,
       instructions: skill.instructions,
       instructionsHtml: skill.instructionsHtml,
+      manuallyRequestedSpaceIds: [openSpace.id],
       mcpServerViews: [],
       name: skill.name,
-      manuallyRequestedSpaceIds: [],
       requestedSpaceIds: [openSpace.id],
       userFacingDescription: skill.userFacingDescription,
     });
@@ -1125,6 +1126,17 @@ describe("PATCH /api/w/:wId/skills/:sId - manually requested spaces", () => {
     };
   }
 
+  function knowledge(dataSourceView: { sId: string }, space: { sId: string }) {
+    return [
+      {
+        dataSourceViewId: dataSourceView.sId,
+        nodeId: "folder1",
+        spaceId: space.sId,
+        title: "Folder 1",
+      },
+    ];
+  }
+
   it("stores the manually selected spaces, and snapshots them on the version", async () => {
     const { workspace, skill, requestUserAuth, space } =
       await setupSpaceWithKnowledge({ requestUserRole: "admin" });
@@ -1171,14 +1183,7 @@ describe("PATCH /api/w/:wId/skills/:sId - manually requested spaces", () => {
       skill.sId,
       patchBody(skill, {
         additionalRequestedSpaceIds: [space.sId],
-        attachedKnowledge: [
-          {
-            dataSourceViewId: dataSourceView.sId,
-            nodeId: "folder1",
-            spaceId: space.sId,
-            title: "Folder 1",
-          },
-        ],
+        attachedKnowledge: knowledge(dataSourceView, space),
       })
     );
     expect(await response.json()).not.toHaveProperty("error");
@@ -1189,6 +1194,75 @@ describe("PATCH /api/w/:wId/skills/:sId - manually requested spaces", () => {
     );
     expect(updatedSkill?.manuallyRequestedSpaceIds).toEqual([space.id]);
     expect(updatedSkill?.requestedSpaceIds).toContain(space.id);
+  });
+
+  it("keeps a manual space after the knowledge from it is removed", async () => {
+    const { workspace, skill, requestUserAuth, space, dataSourceView } =
+      await setupSpaceWithKnowledge({ requestUserRole: "admin" });
+
+    // Select the space by hand, then attach knowledge from it.
+    await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, { additionalRequestedSpaceIds: [space.sId] })
+    );
+    await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, {
+        additionalRequestedSpaceIds: [space.sId],
+        attachedKnowledge: knowledge(dataSourceView, space),
+      })
+    );
+
+    // Remove the knowledge. The space was picked by hand, so it stays.
+    const response = await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, { additionalRequestedSpaceIds: [space.sId] })
+    );
+    expect(await response.json()).not.toHaveProperty("error");
+
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.requestedSpaceIds).toContain(space.id);
+    expect(updatedSkill?.manuallyRequestedSpaceIds).toEqual([space.id]);
+  });
+
+  it("drops a knowledge-only space when its last knowledge item is removed", async () => {
+    const { workspace, skill, requestUserAuth, space, dataSourceView } =
+      await setupSpaceWithKnowledge({ requestUserRole: "admin" });
+
+    await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, {
+        additionalRequestedSpaceIds: [],
+        attachedKnowledge: knowledge(dataSourceView, space),
+      })
+    );
+
+    const withKnowledge = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(withKnowledge?.requestedSpaceIds).toContain(space.id);
+
+    const response = await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, { additionalRequestedSpaceIds: [] })
+    );
+    expect(await response.json()).not.toHaveProperty("error");
+
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.requestedSpaceIds).not.toContain(space.id);
+    expect(updatedSkill?.manuallyRequestedSpaceIds).toEqual([]);
   });
 });
 

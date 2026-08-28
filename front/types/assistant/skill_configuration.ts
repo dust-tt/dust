@@ -81,6 +81,9 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
   selfImprovementCostsCapMicroUsd: z.number().nullable(),
   selfImprovementCostsCapAwuCredits: z.number().nullable(),
   requestedSpaceIds: z.array(z.string()),
+  // The subset of `requestedSpaceIds` picked by hand under "Data and access". Optional so older
+  // clients that do not send it back are still accepted.
+  manuallyRequestedSpaceIds: z.array(z.string()).optional(),
   fileAttachments: z.array(
     z.object({
       fileId: z.string(),

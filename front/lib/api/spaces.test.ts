@@ -1519,6 +1519,8 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       const skill = await SkillFactory.create(adminAuth, {
         name: "Test Skill With Tool And Additional Space",
         requestedSpaceIds: [toolSpace!.id, additionalSpace!.id],
+        // Only the additional space was picked by hand; the tool space comes from the server view.
+        manuallyRequestedSpaceIds: [additionalSpace!.id],
         mcpServerViews: [serverView],
       });
 
