@@ -307,8 +307,8 @@ are validated, built or reconciled, stored, and activated atomically:
 dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
 \`\`\`
 
-If validation or any function build fails, no partial publication becomes active. Fix the reported
-error and rerun the command.
+If validation, a function build, or database reconciliation fails, no partial publication becomes
+active. Fix the reported error and rerun the command.
 
 For a legacy Frame, pass its entry source file instead:
 

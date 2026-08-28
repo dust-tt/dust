@@ -4,7 +4,9 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
 import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
+import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
 import type { Authenticator } from "@app/lib/auth";
@@ -577,7 +579,12 @@ export async function publishFramePublication(
     sourceFiles: FramePublicationSourceFile[];
     uiBundleCode: string;
   }
-): Promise<Result<{ publicationId: string }, FramePublicationError>> {
+): Promise<
+  Result<
+    { publicationId: string },
+    FramePublicationError | SandboxFunctionError
+  >
+> {
   return withFramePublishLock(frame.sId, async () => {
     const publication = await storeFramePublication(auth, {
       frame,
@@ -588,6 +595,15 @@ export async function publishFramePublication(
     });
     if (publication.isErr()) {
       return publication;
+    }
+
+    const reconciliation = await reconcileFramePublicationDatabases(auth, {
+      frame,
+      manifest,
+      sourceFiles,
+    });
+    if (reconciliation.isErr()) {
+      return reconciliation;
     }
 
     const activation = await activateFramePublication(auth, {
