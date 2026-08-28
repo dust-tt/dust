@@ -117,7 +117,7 @@ function ModelTiersInfoDialog({ isOpen, onClose }: ModelTiersInfoDialogProps) {
               Each tier groups <b>model + reasoning-effort</b> options by cost.
               <br />
               <br />
-              <b>How pricing is calculated</b>
+              <b>How pricing tier is calculated</b>
               <br />
               Dust benchmarks each model and reasoning-effort combination at the
               task level, rather than relying only on the model's price per
