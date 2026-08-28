@@ -1578,7 +1578,7 @@ describe("SpaceResource", () => {
     });
   });
 
-  describe("isOpen", () => {
+  describe("isRestricted", () => {
     let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
     let adminAuth: Authenticator;
 
@@ -1603,17 +1603,19 @@ describe("SpaceResource", () => {
       );
     });
 
-    // `isOpen` is read from the space's `group_permissions` grants, so re-fetch after each change
-    // rather than trusting the in-memory instance.
-    const refetchIsOpen = async (space: SpaceResource): Promise<boolean> => {
+    // `isRestricted` is read from the space's `group_permissions` grants, so re-fetch after each
+    // change rather than trusting the in-memory instance.
+    const refetchIsRestricted = async (
+      space: SpaceResource
+    ): Promise<boolean> => {
       const refetched = await SpaceResource.fetchById(adminAuth, space.sId);
       expect(refetched).not.toBeNull();
-      return refetched!.isOpen(adminAuth);
+      return refetched!.isRestricted(adminAuth);
     };
 
-    it("is false for a restricted space and true once opened", async () => {
+    it("is true for a restricted space and false once opened", async () => {
       const space = await SpaceFactory.regular(workspace);
-      expect(await refetchIsOpen(space)).toBe(false);
+      expect(await refetchIsRestricted(space)).toBe(true);
 
       const openResult = await space.updatePermissions(adminAuth, {
         name: space.name,
@@ -1624,10 +1626,10 @@ describe("SpaceResource", () => {
       });
       expect(openResult.isOk()).toBe(true);
 
-      expect(await refetchIsOpen(space)).toBe(true);
+      expect(await refetchIsRestricted(space)).toBe(false);
     });
 
-    it("flips back to false when an open space is restricted again", async () => {
+    it("flips back to true when an open space is restricted again", async () => {
       const space = await SpaceFactory.regular(workspace);
       const openResult = await space.updatePermissions(adminAuth, {
         name: space.name,
@@ -1637,7 +1639,7 @@ describe("SpaceResource", () => {
         editorIds: [],
       });
       expect(openResult.isOk()).toBe(true);
-      expect(await refetchIsOpen(space)).toBe(true);
+      expect(await refetchIsRestricted(space)).toBe(false);
 
       const opened = await SpaceResource.fetchById(adminAuth, space.sId);
       const restrictResult = await opened!.updatePermissions(adminAuth, {
@@ -1649,7 +1651,7 @@ describe("SpaceResource", () => {
       });
       expect(restrictResult.isOk()).toBe(true);
 
-      expect(await refetchIsOpen(space)).toBe(false);
+      expect(await refetchIsRestricted(space)).toBe(true);
     });
   });
 
@@ -2623,7 +2625,7 @@ describe("SpaceResource group_permissions enforcement", () => {
     // Refetched, not reused: `space` holds the grant snapshot from before the update.
     const openSpace = await SpaceResource.fetchById(adminAuth, space.sId);
     expect(openSpace).not.toBeNull();
-    expect(await openSpace!.isOpen(adminAuth)).toBe(true);
+    expect(await openSpace!.isRestricted(adminAuth)).toBe(false);
 
     // The member group confers write; the global group's `reader` grant only confers read.
     expect(openSpace!.canRead(memberAuth)).toBe(true);
@@ -2778,7 +2780,7 @@ describe("SpaceResource group_permissions enforcement", () => {
     // Refetched, not reused: `space` holds the grant snapshot from before the update.
     const openSpace = await SpaceResource.fetchById(adminAuth, space.sId);
     expect(openSpace).not.toBeNull();
-    expect(await openSpace!.isOpen(adminAuth)).toBe(true);
+    expect(await openSpace!.isRestricted(adminAuth)).toBe(false);
 
     // In group management mode the provisioned group is the space's member group, so it is what
     // carries write.

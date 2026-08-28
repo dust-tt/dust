@@ -908,7 +908,9 @@ describe("createAgentMessages", () => {
       );
       expect(refreshedRestrictedSpace).not.toBeNull();
       // Regular spaces created by SpaceFactory.regular are restricted (no global group)
-      expect(await refreshedRestrictedSpace?.isOpen(adminAuth)).toBe(false);
+      expect(await refreshedRestrictedSpace?.isRestricted(adminAuth)).toBe(
+        true
+      );
 
       // Refresh the conversation space to get updated permissions
       const refreshedConversationSpace = await SpaceResource.fetchById(
@@ -1052,7 +1054,9 @@ describe("createAgentMessages", () => {
         restrictedSpace.sId
       );
       expect(refreshedRestrictedSpace).not.toBeNull();
-      expect(await refreshedRestrictedSpace?.isOpen(adminAuth)).toBe(false);
+      expect(await refreshedRestrictedSpace?.isRestricted(adminAuth)).toBe(
+        true
+      );
 
       const refreshedConversationSpace = await SpaceResource.fetchById(
         userAuth,
@@ -1358,7 +1362,7 @@ describe("createAgentMessages", () => {
         openSpace.sId
       );
       expect(refreshedOpenSpace).not.toBeNull();
-      expect(await refreshedOpenSpace?.isOpen(adminAuth)).toBe(true);
+      expect(await refreshedOpenSpace?.isRestricted(adminAuth)).toBe(false);
       // Verify it's not global
       expect(refreshedOpenSpace?.isGlobal()).toBe(false);
 

@@ -2136,7 +2136,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // Users can add themselves to open projects; otherwise managing a space's members requires
     // administration rights (held by workspace admins and a project's editors) — a project's plain
     // members hold `write` but must not be able to add others, so this gates on `canAdministrate`.
-    if (this.isProject() && (await this.isOpen(auth))) {
+    if (this.isProject() && !(await this.isRestricted(auth))) {
       const currentUser = auth.getNonNullableUser();
       if (userId === currentUser.sId) {
         return true;
@@ -2189,13 +2189,22 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return this.kind === "project";
   }
 
-  // A space is open when the workspace global group holds a `reader` grant on it (that grant is what
-  // makes the space visible to every workspace member). Resolved from `group_permissions`. Prefer
-  // `listOpenSpaceModelIds` when checking several spaces to avoid one query per space.
-  async isOpen(auth: Authenticator): Promise<boolean> {
-    return (await SpaceResource.listOpenSpaceModelIds(auth, [this])).has(
-      this.id
-    );
+  // A regular space or project is restricted when it is member-only: the workspace global group
+  // holds no `reader` grant on it (an open space grants that group a `reader` grant, which is what
+  // makes it visible to every workspace member). Global, conversations and system spaces are never
+  // restricted. This is the resource-level equivalent of the serialized `EnrichedSpaceType.isRestricted`.
+  // Resolved from `group_permissions`; serialize a batch of spaces via `batchToJSONEnriched` to avoid
+  // one query per space.
+  async isRestricted(auth: Authenticator): Promise<boolean> {
+    if (!this.isRegular() && !this.isProject()) {
+      return false;
+    }
+
+    const isOpen = (
+      await SpaceResource.listOpenSpaceModelIds(auth, [this])
+    ).has(this.id);
+
+    return !isOpen;
   }
 
   // The model ids of the `spaces` that are open (the workspace global group holds a `reader` grant).

@@ -2576,7 +2576,7 @@ describe("postUserMessage", () => {
     });
 
     it("should reject posting a message without an auth user to a restricted Pod even when user association is disabled", async () => {
-      expect(await projectSpace.isOpen(auth)).toBe(false);
+      expect(await projectSpace.isRestricted(auth)).toBe(true);
 
       const apiKey = await KeyFactory.regular(globalGroup);
       const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
@@ -2590,7 +2590,7 @@ describe("postUserMessage", () => {
         projectSpace.sId
       );
       expect(restrictedPod).not.toBeNull();
-      expect(await restrictedPod?.isOpen(apiKeyAuth)).toBe(false);
+      expect(await restrictedPod?.isRestricted(apiKeyAuth)).toBe(true);
 
       const result = await postUserMessage(apiKeyAuth, {
         conversationResource: projectConversationResource,
@@ -2637,7 +2637,7 @@ describe("postUserMessage", () => {
         projectSpace.sId
       );
       expect(openPod).not.toBeNull();
-      expect(await openPod?.isOpen(apiKeyAuth)).toBe(true);
+      expect(await openPod?.isRestricted(apiKeyAuth)).toBe(false);
 
       const result = await postUserMessage(apiKeyAuth, {
         conversationResource: projectConversationResource,
@@ -2683,7 +2683,7 @@ describe("postUserMessage", () => {
         projectSpace.sId
       );
       expect(openPod).not.toBeNull();
-      expect(await openPod?.isOpen(apiKeyAuth)).toBe(true);
+      expect(await openPod?.isRestricted(apiKeyAuth)).toBe(false);
 
       const result = await postUserMessage(apiKeyAuth, {
         conversationResource: projectConversationResource,
