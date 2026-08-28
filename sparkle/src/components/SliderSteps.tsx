@@ -161,7 +161,7 @@ export function SliderSteps({
         <span
           className={cn(
             "pointer-events-none absolute inset-y-0 left-0 rounded-full",
-            "bg-black/[0.06] dark:bg-white/[0.08]",
+            "bg-black/6 dark:bg-white/8",
             "transition-[width,opacity] duration-200 ease-in-out motion-reduce:transition-none",
             previewIndex !== null ? "opacity-100" : "opacity-0"
           )}
