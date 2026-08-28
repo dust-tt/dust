@@ -22,12 +22,16 @@ const PlanLimitOverridesSchema = z.object({
   maxDataSources: z.number().int().min(UNLIMITED).optional(),
   overrideMaxConnections: z.boolean(),
   maxConnections: z.number().int().min(UNLIMITED).optional(),
+  overrideSSO: z.boolean(),
+  isSSOAllowed: z.boolean().optional(),
+  overrideSCIM: z.boolean(),
+  isSCIMAllowed: z.boolean().optional(),
 });
 
-function resolveOverride(
+function resolveOverride<T extends number | boolean>(
   enabled: boolean,
-  value: number | undefined
-): number | null {
+  value: T | undefined
+): T | null {
   return enabled && value !== undefined ? value : null;
 }
 
@@ -38,14 +42,21 @@ function describeLimit(value: number | null): string {
   return value === UNLIMITED ? "unlimited" : `${value}`;
 }
 
+function describeFlag(value: boolean | null): string {
+  if (value === null) {
+    return "plan value";
+  }
+  return value ? "allowed" : "denied";
+}
+
 export const overridePlanLimitsPlugin = createPlugin({
   manifest: {
     id: "override-plan-limits",
     name: "Override Plan Limits",
     description:
-      "Override this workspace's seat, space and data-source limits without creating a " +
-      "dedicated plan. Each limit falls back to the plan value when its toggle is off. " +
-      "Use -1 for unlimited.",
+      "Override this workspace's seat, space and data-source limits, and its SSO/SCIM " +
+      "entitlements, without creating a dedicated plan. Each setting falls back to the " +
+      "plan value when its toggle is off. Use -1 for unlimited.",
     explanation:
       "Overrides are workspace-scoped: they survive plan changes and renewals, and they " +
       "also win over the trial limits. They cap what can be created or assigned and what " +
@@ -152,6 +163,39 @@ export const overridePlanLimitsPlugin = createPlugin({
         async: true,
         dependsOn: { field: "overrideMaxConnections", value: true },
       },
+      overrideSSO: {
+        type: "boolean",
+        variant: "toggle",
+        label: "Override SSO entitlement",
+        async: true,
+        asyncDescription: true,
+      },
+      isSSOAllowed: {
+        type: "boolean",
+        variant: "toggle",
+        label: "SSO allowed",
+        description:
+          "Whether this workspace can configure SSO, regardless of its plan.",
+        async: true,
+        dependsOn: { field: "overrideSSO", value: true },
+      },
+      overrideSCIM: {
+        type: "boolean",
+        variant: "toggle",
+        label: "Override SCIM entitlement",
+        async: true,
+        asyncDescription: true,
+      },
+      isSCIMAllowed: {
+        type: "boolean",
+        variant: "toggle",
+        label: "SCIM allowed",
+        description:
+          "Whether this workspace can configure SCIM user provisioning, regardless of " +
+          "its plan.",
+        async: true,
+        dependsOn: { field: "overrideSCIM", value: true },
+      },
     },
     requiredRoles: ["billing"],
   },
@@ -189,6 +233,14 @@ export const overridePlanLimitsPlugin = createPlugin({
       overrideMaxConnectionsDescription:
         "Override the plan's connection cap for this workspace only.",
       maxConnections: limits.connections.count,
+      overrideSSO: override?.isSSOAllowed != null,
+      overrideSSODescription:
+        "Override the plan's SSO entitlement for this workspace only.",
+      isSSOAllowed: limits.users.isSSOAllowed,
+      overrideSCIM: override?.isSCIMAllowed != null,
+      overrideSCIMDescription:
+        "Override the plan's SCIM entitlement for this workspace only.",
+      isSCIMAllowed: limits.users.isSCIMAllowed,
     });
   },
 
@@ -217,6 +269,10 @@ export const overridePlanLimitsPlugin = createPlugin({
       maxDataSources,
       overrideMaxConnections,
       maxConnections,
+      overrideSSO,
+      isSSOAllowed,
+      overrideSCIM,
+      isSCIMAllowed,
     } = parseResult.data;
 
     const override: PlanLimitOverride = {
@@ -238,6 +294,8 @@ export const overridePlanLimitsPlugin = createPlugin({
         overrideMaxConnections,
         maxConnections
       ),
+      isSSOAllowed: resolveOverride(overrideSSO, isSSOAllowed),
+      isSCIMAllowed: resolveOverride(overrideSCIM, isSCIMAllowed),
     };
 
     const res = await setWorkspacePlanLimitOverrides(auth, override);
@@ -254,6 +312,8 @@ export const overridePlanLimitsPlugin = createPlugin({
         `Max spaces: ${describeLimit(override.maxVaultsInWorkspace)}.`,
         `Max data sources: ${describeLimit(override.maxDataSourcesCount)}.`,
         `Max connections: ${describeLimit(override.maxConnectionsCount)}.`,
+        `SSO: ${describeFlag(override.isSSOAllowed)}.`,
+        `SCIM: ${describeFlag(override.isSCIMAllowed)}.`,
       ].join(" "),
     });
   },

@@ -129,11 +129,13 @@ function renderPlanLimitOverride(
     maxVaultsInWorkspace: row.maxVaultsInWorkspace,
     maxDataSourcesCount: row.maxDataSourcesCount,
     maxConnectionsCount: row.maxConnectionsCount,
+    isSSOAllowed: row.isSSOAllowed,
+    isSCIMAllowed: row.isSCIMAllowed,
   };
 }
 
-// A limit is `null` (not overridden), `-1` (unlimited) or a non-negative count,
-// matching the plan convention.
+// A numeric limit is `null` (not overridden), `-1` (unlimited) or a non-negative
+// count, matching the plan convention. Boolean flags need no range check.
 function validatePlanLimitOverride(
   override: PlanLimitOverride
 ): Result<undefined, Error> {
