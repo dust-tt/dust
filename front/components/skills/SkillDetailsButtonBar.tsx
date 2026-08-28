@@ -82,7 +82,7 @@ export function SkillDetailsButtonBar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                icon={isSkillLinkCopied ? ClipboardCheck : DotsHorizontal}
+                icon={DotsHorizontal}
                 size="sm"
                 variant="ghost"
                 tooltip="Skill options"
@@ -91,7 +91,7 @@ export function SkillDetailsButtonBar({
             <DropdownMenuContent>
               <DropdownMenuItem
                 label="Copy link"
-                icon={Link01}
+                icon={isSkillLinkCopied ? ClipboardCheck : Link01}
                 onClick={(e) => {
                   e.stopPropagation();
                   void copySkillLink(
