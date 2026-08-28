@@ -33,6 +33,11 @@ import {
   Icon,
   Lock01,
 } from "@dust-tt/sparkle";
+import { useRef } from "react";
+
+// root -> makers -> models: used to tell whether a view change is going
+// forward or back, so the swap can slide the matching direction.
+const VIEW_ORDER: ModelPickerView[] = ["root", "makers", "models"];
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
@@ -83,6 +88,11 @@ export function ModelPickerContent({
   onChangeEffort,
   onRevert,
 }: ModelPickerContentProps) {
+  const previousViewRef = useRef<ModelPickerView>(view);
+  const isGoingForward =
+    VIEW_ORDER.indexOf(view) >= VIEW_ORDER.indexOf(previousViewRef.current);
+  previousViewRef.current = view;
+
   const activeMakerGroup = makerGroups.find(
     (maker) => maker.makerId === activeMaker
   );
@@ -112,7 +122,7 @@ export function ModelPickerContent({
     >
       <div
         key={view}
-        className="animate-in fade-in duration-200 motion-reduce:animate-none"
+        className={`animate-in fade-in duration-200 motion-reduce:animate-none ${isGoingForward ? "slide-in-from-right-4" : "slide-in-from-left-4"}`}
       >
         {view === "root" && (
           <div className={stepBodyClassName}>
