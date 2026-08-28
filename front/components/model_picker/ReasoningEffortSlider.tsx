@@ -1,4 +1,5 @@
 import type { EffortStop } from "@app/components/model_picker/modelPickerUtils";
+import { getEffortStopTooltip } from "@app/components/model_picker/modelPickerUtils";
 import { classNames } from "@app/lib/utils";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { SliderSteps } from "@dust-tt/sparkle";
@@ -50,6 +51,7 @@ export function ReasoningEffortSlider({
         value={valueIndex}
         lockedSteps={lockedSteps}
         disabled={isDisabled}
+        stepTooltips={stops.map(getEffortStopTooltip)}
         onChange={(index) => {
           const next = stops[index];
           if (next) {

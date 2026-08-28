@@ -118,9 +118,7 @@ export function SliderSteps({
   // The tooltip reflects the raw hovered step (so a locked step explains why it
   // is locked), not the step selection would snap to.
   const activeTooltip =
-    !disabled && hoveredIndex !== null
-      ? (stepTooltips?.[hoveredIndex] ?? null)
-      : null;
+    hoveredIndex !== null ? (stepTooltips?.[hoveredIndex] ?? null) : null;
 
   const slider = (
     <SliderPrimitive.Root

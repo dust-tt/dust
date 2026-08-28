@@ -1,9 +1,11 @@
 import {
   getDefaultTierId,
   getEffortStops,
+  getEffortStopTooltip,
   getInitialEffort,
   getTierLockReason,
   isPremiumModel,
+  PREMIUM_MODEL_LOCKED_TOOLTIP,
 } from "@app/components/model_picker/modelPickerUtils";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import {
@@ -86,6 +88,38 @@ describe("modelPickerUtils premium gating", () => {
         UNGATED
       );
       expect(stops.every((stop) => !stop.locked)).toBe(true);
+    });
+  });
+
+  describe("getEffortStopTooltip", () => {
+    it("only explains locked efforts", () => {
+      expect(
+        getEffortStopTooltip({ effort: "light", locked: false }),
+      ).toBeUndefined();
+      expect(
+        getEffortStopTooltip({
+          effort: "high",
+          locked: true,
+          lockedReason: "unsupported",
+        }),
+      ).toBe("This model doesn't support High reasoning.");
+      expect(
+        getEffortStopTooltip({
+          effort: "high",
+          locked: true,
+          lockedReason: "premium",
+        }),
+      ).toBe(PREMIUM_MODEL_LOCKED_TOOLTIP);
+      expect(
+        getEffortStopTooltip({
+          effort: "medium",
+          locked: true,
+          lockedReason: "model_tier",
+        }),
+      ).toBe(
+        "Your current model access doesn't include this option. " +
+          "Contact your administrator to get access.",
+      );
     });
   });
 

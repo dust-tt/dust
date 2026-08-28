@@ -30,13 +30,14 @@ import capitalize from "lodash/capitalize";
 // Shown when a whole-premium model row or a premium reasoning-effort stop is
 // locked because the workspace is on a legacy (non usage-based) plan.
 export const PREMIUM_MODEL_LOCKED_TOOLTIP =
-  "Your workspace's current plan doesn't include premium models. Contact your administrator to upgrade.";
+  "Your workspace's current plan doesn't allow selecting Premium models or reasoning efforts. " +
+  "Contact your administrator to upgrade.";
 
 // Shown when a model row is locked because the model's tier is not enabled for
 // the workspace's current model-tier ceiling (independent of the plan: this
 // applies even on usage-based plans whose tier grants stop below the model).
 const MODEL_TIER_LOCKED_TOOLTIP =
-  "You don't have access to this model tier. " +
+  "Your current model access doesn't include this option. " +
   "Contact your administrator to get access.";
 
 // The three primary picks of the model picker. Each tier is backed by a
@@ -365,6 +366,26 @@ export function getModelLockTooltip(reason: ModelLockReason): string {
     default:
       assertNeverAndIgnore(reason);
       return "";
+  }
+}
+
+export function getEffortStopTooltip(stop: EffortStop): string | undefined {
+  if (!stop.locked) {
+    return undefined;
+  }
+
+  switch (stop.lockedReason) {
+    case "premium":
+      return PREMIUM_MODEL_LOCKED_TOOLTIP;
+    case "model_tier":
+      return MODEL_TIER_LOCKED_TOOLTIP;
+    case "unsupported":
+      return `This model doesn't support ${capitalize(stop.effort)} reasoning.`;
+    case undefined:
+      return undefined;
+    default:
+      assertNeverAndIgnore(stop.lockedReason);
+      return undefined;
   }
 }
 

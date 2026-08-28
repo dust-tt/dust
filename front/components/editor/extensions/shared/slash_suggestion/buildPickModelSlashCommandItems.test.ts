@@ -2,6 +2,7 @@ import { buildPickModelSlashCommandItems } from "@app/components/editor/extensio
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import { CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { AUTO_COMPLEX_MODEL_CONFIG } from "@app/types/assistant/models/auto";
+import { GEMINI_3_1_FLASH_LITE_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_4_1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { describe, expect, it } from "vitest";
@@ -57,6 +58,24 @@ describe("buildPickModelSlashCommandItems", () => {
       items.find((item) => item.data.selection.display.kind === "model")?.data
         .selection.toSend?.reasoningEffort
     ).toBe("none");
+  });
+
+  it("uses display names for model makers", () => {
+    const items = buildPickModelSlashCommandItems({
+      getModelIcon: () => Icon,
+      lockPremiumEfforts: false,
+      models: [asSelectable(GEMINI_3_1_FLASH_LITE_MODEL_CONFIG)],
+      query: "",
+      streams: null,
+    });
+
+    const descriptions = items
+      .filter((item) => item.data.selection.display.kind === "model")
+      .map((item) => item.description);
+    expect(descriptions.length).toBeGreaterThan(0);
+    expect(descriptions.every((description) => description === "Google")).toBe(
+      true,
+    );
   });
 
   it("filters by query", () => {

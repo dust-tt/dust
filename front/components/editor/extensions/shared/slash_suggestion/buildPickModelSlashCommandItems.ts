@@ -18,7 +18,10 @@ import type {
   ModelStreamResolutionsType,
 } from "@app/types/api/assistant/models";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
-import { getModelMaker } from "@app/types/assistant/models/providers";
+import {
+  getModelMaker,
+  getModelMakerDisplayName,
+} from "@app/types/assistant/models/providers";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import type { ComponentType } from "react";
 
@@ -131,7 +134,7 @@ export function buildPickModelSlashCommandItems({
       items.push({
         action: SELECT_MODEL_SLASH_COMMAND_ACTION,
         data: { selection },
-        description: getModelMaker(model),
+        description: getModelMakerDisplayName(getModelMaker(model)),
         icon,
         id: `${model.providerId}/${model.modelId}/${effort}`,
         label,
