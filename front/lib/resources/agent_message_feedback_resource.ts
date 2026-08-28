@@ -295,7 +295,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         {
           model: UserResource.model,
           as: "user",
-          attributes: ["name", "email"],
+          attributes: ["sId", "name", "email"],
         },
       ],
       order: [["id", "ASC"]],
