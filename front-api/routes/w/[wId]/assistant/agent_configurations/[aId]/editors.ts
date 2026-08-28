@@ -14,6 +14,10 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import {
+  ARCHIVED_AGENT_API_ERROR,
+  isArchivedAgent,
+} from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -214,6 +218,10 @@ app.patch(
       });
     }
 
+    if (isArchivedAgent(agent)) {
+      return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
+    }
+
     const { addEditorIds = [], removeEditorIds = [] } = ctx.req.valid("json");
 
     const usersToAdd = await UserResource.fetchByIds(addEditorIds);
@@ -264,6 +272,14 @@ app.patch(
             api_error: {
               type: "invalid_request_error",
               message: "Some of the passed ids are invalid.",
+            },
+          });
+        case "invalid_request_error":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: updateRes.error.message,
             },
           });
         case "group_not_found":
