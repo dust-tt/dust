@@ -24,7 +24,9 @@ app.get("/", (ctx) => {
   const response = ctx.json({ status: "ready", commitHash: COMMIT_HASH }, 200);
 
   const durationMs = performance.now() - startMs;
-  statsDMetrics.distribution("healthz.ready.duration_ms", durationMs);
+  statsDMetrics.distribution("healthz.ready.duration_ms", durationMs, [], {
+    includeHostTag: true,
+  });
 
   return response;
 });
