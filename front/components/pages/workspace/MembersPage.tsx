@@ -1,11 +1,7 @@
 import { WorkspaceGroupsList } from "@app/components/groups/WorkspaceGroupsList";
 import { WorkspaceMembersSection } from "@app/components/members/WorkspaceMembersSection";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import {
   usePerSeatPricing,
@@ -22,8 +18,6 @@ import {
 } from "@dust-tt/sparkle";
 
 export function MembersPage() {
-  const { featureFlags } = useFeatureFlags();
-
   const owner = useWorkspace();
   const { subscription, user } = useAuth();
   const plan = subscription.plan;
@@ -40,8 +34,7 @@ export function MembersPage() {
   });
 
   const hasVerifiedDomains = verifiedDomains.length > 0;
-  const isProvisioningEnabled =
-    isSCIMEnabled(plan, featureFlags) && hasVerifiedDomains;
+  const isProvisioningEnabled = isSCIMEnabled(plan) && hasVerifiedDomains;
   const isManualInvitationsEnabled =
     owner.metadata?.disableManualInvitations !== true;
 

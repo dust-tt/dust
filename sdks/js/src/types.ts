@@ -742,8 +742,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "activation_force_nudge"
   | "admin_controlled_pods"
   | "advanced_notion_management"
-  | "allow_scim"
-  | "allow_sso"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "archive_inactive_agents"

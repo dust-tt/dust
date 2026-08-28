@@ -16,18 +16,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "fontanierh",
   },
-  allow_sso: {
-    description:
-      "Allow this workspace to configure SSO, independently of the plan's isSSOAllowed flag. Enable on demand for Business plan workspaces.",
-    stage: "self_serve",
-    owner: "tdraier",
-  },
-  allow_scim: {
-    description:
-      "Allow this workspace to configure SCIM user provisioning, independently of the plan's isSCIMAllowed flag. Enable on demand.",
-    stage: "self_serve",
-    owner: "tdraier",
-  },
   live_speech_to_text: {
     description:
       "Enable real-time speech-to-text in the input bar via ElevenLabs WebSocket streaming",
@@ -420,7 +408,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   enforce_user_spend_limit_rate_cap: {
     description:
       "Enable the Redis fixed-window spend-cap backups (per-user, per-API-key, programmatic, and workspace usage cap): record AWU usage into the counters and enforce them at message send. When off, usage is neither recorded nor enforced.",
-    stage: "ask_owner",
+    stage: "dust_only",
     owner: "tdraier",
   },
   enforce_premium_model_message_limit: {
