@@ -24,21 +24,20 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import {
+  ChevronDown,
+  ChevronRight,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   Icon,
   Lock01,
 } from "@dust-tt/sparkle";
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
-  // Vetoes the interaction-outside dismissal that a model/effort pick triggers
-  // on the open submenus, so they stay reachable after a pick.
+  // Vetoes the interaction-outside dismissal that a model/effort pick triggers,
+  // so the menu stays reachable after a pick.
   shouldBlockDismiss: () => boolean;
   shown: Selection;
   agentDefault: Selection;
@@ -50,6 +49,8 @@ interface ModelPickerContentProps {
   streams: ModelStreamResolutionsType | null;
   search: string;
   onSearchChange: (value: string) => void;
+  isMakersExpanded: boolean;
+  onToggleMakers: () => void;
   activeMaker: ModelMakerIdType | null;
   onSelectMaker: (makerId: ModelMakerIdType) => void;
   onBack: () => void;
@@ -72,6 +73,8 @@ export function ModelPickerContent({
   streams,
   search,
   onSearchChange,
+  isMakersExpanded,
+  onToggleMakers,
   activeMaker,
   onSelectMaker,
   onBack,
@@ -90,6 +93,21 @@ export function ModelPickerContent({
       className="w-84 max-w-(--radix-dropdown-menu-content-available-width)"
       align="start"
       side={side}
+      onFocusOutside={(e) => {
+        if (shouldBlockDismiss()) {
+          e.preventDefault();
+        }
+      }}
+      onPointerDownOutside={(e) => {
+        if (shouldBlockDismiss()) {
+          e.preventDefault();
+        }
+      }}
+      onInteractOutside={(e) => {
+        if (shouldBlockDismiss()) {
+          e.preventDefault();
+        }
+      }}
     >
       <DropdownMenuLabel label="Recommendations" className="text-sm" />
 
@@ -146,33 +164,21 @@ export function ModelPickerContent({
 
       <DropdownMenuSeparator />
 
-      <DropdownMenuSub>
-        <DropdownMenuSubTrigger
-          label="More models"
-          onClick={(e) => e.stopPropagation()}
-        />
-        <DropdownMenuSubContent
-          className="max-h-[28rem] w-64 overflow-y-auto"
-          // Clicks inside a portaled submenu bubble up the React tree to the
-          // parent menu, which would dismiss the whole picker (e.g. clicking
-          // the searchbar or empty space). Contain them here.
-          onClick={(e) => e.stopPropagation()}
-          onFocusOutside={(e) => {
-            if (shouldBlockDismiss()) {
-              e.preventDefault();
-            }
-          }}
-          onPointerDownOutside={(e) => {
-            if (shouldBlockDismiss()) {
-              e.preventDefault();
-            }
-          }}
-          onInteractOutside={(e) => {
-            if (shouldBlockDismiss()) {
-              e.preventDefault();
-            }
-          }}
-        >
+      <DropdownMenuItem
+        label="More models"
+        endComponent={
+          <Icon
+            visual={isMakersExpanded ? ChevronDown : ChevronRight}
+            size="xs"
+            className="text-muted-foreground"
+          />
+        }
+        onClick={onToggleMakers}
+        onSelect={(e) => e.preventDefault()}
+      />
+
+      {isMakersExpanded && (
+        <div className="max-h-[26rem] overflow-y-auto animate-in fade-in duration-200 motion-reduce:animate-none">
           <div
             key={isShowingModels ? "models" : "makers"}
             className={`animate-in duration-200 motion-reduce:animate-none ${isShowingModels ? "slide-in-from-right-4" : "slide-in-from-left-4"}`}
@@ -207,8 +213,8 @@ export function ModelPickerContent({
               />
             )}
           </div>
-        </DropdownMenuSubContent>
-      </DropdownMenuSub>
+        </div>
+      )}
     </DropdownMenuContent>
   );
 }

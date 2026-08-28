@@ -109,6 +109,7 @@ export function ModelPicker({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
 
+  const [isMakersExpanded, setIsMakersExpanded] = useState(false);
   const [activeMaker, setActiveMaker] = useState<ModelMakerIdType | null>(null);
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
@@ -224,6 +225,7 @@ export function ModelPicker({
   const openMenu = () => {
     setIsOpen(true);
     setSearch("");
+    setIsMakersExpanded(false);
     setActiveMaker(null);
     if (trackingSurface) {
       trackModelPickerOpen({ surface: trackingSurface, clientType });
@@ -270,6 +272,12 @@ export function ModelPicker({
       },
       "model"
     );
+  };
+
+  const onToggleMakers = () => {
+    setIsMakersExpanded((expanded) => !expanded);
+    setActiveMaker(null);
+    setSearch("");
   };
 
   const onSelectMaker = (makerId: ModelMakerIdType) => {
@@ -367,6 +375,8 @@ export function ModelPicker({
         streams={streams}
         search={search}
         onSearchChange={setSearch}
+        isMakersExpanded={isMakersExpanded}
+        onToggleMakers={onToggleMakers}
         activeMaker={activeMaker}
         onSelectMaker={onSelectMaker}
         onBack={onBack}
