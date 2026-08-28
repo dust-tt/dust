@@ -43,10 +43,6 @@ export function SkillDetailsButtonBar({
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [isSkillLinkCopied, copySkillLink] = useCopyToClipboard();
 
-  if (!skill.canAdministrate && !onFavoriteChange) {
-    return null;
-  }
-
   return (
     <>
       <ArchiveSkillDialog
@@ -68,6 +64,18 @@ export function SkillDetailsButtonBar({
             }
           />
         )}
+        <Button
+          size="sm"
+          tooltip="Copy link"
+          variant="outline"
+          icon={isSkillLinkCopied ? ClipboardCheck : Link01}
+          onClick={(e) => {
+            e.stopPropagation();
+            void copySkillLink(
+              `${config.getAppUrl()}${getManageSkillsRoute(owner.sId, skill.sId)}`
+            );
+          }}
+        />
         {skill.canAdministrate && (
           <Button
             size="sm"
@@ -89,16 +97,6 @@ export function SkillDetailsButtonBar({
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem
-                label="Copy link"
-                icon={isSkillLinkCopied ? ClipboardCheck : Link01}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void copySkillLink(
-                    `${config.getAppUrl()}${getManageSkillsRoute(owner.sId, skill.sId)}`
-                  );
-                }}
-              />
               <DropdownMenuItem
                 label="Archive"
                 icon={Trash01}

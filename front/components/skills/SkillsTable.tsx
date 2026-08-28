@@ -3,10 +3,14 @@ import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatch
 import { SkillsBatchEditBar } from "@app/components/skills/SkillsBatchEdit";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
+import config from "@app/lib/api/config";
 import { useAppRouter } from "@app/lib/platform";
 import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
-import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import {
+  getManageSkillsRoute,
+  getSkillBuilderRoute,
+} from "@app/lib/utils/router";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
@@ -16,13 +20,16 @@ import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Checkbox,
   Chip,
+  ClipboardCheck,
   DataTable,
   Edit04,
   Eye,
   Label,
+  Link01,
   LoadingBlock,
   Tooltip,
   Trash01,
+  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import type {
   CellContext,
@@ -490,6 +497,8 @@ export function SkillsTable({
   const [skillToArchive, setSkillToArchive] = useState<
     GetSkillsWithRelationsResponseBody["skills"][number] | null
   >(null);
+  const [copiedSkillId, setCopiedSkillId] = useState<string | null>(null);
+  const [isSkillLinkCopied, copySkillLink] = useCopyToClipboard();
 
   // Stable columns identity: rebuilding them on every selection change makes the
   // table re-render all rows.
@@ -555,6 +564,21 @@ export function SkillsTable({
                   kind: "item" as const,
                 },
                 {
+                  label: "Copy link",
+                  icon:
+                    isSkillLinkCopied && copiedSkillId === skill.sId
+                      ? ClipboardCheck
+                      : Link01,
+                  onClick: async (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    setCopiedSkillId(skill.sId);
+                    await copySkillLink(
+                      `${config.getAppUrl()}${getManageSkillsRoute(owner.sId, skill.sId)}`
+                    );
+                  },
+                  kind: "item" as const,
+                },
+                {
                   label: "Archive",
                   icon: Trash01,
                   disabled: !skill.canAdministrate,
@@ -569,7 +593,14 @@ export function SkillsTable({
             : [],
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not stable, mutating the skills list which prevent pagination to work
-    [skills, onSkillClick, owner.sId]
+    [
+      skills,
+      onSkillClick,
+      owner.sId,
+      isSkillLinkCopied,
+      copiedSkillId,
+      copySkillLink,
+    ]
   );
 
   const selectionSet = useMemo(
