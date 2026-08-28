@@ -95,7 +95,7 @@ describe("CreditUsage", () => {
     );
 
     expect(
-      screen.getByText("2,000 / 20,000 credits over the past 7 days")
+      screen.getByText("2,000 of 20,000 credits used over the past 7 days")
     ).toBeInTheDocument();
   });
 });
