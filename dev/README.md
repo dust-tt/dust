@@ -43,6 +43,15 @@ bash dev/scripts/docker-run.sh --shell
 
 Inside the container, compose-based mprocs procs (`docker-infra`, `kibana`, …) no-op when `DUST_IN_CONTAINER=1`.
 
+## Base image
+
+`dev/Dockerfile` builds on `ubuntu:24.04` and installs Node from the official tarball
+(`NODE_VERSION` build arg) instead of using a `node:*` image. Cursor's in-container screen
+recorder (`/exec-daemon/polished-renderer.node`) links against glibc 2.39 and the FFmpeg 6
+sonames shipped by Noble (`libavutil.so.58`, `libav{codec,format,device}.so.60`,
+`libswscale.so.7`), which Debian 12 (glibc 2.36, FFmpeg 5) and Debian 13 (FFmpeg 7) cannot
+provide. Keep the base on Noble and keep `ffmpeg` installed, or agents lose video capture.
+
 ## Cursor Cloud snapshots
 
 Cloud agents boot from a prebuilt environment snapshot: `/workspace` is the checkout baked when

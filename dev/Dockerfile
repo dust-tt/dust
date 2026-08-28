@@ -6,7 +6,13 @@
 # Layer cache: keep this file stable — any ENV/RUN edit above the apt layer invalidates
 # all downstream steps (apt, rust, temporal, …). Shell/terminal defaults live in
 # dev/scripts/env.sh and dev/bashrc (bind-mounted at runtime).
-FROM node:24.16.0-bookworm
+#
+# Base is Ubuntu 24.04 rather than a node:* image because Cursor's in-container screen
+# recorder (/exec-daemon/polished-renderer.node) needs glibc >= 2.39 and the FFmpeg 6
+# sonames (libavutil.so.58, libav{codec,format,device}.so.60, libswscale.so.7). Debian 12
+# has glibc 2.36 + FFmpeg 5 and Debian 13 has FFmpeg 7, so neither can satisfy it; Node is
+# installed from the official tarball below.
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-typecheck,front-circular,front-docs-check,connectors-lint-test-filenames,connectors-typecheck,lint-staged \
@@ -25,7 +31,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     gnupg \
   && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
     | gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg \
-  && echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+  && echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt noble-pgdg main" \
     > /etc/apt/sources.list.d/pgdg.list \
   && apt-get update && apt-get install -y --no-install-recommends \
     git \
@@ -42,11 +48,28 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     lsof \
     netcat-openbsd \
     unzip \
+    xz-utils \
     less \
     vim-tiny \
     bash-completion \
     tmux \
+    ffmpeg \
   && rm -rf /var/lib/apt/lists/*
+
+# Node — official tarball, checksum-verified (same artifact the node:* images ship)
+ARG NODE_VERSION=24.16.0
+RUN set -eu \
+  && archive="node-v${NODE_VERSION}-linux-x64.tar.xz" \
+  && curl -fsSLo /tmp/node.tar.xz "https://nodejs.org/dist/v${NODE_VERSION}/${archive}" \
+  && curl -fsSLo /tmp/node-shasums.txt "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" \
+  && expected="$(awk -v archive="$archive" '$2 == archive { print $1 }' /tmp/node-shasums.txt)" \
+  && [ -n "$expected" ] \
+  && echo "${expected}  /tmp/node.tar.xz" | sha256sum -c - \
+  && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 --no-same-owner \
+  && rm /tmp/node.tar.xz /tmp/node-shasums.txt \
+  && ln -sf /usr/local/bin/node /usr/local/bin/nodejs \
+  && node --version \
+  && npm --version
 
 # Rust toolchain (core-api, oauth dev)
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
