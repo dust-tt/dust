@@ -35,6 +35,7 @@ import {
   getFramePublicationBasePath,
   getFramePublicationDescriptorPath,
   getFramePublicationFunctionBundlePath,
+  getFramePublicationsBasePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
@@ -243,6 +244,71 @@ function getFrameIdentity(
   }
 
   return new Ok({ workspaceId: owner.sId, frameId: frame.sId });
+}
+
+async function cleanupStaleFramePublicationArtifacts(
+  auth: Authenticator,
+  { frame }: { frame: FileResource }
+): Promise<void> {
+  const frameIdentity = getFrameIdentity(auth, frame);
+  if (frameIdentity.isErr()) {
+    return;
+  }
+
+  const storage = getPrivateUploadBucket();
+  try {
+    const freshFrame = await frame.fetchFreshFrameV2(auth);
+    const activePublicationId =
+      freshFrame?.useCaseMetadata?.activePublicationId;
+    const publicationIds = await storage.listSubdirectoryNames({
+      prefix: getFramePublicationsBasePath(frameIdentity.value),
+    });
+
+    await concurrentExecutor(
+      publicationIds,
+      async (publicationId) => {
+        if (publicationId === activePublicationId) {
+          return;
+        }
+
+        try {
+          const descriptorPath = getFramePublicationDescriptorPath({
+            ...frameIdentity.value,
+            publicationId,
+          });
+          const [isCommitted] = await storage.file(descriptorPath).exists();
+          if (!isCommitted) {
+            await storage.deleteByPrefix(
+              getFramePublicationBasePath({
+                ...frameIdentity.value,
+                publicationId,
+              })
+            );
+          }
+        } catch (error) {
+          logger.error(
+            {
+              err: normalizeError(error),
+              frameId: frame.sId,
+              publicationId,
+              workspaceId: frameIdentity.value.workspaceId,
+            },
+            "Failed to clean up stale Frame publication artifacts"
+          );
+        }
+      },
+      { concurrency: FRAME_PUBLICATION_READ_CONCURRENCY }
+    );
+  } catch (error) {
+    logger.error(
+      {
+        err: normalizeError(error),
+        frameId: frame.sId,
+        workspaceId: frameIdentity.value.workspaceId,
+      },
+      "Failed to list stale Frame publication artifacts"
+    );
+  }
 }
 
 export async function storeFramePublication(
@@ -752,6 +818,8 @@ export async function publishFramePublication(
     { publicationId: string },
     FramePublicationError | SandboxFunctionError
   >(frame.sId, async () => {
+    await cleanupStaleFramePublicationArtifacts(auth, { frame });
+
     const publication = await storeFramePublication(auth, {
       frame,
       functionArtifacts,

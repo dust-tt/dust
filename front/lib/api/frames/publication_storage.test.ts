@@ -899,6 +899,60 @@ describe("publishFramePublication", () => {
     );
   });
 
+  it("cleans only stale uncommitted publication artifacts", async () => {
+    const { auth, frame } = await setupFrame();
+    const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
+    const committedPublicationId = "243542bc-54b1-4dfe-9bb9-e02f75a0fb9f";
+    const stalePublicationId = "0c6eeec6-f2bc-4f89-a154-061fc08a1bdf";
+    await frame.setActiveFramePublication(activePublicationId);
+    fileStorageMock.setSubdirectoryNames(() => [
+      activePublicationId,
+      committedPublicationId,
+      stalePublicationId,
+    ]);
+    fileStorageMock.setFileExists((filePath) =>
+      filePath.includes(committedPublicationId)
+    );
+    const deletedPrefixes = captureDeletedPublicationPrefixes();
+
+    const published = await publishFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceFiles,
+      uiBundleCode,
+    });
+
+    expect(published.isOk()).toBe(true);
+    expect(deletedPrefixes).toEqual([
+      `w/${auth.getNonNullableWorkspace().sId}/frames/${frame.sId}/publications/${stalePublicationId}/`,
+    ]);
+  });
+
+  it("publishes when stale artifact cleanup fails", async () => {
+    const { auth, frame } = await setupFrame();
+    const stalePublicationId = "0c6eeec6-f2bc-4f89-a154-061fc08a1bdf";
+    fileStorageMock.setSubdirectoryNames(() => [stalePublicationId]);
+    fileStorageMock.setFileExists(() => false);
+    fileStorageMock.setDeleteByPrefixFails((prefix) =>
+      prefix.includes(stalePublicationId)
+    );
+    const deletedPrefixes = captureDeletedPublicationPrefixes();
+
+    const published = await publishFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceFiles,
+      uiBundleCode,
+    });
+
+    expect(published.isOk()).toBe(true);
+    expect(deletedPrefixes).toEqual([
+      `w/${auth.getNonNullableWorkspace().sId}/frames/${frame.sId}/publications/${stalePublicationId}/`,
+    ]);
+  });
+
   it("reconciles declared databases before activation", async () => {
     const { auth, frame } = await setupFrame();
     const databaseSchema = {
