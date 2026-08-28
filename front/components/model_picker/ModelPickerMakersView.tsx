@@ -35,7 +35,10 @@ interface ModelPickerMakersViewProps {
   allModels: ModelConfigurationType[];
   shown: Selection;
   agentDefault: Selection;
+  // Whether the active selection differs from the agent default.
   canRevert: boolean;
+  // When true, premium (model, effort) picks are locked (workspace not on a
+  // credit-based plan).
   lockPremiumEfforts: boolean;
   search: string;
   onSearchChange: (value: string) => void;

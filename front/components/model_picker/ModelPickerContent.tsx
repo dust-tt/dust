@@ -32,10 +32,7 @@ import {
   DropdownMenuSeparator,
   Icon,
   Lock01,
-  MOTION_DURATIONS,
-  MOTION_EASINGS,
 } from "@dust-tt/sparkle";
-import { motion, useReducedMotion } from "framer-motion";
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
@@ -86,8 +83,6 @@ export function ModelPickerContent({
   onChangeEffort,
   onRevert,
 }: ModelPickerContentProps) {
-  const prefersReducedMotion = useReducedMotion();
-
   const activeMakerGroup = makerGroups.find(
     (maker) => maker.makerId === activeMaker
   );
@@ -115,14 +110,9 @@ export function ModelPickerContent({
         }
       }}
     >
-      <motion.div
+      <div
         key={view}
-        initial={prefersReducedMotion ? false : { opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{
-          duration: MOTION_DURATIONS.enter,
-          ease: MOTION_EASINGS.enter,
-        }}
+        className="animate-in fade-in duration-200 motion-reduce:animate-none"
       >
         {view === "root" && (
           <div className={stepBodyClassName}>
@@ -232,7 +222,7 @@ export function ModelPickerContent({
             />
           </div>
         )}
-      </motion.div>
+      </div>
     </DropdownMenuContent>
   );
 }
