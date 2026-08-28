@@ -30,12 +30,6 @@ import { z } from "zod";
 
 const DEFAULT_CYCLE_HISTORY_LIMIT = 5;
 const MAX_CYCLE_HISTORY_LIMIT = 24;
-// `computeCycleBreakdown` drops zero-consumption cycles (e.g. an invoice
-// with no pool-tagged usage line), so fetching only `cycleHistoryLimit`
-// finalized invoices can leave fewer than `cycleHistoryLimit` real data
-// points. Over-fetch by this buffer so a few zero-usage cycles don't starve
-// the breakdown.
-const FINALIZED_INVOICES_FETCH_BUFFER = 7;
 
 export const AwuPoolSummaryQuerySchema = z.object({
   cycleHistoryLimit: z.coerce
@@ -59,11 +53,6 @@ type PoolLedgerEntry = {
   timestampMs: number;
 };
 
-// Customer-wide (`coveringDate: null`, no contract filter, `includeArchived`),
-// not scoped to the workspace's *current* `metronomeContractId` — a contract
-// renewal/switch gives the workspace a new contract id, but pool
-// credits/commits granted under a superseded contract are still real
-// consumption history and must stay counted.
 async function getPoolLedgerEntries({
   metronomeCustomerId,
   poolCommitIds,
@@ -113,12 +102,6 @@ function sumPoolLedgerEntriesForInvoice(
     .reduce((sum, entry) => sum + Math.abs(entry.amountCredits), 0);
 }
 
-// The set of commit/credit ids backing the workspace's pool, across both
-// currently active and past (expired/fully-consumed, or granted under a
-// superseded contract) grants — invoices from 2-3 cycles ago can reference
-// commits that are no longer active, or no longer on the workspace's
-// *current* contract, today, hence `coveringDate: null` and no contract
-// filter (see `getPoolLedgerEntries`).
 async function getPoolCommitIds({
   metronomeCustomerId,
 }: {
@@ -215,7 +198,7 @@ export async function getAwuPoolSummary(
     listMetronomeDraftInvoices(metronomeCustomerId),
     getPoolCommitIds({ metronomeCustomerId }),
     listMetronomeFinalizedInvoices(metronomeCustomerId, {
-      limit: cycleHistoryLimit + FINALIZED_INVOICES_FETCH_BUFFER,
+      limit: cycleHistoryLimit,
     }),
   ]);
 
@@ -339,12 +322,8 @@ export async function getAwuPoolSummary(
   // seat product IDs is derived from the contract's tagged subscriptions
   // (via the `DUST_SEAT_TYPE` custom field) rather than a hardcoded list.
   //
-  // Not scoped to the workspace's *current* `metronomeContractId`, same as
-  // `getPoolLedgerEntries`/`getPoolCommitIds` above — a contract renewal
-  // gives the workspace a new contract id, but a pool grant issued under a
-  // superseded contract can still be the one actively covering `now`, and
-  // excluding it would incorrectly report the pool as exhausted (hasPool
-  // false) despite it holding a real, spendable balance.
+  // A pool grant under a superseded contract can still cover `now`,
+  // so it must not be excluded.
   const activeContract = await getActiveContract(workspace.sId);
   const productSeatTypes = await getProductSeatTypes();
   const seatProductIds = activeContract
