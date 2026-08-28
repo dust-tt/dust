@@ -632,13 +632,6 @@ async function fetchPerUserUsageCreditsForMembersTable({
   }
 }
 
-// Per-user AWU consumption for the current billing cycle, read live from
-// Metronome (via the cached `getPerUserAwuUsage`) instead of the analytics
-// index. Free-seat usage is billed under the free-prefixed Metronome user id
-// (`toFreeMetronomeUserId`) rather than the plain sId, so the id queried per
-// user is resolved from their current seat type. Degrades to 0 for a user
-// when Metronome isn't configured for the workspace or the read fails (see
-// `fetchPerUserUsageCreditsForMembersTable`).
 async function fetchConsumedAwuCreditsFromMetronomeByUserId({
   workspaceId,
   metronomeCustomerId,
@@ -1646,13 +1639,6 @@ export async function resolveMatchingMemberUserIds({
   return new Ok(result.value.users.map((u) => u.sId));
 }
 
-// Per-user data computed while resolving the sort key for "consumedFromPoolAwuCredits"
-// / "seatUsage", keyed over the full matching set (a superset of whichever
-// page is ultimately returned). `getMembersUsage` reuses these instead of
-// re-fetching the same Metronome/ES data for just its page of users.
-// `perUserSpendLimits` is only populated with `includeAlertLinks: false`
-// (sorting never needs alert deep links) — callers must not reuse it when
-// they need alert links themselves.
 type MembersUsagePagePrefetch = {
   consumedByUserId?: Map<string, number>;
   seatDataByUserId?: Map<string, SeatData>;
@@ -1729,18 +1715,10 @@ async function resolveMembersUsagePageUsers({
   );
 
   const sortKeyByUserId = new Map<string, number | string>();
-  // Only populated for "consumedFromPoolAwuCredits": highest (effective spend
-  // limit - base seat allowance) breaks ties among members who've drawn the
-  // same amount from the pool, independent of the column's own sort direction.
   const overageLimitByUserId = new Map<string, number>();
   const prefetch: MembersUsagePagePrefetch = {};
   switch (orderColumn) {
     case "consumedFromPoolAwuCredits": {
-      // The column shows pool draw, not total consumption: sort on
-      // "consumed beyond the seat allowance" (`consumedFromPoolAwuCredits`),
-      // not raw total credits — otherwise a heavy paid-seat user who never
-      // touches the pool would outrank someone actually drawing down the
-      // shared pool.
       const freeSeatUserIds = allUsers.flatMap((u) =>
         membershipByUserModelId.get(u.id)?.seatType === "free" ? [u.sId] : []
       );
@@ -1810,8 +1788,6 @@ async function resolveMembersUsagePageUsers({
         );
         sortKeyByUserId.set(u.sId, consumedFromPoolAwuCredits);
 
-        // Same override/group-cap/default resolution as the single-member
-        // spend-limit computation above (getEffectiveSpendCapAwuCreditsForUser).
         const overrideAwuCredits =
           membership?.poolCapOverrideAwuCredits !== null &&
           membership?.poolCapOverrideAwuCredits !== undefined &&
@@ -1891,10 +1867,6 @@ async function resolveMembersUsagePageUsers({
       prefetch.consumedByUserId = consumedByUserId;
       prefetch.seatDataByUserId = seatDataByUserId;
       prefetch.freeSeatCredits = freeSeatCredits;
-      // Mirrors `computeSeatUsage` in MembersUsageTable.tsx: free seats sort on
-      // their live remaining balance (their real per-user credit, which a rep
-      // can raise above the seat-type constant), every other seat on the
-      // allowance consumed so far this period.
       for (const u of allUsers) {
         const seatType = membershipByUserModelId.get(u.id)?.seatType ?? null;
         const awuAllocation = seatDataByUserId.get(u.sId)?.awuAllocation ?? 0;
@@ -1939,8 +1911,7 @@ async function resolveMembersUsagePageUsers({
     if (cmp !== 0) {
       return cmp * directionFactor;
     }
-    // Tiebreak on the highest overage limit, always descending (independent
-    // of the column's own sort direction) — only set for "consumedFromPoolAwuCredits".
+    // Tiebreak on the highest overage limit, always descending
     const overageLimitA = overageLimitByUserId.get(a.sId) ?? 0;
     const overageLimitB = overageLimitByUserId.get(b.sId) ?? 0;
     if (overageLimitA !== overageLimitB) {
@@ -2043,11 +2014,6 @@ export async function getMembersUsage({
       : []
   );
 
-  // Reuse whatever `resolveMembersUsagePageUsers` already fetched while
-  // ranking the full matching set (a superset of `users`) instead of
-  // re-fetching the same Metronome/ES data for just this page.
-  // `perUserSpendLimits` is only reusable when it was computed with the same
-  // `includeAlertLinks` value (sorting always uses `false`).
   const canReusePerUserSpendLimits =
     !includeAlertLinks && prefetch.perUserSpendLimits !== undefined;
 
@@ -2196,9 +2162,6 @@ export async function getMembersUsage({
     }
   }
 
-  // `consumedAwuCredits` is itself Metronome-sourced now (see
-  // `fetchConsumedAwuCreditsFromMetronomeByUserId`), so the poke-only
-  // Metronome comparison column is the same data — no separate fetch needed.
   const metronomeConsumedByUserId = includeAlertLinks
     ? perUserTotalConsumedCredits
     : new Map<string, number>();
