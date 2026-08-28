@@ -1,5 +1,3 @@
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
-import type { WorkOSOrganizationType } from "@dust-tt/client";
 import * as t from "io-ts";
 import { z } from "zod";
 import type {
@@ -28,6 +26,15 @@ function keyObject<T extends readonly string[]>(
     [K in T[number]]: null;
   };
 }
+
+type WorkOSOrganizationType = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  externalId: string | null;
+  metadata: Record<string, string>;
+};
 
 export const RoleSchema = t.keyof(keyObject(ROLES));
 
