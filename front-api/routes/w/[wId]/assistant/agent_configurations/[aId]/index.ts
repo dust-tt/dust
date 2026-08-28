@@ -11,7 +11,10 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { rejectArchivedAgent } from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
+import {
+  ARCHIVED_AGENT_API_ERROR,
+  isArchivedAgent,
+} from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 import analytics from "./analytics";
@@ -101,9 +104,8 @@ app.patch(
       });
     }
 
-    const archivedError = rejectArchivedAgent(ctx, agent);
-    if (archivedError) {
-      return archivedError;
+    if (isArchivedAgent(agent)) {
+      return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
     }
 
     // Editors only, admins included: an admin who wants to change an agent has to add themselves
@@ -186,9 +188,8 @@ app.delete(
       });
     }
 
-    const archivedError = rejectArchivedAgent(ctx, agent);
-    if (archivedError) {
-      return archivedError;
+    if (isArchivedAgent(agent)) {
+      return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
     }
 
     const archived = await archiveAgentConfiguration(auth, aId);

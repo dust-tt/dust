@@ -137,7 +137,12 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
     });
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.message).toContain(agent.name);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "An archived agent cannot be updated. Restore it first.",
+      },
+    });
   });
 
   it("returns 400 when removing tags fails", async () => {

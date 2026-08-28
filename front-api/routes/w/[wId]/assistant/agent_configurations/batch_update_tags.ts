@@ -3,7 +3,10 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { rejectArchivedAgents } from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
+import {
+  ARCHIVED_AGENT_API_ERROR,
+  isArchivedAgents,
+} from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 const BatchUpdateAgentTagsRequestBodySchema = z.object({
@@ -51,9 +54,8 @@ app.post(
       variant: "light",
       dangerouslySkipPermissionFiltering: auth.isAdmin(),
     });
-    const archivedError = rejectArchivedAgents(ctx, agents);
-    if (archivedError) {
-      return archivedError;
+    if (isArchivedAgents(agents)) {
+      return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
     }
 
     const editableAgents = agents.filter(

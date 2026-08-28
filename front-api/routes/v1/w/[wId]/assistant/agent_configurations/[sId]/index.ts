@@ -15,7 +15,10 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { rejectArchivedAgent } from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
+import {
+  ARCHIVED_AGENT_API_ERROR,
+  isArchivedAgent,
+} from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 import yaml from "./export/yaml";
@@ -411,9 +414,8 @@ app.delete(
       });
     }
 
-    const archivedError = rejectArchivedAgent(ctx, agentConfiguration);
-    if (archivedError) {
-      return archivedError;
+    if (isArchivedAgent(agentConfiguration)) {
+      return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
     }
 
     // Space-scoping is enforced upstream: `getAgentConfiguration` (called above) returns null
