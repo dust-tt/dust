@@ -25,15 +25,14 @@ export function SidebarUserMenu({
   const isCreditBased = isCreditPricedPlan(subscription.plan);
   const { maxAwuCredits, maxAwuCreditsTimeframe } =
     subscription.plan.limits.assistant;
-  const hasRollingCreditUsage =
-    !isCreditBased && maxAwuCredits > 0 && maxAwuCreditsTimeframe === "week";
+  const hasFairUseCreditUsage = !isCreditBased && maxAwuCredits > 0;
   const { creditUsageStatus } = useMyUsage({
     workspaceId: owner.sId,
     disabled: !isCreditBased,
   });
   const { fairUseAwuCreditsState } = useFairUseCredits({
     workspaceId: owner.sId,
-    disabled: !hasRollingCreditUsage,
+    disabled: !hasFairUseCreditUsage,
   });
 
   const billingPeriodCreditUsageState: CreditUsageState | null =
