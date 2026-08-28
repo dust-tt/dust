@@ -918,6 +918,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
       instructionsHtml: skill.instructionsHtml,
       mcpServerViews: [],
       name: skill.name,
+      manuallyRequestedSpaceIds: [],
       requestedSpaceIds: [openSpace.id],
       userFacingDescription: skill.userFacingDescription,
     });
@@ -957,6 +958,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
       instructionsHtml: skill.instructionsHtml,
       mcpServerViews: [],
       name: skill.name,
+      manuallyRequestedSpaceIds: [],
       requestedSpaceIds: [openSpace.id],
       userFacingDescription: skill.userFacingDescription,
     });
@@ -1074,6 +1076,119 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.dataSourceConfigurations).toHaveLength(2);
+  });
+});
+
+describe("PATCH /api/w/:wId/skills/:sId - manually requested spaces", () => {
+  // Sets up an open space the request user can read, plus a folder in it so knowledge attached
+  // from that space makes it required automatically as well as manually.
+  async function setupSpaceWithKnowledge(options: {
+    requestUserRole: "admin";
+  }) {
+    const test = await setupTest(options);
+    const { workspace, globalGroup, requestUserAuth, requestUser } = test;
+
+    const space = await SpaceFactory.regular(workspace);
+    await SpaceFactory.attachGroup(space, globalGroup);
+    // An open space confers read through the global group's `reader` grant, and an Authenticator
+    // resolves its grants once, at construction.
+    await requestUserAuth.refresh();
+
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      space,
+      requestUser
+    );
+
+    return { ...test, space, dataSourceView };
+  }
+
+  function patchBody(
+    skill: {
+      name: string;
+      agentFacingDescription: string;
+      userFacingDescription: string;
+      instructions: string;
+    },
+    overrides: Record<string, unknown>
+  ) {
+    return {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      ...overrides,
+    };
+  }
+
+  it("stores the manually selected spaces, and snapshots them on the version", async () => {
+    const { workspace, skill, requestUserAuth, space } =
+      await setupSpaceWithKnowledge({ requestUserRole: "admin" });
+
+    const response = await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, { additionalRequestedSpaceIds: [space.sId] })
+    );
+    expect(await response.json()).not.toHaveProperty("error");
+
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.manuallyRequestedSpaceIds).toEqual([space.id]);
+    expect(updatedSkill?.requestedSpaceIds).toContain(space.id);
+
+    // Patch again so a version is snapshotted from the state above.
+    await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, { additionalRequestedSpaceIds: [space.sId] })
+    );
+    const versionWhere: WhereOptions<SkillVersionModel> = {
+      workspaceId: workspace.id,
+      skillConfigurationId: skill.id,
+    };
+    const versions = await SkillVersionModel.findAll({ where: versionWhere });
+    expect(
+      versions.some((version) =>
+        version.manuallyRequestedSpaceIds.includes(space.id)
+      )
+    ).toBe(true);
+  });
+
+  it("keeps a manual space that attached knowledge also requires", async () => {
+    const { workspace, skill, requestUserAuth, space, dataSourceView } =
+      await setupSpaceWithKnowledge({ requestUserRole: "admin" });
+
+    // Manually selected AND required by knowledge
+    const response = await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, {
+        additionalRequestedSpaceIds: [space.sId],
+        attachedKnowledge: [
+          {
+            dataSourceViewId: dataSourceView.sId,
+            nodeId: "folder1",
+            spaceId: space.sId,
+            title: "Folder 1",
+          },
+        ],
+      })
+    );
+    expect(await response.json()).not.toHaveProperty("error");
+
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.manuallyRequestedSpaceIds).toEqual([space.id]);
+    expect(updatedSkill?.requestedSpaceIds).toContain(space.id);
   });
 });
 
@@ -1220,6 +1335,7 @@ describe("PATCH /api/w/:wId/skills/:sId - file attachments", () => {
       instructions: skill.instructions,
       mcpServerViews: [],
       name: skill.name,
+      manuallyRequestedSpaceIds: [],
       requestedSpaceIds: [],
       userFacingDescription: skill.userFacingDescription,
     });

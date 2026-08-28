@@ -632,6 +632,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
           : skill.instructionsHtml,
       mcpServerViews: skill.mcpServerViews,
       name: trimmedName,
+      manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
       requestedSpaceIds: skill.requestedSpaceIds,
       userFacingDescription:
         userFacingDescription ?? skill.userFacingDescription,

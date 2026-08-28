@@ -96,6 +96,7 @@ async function rewriteWorkspaceOfficeSkillDirectives(
       instructionsHtml: convertMarkdownToBlockHtml(instructions),
       mcpServerViews: skill.mcpServerViews,
       name: skill.name,
+      manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
       requestedSpaceIds: skill.requestedSpaceIds,
       userFacingDescription: skill.userFacingDescription,
     });

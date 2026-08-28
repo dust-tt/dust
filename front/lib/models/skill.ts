@@ -59,6 +59,11 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.ARRAY(DataTypes.BIGINT),
     allowNull: false,
   },
+  manuallyRequestedSpaceIds: {
+    type: DataTypes.ARRAY(DataTypes.BIGINT),
+    allowNull: false,
+    defaultValue: [],
+  },
   icon: {
     type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: true,
@@ -126,6 +131,10 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare selfImprovementLock: CreationOptional<boolean>;
 
   declare requestedSpaceIds: number[];
+  // The subset of `requestedSpaceIds` a person picked by hand under "Data and access". The rest is
+  // derived from the skill's tools, attached knowledge and nested skills, and disappears with them;
+  // these stay until someone removes them explicitly.
+  declare manuallyRequestedSpaceIds: CreationOptional<number[]>;
 }
 
 SkillConfigurationModel.init(

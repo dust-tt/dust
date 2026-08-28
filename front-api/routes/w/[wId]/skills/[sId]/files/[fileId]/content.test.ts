@@ -57,6 +57,7 @@ describe("GET /api/w/:wId/skills/:sId/files/:fileId/content", () => {
       attachedKnowledge: [],
       icon: skill.icon,
       instructions: skill.instructions,
+      manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
       mcpServerViews: [],
       name: skill.name,
       requestedSpaceIds: skill.requestedSpaceIds,
@@ -92,6 +93,7 @@ describe("GET /api/w/:wId/skills/:sId/files/:fileId/content", () => {
     });
     const restrictedSpace = await SpaceFactory.regular(workspace);
     const skill = await SkillFactory.create(auth, {
+      manuallyRequestedSpaceIds: [],
       requestedSpaceIds: [restrictedSpace.id],
     });
 
