@@ -20,6 +20,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
+export const CHANGE_THEME_COMMAND_PREFIX = "Change interface theme";
+
 export interface CommandPaletteCommand {
   theme: "light" | "dark" | "system";
   label: string;
@@ -186,7 +188,7 @@ export function CommandPaletteSearchPhase({
             <Icon visual={command.icon} size="xs" />
             <div className="flex items-center gap-1.5">
               <span className="text-muted-foreground">
-                Change interface theme
+                {CHANGE_THEME_COMMAND_PREFIX}
               </span>
               <Icon visual={ChevronRight} size="xs" />
               <span className="font-medium">{command.label}</span>

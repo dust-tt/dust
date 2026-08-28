@@ -9,7 +9,10 @@ import type {
   CommandPaletteCommand,
   CommandPaletteItem,
 } from "@app/components/command_palette/CommandPaletteSearchPhase";
-import { CommandPaletteSearchPhase } from "@app/components/command_palette/CommandPaletteSearchPhase";
+import {
+  CHANGE_THEME_COMMAND_PREFIX,
+  CommandPaletteSearchPhase,
+} from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAppRouter } from "@app/lib/platform";
@@ -142,7 +145,10 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     }
     const lowerQuery = debouncedQuery.toLowerCase();
     return allCommands.filter((c) =>
-      subFilter(lowerQuery, c.label.toLowerCase())
+      subFilter(
+        lowerQuery,
+        `${CHANGE_THEME_COMMAND_PREFIX} ${c.label}`.toLowerCase()
+      )
     );
   }, [allCommands, debouncedQuery]);
 
