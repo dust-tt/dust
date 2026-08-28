@@ -1,13 +1,16 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { ensurePodStateHealthOnSleep } from "@app/lib/api/sandbox/db";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import { reapSandboxPhaseActivity } from "@app/temporal/sandbox_reaper/activities";
 import { SLEEP_THRESHOLD_MS } from "@app/temporal/sandbox_reaper/config";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { frameV2ContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -208,6 +211,61 @@ describe("reapSandboxPhaseActivity", () => {
     );
     const sandbox = await PodSandboxAdapter.fetchSandbox(authenticator, pod);
     expect(sandbox?.status).toBe("deleted");
+  });
+
+  it("sleeps a stale Frame sandbox", async () => {
+    mockGetSandboxImage.mockReturnValue(
+      new Ok({
+        toCreateConfig: () => ({
+          imageId: { imageName: "test-image", tag: "0.0.1" },
+          envVars: {},
+          network: { egress: "restricted" },
+          resources: { cpu: 1, memoryMB: 512 },
+        }),
+      })
+    );
+    mockGetSandboxProvider.mockReturnValue({
+      create: vi
+        .fn()
+        .mockResolvedValue(new Ok({ providerId: "frame-provider" })),
+      sleep: mockProviderSleep.mockResolvedValue(new Ok(undefined)),
+    });
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace);
+    const frame = await FileFactory.create(authenticator, null, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 1,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
+    });
+    const sandboxResult = await FrameSandboxAdapter.ensureSandboxActive(
+      authenticator,
+      frame
+    );
+    if (sandboxResult.isErr()) {
+      throw sandboxResult.error;
+    }
+    vi.advanceTimersByTime(SLEEP_THRESHOLD_MS + 1);
+
+    const result = await reapSandboxPhaseActivity({
+      cursor: null,
+      phase: "running",
+    });
+
+    expect(result).toEqual({
+      failedCount: 0,
+      nextCursor: null,
+      processedCount: 1,
+      skippedCount: 0,
+      succeededCount: 1,
+    });
+    expect(mockProviderSleep).toHaveBeenCalledWith("frame-provider", {
+      workspaceId: workspace.sId,
+    });
   });
 
   it("skips kill-requested sleeping sandboxes in the awake kill phase", async () => {

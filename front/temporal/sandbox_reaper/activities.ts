@@ -1,6 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
+import { FileResource } from "@app/lib/resources/file_resource";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import type { SandboxTimestampCursor } from "@app/lib/resources/sandbox_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -48,7 +50,7 @@ export interface ReapSandboxPhaseActivityResult {
 }
 
 type ReaperSandboxLifecycleOwner = {
-  kind: "conversation" | "pod";
+  kind: "conversation" | "frame" | "pod";
   modelId: ModelId;
   workspaceModelId: ModelId;
   dangerouslyDestroySandboxIfKillRequested(
@@ -77,6 +79,7 @@ type SandboxOwnerMaps = {
 
 type ReaperAuthMaps = {
   conversation: Map<ModelId, Authenticator>;
+  frame: Map<ModelId, Authenticator>;
   pod: Map<ModelId, Authenticator>;
 };
 
@@ -92,6 +95,7 @@ async function fetchAuthMaps(
 ): Promise<ReaperAuthMaps> {
   const workspaceModelIdsByOwnerKind = {
     conversation: new Set<ModelId>(),
+    frame: new Set<ModelId>(),
     pod: new Set<ModelId>(),
   };
 
@@ -105,6 +109,7 @@ async function fetchAuthMaps(
   const uniqueWorkspaceModelIds = [
     ...new Set([
       ...workspaceModelIdsByOwnerKind.conversation,
+      ...workspaceModelIdsByOwnerKind.frame,
       ...workspaceModelIdsByOwnerKind.pod,
     ]),
   ];
@@ -113,7 +118,7 @@ async function fetchAuthMaps(
     uniqueWorkspaceModelIds
   );
 
-  const [conversationEntries, podEntries] = await Promise.all([
+  const [conversationEntries, frameEntries, podEntries] = await Promise.all([
     concurrentExecutor(
       workspaces.filter((workspace) =>
         workspaceModelIdsByOwnerKind.conversation.has(workspace.id)
@@ -121,6 +126,21 @@ async function fetchAuthMaps(
       async (workspace) => {
         const authenticator = await Authenticator.internalUserForWorkspace(
           workspace.sId
+        );
+        return [workspace.id, authenticator] as const;
+      },
+      { concurrency: REAPER_CONCURRENCY }
+    ),
+    concurrentExecutor(
+      workspaces.filter((workspace) =>
+        workspaceModelIdsByOwnerKind.frame.has(workspace.id)
+      ),
+      async (workspace) => {
+        const authenticator = await Authenticator.internalAdminForWorkspace(
+          workspace.sId,
+          {
+            dangerouslyRequestAllGroups: true,
+          }
         );
         return [workspace.id, authenticator] as const;
       },
@@ -145,6 +165,7 @@ async function fetchAuthMaps(
 
   return {
     conversation: new Map(conversationEntries),
+    frame: new Map(frameEntries),
     pod: new Map(podEntries),
   };
 }
@@ -163,20 +184,28 @@ async function fetchSandboxOwnerMaps(
     );
   const podModelIdsBySandboxModelId =
     await PodSandboxAdapter.dangerouslyFetchPodModelIdsBySandboxes(sandboxes);
+  const frameModelIdsBySandboxModelId =
+    await FrameSandboxAdapter.dangerouslyFetchFrameModelIdsBySandboxes(
+      sandboxes
+    );
 
   const conversationModelIds = [
     ...new Set(conversationModelIdsBySandboxModelId.values()),
   ];
   const podModelIds = [...new Set(podModelIdsBySandboxModelId.values())];
+  const frameModelIds = [...new Set(frameModelIdsBySandboxModelId.values())];
 
   const conversations =
     await ConversationResource.dangerouslyFetchByModelIds(conversationModelIds);
   const pods = await SpaceResource.dangerouslyFetchByModelIds(podModelIds);
+  const frames =
+    await FileResource.dangerouslyFetchFrameV2ByModelIds(frameModelIds);
 
   const conversationsById = new Map(conversations.map((c) => [c.id, c]));
   const podsById = new Map(
     pods.filter((p) => p.isProject()).map((p) => [p.id, p])
   );
+  const framesById = new Map(frames.map((frame) => [frame.id, frame]));
 
   const ownerRefsBySandboxModelId = new Map<ModelId, SandboxOwnerRef>();
   const ownersBySandboxModelId = new Map<
@@ -220,6 +249,41 @@ async function fetchSandboxOwnerMaps(
               auth,
               conversation
             ),
+        });
+      }
+      continue;
+    }
+
+    const frameModelId = frameModelIdsBySandboxModelId.get(sandbox.id);
+    if (frameModelId) {
+      ownerRefsBySandboxModelId.set(sandbox.id, {
+        kind: "frame",
+        modelId: frameModelId,
+      });
+
+      const frame = framesById.get(frameModelId);
+      if (frame) {
+        ownersBySandboxModelId.set(sandbox.id, {
+          kind: "frame",
+          modelId: frame.id,
+          workspaceModelId: frame.workspaceId,
+          dangerouslyDestroySandboxIfKillRequested: (auth) =>
+            FrameSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
+              auth,
+              frame
+            ),
+          dangerouslyDestroySandboxIfSleeping: (auth) =>
+            FrameSandboxAdapter.dangerouslyDestroySandboxIfSleeping(
+              auth,
+              frame
+            ),
+          dangerouslySleepSandboxIfPendingApproval: (auth) =>
+            FrameSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(
+              auth,
+              frame
+            ),
+          dangerouslySleepSandboxIfRunning: (auth) =>
+            FrameSandboxAdapter.dangerouslySleepSandboxIfRunning(auth, frame),
         });
       }
       continue;

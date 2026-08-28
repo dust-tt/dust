@@ -10,6 +10,7 @@ export type SandboxRuntimeOwner =
   // HTTPS secrets — applies to every Computer running in the Pod, so
   // conversation-owned sandboxes carry their pod alongside pod-owned ones.
   | { kind: "conversation"; conversationId: string; spaceId: string | null }
+  | { kind: "frame"; frameId: string; spaceId: string | null }
   | { kind: "pod"; spaceId: string };
 
 // Resolves the pod a sandbox runs in, if any. Pod-level config (env vars,
@@ -24,6 +25,14 @@ export async function resolvePodForRuntimeOwner(
 ): Promise<Result<SpaceResource | null, Error>> {
   switch (owner.kind) {
     case "conversation": {
+      if (!owner.spaceId) {
+        return new Ok(null);
+      }
+      const pod = await SpaceResource.fetchById(auth, owner.spaceId);
+      return new Ok(pod?.isProject() ? pod : null);
+    }
+
+    case "frame": {
       if (!owner.spaceId) {
         return new Ok(null);
       }
@@ -53,6 +62,9 @@ export function getSandboxOwnerEnvVars(
     case "conversation":
       return { CONVERSATION_ID: owner.conversationId };
 
+    case "frame":
+      return { FRAME_ID: owner.frameId };
+
     case "pod":
       return { SPACE_ID: owner.spaceId };
 
@@ -67,6 +79,9 @@ export function getSandboxOwnerLogContext(
   switch (owner.kind) {
     case "conversation":
       return { conversationId: owner.conversationId };
+
+    case "frame":
+      return { frameId: owner.frameId };
 
     case "pod":
       return { spaceId: owner.spaceId };
@@ -85,6 +100,14 @@ export function getSandboxOwnerEnvManifestEntries(
         {
           name: "CONVERSATION_ID",
           description: "current conversation sId",
+        },
+      ];
+
+    case "frame":
+      return [
+        {
+          name: "FRAME_ID",
+          description: "current Frame sId",
         },
       ];
 

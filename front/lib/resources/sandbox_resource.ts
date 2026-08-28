@@ -505,38 +505,50 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     auth: Authenticator,
     owner: SandboxDeleteOwner
   ): Promise<Result<void, Error>> {
-    return this.withLifecycleLock(owner.lockKey, async (provider) => {
-      const sandbox = await owner.fetchSandbox();
-      if (!sandbox) {
+    return this.withLifecycleLockWithOptionalProvider(
+      owner.lockKey,
+      async (provider) => {
+        const sandbox = await owner.fetchSandbox();
+        if (!sandbox) {
+          return new Ok(undefined);
+        }
+        if (!provider) {
+          return new Err(new Error("Sandbox provider not configured."));
+        }
+
+        if (sandbox.status !== "deleted") {
+          const tracingOpts = {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+          };
+          const result = await provider.destroy(
+            sandbox.providerId,
+            tracingOpts
+          );
+          if (
+            result.isErr() &&
+            !(result.error instanceof SandboxNotFoundError)
+          ) {
+            logger.error(
+              { sandbox: sandbox.toLogJSON(), error: result.error.message },
+              "Failed to destroy sandbox at provider — proceeding with DB cleanup."
+            );
+          }
+        }
+
+        await withTransaction(async (transaction) => {
+          await owner.deleteSandbox(sandbox, transaction);
+          await SandboxModel.destroy({
+            where: {
+              id: sandbox.id,
+              workspaceId: auth.getNonNullableWorkspace().id,
+            },
+            transaction,
+          });
+        });
+
         return new Ok(undefined);
       }
-
-      if (sandbox.status !== "deleted") {
-        const tracingOpts = {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-        };
-        const result = await provider.destroy(sandbox.providerId, tracingOpts);
-        if (result.isErr() && !(result.error instanceof SandboxNotFoundError)) {
-          logger.error(
-            { sandbox: sandbox.toLogJSON(), error: result.error.message },
-            "Failed to destroy sandbox at provider — proceeding with DB cleanup."
-          );
-        }
-      }
-
-      await withTransaction(async (transaction) => {
-        await owner.deleteSandbox(sandbox, transaction);
-        await SandboxModel.destroy({
-          where: {
-            id: sandbox.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-          transaction,
-        });
-      });
-
-      return new Ok(undefined);
-    });
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -547,14 +559,24 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     lockKey: string,
     fn: (provider: SandboxProvider) => Promise<Result<T, Error>>
   ): Promise<Result<T, Error>> {
-    const provider = getSandboxProvider();
-    if (!provider) {
-      return new Err(new Error("Sandbox provider not configured."));
-    }
+    return this.withLifecycleLockWithOptionalProvider(
+      lockKey,
+      async (provider) => {
+        if (!provider) {
+          return new Err(new Error("Sandbox provider not configured."));
+        }
+        return fn(provider);
+      }
+    );
+  }
 
+  private static async withLifecycleLockWithOptionalProvider<T>(
+    lockKey: string,
+    fn: (provider: SandboxProvider | null) => Promise<Result<T, Error>>
+  ): Promise<Result<T, Error>> {
     return executeWithLock(
       `sandbox:lifecycle:${lockKey}`,
-      () => fn(provider),
+      () => fn(getSandboxProvider() ?? null),
       undefined,
       {
         traceAcquireResource: "sandbox:lifecycle",
