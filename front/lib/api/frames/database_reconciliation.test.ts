@@ -1,6 +1,7 @@
 // @vitest-environment node
 
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
+import { FRAME_SOURCE_STAGING_ROOT } from "@app/lib/api/frames/source_staging";
 import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { reconcileDatabaseOnReadySandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
@@ -120,7 +121,9 @@ describe("reconcileFramePublicationDatabases", () => {
     expect(sandbox.writeFile).toHaveBeenCalledWith(
       auth,
       expect.stringMatching(
-        /^\/tmp\/dust-frame-database-schemas\/[^/]+\/databases\/columns\.ts$/
+        new RegExp(
+          `^${FRAME_SOURCE_STAGING_ROOT}/[^/]+/databases/columns\\.ts$`
+        )
       ),
       expect.any(ArrayBuffer)
     );
@@ -128,13 +131,15 @@ describe("reconcileFramePublicationDatabases", () => {
       sandbox,
       database: "tasks",
       schemaFileSandboxPath: expect.stringMatching(
-        /^\/tmp\/dust-frame-database-schemas\/[^/]+\/databases\/tasks\.db\.ts$/
+        new RegExp(
+          `^${FRAME_SOURCE_STAGING_ROOT}/[^/]+/databases/tasks\\.db\\.ts$`
+        )
       ),
     });
     expect(sandbox.exec).toHaveBeenCalledWith(
       auth,
       expect.stringMatching(
-        /^rm -rf -- '\/tmp\/dust-frame-database-schemas\/[^/]+'$/
+        new RegExp(`^rm -rf -- '${FRAME_SOURCE_STAGING_ROOT}/[^/]+'$`)
       ),
       { user: "agent-proxied" }
     );

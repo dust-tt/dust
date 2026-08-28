@@ -1,6 +1,7 @@
 // @vitest-environment node
 
 import { buildAndPublishFramePublication } from "@app/lib/api/frames/build_and_publish";
+import { FRAME_SOURCE_STAGING_ROOT } from "@app/lib/api/frames/source_staging";
 import { ensureConversationSandboxReadyWithScope } from "@app/lib/api/sandbox/lifecycle";
 import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
@@ -200,7 +201,9 @@ describe("buildAndPublishFramePublication", () => {
       {
         sandbox,
         srcSandboxPath: expect.stringMatching(
-          /^\/tmp\/dust-frame-publication-builds\/[^/]+\/functions\/add_task\.ts$/
+          new RegExp(
+            `^${FRAME_SOURCE_STAGING_ROOT}/[^/]+/functions/add_task\\.ts$`
+          )
         ),
       }
     );
@@ -210,14 +213,16 @@ describe("buildAndPublishFramePublication", () => {
       {
         sandbox,
         srcSandboxPath: expect.stringMatching(
-          /^\/tmp\/dust-frame-publication-builds\/[^/]+\/functions\/list_tasks\.ts$/
+          new RegExp(
+            `^${FRAME_SOURCE_STAGING_ROOT}/[^/]+/functions/list_tasks\\.ts$`
+          )
         ),
       }
     );
     expect(sandbox.exec).toHaveBeenCalledWith(
       auth,
       expect.stringMatching(
-        /^rm -rf -- '\/tmp\/dust-frame-publication-builds\/[^/]+'$/
+        new RegExp(`^rm -rf -- '${FRAME_SOURCE_STAGING_ROOT}/[^/]+'$`)
       ),
       { user: "agent-proxied" }
     );

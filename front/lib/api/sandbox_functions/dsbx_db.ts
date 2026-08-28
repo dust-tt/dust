@@ -186,9 +186,8 @@ const reconcileEnvelopeSchema = z.union([
 
 export interface ReconcileDatabaseResult {
   /**
-   * The on-disk database name that was reconciled: the app-relative name qualified with the app
-   * prefix (see resolvePodDatabaseName). Reported back because it is what `db_list`, `db_query` and
-   * `db_schema` address the database by, and it is not what the caller passed in.
+   * The on-disk database name that was reconciled. Pod callers qualify the app-relative name with
+   * their app prefix; Frame callers use the unprefixed Frame-owned name.
    */
   database: string;
   created: boolean;
