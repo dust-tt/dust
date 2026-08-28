@@ -1,9 +1,10 @@
 import { ModelPickerModelRow } from "@app/components/model_picker/ModelPickerModelRow";
 import type {
   MakerGroup,
-  Selection,
+  ModelPickerSelectionModel,
 } from "@app/components/model_picker/modelPickerUtils";
 import {
+  findSelectedModelEntry,
   getEffortStops,
   getInitialEffort,
   getModelKey,
@@ -25,27 +26,25 @@ import {
 
 interface ModelPickerMakersViewProps {
   makerGroups: MakerGroup[];
-  shown: Selection;
-  agentDefault: Selection;
-  // Whether the active selection differs from the agent default.
-  canRevert: boolean;
+  selection: ModelPickerSelectionModel;
+  ignoreTierRestrictions: boolean;
   // When true, premium (model, effort) picks are locked (workspace not on a
   // credit-based plan).
   lockPremiumEfforts: boolean;
   onSelectModel: (model: ModelConfigurationType) => void;
-  onChangeEffort: (effort: ReasoningEffort) => void;
-  onRevert: () => void;
+  onChangeEffort?: (
+    model: ModelConfigurationType,
+    effort: ReasoningEffort
+  ) => void;
 }
 
 export function ModelPickerMakersView({
   makerGroups,
-  shown,
-  agentDefault,
-  canRevert,
+  selection,
+  ignoreTierRestrictions,
   lockPremiumEfforts,
   onSelectModel,
   onChangeEffort,
-  onRevert,
 }: ModelPickerMakersViewProps) {
   const { isDark } = useTheme();
 
@@ -59,15 +58,17 @@ export function ModelPickerMakersView({
           />
           <DropdownMenuSubContent className="w-64">
             {maker.models.map((model) => {
-              const isSelected = isModelSelection(model, shown.display);
-              const isDefault = isModelSelection(model, agentDefault.display);
-              const lockReason = getModelLockReason(model, {
-                lockPremiumEfforts,
-              });
-              const effort =
-                isSelected && shown.display.kind === "model"
-                  ? shown.display.effort
-                  : getInitialEffort(model, { lockPremiumEfforts });
+              const selectedEntry = findSelectedModelEntry(model, selection);
+              const isSelected = selectedEntry !== undefined;
+              const isDefault =
+                selection.agentDefault !== null &&
+                isModelSelection(model, selection.agentDefault);
+              const lockReason = ignoreTierRestrictions
+                ? null
+                : getModelLockReason(model, { lockPremiumEfforts });
+              const effort = selectedEntry
+                ? selectedEntry.effort
+                : getInitialEffort(model, { lockPremiumEfforts });
               return (
                 <ModelPickerModelRow
                   key={getModelKey(model.providerId, model.modelId)}
@@ -78,9 +79,10 @@ export function ModelPickerMakersView({
                   effort={effort}
                   effortStops={getEffortStops(model, { lockPremiumEfforts })}
                   onSelectModel={onSelectModel}
-                  onChangeEffort={onChangeEffort}
-                  canRevert={canRevert}
-                  onRevert={onRevert}
+                  onChangeEffort={
+                    onChangeEffort && ((next) => onChangeEffort(model, next))
+                  }
+                  onRevert={isSelected ? selection.onRevert : undefined}
                 />
               );
             })}

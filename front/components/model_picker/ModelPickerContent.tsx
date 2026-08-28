@@ -3,15 +3,15 @@ import { ModelPickerSelectionIndicator } from "@app/components/model_picker/Mode
 import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type {
   MakerGroup,
+  ModelPickerSelectionModel,
+  ModelTierDefinition,
   ModelTierId,
-  Selection,
 } from "@app/components/model_picker/modelPickerUtils";
 import {
   getModelLockTooltip,
   getTierLockReason,
   getTierResolvedModelLabel,
-  isTierDisplayed,
-  MODEL_TIERS,
+  isTierSelected,
 } from "@app/components/model_picker/modelPickerUtils";
 import type {
   EnabledModelConfigurationType,
@@ -31,16 +31,17 @@ import {
   Icon,
   Lock01,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
   // Vetoes the interaction-outside dismissal that a model/effort pick triggers,
   // so the menu stays reachable after a pick.
   shouldBlockDismiss: () => boolean;
-  shown: Selection;
-  agentDefault: Selection;
-  canRevert: boolean;
+  selection: ModelPickerSelectionModel;
   lockPremiumEfforts: boolean;
+  ignoreTierRestrictions: boolean;
+  tiers: ModelTierDefinition[];
   makerGroups: MakerGroup[];
   streamModels: EnabledModelConfigurationType[];
   streams: ModelStreamResolutionsType | null;
@@ -48,17 +49,20 @@ interface ModelPickerContentProps {
   onToggleMakers: () => void;
   onSelectTier: (tierId: ModelTierId) => void;
   onSelectModel: (model: ModelConfigurationType) => void;
-  onChangeEffort: (effort: ReasoningEffort) => void;
-  onRevert: () => void;
+  onChangeEffort?: (
+    model: ModelConfigurationType,
+    effort: ReasoningEffort
+  ) => void;
+  footer?: ReactNode;
 }
 
 export function ModelPickerContent({
   side,
   shouldBlockDismiss,
-  shown,
-  agentDefault,
-  canRevert,
+  selection,
   lockPremiumEfforts,
+  ignoreTierRestrictions,
+  tiers,
   makerGroups,
   streamModels,
   streams,
@@ -67,7 +71,7 @@ export function ModelPickerContent({
   onSelectTier,
   onSelectModel,
   onChangeEffort,
-  onRevert,
+  footer,
 }: ModelPickerContentProps) {
   return (
     <DropdownMenuContent
@@ -90,14 +94,15 @@ export function ModelPickerContent({
         }
       }}
     >
-      <DropdownMenuLabel label="Recommendations" className="text-sm" />
+      {tiers.length > 0 && (
+        <DropdownMenuLabel label="Recommendations" className="text-sm" />
+      )}
 
-      {MODEL_TIERS.map((tier) => {
-        const isSelected = isTierDisplayed(tier.id, shown.display);
-        const lockReason = getTierLockReason(tier.id, {
-          lockPremiumEfforts,
-          streamModels,
-        });
+      {tiers.map((tier) => {
+        const isSelected = isTierSelected(tier.id, selection);
+        const lockReason = ignoreTierRestrictions
+          ? null
+          : getTierLockReason(tier.id, { lockPremiumEfforts, streamModels });
         if (lockReason) {
           return (
             <DropdownMenuItem
@@ -130,8 +135,7 @@ export function ModelPickerContent({
                 </span>
                 {isSelected && (
                   <ModelPickerSelectionIndicator
-                    canRevert={canRevert}
-                    onRevert={onRevert}
+                    onRevert={selection.onRevert}
                     size="xs"
                   />
                 )}
@@ -143,7 +147,7 @@ export function ModelPickerContent({
         );
       })}
 
-      <DropdownMenuSeparator />
+      {tiers.length > 0 && <DropdownMenuSeparator />}
 
       <DropdownMenuItem
         label="More models"
@@ -161,15 +165,15 @@ export function ModelPickerContent({
       {isMakersExpanded && (
         <ModelPickerMakersView
           makerGroups={makerGroups}
-          shown={shown}
-          agentDefault={agentDefault}
-          canRevert={canRevert}
+          selection={selection}
+          ignoreTierRestrictions={ignoreTierRestrictions}
           lockPremiumEfforts={lockPremiumEfforts}
           onSelectModel={onSelectModel}
           onChangeEffort={onChangeEffort}
-          onRevert={onRevert}
         />
       )}
+
+      {footer}
     </DropdownMenuContent>
   );
 }

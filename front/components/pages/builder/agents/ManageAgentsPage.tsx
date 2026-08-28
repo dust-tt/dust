@@ -17,7 +17,6 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useModels } from "@app/lib/swr/models";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
@@ -75,7 +74,6 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
 
 export function ManageAgentsPage() {
   const owner = useWorkspace();
-  const { models: enabledModels } = useModels({ owner });
   const { user, isAdmin } = useAuth();
   const [assistantSearch, setAssistantSearch] = useState("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
@@ -208,6 +206,14 @@ export function ManageAgentsPage() {
     isSearchActive,
   ]);
 
+  const usedModelIds = useMemo(
+    () =>
+      Array.from(
+        new Set(agentConfigurations.map((a) => a.model.modelId))
+      ).sort(),
+    [agentConfigurations]
+  );
+
   const { uniqueTags } = useMemo(() => {
     const tags = agentConfigurations.flatMap((a) => a.tags);
     // Remove duplicate tags by unique sId
@@ -309,7 +315,8 @@ export function ManageAgentsPage() {
             />
             <div className="flex gap-2">
               <ModelsFilterMenu
-                models={enabledModels}
+                owner={owner}
+                modelIds={usedModelIds}
                 selectedModels={selectedModels}
                 setSelectedModels={setSelectedModels}
                 isCompact={isMobile}

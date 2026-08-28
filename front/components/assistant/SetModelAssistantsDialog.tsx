@@ -1,12 +1,23 @@
-import type { ModelMenuItem } from "@app/components/assistant/ModelsMenuContent";
-import { ModelsMenuContent } from "@app/components/assistant/ModelsMenuContent";
+import { ModelPickerContent } from "@app/components/model_picker/ModelPickerContent";
+import type {
+  ModelTierId,
+  SelectionDisplay,
+} from "@app/components/model_picker/modelPickerUtils";
+import {
+  getInitialEffort,
+  getModelTier,
+  getModelWithReasoningEffortLabel,
+} from "@app/components/model_picker/modelPickerUtils";
+import { useModelPickerMenu } from "@app/components/model_picker/useModelPickerMenu";
 import {
   useAgentConfigurations,
   useBatchUpdateAgentModel,
 } from "@app/lib/swr/assistants";
-import { useModels } from "@app/lib/swr/models";
-import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  ModelConfigurationType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -19,11 +30,10 @@ import {
   DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
 import { useState } from "react";
 
 interface SetModelAssistantsDialogProps {
@@ -39,14 +49,17 @@ export function SetModelAssistantsDialog({
 }: SetModelAssistantsDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<ModelMenuItem | null>(
-    null
-  );
+  const [pending, setPending] = useState<SelectionDisplay | null>(null);
+  const [confirming, setConfirming] = useState<SelectionDisplay | null>(null);
 
-  const { models, isModelsLoading } = useModels({ owner, disabled: !isOpen });
-  const modelsById = new Map<string, EnabledModelConfigurationType>(
-    models.map((model) => [model.modelId, model])
-  );
+  const {
+    menuProps,
+    isModelsLoading,
+    lockPremiumEfforts,
+    shouldBlockDismiss,
+    noteModelInteraction,
+    resetMenu,
+  } = useModelPickerMenu({ owner, disabled: !isOpen });
 
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
     useAgentConfigurations({
@@ -58,37 +71,48 @@ export function SetModelAssistantsDialog({
   const batchUpdateAgentModel = useBatchUpdateAgentModel({ owner });
 
   const updateModel = async () => {
-    if (!selectedModel) {
+    if (!confirming) {
       return;
     }
 
     setIsSaving(true);
     const success = await batchUpdateAgentModel(
       agentConfigurations.map((agent) => agent.sId),
-      { modelId: selectedModel.modelId }
+      confirming.kind === "tier"
+        ? { modelId: getModelTier(confirming.tierId).metaModelId }
+        : {
+            modelId: confirming.model.modelId,
+            reasoningEffort: confirming.effort,
+          }
     );
     void mutateAgentConfigurations();
     setIsSaving(false);
 
     if (success) {
-      setSelectedModel(null);
+      setConfirming(null);
+      setPending(null);
     }
   };
 
-  const renderModelItem = (model: ModelMenuItem, icon?: ComponentType) => {
-    const enabledModel = modelsById.get(model.modelId);
-    const isDisabled =
-      isSaving || (enabledModel !== undefined && !enabledModel.isSelectable);
-    return (
-      <DropdownMenuItem
-        key={model.modelId}
-        label={model.displayName}
-        icon={icon}
-        description={enabledModel?.shortDescription}
-        disabled={isDisabled}
-        onClick={() => setSelectedModel(model)}
-      />
-    );
+  const onSelectTier = (tierId: ModelTierId) => {
+    setPending({ kind: "tier", tierId });
+  };
+
+  const onSelectModel = (model: ModelConfigurationType) => {
+    noteModelInteraction();
+    setPending({
+      kind: "model",
+      model,
+      effort: getInitialEffort(model, { lockPremiumEfforts }),
+    });
+  };
+
+  const onChangeEffort = (
+    model: ModelConfigurationType,
+    effort: ReasoningEffort
+  ) => {
+    noteModelInteraction();
+    setPending({ kind: "model", model, effort });
   };
 
   return (
@@ -96,6 +120,13 @@ export function SetModelAssistantsDialog({
       <DropdownMenu
         open={isOpen}
         onOpenChange={(open) => {
+          if (!open && shouldBlockDismiss()) {
+            return;
+          }
+          if (open) {
+            resetMenu();
+            setPending(null);
+          }
           setIsOpen(open);
         }}
       >
@@ -108,25 +139,49 @@ export function SetModelAssistantsDialog({
             disabled={disabled}
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-80" align="start">
-          {isModelsLoading ? (
+        {isModelsLoading ? (
+          <DropdownMenuContent className="w-84" align="start" side="bottom">
             <div className="flex justify-center py-8">
               <Spinner />
             </div>
-          ) : (
-            <ModelsMenuContent
-              models={models}
-              isOpen={isOpen}
-              renderModelItem={renderModelItem}
-            />
-          )}
-        </DropdownMenuContent>
+          </DropdownMenuContent>
+        ) : (
+          <ModelPickerContent
+            {...menuProps}
+            side="bottom"
+            selection={{
+              selected: pending ? [pending] : [],
+              agentDefault: null,
+            }}
+            onSelectTier={onSelectTier}
+            onSelectModel={onSelectModel}
+            onChangeEffort={onChangeEffort}
+            footer={
+              <>
+                <DropdownMenuSeparator />
+                <div className="p-1">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    label="Set model"
+                    className="w-full"
+                    disabled={!pending}
+                    onClick={() => {
+                      setIsOpen(false);
+                      setConfirming(pending);
+                    }}
+                  />
+                </div>
+              </>
+            }
+          />
+        )}
       </DropdownMenu>
       <Dialog
-        open={selectedModel !== null}
+        open={confirming !== null}
         onOpenChange={(open) => {
           if (!open && !isSaving) {
-            setSelectedModel(null);
+            setConfirming(null);
           }
         }}
       >
@@ -135,12 +190,11 @@ export function SetModelAssistantsDialog({
             <DialogTitle>
               Set {agentConfigurations.length} agent
               {pluralize(agentConfigurations.length)} to{" "}
-              {selectedModel?.displayName}?
+              {confirming && getModelWithReasoningEffortLabel(confirming)}?
             </DialogTitle>
             <DialogDescription>
-              This will replace the current model for every selected agent.
-              Reasoning effort will reset to the model&apos;s default. All other
-              settings will remain unchanged.
+              This will replace the current model and reasoning effort for every
+              selected agent. All other settings will remain unchanged.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter
