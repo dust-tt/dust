@@ -1,4 +1,5 @@
 mod create;
+mod move_frame;
 mod publish;
 mod register;
 
@@ -8,6 +9,7 @@ use anyhow::{bail, Context};
 use clap::Subcommand;
 
 pub use create::run as cmd_frame_create;
+pub use move_frame::run as cmd_frame_move;
 pub use publish::run as cmd_frame_publish;
 pub use register::run as cmd_frame_register;
 
@@ -30,6 +32,13 @@ pub enum FrameCommand {
     Register {
         /// Absolute /files/.../manifest.json path
         manifest: PathBuf,
+    },
+    /// Move a registered Frame folder while preserving its identity and state
+    Move {
+        /// Existing Frame folder under /files
+        source: PathBuf,
+        /// New Frame folder path under /files
+        destination: PathBuf,
     },
     /// Build and publish a Frame from its current source
     Publish {

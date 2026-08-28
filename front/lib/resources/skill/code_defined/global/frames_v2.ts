@@ -42,6 +42,18 @@ dsbx frame register /files/<scope>/<frame-folder>/manifest.json
 Registration validates the manifest and assigns its stable Frame identity. Repeating the command
 for the same manifest path returns the same Frame. Registration does not publish the source.
 
+## Move a registered Frame
+
+Use the CLI instead of \`mv\` so the Frame keeps its identity, active publication, sharing, and
+database state while its source folder moves:
+
+\`\`\`bash
+dsbx frame move /files/<source-scope>/<frame-folder> /files/<destination-scope>/<frame-folder>
+\`\`\`
+
+Moving to a different runtime scope safely refreshes the Frame-owned sandbox. Do not move a
+registered Frame folder with raw filesystem commands.
+
 ## Frames v2 source layout
 
 Keep one Frame and everything it owns in one folder:
@@ -321,7 +333,6 @@ Do not use the \`publish_interactive_content_file\` tool: the CLI replaces it un
 Other interactive-content tools remain available for Frame operations that the CLI does not cover
 yet. Use \`dsbx frame --help\` as the authority for available operations.
 
-Do not use \`mv\` or \`cp\` on a registered Frame folder: move and clone are not supported in this
-initial scope.
+Do not use \`cp\` to clone a registered Frame folder. Cloning is not supported yet.
 
 ${INTERACTIVE_CONTENT_AUTHORING_PROSE_V2}`;

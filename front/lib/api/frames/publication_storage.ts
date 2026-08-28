@@ -89,6 +89,49 @@ export function getFramePublishLockName(frameId: string): string {
   return `frame:publish:${frameId}`;
 }
 
+export async function withFramePublishLock<T, E>(
+  frameId: string,
+  callback: () => Promise<Result<T, E>>
+): Promise<Result<T, E | SandboxFunctionError>> {
+  const client = await getRedisStreamClient({ origin: "lock" });
+  const lockName = getFramePublishLockName(frameId);
+  const lockValue = await tracer.trace(
+    "lock.acquire",
+    { resource: "frame.publish" },
+    async () => {
+      const startMs = Date.now();
+      while (Date.now() - startMs < FRAME_PUBLISH_LOCK_ACQUIRE_TIMEOUT_MS) {
+        const acquired = await distributedLock(
+          client,
+          lockName,
+          FRAME_PUBLISH_LOCK_TTL_MS
+        );
+        if (acquired) {
+          return acquired;
+        }
+        await new Promise((resolve) =>
+          setTimeout(resolve, FRAME_PUBLISH_LOCK_RETRY_INTERVAL_MS)
+        );
+      }
+      return undefined;
+    }
+  );
+  if (!lockValue) {
+    return new Err(
+      new SandboxFunctionError(
+        "publish_conflict",
+        "Another publication or source operation is in progress for this Frame; retry shortly."
+      )
+    );
+  }
+
+  try {
+    return await callback();
+  } finally {
+    await distributedUnlock(client, lockName, lockValue);
+  }
+}
+
 function sha256(content: string | Buffer): string {
   return createHash("sha256").update(content).digest("hex");
 }
@@ -593,39 +636,10 @@ export async function publishFramePublication(
     FramePublicationError | SandboxFunctionError
   >
 > {
-  const client = await getRedisStreamClient({ origin: "lock" });
-  const lockName = getFramePublishLockName(frame.sId);
-  const lockValue = await tracer.trace(
-    "lock.acquire",
-    { resource: "frame.publish" },
-    async () => {
-      const startMs = Date.now();
-      while (Date.now() - startMs < FRAME_PUBLISH_LOCK_ACQUIRE_TIMEOUT_MS) {
-        const acquired = await distributedLock(
-          client,
-          lockName,
-          FRAME_PUBLISH_LOCK_TTL_MS
-        );
-        if (acquired) {
-          return acquired;
-        }
-        await new Promise((resolve) =>
-          setTimeout(resolve, FRAME_PUBLISH_LOCK_RETRY_INTERVAL_MS)
-        );
-      }
-      return undefined;
-    }
-  );
-  if (!lockValue) {
-    return new Err(
-      new SandboxFunctionError(
-        "publish_conflict",
-        "Another publication is in progress for this Frame; retry shortly."
-      )
-    );
-  }
-
-  try {
+  return withFramePublishLock<
+    { publicationId: string },
+    FramePublicationError | SandboxFunctionError
+  >(frame.sId, async () => {
     const publication = await storeFramePublication(auth, {
       frame,
       functionArtifacts,
@@ -655,7 +669,5 @@ export async function publishFramePublication(
     }
 
     return publication;
-  } finally {
-    await distributedUnlock(client, lockName, lockValue);
-  }
+  });
 }
