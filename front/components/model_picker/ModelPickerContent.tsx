@@ -208,23 +208,28 @@ export function ModelPickerContent({
         }
       }}
     >
-      <div
-        key={targetView}
-        className={
-          isInitialRenderRef.current && targetView === "root"
-            ? ""
-            : `animate-in duration-enter ease-enter motion-reduce:animate-none ${
-                targetView === "models"
-                  ? "slide-in-from-right-4"
-                  : "slide-in-from-left-4"
-              }`
-        }
-      >
-        {renderView(
-          targetView,
-          targetView === "models" ? activeMakerGroup : undefined
-        )}
-      </div>
+      {isInitialRenderRef.current && targetView === "root" ? (
+        // No wrapper at all on the dropdown's very first open — the root
+        // content renders exactly as it would as a plain DropdownMenuContent
+        // child (same as every other dropdown in the app, e.g. the "+"
+        // button's), so it gets only the panel's own native open animation
+        // with nothing of ours stacked on top.
+        renderView("root", undefined)
+      ) : (
+        <div
+          key={targetView}
+          className={`animate-in duration-enter ease-enter motion-reduce:animate-none ${
+            targetView === "models"
+              ? "slide-in-from-right-4"
+              : "slide-in-from-left-4"
+          }`}
+        >
+          {renderView(
+            targetView,
+            targetView === "models" ? activeMakerGroup : undefined
+          )}
+        </div>
+      )}
     </DropdownMenuContent>
   );
 }
