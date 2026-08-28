@@ -97,7 +97,7 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
 
   declare costMicroUsd: number;
   declare isBatch: boolean;
-  declare serviceTier: ServiceTier | null;
+  declare serviceTier: ServiceTier;
 
   // Immutable billing usage type (free / user / programmatic), set when the
   // usage row is created. Nullable only for legacy rows written before every
@@ -163,8 +163,8 @@ RunUsageModel.init(
     },
     serviceTier: {
       type: DataTypes.STRING,
-      allowNull: true,
-      defaultValue: null,
+      allowNull: false,
+      defaultValue: "default",
     },
     usageType: {
       type: DataTypes.STRING,

@@ -38,12 +38,12 @@ export const toolSpecificationSchema = z.object({
 });
 export type ToolSpecification = z.infer<typeof toolSpecificationSchema>;
 
-// Provider-agnostic processing tier: `auto` is whatever standard path the
+// Provider-agnostic processing tier: `default` is whatever standard path the
 // provider picks for us, `flex` trades latency for a cheaper rate. Labs expose
-// richer vocabularies of their own (OpenAI also has `default`, `scale`,
+// richer vocabularies of their own (OpenAI also has `auto`, `scale`,
 // `priority`); each client translates in both directions, so the tier a
 // provider reports having served on is normalized back to these two.
-const serviceTierSchema = z.enum(["auto", "flex"]);
+const serviceTierSchema = z.enum(["default", "flex"]);
 
 export type ServiceTier = z.infer<typeof serviceTierSchema>;
 

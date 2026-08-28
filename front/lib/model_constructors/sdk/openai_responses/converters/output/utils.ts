@@ -246,7 +246,7 @@ function toServiceTier(
     return undefined;
   }
 
-  return reportedTier === "flex" ? "flex" : "auto";
+  return reportedTier === "flex" ? "flex" : "default";
 }
 
 export function usageToTokenUsageEvent(

@@ -82,7 +82,7 @@ describe("computeTokensCostForUsageInMicroUsd", () => {
       computeTokensCostForUsageInMicroUsd({ ...usage, serviceTier: "flex" })
     ).toBe(standardCostMicroUsd * FLEX_DISCOUNT_FACTOR);
     expect(
-      computeTokensCostForUsageInMicroUsd({ ...usage, serviceTier: "auto" })
+      computeTokensCostForUsageInMicroUsd({ ...usage, serviceTier: "default" })
     ).toBe(standardCostMicroUsd);
   });
 

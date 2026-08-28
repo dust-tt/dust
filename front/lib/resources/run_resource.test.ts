@@ -86,9 +86,10 @@ describe("RunResource service tier usage", () => {
       }
     );
 
-    // The pending attempt predates the provider response, so no tier is known yet.
+    // The pending attempt predates the provider response, so it carries the
+    // standard tier until the response says otherwise.
     expect(await run.listRunUsageAttempts(auth)).toMatchObject([
-      { serviceTier: null, usageState: "pending" },
+      { serviceTier: "default", usageState: "pending" },
     ]);
 
     const costMicroUsd = await run.finalizePendingTokenUsage(
@@ -122,7 +123,7 @@ describe("RunResource service tier usage", () => {
     );
   });
 
-  it("stores null when the provider does not report a tier", async () => {
+  it("falls back to the standard tier when the provider reports none", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const run = await RunResource.makeNew({
       appId: null,
@@ -144,7 +145,7 @@ describe("RunResource service tier usage", () => {
     );
 
     const usages = await run.listRunUsages(auth);
-    expect(usages[0]?.serviceTier).toBeNull();
+    expect(usages[0]?.serviceTier).toBe("default");
   });
 });
 

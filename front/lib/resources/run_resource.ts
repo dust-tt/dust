@@ -52,7 +52,7 @@ export interface RunUsageType {
   cacheCreationTokens?: number | null;
   costMicroUsd: number;
   isBatch: boolean;
-  serviceTier?: ServiceTier | null;
+  serviceTier?: ServiceTier;
 }
 
 export interface RunUsageWithRunKeyType extends RunUsageType {
@@ -125,7 +125,7 @@ export class RunResource extends BaseResource<RunModel> {
           cacheCreationTokens: null,
           costMicroUsd: 0,
           isBatch: false,
-          serviceTier: null,
+          serviceTier: "default",
           usageType: usage.usageType,
           usageState: "pending",
         },
@@ -488,7 +488,7 @@ export class RunResource extends BaseResource<RunModel> {
           cacheCreationTokens: cacheCreationTokens ?? null,
           costMicroUsd,
           isBatch,
-          serviceTier: serviceTier ?? null,
+          serviceTier: serviceTier ?? "default",
           usageType,
           usageState: "reported",
         })
@@ -612,7 +612,7 @@ export class RunResource extends BaseResource<RunModel> {
         cacheCreationTokens: firstUsage.cacheCreationTokens ?? null,
         costMicroUsd: firstUsage.costMicroUsd,
         isBatch: firstUsage.isBatch,
-        serviceTier: firstUsage.serviceTier ?? null,
+        serviceTier: firstUsage.serviceTier ?? "default",
         usageState: "reported",
       },
       {
@@ -717,7 +717,7 @@ export class RunResource extends BaseResource<RunModel> {
       // normalize explicitly instead of relying on coercion that differs between inserts and updates.
       costMicroUsd: Math.round(usageCostMicroUsd),
       isBatch,
-      serviceTier: usage.serviceTier ?? null,
+      serviceTier: usage.serviceTier ?? "default",
     };
   }
 
