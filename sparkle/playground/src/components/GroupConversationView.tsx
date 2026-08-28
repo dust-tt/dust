@@ -104,6 +104,10 @@ import type {
 } from "../data/types";
 import { getUserById } from "../data/users";
 import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
+import {
+  PodCustomizationSection,
+  type PodTabCustomizationItem,
+} from "./PodCustomizationSection";
 import { ConversationTopSection } from "./ConversationTopSection";
 import { EmptyState } from "./EmptyState";
 import { DataTable } from "./DataTableDnd";
@@ -144,6 +148,14 @@ interface GroupConversationViewProps {
   onFileToRevealInKnowledgeHandled?: () => void;
   podVariant?: "shared" | "personal";
   currentUserId?: string;
+  podTabCustomization?: {
+    tabs: PodTabCustomizationItem[];
+    addableFiles: DataSource[];
+    onReorder: (draggedValue: string, targetValue: string) => void;
+    onChangeIcon: (tabValue: string, iconName: string) => void;
+    onRemove: (tabValue: string) => void;
+    onAdd: (file: DataSource) => void;
+  };
 }
 
 interface Member {
@@ -1377,6 +1389,7 @@ export function GroupConversationView({
   onFileToRevealInKnowledgeHandled,
   podVariant = "shared",
   currentUserId,
+  podTabCustomization,
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -4651,6 +4664,16 @@ export function GroupConversationView({
               />
             </div>
           </div>
+          {podTabCustomization && (
+            <PodCustomizationSection
+              tabs={podTabCustomization.tabs}
+              addableFiles={podTabCustomization.addableFiles}
+              onReorder={podTabCustomization.onReorder}
+              onChangeIcon={podTabCustomization.onChangeIcon}
+              onRemove={podTabCustomization.onRemove}
+              onAdd={podTabCustomization.onAdd}
+            />
+          )}
           {/* Members Section */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">

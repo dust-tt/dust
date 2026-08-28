@@ -1,4 +1,5 @@
 import {
+  ActionIcons,
   MessageChatSquare,
   CheckCircle,
   Settings01,
@@ -32,7 +33,46 @@ export type DynamicFileTab = {
   value: `file-${string}`;
   dataSourceId: string;
   label: string;
+  iconName?: string;
 };
+
+export type ActionIconName = keyof typeof ActionIcons;
+
+export function isActionIconName(name: string): name is ActionIconName {
+  return name in ActionIcons;
+}
+
+export function getFileTabIcon(iconName: string | undefined): ComponentType {
+  if (iconName && isActionIconName(iconName)) {
+    return ActionIcons[iconName];
+  }
+  return File02;
+}
+
+export function reorderFileTabsInOrder(
+  mainTabOrder: string[],
+  draggedValue: string,
+  targetValue: string
+): string[] {
+  if (draggedValue === targetValue) {
+    return mainTabOrder;
+  }
+
+  const coreValues = mainTabOrder.filter((value) => !value.startsWith("file-"));
+  const fileValues = mainTabOrder.filter((value) => value.startsWith("file-"));
+  const fromIndex = fileValues.indexOf(draggedValue);
+  const toIndex = fileValues.indexOf(targetValue);
+
+  if (fromIndex === -1 || toIndex === -1) {
+    return mainTabOrder;
+  }
+
+  const nextFileValues = [...fileValues];
+  const [moved] = nextFileValues.splice(fromIndex, 1);
+  nextFileValues.splice(toIndex, 0, moved);
+
+  return [...coreValues, ...nextFileValues];
+}
 
 export type PodContext = {
   variant: PodVariant;
@@ -104,7 +144,7 @@ export function buildPodTabOptions(
       {
         value: tab.value,
         label: tab.label,
-        icon: File02,
+        icon: getFileTabIcon(tab.iconName),
         removable: true,
       },
     ])

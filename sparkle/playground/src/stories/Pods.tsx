@@ -19,7 +19,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSearchbar,
   DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
@@ -31,7 +30,6 @@ import {
   DropdownMenuTrigger,
   Edit04,
   Eye,
-  File02,
   Heart,
   Lightbulb04,
   Link01,
@@ -64,6 +62,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
+import { AddPodFileMenu } from "../components/AddPodFileMenu";
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
@@ -98,17 +97,16 @@ import {
   type Space,
   type User,
 } from "../data";
-import {
-  getDataSourceIcon,
-  getDataSourcesBySpaceId,
-} from "../data/dataSources";
+import { getDataSourcesBySpaceId } from "../data/dataSources";
 import { getRandomGreetingForName } from "../data/greetings";
 import {
   buildPodTabOptions,
   type DynamicFileTab,
   getDefaultMainTabOrder,
+  getFileTabIcon,
   getFileTabValue,
   type PodTabOption,
+  reorderFileTabsInOrder,
   resolvePodContext,
   shouldShowMemberChrome,
 } from "./podPanelConfig";
@@ -240,7 +238,6 @@ function Pods() {
     string | null
   >(null);
   const [isAddFileMenuOpen, setIsAddFileMenuOpen] = useState(false);
-  const [addFileSearch, setAddFileSearch] = useState("");
   const [pendingTopbarFile, setPendingTopbarFile] =
     useState<PendingTopbarFile | null>(null);
   const [tabContextMenu, setTabContextMenu] = useState<{
@@ -460,7 +457,7 @@ function Pods() {
   }, [podContext]);
 
   const handlePodFileDrop = useCallback(
-    (fileId: string) => {
+    (fileId: string, options?: { activateTab?: boolean }) => {
       if (!podContext) {
         return;
       }
@@ -501,7 +498,9 @@ function Pods() {
           dynamicFileTabs,
         });
       });
-      setActivePodTab(fileTabValue);
+      if (options?.activateTab !== false) {
+        setActivePodTab(fileTabValue);
+      }
       setDraggingPodFileId(null);
     },
     [podContext, setActivePodTab]
@@ -538,6 +537,67 @@ function Pods() {
       }
     },
     [activePodTab, podContext, setActivePodTab]
+  );
+
+  const handlePodFileReorder = useCallback(
+    (draggedValue: string, targetValue: string) => {
+      if (!podContext) {
+        return;
+      }
+
+      setPodTabsBySpaceId((prev) => {
+        const existing = prev.get(podContext.spaceId);
+        if (!existing) {
+          return prev;
+        }
+
+        const nextMainTabOrder = reorderFileTabsInOrder(
+          existing.mainTabOrder,
+          draggedValue,
+          targetValue
+        );
+        if (nextMainTabOrder === existing.mainTabOrder) {
+          return prev;
+        }
+
+        const tabsByValue = new Map<string, DynamicFileTab>(
+          existing.dynamicFileTabs.map((tab) => [tab.value, tab])
+        );
+        const dynamicFileTabs = nextMainTabOrder.flatMap((value) => {
+          const tab = tabsByValue.get(value);
+          return tab ? [tab] : [];
+        });
+
+        return new Map(prev).set(podContext.spaceId, {
+          mainTabOrder: nextMainTabOrder,
+          dynamicFileTabs,
+        });
+      });
+    },
+    [podContext]
+  );
+
+  const handlePodTabIconChange = useCallback(
+    (tabValue: string, iconName: string) => {
+      if (!podContext) {
+        return;
+      }
+
+      setPodTabsBySpaceId((prev) => {
+        const existing = prev.get(podContext.spaceId);
+        if (!existing) {
+          return prev;
+        }
+
+        return new Map(prev).set(podContext.spaceId, {
+          ...existing,
+          dynamicFileTabs: existing.dynamicFileTabs.map((tab) =>
+            tab.value === tabValue ? { ...tab, iconName } : tab
+          ),
+        });
+      });
+    },
+    [podContext]
   );
 
   const handleShowFileInFiles = useCallback(
@@ -592,16 +652,31 @@ function Pods() {
     );
   }, [dynamicFileTabIds, podContext]);
 
-  const filteredAddablePodFiles = useMemo(() => {
-    const query = addFileSearch.trim().toLowerCase();
-    if (!query) {
-      return addablePodFiles;
+  const podTabCustomizationTabs = useMemo(() => {
+    if (!currentPodTabsState) {
+      return [];
     }
 
-    return addablePodFiles.filter((file) =>
-      file.fileName.toLowerCase().includes(query)
+    const tabsByValue = new Map<string, DynamicFileTab>(
+      currentPodTabsState.dynamicFileTabs.map((tab) => [tab.value, tab])
     );
-  }, [addFileSearch, addablePodFiles]);
+
+    return currentPodTabsState.mainTabOrder.flatMap((value) => {
+      const tab = tabsByValue.get(value);
+      if (!tab) {
+        return [];
+      }
+
+      return [
+        {
+          value: tab.value,
+          label: tab.label,
+          icon: getFileTabIcon(tab.iconName),
+          iconName: tab.iconName,
+        },
+      ];
+    });
+  }, [currentPodTabsState]);
 
   const tabContextMenuOption = tabContextMenu
     ? podTabOptions.find((option) => option.value === tabContextMenu.value)
@@ -804,6 +879,14 @@ function Pods() {
           }
           podVariant={podContext.variant}
           currentUserId={user.id}
+          podTabCustomization={{
+            tabs: podTabCustomizationTabs,
+            addableFiles: addablePodFiles,
+            onReorder: handlePodFileReorder,
+            onChangeIcon: handlePodTabIconChange,
+            onRemove: handlePodRemoveTab,
+            onAdd: (file) => handlePodFileDrop(file.id, { activateTab: false }),
+          }}
           selectedConversationId={
             p3View?.kind === "conversation" ? p3View.conversationId : null
           }
@@ -940,20 +1023,20 @@ function Pods() {
           })}
         </NavTabPillList>
       </NavTabPill>
-      <DropdownMenu
-        modal={false}
+      <AddPodFileMenu
+        files={addablePodFiles}
         open={isAddFileMenuOpen}
-        onOpenChange={(open) => {
-          setIsAddFileMenuOpen(open);
-          if (!open) {
-            setAddFileSearch("");
-          }
+        onOpenChange={setIsAddFileMenuOpen}
+        onSelect={(file) => {
+          setPendingTopbarFile({
+            id: file.id,
+            fileName: file.fileName,
+          });
         }}
-      >
-        <DropdownMenuTrigger asChild>
+        trigger={
           <Button
-            size="sm"
-            variant="ghost-secondary"
+            size="xs"
+            variant="outline"
             icon={Plus}
             tooltip="Add file to top bar"
             className={
@@ -963,49 +1046,8 @@ function Pods() {
                 : "opacity-0 group-hover/topbar:opacity-100 focus-within:opacity-100")
             }
           />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="start"
-          className="w-[280px]"
-          dropdownHeaders={
-            addablePodFiles.length > 0 ? (
-              <DropdownMenuSearchbar
-                autoFocus
-                name="add-file-search"
-                placeholder="Search files"
-                value={addFileSearch}
-                onChange={setAddFileSearch}
-              />
-            ) : undefined
-          }
-        >
-          {addablePodFiles.length === 0 ? (
-            <div className="flex h-16 items-center justify-center px-3 text-sm text-muted-foreground">
-              No files to add
-            </div>
-          ) : filteredAddablePodFiles.length === 0 ? (
-            <div className="flex h-16 items-center justify-center px-3 text-sm text-muted-foreground">
-              No files found
-            </div>
-          ) : (
-            filteredAddablePodFiles.map((file) => (
-              <DropdownMenuItem
-                key={file.id}
-                label={file.fileName}
-                icon={getDataSourceIcon(file) ?? File02}
-                onClick={() => {
-                  setIsAddFileMenuOpen(false);
-                  setAddFileSearch("");
-                  setPendingTopbarFile({
-                    id: file.id,
-                    fileName: file.fileName,
-                  });
-                }}
-              />
-            ))
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        }
+      />
       {tabContextMenu && tabContextMenuOption?.contextMenuItems && (
         <DropdownMenu
           open
