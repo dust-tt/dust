@@ -86,7 +86,8 @@ RUN curl -sSfLo /tmp/op.zip \
 
 # Postgres dev user (databases are created at agent start by init-databases.sh)
 RUN service postgresql start \
-  && sudo -u postgres psql -v ON_ERROR_STOP=1 -c "DO $$ BEGIN CREATE USER dev WITH PASSWORD 'dev' SUPERUSER; EXCEPTION WHEN duplicate_object THEN NULL; END $$;" \
+  && (sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE rolname='dev'" | grep -q 1 \
+      || sudo -u postgres psql -v ON_ERROR_STOP=1 -c "CREATE USER dev WITH PASSWORD 'dev' SUPERUSER;") \
   && sudo -u postgres psql -c "ALTER USER dev WITH SUPERUSER;" \
   && service postgresql stop
 
