@@ -120,6 +120,7 @@ app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
       nonParticipantUnreadConversationIds:
         conversationsBySpace.get(space.id)
           ?.nonParticipantUnreadConversationIds ?? [],
+      nonParticipantUnreadConversations: [],
     })),
   });
 });
