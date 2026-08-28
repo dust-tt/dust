@@ -165,9 +165,8 @@ FormMessage.displayName = "FormMessage";
 // Override the default input component to add border and background styles.
 const FormInput = React.forwardRef<
   HTMLInputElement,
-  Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "size"> & {
+  Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> & {
     value?: React.ComponentProps<typeof Input>["value"];
-    size?: React.ComponentProps<typeof Input>["size"];
   }
 >(({ className, value, ...props }, ref) => {
   return (

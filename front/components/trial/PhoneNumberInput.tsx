@@ -77,10 +77,7 @@ const CountrySelectComponent = ({
 };
 
 interface InputComponentProps
-  extends Omit<
-    React.InputHTMLAttributes<HTMLInputElement>,
-    "onChange" | "size"
-  > {
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
   value: string;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   country?: string;
