@@ -1276,7 +1276,7 @@ export function UsagePageRedesign() {
             isLoading={isAwuPoolSummaryLoading}
             isError={!!isAwuPoolSummaryError}
             showPoolBranch={hasPool || isReadOnly}
-            visible={hasPool || isReadOnly || hasExcessData}
+            isVisible={hasPool || isReadOnly || hasExcessData}
             totalRemainingCredits={totalRemainingCredits}
             currentCycleConsumedCredits={currentCycleConsumedCredits}
             currentCycleStartMs={currentCycleStartMs}

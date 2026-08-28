@@ -160,13 +160,7 @@ function creditTypeIdToCurrency(
   return null;
 }
 
-// PAYG overage on credit-priced contracts shows up as a `cpu_conversion` line
-// item (Metronome converts AWU spend that exceeds the prepaid AWU pool into
-// fiat using the rate-card's `fiat_per_custom_credit`). There is no dedicated
-// overage product — the line's `type` is the signal.
-//   - `quantity` is the number of overage AWU credits consumed
-//   - `total` is the fiat amount in the invoice's native unit (USD in cents,
-//     other currencies in whole units — normalized via amountCents)
+// PAYG overage on credit-priced contracts shows up as a `cpu_conversion`
 function extractOverageFromInvoice(invoice: Invoice): {
   overageCredits: number | null;
   overageAmountCents: number | null;
@@ -199,10 +193,7 @@ function extractOverageFromInvoice(invoice: Invoice): {
   };
 }
 
-// Fallback cycle history for workspaces with no credit pool: `cycleBreakdown`
-// (pool-ledger based) is always empty for them, so past cycles' PAYG excess —
-// read straight off each finalized invoice's `cpu_conversion` line items,
-// same as the current cycle's `overageCredits` — is shown instead.
+// Fallback cycle history for workspaces with no credit pool
 function computeExcessCycleBreakdown(
   finalizedInvoices: Invoice[],
   cycleHistoryLimit: number
@@ -318,9 +309,6 @@ export async function getAwuPoolSummary(
     }
   }
 
-  // Independent of the pool ledger above — only needs the finalized
-  // invoices, so it's available even for workspaces with no pool commits at
-  // all (`poolCommitIdsResult` failing wouldn't otherwise block this).
   const excessCycleBreakdown = finalizedInvoicesResult.isErr()
     ? []
     : computeExcessCycleBreakdown(
@@ -349,8 +337,6 @@ export async function getAwuPoolSummary(
       : null;
 
   if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
-    // No active current-cycle invoice to anchor a cycle on — fall back to the
-    // workspace's own billing-cycle resolution for the live excess figure.
     const excessConsumedCredits =
       await getEsConsumedAwuCreditsForWorkspace(workspace);
     return new Ok({
@@ -415,11 +401,6 @@ export async function getAwuPoolSummary(
     }
   }
 
-  // Pool exhausted or never granted this cycle (`hasPool` false client-side)
-  // — the live excess figure fills in for the (zero) pool-ledger-based
-  // `currentCycleConsumedCredits`. Skipped otherwise: the pool ledger already
-  // covers it, and this ES aggregation is workspace-wide so there's no reason
-  // to pay for it on every pool-workspace page load.
   const excessConsumedCredits =
     totalActiveCredits <= 0
       ? await getEsConsumedAwuCreditsForWorkspace(workspace, {

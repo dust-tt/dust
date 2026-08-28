@@ -93,9 +93,6 @@ interface WorkspaceExcessCreditsValueCardProps {
   isLoading: boolean;
 }
 
-// For workspaces with no credit pool (PAYG-only, "excess credit
-// consumption"): the pool's "remaining"/"consumed this cycle" pair doesn't
-// apply since there's nothing prepaid, so this shows a single figure instead.
 export function WorkspaceExcessCreditsValueCard({
   excessConsumedCredits,
   currentCycleStartMs,
@@ -179,16 +176,8 @@ export function WorkspaceCreditPoolCycleHistoryTable({
 interface WorkspaceCreditPoolSectionProps {
   isLoading: boolean;
   isError: boolean;
-  // Whether to render the "Workspace credit pool" branch (value cards +
-  // pool cycle history) or the "Excess credit consumption" branch — kept as
-  // an explicit flag rather than derived internally so callers with their
-  // own pool-eligibility rules (e.g. a read-only legacy-contract mode) don't
-  // have to leak that logic into this shared component.
   showPoolBranch: boolean;
-  // Whether the section should render at all once loading/error have
-  // resolved — false collapses it entirely (e.g. no pool and no excess data
-  // to show).
-  visible: boolean;
+  isVisible: boolean;
   totalRemainingCredits: number;
   currentCycleConsumedCredits: number | null;
   currentCycleStartMs: number | null;
@@ -196,22 +185,18 @@ interface WorkspaceCreditPoolSectionProps {
   cycleBreakdown: AwuPoolCycleBreakdown[];
   excessConsumedCredits: number | null;
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
-  // Rendered under the value cards, pool branch only — each caller's own mix
-  // of overage/expiration/contract-type text.
   poolSecondaryContent?: ReactNode;
-  // Rendered under the cycle history table in both branches.
   footer?: ReactNode;
 }
 
 // Single source of truth for the "Workspace credit pool" / "Excess credit
 // consumption" block so the customer-facing usage page and its Poke mirror
-// can't drift from each other on this section's structure — only the
-// page-specific secondary text and footer differ, via slots.
+// can't drift from each other on this section's structure
 export function WorkspaceCreditPoolSection({
   isLoading,
   isError,
   showPoolBranch,
-  visible,
+  isVisible,
   totalRemainingCredits,
   currentCycleConsumedCredits,
   currentCycleStartMs,
@@ -222,7 +207,7 @@ export function WorkspaceCreditPoolSection({
   poolSecondaryContent,
   footer,
 }: WorkspaceCreditPoolSectionProps) {
-  if (!isLoading && !isError && !visible) {
+  if (!isLoading && !isError && !isVisible) {
     return null;
   }
 

@@ -71,11 +71,6 @@ interface PoolCreditCardProps {
   isEnterprise: boolean;
 }
 
-// Mirrors the "Workspace credit pool" / "Excess credit consumption" block of
-// the redesigned usage page via the shared `WorkspaceCreditPoolSection` — see
-// [[WorkspaceCreditPoolCards.tsx]] — so that block can't drift between the
-// customer-facing page and this Poke mirror. Only the secondary line (credit
-// expiration / overage / enterprise-contract chips) is Poke-specific.
 function PoolCreditCard({ owner, isEnterprise }: PoolCreditCardProps) {
   const { awuPoolSummary, isAwuPoolSummaryLoading, isAwuPoolSummaryError } =
     usePokeAwuPoolSummary({ owner });
@@ -110,7 +105,7 @@ function PoolCreditCard({ owner, isEnterprise }: PoolCreditCardProps) {
       isLoading={isAwuPoolSummaryLoading}
       isError={!!isAwuPoolSummaryError}
       showPoolBranch={hasPool}
-      visible={hasPool || hasExcessData}
+      isVisible={hasPool || hasExcessData}
       totalRemainingCredits={totalRemainingCredits}
       currentCycleConsumedCredits={currentCycleConsumedCredits}
       currentCycleStartMs={currentCycleStartMs}
