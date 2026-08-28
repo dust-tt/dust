@@ -66,10 +66,6 @@ export function CommandPaletteSearchPhase({
   );
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  // Tracks how the current selection was set — keyboard navigation must
-  // render the highlight instantly, while pointer moves keep the animated
-  // hover fade.
-  const lastInputRef = useRef<"keyboard" | "pointer">("pointer");
 
   // Auto-focus the search input on mount. Deferred with requestAnimationFrame
   // to run after Radix FocusScope has finished trapping focus.
@@ -102,14 +98,12 @@ export function CommandPaletteSearchPhase({
       case "ArrowDown":
         e.preventDefault();
         if (totalItems > 0) {
-          lastInputRef.current = "keyboard";
           onSelectedIndexChange((selectedIndex + 1) % totalItems);
         }
         break;
       case "ArrowUp":
         e.preventDefault();
         if (totalItems > 0) {
-          lastInputRef.current = "keyboard";
           onSelectedIndexChange((selectedIndex - 1 + totalItems) % totalItems);
         }
         break;
@@ -181,11 +175,7 @@ export function CommandPaletteSearchPhase({
                 }}
                 isSelected={selectedIndex === i}
                 onClick={() => onItemSelect({ kind: "agent", agent })}
-                onMouseMove={() => {
-                  lastInputRef.current = "pointer";
-                  onSelectedIndexChange(i);
-                }}
-                transitionColors={lastInputRef.current === "pointer"}
+                onMouseMove={() => onSelectedIndexChange(i)}
               >
                 <Avatar visual={agent.pictureUrl} size="xs" />
                 <div className="flex min-w-0 items-center gap-1.5">
@@ -218,11 +208,7 @@ export function CommandPaletteSearchPhase({
                   }}
                   isSelected={selectedIndex === globalIndex}
                   onClick={() => onItemSelect({ kind: "pod", pod })}
-                  onMouseMove={() => {
-                    lastInputRef.current = "pointer";
-                    onSelectedIndexChange(globalIndex);
-                  }}
-                  transitionColors={lastInputRef.current === "pointer"}
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
                 >
                   <Icon visual={getSpaceIcon(pod)} size="xs" />
                   <div className="flex min-w-0 items-center gap-1.5">
@@ -263,11 +249,7 @@ export function CommandPaletteSearchPhase({
                   }}
                   isSelected={selectedIndex === globalIndex}
                   onClick={() => onItemSelect({ kind: "skill", skill })}
-                  onMouseMove={() => {
-                    lastInputRef.current = "pointer";
-                    onSelectedIndexChange(globalIndex);
-                  }}
-                  transitionColors={lastInputRef.current === "pointer"}
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
                 >
                   <SkillAvatar size="xs" />
                   <div className="flex min-w-0 items-center gap-1.5">

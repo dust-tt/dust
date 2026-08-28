@@ -2,7 +2,6 @@ import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetail
 import { CHART_HEIGHT } from "@app/components/charts/constants";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { AnalyticsExportPanel } from "@app/components/workspace/analytics/AnalyticsExportPanel";
-import { ANALYTICS_LAYOUT_TRANSITION } from "@app/components/workspace/analytics/analyticsMotion";
 import type { ConsumptionAttributionTableProps } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import type { ConsumptionChartProps } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
@@ -324,7 +323,7 @@ export function AnalyticsConsumptionContent({
         <LazyMotion features={domMax}>
           <m.div
             layout={!shouldReduceMotion}
-            transition={ANALYTICS_LAYOUT_TRANSITION(shouldReduceMotion)}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.18 }}
             className="flex flex-col"
           >
             <SafeSuspense
