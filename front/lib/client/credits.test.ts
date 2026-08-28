@@ -4,7 +4,19 @@ import {
   formatCreditResetCountdown,
   formatFairUseAllowance,
   formatLimitTimeframe,
+  getFairUseCreditUsageTarget,
 } from "./credits";
+
+describe("getFairUseCreditUsageTarget", () => {
+  it.each([
+    [0.74, "on_target"],
+    [0.75, "elevated"],
+    [0.89, "elevated"],
+    [0.9, "critical"],
+  ] as const)("maps %s usage to %s", (usageRatio, expected) => {
+    expect(getFairUseCreditUsageTarget(usageRatio)).toBe(expected);
+  });
+});
 
 describe("formatAvgCredits", () => {
   it.each([
