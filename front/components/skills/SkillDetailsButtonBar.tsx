@@ -1,6 +1,5 @@
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { SkillFavoriteButton } from "@app/components/skills/SkillFavoriteButton";
-import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import {
   getManageSkillsRoute,
@@ -10,6 +9,7 @@ import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
+  ClipboardCheck,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +18,7 @@ import {
   Edit04,
   Link01,
   Trash01,
+  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -40,7 +41,7 @@ export function SkillDetailsButtonBar({
   onFavoriteChange,
 }: SkillDetailsButtonBarProps) {
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
-  const sendNotification = useSendNotification();
+  const [isSkillLinkCopied, copySkillLink] = useCopyToClipboard();
 
   if (!skill.canAdministrate && !onFavoriteChange) {
     return null;
@@ -81,7 +82,7 @@ export function SkillDetailsButtonBar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                icon={DotsHorizontal}
+                icon={isSkillLinkCopied ? ClipboardCheck : DotsHorizontal}
                 size="sm"
                 variant="ghost"
                 tooltip="Skill options"
@@ -91,15 +92,11 @@ export function SkillDetailsButtonBar({
               <DropdownMenuItem
                 label="Copy link"
                 icon={Link01}
-                onClick={async (e) => {
+                onClick={(e) => {
                   e.stopPropagation();
-                  await navigator.clipboard.writeText(
+                  void copySkillLink(
                     `${config.getAppUrl()}${getManageSkillsRoute(owner.sId, skill.sId)}`
                   );
-                  sendNotification({
-                    type: "success",
-                    title: "Skill link copied to clipboard",
-                  });
                 }}
               />
               <DropdownMenuItem
