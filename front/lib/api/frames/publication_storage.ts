@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -17,21 +17,21 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FramePublicationFunctionDefinition } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
+import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
+import type { FramePublicationDescriptor } from "@app/types/api/frame_publication";
 import {
-  isSafeFrameRelativePath,
-  parseFrameManifest,
-} from "@app/types/api/frame_manifest";
+  FRAME_PUBLICATION_SCHEMA_VERSION,
+  FramePublicationDescriptorSchema,
+  parseFramePublicationDescriptor,
+} from "@app/types/api/frame_publication";
 import {
+  getFramePublicationDescriptorPath,
   getFramePublicationFunctionBundlePath,
-  getFramePublicationFunctionSchemaPath,
-  getFramePublicationManifestPath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
-import { SANDBOX_FUNCTION_USER_IDENTITY_POLICIES } from "@app/types/api/sandbox_functions";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import {
   frameContentType,
@@ -40,26 +40,11 @@ import {
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { z } from "zod";
 
 const FRAME_PUBLICATION_UPLOAD_CONCURRENCY = 4;
 const FRAME_PUBLICATION_READ_CONCURRENCY = 4;
 const FRAME_PUBLISH_LOCK_TTL_MS = 10 * 60_000;
-
-const jsonSchemaValue = z.custom<JSONSchema>(
-  (value) =>
-    typeof value === "object" &&
-    value !== null &&
-    validateJsonSchema(value).isValid
-);
-
-const FramePublicationFunctionSchemaArtifactSchema = z.object({
-  userIdentity: z.enum(SANDBOX_FUNCTION_USER_IDENTITY_POLICIES),
-  inputSchema: jsonSchemaValue,
-  outputSchema: jsonSchemaValue,
-});
 
 export type FramePublicationSourceFile = {
   relativePath: string;
@@ -81,6 +66,7 @@ export class FramePublicationError extends Error {
       | "invalid_frame"
       | "invalid_function_artifact"
       | "invalid_manifest"
+      | "invalid_publication"
       | "invalid_source"
       | "allowlist_failed"
       | "publication_not_found"
@@ -95,6 +81,10 @@ export class FramePublicationError extends Error {
 
 export function getFramePublishLockName(frameId: string): string {
   return `frame:publish:${frameId}`;
+}
+
+function sha256(content: string | Buffer): string {
+  return createHash("sha256").update(content).digest("hex");
 }
 
 export function isFramePublicationError(
@@ -141,7 +131,7 @@ export async function storeFramePublication(
     return frameIdentity;
   }
 
-  const sourcePaths = new Set<string>();
+  const sourceFilesByPath = new Map<string, FramePublicationSourceFile>();
   for (const sourceFile of sourceFiles) {
     if (!isSafeFrameRelativePath(sourceFile.relativePath)) {
       return new Err(
@@ -151,7 +141,7 @@ export async function storeFramePublication(
         )
       );
     }
-    if (sourcePaths.has(sourceFile.relativePath)) {
+    if (sourceFilesByPath.has(sourceFile.relativePath)) {
       return new Err(
         new FramePublicationError(
           "invalid_source",
@@ -159,9 +149,9 @@ export async function storeFramePublication(
         )
       );
     }
-    sourcePaths.add(sourceFile.relativePath);
+    sourceFilesByPath.set(sourceFile.relativePath, sourceFile);
   }
-  if (!sourcePaths.has(manifest.uiEntryPoint)) {
+  if (!sourceFilesByPath.has(manifest.uiEntryPoint)) {
     return new Err(
       new FramePublicationError(
         "invalid_source",
@@ -170,7 +160,7 @@ export async function storeFramePublication(
     );
   }
   for (const fn of manifest.functions) {
-    if (!sourcePaths.has(fn.entryPoint)) {
+    if (!sourceFilesByPath.has(fn.entryPoint)) {
       return new Err(
         new FramePublicationError(
           "invalid_source",
@@ -179,8 +169,10 @@ export async function storeFramePublication(
       );
     }
   }
+  const databaseContracts: FramePublicationDescriptor["databases"] = [];
   for (const database of manifest.databases) {
-    if (!sourcePaths.has(database.schema)) {
+    const schemaFile = sourceFilesByPath.get(database.schema);
+    if (!schemaFile) {
       return new Err(
         new FramePublicationError(
           "invalid_source",
@@ -188,14 +180,31 @@ export async function storeFramePublication(
         )
       );
     }
+    const schemaSource = schemaFile.content.toString("utf8");
+    if (!Buffer.from(schemaSource, "utf8").equals(schemaFile.content)) {
+      return new Err(
+        new FramePublicationError(
+          "invalid_source",
+          `Frame database schema is not valid UTF-8: ${database.name} (${database.schema})`
+        )
+      );
+    }
+    databaseContracts.push({
+      name: database.name,
+      schemaSource,
+      schemaSha256: sha256(schemaSource),
+    });
   }
 
   const declaredFunctionNames = new Set(
     manifest.functions.map((fn) => fn.name)
   );
-  const artifactNames = new Set<string>();
+  const functionArtifactsByName = new Map<
+    string,
+    FramePublicationFunctionArtifact
+  >();
   for (const artifact of functionArtifacts) {
-    if (artifactNames.has(artifact.name)) {
+    if (functionArtifactsByName.has(artifact.name)) {
       return new Err(
         new FramePublicationError(
           "invalid_function_artifact",
@@ -211,10 +220,12 @@ export async function storeFramePublication(
         )
       );
     }
-    artifactNames.add(artifact.name);
+    functionArtifactsByName.set(artifact.name, artifact);
   }
+  const functionContracts: FramePublicationDescriptor["functions"] = [];
   for (const fn of manifest.functions) {
-    if (!artifactNames.has(fn.name)) {
+    const artifact = functionArtifactsByName.get(fn.name);
+    if (!artifact) {
       return new Err(
         new FramePublicationError(
           "invalid_function_artifact",
@@ -222,6 +233,13 @@ export async function storeFramePublication(
         )
       );
     }
+    functionContracts.push({
+      name: fn.name,
+      bundleSha256: sha256(artifact.bundleCode),
+      userIdentity: artifact.userIdentity,
+      inputSchema: artifact.inputSchema,
+      outputSchema: artifact.outputSchema,
+    });
   }
 
   const identity = {
@@ -230,34 +248,45 @@ export async function storeFramePublication(
   };
   const storage = getPrivateUploadBucket();
 
+  const descriptorResult = FramePublicationDescriptorSchema.safeParse({
+    schemaVersion: FRAME_PUBLICATION_SCHEMA_VERSION,
+    manifest,
+    publishedAt: new Date().toISOString(),
+    publisherId: auth.user()?.sId ?? null,
+    sourceFiles: sourceFiles
+      .map((sourceFile) => ({
+        path: sourceFile.relativePath,
+        contentSha256: sha256(sourceFile.content),
+      }))
+      .sort((left, right) => left.path.localeCompare(right.path)),
+    ui: { bundleSha256: sha256(uiBundleCode) },
+    functions: functionContracts,
+    databases: databaseContracts,
+  } satisfies FramePublicationDescriptor);
+  if (!descriptorResult.success) {
+    return new Err(
+      new FramePublicationError(
+        "invalid_publication",
+        `Invalid Frame publication descriptor: ${descriptorResult.error.message}`
+      )
+    );
+  }
+  const descriptor = descriptorResult.data;
+
   const publicationFiles = [
     {
       filePath: getFramePublicationUiBundlePath(identity),
       content: uiBundleCode,
       contentType: frameContentType,
     },
-    ...functionArtifacts.flatMap((artifact) => [
-      {
-        filePath: getFramePublicationFunctionBundlePath({
-          ...identity,
-          functionName: artifact.name,
-        }),
-        content: artifact.bundleCode,
-        contentType: sandboxFunctionContentType,
-      },
-      {
-        filePath: getFramePublicationFunctionSchemaPath({
-          ...identity,
-          functionName: artifact.name,
-        }),
-        content: JSON.stringify({
-          userIdentity: artifact.userIdentity,
-          inputSchema: artifact.inputSchema,
-          outputSchema: artifact.outputSchema,
-        }),
-        contentType: "application/json",
-      },
-    ]),
+    ...functionArtifacts.map((artifact) => ({
+      filePath: getFramePublicationFunctionBundlePath({
+        ...identity,
+        functionName: artifact.name,
+      }),
+      content: artifact.bundleCode,
+      contentType: sandboxFunctionContentType,
+    })),
   ];
 
   await concurrentExecutor(
@@ -273,18 +302,20 @@ export async function storeFramePublication(
   );
 
   // publication.json is the commit marker. Readers never observe partial publication data.
-  const manifestPath = getFramePublicationManifestPath(identity);
-  await storage.file(manifestPath).save(Buffer.from(JSON.stringify(manifest)), {
-    contentType: frameV2ContentType,
-    preconditionOpts: {
-      ifGenerationMatch: GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
-    },
-  });
+  const descriptorPath = getFramePublicationDescriptorPath(identity);
+  await storage
+    .file(descriptorPath)
+    .save(Buffer.from(JSON.stringify(descriptor)), {
+      contentType: frameV2ContentType,
+      preconditionOpts: {
+        ifGenerationMatch: GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+      },
+    });
 
   return new Ok({ publicationId: identity.publicationId });
 }
 
-export async function loadFramePublicationManifest(
+export async function loadFramePublicationDescriptor(
   auth: Authenticator,
   {
     frame,
@@ -293,20 +324,20 @@ export async function loadFramePublicationManifest(
     frame: FileResource;
     publicationId: string;
   }
-): Promise<Result<FrameManifest, FramePublicationError>> {
+): Promise<Result<FramePublicationDescriptor, FramePublicationError>> {
   const frameIdentity = getFrameIdentity(auth, frame);
   if (frameIdentity.isErr()) {
     return frameIdentity;
   }
 
-  const manifestPath = getFramePublicationManifestPath({
+  const descriptorPath = getFramePublicationDescriptorPath({
     ...frameIdentity.value,
     publicationId,
   });
-  let manifestBuffer: Uint8Array<ArrayBuffer>;
+  let descriptorBuffer: Uint8Array<ArrayBuffer>;
   try {
-    manifestBuffer =
-      await getPrivateUploadBucket().fetchFileBuffer(manifestPath);
+    descriptorBuffer =
+      await getPrivateUploadBucket().fetchFileBuffer(descriptorPath);
   } catch (error) {
     if (isGCSNotFoundError(error)) {
       return new Err(
@@ -319,25 +350,39 @@ export async function loadFramePublicationManifest(
     throw error;
   }
 
-  const manifest = parseFrameManifest(Buffer.from(manifestBuffer));
-  if (manifest.isErr()) {
+  const descriptor = parseFramePublicationDescriptor(
+    Buffer.from(descriptorBuffer)
+  );
+  if (descriptor.isErr()) {
     return new Err(
-      new FramePublicationError("invalid_manifest", manifest.error)
+      new FramePublicationError("invalid_publication", descriptor.error)
     );
   }
 
-  return manifest;
+  const invalidDatabaseContract = descriptor.value.databases.find(
+    (database) => sha256(database.schemaSource) !== database.schemaSha256
+  );
+  if (invalidDatabaseContract) {
+    return new Err(
+      new FramePublicationError(
+        "invalid_publication",
+        `Frame publication database schema hash mismatch: ${invalidDatabaseContract.name}`
+      )
+    );
+  }
+
+  return descriptor;
 }
 
 async function loadFramePublicationFunctionDefinitions(
   auth: Authenticator,
   {
     frame,
-    manifest,
+    descriptor,
     publicationId,
   }: {
     frame: FileResource;
-    manifest: FrameManifest;
+    descriptor: FramePublicationDescriptor;
     publicationId: string;
   }
 ): Promise<
@@ -350,24 +395,18 @@ async function loadFramePublicationFunctionDefinitions(
 
   const storage = getPrivateUploadBucket();
   const definitions = await concurrentExecutor(
-    manifest.functions,
-    async (fn) => {
+    descriptor.manifest.functions,
+    async (fn, index) => {
       const identity = {
         ...frameIdentity.value,
         publicationId,
         functionName: fn.name,
       };
       let bundleCode: string;
-      let schemaContent: string;
       try {
-        [bundleCode, schemaContent] = await Promise.all([
-          storage.fetchFileContent(
-            getFramePublicationFunctionBundlePath(identity)
-          ),
-          storage.fetchFileContent(
-            getFramePublicationFunctionSchemaPath(identity)
-          ),
-        ]);
+        bundleCode = await storage.fetchFileContent(
+          getFramePublicationFunctionBundlePath(identity)
+        );
       } catch (error) {
         if (!isGCSNotFoundError(error)) {
           throw error;
@@ -380,24 +419,12 @@ async function loadFramePublicationFunctionDefinitions(
         );
       }
 
-      let schemaJson: unknown;
-      try {
-        schemaJson = JSON.parse(schemaContent);
-      } catch (error) {
+      const contract = descriptor.functions[index];
+      if (!contract || sha256(bundleCode) !== contract.bundleSha256) {
         return new Err(
           new FramePublicationError(
             "invalid_function_artifact",
-            `Invalid Frame publication function schema for ${fn.name}: ${normalizeError(error).message}`
-          )
-        );
-      }
-      const schema =
-        FramePublicationFunctionSchemaArtifactSchema.safeParse(schemaJson);
-      if (!schema.success) {
-        return new Err(
-          new FramePublicationError(
-            "invalid_function_artifact",
-            `Invalid Frame publication function schema for ${fn.name}: ${schema.error.message}`
+            `Frame publication function bundle hash mismatch: ${fn.name}`
           )
         );
       }
@@ -408,7 +435,9 @@ async function loadFramePublicationFunctionDefinitions(
         executionMode: fn.executionMode,
         defaultStake: fn.defaultStake,
         bundleCode,
-        ...schema.data,
+        userIdentity: contract.userIdentity,
+        inputSchema: contract.inputSchema,
+        outputSchema: contract.outputSchema,
       });
     },
     { concurrency: FRAME_PUBLICATION_READ_CONCURRENCY }
@@ -436,12 +465,12 @@ export async function activateFramePublication(
     publicationId: string;
   }
 ): Promise<Result<void, FramePublicationError>> {
-  const manifest = await loadFramePublicationManifest(auth, {
+  const descriptor = await loadFramePublicationDescriptor(auth, {
     frame,
     publicationId,
   });
-  if (manifest.isErr()) {
-    return manifest;
+  if (descriptor.isErr()) {
+    return descriptor;
   }
 
   const frameIdentity = getFrameIdentity(auth, frame);
@@ -451,7 +480,7 @@ export async function activateFramePublication(
 
   const functionDefinitions = await loadFramePublicationFunctionDefinitions(
     auth,
-    { frame, manifest: manifest.value, publicationId }
+    { frame, descriptor: descriptor.value, publicationId }
   );
   if (functionDefinitions.isErr()) {
     return functionDefinitions;
@@ -473,6 +502,14 @@ export async function activateFramePublication(
       new FramePublicationError(
         "publication_not_found",
         `Frame publication UI bundle not found: ${publicationId}`
+      )
+    );
+  }
+  if (sha256(uiBundleCode) !== descriptor.value.ui.bundleSha256) {
+    return new Err(
+      new FramePublicationError(
+        "invalid_publication",
+        `Frame publication UI bundle hash mismatch: ${publicationId}`
       )
     );
   }
