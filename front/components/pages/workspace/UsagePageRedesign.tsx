@@ -24,6 +24,10 @@ import { ModelTiersSettingsCard } from "@app/components/workspace/usage/ModelTie
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
+import {
+  WorkspaceCreditPoolCycleHistoryTable,
+  WorkspaceCreditPoolValueCards,
+} from "@app/components/workspace/WorkspaceCreditPoolCards";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
 import {
@@ -464,6 +468,10 @@ export function UsagePageRedesign() {
     totalRemainingCredits,
     totalActiveCredits,
     overageCredits,
+    currentCycleConsumedCredits,
+    currentCycleStartMs,
+    currentCycleEndMs,
+    cycleBreakdown,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
     mutateAwuPoolSummary,
@@ -1280,24 +1288,13 @@ export function UsagePageRedesign() {
               </div>
             ) : (
               <>
-                <div className="flex items-baseline gap-1">
-                  <span className="heading-mono-4xl text-foreground">
-                    {formatCredits(totalConsumedCredits)}
-                  </span>
-                  <span className="copy-sm text-muted-foreground">
-                    /{formatCredits(initialTotalCredits)}
-                  </span>
-                </div>
-                {hasPool && (
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted-foreground/20">
-                    <div
-                      className="h-full rounded-full bg-foreground/80 transition-all"
-                      style={{
-                        width: `${Math.min(100, initialTotalCredits > 0 ? (totalConsumedCredits / initialTotalCredits) * 100 : 0)}%`,
-                      }}
-                    />
-                  </div>
-                )}
+                <WorkspaceCreditPoolValueCards
+                  totalRemainingCredits={totalRemainingCredits}
+                  currentCycleConsumedCredits={currentCycleConsumedCredits}
+                  currentCycleStartMs={currentCycleStartMs}
+                  currentCycleEndMs={currentCycleEndMs}
+                  isLoading={false}
+                />
                 {hasPool && (
                   <div className="flex items-center justify-between gap-4">
                     <span className="copy-sm text-muted-foreground">
@@ -1322,6 +1319,9 @@ export function UsagePageRedesign() {
                     )}
                   </div>
                 </div>
+                <WorkspaceCreditPoolCycleHistoryTable
+                  cycleBreakdown={cycleBreakdown}
+                />
                 <div className="pt-2">
                   <Page.Separator />
                 </div>
