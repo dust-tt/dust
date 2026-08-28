@@ -14,7 +14,10 @@ pub struct FramePublishRequest<'a> {
 pub struct FramePublishResponse {
     pub frame_id: String,
     pub manifest_path: String,
-    pub publication_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publication_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]

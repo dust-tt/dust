@@ -42,7 +42,7 @@ export const framesSkill = {
 
 Use the Computer and the \`dsbx frame\` CLI to publish Frames. Do not use the legacy interactive-content tools.
 
-## Publish a registered Frame
+## Publish a Frame
 
 After every source change that should become visible:
 
@@ -50,7 +50,13 @@ After every source change that should become visible:
 dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
 \`\`\`
 
-Publishing validates the manifest and atomically activates a complete source/function publication. Fix any reported error and rerun the command.
+For a legacy Frame, pass its entry source file instead:
+
+\`\`\`bash
+dsbx frame publish /files/<scope>/<frame>.tsx
+\`\`\`
+
+Publishing a Frames v2 manifest validates and atomically activates a complete source/function publication. Publishing a legacy Frame uses its existing build and publish flow. Fix any reported error and rerun the command.
 
 Use \`dsbx frame --help\` as the authority for available operations. Never fall back to legacy Frame MCP tools. Do not use \`mv\` or \`cp\` on a registered Frame folder: move and clone are not supported in this initial scope.`;
     }

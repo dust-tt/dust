@@ -1,13 +1,24 @@
+// Legacy Frame publishing runs esbuild, whose TextEncoder invariant requires Node rather than jsdom.
+// @vitest-environment node
+
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { createSandboxTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
-import { frameV2ContentType } from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { honoApp } from "@front-api/app";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/lock", async (importActual) => {
+  const actual = await importActual<typeof import("@app/lib/lock")>();
+  return {
+    ...actual,
+    executeWithLock: async <T>(_name: string, cb: () => Promise<T>) => cb(),
+  };
+});
 
 const manifest = JSON.stringify({
   version: 1,
@@ -71,6 +82,44 @@ async function setup() {
   return { ...context, frame, manifestPath };
 }
 
+async function setupLegacyFrame() {
+  const context = await createSandboxTokenTestContext();
+  await FeatureFlagFactory.basic(context.auth, "frames_v2");
+  const sourcePath = `conversation-${context.conversation.sId}/Legacy.tsx`;
+  const mountDirectoryPath = getConversationFilesBasePath({
+    workspaceId: context.workspace.sId,
+    conversationId: context.conversation.sId,
+  });
+  const mountFilePath = `${mountDirectoryPath}Legacy.tsx`;
+  const frame = await FileFactory.create(context.auth, null, {
+    contentType: frameContentType,
+    fileName: "Legacy.tsx",
+    fileSize: Buffer.byteLength(uiSource),
+    status: "created",
+    useCase: "conversation",
+    useCaseMetadata: { conversationId: context.conversation.sId },
+    mountFilePath,
+  });
+  // The legacy publisher reads the source from its mount and the rendered bundle back from the
+  // canonical FileResource path when recomputing the share allowlist.
+  fileStorageMock.setFileContent(() => uiSource);
+  fileStorageMock.setFilesByPrefix((prefix) =>
+    prefix === mountDirectoryPath
+      ? [
+          {
+            name: mountFilePath,
+            metadata: {
+              contentType: "text/typescript",
+              size: String(Buffer.byteLength(uiSource)),
+            },
+          },
+        ]
+      : null
+  );
+
+  return { ...context, frame, sourcePath };
+}
+
 beforeEach(() => {
   fileStorageMock.reset();
 });
@@ -95,6 +144,32 @@ describe("POST /api/v1/w/[wId]/sandbox/frames/publish", () => {
     );
   });
 
+  it("publishes a legacy Frame through its existing publication flow", async () => {
+    const context = await setupLegacyFrame();
+
+    const response = await requestFramePublish(
+      context.workspace.sId,
+      context.token,
+      context.sourcePath
+    );
+
+    const published = await response.json();
+    expect(response.status, JSON.stringify(published)).toBe(200);
+    expect(published).toEqual({
+      frameId: context.frame.sId,
+      manifestPath: context.sourcePath,
+      warnings: [],
+    });
+    const frame = await FileResource.fetchById(context.auth, context.frame.sId);
+    expect(frame?.useCaseMetadata?.frameBundleRootPath).toBe(
+      `conversation-${context.conversation.sId}`
+    );
+    expect(frame?.useCaseMetadata?.frameEntryRelPath).toBe("Legacy.tsx");
+    expect(frame?.useCaseMetadata?.lastEditedByAgentConfigurationId).toBe(
+      context.agentConfig.sId
+    );
+  });
+
   it("rejects an unregistered manifest path", async () => {
     const context = await setup();
     const unregisteredPath = context.manifestPath.replace(
@@ -110,7 +185,7 @@ describe("POST /api/v1/w/[wId]/sandbox/frames/publish", () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
-      error: { message: `No registered Frame found at ${unregisteredPath}.` },
+      error: { message: `No Frame found at ${unregisteredPath}.` },
     });
   });
 

@@ -62,6 +62,8 @@ describe("framesSkill.fetchInstructions", () => {
     });
 
     expect(instructions).toContain("dsbx frame publish");
+    expect(instructions).toContain("legacy Frame");
+    expect(instructions).toContain("<frame>.tsx");
     expect(instructions).not.toContain("dsbx frame create");
     expect(instructions).not.toContain("dsbx frame register");
     expect(instructions).not.toContain(

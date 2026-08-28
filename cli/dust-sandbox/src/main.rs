@@ -131,8 +131,8 @@ async fn run() -> anyhow::Result<()> {
             commands::db::DbCommand::Query { name } => commands::cmd_db_query(&name).await?,
         },
         Commands::Frame { command } => match command {
-            commands::frame::FrameCommand::Publish { manifest } => {
-                commands::cmd_frame_publish(&manifest).await?
+            commands::frame::FrameCommand::Publish { source } => {
+                commands::cmd_frame_publish(&source).await?
             }
         },
         Commands::Filesystem { command } => commands::run_filesystem(command)?,
@@ -474,10 +474,10 @@ mod tests {
         .expect("parse");
         match cli.command {
             Commands::Frame {
-                command: commands::frame::FrameCommand::Publish { manifest },
+                command: commands::frame::FrameCommand::Publish { source },
             } => {
                 assert_eq!(
-                    manifest,
+                    source,
                     std::path::PathBuf::from("/files/pod-vlt_123/Status/manifest.json")
                 );
             }

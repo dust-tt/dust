@@ -133,10 +133,12 @@ impl DustApiClient {
             .context(format!("failed to parse response from POST {url}"))
     }
 
-    pub async fn publish_frame(&self, manifest_path: &str) -> anyhow::Result<FramePublishResponse> {
+    pub async fn publish_frame(&self, source_path: &str) -> anyhow::Result<FramePublishResponse> {
         self.post_with_timeout(
             "sandbox/frames/publish",
-            &FramePublishRequest { manifest_path },
+            &FramePublishRequest {
+                manifest_path: source_path,
+            },
             POLL_MAX_DURATION,
         )
         .await

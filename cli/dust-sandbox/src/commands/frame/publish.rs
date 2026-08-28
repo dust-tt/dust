@@ -2,11 +2,11 @@ use std::path::Path;
 
 use crate::api::DustApiClient;
 
-use super::{print_response, scoped_manifest_path};
+use super::{print_response, scoped_path};
 
-pub async fn run(manifest: &Path) -> anyhow::Result<()> {
-    let manifest_path = scoped_manifest_path(manifest)?;
+pub async fn run(source: &Path) -> anyhow::Result<()> {
+    let source_path = scoped_path(source)?;
     let client = DustApiClient::from_env()?;
-    let response = client.publish_frame(&manifest_path).await?;
+    let response = client.publish_frame(&source_path).await?;
     print_response(&response)
 }
