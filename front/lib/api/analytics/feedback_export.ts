@@ -1,7 +1,6 @@
 import { fetchAgentMetadata } from "@app/lib/api/analytics/enrichment";
 import config from "@app/lib/api/config";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -74,14 +73,8 @@ export async function fetchFeedbackExportRows({
   const uniqueAgentIds = [
     ...new Set(feedbacks.map((f) => f.agentConfigurationId)),
   ];
-  const uniqueUserModelIds = [...new Set(feedbacks.map((f) => f.userId))];
 
-  const [agentMeta, users] = await Promise.all([
-    fetchAgentMetadata(uniqueAgentIds, owner),
-    UserResource.fetchByModelIds(uniqueUserModelIds),
-  ]);
-  const userSIdByModelId = new Map(users.map((u) => [u.id, u.sId]));
-  const userEmailByModelId = new Map(users.map((u) => [u.id, u.email]));
+  const agentMeta = await fetchAgentMetadata(uniqueAgentIds, owner);
 
   const rows: FeedbackExportRow[] = feedbacks.map((feedback) => {
     const conversationId = feedback.toJSON().conversationId;
@@ -103,8 +96,8 @@ export async function fetchFeedbackExportRows({
               config.getAppUrl()
             )
           : "",
-      userId: userSIdByModelId.get(feedback.userId) ?? "",
-      userEmail: userEmailByModelId.get(feedback.userId) ?? "",
+      userId: feedback.user?.sId ?? "",
+      userEmail: feedback.user?.email ?? "",
       thumb: feedback.thumbDirection,
       content: feedback.content ?? "",
       dismissed: feedback.dismissed ? "true" : "false",
