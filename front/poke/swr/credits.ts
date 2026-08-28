@@ -159,8 +159,26 @@ export function usePokeAwuPoolSummary({
     fetcherFn
   );
 
+  // Defaulted field-by-field (mirroring `useAwuPoolSummary`), not just
+  // whole-object, so a cached response predating a newer field can't leave
+  // that field `undefined` downstream.
+  const awuPoolSummary: AwuPoolSummaryResponseBody | null = data
+    ? {
+        totalRemainingCredits: data.totalRemainingCredits ?? 0,
+        totalActiveCredits: data.totalActiveCredits ?? 0,
+        overageCredits: data.overageCredits ?? null,
+        overageAmountCents: data.overageAmountCents ?? null,
+        overageCurrency: data.overageCurrency ?? null,
+        cycleBreakdown: data.cycleBreakdown ?? [],
+        currentCycleConsumedCredits: data.currentCycleConsumedCredits ?? null,
+        currentCycleStartMs: data.currentCycleStartMs ?? null,
+        currentCycleEndMs: data.currentCycleEndMs ?? null,
+        latestCreditExpirationMs: data.latestCreditExpirationMs ?? null,
+      }
+    : null;
+
   return {
-    awuPoolSummary: data ?? null,
+    awuPoolSummary,
     isAwuPoolSummaryLoading: !error && !data && !disabled,
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,
