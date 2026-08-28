@@ -1,5 +1,6 @@
 import {
   getFrameBasePath,
+  getFrameDatabaseReplicaBasePath,
   getFramePublicationFunctionBundlePath,
   getFramePublicationFunctionSchemaPath,
   getFramePublicationManifestPath,
@@ -49,6 +50,16 @@ describe("Frames v2 GCS paths", () => {
     );
   });
 
+  it("keeps SQLite replica state outside publications", () => {
+    expect(
+      getFrameDatabaseReplicaBasePath({
+        workspaceId: IDS.workspaceId,
+        frameId: IDS.frameId,
+        databaseName: "task_store",
+      })
+    ).toBe("w/w_123/frames/fil_456/state/databases/task_store.db/");
+  });
+
   it("rejects path traversal and unsafe identity segments", () => {
     expect(() =>
       getFramePublicationSourcePath({
@@ -65,5 +76,12 @@ describe("Frames v2 GCS paths", () => {
         functionName: "../other",
       })
     ).toThrow("Invalid functionName");
+    expect(() =>
+      getFrameDatabaseReplicaBasePath({
+        workspaceId: IDS.workspaceId,
+        frameId: IDS.frameId,
+        databaseName: "../other",
+      })
+    ).toThrow("Invalid databaseName");
   });
 });

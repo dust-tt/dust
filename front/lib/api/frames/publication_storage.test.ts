@@ -64,6 +64,13 @@ const manifestWithFunction = FrameManifestSchema.parse({
   ],
 });
 
+const manifestWithDatabase = FrameManifestSchema.parse({
+  version: 1,
+  name: "Task List",
+  description: "Track tasks.",
+  databases: [{ name: "tasks", schema: "databases/tasks.db.ts" }],
+});
+
 const sourceFiles = [
   {
     relativePath: "index.tsx",
@@ -219,6 +226,49 @@ describe("storeFramePublication", () => {
     ).toBe("application/json");
   });
 
+  it("stores declared database schemas in the immutable source snapshot", async () => {
+    const { auth, frame, workspaceId } = await setupFrame();
+    const databaseSchema = {
+      relativePath: "databases/tasks.db.ts",
+      content: Buffer.from("export const tasks = {};"),
+      contentType: "text/typescript" as const,
+    };
+
+    const result = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest: manifestWithDatabase,
+      sourceFiles: [...sourceFiles, databaseSchema],
+      uiBundleCode,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+
+    const identity = {
+      workspaceId,
+      frameId: frame.sId,
+      publicationId: result.value.publicationId,
+    };
+    expect(
+      fileStorageMock.getObject(
+        getFramePublicationSourcePath({
+          ...identity,
+          relativePath: databaseSchema.relativePath,
+        })
+      )
+    ).toBe(databaseSchema.content.toString());
+    const loadedManifest = await loadFramePublicationManifest(auth, {
+      frame,
+      publicationId: identity.publicationId,
+    });
+    expect(loadedManifest.isOk() && loadedManifest.value.databases).toEqual(
+      manifestWithDatabase.databases
+    );
+  });
+
   it("rejects a publication whose UI entry point is missing", async () => {
     const { auth, frame } = await setupFrame();
 
@@ -248,6 +298,24 @@ describe("storeFramePublication", () => {
     expect(result.isErr() && result.error.code).toBe("invalid_source");
     expect(result.isErr() && result.error.message).toContain(
       "add-task (functions/add_task.ts)"
+    );
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("rejects a publication whose database schema is missing", async () => {
+    const { auth, frame } = await setupFrame();
+
+    const result = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest: manifestWithDatabase,
+      sourceFiles,
+      uiBundleCode,
+    });
+
+    expect(result.isErr() && result.error.code).toBe("invalid_source");
+    expect(result.isErr() && result.error.message).toContain(
+      "Frame database schema not found: tasks"
     );
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });

@@ -1,5 +1,6 @@
 import {
   FRAME_DEFAULT_UI_ENTRY_POINT,
+  FRAME_DATABASE_NAME_REGEX,
   FrameManifestSchema,
   isSafeFrameRelativePath,
   MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH,
@@ -31,6 +32,7 @@ describe("FrameManifestSchema", () => {
     if (parsed.success) {
       expect(parsed.data.uiEntryPoint).toBe(FRAME_DEFAULT_UI_ENTRY_POINT);
       expect(parsed.data.functions).toEqual([]);
+      expect(parsed.data.databases).toEqual([]);
     }
   });
 
@@ -118,6 +120,45 @@ describe("FrameManifestSchema", () => {
           ...FUNCTION,
           description: "a".repeat(MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH + 1),
         },
+      ],
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("parses database declarations", () => {
+    const parsed = FrameManifestSchema.safeParse({
+      ...MANIFEST,
+      databases: [
+        { name: "task_store", schema: "databases/task_store.db.ts" },
+      ],
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects invalid database names and schema paths", () => {
+    expect(FRAME_DATABASE_NAME_REGEX.test("task_store")).toBe(true);
+    expect(
+      FrameManifestSchema.safeParse({
+        ...MANIFEST,
+        databases: [{ name: "Task Store", schema: "databases/tasks.db.ts" }],
+      }).success
+    ).toBe(false);
+    expect(
+      FrameManifestSchema.safeParse({
+        ...MANIFEST,
+        databases: [{ name: "tasks", schema: "../tasks.db.ts" }],
+      }).success
+    ).toBe(false);
+  });
+
+  it("rejects duplicate database names", () => {
+    const parsed = FrameManifestSchema.safeParse({
+      ...MANIFEST,
+      databases: [
+        { name: "tasks", schema: "databases/tasks.db.ts" },
+        { name: "tasks", schema: "databases/tasks_v2.db.ts" },
       ],
     });
 
