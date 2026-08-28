@@ -30,12 +30,13 @@ describe("formatFairUseAllowance", () => {
 
 describe("formatLimitTimeframe", () => {
   it.each([
-    ["day", "over the past 24 hours"],
-    ["week", "over the past 7 days"],
-    ["month", "over the past 30 days"],
-    ["lifetime", "for your current plan"],
-  ] as const)("formats the %s timeframe", (timeframe, expected) => {
+    ["day", "over the past 24 hours", "in the last 24 hours"],
+    ["week", "over the past 7 days", "in the last 7 days"],
+    ["month", "over the past 30 days", "in the last 30 days"],
+    ["lifetime", "for your current plan", "on your current plan"],
+  ] as const)("formats the %s timeframe", (timeframe, expected, compact) => {
     expect(formatLimitTimeframe(timeframe)).toBe(expected);
+    expect(formatLimitTimeframe(timeframe, "compact")).toBe(compact);
   });
 });
 

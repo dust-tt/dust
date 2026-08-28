@@ -55,21 +55,32 @@ export function formatFairUseTimeframe(
 }
 
 export function formatLimitTimeframe(
-  timeframe: MaxAwuCreditsTimeframeType
+  timeframe: MaxAwuCreditsTimeframeType,
+  variant: "sentence" | "compact" = "sentence"
 ): string {
+  let windowLabel: string;
   switch (timeframe) {
     case "day":
-      return "over the past 24 hours";
+      windowLabel = "24 hours";
+      break;
     case "week":
-      return "over the past 7 days";
+      windowLabel = "7 days";
+      break;
     case "month":
-      return "over the past 30 days";
+      windowLabel = "30 days";
+      break;
     case "lifetime":
-      return "for your current plan";
+      return variant === "compact"
+        ? "on your current plan"
+        : "for your current plan";
     default:
       assertNeverAndIgnore(timeframe);
       return "";
   }
+
+  return variant === "compact"
+    ? `in the last ${windowLabel}`
+    : `over the past ${windowLabel}`;
 }
 
 export function formatFairUseAllowance(

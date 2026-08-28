@@ -67,7 +67,7 @@ function getUsageDescription(
       return `${statusLabel}${RESET_LABEL_PREFIX[variant]} in ${state.resetInDays} ${resetUnit}`;
     }
     case "rolling_window":
-      return `${formatCredits(state.usedCredits)} of ${formatCredits(state.limitCredits)} credits used ${formatLimitTimeframe(state.timeframe)}`;
+      return `${formatCredits(state.usedCredits)} of ${formatCredits(state.limitCredits)} used ${formatLimitTimeframe(state.timeframe, "compact")}`;
     default:
       assertNeverAndIgnore(state);
       return "";
