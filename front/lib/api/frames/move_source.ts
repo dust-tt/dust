@@ -19,6 +19,7 @@ import type { DustFileSystemError } from "@app/types/file_system";
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 type FrameSourceOwner = {
@@ -80,6 +81,8 @@ function sourceOwnerFromPath(
       };
     case "user":
       return null;
+    default:
+      return assertNever(parsed);
   }
 }
 
