@@ -169,11 +169,20 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     // prior anonymous browsing events are orphaned.
     const anonymousId = getOrCreateAnonymousId();
 
+    // PostHog keeps the session id ($sesid) in this store, so "memory" meant a
+    // new session_id on every page load and ~one pageview per session. Pick the
+    // store up front rather than starting in memory and upgrading in Phase 2:
+    // the Phase 2 switch clears the store it moves off, so a store we never
+    // read back at init would reset the session on the next load anyway.
+    const persistence = hasAcceptedCookies
+      ? "localStorage+cookie"
+      : "sessionStorage";
+
     posthog.init(POSTHOG_KEY, {
       api_host: `${config.getApiBaseUrl()}/subtle1`,
       person_profiles: "identified_only",
       defaults: "2025-05-24",
-      persistence: "memory",
+      persistence,
       ...(anonymousId ? { bootstrap: { distinctID: anonymousId } } : {}),
       // Share PostHog cookies (including distinct_id) across all *.dust.tt
       // subdomains so the same identity persists through dust.tt → signin →
@@ -297,7 +306,7 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     });
 
     hasInitialized.current = true;
-  }, [isTrackablePage]);
+  }, [hasAcceptedCookies, isTrackablePage]);
 
   // Identify the user as soon as possible after auth completes — NOT gated on
   // cookie consent. identify() is a first-party operation on an already-
