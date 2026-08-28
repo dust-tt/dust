@@ -911,6 +911,7 @@ export function ConversationPage() {
   const [renderResult, setRenderResult] = useState<null | {
     tokensUsed: number;
     modelContextSizeUsed: number;
+    modelIdUsed: string;
     modelConversation: unknown;
     promptTokenCountApprox: number;
     systemPrompt: string;
@@ -953,6 +954,7 @@ export function ConversationPage() {
       setRenderResult({
         tokensUsed: data.tokensUsed,
         modelContextSizeUsed: data.modelContextSizeUsed,
+        modelIdUsed: data.modelIdUsed,
         modelConversation: data.modelConversation,
         promptTokenCountApprox: data.promptTokenCountApprox,
         systemPrompt: data.systemPrompt,
@@ -1171,6 +1173,11 @@ export function ConversationPage() {
                     <Chip
                       color="highlight"
                       label={`Tokens used: ${renderResult.tokensUsed}`}
+                      size="xs"
+                    />
+                    <Chip
+                      color="info"
+                      label={`Model: ${renderResult.modelIdUsed}`}
                       size="xs"
                     />
                     <Chip
