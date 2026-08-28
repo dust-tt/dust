@@ -1,7 +1,4 @@
-import {
-  getEsConsumedAwuCreditsForWorkspace,
-  getEsConsumedProgrammaticAwuCredits,
-} from "@app/lib/api/credits/members_usage";
+import { getEsConsumedAwuCreditsForWorkspace } from "@app/lib/api/credits/members_usage";
 import type { Authenticator } from "@app/lib/auth";
 import { amountCents } from "@app/lib/metronome/amounts";
 import {
@@ -16,6 +13,7 @@ import {
   getCreditTypeAwuId,
 } from "@app/lib/metronome/constants";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
+import { fetchProgrammaticAwuSpend } from "@app/lib/metronome/programmatic_awu_usage";
 import {
   getProductSeatTypes,
   getSeatTypesByProductIdFromContract,
@@ -29,6 +27,7 @@ import type { SupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isNumber } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
 import { z } from "zod";
 
@@ -215,6 +214,31 @@ function computeExcessCycleBreakdown(
     .slice(0, cycleHistoryLimit);
 }
 
+// Read live from Metronome rather than ES: usage events already carry the
+// `usage_type` group key needed to isolate programmatic spend, so there's no
+// need to duplicate that split in our own analytics index. Returns `null` on
+// a Metronome read failure — callers must treat that as "unknown", not 0.
+async function fetchProgrammaticConsumedCreditsOrNull({
+  workspace,
+  metronomeCustomerId,
+}: {
+  workspace: LightWorkspaceType;
+  metronomeCustomerId: string;
+}): Promise<number | null> {
+  const result = await fetchProgrammaticAwuSpend({
+    workspaceId: workspace.sId,
+    metronomeCustomerId,
+  });
+  if (result.isErr()) {
+    logger.warn(
+      { workspaceId: workspace.sId, error: result.error },
+      "[AwuPoolSummary] Failed to fetch programmatic AWU spend from Metronome"
+    );
+    return null;
+  }
+  return result.value;
+}
+
 export class AwuPoolSummaryError extends Error {
   constructor(
     readonly type:
@@ -343,7 +367,10 @@ export async function getAwuPoolSummary(
     const excessConsumedCredits =
       await getEsConsumedAwuCreditsForWorkspace(workspace);
     const programmaticConsumedCredits =
-      await getEsConsumedProgrammaticAwuCredits(auth, {});
+      await fetchProgrammaticConsumedCreditsOrNull({
+        workspace,
+        metronomeCustomerId,
+      });
     return new Ok({
       totalRemainingCredits: 0,
       totalActiveCredits: 0,
@@ -421,27 +448,16 @@ export async function getAwuPoolSummary(
   // a distinct "not attributable to a member" figure shown alongside the
   // per-cycle total whether or not the workspace has an active pool.
   //
-  // This is ES-derived (all programmatic `cost.billable_awu` for the cycle,
-  // workspace-wide) while `currentCycleConsumedCredits` is ledger-derived
-  // (only what Metronome actually deducted from the pool) — two different
-  // sources measuring related but not identical things. Once the pool runs
-  // dry mid-cycle, further usage (including programmatic) spills into
-  // overage/PAYG, which the ES total still counts but the pool ledger never
-  // sees. Clamped to the ledger figure so this can never claim more
-  // programmatic pool draw than the pool actually recorded; `null` when the
-  // ledger read failed, since there's then no pool-draw figure to bound it by.
-  const rawProgrammaticConsumedCredits =
-    await getEsConsumedProgrammaticAwuCredits(auth, {
-      cycle: {
-        cycleStart: new Date(currentCycleStartMs),
-        cycleEnd: new Date(currentCycleEndMs),
-      },
-    });
+  // Read straight from Metronome's own `usage_type` breakdown for the current
+  // billing period, uncapped: programmatic spend and each member's pool draw
+  // are both sourced from the same underlying metering data, so they already
+  // partition `currentCycleConsumedCredits` without needing to be forced to
+  // fit it here.
   const programmaticConsumedCredits =
-    rawProgrammaticConsumedCredits !== null &&
-    currentCycleConsumedCredits !== null
-      ? Math.min(rawProgrammaticConsumedCredits, currentCycleConsumedCredits)
-      : null;
+    await fetchProgrammaticConsumedCreditsOrNull({
+      workspace,
+      metronomeCustomerId,
+    });
 
   return new Ok({
     totalRemainingCredits,
