@@ -167,11 +167,11 @@ export interface MakerGroup {
 export type EffortLockReason = "unsupported" | "premium" | "model_tier";
 
 // One stop of the reasoning-effort slider. A stop is `locked` when the level is
-// not selectable; `lockedReason` says why.
+// not selectable; a null `lockedReason` explicitly means it is available.
 export interface EffortStop {
   effort: ReasoningEffort;
   locked: boolean;
-  lockedReason?: EffortLockReason;
+  lockedReason: EffortLockReason | null;
 }
 
 // The reasoning-effort slider always presents these three canonical levels so
@@ -292,7 +292,7 @@ export function getEffortStops(
     ) {
       return { effort, locked: true, lockedReason: "premium" };
     }
-    return { effort, locked: false };
+    return { effort, locked: false, lockedReason: null };
   });
 }
 
@@ -369,9 +369,9 @@ export function getModelLockTooltip(reason: ModelLockReason): string {
   }
 }
 
-export function getEffortStopTooltip(stop: EffortStop): string | undefined {
+export function getEffortStopTooltip(stop: EffortStop): string | null {
   if (!stop.locked) {
-    return undefined;
+    return null;
   }
 
   switch (stop.lockedReason) {
@@ -381,11 +381,11 @@ export function getEffortStopTooltip(stop: EffortStop): string | undefined {
       return MODEL_TIER_LOCKED_TOOLTIP;
     case "unsupported":
       return `This model doesn't support ${capitalize(stop.effort)} reasoning.`;
-    case undefined:
-      return undefined;
+    case null:
+      return null;
     default:
       assertNeverAndIgnore(stop.lockedReason);
-      return undefined;
+      return null;
   }
 }
 

@@ -32,13 +32,8 @@ const UNGATED = { lockPremiumEfforts: false };
 
 const lockedReasonByEffort = (
   stops: ReturnType<typeof getEffortStops>
-): Record<string, string | undefined> =>
-  Object.fromEntries(
-    stops.map((stop) => [
-      stop.effort,
-      stop.locked ? (stop.lockedReason ?? "locked") : undefined,
-    ])
-  );
+): Record<string, string | null> =>
+  Object.fromEntries(stops.map((stop) => [stop.effort, stop.lockedReason]));
 
 describe("modelPickerUtils premium gating", () => {
   describe("getTierForModel", () => {
@@ -66,8 +61,8 @@ describe("modelPickerUtils premium gating", () => {
       // Sonnet 5: light=cost_efficient, medium=balanced, high=premium.
       const stops = getEffortStops(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG, GATED);
       expect(lockedReasonByEffort(stops)).toEqual({
-        light: undefined,
-        medium: undefined,
+        light: null,
+        medium: null,
         high: "premium",
       });
     });
@@ -76,7 +71,7 @@ describe("modelPickerUtils premium gating", () => {
       // Gemini 2.5 Pro: light=balanced, medium=premium, high=premium.
       const stops = getEffortStops(GEMINI_2_5_PRO_MODEL_CONFIG, GATED);
       expect(lockedReasonByEffort(stops)).toEqual({
-        light: undefined,
+        light: null,
         medium: "premium",
         high: "premium",
       });
@@ -94,8 +89,12 @@ describe("modelPickerUtils premium gating", () => {
   describe("getEffortStopTooltip", () => {
     it("only explains locked efforts", () => {
       expect(
-        getEffortStopTooltip({ effort: "light", locked: false }),
-      ).toBeUndefined();
+        getEffortStopTooltip({
+          effort: "light",
+          locked: false,
+          lockedReason: null,
+        }),
+      ).toBeNull();
       expect(
         getEffortStopTooltip({
           effort: "high",
