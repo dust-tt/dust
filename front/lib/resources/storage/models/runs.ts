@@ -1,4 +1,5 @@
 import type { UsageType } from "@app/lib/metronome/types";
+import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
@@ -96,6 +97,7 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
 
   declare costMicroUsd: number;
   declare isBatch: boolean;
+  declare serviceTier: ServiceTier;
 
   // Immutable billing usage type (free / user / programmatic), set when the
   // usage row is created. Nullable only for legacy rows written before every
@@ -158,6 +160,11 @@ RunUsageModel.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       allowNull: false,
+    },
+    serviceTier: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "default",
     },
     usageType: {
       type: DataTypes.STRING,
