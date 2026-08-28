@@ -124,6 +124,7 @@ export interface FileSystemBackend {
   /**
    * Returns a short-lived signed URL for unauthenticated download.
    * `fileName` overrides the Content-Disposition filename hint.
+   * Returns `Err("not_found")` when the file does not exist.
    */
   getDownloadUrl(
     scopedPath: string,
