@@ -1,17 +1,22 @@
 import { fetchMessageExportRows } from "@app/lib/api/analytics/messages_export";
-import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
+import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill";
+import { docxSkill } from "@app/lib/resources/skill/code_defined/global/docx";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { TagFactory } from "@app/tests/utils/TagFactory";
+import type { ModelId } from "@app/types/shared/model_id";
 import { Ok } from "@app/types/shared/result";
+import moment from "moment-timezone";
 import { describe, expect, it, vi } from "vitest";
 
-// Keep everything real; only stub the Elasticsearch query so the test does not
-// depend on a live cluster.
+// Keep everything real; only stub the Elasticsearch query (the consumption
+// index) so the test does not depend on a live cluster.
 vi.mock("@app/lib/api/elasticsearch", async (importActual) => {
   const actual =
     await importActual<typeof import("@app/lib/api/elasticsearch")>();
-  return { ...actual, searchAnalytics: vi.fn() };
+  return { ...actual, searchConsumptionAnalytics: vi.fn() };
 });
 
 // The export reads from the read replica; in tests there is no replica so point
@@ -25,54 +30,116 @@ vi.mock("@app/lib/resources/storage", async (importActual) => {
   };
 });
 
-function mockMessageHits(docs: ElasticsearchBaseDocument[]) {
-  vi.mocked(searchAnalytics).mockClear();
-  vi.mocked(searchAnalytics).mockResolvedValue(
+function mockCreditsByMessage(creditMicroByMessageId: Record<string, number>) {
+  vi.mocked(searchConsumptionAnalytics).mockReset();
+  vi.mocked(searchConsumptionAnalytics).mockResolvedValueOnce(
     new Ok({
       took: 1,
       timed_out: false,
       _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
-      hits: {
-        total: { value: docs.length, relation: "eq" },
-        hits: docs.map((doc) => ({ _index: "test", _source: doc })),
+      hits: { total: { value: 0, relation: "eq" }, hits: [] },
+      aggregations: {
+        by_message: {
+          buckets: Object.entries(creditMicroByMessageId).map(
+            ([messageId, creditMicro]) => ({
+              key: { value: messageId },
+              credit_micro: { value: creditMicro },
+            })
+          ),
+        },
       },
     })
   );
 }
 
-function messageDoc(
-  overrides: Record<string, unknown> = {}
-): ElasticsearchBaseDocument {
-  return {
-    workspace_id: "w_test",
-    message_id: "msg_1",
-    timestamp: "2026-07-01T12:00:00.000Z",
-    agent_id: "agent_1",
-    conversation_id: "conv_1",
-    user_id: "user_1",
-    context_origin: "web",
-    status: "succeeded",
-    ...overrides,
-  };
+async function exportForToday(params: {
+  auth: Parameters<typeof fetchMessageExportRows>[0]["auth"];
+  owner: Parameters<typeof fetchMessageExportRows>[0]["owner"];
+}) {
+  const today = moment.utc();
+  return fetchMessageExportRows({
+    auth: params.auth,
+    owner: params.owner,
+    startDate: today.clone().subtract(1, "day").format("YYYY-MM-DD"),
+    endDate: today.clone().add(1, "day").format("YYYY-MM-DD"),
+    timezone: "UTC",
+  });
 }
 
 describe("fetchMessageExportRows", () => {
-  it("correctly reports credits column", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
+  it("reads message rows from Postgres and credits from the consumption index", async () => {
+    const { authenticator, workspace, user } = await createResourceTest({
+      role: "builder",
     });
 
-    mockMessageHits([
-      messageDoc({
-        cost: { full_awu: 10, llm_awu: 4, tool_awu: 3, billable_awu: 7 },
-      }),
-    ]);
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Test Agent" }
+    );
+
+    const conv = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+
+    const { messageRow: userMessageRow } =
+      await ConversationFactory.createUserMessage({
+        auth: authenticator,
+        workspace,
+        conversation: conv,
+        content: "Hello",
+        origin: "web",
+      });
+
+    const agentMessageRow =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conv.id as ModelId,
+        rank: 1,
+        agentConfigurationId: agent.sId,
+        parentId: userMessageRow.id,
+      });
+
+    mockCreditsByMessage({ [agentMessageRow.sId]: 7_000_000 });
+
+    const result = await exportForToday({
+      auth: authenticator,
+      owner: workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value).toHaveLength(1);
+    expect(result.value[0]).toMatchObject({
+      messageId: agentMessageRow.sId,
+      assistantId: agent.sId,
+      assistantName: "Test Agent",
+      conversationId: conv.sId,
+      parentMessageId: "",
+      userId: user.sId,
+      userEmail: user.email ?? "",
+      source: "web",
+      toolsUsed: "",
+      skillsUsed: "",
+      credits: 7,
+    });
+  });
+
+  it("returns an empty array when there is no message in the requested window", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "builder",
+    });
+
+    mockCreditsByMessage({});
 
     const result = await fetchMessageExportRows({
       auth: authenticator,
       owner: workspace,
-      startDate: "2026-07-01",
-      endDate: "2026-07-02",
+      startDate: "2024-01-01",
+      endDate: "2024-01-31",
       timezone: "UTC",
     });
 
@@ -80,31 +147,50 @@ describe("fetchMessageExportRows", () => {
     if (result.isErr()) {
       throw result.error;
     }
-    expect(result.value).toHaveLength(1);
-    expect(result.value[0].credits).toBe(7);
+    expect(result.value).toEqual([]);
   });
 
-  it("does not filter on status, so failed messages keep their billable credits", async () => {
+  it("resolves the run_agent origin message id into parentMessageId", async () => {
     const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
+      role: "builder",
     });
 
-    // A multi-execution message whose terminal execution errored: still billed
-    // for the work of its successful executions.
-    mockMessageHits([
-      messageDoc({
-        message_id: "msg_failed",
-        status: "failed",
-        cost: { full_awu: 10, llm_awu: 4, tool_awu: 3, billable_awu: 5 },
-      }),
-    ]);
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Root Agent" }
+    );
 
-    const result = await fetchMessageExportRows({
+    const conv = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+
+    // The sub-agent invocation's user message carries the sId of the agent
+    // message that triggered it via run_agent.
+    const { messageRow: subUserMessageRow } =
+      await ConversationFactory.createUserMessage({
+        auth: authenticator,
+        workspace,
+        conversation: conv,
+        content: "Sub-agent request",
+        agenticMessageType: "run_agent",
+        agenticOriginMessageId: "msg_origin",
+      });
+
+    const subAgentMessageRow =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conv.id as ModelId,
+        rank: 1,
+        agentConfigurationId: agent.sId,
+        parentId: subUserMessageRow.id,
+      });
+
+    mockCreditsByMessage({});
+
+    const result = await exportForToday({
       auth: authenticator,
       owner: workspace,
-      startDate: "2026-07-01",
-      endDate: "2026-07-02",
-      timezone: "UTC",
     });
 
     expect(result.isOk()).toBe(true);
@@ -112,168 +198,169 @@ describe("fetchMessageExportRows", () => {
       throw result.error;
     }
     expect(result.value).toHaveLength(1);
-    expect(result.value[0].messageId).toBe("msg_failed");
-    expect(result.value[0].credits).toBe(5);
+    expect(result.value[0].messageId).toBe(subAgentMessageRow.sId);
+    expect(result.value[0].parentMessageId).toBe("msg_origin");
   });
 
-  it("resolves agent_tag_ids to sorted, distinct tag names in the assistantTags column", async () => {
+  it("resolves agent tags to sorted, distinct tag names", async () => {
     const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
+      role: "builder",
     });
+
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Tagged Agent" }
+    );
 
     const [zeta, alpha] = await Promise.all([
       TagFactory.create(workspace, { name: "Zeta" }),
       TagFactory.create(workspace, { name: "Alpha" }),
     ]);
-
-    mockMessageHits([
-      messageDoc({ agent_tag_ids: [zeta.sId, alpha.sId, "tag_unknown"] }),
+    await Promise.all([
+      zeta.addToAgent(authenticator, agent),
+      alpha.addToAgent(authenticator, agent),
     ]);
 
-    const result = await fetchMessageExportRows({
+    const conv = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+    const { messageRow: userMessageRow } =
+      await ConversationFactory.createUserMessage({
+        auth: authenticator,
+        workspace,
+        conversation: conv,
+        content: "Hello",
+      });
+    await ConversationFactory.createAgentMessageWithRank({
+      workspace,
+      conversationId: conv.id as ModelId,
+      rank: 1,
+      agentConfigurationId: agent.sId,
+      parentId: userMessageRow.id,
+    });
+
+    mockCreditsByMessage({});
+
+    const result = await exportForToday({
       auth: authenticator,
       owner: workspace,
-      startDate: "2026-07-01",
-      endDate: "2026-07-02",
-      timezone: "UTC",
     });
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
       throw result.error;
     }
-    // Sorted, distinct, and unknown ids dropped.
+    expect(result.value).toHaveLength(1);
     expect(result.value[0].assistantTags).toBe("Alpha,Zeta");
-  });
-
-  it("leaves assistantTags empty for docs indexed before agent_tag_ids shipped", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
-
-    mockMessageHits([messageDoc()]);
-
-    const result = await fetchMessageExportRows({
-      auth: authenticator,
-      owner: workspace,
-      startDate: "2026-07-01",
-      endDate: "2026-07-02",
-      timezone: "UTC",
-    });
-
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
-    }
-    expect(result.value[0].assistantTags).toBe("");
-  });
-
-  it("defaults credits to 0 for docs indexed before the cost fields shipped", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
-
-    mockMessageHits([messageDoc()]);
-
-    const result = await fetchMessageExportRows({
-      auth: authenticator,
-      owner: workspace,
-      startDate: "2026-07-01",
-      endDate: "2026-07-02",
-      timezone: "UTC",
-    });
-
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
-    }
-    expect(result.value[0].credits).toBe(0);
   });
 
   it("reports the resolved model columns", async () => {
     const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
+      role: "builder",
     });
 
-    mockMessageHits([
-      messageDoc({
-        model: {
-          provider_id: "anthropic",
-          model_id: "claude-opus-5",
-          reasoning_effort: "medium",
-          resolution_method: "agent",
-        },
-      }),
-    ]);
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Model Agent" }
+    );
 
-    const result = await fetchMessageExportRows({
+    const conv = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+    const { messageRow: userMessageRow } =
+      await ConversationFactory.createUserMessage({
+        auth: authenticator,
+        workspace,
+        conversation: conv,
+        content: "Hello",
+      });
+    await ConversationFactory.createAgentMessageWithRank({
+      workspace,
+      conversationId: conv.id as ModelId,
+      rank: 1,
+      agentConfigurationId: agent.sId,
+      parentId: userMessageRow.id,
+      resolvedModel: {
+        providerId: "anthropic",
+        modelId: "claude-opus-5",
+        reasoningEffort: "medium",
+      },
+      modelResolutionMethod: "agent",
+    });
+
+    mockCreditsByMessage({});
+
+    const result = await exportForToday({
       auth: authenticator,
       owner: workspace,
-      startDate: "2026-07-01",
-      endDate: "2026-07-02",
-      timezone: "UTC",
     });
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
       throw result.error;
     }
+    expect(result.value).toHaveLength(1);
     expect(result.value[0].modelId).toBe("claude-opus-5");
     expect(result.value[0].modelProviderId).toBe("anthropic");
     expect(result.value[0].modelResolutionMethod).toBe("agent");
   });
 
-  it("leaves the model columns empty for docs indexed before the model fields shipped", async () => {
+  it("lists the global skill name used on the message in skillsUsed", async () => {
     const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
+      role: "builder",
     });
 
-    mockMessageHits([messageDoc()]);
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Skill Agent" }
+    );
 
-    const result = await fetchMessageExportRows({
+    const conv = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+    const { messageRow: userMessageRow } =
+      await ConversationFactory.createUserMessage({
+        auth: authenticator,
+        workspace,
+        conversation: conv,
+        content: "Hello",
+      });
+    const agentMessageRow =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conv.id as ModelId,
+        rank: 1,
+        agentConfigurationId: agent.sId,
+        parentId: userMessageRow.id,
+      });
+
+    const skillLink = {
+      workspaceId: workspace.id,
+      conversationId: conv.id as ModelId,
+      agentMessageId: agentMessageRow.agentMessageId!,
+      agentConfigurationId: agent.sId,
+      globalSkillId: docxSkill.sId,
+      customSkillId: null,
+      source: "agent_enabled" as const,
+      addedByUserId: null,
+    };
+    await AgentMessageSkillModel.bulkCreate([skillLink]);
+
+    mockCreditsByMessage({});
+
+    const result = await exportForToday({
       auth: authenticator,
       owner: workspace,
-      startDate: "2026-07-01",
-      endDate: "2026-07-02",
-      timezone: "UTC",
     });
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
       throw result.error;
     }
-    expect(result.value[0].modelId).toBe("");
-    expect(result.value[0].modelProviderId).toBe("");
-    expect(result.value[0].modelResolutionMethod).toBe("");
-  });
-
-  it("reports the direct parent in parentMessageId and defaults to empty", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
-
-    mockMessageHits([
-      messageDoc({
-        message_id: "msg_child",
-        ancestor_message_ids: ["msg_parent"],
-      }),
-      messageDoc({ message_id: "msg_root" }),
-    ]);
-
-    const result = await fetchMessageExportRows({
-      auth: authenticator,
-      owner: workspace,
-      startDate: "2026-07-01",
-      endDate: "2026-07-02",
-      timezone: "UTC",
-    });
-
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
-    }
-    expect(result.value).toHaveLength(2);
-    expect(result.value[0].parentMessageId).toBe("msg_parent");
-    expect(result.value[1].parentMessageId).toBe("");
+    expect(result.value).toHaveLength(1);
+    expect(result.value[0].skillsUsed).toBe(docxSkill.name);
   });
 });
