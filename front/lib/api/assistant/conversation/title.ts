@@ -133,7 +133,7 @@ export async function ensureConversationTitle(
     return null;
   }
 
-  const title = (conversation.triggerId ? "⚡" : "") + titleRes.value;
+  const title = (conversation.triggerId ? "⚡ " : "") + titleRes.value;
   const updateRes = await updateConversationTitle(auth, {
     conversationId: conversation.sId,
     title,
