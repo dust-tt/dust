@@ -440,6 +440,11 @@ describe("toolSpecsToOpenAITools", () => {
     description: "Get the current weather",
     inputSchema: { type: "object", properties: {} },
   };
+  const otherDeferredTool = {
+    name: "get_stock",
+    description: "Get a stock price",
+    inputSchema: { type: "object", properties: {} },
+  };
 
   it("prepends tool search and defers non-eager functions", () => {
     expect(
@@ -478,6 +483,20 @@ describe("toolSpecsToOpenAITools", () => {
 
     expect(tools).toEqual([expect.objectContaining({ name: "get_weather" })]);
     expect(tools[0]).not.toHaveProperty("defer_loading");
+  });
+
+  it("keeps deferring the other functions when one is promoted", () => {
+    expect(
+      toolSpecsToOpenAITools([deferredTool, otherDeferredTool], {
+        forceTool: undefined,
+        toolSearchEnabled: true,
+        toolNamesRequiringDefaultNamespace: new Set([deferredTool.name]),
+      })
+    ).toEqual([
+      { type: "tool_search" },
+      expect.objectContaining({ name: "get_weather" }),
+      expect.objectContaining({ name: "get_stock", defer_loading: true }),
+    ]);
   });
 
   it("still defers the functions no namespaceless call names", () => {
