@@ -2610,6 +2610,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "get_top_entities_by_credits": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "get_top_models": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -3456,6 +3460,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_source_breakdown": "never_ask",
     "get_top_agent_tags": "never_ask",
     "get_top_agents": "never_ask",
+    "get_top_entities_by_credits": "never_ask",
     "get_top_models": "never_ask",
     "get_top_skills": "never_ask",
     "get_top_tools": "never_ask",

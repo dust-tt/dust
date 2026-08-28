@@ -134,9 +134,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const deniedError = workspaceManagerGuard(auth);
+    if (deniedError) {
+      return new Err(deniedError);
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -203,9 +203,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const deniedError = workspaceManagerGuard(auth);
+    if (deniedError) {
+      return new Err(deniedError);
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -272,9 +272,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const deniedError = workspaceManagerGuard(auth);
+    if (deniedError) {
+      return new Err(deniedError);
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -341,9 +341,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const deniedError = workspaceManagerGuard(auth);
+    if (deniedError) {
+      return new Err(deniedError);
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -399,9 +399,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
   },
 
   get_agent_details: async ({ agentId }, { auth }) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const deniedError = workspaceManagerGuard(auth);
+    if (deniedError) {
+      return new Err(deniedError);
     }
 
     const agents = await getAgentConfigurations(auth, {
@@ -470,9 +470,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const deniedError = workspaceManagerGuard(auth);
+    if (deniedError) {
+      return new Err(deniedError);
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -537,9 +537,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const deniedError = workspaceManagerGuard(auth);
+    if (deniedError) {
+      return new Err(deniedError);
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -611,9 +611,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const deniedError = workspaceManagerGuard(auth);
+    if (deniedError) {
+      return new Err(deniedError);
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -681,9 +681,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const deniedError = workspaceManagerGuard(auth);
+    if (deniedError) {
+      return new Err(deniedError);
     }
 
     const window = resolveTimeWindow({ period, startDate, endDate, timezone });
@@ -764,9 +764,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const deniedError = workspaceManagerGuard(auth);
+    if (deniedError) {
+      return new Err(deniedError);
     }
 
     const window = resolveTimeWindow(
@@ -900,9 +900,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const deniedError = workspaceManagerGuard(auth);
+    if (deniedError) {
+      return new Err(deniedError);
     }
 
     const window = resolveTimeWindow(
@@ -986,23 +986,23 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     { dimension, limit, ...input },
     { auth }
   ) => {
-    const denied = workspaceManagerGuard(auth);
-    if (denied) {
-      return new Err(denied);
+    const deniedError = workspaceManagerGuard(auth);
+    if (deniedError) {
+      return new Err(deniedError);
     }
 
     const window = resolveTimeWindow(input);
     if (window.isErr()) {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
-    const { filter, extraFilters } = toConsumptionScope(input);
+    const { filter, agentTagIds } = toConsumptionScope(input);
 
     const result = await fetchConsumptionTopGroups(auth, {
       dimension,
       period: toConsumptionPeriod(window.value),
       limit: limit ?? DEFAULT_RESULTS,
       filter,
-      extraFilters,
+      agentTagIds,
       // A single window has no vs-previous column to fill, and the lookup is a
       // second round trip.
       includePreviousCredits: false,

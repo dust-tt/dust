@@ -11,6 +11,9 @@ import {
 import { CONSUMPTION_TOP_DIMENSIONS } from "@app/lib/api/analytics/consumption/scope";
 import { z } from "zod";
 
+export const GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME =
+  "get_top_entities_by_credits" as const;
+
 const topListSchema = (entityPlural: string) => ({
   ...timeWindowSchemaShape,
   ...usageFilterSchema,
@@ -122,14 +125,7 @@ const getUsageTimeseriesSchema = {
 const getTopEntitiesByCreditsSchema = {
   dimension: z
     .enum(CONSUMPTION_TOP_DIMENSIONS)
-    .describe(
-      "What to rank: 'agent', 'user', 'model', 'source' (where the traffic " +
-        "came in from), 'api_key', 'group' (a member group), 'tag' (an agent " +
-        "tag), 'tool', 'skill' or 'conversation'. Rows overlap and do not add " +
-        "up to the workspace total for 'model', 'skill', 'tag' and 'group', " +
-        "nor for 'tool' (tool credits exclude the surrounding model work); " +
-        "'user' and 'api_key' have no row for consumption with nobody behind it."
-    ),
+    .describe("What to group results by."),
   ...timeWindowSchemaShape,
   ...consumptionFilterSchema,
   limit: z
@@ -354,19 +350,13 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
     freeUsage: true,
   },
   {
-    name: "get_top_entities_by_credits",
+    name: GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME,
     description:
-      "Rank what costs the most credits over a time window (defaults to the " +
-      "current calendar month): the most expensive agents, members, models, " +
-      "skills, tools, sources, API keys, member groups, agent tags or " +
-      "conversations. Each row carries its credits, its average credits per " +
-      "message, and how many messages or tool calls it covers. These are the " +
-      "rankings the workspace Analytics page shows, over billed credits, so " +
-      "the figures match the Usage page exactly. Use this to break credit " +
-      "spending down by agent, user or model, and for any spend, cost or " +
-      "expense question — where the budget goes, which agent is most " +
-      "expensive, which integration burns credits. Prefer it over " +
-      "get_credit_usage, whose figures are estimates. Admin-only.",
+      "Rank the workspace's credit consumption by entity " +
+      "over a time window (defaults to the current calendar month). Use " +
+      "this to answer 'which agent is most expensive', or to attribute " +
+      "credit spend by API key, tag, or model. Figures are billed " +
+      "credits. Rows may overlap, so don't sum them for a workspace total.",
     schema: getTopEntitiesByCreditsSchema,
     stake: "never_ask",
     displayLabels: {
@@ -374,7 +364,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       done: "Retrieved top consumers",
     },
     toolCostCategory: "basic",
-    freeUsage: false,
+    freeUsage: true,
   },
 ] as const;
 

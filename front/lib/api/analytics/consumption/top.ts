@@ -10,13 +10,13 @@ import type {
 } from "@app/lib/api/analytics/consumption/scope";
 import {
   AGENT_MESSAGE_ID_FIELD,
+  agentTagIdsFilter,
   buildConsumptionScopeQuery,
   CARDINALITY_PRECISION_THRESHOLD,
   CONSUMPTION_DIMENSION_FIELDS,
   CONSUMPTION_TOP_DIMENSION_FIELDS,
   CONSUMPTION_TOP_DIMENSION_UNIT,
   CREDIT_MICRO_FIELD,
-  isConsumptionScopeDimension,
 } from "@app/lib/api/analytics/consumption/scope";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
@@ -152,7 +152,7 @@ async function resolveConsumptionTopSearchFilter(
     search?: string;
   }
 ): Promise<estypes.QueryDslQueryContainer | null> {
-  if (!isConsumptionScopeDimension(dimension)) {
+  if (dimension === "conversation" || dimension === "tag") {
     return null;
   }
 
@@ -245,13 +245,13 @@ async function fetchConsumptionPreviousCredits(
     dimension,
     previousPeriod,
     filter,
-    extraFilters,
+    agentTagIds,
     keys,
   }: {
     dimension: ConsumptionTopDimension;
     previousPeriod: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
-    extraFilters?: estypes.QueryDslQueryContainer[];
+    agentTagIds?: string[];
     keys: string[];
   }
 ): Promise<Result<Map<string, number>, ElasticsearchError>> {
@@ -264,7 +264,7 @@ async function fetchConsumptionPreviousCredits(
     startDate: previousPeriod.startDate,
     endDate: previousPeriod.endDate,
     filter,
-    extraFilters,
+    extraFilters: agentTagIdsFilter(agentTagIds ?? []),
   });
 
   const result = await searchConsumptionAnalytics<never, PreviousCreditsAggs>(
@@ -315,7 +315,7 @@ export async function fetchConsumptionTopGroups(
     offset = 0,
     search,
     filter,
-    extraFilters,
+    agentTagIds,
     sortOrder = "desc",
     includePreviousCredits = true,
   }: {
@@ -325,7 +325,7 @@ export async function fetchConsumptionTopGroups(
     offset?: number;
     search?: string;
     filter?: ConsumptionScopeFilter;
-    extraFilters?: estypes.QueryDslQueryContainer[];
+    agentTagIds?: string[];
     sortOrder?: ConsumptionTopSortOrder;
     includePreviousCredits?: boolean;
   }
@@ -340,7 +340,7 @@ export async function fetchConsumptionTopGroups(
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
-    extraFilters,
+    extraFilters: agentTagIdsFilter(agentTagIds ?? []),
   });
 
   const requestedBucketCount = offset + limit;
@@ -403,7 +403,7 @@ export async function fetchConsumptionTopGroups(
     dimension,
     previousPeriod: previousConsumptionPeriod(period),
     filter,
-    extraFilters,
+    agentTagIds,
     keys: includePreviousCredits ? pagedGroups.map((group) => group.key) : [],
   });
   // The prior-period lookup only feeds the vs-prev display column: a failure
@@ -469,7 +469,12 @@ export async function resolveConsumptionGroupLabels(
     groups.map((group) => group.key)
   );
 
-  return groups.map((group) => ({
+  const visibleGroups =
+    dimension === "conversation"
+      ? groups.filter((group) => labels.has(group.key))
+      : groups;
+
+  return visibleGroups.map((group) => ({
     key: group.key,
     name: labels.get(group.key)?.name ?? group.key,
     pictureUrl: labels.get(group.key)?.pictureUrl ?? null,

@@ -1,11 +1,9 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
-import { AGENT_TAG_IDS_FIELD } from "@app/lib/api/analytics/consumption/scope";
 import { isValidTimezone, timezoneSchema } from "@app/lib/api/timezone";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 import { z } from "zod";
 
@@ -100,17 +98,14 @@ export const usageFilterSchema = {
 };
 
 // Filters for the consumption-index tools. Every key narrows the same scope the
-// workspace Analytics page filters on, so any value a ranking returns can be fed
-// straight back in. The legacy `usageFilterSchema` above stays until the tools
-// still reading the old index are gone.
+// workspace Analytics page filters on. The legacy `usageFilterSchema` above stays
+// until the tools still reading the old index are gone.
 export const consumptionFilterSchema = {
   sources: z
     .array(z.string())
     .optional()
     .describe(
-      "Restrict to these message origins — where a message came in from. Many " +
-        "origins exist (channels, integrations, triggers, and more); do not " +
-        "assume a fixed short list, take the values from a 'source' ranking."
+      "Restrict to these message origins (e.g. 'web', 'slack', 'api')."
     ),
   agentIds: z
     .array(z.string())
@@ -123,41 +118,30 @@ export const consumptionFilterSchema = {
   agentTagIds: z
     .array(z.string())
     .optional()
-    .describe(
-      "Restrict to agents carrying any of these agent tag sIds, as returned " +
-        "by a 'tag' ranking."
-    ),
+    .describe("Restrict to agents carrying any of these agent tag sIds."),
   modelIds: z
     .array(z.string())
     .optional()
     .describe(
       "Restrict to these models, identified by their model id (e.g. " +
-        "'claude-sonnet-4-5'), as returned by a 'model' ranking."
+        "'claude-sonnet-4-5')."
     ),
   apiKeyNames: z
     .array(z.string())
     .optional()
-    .describe(
-      "Restrict to these API key names, as returned by an 'api_key' ranking."
-    ),
+    .describe("Restrict to these API key names."),
   groupIds: z
     .array(z.string())
     .optional()
-    .describe(
-      "Restrict to members of these group sIds, as returned by a 'group' ranking."
-    ),
+    .describe("Restrict to members of these group sIds."),
   toolNames: z
     .array(z.string())
     .optional()
-    .describe(
-      "Restrict to these MCP server names, as returned by a 'tool' ranking."
-    ),
+    .describe("Restrict to these MCP server names."),
   skillIds: z
     .array(z.string())
     .optional()
-    .describe(
-      "Restrict to these skill sIds, as returned by a 'skill' ranking."
-    ),
+    .describe("Restrict to these skill sIds."),
 };
 
 const consumptionFilterInputSchema = z.object(consumptionFilterSchema);
@@ -168,17 +152,12 @@ export type ConsumptionFilterInput = z.input<
 
 export type ConsumptionScope = {
   filter: ConsumptionScopeFilter;
-  extraFilters: estypes.QueryDslQueryContainer[];
+  agentTagIds: string[];
 };
 
-// Agent tags are the one input with no filter key: a document carries its
-// agent's tags but no dimension is defined over them, so they go through as a
-// raw clause.
 export function toConsumptionScope(
   input: ConsumptionFilterInput
 ): ConsumptionScope {
-  const agentTagIds = input.agentTagIds?.filter((id) => id.length > 0) ?? [];
-
   return {
     filter: {
       sources: input.sources,
@@ -190,10 +169,7 @@ export function toConsumptionScope(
       tools: input.toolNames,
       skills: input.skillIds,
     },
-    extraFilters:
-      agentTagIds.length > 0
-        ? [{ terms: { [AGENT_TAG_IDS_FIELD]: agentTagIds } }]
-        : [],
+    agentTagIds: input.agentTagIds ?? [],
   };
 }
 
