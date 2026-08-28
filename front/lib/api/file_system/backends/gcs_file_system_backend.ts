@@ -712,16 +712,16 @@ export class GCSFileSystemBackend implements FileSystemBackend {
   private sandboxOnlyMountGCSPrefix(mount: SandboxOnlyMount): string {
     switch (mount.kind) {
       case "frame_publications":
-        return `w/${this.workspaceId}/frames/${mount.id}/publications`;
+        return `w/${this.workspaceId}/frames/${mount.frameId}/publications`;
 
       case "pod_sandbox_functions":
-        return `w/${this.workspaceId}/pods/${mount.id}/sandbox-functions`;
+        return `w/${this.workspaceId}/pods/${mount.podId}/sandbox-functions`;
 
       case "pod_state":
-        return `w/${this.workspaceId}/pods/${mount.id}/state`;
+        return `w/${this.workspaceId}/pods/${mount.podId}/state`;
 
       default:
-        assertNever(mount.kind);
+        assertNever(mount);
     }
   }
 
@@ -739,7 +739,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
         return "pod_state_replica";
 
       default:
-        assertNever(mount.kind);
+        assertNever(mount);
     }
   }
 }

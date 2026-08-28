@@ -60,13 +60,20 @@ vi.mock("@app/lib/api/sandbox/egress", () => ({
   prepareSandboxEgressBeforeMount: mockPrepareSandboxEgressBeforeMount,
 }));
 
-vi.mock("@app/lib/api/file_system/dust_file_system", () => ({
-  DustFileSystem: {
-    forConversation: mockForConversation,
-    forPodSandboxProvisioning: mockForPodSandboxProvisioning,
-    forFrameSandboxProvisioning: mockForFrameSandboxProvisioning,
-  },
-}));
+vi.mock("@app/lib/api/file_system/dust_file_system", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@app/lib/api/file_system/dust_file_system")
+    >();
+  return {
+    ...actual,
+    DustFileSystem: {
+      forConversation: mockForConversation,
+      forPodSandboxProvisioning: mockForPodSandboxProvisioning,
+      forFrameSandboxProvisioning: mockForFrameSandboxProvisioning,
+    },
+  };
+});
 
 vi.mock("@app/lib/api/sandbox/image", () => ({
   getSandboxImage: mockGetSandboxImage,
@@ -121,9 +128,11 @@ import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
+import { frameV2ContentType } from "@app/types/files";
 import {
   ensureConversationSandboxReady,
   ensureFrameSandboxReady,
@@ -465,13 +474,13 @@ describe("ensureConversationSandboxReady", () => {
       sandboxOnlyMounts: [
         {
           kind: "pod_sandbox_functions",
-          id: pod.sId,
+          podId: pod.sId,
           sandboxMountPoint: `/sandbox-functions/pods/${pod.sId}`,
           readOnly: true,
         },
         {
           kind: "pod_state",
-          id: pod.sId,
+          podId: pod.sId,
           sandboxMountPoint: "/pod-state/replica",
           readOnly: false,
         },
@@ -501,7 +510,14 @@ describe("ensureConversationSandboxReady", () => {
   });
 
   it("mounts only Frame publications with Frame-owned egress", async () => {
-    const frame = { sId: "fil_frame" };
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 1,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
     mockEnsureFrameSandboxActive.mockResolvedValue(
       new Ok({
         freshlyCreated: true,
@@ -511,7 +527,7 @@ describe("ensureConversationSandboxReady", () => {
       })
     );
 
-    const result = await ensureFrameSandboxReady(auth, frame as never);
+    const result = await ensureFrameSandboxReady(auth, frame);
 
     expect(result.isOk()).toBe(true);
     expect(mockEnsureFrameSandboxActive).toHaveBeenCalledWith(auth, frame);
@@ -519,7 +535,7 @@ describe("ensureConversationSandboxReady", () => {
       sandboxOnlyMounts: [
         {
           kind: "frame_publications",
-          id: frame.sId,
+          frameId: frame.sId,
           sandboxMountPoint: `/frames/${frame.sId}/publications`,
           readOnly: true,
         },

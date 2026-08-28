@@ -61,21 +61,17 @@ export type FileSystemMount = {
  * but that are not an agent-visible namespace, e.g. published sandbox-function bundles or the
  * pod-state litestream replica.
  */
-export type SandboxOnlyMountKind =
-  | "frame_publications"
-  | "pod_sandbox_functions"
-  | "pod_state";
-
-export type SandboxOnlyMount = {
-  kind: SandboxOnlyMountKind;
-
-  /** Stable sId of the resource this mount belongs to. */
-  id: string;
-
+type SandboxOnlyMountConfig = {
   sandboxMountPoint: string;
-
   readOnly: boolean;
 };
+
+export type SandboxOnlyMount = SandboxOnlyMountConfig &
+  (
+    | { kind: "frame_publications"; frameId: string }
+    | { kind: "pod_sandbox_functions"; podId: string }
+    | { kind: "pod_state"; podId: string }
+  );
 
 export type DustFileSystemErrorCode =
   | "unauthorized"

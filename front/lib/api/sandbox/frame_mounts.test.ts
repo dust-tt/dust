@@ -6,7 +6,7 @@ describe("frameSandboxOnlyMounts", () => {
     expect(frameSandboxOnlyMounts({ sId: "fil_frame" })).toEqual([
       {
         kind: "frame_publications",
-        id: "fil_frame",
+        frameId: "fil_frame",
         sandboxMountPoint: "/frames/fil_frame/publications",
         readOnly: true,
       },

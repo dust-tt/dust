@@ -8,7 +8,7 @@ export function frameSandboxOnlyMounts(frame: FrameRef): SandboxOnlyMount[] {
   return [
     {
       kind: "frame_publications",
-      id: frame.sId,
+      frameId: frame.sId,
       sandboxMountPoint: getFramePublicationsMountPoint(frame.sId),
       readOnly: true,
     },

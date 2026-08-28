@@ -51,7 +51,7 @@ const mounts: FileSystemMount[] = [
 const sandboxOnlyMounts: SandboxOnlyMount[] = [
   {
     kind: "pod_state",
-    id: "pod1",
+    podId: "pod1",
     sandboxMountPoint: "/pod-state/replica",
     readOnly: false,
   },
