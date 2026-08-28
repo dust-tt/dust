@@ -9,9 +9,15 @@ import {
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import {
+  computeSandboxFunctionBundleSha256,
+  SandboxFunctionResource,
+} from "@app/lib/resources/sandbox_function_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { getNamespace } from "@app/tests/utils/test_cls";
 import { FrameManifestSchema } from "@app/types/api/frame_manifest";
 import {
   getFramePublicationFunctionBundlePath,
@@ -548,7 +554,10 @@ describe("activateFramePublication", () => {
       publicationId: stored.value.publicationId,
     });
 
-    expect(activated.isOk()).toBe(true);
+    expect(
+      activated.isOk(),
+      activated.isErr() ? activated.error.message : undefined
+    ).toBe(true);
     const reloaded = await FileResource.fetchById(auth, frame.sId);
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       stored.value.publicationId
@@ -586,6 +595,138 @@ describe("activateFramePublication", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       stored.value.publicationId
     );
+  });
+
+  it("materializes immutable function rows for the activated publication", async () => {
+    const { auth, frame } = await setupFrame();
+    const stored = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest: manifestWithFunction,
+      sourceFiles: sourceFilesWithFunction,
+      uiBundleCode,
+    });
+    expect(stored.isOk()).toBe(true);
+    if (stored.isErr()) {
+      return;
+    }
+
+    const activated = await activateFramePublication(auth, {
+      frame,
+      publicationId: stored.value.publicationId,
+    });
+
+    expect(activated.isOk()).toBe(true);
+    const functions = await SandboxFunctionResource.listByFramePublication(
+      auth,
+      { frame, publicationId: stored.value.publicationId }
+    );
+    expect(functions).toHaveLength(1);
+    expect(functions[0]).toMatchObject({
+      publicationId: stored.value.publicationId,
+      slug: "add-task",
+      description: "Add a task.",
+      userIdentity: "workspace_user_required",
+      executionMode: "durable",
+      defaultStake: "low",
+      bundleSha256: computeSandboxFunctionBundleSha256(
+        functionArtifacts[0].bundleCode
+      ),
+      inputSchema: functionArtifacts[0].inputSchema,
+      outputSchema: functionArtifacts[0].outputSchema,
+    });
+    expect(functions[0]?.frame?.sId).toBe(frame.sId);
+    expect(() => functions[0]?.space).toThrow(
+      "Frame functions do not belong to a Pod space."
+    );
+  });
+
+  it("rolls back the allowlist and function rows when activation fails", async () => {
+    const { auth, frame, workspaceId } = await setupFrame();
+    vi.spyOn(frame, "computeAuthorizedFileAccess").mockImplementation(
+      async (_auth, { frameContent }) => ({
+        generatedByUserId: auth.getNonNullableUser().id,
+        frameContentHash: computeFrameContentHash(frameContent),
+        refs: [{ kind: "file_id", ref: "fil_ABCDEFGHIJ" }],
+      })
+    );
+
+    const activeBundle = "export default function Active() {}";
+    const active = await publishFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceFiles,
+      uiBundleCode: activeBundle,
+    });
+    expect(active.isOk()).toBe(true);
+    if (active.isErr()) {
+      return;
+    }
+
+    const staged = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest: manifestWithFunction,
+      sourceFiles: sourceFilesWithFunction,
+      uiBundleCode: "export default function Staged() {}",
+    });
+    expect(staged.isOk()).toBe(true);
+    if (staged.isErr()) {
+      return;
+    }
+    fileStorageMock.setObject(
+      getFramePublicationFunctionSchemaPath({
+        workspaceId,
+        frameId: frame.sId,
+        publicationId: staged.value.publicationId,
+        functionName: "add-task",
+      }),
+      JSON.stringify({
+        userIdentity: "workspace_user_required",
+        inputSchema: { type: "not-a-json-schema-type" },
+        outputSchema: functionArtifacts[0].outputSchema,
+      })
+    );
+
+    const parentTransaction =
+      getNamespace("test-namespace")?.get("transaction");
+    expect(parentTransaction).toBeDefined();
+    await expect(
+      frontSequelize.transaction(
+        { transaction: parentTransaction },
+        async (transaction) => {
+          const activation = await activateFramePublication(
+            auth,
+            {
+              frame,
+              publicationId: staged.value.publicationId,
+            },
+            { transaction }
+          );
+          expect(activation.isErr() && activation.error.code).toBe(
+            "activation_failed"
+          );
+          throw activation.isErr()
+            ? activation.error
+            : new Error("Expected Frame publication activation to fail.");
+        }
+      )
+    ).rejects.toThrow("Failed to activate Frame publication");
+
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
+      active.value.publicationId
+    );
+    expect(
+      (await frame.getActiveAuthorizedFileAccessAllowlist())?.frameContentHash
+    ).toBe(computeFrameContentHash(activeBundle));
+    expect(
+      await SandboxFunctionResource.listByFramePublication(auth, {
+        frame,
+        publicationId: staged.value.publicationId,
+      })
+    ).toHaveLength(0);
   });
 
   it("refreshes the sharing allowlist before activating a new bundle", async () => {

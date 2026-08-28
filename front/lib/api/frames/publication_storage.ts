@@ -12,7 +12,10 @@ import {
   getPrivateUploadBucket,
 } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
+import { executeWithLock } from "@app/lib/lock";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import type { FramePublicationFunctionDefinition } from "@app/lib/resources/sandbox_function_resource";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
@@ -28,6 +31,7 @@ import {
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
+import { SANDBOX_FUNCTION_USER_IDENTITY_POLICIES } from "@app/types/api/sandbox_functions";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import {
   frameContentType,
@@ -36,9 +40,24 @@ import {
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type { Transaction } from "sequelize";
+import { z } from "zod";
 
 const FRAME_PUBLICATION_UPLOAD_CONCURRENCY = 4;
+const FRAME_PUBLICATION_READ_CONCURRENCY = 4;
+const FRAME_PUBLISH_LOCK_TTL_MS = 10 * 60_000;
+
+const jsonSchemaValue = z.custom<JSONSchema>(
+  (value) => typeof value === "object" && value !== null
+);
+
+const FramePublicationFunctionSchemaArtifactSchema = z.object({
+  userIdentity: z.enum(SANDBOX_FUNCTION_USER_IDENTITY_POLICIES),
+  inputSchema: jsonSchemaValue,
+  outputSchema: jsonSchemaValue,
+});
 
 export type FramePublicationSourceFile = {
   relativePath: string;
@@ -62,6 +81,7 @@ export class FramePublicationError extends Error {
       | "invalid_manifest"
       | "invalid_source"
       | "allowlist_failed"
+      | "activation_failed"
       | "publication_not_found"
       | "source_not_found"
       | "ui_build_failed"
@@ -71,6 +91,10 @@ export class FramePublicationError extends Error {
     super(message);
     this.name = "FramePublicationError";
   }
+}
+
+export function getFramePublishLockName(frameId: string): string {
+  return `frame:publish:${frameId}`;
 }
 
 export function isFramePublicationError(
@@ -313,6 +337,103 @@ export async function loadFramePublicationManifest(
   return manifest;
 }
 
+async function loadFramePublicationFunctionDefinitions(
+  auth: Authenticator,
+  {
+    frame,
+    manifest,
+    publicationId,
+  }: {
+    frame: FileResource;
+    manifest: FrameManifest;
+    publicationId: string;
+  }
+): Promise<
+  Result<FramePublicationFunctionDefinition[], FramePublicationError>
+> {
+  const frameIdentity = getFrameIdentity(auth, frame);
+  if (frameIdentity.isErr()) {
+    return frameIdentity;
+  }
+
+  const storage = getPrivateUploadBucket();
+  const definitions = await concurrentExecutor(
+    manifest.functions,
+    async (fn) => {
+      const identity = {
+        ...frameIdentity.value,
+        publicationId,
+        functionName: fn.name,
+      };
+      let bundleCode: string;
+      let schemaContent: string;
+      try {
+        [bundleCode, schemaContent] = await Promise.all([
+          storage.fetchFileContent(
+            getFramePublicationFunctionBundlePath(identity)
+          ),
+          storage.fetchFileContent(
+            getFramePublicationFunctionSchemaPath(identity)
+          ),
+        ]);
+      } catch (error) {
+        if (!isGCSNotFoundError(error)) {
+          throw error;
+        }
+        return new Err(
+          new FramePublicationError(
+            "publication_not_found",
+            `Frame publication function artifact not found: ${fn.name}`
+          )
+        );
+      }
+
+      let schemaJson: unknown;
+      try {
+        schemaJson = JSON.parse(schemaContent);
+      } catch (error) {
+        return new Err(
+          new FramePublicationError(
+            "invalid_function_artifact",
+            `Invalid Frame publication function schema for ${fn.name}: ${normalizeError(error).message}`
+          )
+        );
+      }
+      const schema =
+        FramePublicationFunctionSchemaArtifactSchema.safeParse(schemaJson);
+      if (!schema.success) {
+        return new Err(
+          new FramePublicationError(
+            "invalid_function_artifact",
+            `Invalid Frame publication function schema for ${fn.name}: ${schema.error.message}`
+          )
+        );
+      }
+
+      return new Ok({
+        name: fn.name,
+        description: fn.description,
+        executionMode: fn.executionMode,
+        defaultStake: fn.defaultStake,
+        bundleCode,
+        ...schema.data,
+      });
+    },
+    { concurrency: FRAME_PUBLICATION_READ_CONCURRENCY }
+  );
+
+  const definitionError = definitions.find((definition) => definition.isErr());
+  if (definitionError?.isErr()) {
+    return definitionError;
+  }
+
+  return new Ok(
+    definitions.flatMap((definition) =>
+      definition.isOk() ? [definition.value] : []
+    )
+  );
+}
+
 export async function activateFramePublication(
   auth: Authenticator,
   {
@@ -321,7 +442,8 @@ export async function activateFramePublication(
   }: {
     frame: FileResource;
     publicationId: string;
-  }
+  },
+  { transaction }: { transaction?: Transaction } = {}
 ): Promise<Result<void, FramePublicationError>> {
   const manifest = await loadFramePublicationManifest(auth, {
     frame,
@@ -334,6 +456,14 @@ export async function activateFramePublication(
   const frameIdentity = getFrameIdentity(auth, frame);
   if (frameIdentity.isErr()) {
     return frameIdentity;
+  }
+
+  const functionDefinitions = await loadFramePublicationFunctionDefinitions(
+    auth,
+    { frame, manifest: manifest.value, publicationId }
+  );
+  if (functionDefinitions.isErr()) {
+    return functionDefinitions;
   }
 
   let uiBundleCode: string;
@@ -367,12 +497,35 @@ export async function activateFramePublication(
   }
   const shareScope = await frame.getShareScope();
 
-  await withTransaction(async (transaction) => {
-    // Updating the Frame first serializes concurrent activations. Neither the new
-    // pointer nor its allowlist becomes visible until the transaction commits.
-    await frame.setActiveFramePublication(publicationId, transaction);
-    await frame.persistAuthorizedFileAccess(allowlist.value, { transaction });
-  });
+  try {
+    await withTransaction(async (activationTransaction) => {
+      // Updating the Frame first serializes concurrent activations. None of the
+      // new publication state becomes visible until the transaction commits.
+      await frame.setActiveFramePublication(
+        publicationId,
+        activationTransaction
+      );
+      await frame.persistAuthorizedFileAccess(allowlist.value, {
+        transaction: activationTransaction,
+      });
+      await SandboxFunctionResource.createForFramePublication(
+        auth,
+        {
+          frame,
+          functions: functionDefinitions.value,
+          publicationId,
+        },
+        activationTransaction
+      );
+    }, transaction);
+  } catch (error) {
+    return new Err(
+      new FramePublicationError(
+        "activation_failed",
+        `Failed to activate Frame publication ${publicationId}: ${normalizeError(error).message}`
+      )
+    );
+  }
 
   emitFrameAuthorizedFilesUpdatedAuditLog(
     auth,
@@ -417,26 +570,33 @@ export async function publishFramePublication(
     uiBundleCode: string;
   }
 ): Promise<Result<{ publicationId: string }, FramePublicationError>> {
-  const publication = await storeFramePublication(auth, {
-    frame,
-    functionArtifacts,
-    manifest,
-    sourceFiles,
-    uiBundleCode,
-  });
-  if (publication.isErr()) {
-    return publication;
-  }
+  return executeWithLock(
+    getFramePublishLockName(frame.sId),
+    async () => {
+      const publication = await storeFramePublication(auth, {
+        frame,
+        functionArtifacts,
+        manifest,
+        sourceFiles,
+        uiBundleCode,
+      });
+      if (publication.isErr()) {
+        return publication;
+      }
 
-  const activation = await activateFramePublication(auth, {
-    frame,
-    publicationId: publication.value.publicationId,
-  });
-  if (activation.isErr()) {
-    return activation;
-  }
+      const activation = await activateFramePublication(auth, {
+        frame,
+        publicationId: publication.value.publicationId,
+      });
+      if (activation.isErr()) {
+        return activation;
+      }
 
-  return publication;
+      return publication;
+    },
+    30_000,
+    { lockTtlMs: FRAME_PUBLISH_LOCK_TTL_MS }
+  );
 }
 
 export async function loadFramePublicationSourceFile(
