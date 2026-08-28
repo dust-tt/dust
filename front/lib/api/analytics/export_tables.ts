@@ -17,6 +17,7 @@ import {
   fetchMessageExportRows,
   MESSAGE_EXPORT_HEADERS,
 } from "@app/lib/api/analytics/messages_export";
+import { fetchSkillUsageExportRows } from "@app/lib/api/analytics/skill_usage_export";
 import type { SkillExportRow } from "@app/lib/api/analytics/skills_export";
 import {
   fetchSkillExportRows,
@@ -29,10 +30,6 @@ import {
   USER_EXPORT_HEADERS,
 } from "@app/lib/api/analytics/users_export";
 import { fetchContextOriginDailyBreakdown } from "@app/lib/api/assistant/observability/context_origin";
-import {
-  fetchAvailableSkills,
-  fetchSkillUsageMetrics,
-} from "@app/lib/api/assistant/observability/skill_usage";
 import {
   fetchAvailableTools,
   fetchToolUsageMetrics,
@@ -216,7 +213,7 @@ export async function exportTable({
     case "skills":
       return exportSkills({ auth, startDate, endDate, timezone });
     case "skill_usage":
-      return exportSkillUsage({ startDate, endDate, timezone, owner });
+      return exportSkillUsage({ auth, startDate, endDate, timezone });
     case "tool_usage":
       return exportToolUsage({ startDate, endDate, timezone, owner });
     case "messages":
@@ -509,66 +506,34 @@ async function exportSkills({
 }
 
 async function exportSkillUsage({
+  auth,
   startDate,
   endDate,
   timezone,
-  owner,
 }: {
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
-  owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
+  const baseQuery = buildExportConsumptionScopeQuery(auth, {
     startDate,
     endDate,
+    timezone,
   });
 
-  const skillsResult = await fetchAvailableSkills(baseQuery);
-  if (skillsResult.isErr()) {
+  const result = await fetchSkillUsageExportRows(auth, baseQuery, timezone);
+
+  if (result.isErr()) {
     return new Err(
-      new Error(
-        `Failed to retrieve available skills: ${skillsResult.error.message}`
-      )
+      new Error(`Failed to retrieve skill usage: ${result.error.message}`)
     );
   }
-
-  const nestedRows = await concurrentExecutor(
-    skillsResult.value,
-    async (item) => {
-      const usageResult = await fetchSkillUsageMetrics(
-        baseQuery,
-        item.skillName,
-        timezone
-      );
-      if (usageResult.isErr()) {
-        throw new Error(
-          `Failed to retrieve skill usage for ${item.skillName}: ${usageResult.error.message}`
-        );
-      }
-      return usageResult.value.map<SkillUsageRow>((point) => ({
-        date: point.date,
-        skillName: item.skillName,
-        executions: point.executionCount,
-        uniqueUsers: point.uniqueUsers,
-      }));
-    },
-    { concurrency: 8 }
-  );
-
-  const rows = nestedRows.flat().sort((a, b) => {
-    const dateCompare = a.date.localeCompare(b.date);
-    if (dateCompare !== 0) {
-      return dateCompare;
-    }
-    return a.skillName.localeCompare(b.skillName);
-  });
 
   return new Ok({
     table: "skill_usage",
     headers: SKILL_USAGE_HEADERS,
-    rows,
+    rows: result.value,
   });
 }
 
