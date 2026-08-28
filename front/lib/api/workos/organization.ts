@@ -1,5 +1,5 @@
 import schemaVersionsJson from "@app/lib/api/audit/schema_versions.json";
-import { config } from "@app/lib/api/regions/config";
+import { config as cellConfig } from "@app/lib/api/cells/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import { getWorkOSOrganization } from "@app/lib/api/workos/organization_primitives";
@@ -38,7 +38,8 @@ export async function getOrCreateWorkOSOrganization(
         name: workspace.name,
         externalId: workspace.sId,
         metadata: {
-          region: config.getCurrentRegion(),
+          region: cellConfig.getCurrentCell().region,
+          cell: cellConfig.getCurrentCell().name,
         },
         domainData: domain
           ? [

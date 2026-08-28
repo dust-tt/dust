@@ -15,7 +15,9 @@ const CELLS: Record<CellType, CellInfo> = Object.fromEntries(
           {
             name: cell,
             region: "us-central1",
-            url: EnvironmentConfig.getEnvVariable("DUST_US_URL"),
+            url:
+              EnvironmentConfig.getOptionalEnvVariable("DUST_US_URL") ??
+              "https://dust.tt",
           },
         ];
       // EU Global
@@ -25,7 +27,9 @@ const CELLS: Record<CellType, CellInfo> = Object.fromEntries(
           {
             name: cell,
             region: "europe-west1",
-            url: EnvironmentConfig.getEnvVariable("DUST_EU_URL"),
+            url:
+              EnvironmentConfig.getOptionalEnvVariable("DUST_EU_URL") ??
+              "https://eu.dust.tt",
           },
         ];
       default:
@@ -48,19 +52,15 @@ export const config = {
   getLookupApiSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("REGION_RESOLVER_SECRET");
   },
+  getCellInfo(cell: CellType): CellInfo {
+    return CELLS[cell];
+  },
   getCellUrl(cell: CellType): string {
     if (isDevelopment()) {
       return "http://localhost:3000";
     }
 
-    switch (cell) {
-      case "cell-00000":
-        return EnvironmentConfig.getEnvVariable("DUST_EU_URL");
-      case "cell-00001":
-        return EnvironmentConfig.getEnvVariable("DUST_US_URL");
-      default:
-        assertNever(cell);
-    }
+    return this.getCellInfo(cell).url;
   },
   isMainCell(): boolean {
     return this.getCurrentCell().name === MAIN_CELL;
