@@ -140,7 +140,7 @@ export abstract class OpenAIResponsesStream extends WithOpenAIResponsesInputConv
     const { model, host, region } = this.metadata();
     const tags = [
       `model_id:${model}`,
-      `host:${host}`,
+      `endpoint_host:${host}`,
       `region:${region}`,
       `reason:${reason}`,
     ];
