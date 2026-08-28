@@ -8,6 +8,7 @@ import {
   runAgentLoopSchedulesWorker,
 } from "@app/temporal/agent_loop/worker";
 import { runAnalyticsWorker } from "@app/temporal/analytics_queue/worker";
+import { runConsumptionWorker } from "@app/temporal/consumption/worker";
 import { runConversationForkQueueWorker } from "@app/temporal/conversation_fork_queue/worker";
 import { runCreditAlertsWorker } from "@app/temporal/credit_alerts/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
@@ -44,6 +45,7 @@ export type WorkerName =
   | "agent_schedule"
   | "agent_trigger_webhook"
   | "analytics_queue"
+  | "consumption"
   | "conversation_fork_queue"
   | "project_task"
   | "credit_alerts"
@@ -79,6 +81,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   agent_schedule: runAgentTriggerWorker,
   agent_trigger_webhook: runAgentTriggerWebhookWorker,
   analytics_queue: runAnalyticsWorker,
+  consumption: runConsumptionWorker,
   conversation_fork_queue: runConversationForkQueueWorker,
   credit_alerts: runCreditAlertsWorker,
   data_retention: runDataRetentionWorker,
