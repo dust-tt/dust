@@ -1719,12 +1719,12 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "list open incidents in ServiceNow",
     expected: "servicenow.list_incidents",
-    maxRank: 2, // create_incident shares "incidents"/"ServiceNow" tokens
+    maxRank: 2, // create_record shares "incident"/"ServiceNow" tokens
   },
   {
     query: "show me my ServiceNow tickets",
     expected: "servicenow.list_incidents",
-    maxRank: 4, // get_incident/create_incident share "ServiceNow"/"ticket" tokens
+    maxRank: 4, // get_incident/create_record share "ServiceNow"/"ticket" tokens
   },
   {
     query: "get ServiceNow incident INC0010001",
@@ -1736,20 +1736,23 @@ const QUERIES: LabeledQuery[] = [
   },
   {
     query: "create a new incident in ServiceNow",
-    expected: "servicenow.create_incident",
+    expected: "servicenow.create_record",
+    maxRank: 2, // list_incidents/get_incident share "incident"/"ServiceNow" tokens
   },
   {
     query: "open a ServiceNow ticket for this issue",
-    expected: "servicenow.create_incident",
+    expected: "servicenow.create_record",
     maxRank: 4, // get_incident's short, dense description outranks on shared tokens
   },
   {
     query: "update the state of a ServiceNow incident",
-    expected: "servicenow.update_incident",
+    expected: "servicenow.update_record",
+    maxRank: 2, // get_incident shares "state"/"incident"/"ServiceNow" tokens
   },
   {
     query: "resolve a ServiceNow ticket and add close notes",
-    expected: "servicenow.update_incident",
+    expected: "servicenow.update_record",
+    maxRank: 2, // get_incident shares "ServiceNow"/"ticket" tokens
   },
   {
     query: "list ServiceNow problem records",

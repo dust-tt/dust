@@ -1,62 +1,15 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { WritableIncidentFields } from "@app/lib/api/actions/servers/servicenow/client";
 import { createServiceNowClient } from "@app/lib/api/actions/servers/servicenow/client";
 import {
-  CREATE_INCIDENT_TYPED_FIELD_NAMES,
   renderIncident,
   renderPaginationFooter,
   renderRecord,
-  UPDATE_INCIDENT_TYPED_FIELD_NAMES,
-  validateAdditionalFields,
+  validateWritableFields,
 } from "@app/lib/api/actions/servers/servicenow/helpers";
 import { SERVICENOW_TOOLS_METADATA } from "@app/lib/api/actions/servers/servicenow/metadata";
 import { Err, Ok } from "@app/types/shared/result";
-
-function writableFieldsFromParams({
-  shortDescription,
-  description,
-  urgency,
-  impact,
-  priority,
-  category,
-  assignmentGroup,
-  state,
-  workNotes,
-  closeNotes,
-  resolutionCode,
-}: {
-  shortDescription?: string;
-  description?: string;
-  urgency?: string;
-  impact?: string;
-  priority?: string;
-  category?: string;
-  assignmentGroup?: string;
-  state?: string;
-  workNotes?: string;
-  closeNotes?: string;
-  resolutionCode?: string;
-}): WritableIncidentFields {
-  return {
-    ...(shortDescription !== undefined && {
-      short_description: shortDescription,
-    }),
-    ...(description !== undefined && { description }),
-    ...(urgency !== undefined && { urgency }),
-    ...(impact !== undefined && { impact }),
-    ...(priority !== undefined && { priority }),
-    ...(category !== undefined && { category }),
-    ...(assignmentGroup !== undefined && {
-      assignment_group: assignmentGroup,
-    }),
-    ...(state !== undefined && { state }),
-    ...(workNotes !== undefined && { work_notes: workNotes }),
-    ...(closeNotes !== undefined && { close_notes: closeNotes }),
-    ...(resolutionCode !== undefined && { close_code: resolutionCode }),
-  };
-}
 
 const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
   list_incidents: async (
@@ -147,99 +100,6 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
     ]);
   },
 
-  create_incident: async ({ additionalFields, ...params }, { authInfo }) => {
-    const clientResult = createServiceNowClient(authInfo);
-    if (clientResult.isErr()) {
-      return clientResult;
-    }
-    const client = clientResult.value;
-
-    const validatedAdditionalFields = validateAdditionalFields(
-      additionalFields,
-      CREATE_INCIDENT_TYPED_FIELD_NAMES
-    );
-    if (validatedAdditionalFields.isErr()) {
-      return validatedAdditionalFields;
-    }
-
-    const result = await client.createIncident({
-      ...writableFieldsFromParams(params),
-      ...validatedAdditionalFields.value,
-    });
-
-    if (result.isErr()) {
-      return result;
-    }
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: `Created incident ${result.value.number}:\n${renderIncident(result.value)}`,
-      },
-    ]);
-  },
-
-  update_incident: async (
-    { incidentNumber, additionalFields, ...fields },
-    { authInfo }
-  ) => {
-    const clientResult = createServiceNowClient(authInfo);
-    if (clientResult.isErr()) {
-      return clientResult;
-    }
-    const client = clientResult.value;
-
-    const validatedAdditionalFields = validateAdditionalFields(
-      additionalFields,
-      UPDATE_INCIDENT_TYPED_FIELD_NAMES
-    );
-    if (validatedAdditionalFields.isErr()) {
-      return validatedAdditionalFields;
-    }
-
-    const mergedFields = {
-      ...writableFieldsFromParams(fields),
-      ...validatedAdditionalFields.value,
-    };
-
-    if (Object.keys(mergedFields).length === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: "No fields to update were provided.",
-        },
-      ]);
-    }
-
-    const existingResult = await client.getIncidentByNumber(incidentNumber);
-    if (existingResult.isErr()) {
-      return existingResult;
-    }
-    if (!existingResult.value) {
-      return new Err(
-        new MCPError(`No incident found with number "${incidentNumber}".`, {
-          tracked: false,
-        })
-      );
-    }
-
-    const result = await client.updateIncident(
-      existingResult.value.sys_id,
-      mergedFields
-    );
-
-    if (result.isErr()) {
-      return result;
-    }
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: `Updated incident ${result.value.number}:\n${renderIncident(result.value)}`,
-      },
-    ]);
-  },
-
   list_records: async (
     {
       table,
@@ -323,6 +183,77 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
 
     return new Ok([
       { type: "text" as const, text: renderRecord(result.value) },
+    ]);
+  },
+
+  create_record: async ({ table, fields }, { authInfo }) => {
+    const clientResult = createServiceNowClient(authInfo);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+    const client = clientResult.value;
+
+    const validatedFields = validateWritableFields(fields);
+    if (validatedFields.isErr()) {
+      return validatedFields;
+    }
+    if (Object.keys(validatedFields.value).length === 0) {
+      return new Err(
+        new MCPError("No fields were provided to create the record with.", {
+          tracked: false,
+        })
+      );
+    }
+
+    const result = await client.createRecord(table, validatedFields.value);
+
+    if (result.isErr()) {
+      return result;
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `Created record in "${table}":\n${renderRecord(result.value)}`,
+      },
+    ]);
+  },
+
+  update_record: async ({ table, sysId, fields }, { authInfo }) => {
+    const clientResult = createServiceNowClient(authInfo);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+    const client = clientResult.value;
+
+    const validatedFields = validateWritableFields(fields);
+    if (validatedFields.isErr()) {
+      return validatedFields;
+    }
+    if (Object.keys(validatedFields.value).length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: "No fields to update were provided.",
+        },
+      ]);
+    }
+
+    const result = await client.updateRecord(
+      table,
+      sysId,
+      validatedFields.value
+    );
+
+    if (result.isErr()) {
+      return result;
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `Updated record in "${table}":\n${renderRecord(result.value)}`,
+      },
     ]);
   },
 };

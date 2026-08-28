@@ -2120,7 +2120,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
     },
   },
   "servicenow": {
-    "create_incident": {
+    "create_record": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -2140,7 +2140,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
-    "update_incident": {
+    "update_record": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -3335,12 +3335,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "semantic_search": "never_ask",
   },
   "servicenow": {
-    "create_incident": "low",
+    "create_record": "low",
     "get_incident": "never_ask",
     "get_record": "never_ask",
     "list_incidents": "never_ask",
     "list_records": "never_ask",
-    "update_incident": "low",
+    "update_record": "low",
   },
   "shopify": {
     "export_customer_ltv": "never_ask",

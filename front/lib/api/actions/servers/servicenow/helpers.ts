@@ -56,71 +56,32 @@ export function renderPaginationFooter({
   return `\n\n*${parts.join(", ")}.*`;
 }
 
-// Fields writable through `additionalFields` on create_incident/update_incident must be: valid
-// ServiceNow field identifiers, not system-managed (sys_* / sys_id / number, which ServiceNow
-// assigns), and not a duplicate of one of *that tool's own* typed fields (which should be used
-// instead so ServiceNow's display-value handling and our own typing stay in effect). The two
-// tools expose different typed fields (e.g. update_incident has no urgency/impact/category
-// parameter), so each has its own collision set — checking against the union would make a field
-// unsettable through a tool that never had a dedicated parameter for it in the first place.
+// Fields writable through create_record/update_record must be valid ServiceNow field
+// identifiers and must not be system-managed (sys_* / sys_id / number, which ServiceNow assigns
+// itself — setting them would either be silently ignored or let a caller spoof identity fields).
 const SYSTEM_MANAGED_FIELD_NAMES = new Set(["sys_id", "number"]);
 
-export const CREATE_INCIDENT_TYPED_FIELD_NAMES = new Set([
-  "short_description",
-  "description",
-  "urgency",
-  "impact",
-  "priority",
-  "state",
-  "category",
-  "assignment_group",
-  "work_notes",
-  "close_notes",
-  "close_code",
-]);
-
-export const UPDATE_INCIDENT_TYPED_FIELD_NAMES = new Set([
-  "short_description",
-  "state",
-  "priority",
-  "work_notes",
-  "close_notes",
-  "close_code",
-]);
-
-export function validateAdditionalFields(
-  additionalFields:
-    | Record<string, string | number | boolean | null>
-    | undefined,
-  typedFieldNames: ReadonlySet<string>
+export function validateWritableFields(
+  fields: Record<string, string | number | boolean | null> | undefined
 ): Result<Record<string, string | number | boolean | null>, MCPError> {
-  if (!additionalFields) {
+  if (!fields) {
     return new Ok({});
   }
 
   const invalidNames: string[] = [];
   const systemManagedNames: string[] = [];
-  const collidingNames: string[] = [];
 
-  for (const name of Object.keys(additionalFields)) {
+  for (const name of Object.keys(fields)) {
     if (!FIELD_NAME_REGEX.test(name)) {
       invalidNames.push(name);
       continue;
     }
     if (name.startsWith("sys_") || SYSTEM_MANAGED_FIELD_NAMES.has(name)) {
       systemManagedNames.push(name);
-      continue;
-    }
-    if (typedFieldNames.has(name)) {
-      collidingNames.push(name);
     }
   }
 
-  if (
-    invalidNames.length > 0 ||
-    systemManagedNames.length > 0 ||
-    collidingNames.length > 0
-  ) {
+  if (invalidNames.length > 0 || systemManagedNames.length > 0) {
     const issues: string[] = [];
     if (invalidNames.length > 0) {
       issues.push(`invalid field name(s): ${invalidNames.join(", ")}`);
@@ -130,17 +91,12 @@ export function validateAdditionalFields(
         `system-managed field(s) cannot be set: ${systemManagedNames.join(", ")}`
       );
     }
-    if (collidingNames.length > 0) {
-      issues.push(
-        `use the dedicated parameter instead of additionalFields for: ${collidingNames.join(", ")}`
-      );
-    }
     return new Err(
-      new MCPError(`Invalid additionalFields — ${issues.join("; ")}.`, {
+      new MCPError(`Invalid fields — ${issues.join("; ")}.`, {
         tracked: false,
       })
     );
   }
 
-  return new Ok(additionalFields);
+  return new Ok(fields);
 }

@@ -24,11 +24,12 @@ function isValidSysId(value: string): boolean {
   return SYS_ID_REGEX.test(value);
 }
 
-// The generic list_records/get_record tools accept any table name rather than a fixed
-// allowlist: access is enforced by ServiceNow itself (the connected account's own ACLs/roles),
-// not by Dust. `FIELD_NAME_REGEX` still gates what reaches the request, though — `table` is
-// interpolated directly into the request path unencoded, so it must be validated as a plain
-// identifier to rule out path/query injection (e.g. "incident/../sys_user").
+// The generic table tools (list_records/get_record/create_record/update_record) accept any
+// table name rather than a fixed allowlist: access is enforced by ServiceNow itself (the
+// connected account's own ACLs/roles), not by Dust. `FIELD_NAME_REGEX` still gates what reaches
+// the request, though — `table` is interpolated directly into the request path unencoded, so it
+// must be validated as a plain identifier to rule out path/query injection (e.g.
+// "incident/../sys_user").
 function isValidTableName(table: string): boolean {
   return FIELD_NAME_REGEX.test(table);
 }
@@ -45,31 +46,13 @@ export const IncidentSchema = z.object({
 });
 export type Incident = z.infer<typeof IncidentSchema>;
 
-// Row shape for the generic list_records/get_record tools: an identity (`sys_id`) plus an
-// arbitrary set of display-value fields. `.catchall()` rejects nested objects/arrays the same
-// way `additionalFields` validation does on the write path.
+// Row shape for the generic table tools: an identity (`sys_id`) plus an arbitrary set of
+// display-value fields. `.catchall()` rejects nested objects/arrays the same way
+// `validateWritableFields` does on the write path.
 export const GenericRecordSchema = z
   .object({ sys_id: z.string() })
   .catchall(z.union([z.string(), z.null()]));
 export type GenericRecord = z.infer<typeof GenericRecordSchema>;
-
-// Fields writable via the incident CRUD tools, keyed by the ServiceNow
-// field name. Passing sysparm_input_display_value=true on write lets callers
-// use human-readable choice labels (e.g. "Resolved", "1 - Critical") instead
-// of ServiceNow's internal numeric codes.
-export type WritableIncidentFields = {
-  short_description?: string;
-  description?: string;
-  urgency?: string;
-  impact?: string;
-  priority?: string;
-  state?: string;
-  category?: string;
-  assignment_group?: string;
-  work_notes?: string;
-  close_notes?: string;
-  close_code?: string;
-};
 
 export interface PageResult<T> {
   records: T[];
@@ -486,14 +469,28 @@ class ServiceNowClient {
     return new Ok(result.value.result[0] ?? null);
   }
 
-  async createIncident(
+  // Generic create, on any table the connected account has access to. Passing
+  // sysparm_input_display_value=true lets callers use human-readable choice labels (e.g.
+  // "Resolved", "1 - Critical") instead of ServiceNow's internal numeric codes, on write as well
+  // as read.
+  async createRecord(
+    table: string,
     fields: Record<string, string | number | boolean | null>
-  ): Promise<Result<Incident, MCPError>> {
+  ): Promise<Result<GenericRecord, MCPError>> {
+    if (!isValidTableName(table)) {
+      return new Err(
+        new MCPError(
+          `Invalid table name: "${table}". Expected a ServiceNow table identifier, e.g. "incident" or "u_custom_table".`,
+          { tracked: false }
+        )
+      );
+    }
+
     const result = await this.mutate(
-      "/api/now/table/incident?sysparm_display_value=true&sysparm_input_display_value=true",
+      `/api/now/table/${table}?sysparm_display_value=true&sysparm_input_display_value=true`,
       "POST",
       fields,
-      z.object({ result: IncidentSchema })
+      z.object({ result: GenericRecordSchema })
     );
 
     if (result.isErr()) {
@@ -503,15 +500,35 @@ class ServiceNowClient {
     return new Ok(result.value.result);
   }
 
-  async updateIncident(
+  // Generic update by sys_id, on any table the connected account has access to.
+  async updateRecord(
+    table: string,
     sysId: string,
     fields: Record<string, string | number | boolean | null>
-  ): Promise<Result<Incident, MCPError>> {
+  ): Promise<Result<GenericRecord, MCPError>> {
+    if (!isValidTableName(table)) {
+      return new Err(
+        new MCPError(
+          `Invalid table name: "${table}". Expected a ServiceNow table identifier, e.g. "incident" or "u_custom_table".`,
+          { tracked: false }
+        )
+      );
+    }
+
+    if (!isValidSysId(sysId)) {
+      return new Err(
+        new MCPError(
+          `Invalid sys_id: "${sysId}". Expected a 32-character hexadecimal identifier.`,
+          { tracked: false }
+        )
+      );
+    }
+
     const result = await this.mutate(
-      `/api/now/table/incident/${encodeURIComponent(sysId)}?sysparm_display_value=true&sysparm_input_display_value=true`,
+      `/api/now/table/${table}/${encodeURIComponent(sysId)}?sysparm_display_value=true&sysparm_input_display_value=true`,
       "PATCH",
       fields,
-      z.object({ result: IncidentSchema })
+      z.object({ result: GenericRecordSchema })
     );
 
     if (result.isErr()) {

@@ -353,6 +353,66 @@ describe("ServiceNowClient generic table access (listRecords/getRecord)", () => 
   });
 });
 
+describe("ServiceNowClient generic table writes (createRecord/updateRecord)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("posts to any well-formed table with display-value flags set for human-readable writes", async () => {
+    vi.mocked(untrustedFetch).mockResolvedValueOnce(
+      jsonResponse({ result: { sys_id: SYS_ID_A, short_description: "hi" } })
+    );
+
+    const client = getClient();
+    const result = await client.createRecord("problem", {
+      short_description: "hi",
+    });
+
+    expect(result.isOk()).toBe(true);
+    const url = new URL(requestedUrl());
+    expect(url.pathname).toBe("/api/now/table/problem");
+    expect(url.searchParams.get("sysparm_display_value")).toBe("true");
+    expect(url.searchParams.get("sysparm_input_display_value")).toBe("true");
+  });
+
+  it("rejects a malformed table name on create without making a request", async () => {
+    const client = getClient();
+    const result = await client.createRecord("incident/../sys_user", {
+      short_description: "hi",
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(untrustedFetch).not.toHaveBeenCalled();
+  });
+
+  it("patches the record path for updateRecord", async () => {
+    vi.mocked(untrustedFetch).mockResolvedValueOnce(
+      jsonResponse({ result: { sys_id: SYS_ID_A, priority: "1 - Critical" } })
+    );
+
+    const client = getClient();
+    const result = await client.updateRecord("problem", SYS_ID_A, {
+      priority: "1 - Critical",
+    });
+
+    expect(result.isOk()).toBe(true);
+    const url = new URL(requestedUrl());
+    expect(url.pathname).toBe(`/api/now/table/problem/${SYS_ID_A}`);
+  });
+
+  it("rejects a malformed sys_id on update without making a request", async () => {
+    const client = getClient();
+    const result = await client.updateRecord(
+      "incident",
+      "'; DROP TABLE--",
+      { priority: "1" }
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(untrustedFetch).not.toHaveBeenCalled();
+  });
+});
+
 describe("ServiceNowClient error handling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -372,7 +432,7 @@ describe("ServiceNowClient error handling", () => {
     );
 
     const client = getClient();
-    const result = await client.createIncident({});
+    const result = await client.createRecord("incident", {});
 
     expect(result.isErr()).toBe(true);
     if (!result.isErr()) {

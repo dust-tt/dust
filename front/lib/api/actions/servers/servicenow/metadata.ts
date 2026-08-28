@@ -1,15 +1,22 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
 
-const ADDITIONAL_FIELDS_SCHEMA = {
-  additionalFields: z
+const TABLE_SCHEMA = {
+  table: z
+    .string()
+    .describe(
+      "The ServiceNow table name, e.g. 'incident', 'problem', 'change_request', 'sc_request', 'kb_knowledge', or any other table (including custom 'u_*' tables) the connected account has access to. ServiceNow will reject the request if the table doesn't exist or the connected account lacks access to it."
+    ),
+};
+
+const WRITE_FIELDS_SCHEMA = {
+  fields: z
     .record(
       z.string(),
       z.union([z.string(), z.number(), z.boolean(), z.null()])
     )
-    .optional()
     .describe(
-      "Customer-specific or custom (e.g. 'u_*') field values, keyed by the raw ServiceNow field name. Flat scalar values only — no nested objects or arrays. Do not use this for fields already covered by a dedicated parameter (e.g. priority, state, assignmentGroup)."
+      "Field values to set, keyed by the raw ServiceNow field name, or a custom 'u_*' field. Flat scalar values only — no nested objects or arrays. Use human-readable choice labels where applicable, e.g. '1 - Critical' for priority. On incident-like tables, common fields include 'short_description', 'description', 'priority', 'urgency', 'impact', 'category', 'assignment_group', 'state' (e.g. 'In Progress', 'Resolved', 'Closed'), 'work_notes' (internal, not customer-visible), 'close_notes' (resolution notes), and 'close_code' (resolution code — required by ServiceNow to move state to 'Resolved' or 'Closed'; if unsure which value your instance accepts, list_records an already-resolved record to see one)."
     ),
 };
 
@@ -26,32 +33,6 @@ const PAGINATION_SCHEMA = {
     .describe(
       "Include the total number of matching records. This runs an extra, more expensive query against the instance. Defaults to false."
     ),
-};
-
-const WRITABLE_INCIDENT_FIELDS_SCHEMA = {
-  description: z
-    .string()
-    .optional()
-    .describe("Full description of the incident."),
-  urgency: z
-    .string()
-    .optional()
-    .describe("Urgency, e.g. '1 - High', '2 - Medium', '3 - Low'."),
-  impact: z
-    .string()
-    .optional()
-    .describe("Impact, e.g. '1 - High', '2 - Medium', '3 - Low'."),
-  priority: z
-    .string()
-    .optional()
-    .describe(
-      "Priority, e.g. '1 - Critical', '2 - High', '3 - Moderate', '4 - Low', '5 - Planning'."
-    ),
-  category: z.string().optional().describe("Incident category."),
-  assignmentGroup: z
-    .string()
-    .optional()
-    .describe("Name of the assignment group to assign the incident to."),
 };
 
 export const SERVICENOW_TOOLS_METADATA = [
@@ -130,84 +111,11 @@ export const SERVICENOW_TOOLS_METADATA = [
     freeUsage: false,
   },
   {
-    name: "create_incident",
-    description:
-      "Create (open) a new ServiceNow incident (ticket) in the connected instance.",
-    schema: {
-      shortDescription: z.string().describe("Short summary of the incident."),
-      ...WRITABLE_INCIDENT_FIELDS_SCHEMA,
-      ...ADDITIONAL_FIELDS_SCHEMA,
-    },
-    stake: "low",
-    displayLabels: {
-      running: "Creating ServiceNow incident",
-      done: "Create ServiceNow incident",
-    },
-    toolCostCategory: "advanced",
-    freeUsage: false,
-  },
-  {
-    name: "update_incident",
-    description:
-      "Update, resolve, or close an existing ServiceNow incident (ticket) identified by its number, e.g. 'INC0010001'.",
-    schema: {
-      incidentNumber: z
-        .string()
-        .describe("The ServiceNow incident number, e.g. 'INC0010001'."),
-      shortDescription: z
-        .string()
-        .optional()
-        .describe("Replacement short summary of the incident."),
-      state: z
-        .string()
-        .optional()
-        .describe(
-          "State to move the incident to, e.g. 'In Progress', 'Resolved', 'Closed'."
-        ),
-      priority: z
-        .string()
-        .optional()
-        .describe(
-          "Priority, e.g. '1 - Critical', '2 - High', '3 - Moderate', '4 - Low', '5 - Planning'."
-        ),
-      workNotes: z
-        .string()
-        .optional()
-        .describe(
-          "Work note to add to the incident (internal, not customer-visible)."
-        ),
-      closeNotes: z
-        .string()
-        .optional()
-        .describe(
-          "Resolution notes, typically set when resolving/closing the incident."
-        ),
-      resolutionCode: z
-        .string()
-        .optional()
-        .describe(
-          "Resolution code. Required by ServiceNow to move state to 'Resolved' or 'Closed'. Valid values are configured per ServiceNow instance (e.g. 'Solution provided', 'Resolved by caller') — if unsure, call list_incidents on an already-resolved incident to see a value your instance accepts."
-        ),
-      ...ADDITIONAL_FIELDS_SCHEMA,
-    },
-    stake: "low",
-    displayLabels: {
-      running: "Updating ServiceNow incident",
-      done: "Update ServiceNow incident",
-    },
-    toolCostCategory: "advanced",
-    freeUsage: false,
-  },
-  {
     name: "list_records",
     description:
       "List records from any ServiceNow table the connected account has access to (e.g. incident, problem, change_request, sc_request, kb_knowledge, or a custom table). Supports filtering with a ServiceNow encoded query.",
     schema: {
-      table: z
-        .string()
-        .describe(
-          "The ServiceNow table name to query, e.g. 'incident', 'problem', 'change_request', 'sc_request', 'kb_knowledge', or any other table (including custom 'u_*' tables) the connected account has access to. ServiceNow will reject the request if the table doesn't exist or the connected account lacks access to it."
-        ),
+      ...TABLE_SCHEMA,
       query: z
         .string()
         .optional()
@@ -265,11 +173,7 @@ export const SERVICENOW_TOOLS_METADATA = [
     description:
       "Get a single record from any ServiceNow table the connected account has access to (e.g. incident, problem, change_request, sc_request, kb_knowledge, or a custom table) by its sys_id.",
     schema: {
-      table: z
-        .string()
-        .describe(
-          "The ServiceNow table name to query, e.g. 'incident', 'problem', 'change_request', 'sc_request', 'kb_knowledge', or any other table (including custom 'u_*' tables) the connected account has access to. ServiceNow will reject the request if the table doesn't exist or the connected account lacks access to it."
-        ),
+      ...TABLE_SCHEMA,
       sysId: z
         .string()
         .describe(
@@ -286,6 +190,43 @@ export const SERVICENOW_TOOLS_METADATA = [
     displayLabels: {
       running: "Retrieving ServiceNow record",
       done: "Retrieve ServiceNow record",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  {
+    name: "create_record",
+    description:
+      "Create (open) a new record in any ServiceNow table the connected account has access to (e.g. incident (ticket), problem, change_request, sc_request, kb_knowledge, or a custom table).",
+    schema: {
+      ...TABLE_SCHEMA,
+      ...WRITE_FIELDS_SCHEMA,
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Creating ServiceNow record",
+      done: "Create ServiceNow record",
+    },
+    toolCostCategory: "advanced",
+    freeUsage: false,
+  },
+  {
+    name: "update_record",
+    description:
+      "Update, resolve, or close an existing record in any ServiceNow table the connected account has access to (e.g. incident (ticket), problem, change_request, sc_request, kb_knowledge, or a custom table), identified by its sys_id.",
+    schema: {
+      ...TABLE_SCHEMA,
+      sysId: z
+        .string()
+        .describe(
+          "The record's sys_id, a 32-character hexadecimal identifier."
+        ),
+      ...WRITE_FIELDS_SCHEMA,
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Updating ServiceNow record",
+      done: "Update ServiceNow record",
     },
     toolCostCategory: "advanced",
     freeUsage: false,
