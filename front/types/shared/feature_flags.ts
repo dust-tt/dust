@@ -454,7 +454,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     owner: "tdraier",
   },
   usage_page_redesign: {
-    // TODO(avervaet): Remove this flag once the redesigned Usage page has fully rolled out.
     description:
       "Show the redesigned Usage page header, while it's being rolled out.",
     stage: "dust_only",

@@ -1,10 +1,8 @@
 import type { SupportedCurrency } from "@app/types/currency";
 
 export type AwuPoolCycleBreakdown = {
-  /** Billing cycle bounds (ms epoch) this figure was computed over. */
   cycleStartMs: number | null;
   cycleEndMs: number | null;
-  /** Pool credits consumed during that cycle. */
   consumedCredits: number;
 };
 
@@ -21,22 +19,9 @@ export type AwuPoolSummaryResponseBody = {
   overageAmountCents: number | null;
   /** Invoice currency — needed to format `overageAmountCents`. */
   overageCurrency: SupportedCurrency | null;
-  /**
-   * Per-cycle pool consumption, most recent first — up to the last 5
-   * finalized billing cycles that had non-zero pool consumption.
-   */
+  // Per-cycle pool consumption, most recent first
   cycleBreakdown: AwuPoolCycleBreakdown[];
-  /**
-   * Elapsed pool consumption for the current, in-progress billing cycle,
-   * read from Metronome's draft invoice for it. `null` when there's no
-   * active cycle (e.g. no active Metronome contract).
-   */
   currentCycleConsumedCredits: number | null;
-  /**
-   * Current billing cycle's bounds (ms epoch), used to derive cycle length
-   * for an "on target" projection against the pool's credit exhaustion date.
-   * `null` when there's no active cycle (e.g. no active Metronome contract).
-   */
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
 };

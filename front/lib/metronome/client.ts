@@ -2279,11 +2279,6 @@ export async function listMetronomeDraftInvoices(
   }
 }
 
-/**
- * Most recent finalized (closed) invoices, newest first. Stops paginating
- * once `limit` invoices have been collected instead of walking the
- * customer's entire invoice history.
- */
 export async function listMetronomeFinalizedInvoices(
   metronomeCustomerId: string,
   { limit }: { limit: number }
