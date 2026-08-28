@@ -54,9 +54,9 @@ dsbx frame move /files/<source-scope>/<frame-folder> /files/<destination-scope>/
 Moving to a different runtime scope safely refreshes the Frame-owned sandbox. Do not move a
 registered Frame folder with raw filesystem commands.
 
-## Clone a registered Frame
+## Clone a registered Frames v2 package
 
-Use the CLI instead of \`cp\` to create a new Frame with copied source but a fresh identity,
+Use the CLI instead of \`cp\` to clone a registered Frames v2 package with copied source but a fresh identity,
 publication, sharing record, sandbox ownership, and empty database state:
 
 \`\`\`bash

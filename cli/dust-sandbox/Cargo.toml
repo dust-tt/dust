@@ -1,6 +1,6 @@
 [package]
 name = "dust-sandbox"
-version = "0.1.52"
+version = "0.1.53"
 edition = "2021"
 
 [[bin]]
