@@ -1687,8 +1687,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   // The space's auto-created (regular_auto) groups: its manual member group and, for projects, its
   // editor group. Resolved from `group_permissions`, filtered to regular_auto groups (a grant's
-  // type alone cannot tell a regular_auto group from the global group). Empty in group management
-  // mode, where the space's groups are provisioned (IdP-owned) rather than auto-created.
+  // type alone cannot tell a regular_auto group from the global group). Present in group management
+  // mode too: provisioned grants are added on top of the space's own groups, never in place of them.
   async fetchRegularAutoGroups(
     auth: Authenticator,
     transaction?: Transaction
