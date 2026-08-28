@@ -265,19 +265,38 @@ export function AwuUsageBar({
     poolLimit !== null ? Math.max(0, consumedFromPool - poolLimit) : 0;
 
   if (poolOnly && poolLimit !== null && poolLimit <= 0) {
+    // No pool access, but credits were still consumed from it (e.g. legacy
+    // overage predating the seat's current limit). Surface the actual
+    // amount instead of hiding it behind "--".
+    const hasUnexpectedPoolConsumption = consumedFromPool > 0;
     return (
       <div className="flex w-full flex-col gap-1">
         <div className="flex justify-between text-xs tabular-nums text-muted-foreground">
-          <span>--</span>
+          <span>
+            {hasUnexpectedPoolConsumption
+              ? formatCredits(consumedFromPool)
+              : "--"}
+          </span>
           {isPending ? <Spinner size="xs" /> : <span>--</span>}
         </div>
         <div className="flex h-3 w-full items-center">
           <ProgressBar
             aria-label="Member credit usage"
-            aria-valuenow={0}
-            aria-valuetext="No pool access"
+            aria-valuenow={hasUnexpectedPoolConsumption ? 100 : 0}
+            aria-valuetext={
+              hasUnexpectedPoolConsumption
+                ? `${formatCredits(consumedFromPool)} credits used from the workspace pool with no pool access`
+                : "No pool access"
+            }
             className="h-1 w-full gap-px bg-transparent"
-            values={[{ value: 1, className: MUTED_BAR_CLASSES.track }]}
+            values={[
+              {
+                value: 1,
+                className: hasUnexpectedPoolConsumption
+                  ? OVERAGE_BAR_CLASSES.fill
+                  : MUTED_BAR_CLASSES.track,
+              },
+            ]}
           />
         </div>
       </div>
