@@ -1,4 +1,5 @@
 import { CONVERSATIONS_RETENTION_MIN_DAYS } from "@app/lib/conversations_retention";
+import { EMPTY_PLAN_LIMIT_OVERRIDE } from "@app/lib/plans/plan_limit_overrides";
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 import { getNamespace } from "@app/tests/utils/test_cls";
 import type { Transaction } from "sequelize";
@@ -709,6 +710,140 @@ describe("WorkspaceResource", () => {
       expect(result).not.toContain("openai");
       expect(result).toContain("anthropic");
       expect(result).toContain("mistral");
+    });
+  });
+
+  describe("plan limit overrides", () => {
+    it("returns null when the workspace has no override", async () => {
+      await expect(
+        WorkspaceResource.fetchPlanLimitOverride(workspace.id)
+      ).resolves.toBeNull();
+    });
+
+    it("upserts, then fetches the override", async () => {
+      const result = await WorkspaceResource.upsertPlanLimitOverride(
+        workspace.id,
+        {
+          ...EMPTY_PLAN_LIMIT_OVERRIDE,
+          maxUsersInWorkspace: 42,
+          maxVaultsInWorkspace: -1,
+        }
+      );
+      expect(result.isOk()).toBe(true);
+
+      await expect(
+        WorkspaceResource.fetchPlanLimitOverride(workspace.id)
+      ).resolves.toEqual({
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxUsersInWorkspace: 42,
+        maxVaultsInWorkspace: -1,
+      });
+    });
+
+    it("replaces the existing override on a second upsert", async () => {
+      await WorkspaceResource.upsertPlanLimitOverride(workspace.id, {
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxUsersInWorkspace: 42,
+      });
+      await WorkspaceResource.upsertPlanLimitOverride(workspace.id, {
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxDataSourcesCount: 7,
+      });
+
+      await expect(
+        WorkspaceResource.fetchPlanLimitOverride(workspace.id)
+      ).resolves.toEqual({
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxDataSourcesCount: 7,
+      });
+    });
+
+    it("deletes the row when no override remains", async () => {
+      await WorkspaceResource.upsertPlanLimitOverride(workspace.id, {
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxUsersInWorkspace: 42,
+      });
+
+      const result = await WorkspaceResource.upsertPlanLimitOverride(
+        workspace.id,
+        EMPTY_PLAN_LIMIT_OVERRIDE
+      );
+      expect(result.isOk()).toBe(true);
+
+      await expect(
+        WorkspaceResource.fetchPlanLimitOverride(workspace.id)
+      ).resolves.toBeNull();
+    });
+
+    it("rejects a limit below -1 and a non-integer limit", async () => {
+      const belowUnlimited = await WorkspaceResource.upsertPlanLimitOverride(
+        workspace.id,
+        { ...EMPTY_PLAN_LIMIT_OVERRIDE, maxUsersInWorkspace: -2 }
+      );
+      expect(belowUnlimited.isErr()).toBe(true);
+
+      const nonInteger = await WorkspaceResource.upsertPlanLimitOverride(
+        workspace.id,
+        { ...EMPTY_PLAN_LIMIT_OVERRIDE, maxUsersInWorkspace: 1.5 }
+      );
+      expect(nonInteger.isErr()).toBe(true);
+
+      await expect(
+        WorkspaceResource.fetchPlanLimitOverride(workspace.id)
+      ).resolves.toBeNull();
+    });
+
+    it("fetches overrides for several workspaces at once, skipping those without any", async () => {
+      const otherWorkspace = await WorkspaceFactory.basic();
+      const workspaceWithoutOverride = await WorkspaceFactory.basic();
+
+      await WorkspaceResource.upsertPlanLimitOverride(workspace.id, {
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxUsersInWorkspace: 42,
+      });
+      await WorkspaceResource.upsertPlanLimitOverride(otherWorkspace.id, {
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxConnectionsCount: 3,
+      });
+
+      const overrides =
+        await WorkspaceResource.fetchPlanLimitOverridesByWorkspaceModelIds([
+          workspace.id,
+          otherWorkspace.id,
+          workspaceWithoutOverride.id,
+        ]);
+
+      expect(overrides.size).toBe(2);
+      expect(overrides.get(workspace.id)).toEqual({
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxUsersInWorkspace: 42,
+      });
+      expect(overrides.get(otherWorkspace.id)).toEqual({
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxConnectionsCount: 3,
+      });
+      expect(overrides.has(workspaceWithoutOverride.id)).toBe(false);
+    });
+
+    it("returns an empty map when no workspace model id is requested", async () => {
+      await expect(
+        WorkspaceResource.fetchPlanLimitOverridesByWorkspaceModelIds([])
+      ).resolves.toEqual(new Map());
+    });
+
+    it("deletes all overrides for a workspace", async () => {
+      await WorkspaceResource.upsertPlanLimitOverride(workspace.id, {
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxUsersInWorkspace: 42,
+      });
+
+      await WorkspaceResource.deleteAllPlanLimitOverridesForWorkspace(
+        workspace.id
+      );
+
+      await expect(
+        WorkspaceResource.fetchPlanLimitOverride(workspace.id)
+      ).resolves.toBeNull();
     });
   });
 });
