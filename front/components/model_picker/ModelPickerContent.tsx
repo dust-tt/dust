@@ -33,7 +33,7 @@ import {
   Icon,
   Lock01,
 } from "@dust-tt/sparkle";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 type PickerView = "root" | "models";
 
@@ -85,13 +85,6 @@ export function ModelPickerContent({
   );
   const targetView: PickerView = activeMakerGroup ? "models" : "root";
 
-  // `displayedView` is what's actually on screen; it only catches up to
-  // `targetView` once the outgoing view's exit animation has finished. This
-  // is what lets the swap pair an exit with the entrance instead of hard-
-  // cutting the outgoing view the instant the new one mounts.
-  const [displayedView, setDisplayedView] = useState<PickerView>(targetView);
-  const isExiting = displayedView !== targetView;
-
   // The root view's own slide-in would otherwise also play on the very
   // first paint, stacking on top of the dropdown's own open animation. Only
   // animate it on a genuine swap back to root, not on the initial mount.
@@ -99,35 +92,6 @@ export function ModelPickerContent({
   useLayoutEffect(() => {
     isInitialRenderRef.current = false;
   }, []);
-
-  const handleExitAnimationEnd = () => {
-    setDisplayedView(targetView);
-  };
-
-  // `motion-reduce:animate-none` (applied below) removes the exit animation
-  // entirely under prefers-reduced-motion, so `onAnimationEnd` would never
-  // fire and the swap would get stuck showing the outgoing view forever.
-  // Skip straight to the target view in that case.
-  useEffect(() => {
-    if (!isExiting) {
-      return;
-    }
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setDisplayedView(targetView);
-    }
-  }, [isExiting, targetView]);
-
-  // Going back sets `activeMaker` to null on the same tick the exit starts,
-  // so `activeMakerGroup` resolves to undefined immediately — but the
-  // exiting models view still needs its maker group to render while it
-  // slides out. Remember the last non-null one so the exit phase can still
-  // render real content instead of losing it mid-exit.
-  const lastMakerGroupRef = useRef(activeMakerGroup);
-  if (activeMakerGroup) {
-    lastMakerGroupRef.current = activeMakerGroup;
-  }
-
-  const isForward = targetView === "models";
 
   const renderView = (view: PickerView, makerGroup: MakerGroup | undefined) =>
     view === "models" && makerGroup ? (
@@ -244,47 +208,22 @@ export function ModelPickerContent({
         }
       }}
     >
-      {/* `overflow-hidden` clips the slide so the exiting and entering
-          layers never spill past the panel's fixed width; `grid` stacks
-          both layers (via `[grid-area:1/1]` below) in the same cell so the
-          container sizes to whichever is taller instead of collapsing —
-          plain `absolute` positioning wouldn't contribute to that sizing. */}
-      <div className="grid overflow-hidden">
-        {isExiting && (
-          // The outgoing view stays mounted and animates out concurrently
-          // with the incoming view below, instead of waiting for this exit
-          // to finish before the entrance starts — a sequential wait reads
-          // as a stall right when the user is watching for a response.
-          <div
-            key={`${displayedView}-exit`}
-            className={`[grid-area:1/1] pointer-events-none animate-out fill-mode-forwards duration-exit ease-enter motion-reduce:animate-none ${
-              isForward ? "slide-out-to-left-4" : "slide-out-to-right-4"
-            }`}
-            onAnimationEnd={handleExitAnimationEnd}
-          >
-            {renderView(
-              displayedView,
-              displayedView === "models"
-                ? (activeMakerGroup ?? lastMakerGroupRef.current)
-                : undefined
-            )}
-          </div>
+      <div
+        key={targetView}
+        className={
+          isInitialRenderRef.current && targetView === "root"
+            ? ""
+            : `animate-in duration-enter ease-enter motion-reduce:animate-none ${
+                targetView === "models"
+                  ? "slide-in-from-right-4"
+                  : "slide-in-from-left-4"
+              }`
+        }
+      >
+        {renderView(
+          targetView,
+          targetView === "models" ? activeMakerGroup : undefined
         )}
-        <div
-          key={targetView}
-          className={`[grid-area:1/1] ${
-            isInitialRenderRef.current && targetView === "root"
-              ? ""
-              : `animate-in duration-enter ease-enter motion-reduce:animate-none ${
-                  isForward ? "slide-in-from-right-4" : "slide-in-from-left-4"
-                }`
-          }`}
-        >
-          {renderView(
-            targetView,
-            targetView === "models" ? activeMakerGroup : undefined
-          )}
-        </div>
       </div>
     </DropdownMenuContent>
   );
