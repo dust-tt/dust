@@ -635,10 +635,10 @@ async function fetchPerUserUsageCreditsForMembersTable({
 // Per-user AWU consumption for the current billing cycle, read live from
 // Metronome (via the cached `getPerUserAwuUsage`) instead of the analytics
 // index. Free-seat usage is billed under the free-prefixed Metronome user id
-// (`toFreeMetronomeUserId`), so both ids are queried per user and the one
-// matching the member's current seat type is picked. Degrades to 0 for a
-// user when Metronome isn't configured for the workspace or the read fails
-// (see `fetchPerUserUsageCreditsForMembersTable`).
+// (`toFreeMetronomeUserId`) rather than the plain sId, so the id queried per
+// user is resolved from their current seat type. Degrades to 0 for a user
+// when Metronome isn't configured for the workspace or the read fails (see
+// `fetchPerUserUsageCreditsForMembersTable`).
 async function fetchConsumedAwuCreditsFromMetronomeByUserId({
   workspaceId,
   metronomeCustomerId,
@@ -653,16 +653,21 @@ async function fetchConsumedAwuCreditsFromMetronomeByUserId({
   if (users.length === 0) {
     return new Map();
   }
+  const metronomeUserIdBySId = new Map(
+    users.map((u) => [
+      u.sId,
+      u.seatType === "free" ? toFreeMetronomeUserId(u.sId) : u.sId,
+    ])
+  );
   const usageByMetronomeUserId = await fetchPerUserUsageCreditsForMembersTable({
     workspaceId,
     metronomeCustomerId,
     metronomeContractId,
-    userIds: users.flatMap((u) => [u.sId, toFreeMetronomeUserId(u.sId)]),
+    userIds: [...metronomeUserIdBySId.values()],
   });
   const consumedByUserId = new Map<string, number>();
   for (const u of users) {
-    const metronomeUserId =
-      u.seatType === "free" ? toFreeMetronomeUserId(u.sId) : u.sId;
+    const metronomeUserId = metronomeUserIdBySId.get(u.sId)!;
     consumedByUserId.set(
       u.sId,
       usageByMetronomeUserId.get(metronomeUserId) ?? 0
