@@ -261,7 +261,7 @@ function modelSupportsEffortStatically(
   if (!isStaticModelId(modelId)) {
     return false;
   }
-  return STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[modelId][effort] === true;
+  return STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[modelId][effort];
 }
 
 // The single authority for whether a reasoning-effort level is selectable.

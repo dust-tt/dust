@@ -190,7 +190,7 @@ export function ModelPickerMoreModels({
               selection check to the right, before the built-in chevron. */}
           <DropdownMenuSubTrigger>
             <Icon visual={getModelMakerLogo(maker.makerId, isDark)} size="sm" />
-            <span className="flex-grow truncate text-left">
+            <span className="grow truncate text-left">
               {getModelMakerDisplayName(maker.makerId)}
             </span>
             {selectedModelMaker === maker.makerId && (
@@ -273,7 +273,7 @@ export function ModelPickerMoreModels({
       {/* Children mode: place the selection check to the right, before the
           built-in chevron (DropdownMenuSubTrigger has no endComponent slot). */}
       <DropdownMenuSubTrigger onClick={(e) => e.stopPropagation()}>
-        <span className="flex-grow truncate text-left">More models</span>
+        <span className="grow truncate text-left">More models</span>
         {isSpecificModelSelected && (
           <Icon visual={Check} size="sm" className="text-muted-foreground" />
         )}
@@ -284,7 +284,7 @@ export function ModelPickerMoreModels({
         />
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent
-        className="max-h-[28rem] w-64 overflow-y-auto"
+        className="max-h-112 w-64 overflow-y-auto"
         // Clicks inside a portaled submenu bubble up the React tree to the
         // parent menu, which would dismiss the whole picker (e.g. clicking the
         // searchbar or empty space). Contain them here.
