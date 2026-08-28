@@ -324,17 +324,52 @@ export function toFunctionTool(
   };
 }
 
+// Tools named by a replayed call that carries no namespace. A tool loaded
+// through the Responses tool search lives in a namespace of its own, and the
+// replayed tool_search_output item that loaded it puts that namespace back in
+// the request. A call to it must then name the namespace, or the request is
+// rejected with "Missing namespace for function_call". Calls produced by
+// another provider (or before the tool was deferred) carry no namespace, so
+// their tool has to stay reachable in the default namespace.
+export function toolNamesCalledWithoutNamespace(
+  conversation: BaseConversation
+): Set<string> {
+  const names = new Set<string>();
+  for (const message of conversation.messages) {
+    if (
+      message.role === "assistant" &&
+      message.type === "tool_call_request" &&
+      !message.content.namespace
+    ) {
+      names.add(message.content.toolName);
+    }
+  }
+  return names;
+}
+
 export function toolSpecsToOpenAITools(
   tools: ToolSpecification[],
   {
     forceTool,
     toolSearchEnabled,
-  }: { forceTool: string | undefined; toolSearchEnabled: boolean }
+    toolNamesRequiringDefaultNamespace,
+  }: {
+    forceTool: string | undefined;
+    toolSearchEnabled: boolean;
+    toolNamesRequiringDefaultNamespace: Set<string>;
+  }
 ): Tool[] {
   const converted = tools.map((tool) =>
-    toFunctionTool(tool, {
-      toolSearchEnabled: toolSearchEnabled && tool.name !== forceTool,
-    })
+    // A forced tool cannot be deferred: the API requires the tool_choice target
+    // to be loaded. Neither can one a namespaceless call replays, which resolves
+    // against the default namespace.
+    toFunctionTool(
+      tool.name === forceTool ||
+        toolNamesRequiringDefaultNamespace.has(tool.name)
+        ? { ...tool, eager: true }
+        : tool,
+      { toolSearchEnabled }
+    )
   );
 
   return converted.some((tool) => tool.defer_loading)
