@@ -94,11 +94,12 @@ const variantClasses: Record<DialogVariantType, string> = {
   ),
   command: cn(
     // Command palette opens on every keyboard shortcut invocation, so it
-    // gets a snappier timing than the default modal variant.
+    // gets a snappier timing than the default modal variant. No zoom/scale
+    // here (unlike the default variant) — a plain fade + slide reads as a
+    // quick glide instead of a "pop".
     "top-[20%] duration-150 ease-emphasized data-[state=closed]:duration-100 motion-reduce:animate-none",
     "data-[state=open]:animate-in data-[state=closed]:animate-out",
     "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-    "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
     "data-[state=open]:slide-in-from-top-2 data-[state=closed]:slide-out-to-top-2"
   ),
 };
