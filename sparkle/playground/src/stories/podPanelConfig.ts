@@ -1,4 +1,5 @@
 import {
+  ActionIcons,
   MessageChatSquare,
   CheckCircle,
   Settings01,
@@ -32,7 +33,49 @@ export type DynamicFileTab = {
   value: `file-${string}`;
   dataSourceId: string;
   label: string;
+  iconName?: string;
 };
+
+export type ActionIconName = keyof typeof ActionIcons;
+
+export function isActionIconName(name: string): name is ActionIconName {
+  return name in ActionIcons;
+}
+
+export function getFileTabIcon(
+  iconName: string | undefined,
+  fallbackIcon: ComponentType = File02
+): ComponentType {
+  if (iconName && isActionIconName(iconName)) {
+    return ActionIcons[iconName];
+  }
+  return fallbackIcon;
+}
+
+export function reorderFileTabsInOrder(
+  mainTabOrder: string[],
+  draggedValue: string,
+  targetValue: string
+): string[] {
+  if (draggedValue === targetValue) {
+    return mainTabOrder;
+  }
+
+  const coreValues = mainTabOrder.filter((value) => !value.startsWith("file-"));
+  const fileValues = mainTabOrder.filter((value) => value.startsWith("file-"));
+  const fromIndex = fileValues.indexOf(draggedValue);
+  const toIndex = fileValues.indexOf(targetValue);
+
+  if (fromIndex === -1 || toIndex === -1) {
+    return mainTabOrder;
+  }
+
+  const nextFileValues = [...fileValues];
+  const [moved] = nextFileValues.splice(fromIndex, 1);
+  nextFileValues.splice(toIndex, 0, moved);
+
+  return [...coreValues, ...nextFileValues];
+}
 
 export type PodContext = {
   variant: PodVariant;
@@ -78,7 +121,7 @@ export function getBasePodTabOptions(_variant: PodVariant): PodTabOption[] {
   return [
     {
       value: "conversations",
-      label: "Conversations",
+      label: "Chat",
       icon: MessageChatSquare,
     },
     { value: "todos", label: "Tasks", icon: CheckCircle },
@@ -93,7 +136,8 @@ export function getDefaultMainTabOrder(variant: PodVariant): string[] {
 export function buildPodTabOptions(
   variant: PodVariant,
   mainTabOrder: string[],
-  dynamicFileTabs: DynamicFileTab[]
+  dynamicFileTabs: DynamicFileTab[],
+  getFallbackIcon?: (dataSourceId: string) => ComponentType
 ): PodTabOption[] {
   const baseByValue = new Map(
     getBasePodTabOptions(variant).map((option) => [option.value, option])
@@ -104,7 +148,10 @@ export function buildPodTabOptions(
       {
         value: tab.value,
         label: tab.label,
-        icon: File02,
+        icon: getFileTabIcon(
+          tab.iconName,
+          getFallbackIcon?.(tab.dataSourceId) ?? File02
+        ),
         removable: true,
       },
     ])
@@ -119,8 +166,8 @@ export function buildPodTabOptions(
       ...mainOptions,
       {
         value: "settings",
+        label: "Settings",
         icon: Settings01,
-        tooltip: "Pod settings",
         pinned: "end",
       },
     ];

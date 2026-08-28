@@ -1,19 +1,17 @@
 import {
+  ActionFrame,
   AnimatedText,
   Archive,
-  Download01,
   ArrowRight,
-  Upload01,
   Avatar,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
-  MessageChatSquare,
-  CheckDouble,
   Check,
+  CheckDone01,
+  CheckDouble,
   Chip,
   CloudArrowLeftRight,
-  UploadCloud02,
   ContentMessage,
   ConversationListItem,
   Dialog,
@@ -22,7 +20,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  File02,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -35,14 +33,16 @@ import {
   DropdownMenuTrigger,
   EmptyCTA,
   EmptyCTAButton,
+  File01,
+  File02,
   Folder,
   Icon,
   Input,
-  CheckDone01,
-  ListGroup,
   List,
+  ListGroup,
   ListItemSection,
-  DotsHorizontal,
+  MessageChatSquare,
+  Plus,
   ReplySection,
   SearchInput,
   SearchInputWithPopover,
@@ -54,10 +54,13 @@ import {
   SheetTitle,
   SliderToggle,
   Stars02,
+  Table,
   Tabs,
   TabsContent,
   Trash01,
   TypingAnimation,
+  Upload01,
+  UploadCloud02,
   Users01,
   XClose,
 } from "@dust-tt/sparkle";
@@ -99,15 +102,21 @@ import type {
   Space,
   User,
 } from "../data/types";
-import { getRandomGreetingForName } from "../data/greetings";
 import { getUserById } from "../data/users";
+import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
+import {
+  PodCustomizationSection,
+  type PodTabCustomizationItem,
+} from "./PodCustomizationSection";
+import { ConversationTopSection } from "./ConversationTopSection";
+import { EmptyState } from "./EmptyState";
+import { DataTable } from "./DataTableDnd";
+import { FilePreviewPanel } from "./FilePreviewPanel";
+import { FrameSheetHeader } from "./FrameSheetHeader";
 import {
   DATA_SOURCE_FILE_DRAG_MIME,
   DATA_SOURCE_FILE_NAME_DRAG_MIME,
 } from "./FreeButtonSwitch";
-import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
-import { DataTable } from "./DataTableDnd";
-import { FilePreviewPanel } from "./FilePreviewPanel";
 import { InputBar, type InputBarTaskCommand } from "./InputBar";
 import { SuggestionBox } from "./SuggestionBox";
 import { TaskItem } from "./TaskItem";
@@ -139,6 +148,14 @@ interface GroupConversationViewProps {
   onFileToRevealInKnowledgeHandled?: () => void;
   podVariant?: "shared" | "personal";
   currentUserId?: string;
+  podTabCustomization?: {
+    tabs: PodTabCustomizationItem[];
+    addableFiles: DataSource[];
+    onReorder: (draggedValue: string, targetValue: string) => void;
+    onChangeIcon: (tabValue: string, iconName: string) => void;
+    onRemove: (tabValue: string) => void;
+    onAdd: (file: DataSource) => void;
+  };
 }
 
 interface Member {
@@ -1268,13 +1285,39 @@ function GroupConversationTabContent({
   value,
   contentClassName,
   fullBleed = false,
+  topBox,
   children,
 }: {
   value: string;
   contentClassName?: string;
   fullBleed?: boolean;
+  topBox?: ReactNode;
   children: ReactNode;
 }) {
+  // When `topBox` is provided, mirror the NewConversation layout: a tall top
+  // region holding the header + input, with the rest of the content scrolling
+  // below as the whole page scrolls.
+  if (topBox) {
+    return (
+      <TabsContent value={value}>
+        <div className="flex h-full w-full flex-col overflow-y-auto">
+          <ConversationTopSection>{topBox}</ConversationTopSection>
+          {/* Bottom portion: grows with its content; the page scrolls as a whole. */}
+          <div className="flex flex-none justify-center px-4 pb-8">
+            <div
+              className={cn(
+                "flex w-full max-w-4xl flex-col gap-3",
+                contentClassName
+              )}
+            >
+              {children}
+            </div>
+          </div>
+        </div>
+      </TabsContent>
+    );
+  }
+
   return (
     <TabsContent value={value}>
       <div
@@ -1303,21 +1346,20 @@ function ProjectSetupEmptyState({
   onSetupProject: () => void;
 }) {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-0 text-center">
-      <h3 className="heading-lg text-foreground">It's quiet in here.</h3>
-      <p className="text-muted-foreground textbase mb-3">
-        Your Pod is ready but empty! Let us help you invite people, add key
-        data, and more.
-      </p>
-      <Button
-        label="Let's go"
-        icon={Stars02}
-        size="md"
-        variant="highlight"
-        onClick={onSetupProject}
-        isPulsing
-      />
-    </div>
+    <EmptyState
+      title="It's quiet in here."
+      description="Your Pod is ready but empty! Let us help you invite people, add key data, and more."
+      action={
+        <Button
+          label="Let's go"
+          icon={Stars02}
+          size="md"
+          variant="highlight"
+          onClick={onSetupProject}
+          isPulsing
+        />
+      }
+    />
   );
 }
 
@@ -1347,16 +1389,42 @@ export function GroupConversationView({
   onFileToRevealInKnowledgeHandled,
   podVariant = "shared",
   currentUserId,
+  podTabCustomization,
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const currentUserFirstName = currentUserId
-    ? (getUserById(currentUserId)?.firstName ?? "there")
-    : "there";
-  const [greeting, setGreeting] = useState<string>("");
-  useEffect(() => {
-    setGreeting(getRandomGreetingForName(currentUserFirstName));
-  }, [currentUserFirstName]);
+  // Greeting per tab uses the pod name: "<Pod>'s <Tab>", centered horizontally.
+  const renderPodGreeting = (tabLabel: string) => (
+    <h2 className="heading-2xl text-center">
+      <span className="text-foreground">{space.name}</span>
+      <span className="text-faint">{`'s ${tabLabel}`}</span>
+    </h2>
+  );
+  // Shared "Create" CTA for the Files tab so the empty state and the populated
+  // toolbar expose the exact same button and menu.
+  const renderCreateFilesMenu = () => (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="primary" icon={Plus} label="Create" isSelect />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem icon={File01} label="Doc" onClick={() => {}} />
+        <DropdownMenuItem icon={Table} label="Spreadsheet" onClick={() => {}} />
+        <DropdownMenuItem icon={ActionFrame} label="Frame" onClick={() => {}} />
+        <DropdownMenuItem icon={Folder} label="Folder" onClick={() => {}} />
+        <DropdownMenuItem
+          icon={UploadCloud02}
+          label="Upload File"
+          onClick={() => {}}
+        />
+        <DropdownMenuItem
+          icon={CloudArrowLeftRight}
+          label="From Company data"
+          onClick={() => {}}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
   const [personalConversationFilter, setPersonalConversationFilter] =
     useState<MyPodConversationFilter>("all");
   const [selectedConversationRow, setSelectedConversationRow] = useState<{
@@ -1494,6 +1562,10 @@ export function GroupConversationView({
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSource | null>(null);
   const [isDocumentSheetOpen, setIsDocumentSheetOpen] = useState(false);
+  const [isFrameFullscreen, setIsFrameFullscreen] = useState(false);
+  const [pinnedBannerFileId, setPinnedBannerFileId] = useState<string | null>(
+    null
+  );
 
   // Members tab state
   const [membersSearchText, setMembersSearchText] = useState("");
@@ -1785,11 +1857,6 @@ export function GroupConversationView({
   }, [space.id, isNew, spaceMemberIds, users, avatarCount]);
 
   const hasHistory = expandedConversations.length > 0;
-  const projectPageTitlePrefix = space.name.endsWith("s")
-    ? `${space.name}'`
-    : `${space.name}'s`;
-  const getProjectPageTitle = (pageTitle: string) =>
-    `${projectPageTitlePrefix} ${pageTitle}`;
 
   const conversationTitleById = useMemo(() => {
     const titleMap = new Map<string, string>();
@@ -3471,7 +3538,7 @@ export function GroupConversationView({
           const userId = info.getValue() as string;
           return editorIds.includes(userId) ? (
             <DataTable.CellContent>
-              <Chip size="xs" color="green" label="editor" />
+              <Chip size="xs" color="success" label="editor" />
             </DataTable.CellContent>
           ) : (
             <DataTable.BasicCellContent label="" />
@@ -3555,13 +3622,19 @@ export function GroupConversationView({
         className="flex min-h-0 flex-1 flex-col"
       >
         {/* Conversations Tab */}
-        <GroupConversationTabContent value="conversations">
-          {/* New conversation section */}
-          {greeting && (
-            <h2 className="heading-2xl text-foreground">{greeting}</h2>
-          )}
-          <InputBar placeholder={`Start a conversation in ${space.name}`} />
-
+        <GroupConversationTabContent
+          value="conversations"
+          topBox={
+            <>
+              {renderPodGreeting("Chat")}
+              <InputBar
+                autoFocus
+                placeholder="What are we working on?"
+                className="w-full max-w-4xl"
+              />
+            </>
+          }
+        >
           {!hasHistory && (
             <ProjectSetupEmptyState onSetupProject={handleSetupProject} />
           )}
@@ -3893,14 +3966,19 @@ export function GroupConversationView({
         </GroupConversationTabContent>
 
         {/* Tasks Tab */}
-        <GroupConversationTabContent value="todos" contentClassName="gap-4">
-          <div className="flex flex-col gap-3">
-            <TodoInputBar
-              placeholder="Describe the tasks to create"
-              onCreateTasks={handleCreateTodoSuggestions}
-            />
-          </div>
-
+        <GroupConversationTabContent
+          value="todos"
+          contentClassName="gap-4"
+          topBox={
+            <>
+              {renderPodGreeting("Tasks")}
+              <TodoInputBar
+                placeholder="Describe the tasks to create"
+                onCreateTasks={handleCreateTodoSuggestions}
+              />
+            </>
+          }
+        >
           {isShowingTodoSuggestions && (
             <SuggestionBox
               status={todoSuggestionStatus}
@@ -4326,22 +4404,33 @@ export function GroupConversationView({
         </GroupConversationTabContent>
 
         {/* Files Tab */}
-        <GroupConversationTabContent value="knowledge" contentClassName="gap-3">
-          {dataSources.length === 0 ? (
-            <EmptyCTA
-              message="No files in this room yet."
-              action={<EmptyCTAButton icon={Download01} label="Add files" />}
-            />
-          ) : (
+        <GroupConversationTabContent
+          value="knowledge"
+          contentClassName="gap-3"
+          topBox={
             <>
-              <div className="flex gap-2">
+              {renderPodGreeting("Files")}
+              {dataSources.length > 0 && (
                 <SearchInput
                   name="knowledge-search"
                   value={knowledgeSearchText}
                   onChange={setKnowledgeSearchText}
                   placeholder="Search files..."
-                  className="flex-1"
+                  className="w-full max-w-xl"
                 />
+              )}
+            </>
+          }
+        >
+          {dataSources.length === 0 ? (
+            <EmptyCTA
+              message="No files in this room yet."
+              action={renderCreateFilesMenu()}
+            />
+          ) : (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                {renderCreateFilesMenu()}
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -4370,33 +4459,6 @@ export function GroupConversationView({
                         icon={List}
                       />
                     </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      icon={Download01}
-                      label="Add files"
-                      isSelect
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      icon={CloudArrowLeftRight}
-                      label="From Company Data"
-                      onClick={() => {}}
-                    />
-                    <DropdownMenuItem
-                      icon={Folder}
-                      label="New folder"
-                      onClick={() => {}}
-                    />
-                    <DropdownMenuItem
-                      icon={UploadCloud02}
-                      label="Upload file"
-                      onClick={() => {}}
-                    />
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -4434,7 +4496,7 @@ export function GroupConversationView({
                 </ButtonsSwitchList>
               )}
               {tableItems.length === 0 && !isKnowledgeSearchActive ? (
-                <div className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted-background p-12">
+                <div className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border bg-muted-background p-12">
                   <p className="text-center text-sm text-muted-foreground">
                     This folder is empty.
                   </p>
@@ -4477,12 +4539,12 @@ export function GroupConversationView({
         )}
 
         {/* Settings Tab */}
-        <GroupConversationTabContent value="settings" contentClassName="gap-8">
-          {/* pod Name Section */}
-          <div className="flex gap-2">
-            <h3 className="heading-lg flex-1">
-              {getProjectPageTitle("settings")}
-            </h3>
+        <GroupConversationTabContent
+          value="settings"
+          contentClassName="gap-8"
+          topBox={renderPodGreeting("Settings")}
+        >
+          <div className="flex justify-end">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" icon={DotsHorizontal} />
@@ -4521,6 +4583,7 @@ export function GroupConversationView({
                 }}
                 placeholder="Enter room name"
                 containerClassName="flex-1"
+                className="has-[input:not(:placeholder-shown)]:border-border-form [&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-background"
               />
               {isEditingName && (
                 <>
@@ -4554,6 +4617,7 @@ export function GroupConversationView({
                 }}
                 placeholder="Enter room description"
                 containerClassName="flex-1"
+                className="has-[input:not(:placeholder-shown)]:border-border-form [&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-background"
               />
               {isEditingDescription && (
                 <>
@@ -4580,7 +4644,7 @@ export function GroupConversationView({
 
           <div className="flex w-full flex-col gap-2">
             <h3 className="heading-lg">Visibility</h3>
-            <div className="flex items-start items-center justify-between gap-4 border-y border-border py-4">
+            <div className="flex items-start items-center justify-between gap-4 border-y py-4">
               <div className="flex flex-col">
                 <div className="heading-sm text-foreground">
                   Opened to everyone
@@ -4590,7 +4654,6 @@ export function GroupConversationView({
                 </div>
               </div>
               <SliderToggle
-                size="xs"
                 selected={isPublic}
                 onClick={() => {
                   const nextValue = !isPublic;
@@ -4601,6 +4664,16 @@ export function GroupConversationView({
               />
             </div>
           </div>
+          {podTabCustomization && (
+            <PodCustomizationSection
+              tabs={podTabCustomization.tabs}
+              addableFiles={podTabCustomization.addableFiles}
+              onReorder={podTabCustomization.onReorder}
+              onChangeIcon={podTabCustomization.onChangeIcon}
+              onRemove={podTabCustomization.onRemove}
+              onAdd={podTabCustomization.onAdd}
+            />
+          )}
           {/* Members Section */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
@@ -4641,7 +4714,7 @@ export function GroupConversationView({
             )}
           </div>
 
-          <div className="flex w-full flex-col gap-8 border-t border-border pt-8">
+          <div className="flex w-full flex-col gap-8 border-t pt-8">
             <div className="flex w-full flex-col gap-3">
               <h3 className="heading-lg">Danger Zone</h3>
               <h4 className="heading-base">Archive</h4>
@@ -4940,15 +5013,71 @@ export function GroupConversationView({
           setIsDocumentSheetOpen(open);
           if (!open) {
             setSelectedDataSource(null);
+            setIsFrameFullscreen(false);
           }
         }}
       >
-        <SheetContent size="3xl" side="right">
-          <SheetContainer>
-            {selectedDataSource ? (
-              <FilePreviewPanel dataSource={selectedDataSource} />
-            ) : null}
-          </SheetContainer>
+        <SheetContent
+          size="3xl"
+          side="right"
+          className={cn(
+            selectedDataSource?.fileType === "frame" &&
+              isFrameFullscreen &&
+              "inset-0 sm:max-w-none"
+          )}
+          onEscapeKeyDown={(event) => {
+            if (selectedDataSource?.fileType === "frame" && isFrameFullscreen) {
+              event.preventDefault();
+              setIsFrameFullscreen(false);
+            }
+          }}
+        >
+          {selectedDataSource?.fileType === "frame" ? (
+            <>
+              <FrameSheetHeader
+                title={selectedDataSource.fileName}
+                isFullscreen={isFrameFullscreen}
+                isPinnedAsBanner={pinnedBannerFileId === selectedDataSource.id}
+                onToggleFullscreen={() =>
+                  setIsFrameFullscreen((previous) => !previous)
+                }
+                onAddToTopBar={
+                  onAddFileToTopbar
+                    ? () => onAddFileToTopbar(selectedDataSource.id)
+                    : undefined
+                }
+                onAddAsBanner={() =>
+                  setPinnedBannerFileId((previous) =>
+                    previous === selectedDataSource.id
+                      ? null
+                      : selectedDataSource.id
+                  )
+                }
+              />
+              <SheetContainer isListSelector noScroll>
+                <FilePreviewPanel
+                  dataSource={selectedDataSource}
+                  variant="document"
+                />
+              </SheetContainer>
+            </>
+          ) : (
+            <>
+              <SheetHeader>
+                <SheetTitle>
+                  {selectedDataSource?.fileName ?? "File"}
+                </SheetTitle>
+              </SheetHeader>
+              <SheetContainer isListSelector noScroll>
+                {selectedDataSource ? (
+                  <FilePreviewPanel
+                    dataSource={selectedDataSource}
+                    variant="document"
+                  />
+                ) : null}
+              </SheetContainer>
+            </>
+          )}
         </SheetContent>
       </Sheet>
 

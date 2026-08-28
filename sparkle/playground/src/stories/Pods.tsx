@@ -3,17 +3,15 @@ import {
   Attachment01,
   Avatar,
   Bell01,
-  ZapOff,
   Breadcrumbs,
   Button,
   Card,
-  MessageCircle01,
-  MessageChatSquare,
   CheckDouble,
-  Settings01,
-  UserSquare,
+  Cube01,
+  CubeOutline,
   Dialog,
   DialogContent,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -26,41 +24,60 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  Edit04,
   Eye,
+  File02,
   Heart,
   Lightbulb04,
   Link01,
   LogOut01,
-  DotsHorizontal,
+  MessageChatSquare,
+  MessageCircle01,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
-  Edit04,
+  NavTabPill,
+  NavTabPillList,
+  NavTabPillTrigger,
   Planet,
   Plus,
   PuzzlePiece01,
   ScrollArea,
   ScrollBar,
   SearchInput,
+  Settings01,
   SlackLogo,
-  SpaceClosed,
-  SpaceOpen,
   Trash01,
+  User03,
   Users01,
-  User01,
+  UserSquare,
   XClose,
+  ZapOff,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentType,
+} from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
+import { AddPodFileMenu } from "../components/AddPodFileMenu";
+import { AddToTopBarDialog } from "../components/AddToTopBarDialog";
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
-import { FreeButtonSwitch } from "../components/FreeButtonSwitch";
 import { GroupConversationView } from "../components/GroupConversationView";
-import { InputBar } from "../components/InputBar";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
+import {
+  type AgentSort,
+  type AgentType,
+  NewConversation,
+  NewConversationActionBar,
+  type WelcomeAgentTab,
+} from "../components/NewConversation";
 import {
   PanelLayout,
   PanelLayoutNav,
@@ -84,14 +101,19 @@ import {
   type Space,
   type User,
 } from "../data";
-import { getDataSourcesBySpaceId } from "../data/dataSources";
+import {
+  getDataSourceIcon,
+  getDataSourcesBySpaceId,
+} from "../data/dataSources";
 import { getRandomGreetingForName } from "../data/greetings";
 import {
   buildPodTabOptions,
   type DynamicFileTab,
   getDefaultMainTabOrder,
+  getFileTabIcon,
   getFileTabValue,
   type PodTabOption,
+  reorderFileTabsInOrder,
   resolvePodContext,
   shouldShowMemberChrome,
 } from "./podPanelConfig";
@@ -111,6 +133,11 @@ type PodTabsState = {
 };
 
 type SelectedCitation = { title: string; icon?: string };
+
+type PendingTopbarFile = {
+  id: string;
+  fileName: string;
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -214,20 +241,33 @@ function Pods() {
   const [draggingPodFileId, setDraggingPodFileId] = useState<string | null>(
     null
   );
-  const [draggingPodFileName, setDraggingPodFileName] = useState<string | null>(
-    null
-  );
   const [fileToRevealInKnowledge, setFileToRevealInKnowledge] = useState<
     string | null
   >(null);
+  const [isAddFileMenuOpen, setIsAddFileMenuOpen] = useState(false);
+  const [pendingTopbarFile, setPendingTopbarFile] =
+    useState<PendingTopbarFile | null>(null);
+  const [tabContextMenu, setTabContextMenu] = useState<{
+    value: string;
+    x: number;
+    y: number;
+  } | null>(null);
 
   // ── Sidebar UI state ──────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
     "chat"
   );
   const [searchText, setSearchText] = useState("");
-  const [inboxHideTriggered, setInboxHideTriggered] = useState(false);
   const [isAgentsDropdownOpen, setIsAgentsDropdownOpen] = useState(false);
+  const [welcomeAgentTab, setWelcomeAgentTab] =
+    useState<WelcomeAgentTab>("favorites");
+  const [welcomeAgentSort, setWelcomeAgentSort] = useState<AgentSort>("custom");
+  const [welcomeAgentType, setWelcomeAgentType] = useState<AgentType>("all");
+  const [welcomeAgentCategory, setWelcomeAgentCategory] = useState<
+    string | null
+  >(null);
+  const [isWelcomeToolbarPinned, setIsWelcomeToolbarPinned] = useState(false);
+  const [inboxHideTriggered, setInboxHideTriggered] = useState(false);
   const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
     useState<Map<string, SpaceNotificationPreference>>(new Map());
 
@@ -388,6 +428,24 @@ function Pods() {
     );
   }, [podContext, podTabsBySpaceId]);
 
+  const getFallbackFileTabIcon = useCallback(
+    (dataSourceId: string): ComponentType => {
+      if (!podContext) {
+        return File02;
+      }
+
+      const file = getDataSourcesBySpaceId(podContext.spaceId).find(
+        (item) => item.id === dataSourceId
+      );
+      if (!file) {
+        return File02;
+      }
+
+      return getDataSourceIcon(file) ?? File02;
+    },
+    [podContext]
+  );
+
   const basePodTabOptions = useMemo((): PodTabOption[] => {
     if (!podContext || !currentPodTabsState) {
       return [];
@@ -396,9 +454,10 @@ function Pods() {
     return buildPodTabOptions(
       podContext.variant,
       currentPodTabsState.mainTabOrder,
-      currentPodTabsState.dynamicFileTabs
+      currentPodTabsState.dynamicFileTabs,
+      getFallbackFileTabIcon
     );
-  }, [podContext, currentPodTabsState]);
+  }, [podContext, currentPodTabsState, getFallbackFileTabIcon]);
 
   const dynamicFileTabIds = useMemo(
     () =>
@@ -423,33 +482,11 @@ function Pods() {
     });
   }, [podContext]);
 
-  const handlePodTabReorder = useCallback(
-    (nextOptions: PodTabOption[]) => {
-      if (!podContext) {
-        return;
-      }
-
-      const mainTabOrder = nextOptions
-        .filter((option) => option.pinned !== "end")
-        .map((option) => option.value);
-
-      setPodTabsBySpaceId((prev) => {
-        const existing = prev.get(podContext.spaceId) ?? {
-          mainTabOrder: getDefaultMainTabOrder(podContext.variant),
-          dynamicFileTabs: [],
-        };
-
-        return new Map(prev).set(podContext.spaceId, {
-          ...existing,
-          mainTabOrder,
-        });
-      });
-    },
-    [podContext]
-  );
-
   const handlePodFileDrop = useCallback(
-    (fileId: string) => {
+    (
+      fileId: string,
+      options?: { activateTab?: boolean; iconName?: string }
+    ) => {
       if (!podContext) {
         return;
       }
@@ -479,6 +516,7 @@ function Pods() {
                 value: fileTabValue,
                 dataSourceId: fileId,
                 label: file.fileName,
+                ...(options?.iconName ? { iconName: options.iconName } : {}),
               },
             ];
         const mainTabOrder = alreadyOpen
@@ -490,20 +528,17 @@ function Pods() {
           dynamicFileTabs,
         });
       });
-      setActivePodTab(fileTabValue);
+      if (options?.activateTab !== false) {
+        setActivePodTab(fileTabValue);
+      }
       setDraggingPodFileId(null);
-      setDraggingPodFileName(null);
     },
     [podContext, setActivePodTab]
   );
 
-  const handlePodFileDragChange = useCallback(
-    (fileId: string | null, fileName?: string | null) => {
-      setDraggingPodFileId(fileId);
-      setDraggingPodFileName(fileName ?? null);
-    },
-    []
-  );
+  const handlePodFileDragChange = useCallback((fileId: string | null) => {
+    setDraggingPodFileId(fileId);
+  }, []);
 
   const handlePodRemoveTab = useCallback(
     (tabValue: string) => {
@@ -532,6 +567,67 @@ function Pods() {
       }
     },
     [activePodTab, podContext, setActivePodTab]
+  );
+
+  const handlePodFileReorder = useCallback(
+    (draggedValue: string, targetValue: string) => {
+      if (!podContext) {
+        return;
+      }
+
+      setPodTabsBySpaceId((prev) => {
+        const existing = prev.get(podContext.spaceId);
+        if (!existing) {
+          return prev;
+        }
+
+        const nextMainTabOrder = reorderFileTabsInOrder(
+          existing.mainTabOrder,
+          draggedValue,
+          targetValue
+        );
+        if (nextMainTabOrder === existing.mainTabOrder) {
+          return prev;
+        }
+
+        const tabsByValue = new Map<string, DynamicFileTab>(
+          existing.dynamicFileTabs.map((tab) => [tab.value, tab])
+        );
+        const dynamicFileTabs = nextMainTabOrder.flatMap((value) => {
+          const tab = tabsByValue.get(value);
+          return tab ? [tab] : [];
+        });
+
+        return new Map(prev).set(podContext.spaceId, {
+          mainTabOrder: nextMainTabOrder,
+          dynamicFileTabs,
+        });
+      });
+    },
+    [podContext]
+  );
+
+  const handlePodTabIconChange = useCallback(
+    (tabValue: string, iconName: string) => {
+      if (!podContext) {
+        return;
+      }
+
+      setPodTabsBySpaceId((prev) => {
+        const existing = prev.get(podContext.spaceId);
+        if (!existing) {
+          return prev;
+        }
+
+        return new Map(prev).set(podContext.spaceId, {
+          ...existing,
+          dynamicFileTabs: existing.dynamicFileTabs.map((tab) =>
+            tab.value === tabValue ? { ...tab, iconName } : tab
+          ),
+        });
+      });
+    },
+    [podContext]
   );
 
   const handleShowFileInFiles = useCallback(
@@ -574,6 +670,50 @@ function Pods() {
       };
     });
   }, [basePodTabOptions, handlePodRemoveTab, handleShowFileInFiles]);
+
+  const addablePodFiles = useMemo(() => {
+    if (!podContext) {
+      return [];
+    }
+
+    const pinnedIds = new Set(dynamicFileTabIds);
+    return getDataSourcesBySpaceId(podContext.spaceId).filter(
+      (item) => item.kind === "file" && !pinnedIds.has(item.id)
+    );
+  }, [dynamicFileTabIds, podContext]);
+
+  const podTabCustomizationTabs = useMemo(() => {
+    if (!currentPodTabsState) {
+      return [];
+    }
+
+    const tabsByValue = new Map<string, DynamicFileTab>(
+      currentPodTabsState.dynamicFileTabs.map((tab) => [tab.value, tab])
+    );
+
+    return currentPodTabsState.mainTabOrder.flatMap((value) => {
+      const tab = tabsByValue.get(value);
+      if (!tab) {
+        return [];
+      }
+
+      return [
+        {
+          value: tab.value,
+          label: tab.label,
+          icon: getFileTabIcon(
+            tab.iconName,
+            getFallbackFileTabIcon(tab.dataSourceId)
+          ),
+          iconName: tab.iconName,
+        },
+      ];
+    });
+  }, [currentPodTabsState, getFallbackFileTabIcon]);
+
+  const tabContextMenuOption = tabContextMenu
+    ? podTabOptions.find((option) => option.value === tabContextMenu.value)
+    : undefined;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleRoomNameNext = (name: string, isPublic: boolean) => {
@@ -772,6 +912,14 @@ function Pods() {
           }
           podVariant={podContext.variant}
           currentUserId={user.id}
+          podTabCustomization={{
+            tabs: podTabCustomizationTabs,
+            addableFiles: addablePodFiles,
+            onReorder: handlePodFileReorder,
+            onChangeIcon: handlePodTabIconChange,
+            onRemove: handlePodRemoveTab,
+            onAdd: (file) => handlePodFileDrop(file.id, { activateTab: false }),
+          }}
           selectedConversationId={
             p3View?.kind === "conversation" ? p3View.conversationId : null
           }
@@ -779,13 +927,19 @@ function Pods() {
       );
     // welcome
     return (
-      <div className="flex h-full w-full items-center justify-center bg-background">
-        <div className="flex w-full max-w-4xl flex-col gap-6 px-4 py-8">
-          <div className="heading-2xl text-foreground">{greeting}</div>
-          <InputBar placeholder="Ask a question" />
-          <div className="heading-lg text-foreground">Chat with…</div>
-        </div>
-      </div>
+      <NewConversation
+        greeting={greeting}
+        spaces={spaces}
+        agentTab={welcomeAgentTab}
+        onAgentTabChange={setWelcomeAgentTab}
+        agentSort={welcomeAgentSort}
+        onAgentSortChange={setWelcomeAgentSort}
+        agentType={welcomeAgentType}
+        onAgentTypeChange={setWelcomeAgentType}
+        agentCategory={welcomeAgentCategory}
+        onAgentCategoryChange={setWelcomeAgentCategory}
+        onToolbarPinnedChange={setIsWelcomeToolbarPinned}
+      />
     );
   })();
 
@@ -849,16 +1003,121 @@ function Pods() {
   );
 
   const podTopBarLeft = podContext ? (
-    <FreeButtonSwitch
-      value={activePodTab}
-      onValueChange={setActivePodTab}
-      options={podTabOptions}
-      onOptionsReorder={handlePodTabReorder}
-      onDropCreateOption={handlePodFileDrop}
-      onRemoveOption={handlePodRemoveTab}
-      isFileDragActive={draggingPodFileId !== null}
-      draggingFileLabel={draggingPodFileName}
-    />
+    <div
+      className={
+        "flex min-w-0 flex-1 items-center gap-0.5 rounded-lg " +
+        (draggingPodFileId ? "bg-highlight-50" : "")
+      }
+      onDragOver={(event) => {
+        if (draggingPodFileId) {
+          event.preventDefault();
+        }
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        if (draggingPodFileId) {
+          handlePodFileDrop(draggingPodFileId);
+        }
+      }}
+    >
+      <NavTabPill
+        value={activePodTab}
+        onValueChange={setActivePodTab}
+        className="min-w-0 overflow-hidden"
+      >
+        <NavTabPillList>
+          {podTabOptions.map((option) => {
+            if (!option.icon) {
+              return null;
+            }
+
+            return (
+              <NavTabPillTrigger
+                key={option.value}
+                value={option.value}
+                icon={option.icon}
+                aria-label={option.tooltip ?? option.label}
+                onContextMenu={(event) => {
+                  if (!option.contextMenuItems?.length) {
+                    return;
+                  }
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setTabContextMenu({
+                    value: option.value,
+                    x: event.clientX,
+                    y: event.clientY,
+                  });
+                }}
+              >
+                {option.label}
+              </NavTabPillTrigger>
+            );
+          })}
+        </NavTabPillList>
+      </NavTabPill>
+      <AddPodFileMenu
+        files={addablePodFiles}
+        open={isAddFileMenuOpen}
+        onOpenChange={setIsAddFileMenuOpen}
+        onSelect={(file) => {
+          setPendingTopbarFile({
+            id: file.id,
+            fileName: file.fileName,
+          });
+        }}
+        trigger={
+          <Button
+            size="xs"
+            variant="outline"
+            icon={Plus}
+            tooltip="Add file to top bar"
+            className={
+              "shrink-0 transition-opacity duration-150 " +
+              (isAddFileMenuOpen
+                ? "opacity-100"
+                : "opacity-0 group-hover/topbar:opacity-100 focus-within:opacity-100")
+            }
+          />
+        }
+      />
+      {tabContextMenu && tabContextMenuOption?.contextMenuItems && (
+        <DropdownMenu
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              setTabContextMenu(null);
+            }
+          }}
+          modal
+        >
+          <DropdownMenuPortal>
+            <DropdownMenuContent
+              align="start"
+              className="whitespace-nowrap"
+              style={{
+                position: "fixed",
+                left: tabContextMenu.x,
+                top: tabContextMenu.y,
+              }}
+            >
+              {tabContextMenuOption.contextMenuItems.map((item) => (
+                <DropdownMenuItem
+                  key={item.label}
+                  label={item.label}
+                  icon={item.icon}
+                  variant={item.variant}
+                  onClick={() => {
+                    item.onClick?.();
+                    setTabContextMenu(null);
+                  }}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenu>
+      )}
+    </div>
   ) : null;
 
   const podTopBarRight = (() => {
@@ -919,6 +1178,29 @@ function Pods() {
           hasLighterFont
         />
       );
+    if (p2View.kind === "welcome")
+      return (
+        <div
+          className={
+            "w-full transition-opacity duration-200 " +
+            (isWelcomeToolbarPinned
+              ? "opacity-100"
+              : "opacity-0 pointer-events-none")
+          }
+          aria-hidden={!isWelcomeToolbarPinned}
+        >
+          <NewConversationActionBar
+            value={welcomeAgentTab}
+            onValueChange={setWelcomeAgentTab}
+            agentSort={welcomeAgentSort}
+            onAgentSortChange={setWelcomeAgentSort}
+            agentType={welcomeAgentType}
+            onAgentTypeChange={setWelcomeAgentType}
+            agentCategory={welcomeAgentCategory}
+            onAgentCategoryChange={setWelcomeAgentCategory}
+          />
+        </div>
+      );
     return null;
   })();
 
@@ -961,20 +1243,25 @@ function Pods() {
 
   // ── Sidebar (Nav) top bar ─────────────────────────────────────────────────
   const navTopBar = (
-    <FreeButtonSwitch<"chat" | "spaces" | "admin">
+    <NavTabPill
       value={activeTab}
-      onValueChange={setActiveTab}
-      options={[
-        { value: "chat", label: "Chat", icon: MessageChatSquare },
-        { value: "spaces", label: "Spaces", icon: Planet },
-        { value: "admin", icon: Settings01 },
-      ]}
-    />
+      onValueChange={(v) => setActiveTab(v as "chat" | "spaces" | "admin")}
+    >
+      <NavTabPillList>
+        <NavTabPillTrigger value="chat" icon={MessageChatSquare}>
+          Chat
+        </NavTabPillTrigger>
+        <NavTabPillTrigger value="spaces" icon={Planet}>
+          Spaces
+        </NavTabPillTrigger>
+        <NavTabPillTrigger value="admin" icon={Settings01} />
+      </NavTabPillList>
+    </NavTabPill>
   );
 
   // ── Sidebar (Nav) content ─────────────────────────────────────────────────
   const navContent = (
-    <div className="flex min-h-0 flex-1 flex-col bg-muted-background">
+    <div className="flex min-h-0 flex-1 flex-col bg-app-background">
       {/* ── Chat tab ── */}
       {activeTab === "chat" && (
         <div className="flex min-h-0 flex-1 flex-col">
@@ -990,7 +1277,7 @@ function Pods() {
               />
               <Button
                 variant="primary"
-                tooltip="New Conversation"
+                tooltip="New conversation, agent, skill"
                 size="sm"
                 icon={MessageCircle01}
                 label="New"
@@ -1085,7 +1372,7 @@ function Pods() {
             {inboxConversations.length > 0 && (
               <NavigationListCollapsibleSection
                 label="Inbox"
-                className="border-b border-t border-border bg-background/50 px-2 pb-2"
+                className="border-b border-t border bg-background/50 px-2 pb-2"
                 actionOnHover={false}
                 action={
                   <>
@@ -1211,7 +1498,7 @@ function Pods() {
                       <NavigationListItem
                         key={space.id}
                         label={space.name}
-                        icon={isRestricted ? SpaceOpen : SpaceClosed}
+                        icon={isRestricted ? Cube01 : CubeOutline}
                         selected={
                           p2View.kind === "space" && p2View.spaceId === space.id
                         }
@@ -1512,7 +1799,7 @@ function Pods() {
       )}
 
       {/* Bottom bar */}
-      <div className="flex h-14 items-center justify-between gap-2 border-t border-border pl-1 pr-2">
+      <div className="flex h-14 items-center justify-between gap-2 border-t border pl-1 pr-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Card
@@ -1540,7 +1827,7 @@ function Pods() {
           <DropdownMenuContent>
             <DropdownMenuItem
               label="Profile"
-              icon={User01}
+              icon={User03}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1670,6 +1957,22 @@ function Pods() {
           )}
         </DialogContent>
       </Dialog>
+      <AddToTopBarDialog
+        key={pendingTopbarFile?.id ?? "closed"}
+        isOpen={pendingTopbarFile !== null}
+        fileName={pendingTopbarFile?.fileName ?? ""}
+        defaultIcon={
+          pendingTopbarFile
+            ? getFallbackFileTabIcon(pendingTopbarFile.id)
+            : File02
+        }
+        onClose={() => setPendingTopbarFile(null)}
+        onAdd={(iconName) => {
+          if (pendingTopbarFile) {
+            handlePodFileDrop(pendingTopbarFile.id, { iconName });
+          }
+        }}
+      />
       <InviteUsersScreen
         isOpen={isInviteUsersScreenOpen}
         spaceId={inviteSpaceId}
