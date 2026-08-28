@@ -107,13 +107,8 @@ export function ModelPicker({
   const { isDark } = useTheme();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState("");
 
-  // Inline-expansion state, only used on width-constrained clients.
-  const [moreModelsExpanded, setMoreModelsExpanded] = useState(false);
-  const [expandedMaker, setExpandedMaker] = useState<ModelMakerIdType | null>(
-    null
-  );
+  const [isMakersExpanded, setIsMakersExpanded] = useState(false);
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
@@ -227,9 +222,7 @@ export function ModelPicker({
   // through here rather than touching `setIsOpen` directly.
   const openMenu = () => {
     setIsOpen(true);
-    setSearch("");
-    setMoreModelsExpanded(false);
-    setExpandedMaker(null);
+    setIsMakersExpanded(false);
     if (trackingSurface) {
       trackModelPickerOpen({ surface: trackingSurface, clientType });
     }
@@ -240,11 +233,10 @@ export function ModelPicker({
   }
 
   // Picking a concrete model (or nudging its effort slider) must keep the menu
-  // and its open submenus visible so the effort can still be adjusted. The
-  // click briefly moves focus/pointer in a way Radix treats as an
-  // interaction-outside and dismisses the (sub)menu; we record the pick time
-  // and veto the close that immediately follows it (see `onOpenChange` and the
-  // submenu guards in `ModelPickerMoreModels`).
+  // visible so the effort can still be adjusted. The click briefly moves
+  // focus/pointer in a way Radix treats as an interaction-outside and
+  // dismisses the menu; we record the pick time and veto the close that
+  // immediately follows it (see `onOpenChange` below).
   const lastModelInteractionAtMsRef = useRef(0);
 
   const shouldBlockDismiss = () =>
@@ -276,6 +268,10 @@ export function ModelPicker({
       },
       "model"
     );
+  };
+
+  const onToggleMakers = () => {
+    setIsMakersExpanded((expanded) => !expanded);
   };
 
   const onChangeEffort = (effort: ReasoningEffort) => {
@@ -360,17 +356,10 @@ export function ModelPicker({
         canRevert={canRevert}
         lockPremiumEfforts={lockPremiumEfforts}
         makerGroups={makerGroups}
-        allModels={allModels}
         streamModels={streamModels}
         streams={streams}
-        search={search}
-        onSearchChange={setSearch}
-        moreModelsExpanded={moreModelsExpanded}
-        onToggleMoreModels={() => setMoreModelsExpanded((v) => !v)}
-        expandedMaker={expandedMaker}
-        onToggleMaker={(makerId) =>
-          setExpandedMaker((current) => (current === makerId ? null : makerId))
-        }
+        isMakersExpanded={isMakersExpanded}
+        onToggleMakers={onToggleMakers}
         onSelectTier={onSelectTier}
         onSelectModel={onSelectModel}
         onChangeEffort={onChangeEffort}

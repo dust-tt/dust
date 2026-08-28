@@ -1,4 +1,4 @@
-import { ModelPickerMoreModels } from "@app/components/model_picker/ModelPickerMoreModels";
+import { ModelPickerMakersView } from "@app/components/model_picker/ModelPickerMakersView";
 import { ModelPickerSelectionIndicator } from "@app/components/model_picker/ModelPickerSelectionIndicator";
 import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type {
@@ -19,10 +19,11 @@ import type {
 } from "@app/types/api/assistant/models";
 import type {
   ModelConfigurationType,
-  ModelMakerIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import {
+  ChevronDown,
+  ChevronRight,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -33,23 +34,18 @@ import {
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
-  // Vetoes the interaction-outside dismissal that a model/effort pick triggers
-  // on the open submenus, so they stay reachable after a pick.
+  // Vetoes the interaction-outside dismissal that a model/effort pick triggers,
+  // so the menu stays reachable after a pick.
   shouldBlockDismiss: () => boolean;
   shown: Selection;
   agentDefault: Selection;
   canRevert: boolean;
   lockPremiumEfforts: boolean;
   makerGroups: MakerGroup[];
-  allModels: ModelConfigurationType[];
   streamModels: EnabledModelConfigurationType[];
   streams: ModelStreamResolutionsType | null;
-  search: string;
-  onSearchChange: (value: string) => void;
-  moreModelsExpanded: boolean;
-  onToggleMoreModels: () => void;
-  expandedMaker: ModelMakerIdType | null;
-  onToggleMaker: (makerId: ModelMakerIdType) => void;
+  isMakersExpanded: boolean;
+  onToggleMakers: () => void;
   onSelectTier: (tierId: ModelTierId) => void;
   onSelectModel: (model: ModelConfigurationType) => void;
   onChangeEffort: (effort: ReasoningEffort) => void;
@@ -64,15 +60,10 @@ export function ModelPickerContent({
   canRevert,
   lockPremiumEfforts,
   makerGroups,
-  allModels,
   streamModels,
   streams,
-  search,
-  onSearchChange,
-  moreModelsExpanded,
-  onToggleMoreModels,
-  expandedMaker,
-  onToggleMaker,
+  isMakersExpanded,
+  onToggleMakers,
   onSelectTier,
   onSelectModel,
   onChangeEffort,
@@ -83,6 +74,21 @@ export function ModelPickerContent({
       className="w-84 max-w-(--radix-dropdown-menu-content-available-width)"
       align="start"
       side={side}
+      onFocusOutside={(e) => {
+        if (shouldBlockDismiss()) {
+          e.preventDefault();
+        }
+      }}
+      onPointerDownOutside={(e) => {
+        if (shouldBlockDismiss()) {
+          e.preventDefault();
+        }
+      }}
+      onInteractOutside={(e) => {
+        if (shouldBlockDismiss()) {
+          e.preventDefault();
+        }
+      }}
     >
       <DropdownMenuLabel label="Recommendations" className="text-sm" />
 
@@ -139,24 +145,31 @@ export function ModelPickerContent({
 
       <DropdownMenuSeparator />
 
-      <ModelPickerMoreModels
-        shouldBlockDismiss={shouldBlockDismiss}
-        makerGroups={makerGroups}
-        allModels={allModels}
-        shown={shown}
-        agentDefault={agentDefault}
-        canRevert={canRevert}
-        lockPremiumEfforts={lockPremiumEfforts}
-        search={search}
-        onSearchChange={onSearchChange}
-        isExpanded={moreModelsExpanded}
-        onToggleExpanded={onToggleMoreModels}
-        expandedMaker={expandedMaker}
-        onToggleMaker={onToggleMaker}
-        onSelectModel={onSelectModel}
-        onChangeEffort={onChangeEffort}
-        onRevert={onRevert}
+      <DropdownMenuItem
+        label="More models"
+        endComponent={
+          <Icon
+            visual={isMakersExpanded ? ChevronDown : ChevronRight}
+            size="xs"
+            className="text-muted-foreground"
+          />
+        }
+        onClick={onToggleMakers}
+        onSelect={(e) => e.preventDefault()}
       />
+
+      {isMakersExpanded && (
+        <ModelPickerMakersView
+          makerGroups={makerGroups}
+          shown={shown}
+          agentDefault={agentDefault}
+          canRevert={canRevert}
+          lockPremiumEfforts={lockPremiumEfforts}
+          onSelectModel={onSelectModel}
+          onChangeEffort={onChangeEffort}
+          onRevert={onRevert}
+        />
+      )}
     </DropdownMenuContent>
   );
 }
