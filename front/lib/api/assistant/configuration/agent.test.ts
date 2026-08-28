@@ -6,11 +6,15 @@ import {
   getAgentConfiguration,
   getAgentConfigurations,
   restoreAgentConfiguration,
+  unsafeHardDeleteAgentConfiguration,
   updateAgentConfigurationsScope,
 } from "@app/lib/api/assistant/configuration/agent";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import {
+  AgentConfigurationModel,
+  AgentModel,
+} from "@app/lib/models/agent/agent";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -72,6 +76,84 @@ describe("getAgentConfigurations", () => {
       { sId: latestFirstAgent.sId, version: latestFirstAgent.version },
       { sId: latestSecondAgent.sId, version: latestSecondAgent.version },
     ]);
+  });
+});
+
+describe("stable agent identities", () => {
+  it("reuses one identity across agent versions", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const firstVersion =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      firstVersion.sId
+    );
+
+    const versions = await AgentConfigurationModel.findAll({
+      where: { sId: firstVersion.sId, workspaceId: workspace.id },
+      attributes: ["agentId"],
+    });
+    const agentIds = new Set(versions.map((version) => version.agentId));
+
+    expect(versions).toHaveLength(2);
+    expect(agentIds.size).toBe(1);
+    expect([...agentIds][0]).not.toBeNull();
+  });
+
+  it("creates and attaches an identity when updating a legacy agent", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const firstVersion =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    await AgentConfigurationModel.update(
+      { agentId: null },
+      { where: { sId: firstVersion.sId, workspaceId: workspace.id } }
+    );
+    await AgentModel.destroy({
+      where: { sId: firstVersion.sId, workspaceId: workspace.id },
+    });
+
+    await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      firstVersion.sId
+    );
+
+    const versions = await AgentConfigurationModel.findAll({
+      where: { sId: firstVersion.sId, workspaceId: workspace.id },
+      attributes: ["agentId"],
+    });
+    expect(versions).toHaveLength(2);
+    expect(versions.every((version) => version.agentId !== null)).toBe(true);
+    expect(new Set(versions.map((version) => version.agentId)).size).toBe(1);
+  });
+
+  it("deletes the identity only after its last version is deleted", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const firstVersion =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const secondVersion = await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      firstVersion.sId
+    );
+
+    await unsafeHardDeleteAgentConfiguration(authenticator, secondVersion);
+    expect(
+      await AgentModel.findOne({
+        where: { sId: firstVersion.sId, workspaceId: workspace.id },
+      })
+    ).not.toBeNull();
+
+    await unsafeHardDeleteAgentConfiguration(authenticator, firstVersion);
+    expect(
+      await AgentModel.findOne({
+        where: { sId: firstVersion.sId, workspaceId: workspace.id },
+      })
+    ).toBeNull();
   });
 });
 
