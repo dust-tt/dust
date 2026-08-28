@@ -1,10 +1,7 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import {
-  fetchAvailableTools,
-  fetchToolUsageMetrics,
-  resolveToolDisplayNames,
-} from "@app/lib/api/assistant/observability/tool_usage";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import { buildDaysConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/period";
+import { fetchToolUsageExportRows } from "@app/lib/api/analytics/tool_usage_export";
+import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
@@ -16,13 +13,6 @@ const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
 });
 
-interface ToolUsageExportRow {
-  date: string;
-  toolName: string;
-  executions: number;
-  uniqueUsers: number;
-}
-
 // Mounted at /api/w/:wId/analytics/tool-usage-export.
 const app = workspaceApp();
 
@@ -31,62 +21,30 @@ app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 
   const { days } = ctx.req.valid("query");
-  const owner = auth.getNonNullableWorkspace();
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
-    days,
-  });
 
-  const toolsResult = await fetchAvailableTools(baseQuery);
-  if (toolsResult.isErr()) {
+  const baseQuery = await buildDaysConsumptionScopeQuery(auth, days);
+
+  const result = await fetchToolUsageExportRows(baseQuery, "UTC");
+  if (result.isErr()) {
     return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
-        message: `Failed to retrieve available tools: ${toolsResult.error.message}`,
+        message: `Failed to retrieve tool usage: ${result.error.message}`,
       },
     });
   }
 
-  const tools = await resolveToolDisplayNames(auth, toolsResult.value);
-  const rows: ToolUsageExportRow[] = [];
+  const displayNameByServerName = await resolveServerDisplayNames(
+    auth,
+    result.value.map((row) => row.toolName)
+  );
+  const rows = result.value.map((row) => ({
+    ...row,
+    toolName: displayNameByServerName.get(row.toolName) ?? row.toolName,
+  }));
 
-  for (const tool of tools) {
-    const usageResult = await fetchToolUsageMetrics(baseQuery, tool.serverName);
-    if (usageResult.isErr()) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: `Failed to retrieve tool usage for ${tool.serverName}: ${usageResult.error.message}`,
-        },
-      });
-    }
-
-    for (const point of usageResult.value) {
-      rows.push({
-        date: point.date,
-        toolName: tool.displayName,
-        executions: point.executionCount,
-        uniqueUsers: point.uniqueUsers,
-      });
-    }
-  }
-
-  rows.sort((a, b) => {
-    const dateCompare = a.date.localeCompare(b.date);
-    if (dateCompare !== 0) {
-      return dateCompare;
-    }
-    return a.toolName.localeCompare(b.toolName);
-  });
-
-  const headers: (keyof ToolUsageExportRow)[] = [
-    "date",
-    "toolName",
-    "executions",
-    "uniqueUsers",
-  ];
+  const headers = ["date", "toolName", "executions", "uniqueUsers"] as const;
   const csvData = rows.map((row) => headers.map((h) => row[h]));
   const csv = stringify([headers, ...csvData], { header: false });
 
