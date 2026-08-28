@@ -299,6 +299,50 @@ export async function loadFramePublicationManifest(
   return manifest;
 }
 
+export async function loadActiveFrameUiBundle(
+  auth: Authenticator,
+  {
+    frame,
+  }: {
+    frame: FileResource;
+  }
+): Promise<Result<string, FramePublicationError>> {
+  const frameIdentity = getFrameIdentity(auth, frame);
+  if (frameIdentity.isErr()) {
+    return frameIdentity;
+  }
+
+  const publicationId = frame.useCaseMetadata?.activePublicationId;
+  if (!publicationId) {
+    return new Err(
+      new FramePublicationError(
+        "publication_not_found",
+        "Frame has no active publication."
+      )
+    );
+  }
+
+  const uiBundlePath = getFramePublicationUiBundlePath({
+    ...frameIdentity.value,
+    publicationId,
+  });
+  try {
+    const uiBundle =
+      await getPrivateUploadBucket().fetchFileContent(uiBundlePath);
+    return new Ok(uiBundle);
+  } catch (error) {
+    if (isGCSNotFoundError(error)) {
+      return new Err(
+        new FramePublicationError(
+          "publication_not_found",
+          `Frame publication not found: ${publicationId}`
+        )
+      );
+    }
+    throw error;
+  }
+}
+
 export async function activateFramePublication(
   auth: Authenticator,
   {

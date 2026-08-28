@@ -9047,7 +9047,7 @@
     "/api/w/{wId}/files/{fileId}": {
       "get": {
         "summary": "Get or download a file",
-        "description": "View or download a file. Skill attachments require read access to their associated skill. Use query parameters `version` (original, processed, public) and `action` (view, download).",
+        "description": "View or download a file. Skill attachments require read access to their associated skill. Feature-flagged Frames v2 return the active published UI bundle when viewed. Use query parameters `version` (original, processed, public) and `action` (view, download).",
         "tags": [
           "Private Files"
         ],

@@ -1,11 +1,15 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -28,6 +32,7 @@ function fileUrl(workspace: { sId: string }, fileId: string, query = "") {
 describe("GET /api/w/:wId/files/:fileId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    fileStorageMock.reset();
   });
 
   it("should return 404 when file does not exist", async () => {
@@ -174,6 +179,79 @@ describe("GET /api/w/:wId/files/:fileId", () => {
     );
 
     expect(response.headers.get("content-type")).toBe("image/png");
+  });
+
+  it("serves the active Frames v2 UI bundle", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date()],
+    });
+    const publicationId = "active-publication";
+    const frame = await FileFactory.create(auth, user, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 128,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: {
+        activePublicationId: publicationId,
+        conversationId: conversation.sId,
+      },
+    });
+    const uiBundle = "export default function Frame() { return null; }";
+    fileStorageMock.setObject(
+      getFramePublicationUiBundlePath({
+        workspaceId: workspace.sId,
+        frameId: frame.sId,
+        publicationId,
+      }),
+      uiBundle
+    );
+
+    const response = await honoApp.request(
+      fileUrl(workspace, frame.sId, "?action=view")
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe(frameContentType);
+    expect(await response.text()).toBe(uiBundle);
+  });
+
+  it("returns 404 for an unpublished Frames v2 file", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date()],
+    });
+    const frame = await FileFactory.create(auth, user, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 128,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const response = await honoApp.request(
+      fileUrl(workspace, frame.sId, "?action=view")
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "file_not_found",
+        message: "Published Frame not found.",
+      },
+    });
   });
 
   it("should return 404 when user cannot read space for folders_document", async () => {
