@@ -131,6 +131,10 @@ async fn run() -> anyhow::Result<()> {
             commands::db::DbCommand::Query { name } => commands::cmd_db_query(&name).await?,
         },
         Commands::Frame { command } => match command {
+            commands::frame::FrameCommand::Clone {
+                source,
+                destination,
+            } => commands::cmd_frame_clone(&source, &destination).await?,
             commands::frame::FrameCommand::Create {
                 directory,
                 name,
@@ -534,6 +538,38 @@ mod tests {
                 );
             }
             Commands::Frame { .. } => panic!("expected move"),
+            _ => panic!("expected frame"),
+        }
+    }
+
+    #[test]
+    fn frame_clone_parses() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "frame",
+            "clone",
+            "/files/conversation-conv_123/Status",
+            "/files/pod-vlt_123/Status Copy",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Frame {
+                command:
+                    commands::frame::FrameCommand::Clone {
+                        source,
+                        destination,
+                    },
+            } => {
+                assert_eq!(
+                    source,
+                    std::path::PathBuf::from("/files/conversation-conv_123/Status")
+                );
+                assert_eq!(
+                    destination,
+                    std::path::PathBuf::from("/files/pod-vlt_123/Status Copy")
+                );
+            }
+            Commands::Frame { .. } => panic!("expected clone"),
             _ => panic!("expected frame"),
         }
     }

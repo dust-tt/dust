@@ -54,6 +54,17 @@ dsbx frame move /files/<source-scope>/<frame-folder> /files/<destination-scope>/
 Moving to a different runtime scope safely refreshes the Frame-owned sandbox. Do not move a
 registered Frame folder with raw filesystem commands.
 
+## Clone a registered Frame
+
+Use the CLI instead of \`cp\` to create a new Frame with copied source but a fresh identity,
+publication, sharing record, sandbox ownership, and empty database state:
+
+\`\`\`bash
+dsbx frame clone /files/<source-scope>/<frame-folder> /files/<destination-scope>/<new-folder>
+\`\`\`
+
+The destination must not exist. The source Frame and its sharing and database state are unchanged.
+
 ## Share a registered Frame
 
 Configure Frame use rights through the CLI. This does not change who can edit its source:
@@ -357,7 +368,5 @@ dsbx frame publish /files/<scope>/<frame>.tsx
 Do not use the \`publish_interactive_content_file\` tool: the CLI replaces it under Frames v2.
 Other interactive-content tools remain available for Frame operations that the CLI does not cover
 yet. Use \`dsbx frame --help\` as the authority for available operations.
-
-Do not use \`cp\` to clone a registered Frame folder. Cloning is not supported yet.
 
 ${INTERACTIVE_CONTENT_AUTHORING_PROSE_V2}`;
