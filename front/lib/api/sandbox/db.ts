@@ -256,6 +256,10 @@ export async function setupPodStateOnColdStart(
   });
 }
 
+// Pods and Frames use the same isolated SQLite/Litestream runtime. Keep the Pod-named export for
+// existing callers while owner-neutral lifecycle code uses this name.
+export const setupSandboxStateOnColdStart = setupPodStateOnColdStart;
+
 async function listReplicaDatabases(
   auth: Authenticator,
   sandbox: SandboxResource
@@ -596,6 +600,8 @@ export async function ensurePodStateHealthOnSleep(
 
   return new Ok(undefined);
 }
+
+export const ensureSandboxStateHealthOnSleep = ensurePodStateHealthOnSleep;
 
 async function checkReplicaMountLiveness(
   auth: Authenticator,

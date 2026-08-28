@@ -714,6 +714,9 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       case "frame_publications":
         return `w/${this.workspaceId}/frames/${mount.frameId}/publications`;
 
+      case "frame_state":
+        return `w/${this.workspaceId}/frames/${mount.frameId}/state`;
+
       case "pod_sandbox_functions":
         return `w/${this.workspaceId}/pods/${mount.podId}/sandbox-functions`;
 
@@ -732,11 +735,14 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       case "frame_publications":
         return "frame_publications";
 
+      case "frame_state":
+        return "sandbox_state_replica";
+
       case "pod_sandbox_functions":
         return "pod_sandbox_functions";
 
       case "pod_state":
-        return "pod_state_replica";
+        return "sandbox_state_replica";
 
       default:
         assertNever(mount);

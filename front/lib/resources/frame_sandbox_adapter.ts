@@ -1,3 +1,7 @@
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { ensureSandboxStateHealthOnSleep } from "@app/lib/api/sandbox/db";
+import { frameSandboxOnlyMounts } from "@app/lib/api/sandbox/frame_mounts";
+import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import { resolvePodForRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -8,6 +12,7 @@ import type {
   SandboxCreateBlob,
   SandboxDeleteOwner,
   SandboxLifecycleOwner,
+  SandboxPreSleepCheck,
 } from "@app/lib/resources/sandbox_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
@@ -25,7 +30,7 @@ const FRAME_SANDBOX_WORKSPACE_DELETE_BATCH_SIZE = 1024;
 
 export type FrameSandboxOwner = Pick<
   FileResource,
-  "id" | "sId" | "workspaceId"
+  "id" | "sId" | "workspaceId" | "isFrameV2"
 >;
 
 type FrameSandboxScopeOwner = FrameSandboxOwner &
@@ -197,6 +202,30 @@ export class FrameSandboxAdapter {
     };
   }
 
+  private static sqliteStatePreSleepCheck(
+    auth: Authenticator,
+    frame: FrameSandboxOwner
+  ): SandboxPreSleepCheck {
+    return (sandbox) =>
+      ensureSandboxStateHealthOnSleep(auth, sandbox, {
+        refreshMountCredential: async () => {
+          const imageResult = getSandboxImage(auth);
+          if (imageResult.isErr()) {
+            return imageResult;
+          }
+          const fsResult = await DustFileSystem.forFrameSandboxProvisioning(
+            auth,
+            frame,
+            { sandboxOnlyMounts: frameSandboxOnlyMounts(frame) }
+          );
+          if (fsResult.isErr()) {
+            return fsResult;
+          }
+          return fsResult.value.refreshSandboxMount(sandbox, imageResult.value);
+        },
+      });
+  }
+
   static async fetchSandbox(
     auth: Authenticator,
     frame: FrameSandboxOwner
@@ -220,7 +249,10 @@ export class FrameSandboxAdapter {
         createSandbox: (blob) =>
           this.createSandboxRecordForFrame(auth, frame, blob),
       },
-      { requireRunning }
+      {
+        beforeSleep: this.sqliteStatePreSleepCheck(auth, frame),
+        requireRunning,
+      }
     );
   }
 
@@ -285,7 +317,8 @@ export class FrameSandboxAdapter {
   ): Promise<Result<void, Error>> {
     return SandboxResource.dangerouslySleepIfRunning(
       auth,
-      this.toSandboxLifecycleOwner(auth, frame)
+      this.toSandboxLifecycleOwner(auth, frame),
+      { beforeSleep: this.sqliteStatePreSleepCheck(auth, frame) }
     );
   }
 
@@ -315,7 +348,8 @@ export class FrameSandboxAdapter {
   ): Promise<Result<void, Error>> {
     return SandboxResource.dangerouslyDestroyIfKillRequested(
       auth,
-      this.toSandboxLifecycleOwner(auth, frame)
+      this.toSandboxLifecycleOwner(auth, frame),
+      { beforeSleep: this.sqliteStatePreSleepCheck(auth, frame) }
     );
   }
 
