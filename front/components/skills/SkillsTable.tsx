@@ -564,7 +564,10 @@ export function SkillsTable({
                   kind: "item" as const,
                 },
                 {
-                  label: "Copy link",
+                  label:
+                    isSkillLinkCopied && copiedSkillId === skill.sId
+                      ? "Copied!"
+                      : "Copy link",
                   icon:
                     isSkillLinkCopied && copiedSkillId === skill.sId
                       ? ClipboardCheck
