@@ -19,6 +19,7 @@ import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
+  ArrowLeft,
   Attachment01,
   Button,
   cn,
@@ -30,7 +31,8 @@ import {
   Plus,
   ShapesPlus,
 } from "@dust-tt/sparkle";
-import { useRef, useState } from "react";
+import type React from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 const PLUS_BUTTON_CLASSNAME = cn(
   INPUT_BAR_PILL_SURFACE_CLASSNAME,
@@ -39,6 +41,7 @@ const PLUS_BUTTON_CLASSNAME = cn(
 
 const MOBILE_PICKERS = ["capabilities", "attachments", "spaces"] as const;
 type MobilePicker = (typeof MOBILE_PICKERS)[number];
+type SubPicker = MobilePicker;
 
 interface InputBarPlusMenuProps {
   owner: WorkspaceType;
@@ -104,8 +107,19 @@ export function InputBarPlusMenu({
   // menu to be opened once, which matches when desktop mounts them inside
   // DropdownMenuContent.
   const [hasOpenedMenu, setHasOpenedMenu] = useState(false);
+  const [activeSubPicker, setActiveSubPicker] = useState<SubPicker | null>(
+    null
+  );
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const shouldPrefetch = isOpen || hasHovered || openMobilePicker !== null;
+
+  // The root view's own slide-in would otherwise also play on the very first
+  // paint, stacking on top of the dropdown's own open animation. Only
+  // animate it on a genuine swap back to root, not on the initial mount.
+  const isInitialRenderRef = useRef(true);
+  useLayoutEffect(() => {
+    isInitialRenderRef.current = false;
+  }, []);
 
   const hasAnyEntry = !hideCapabilities || !hideAttachments || spaces != null;
   if (!hasAnyEntry) {
@@ -198,6 +212,68 @@ export function InputBarPlusMenu({
     />
   );
 
+  const inlineCapabilitiesPicker = (
+    <CapabilitiesPicker
+      type="inline"
+      owner={owner}
+      user={user}
+      selectedMCPServerViews={selectedMCPServerViews}
+      onSelect={onMCPServerViewSelect}
+      onSkillSelect={onSkillSelect}
+      onSetupServer={onSetupServer}
+      onOpenChange={onCapabilitiesPickerOpenChange}
+      buttonSize={buttonSize}
+      disabled={disabled}
+    />
+  );
+
+  const inlineAttachmentsPicker = (
+    <InputBarAttachmentsPicker
+      type="inline"
+      owner={owner}
+      fileUploaderService={fileUploaderService}
+      isLoading={false}
+      onNodeSelect={onNodeSelect}
+      onNodeUnselect={onNodeUnselect}
+      attachedNodes={attachedNodes}
+      buttonSize={buttonSize}
+      onOpenChange={onAttachmentsPickerOpenChange}
+      toolFileUpload={{
+        useCase: "conversation",
+        useCaseMetadata: {
+          conversationId: conversation?.sId,
+        },
+      }}
+      spaceId={spaceId}
+      disabled={disabled}
+      prefetch={shouldPrefetch}
+    />
+  );
+
+  const inlineSpacesPicker = (
+    <InputBarSpacesPicker
+      type="inline"
+      canDeselectSelectedSpaces={canDeselectSelectedSpaces ?? true}
+      disabled={disabled}
+      isLoading={!!isSpacesLoading}
+      selectedSpaceIds={selectedSpaceIds}
+      onSelectedSpaceIdsChange={onSelectedSpaceIdsChange}
+      spaces={spaces ?? []}
+    />
+  );
+
+  const subPickerLabel: Record<SubPicker, string> = {
+    capabilities: "Capabilities",
+    attachments: "Attach knowledge",
+    spaces: spacesLabel,
+  };
+
+  const subPickerContent: Record<SubPicker, React.ReactNode> = {
+    capabilities: inlineCapabilitiesPicker,
+    attachments: inlineAttachmentsPicker,
+    spaces: inlineSpacesPicker,
+  };
+
   const plusButton = (
     <DropdownMenuTrigger asChild>
       <Button
@@ -219,6 +295,8 @@ export function InputBarPlusMenu({
     onOpenChange?.(open);
     if (open) {
       setHasOpenedMenu(true);
+    } else {
+      setActiveSubPicker(null);
     }
   };
 
@@ -277,9 +355,53 @@ export function InputBarPlusMenu({
     <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
       {plusButton}
       <DropdownMenuContent align="start" className="w-64">
-        {!hideCapabilities && capabilitiesPicker}
-        {!hideAttachments && attachmentsPicker}
-        {spaces != null && spacesPicker}
+        {activeSubPicker ? (
+          <div
+            key={activeSubPicker}
+            className="animate-in slide-in-from-right-4 duration-200 motion-reduce:animate-none"
+          >
+            <DropdownMenuItem
+              label={subPickerLabel[activeSubPicker]}
+              icon={ArrowLeft}
+              onClick={() => setActiveSubPicker(null)}
+              onSelect={(e) => e.preventDefault()}
+            />
+            {subPickerContent[activeSubPicker]}
+          </div>
+        ) : (
+          <div
+            key="root"
+            className={cn(
+              "animate-in duration-200 motion-reduce:animate-none",
+              !isInitialRenderRef.current && "slide-in-from-left-4"
+            )}
+          >
+            {!hideCapabilities && (
+              <DropdownMenuItem
+                label="Capabilities"
+                icon={ShapesPlus}
+                disabled={disabled}
+                onClick={() => setActiveSubPicker("capabilities")}
+              />
+            )}
+            {!hideAttachments && (
+              <DropdownMenuItem
+                label="Attach knowledge"
+                icon={Attachment01}
+                disabled={disabled}
+                onClick={() => setActiveSubPicker("attachments")}
+              />
+            )}
+            {spaces != null && (
+              <DropdownMenuItem
+                label={spacesLabel}
+                icon={Planet}
+                disabled={disabled}
+                onClick={() => setActiveSubPicker("spaces")}
+              />
+            )}
+          </div>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

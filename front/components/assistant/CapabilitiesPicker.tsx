@@ -173,7 +173,10 @@ interface CapabilitiesPickerProps {
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
   onOpenChange?: (open: boolean) => void;
-  type?: "dropdown" | "subdropdown";
+  // "inline" renders the picker's own content bare — no trigger, no
+  // DropdownMenu/Sub wrapper — for a parent that owns a single
+  // DropdownMenuContent and swaps between its own root and this picker.
+  type?: "dropdown" | "subdropdown" | "inline";
   externalOpen?: boolean;
   onExternalOpenChange?: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement | null>;
@@ -414,6 +417,68 @@ export function CapabilitiesPicker({
   const shouldShowCapabilityDropdownList =
     capabilityPickerItems.length > 0 || hasNoVisibleItems;
 
+  const searchbar = (
+    <div className="sticky top-0 z-10 bg-overlay-background">
+      <DropdownMenuSearchbar
+        autoFocus={!isMobile}
+        name="search-capabilities"
+        placeholder="Search capabilities"
+        value={searchText}
+        onChange={setSearchText}
+      />
+      <DropdownMenuSeparator />
+    </div>
+  );
+
+  const body = (
+    <>
+      {(!isSkillsDataReady || !isToolsDataReady) && (
+        <CapabilitiesPickerLoading />
+      )}
+
+      {shouldShowCapabilityDropdownList && (
+        <CapabilitiesPickerItemsList
+          emptyMessage={
+            normalizedSearchText.length > 0
+              ? "No capabilities found"
+              : "No more capabilities to select"
+          }
+          items={capabilityPickerItems}
+          onItemSelect={selectCapabilityPickerItem}
+          onSkillDetails={(skillId) => {
+            setSelectedSkillIdForDetails(skillId);
+            setIsOpen(false);
+          }}
+          onToolDetails={(serverView) => {
+            setSelectedServerViewForDetails(serverView);
+            setIsOpen(false);
+          }}
+        />
+      )}
+    </>
+  );
+
+  const detailsSheets = (
+    <CapabilityDetailsSheets
+      owner={owner}
+      user={user}
+      selectedSkillId={selectedSkillIdForDetails}
+      selectedMCPServerView={selectedServerViewForDetails}
+      onCloseSkill={() => setSelectedSkillIdForDetails(null)}
+      onCloseTool={() => setSelectedServerViewForDetails(null)}
+    />
+  );
+
+  if (type === "inline") {
+    return (
+      <>
+        {searchbar}
+        {body}
+        {detailsSheets}
+      </>
+    );
+  }
+
   const Wrapper = type === "dropdown" ? DropdownMenu : DropdownMenuSub;
   const ContentWrapper =
     type === "dropdown" ? DropdownMenuContent : DropdownMenuSubContent;
@@ -476,53 +541,13 @@ export function CapabilitiesPicker({
                 onInteractOutside: () => setIsOpen(false),
               }
             : {})}
-          dropdownHeaders={
-            <>
-              <DropdownMenuSearchbar
-                autoFocus={!isMobile}
-                name="search-capabilities"
-                placeholder="Search capabilities"
-                value={searchText}
-                onChange={setSearchText}
-              />
-              <DropdownMenuSeparator />
-            </>
-          }
+          dropdownHeaders={searchbar}
         >
-          {(!isSkillsDataReady || !isToolsDataReady) && (
-            <CapabilitiesPickerLoading />
-          )}
-
-          {shouldShowCapabilityDropdownList && (
-            <CapabilitiesPickerItemsList
-              emptyMessage={
-                normalizedSearchText.length > 0
-                  ? "No capabilities found"
-                  : "No more capabilities to select"
-              }
-              items={capabilityPickerItems}
-              onItemSelect={selectCapabilityPickerItem}
-              onSkillDetails={(skillId) => {
-                setSelectedSkillIdForDetails(skillId);
-                setIsOpen(false);
-              }}
-              onToolDetails={(serverView) => {
-                setSelectedServerViewForDetails(serverView);
-                setIsOpen(false);
-              }}
-            />
-          )}
+          {body}
         </ContentWrapper>
       </Wrapper>
 
-      <CapabilityDetailsSheets
-        owner={owner}
-        user={user}
-        selectedSkillId={selectedSkillIdForDetails}
-        selectedMCPServerView={selectedServerViewForDetails}
-        onCloseSkill={() => setSelectedSkillIdForDetails(null)}
-        onCloseTool={() => setSelectedServerViewForDetails(null)}
-      />
+      {detailsSheets}
     </>
   );
 }

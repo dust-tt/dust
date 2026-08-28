@@ -35,7 +35,10 @@ interface InputBarSpacesPickerProps {
   onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
   selectedSpaceIds: string[];
   spaces: SelectableConversationSpaceType[];
-  type?: "dropdown" | "subdropdown";
+  // "inline" renders the picker's own content bare — no trigger, no
+  // DropdownMenu/Sub wrapper — for a parent that owns a single
+  // DropdownMenuContent and swaps between its own root and this picker.
+  type?: "dropdown" | "subdropdown" | "inline";
   externalOpen?: boolean;
   onExternalOpenChange?: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement | null>;
@@ -96,6 +99,70 @@ export function InputBarSpacesPicker({
     onSelectedSpaceIdsChange(selectedSpaceIds.filter((id) => id !== spaceId));
   };
 
+  const body = (
+    <>
+      <DropdownMenuCheckboxItem label="Agent's Spaces" checked disabled />
+      <DropdownMenuSeparator />
+      <DropdownMenuLabel label="Additional Spaces" />
+      {isLoading ? (
+        <DropdownMenuItem
+          label="Loading"
+          disabled
+          endComponent={<Spinner size="xs" />}
+        />
+      ) : spaces.length === 0 ? (
+        <DropdownMenuItem label="No Spaces available" disabled />
+      ) : filteredSpaces.length === 0 ? (
+        <DropdownMenuItem label="No matching Spaces" disabled />
+      ) : (
+        <div>
+          {filteredSpaces.map((space) => {
+            const checked = selectedSpaceIdsSet.has(space.sId);
+
+            return (
+              <DropdownMenuCheckboxItem
+                key={space.sId}
+                label={space.name}
+                icon={getSpaceIcon(space)}
+                checked={checked}
+                disabled={checked && !canDeselectSelectedSpaces}
+                onCheckedChange={(nextChecked) =>
+                  handleSpaceCheckedChange(space.sId, nextChecked === true)
+                }
+                onSelect={(event) => {
+                  event.preventDefault();
+                }}
+              />
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+
+  const searchbar = (
+    <div className="sticky top-0 z-10 bg-overlay-background">
+      <DropdownMenuSearchbar
+        autoFocus
+        name="search-spaces"
+        placeholder="Search Spaces"
+        value={searchText}
+        onChange={setSearchText}
+        disabled={isLoading}
+      />
+      <DropdownMenuSeparator />
+    </div>
+  );
+
+  if (type === "inline") {
+    return (
+      <>
+        {searchbar}
+        {body}
+      </>
+    );
+  }
+
   const Wrapper = type === "dropdown" ? DropdownMenu : DropdownMenuSub;
   const ContentWrapper =
     type === "dropdown" ? DropdownMenuContent : DropdownMenuSubContent;
@@ -136,56 +203,9 @@ export function InputBarSpacesPicker({
               onInteractOutside: () => setIsOpen(false),
             }
           : {})}
-        dropdownHeaders={
-          <>
-            <DropdownMenuSearchbar
-              autoFocus
-              name="search-spaces"
-              placeholder="Search Spaces"
-              value={searchText}
-              onChange={setSearchText}
-              disabled={isLoading}
-            />
-            <DropdownMenuSeparator />
-          </>
-        }
+        dropdownHeaders={searchbar}
       >
-        <DropdownMenuCheckboxItem label="Agent's Spaces" checked disabled />
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel label="Additional Spaces" />
-        {isLoading ? (
-          <DropdownMenuItem
-            label="Loading"
-            disabled
-            endComponent={<Spinner size="xs" />}
-          />
-        ) : spaces.length === 0 ? (
-          <DropdownMenuItem label="No Spaces available" disabled />
-        ) : filteredSpaces.length === 0 ? (
-          <DropdownMenuItem label="No matching Spaces" disabled />
-        ) : (
-          <div>
-            {filteredSpaces.map((space) => {
-              const checked = selectedSpaceIdsSet.has(space.sId);
-
-              return (
-                <DropdownMenuCheckboxItem
-                  key={space.sId}
-                  label={space.name}
-                  icon={getSpaceIcon(space)}
-                  checked={checked}
-                  disabled={checked && !canDeselectSelectedSpaces}
-                  onCheckedChange={(nextChecked) =>
-                    handleSpaceCheckedChange(space.sId, nextChecked === true)
-                  }
-                  onSelect={(event) => {
-                    event.preventDefault();
-                  }}
-                />
-              );
-            })}
-          </div>
-        )}
+        {body}
       </ContentWrapper>
     </Wrapper>
   );
