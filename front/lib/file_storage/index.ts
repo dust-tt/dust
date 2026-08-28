@@ -1,6 +1,9 @@
 import config from "@app/lib/file_storage/config";
 import type { GCSAPIError } from "@app/lib/file_storage/types";
-import { isGCSNotFoundError } from "@app/lib/file_storage/types";
+import {
+  isGCSNotFoundError,
+  isGCSPreconditionFailedError,
+} from "@app/lib/file_storage/types";
 import { setTimeoutAsync, withRetry } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AllSupportedFileContentType } from "@app/types/files";
@@ -481,10 +484,13 @@ export class FileStorage {
 
   async delete(
     filePath: string,
-    { ignoreNotFound }: { ignoreNotFound?: boolean } = {}
+    {
+      ignoreNotFound,
+      ifGenerationMatch,
+    }: { ignoreNotFound?: boolean; ifGenerationMatch?: string } = {}
   ) {
     try {
-      return await this.file(filePath).delete();
+      return await this.file(filePath).delete({ ifGenerationMatch });
     } catch (err) {
       if (ignoreNotFound && isGCSNotFoundError(err)) {
         return;
@@ -505,7 +511,13 @@ export class FileStorage {
     srcPath: string,
     destPath: string,
     destinationStorage: FileStorage = this,
-    { sourceGeneration }: { sourceGeneration?: string } = {}
+    {
+      destinationGenerationMatch,
+      sourceGeneration,
+    }: {
+      destinationGenerationMatch?: number;
+      sourceGeneration?: string;
+    } = {}
   ): Promise<void> {
     const destinationFile = destinationStorage.file(destPath);
     const sourceFile = sourceGeneration
@@ -518,9 +530,20 @@ export class FileStorage {
       attempt++
     ) {
       try {
-        await sourceFile.copy(destinationFile);
+        await sourceFile.copy(destinationFile, {
+          preconditionOpts:
+            destinationGenerationMatch !== undefined
+              ? { ifGenerationMatch: destinationGenerationMatch }
+              : undefined,
+        });
         return;
       } catch (err) {
+        // Preconditions are deterministic. In particular, a create-only copy
+        // must let its caller inspect the existing destination instead of
+        // retrying and potentially masking a concurrent writer.
+        if (isGCSPreconditionFailedError(err)) {
+          throw err;
+        }
         if (attempt === GCS_TRANSIENT_RETRY_MAX_ATTEMPTS) {
           throw err;
         }

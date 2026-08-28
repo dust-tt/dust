@@ -308,6 +308,7 @@ class FileStorageMock {
         return Promise.resolve([
           this._metadataForPath(path) ?? {
             contentType: "text/plain",
+            generation: "1",
             size: "0",
           },
         ]);

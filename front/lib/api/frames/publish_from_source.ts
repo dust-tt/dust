@@ -4,7 +4,10 @@ import { DustFileSystem } from "@app/lib/api/file_system";
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import { buildAndPublishFramePublication } from "@app/lib/api/frames/build_and_publish";
 import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication_storage";
-import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
+import {
+  FramePublicationError,
+  withFrameSourceLock,
+} from "@app/lib/api/frames/publication_storage";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import type { PublishFrameError } from "@app/lib/api/viz/publish_frame";
@@ -148,7 +151,7 @@ export async function publishFrameFromSource(
  * Publish a Frames v2 FileResource from its current source folder. The FileResource path is the
  * authority: callers cannot point a Frame identity at a different manifest or source tree.
  */
-export async function publishFrameV2FromSource(
+async function publishFrameV2FromSourceWithLockHeld(
   auth: Authenticator,
   {
     conversation,
@@ -323,4 +326,30 @@ export async function publishFrameV2FromSource(
     manifest: manifestResult.value,
     sourceFiles,
   });
+}
+
+export async function publishFrameV2FromSource(
+  auth: Authenticator,
+  {
+    conversation,
+    frame,
+    manifestPath,
+  }: {
+    conversation: ConversationWithoutContentType;
+    frame: FileResource;
+    manifestPath: string;
+  }
+): Promise<
+  Result<
+    { publicationId: string },
+    FramePublicationError | SandboxFunctionError
+  >
+> {
+  return withFrameSourceLock(frame.sId, () =>
+    publishFrameV2FromSourceWithLockHeld(auth, {
+      conversation,
+      frame,
+      manifestPath,
+    })
+  );
 }

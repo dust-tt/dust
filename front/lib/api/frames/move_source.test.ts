@@ -13,6 +13,10 @@ vi.mock("@app/lib/api/frames/publication_storage", async (importActual) => {
       _frameId: string,
       callback: () => Promise<unknown>
     ) => callback(),
+    withFrameSourceAndPublishLock: async (
+      _frameId: string,
+      callback: () => Promise<unknown>
+    ) => callback(),
   };
 });
 
@@ -88,12 +92,19 @@ async function setup() {
             name: `${sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`,
             metadata: {
               contentType: frameV2ContentType,
+              generation: "1",
+              md5Hash: "manifest",
               size: String(Buffer.byteLength(manifest)),
             },
           },
           {
             name: `${sourceGcsDirectoryPath}/index.tsx`,
-            metadata: { contentType: "text/typescript", size: "1" },
+            metadata: {
+              contentType: "text/typescript",
+              generation: "1",
+              md5Hash: "ui",
+              size: "1",
+            },
           },
         ]
       : null
@@ -208,6 +219,135 @@ describe("moveFrameV2Source", () => {
     expect(
       await FrameSandboxAdapter.fetchSandbox(auth, context.frame)
     ).toMatchObject({ id: sandbox.id, status: "deleted" });
+  });
+
+  it("atomically reserves one destination across concurrent Frame moves", async () => {
+    const context = await setup();
+    const otherDirectoryPath = `conversation-${context.conversation.sId}/Other`;
+    const otherGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}Other`;
+    const otherFrame = await FileFactory.create(context.auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: Buffer.byteLength(manifest),
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: context.conversation.sId },
+      mountFilePath: `${otherGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+    });
+    await otherFrame.markFrameV2AsReadyFromMount(context.auth);
+    fileStorageMock.setFilesByPrefix((prefix) => {
+      const sourcePrefix = [
+        `${context.sourceGcsDirectoryPath}/`,
+        `${otherGcsDirectoryPath}/`,
+      ].find((candidate) => candidate === prefix);
+      return sourcePrefix
+        ? [
+            {
+              name: `${sourcePrefix}${FRAME_MANIFEST_FILE}`,
+              metadata: {
+                contentType: frameV2ContentType,
+                generation: "1",
+                md5Hash: "manifest",
+                size: String(Buffer.byteLength(manifest)),
+              },
+            },
+          ]
+        : null;
+    });
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/Destination`;
+
+    const results = await Promise.all([
+      moveFrameV2Source(context.auth, {
+        conversation: context.conversation,
+        destinationDirectoryPath,
+        sourceDirectoryPath: context.sourceDirectoryPath,
+      }),
+      moveFrameV2Source(context.auth, {
+        conversation: context.conversation,
+        destinationDirectoryPath,
+        sourceDirectoryPath: otherDirectoryPath,
+      }),
+    ]);
+
+    expect(results.filter((result) => result.isOk())).toHaveLength(1);
+    expect(results.filter((result) => result.isErr())).toHaveLength(1);
+    expect(results.find((result) => result.isErr())?.error).toMatchObject({
+      code: "conflict",
+    });
+  });
+
+  it("resumes an interrupted move from its destination reservation", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/Recovered`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}Recovered`;
+    const destinationMountFilePath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const sourceMountFilePath = `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    await context.frame.updateMount({
+      destFileName: FRAME_MANIFEST_FILE,
+      destMountFilePath: destinationMountFilePath,
+      destUseCase: "conversation",
+      destUseCaseMetadata: {
+        activePublicationId: "publication-1",
+        conversationId: context.conversation.sId,
+        pendingFrameSourceMove: {
+          destinationMountFilePath,
+          sourceMountFilePath,
+        },
+      },
+    });
+    fileStorageMock.setFilesByPrefix((prefix) => {
+      const isSource = prefix === `${context.sourceGcsDirectoryPath}/`;
+      const isDestination = prefix === `${destinationGcsDirectoryPath}/`;
+      if (!isSource && !isDestination) {
+        return null;
+      }
+      const directoryPath = isSource
+        ? context.sourceGcsDirectoryPath
+        : destinationGcsDirectoryPath;
+      return [
+        {
+          name: `${directoryPath}/${FRAME_MANIFEST_FILE}`,
+          metadata: {
+            contentType: frameV2ContentType,
+            generation: isSource ? "1" : "2",
+            md5Hash: "manifest",
+            size: String(Buffer.byteLength(manifest)),
+          },
+        },
+        {
+          name: `${directoryPath}/index.tsx`,
+          metadata: {
+            contentType: "text/typescript",
+            generation: isSource ? "1" : "2",
+            md5Hash: "ui",
+            size: "1",
+          },
+        },
+      ];
+    });
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
+    const reloaded = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reloaded?.mountFilePath).toBe(destinationMountFilePath);
+    expect(reloaded?.useCaseMetadata).toEqual({
+      activePublicationId: "publication-1",
+      conversationId: context.conversation.sId,
+    });
   });
 
   it("rejects moving a Frame inside its own source folder", async () => {

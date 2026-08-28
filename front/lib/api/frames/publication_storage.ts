@@ -89,15 +89,19 @@ export function getFramePublishLockName(frameId: string): string {
   return `frame:publish:${frameId}`;
 }
 
-export async function withFramePublishLock<T, E>(
-  frameId: string,
+function getFrameSourceLockName(frameId: string): string {
+  return `frame:source:${frameId}`;
+}
+
+async function withFrameOperationLock<T, E>(
+  lockName: string,
+  resource: string,
   callback: () => Promise<Result<T, E>>
 ): Promise<Result<T, E | SandboxFunctionError>> {
   const client = await getRedisStreamClient({ origin: "lock" });
-  const lockName = getFramePublishLockName(frameId);
   const lockValue = await tracer.trace(
     "lock.acquire",
-    { resource: "frame.publish" },
+    { resource },
     async () => {
       const startMs = Date.now();
       while (Date.now() - startMs < FRAME_PUBLISH_LOCK_ACQUIRE_TIMEOUT_MS) {
@@ -130,6 +134,37 @@ export async function withFramePublishLock<T, E>(
   } finally {
     await distributedUnlock(client, lockName, lockValue);
   }
+}
+
+export async function withFramePublishLock<T, E>(
+  frameId: string,
+  callback: () => Promise<Result<T, E>>
+): Promise<Result<T, E | SandboxFunctionError>> {
+  return withFrameOperationLock(
+    getFramePublishLockName(frameId),
+    "frame.publish",
+    callback
+  );
+}
+
+export async function withFrameSourceLock<T, E>(
+  frameId: string,
+  callback: () => Promise<Result<T, E>>
+): Promise<Result<T, E | SandboxFunctionError>> {
+  return withFrameOperationLock(
+    getFrameSourceLockName(frameId),
+    "frame.source",
+    callback
+  );
+}
+
+export async function withFrameSourceAndPublishLock<T, E>(
+  frameId: string,
+  callback: () => Promise<Result<T, E>>
+): Promise<Result<T, E | SandboxFunctionError>> {
+  return withFrameSourceLock(frameId, () =>
+    withFramePublishLock(frameId, callback)
+  );
 }
 
 function sha256(content: string | Buffer): string {

@@ -92,14 +92,20 @@ app.post(
     });
     if (moved.isErr()) {
       const status = frameMoveErrorStatus(moved.error);
-      return apiError(ctx, {
-        status_code: status,
-        api_error: {
-          type:
-            status === 500 ? "internal_server_error" : "invalid_request_error",
-          message: moved.error.message,
+      return apiError(
+        ctx,
+        {
+          status_code: status,
+          api_error: {
+            type:
+              status === 500
+                ? "internal_server_error"
+                : "invalid_request_error",
+            message: moved.error.message,
+          },
         },
-      });
+        moved.error
+      );
     }
 
     return ctx.json(moved.value, 200);

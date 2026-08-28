@@ -63,6 +63,12 @@ export type FileUseCaseMetadata = {
   frameEntryRelPath?: string;
   // Immutable Frames v2 publication currently served by the Frame.
   activePublicationId?: string;
+  // Set only while a Frames v2 source move owns its destination mount path.
+  // Keeping this on the stable FileResource makes an interrupted move retryable.
+  pendingFrameSourceMove?: {
+    sourceMountFilePath: string;
+    destinationMountFilePath: string;
+  };
 };
 
 export function isConversationFileUseCase(

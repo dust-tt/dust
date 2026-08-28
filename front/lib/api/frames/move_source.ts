@@ -1,9 +1,16 @@
 import path from "node:path";
 
 import { DustFileSystem, parseScopedPrefix } from "@app/lib/api/file_system";
-import { withFramePublishLock } from "@app/lib/api/frames/publication_storage";
+import type { GCSMountPoint } from "@app/lib/api/files/gcs_mount/files";
+import { emitGCSMountFileMovedAuditLog } from "@app/lib/api/files/gcs_mount/files";
+import { withFrameSourceAndPublishLock } from "@app/lib/api/frames/publication_storage";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+  getPrivateUploadBucket,
+} from "@app/lib/file_storage";
+import { isGCSPreconditionFailedError } from "@app/lib/file_storage/types";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { FrameScopeTransitionStateError } from "@app/lib/resources/frame_sandbox_adapter";
@@ -12,6 +19,7 @@ import {
   FrameSandboxAdapter,
 } from "@app/lib/resources/frame_sandbox_adapter";
 import type { ScopeTransitionDestroyError } from "@app/lib/resources/sandbox_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -21,6 +29,10 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { File, FileMetadata } from "@google-cloud/storage";
+import { UniqueConstraintError } from "sequelize";
+
+const FRAME_SOURCE_MOVE_COPY_CONCURRENCY = 4;
 
 type FrameSourceOwner = {
   useCase: FileUseCase;
@@ -114,6 +126,7 @@ function frameMetadataAtDestination(
 ): FileUseCaseMetadata {
   const {
     conversationId: _conversationId,
+    pendingFrameSourceMove: _pendingFrameSourceMove,
     spaceId: _spaceId,
     ...stableMetadata
   } = frame.useCaseMetadata ?? {};
@@ -121,6 +134,33 @@ function frameMetadataAtDestination(
     ...stableMetadata,
     ...destinationOwner.useCaseMetadata,
   };
+}
+
+function metadataWithoutPendingMove(
+  metadata: FileUseCaseMetadata | null
+): FileUseCaseMetadata {
+  const { pendingFrameSourceMove: _pendingFrameSourceMove, ...stableMetadata } =
+    metadata ?? {};
+  return stableMetadata;
+}
+
+function hasMatchingPendingMove(
+  frame: FileResource,
+  {
+    destinationMountFilePath,
+    sourceMountFilePath,
+  }: {
+    destinationMountFilePath: string;
+    sourceMountFilePath: string;
+  }
+): boolean {
+  const pending = frame.useCaseMetadata?.pendingFrameSourceMove;
+  return (
+    frame.isFrameV2 &&
+    frame.mountFilePath === destinationMountFilePath &&
+    pending?.sourceMountFilePath === sourceMountFilePath &&
+    pending.destinationMountFilePath === destinationMountFilePath
+  );
 }
 
 function assertFrameAtSource(
@@ -139,27 +179,160 @@ function assertFrameAtSource(
   return new Ok(undefined);
 }
 
-async function rollbackSourceMove(
-  dustFs: DustFileSystem,
-  {
-    destinationDirectoryPath,
-    sourceDeletionFailed,
-    sourceDirectoryPath,
-  }: {
-    destinationDirectoryPath: string;
-    sourceDeletionFailed: boolean;
-    sourceDirectoryPath: string;
-  }
-): Promise<Result<void, DustFileSystemError>> {
-  if (sourceDeletionFailed) {
-    return dustFs.delete(destinationDirectoryPath, { ignoreNotFound: true });
+function metadataValue(metadata: FileMetadata, key: keyof FileMetadata) {
+  const value = metadata[key];
+  return value === undefined || value === null ? null : String(value);
+}
+
+function isSameGCSObject(source: File, destination: File): boolean {
+  const sourceMd5 = metadataValue(source.metadata, "md5Hash");
+  const destinationMd5 = metadataValue(destination.metadata, "md5Hash");
+  if (sourceMd5 && destinationMd5) {
+    return sourceMd5 === destinationMd5;
   }
 
-  const rollback = await dustFs.move({
-    src: destinationDirectoryPath,
-    dest: sourceDirectoryPath,
-  });
-  return rollback.isErr() ? rollback : new Ok(undefined);
+  const sourceCrc32c = metadataValue(source.metadata, "crc32c");
+  const destinationCrc32c = metadataValue(destination.metadata, "crc32c");
+  return Boolean(
+    sourceCrc32c &&
+      destinationCrc32c &&
+      sourceCrc32c === destinationCrc32c &&
+      metadataValue(source.metadata, "size") ===
+        metadataValue(destination.metadata, "size")
+  );
+}
+
+type DestinationObject = { filePath: string; generation: string };
+
+async function cleanupDestinationObjects(
+  objects: DestinationObject[]
+): Promise<boolean> {
+  const bucket = getPrivateUploadBucket();
+  try {
+    await concurrentExecutor(
+      objects,
+      ({ filePath, generation }) =>
+        bucket.delete(filePath, {
+          ignoreNotFound: true,
+          ifGenerationMatch: generation,
+        }),
+      { concurrency: FRAME_SOURCE_MOVE_COPY_CONCURRENCY }
+    );
+    return true;
+  } catch (error) {
+    logger.error(
+      { error: normalizeError(error) },
+      "Failed to clean up a Frame move destination"
+    );
+    return false;
+  }
+}
+
+async function copyFrameSourceAsNew({
+  allowMatchingDestinationObjects,
+  destinationMountPrefix,
+  sourceMountPrefix,
+}: {
+  allowMatchingDestinationObjects: boolean;
+  destinationMountPrefix: string;
+  sourceMountPrefix: string;
+}): Promise<Result<DestinationObject[], FrameSourceMoveError>> {
+  const bucket = getPrivateUploadBucket();
+  const [{ files: sourceFiles }, { files: destinationFiles }] =
+    await Promise.all([
+      bucket.getAllFilesByPrefix({ prefix: sourceMountPrefix }),
+      bucket.getAllFilesByPrefix({ prefix: destinationMountPrefix }),
+    ]);
+  if (sourceFiles.length === 0) {
+    return invalidSource("Frame source folder is empty or no longer exists.");
+  }
+
+  const destinationByRelativePath = new Map(
+    destinationFiles.map((file) => [
+      file.name.slice(destinationMountPrefix.length),
+      file,
+    ])
+  );
+  const copyResults = await concurrentExecutor(
+    sourceFiles,
+    async (sourceFile) => {
+      try {
+        const relativePath = sourceFile.name.slice(sourceMountPrefix.length);
+        const destinationPath = `${destinationMountPrefix}${relativePath}`;
+        let destinationFile = destinationByRelativePath.get(relativePath);
+        const destinationWasListed = Boolean(destinationFile);
+        let copied = false;
+
+        if (!destinationFile) {
+          try {
+            await bucket.copyFile(sourceFile.name, destinationPath, undefined, {
+              destinationGenerationMatch:
+                GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+            });
+            copied = true;
+          } catch (error) {
+            if (!isGCSPreconditionFailedError(error)) {
+              throw error;
+            }
+          }
+          destinationFile = bucket.file(destinationPath);
+          const [metadata] = await destinationFile.getMetadata();
+          destinationFile.metadata = metadata;
+        }
+
+        if (
+          (!copied && !isSameGCSObject(sourceFile, destinationFile)) ||
+          (!allowMatchingDestinationObjects && destinationWasListed)
+        ) {
+          throw new FrameSourceMoveError(
+            "conflict",
+            `Destination file already exists: ${relativePath}`
+          );
+        }
+
+        const generation = metadataValue(
+          destinationFile.metadata,
+          "generation"
+        );
+        if (!generation) {
+          throw new FrameSourceMoveError(
+            "internal",
+            `Destination generation is missing: ${relativePath}`
+          );
+        }
+        return new Ok<DestinationObject>({
+          filePath: destinationPath,
+          generation,
+        });
+      } catch (error) {
+        return new Err(
+          error instanceof FrameSourceMoveError
+            ? error
+            : new FrameSourceMoveError(
+                "internal",
+                `Failed to copy the Frame source: ${normalizeError(error).message}`
+              )
+        );
+      }
+    },
+    { concurrency: FRAME_SOURCE_MOVE_COPY_CONCURRENCY }
+  );
+  const destinationObjects = copyResults
+    .filter((result) => result.isOk())
+    .map((result) => result.value);
+  const failedCopy = copyResults.find((result) => result.isErr());
+  if (failedCopy?.isErr()) {
+    const cleaned = await cleanupDestinationObjects(destinationObjects);
+    return cleaned
+      ? failedCopy
+      : new Err(
+          new FrameSourceMoveError(
+            "internal",
+            "The Frame source copy failed and its destination objects could not be cleaned up."
+          )
+        );
+  }
+  return new Ok(destinationObjects);
 }
 
 /** Move a registered Frame folder while retaining its stable FileResource identity. */
@@ -233,31 +406,55 @@ export async function moveFrameV2Source(
     return invalidSource("Invalid Frame source or destination path.");
   }
 
-  const [frame] = await FileResource.fetchByMountFilePaths(auth, [
+  const candidateFrames = await FileResource.fetchByMountFilePaths(auth, [
     sourceMountPath,
+    destinationMountPath,
   ]);
-  if (!frame?.isFrameV2) {
+  const sourceFrame = candidateFrames.find(
+    (candidate) => candidate.mountFilePath === sourceMountPath
+  );
+  const destinationFrame = candidateFrames.find(
+    (candidate) => candidate.mountFilePath === destinationMountPath
+  );
+  const frame =
+    sourceFrame?.isFrameV2 === true
+      ? sourceFrame
+      : destinationFrame &&
+          hasMatchingPendingMove(destinationFrame, {
+            destinationMountFilePath: destinationMountPath,
+            sourceMountFilePath: sourceMountPath,
+          })
+        ? destinationFrame
+        : null;
+  if (!frame) {
     return invalidSource(`No registered Frame found at ${sourceManifestPath}.`);
   }
 
-  return withFramePublishLock(frame.sId, async () => {
+  return withFrameSourceAndPublishLock(frame.sId, async () => {
     const freshFrame = await frame.fetchFreshFrameV2(auth);
     if (!freshFrame) {
       return new Err(new FrameGoneError(`Frame ${frame.sId} not found.`));
     }
-    const sourceCheck = assertFrameAtSource(
-      auth,
-      freshFrame,
-      sourceManifestPath
-    );
-    if (sourceCheck.isErr()) {
-      return sourceCheck;
+    const isRecovery = hasMatchingPendingMove(freshFrame, {
+      destinationMountFilePath: destinationMountPath,
+      sourceMountFilePath: sourceMountPath,
+    });
+    if (!isRecovery) {
+      const sourceCheck = assertFrameAtSource(
+        auth,
+        freshFrame,
+        sourceManifestPath
+      );
+      if (sourceCheck.isErr()) {
+        return sourceCheck;
+      }
     }
 
-    const [destinationFrame] = await FileResource.fetchByMountFilePaths(auth, [
-      destinationMountPath,
-    ]);
-    if (destinationFrame) {
+    const [registeredDestination] = await FileResource.fetchByMountFilePaths(
+      auth,
+      [destinationMountPath]
+    );
+    if (registeredDestination && registeredDestination.sId !== freshFrame.sId) {
       return new Err(
         new FrameSourceMoveError(
           "conflict",
@@ -266,21 +463,25 @@ export async function moveFrameV2Source(
       );
     }
 
-    const destinationContents = await dustFs.list(destination, { maxFiles: 1 });
-    if (destinationContents.isErr()) {
-      return destinationContents;
-    }
-    const destinationFileExists = await dustFs.exists(destination);
-    if (destinationFileExists.isErr()) {
-      return destinationFileExists;
-    }
-    if (destinationFileExists.value || destinationContents.value.length > 0) {
-      return new Err(
-        new FrameSourceMoveError(
-          "conflict",
-          "A file or folder already exists at the destination."
-        )
-      );
+    if (!isRecovery) {
+      const destinationContents = await dustFs.list(destination, {
+        maxFiles: 1,
+      });
+      if (destinationContents.isErr()) {
+        return destinationContents;
+      }
+      const destinationFileExists = await dustFs.exists(destination);
+      if (destinationFileExists.isErr()) {
+        return destinationFileExists;
+      }
+      if (destinationFileExists.value || destinationContents.value.length > 0) {
+        return new Err(
+          new FrameSourceMoveError(
+            "conflict",
+            "A file or folder already exists at the destination."
+          )
+        );
+      }
     }
 
     const [sourceRuntimeSpace, destinationRuntimeSpace] = await Promise.all([
@@ -294,24 +495,94 @@ export async function moveFrameV2Source(
       return destinationRuntimeSpace;
     }
 
-    const moveResult = await dustFs.move({
-      src: source,
-      dest: destination,
+    const originalUseCase = freshFrame.useCase;
+    const originalMetadata = metadataWithoutPendingMove(
+      freshFrame.useCaseMetadata
+    );
+    const restoreSourceReservation = async (): Promise<boolean> => {
+      try {
+        await freshFrame.updateMount({
+          destFileName: FRAME_MANIFEST_FILE,
+          destMountFilePath: sourceMountPath,
+          destUseCase: originalUseCase,
+          destUseCaseMetadata: originalMetadata,
+        });
+        return true;
+      } catch (error) {
+        logger.error(
+          {
+            error: normalizeError(error),
+            frameId: frame.sId,
+            sourceMountPath,
+          },
+          "Failed to restore a Frame source reservation"
+        );
+        return false;
+      }
+    };
+
+    if (!isRecovery) {
+      try {
+        await freshFrame.updateMount({
+          destFileName: FRAME_MANIFEST_FILE,
+          destMountFilePath: destinationMountPath,
+          destUseCase: originalUseCase,
+          destUseCaseMetadata: {
+            ...originalMetadata,
+            pendingFrameSourceMove: {
+              destinationMountFilePath: destinationMountPath,
+              sourceMountFilePath: sourceMountPath,
+            },
+          },
+        });
+      } catch (error) {
+        return new Err(
+          new FrameSourceMoveError(
+            error instanceof UniqueConstraintError ? "conflict" : "internal",
+            error instanceof UniqueConstraintError
+              ? "A registered file already uses the destination path."
+              : `Failed to reserve the Frame destination: ${normalizeError(error).message}`
+          )
+        );
+      }
+    }
+
+    const sourceMountPrefix = `${path.posix.dirname(sourceMountPath)}/`;
+    const destinationMountPrefix = `${path.posix.dirname(
+      destinationMountPath
+    )}/`;
+    const copyResult = await copyFrameSourceAsNew({
+      allowMatchingDestinationObjects: isRecovery,
+      destinationMountPrefix,
+      sourceMountPrefix,
     });
-    if (moveResult.isErr()) {
-      return moveResult;
+    if (copyResult.isErr()) {
+      const restored = await restoreSourceReservation();
+      return restored
+        ? copyResult
+        : new Err(
+            new FrameSourceMoveError(
+              "internal",
+              "The Frame source copy failed and its destination reservation could not be released."
+            )
+          );
     }
 
     const updateFrame = async (
       currentFrame: FileResource
     ): Promise<Result<void, FrameSourceMoveError>> => {
-      const currentSourceCheck = assertFrameAtSource(
-        auth,
-        currentFrame,
-        sourceManifestPath
-      );
-      if (currentSourceCheck.isErr()) {
-        return currentSourceCheck;
+      if (
+        !hasMatchingPendingMove(currentFrame, {
+          destinationMountFilePath: destinationMountPath,
+          sourceMountFilePath: sourceMountPath,
+        })
+      ) {
+        return new Err(
+          new FrameSourceMoveError(
+            "conflict",
+            "The Frame source changed while it was being moved; retry from its current path."
+          )
+        );
       }
       try {
         await currentFrame.updateMount({
@@ -339,29 +610,32 @@ export async function moveFrameV2Source(
         ? await updateFrame(freshFrame)
         : await FrameSandboxAdapter.withScopeTransition(auth, freshFrame, {
             prepare: async (currentFrame) => {
-              const check = assertFrameAtSource(
-                auth,
-                currentFrame,
-                sourceManifestPath
-              );
-              return check.isErr() ? check : new Ok<FileResource>(currentFrame);
+              return hasMatchingPendingMove(currentFrame, {
+                destinationMountFilePath: destinationMountPath,
+                sourceMountFilePath: sourceMountPath,
+              })
+                ? new Ok(undefined)
+                : new Err(
+                    new FrameSourceMoveError(
+                      "conflict",
+                      "The Frame source changed while it was being moved; retry from its current path."
+                    )
+                  );
             },
             commit: (currentFrame) => updateFrame(currentFrame),
           });
 
     if (updateResult.isErr()) {
-      const rollbackResult = await rollbackSourceMove(dustFs, {
-        destinationDirectoryPath: destination,
-        sourceDeletionFailed: moveResult.value.sourceDeletionFailed,
-        sourceDirectoryPath: source,
-      });
-      if (rollbackResult.isErr()) {
+      const [cleaned, restored] = await Promise.all([
+        cleanupDestinationObjects(copyResult.value),
+        restoreSourceReservation(),
+      ]);
+      if (!cleaned || !restored) {
         logger.error(
           {
             destinationDirectoryPath: destination,
             err: updateResult.error,
             frameId: frame.sId,
-            rollbackErr: rollbackResult.error,
             sourceDirectoryPath: source,
           },
           "Frame source move failed and could not be rolled back"
@@ -376,10 +650,15 @@ export async function moveFrameV2Source(
       return updateResult;
     }
 
-    if (moveResult.value.sourceDeletionFailed) {
+    const sourceDeletion = await dustFs.delete(source, {
+      ignoreNotFound: true,
+    });
+    const sourceDeletionFailed = sourceDeletion.isErr();
+    if (sourceDeletionFailed) {
       logger.warn(
         {
           destinationDirectoryPath: destination,
+          error: sourceDeletion.error,
           frameId: frame.sId,
           sourceDirectoryPath: source,
         },
@@ -387,10 +666,30 @@ export async function moveFrameV2Source(
       );
     }
 
+    const destinationScope: GCSMountPoint =
+      destinationOwner.useCase === "conversation"
+        ? {
+            useCase: "conversation",
+            conversationId:
+              destinationOwner.useCaseMetadata.conversationId ?? "",
+          }
+        : {
+            useCase: "pod",
+            podId: destinationOwner.useCaseMetadata.spaceId ?? "",
+          };
+    const destinationRelativePath = destination.slice(
+      destination.indexOf("/") + 1
+    );
+    const parentRelativePath = path.posix.dirname(destinationRelativePath);
+    void emitGCSMountFileMovedAuditLog(auth, destinationScope, {
+      relativeFilePath: destinationRelativePath,
+      parentRelativePath: parentRelativePath === "." ? "" : parentRelativePath,
+    });
+
     return new Ok({
       destinationDirectoryPath: destination,
       frameId: frame.sId,
-      sourceDeletionFailed: moveResult.value.sourceDeletionFailed,
+      sourceDeletionFailed,
     });
   });
 }
