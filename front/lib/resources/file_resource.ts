@@ -1752,7 +1752,8 @@ export class FileResource extends BaseResource<FileModel> {
 
   async setShareScope(
     auth: Authenticator,
-    scope: FileShareScope
+    scope: FileShareScope,
+    transaction?: Transaction
   ): Promise<void> {
     if (!this.isShareableFrame) {
       throw new Error("Only Frame files can be shared");
@@ -1765,6 +1766,7 @@ export class FileResource extends BaseResource<FileModel> {
     // Always update the existing ShareableFileModel record (never delete).
     const existingShare = await FileResource.shareableFileModel.findOne({
       where: { fileId: this.id, workspaceId: this.workspaceId },
+      transaction,
     });
 
     assert(
@@ -1772,11 +1774,14 @@ export class FileResource extends BaseResource<FileModel> {
       `ShareableFileModel record not found for file ${this.sId}`
     );
 
-    await existingShare.update({
-      shareScope: scope,
-      sharedBy: user.id,
-      sharedAt: new Date(),
-    });
+    await existingShare.update(
+      {
+        shareScope: scope,
+        sharedBy: user.id,
+        sharedAt: new Date(),
+      },
+      { transaction }
+    );
   }
 
   async getShareInfo(): Promise<{
@@ -2357,8 +2362,106 @@ export class FileResource extends BaseResource<FileModel> {
 
   // Sharing grants logic.
 
-  private async getShareableFileId(): Promise<ModelId> {
-    return (await this.getShareableFile()).id;
+  private async getShareableFileId(
+    transaction?: Transaction
+  ): Promise<ModelId> {
+    return (await this.getShareableFile(transaction)).id;
+  }
+
+  async addSharingGrantsAndGetCreatedEmails(
+    auth: Authenticator,
+    { emails }: { emails: string[] },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<string[]> {
+    assert(
+      this.isShareableFrame,
+      "addSharingGrantsAndGetCreatedEmails requires a Frame file"
+    );
+    const user = auth.getNonNullableUser();
+    const shareableFileId = await this.getShareableFileId(transaction);
+
+    const normalizedEmails = [
+      ...new Set(emails.map((email) => email.toLowerCase().trim())),
+    ];
+
+    const existingGrants = await SharingGrantModel.findAll({
+      where: {
+        workspaceId: this.workspaceId,
+        shareableFileId,
+        email: { [Op.in]: normalizedEmails },
+        revokedAt: null,
+      },
+      transaction,
+    });
+    const existingEmails = new Set(existingGrants.map((grant) => grant.email));
+    const createdEmails = normalizedEmails.filter(
+      (email) => !existingEmails.has(email)
+    );
+
+    if (createdEmails.length === 0) {
+      return [];
+    }
+
+    await SharingGrantModel.bulkCreate(
+      createdEmails.map((email) => ({
+        workspaceId: this.workspaceId,
+        shareableFileId,
+        email,
+        grantedBy: user.id,
+        grantedAt: new Date(),
+      })),
+      { transaction }
+    );
+
+    const sendNotifications = async () => {
+      const shareInfo = await this.getShareInfo();
+      if (!shareInfo) {
+        return;
+      }
+      const sharedByName = user.toJSON().fullName;
+      const frameUrl = shareInfo.shareUrl;
+      const shareToken = frameUrl.split("/").at(-1) ?? "";
+
+      await Promise.all(
+        createdEmails.map((email) =>
+          sendFrameSharedEmail({
+            to: email,
+            sharedByName,
+            frameUrl,
+            shareToken,
+          }).catch(() => {
+            // Email delivery is best effort and must not affect grant creation.
+            logger.info(
+              {
+                email,
+                fileId: this.sId,
+                workspaceId: this.workspaceId,
+              },
+              "Failed to send sharing notification email"
+            );
+          })
+        )
+      );
+    };
+
+    if (transaction) {
+      transaction.afterCommit(() =>
+        sendNotifications().catch((error) => {
+          logger.error(
+            {
+              error: normalizeError(error),
+              fileId: this.sId,
+              workspaceId: this.workspaceId,
+            },
+            "Failed to send Frame sharing notifications after commit"
+          );
+        })
+      );
+    } else {
+      void sendNotifications();
+    }
+
+    return createdEmails;
   }
 
   async addSharingGrants(
@@ -2367,67 +2470,7 @@ export class FileResource extends BaseResource<FileModel> {
   ): Promise<SharingGrantType[]> {
     assert(this.isShareableFrame, "addSharingGrants requires a Frame file");
     await this.ensureShareableFrame(auth);
-    const user = auth.getNonNullableUser();
-    const shareableFileId = await this.getShareableFileId();
-
-    const normalizedEmails = emails.map((e) => e.toLowerCase().trim());
-
-    // Find existing active grants for these emails.
-    const existingGrants = await SharingGrantModel.findAll({
-      where: {
-        workspaceId: this.workspaceId,
-        shareableFileId,
-        email: { [Op.in]: normalizedEmails },
-        revokedAt: null,
-      },
-    });
-
-    const existingEmails = new Set(existingGrants.map((g) => g.email));
-
-    const newEmails = normalizedEmails.filter((e) => !existingEmails.has(e));
-
-    if (newEmails.length > 0) {
-      await SharingGrantModel.bulkCreate(
-        newEmails.map((email) => ({
-          workspaceId: this.workspaceId,
-          shareableFileId,
-          email,
-          grantedBy: user.id,
-          grantedAt: new Date(),
-        }))
-      );
-
-      const shareInfo = await this.getShareInfo();
-      if (shareInfo) {
-        const sharedByName = user.toJSON().fullName;
-        const frameUrl = shareInfo.shareUrl;
-        const shareToken = frameUrl.split("/").at(-1) ?? "";
-
-        // Fire-and-forget: don't block grant creation on email delivery.
-        // TODO: Consider moving email delivery to a dedicated worker/queue  to avoid unbounded
-        // parallelism and improve reliability/retry handling.
-        void Promise.all(
-          newEmails.map((email) =>
-            sendFrameSharedEmail({
-              to: email,
-              sharedByName,
-              frameUrl,
-              shareToken,
-            }).catch(() => {
-              // Silently ignore, email failures should not affect grant creation.
-              logger.info(
-                {
-                  email,
-                  fileId: this.sId,
-                  workspaceId: this.workspaceId,
-                },
-                "Failed to send sharing notification email"
-              );
-            })
-          )
-        );
-      }
-    }
+    await this.addSharingGrantsAndGetCreatedEmails(auth, { emails });
 
     return this.listActiveSharingGrants();
   }
