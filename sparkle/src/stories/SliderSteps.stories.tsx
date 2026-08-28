@@ -94,7 +94,7 @@ export const WithLockedSteps: Story = {
     });
 
     const tooltip = await within(canvasElement.ownerDocument.body).findByRole(
-      "tooltip",
+      "tooltip"
     );
     await waitFor(() => expect(tooltip).toBeVisible());
     expect(tooltip).toHaveTextContent(THIRD_STEP_TOOLTIP);
