@@ -1,11 +1,15 @@
 import type { AwuPoolSummaryError } from "@app/lib/api/credits/awu_pool_summary";
-import { getAwuPoolSummary } from "@app/lib/api/credits/awu_pool_summary";
+import {
+  AwuPoolSummaryQuerySchema,
+  getAwuPoolSummary,
+} from "@app/lib/api/credits/awu_pool_summary";
 import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
 
 function summaryErrorToApi(ctx: Context, err: AwuPoolSummaryError) {
@@ -46,10 +50,12 @@ const app = workspaceApp();
 app.get(
   "/",
   ensureIsManager(),
+  validate("query", AwuPoolSummaryQuerySchema),
   async (ctx): HandlerResult<AwuPoolSummaryResponseBody> => {
     const auth = ctx.get("auth");
+    const { cycleHistoryLimit } = ctx.req.valid("query");
 
-    const result = await getAwuPoolSummary(auth);
+    const result = await getAwuPoolSummary(auth, { cycleHistoryLimit });
     if (result.isErr()) {
       return summaryErrorToApi(ctx, result.error);
     }

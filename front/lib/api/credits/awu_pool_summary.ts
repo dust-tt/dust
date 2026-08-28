@@ -26,12 +26,24 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isNumber } from "@app/types/shared/utils/general";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
+import { z } from "zod";
 
-const CYCLE_HISTORY_LIMIT = 5;
-// Fetched ahead of the target cycle count so cycles with zero pool
-// consumption (e.g. an invoice with no pool-tagged usage line) still leave
-// enough real cycles to fill `CYCLE_HISTORY_LIMIT`.
-const FINALIZED_INVOICES_FETCH_LIMIT = 12;
+export const DEFAULT_CYCLE_HISTORY_LIMIT = 5;
+const MAX_CYCLE_HISTORY_LIMIT = 24;
+
+export const AwuPoolSummaryQuerySchema = z.object({
+  cycleHistoryLimit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_CYCLE_HISTORY_LIMIT)
+    .catch(DEFAULT_CYCLE_HISTORY_LIMIT),
+});
+
+// Invoices are fetched ahead of the requested cycle count so cycles with zero
+// pool consumption (e.g. an invoice with no pool-tagged usage line) still
+// leave enough real cycles to fill `cycleHistoryLimit`.
+const FINALIZED_INVOICES_FETCH_BUFFER = 7;
 
 // Pool consumption entries: each ledger entry already reflects the amount
 // drawn down from a single, known commit/credit, so — unlike invoice line
@@ -150,20 +162,22 @@ async function getPoolCommitIds({
 }
 
 /**
- * Per-cycle pool consumption, over up to the last `CYCLE_HISTORY_LIMIT`
+ * Per-cycle pool consumption, over up to the last `cycleHistoryLimit`
  * finalized invoices for this contract that had non-zero pool consumption.
  * `finalizedInvoices` only ever contains FINALIZED invoices (drafts are
  * fetched separately and never mixed in), and cycles with zero pool
- * consumption are skipped — a longer window is still searched
- * (`FINALIZED_INVOICES_FETCH_LIMIT`) so a couple of zero-usage cycles don't
- * starve the breakdown of real data points.
+ * consumption are skipped — the caller fetches a longer window than
+ * `cycleHistoryLimit` (see `FINALIZED_INVOICES_FETCH_BUFFER`) so a couple of
+ * zero-usage cycles don't starve the breakdown of real data points.
  */
 function computeCycleBreakdown({
   finalizedInvoices,
   ledgerEntries,
+  cycleHistoryLimit,
 }: {
   finalizedInvoices: Invoice[];
   ledgerEntries: PoolLedgerEntry[];
+  cycleHistoryLimit: number;
 }): AwuPoolCycleBreakdown[] {
   return finalizedInvoices
     .map((invoice) => ({
@@ -179,7 +193,7 @@ function computeCycleBreakdown({
       ),
     }))
     .filter((cycle) => cycle.consumedCredits > 0)
-    .slice(0, CYCLE_HISTORY_LIMIT);
+    .slice(0, cycleHistoryLimit);
 }
 
 function creditTypeIdToCurrency(
@@ -304,7 +318,12 @@ export class AwuPoolSummaryError extends Error {
 }
 
 export async function getAwuPoolSummary(
-  auth: Authenticator
+  auth: Authenticator,
+  {
+    cycleHistoryLimit = DEFAULT_CYCLE_HISTORY_LIMIT,
+  }: {
+    cycleHistoryLimit?: number;
+  } = {}
 ): Promise<Result<AwuPoolSummaryResponseBody, AwuPoolSummaryError>> {
   const workspace = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
@@ -325,7 +344,7 @@ export async function getAwuPoolSummary(
     listMetronomeDraftInvoices(metronomeCustomerId),
     getPoolCommitIds({ metronomeCustomerId }),
     listMetronomeFinalizedInvoices(metronomeCustomerId, {
-      limit: FINALIZED_INVOICES_FETCH_LIMIT,
+      limit: cycleHistoryLimit + FINALIZED_INVOICES_FETCH_BUFFER,
     }),
   ]);
 
@@ -391,6 +410,7 @@ export async function getAwuPoolSummary(
       cycleBreakdown = computeCycleBreakdown({
         finalizedInvoices: finalizedInvoicesResult.value,
         ledgerEntries,
+        cycleHistoryLimit,
       });
     }
   }

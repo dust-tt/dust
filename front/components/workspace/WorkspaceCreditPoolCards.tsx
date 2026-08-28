@@ -1,14 +1,10 @@
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
+import { DAY_MS } from "@app/lib/api/analytics/time_utils";
 import { formatCredits } from "@app/lib/client/credits";
 import type { AwuPoolCycleBreakdown } from "@app/types/api/credits/awu_pool_summary";
 import { DataTable, ValueCard } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-// "Day 16/30": the elapsed/total day count for the current billing cycle,
-// next to the "Consumed this cycle" figure — a quicker read on whether
-// consumption is on pace than the raw credits number alone.
 function formatCycleDayLabel(
   currentCycleStartMs: number | null,
   currentCycleEndMs: number | null
@@ -21,11 +17,11 @@ function formatCycleDayLabel(
     return null;
   }
   const totalDays = Math.round(
-    (currentCycleEndMs - currentCycleStartMs) / MS_PER_DAY
+    (currentCycleEndMs - currentCycleStartMs) / DAY_MS
   );
   const elapsedDays = Math.min(
     totalDays,
-    Math.max(0, Math.ceil((Date.now() - currentCycleStartMs) / MS_PER_DAY))
+    Math.max(0, Math.ceil((Date.now() - currentCycleStartMs) / DAY_MS))
   );
   return `Day ${elapsedDays}/${totalDays}`;
 }
@@ -38,9 +34,6 @@ interface WorkspaceCreditPoolValueCardsProps {
   isLoading: boolean;
 }
 
-// Two at-a-glance figures instead of a single consumed/total ratio, since
-// "how much is left" and "how much did this cycle draw" are two different
-// questions an admin asks about the pool, not one.
 export function WorkspaceCreditPoolValueCards({
   totalRemainingCredits,
   currentCycleConsumedCredits,
@@ -117,9 +110,6 @@ const CYCLE_HISTORY_COLUMNS: ColumnDef<CycleHistoryRowData, string>[] = [
   },
 ];
 
-// Up to the last 5 finalized cycles with non-zero pool consumption
-// (`cycleBreakdown`, most recent first) — a cycle-by-cycle view is a clearer
-// way to judge a consumption trend than a single-number projection.
 export function WorkspaceCreditPoolCycleHistoryTable({
   cycleBreakdown,
 }: WorkspaceCreditPoolCycleHistoryTableProps) {
