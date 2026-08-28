@@ -146,6 +146,7 @@ const KILL_REQUESTED_FLUSH_GRACE_MS = 60 * 60 * 1000;
 // only enforces the env contract and does not interpret owner types.
 const SANDBOX_OWNER_ENV_VAR_CONTRACT_NAMES = new Set([
   "CONVERSATION_ID",
+  "FRAME_ID",
   "SPACE_ID",
 ]);
 
