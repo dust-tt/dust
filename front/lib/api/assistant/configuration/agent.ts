@@ -728,16 +728,16 @@ export async function createAgentConfiguration(
 
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const sId = agentConfigurationId || generateRandomModelSId();
-      let agentId = existingAgent?.agentId;
-      if (!agentId) {
+      let agentModelId = existingAgent?.agentId;
+      if (!agentModelId) {
         const [agentIdentity] = await AgentModel.findOrCreate({
           where: { sId, workspaceId: owner.id },
           defaults: { sId, workspaceId: owner.id },
           transaction: t,
         });
-        agentId = agentIdentity.id;
+        agentModelId = agentIdentity.id;
         await AgentConfigurationModel.update(
-          { agentId },
+          { agentId: agentModelId },
           {
             where: { sId, workspaceId: owner.id },
             transaction: t,
@@ -797,7 +797,7 @@ export async function createAgentConfiguration(
         agentConfigurationInstance = await AgentConfigurationModel.create(
           {
             sId,
-            agentId,
+            agentId: agentModelId,
             version,
             status,
             scope,

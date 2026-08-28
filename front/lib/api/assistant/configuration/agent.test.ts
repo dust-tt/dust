@@ -95,11 +95,11 @@ describe("stable agent identities", () => {
       where: { sId: firstVersion.sId, workspaceId: workspace.id },
       attributes: ["agentId"],
     });
-    const agentIds = new Set(versions.map((version) => version.agentId));
+    const agentModelIds = new Set(versions.map((version) => version.agentId));
 
     expect(versions).toHaveLength(2);
-    expect(agentIds.size).toBe(1);
-    expect([...agentIds][0]).not.toBeNull();
+    expect(agentModelIds.size).toBe(1);
+    expect([...agentModelIds][0]).not.toBeNull();
   });
 
   it("creates and attaches an identity when updating a legacy agent", async () => {
