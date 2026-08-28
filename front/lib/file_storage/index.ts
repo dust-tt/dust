@@ -518,7 +518,7 @@ export class FileStorage {
       destinationGenerationMatch?: number;
       sourceGeneration?: string;
     } = {}
-  ): Promise<void> {
+  ): Promise<string> {
     const destinationFile = destinationStorage.file(destPath);
     const sourceFile = sourceGeneration
       ? this.bucket.file(srcPath, { generation: sourceGeneration })
@@ -530,13 +530,32 @@ export class FileStorage {
       attempt++
     ) {
       try {
-        await sourceFile.copy(destinationFile, {
-          preconditionOpts:
-            destinationGenerationMatch !== undefined
-              ? { ifGenerationMatch: destinationGenerationMatch }
-              : undefined,
-        });
-        return;
+        const [copiedFile, apiResponse] = await sourceFile.copy(
+          destinationFile,
+          {
+            preconditionOpts:
+              destinationGenerationMatch !== undefined
+                ? { ifGenerationMatch: destinationGenerationMatch }
+                : undefined,
+          }
+        );
+        const responseResource =
+          typeof apiResponse === "object" &&
+          apiResponse !== null &&
+          "resource" in apiResponse &&
+          typeof apiResponse.resource === "object" &&
+          apiResponse.resource !== null
+            ? apiResponse.resource
+            : null;
+        const generation = responseResource
+          ? "generation" in responseResource
+            ? responseResource.generation
+            : undefined
+          : copiedFile.metadata.generation;
+        if (!isString(generation) && !isNumber(generation)) {
+          throw new Error(`GCS copy response has no generation: ${destPath}`);
+        }
+        return String(generation);
       } catch (err) {
         // Preconditions are deterministic. In particular, a create-only copy
         // must let its caller inspect the existing destination instead of
@@ -567,6 +586,10 @@ export class FileStorage {
         await setTimeoutAsync(delayMs);
       }
     }
+
+    throw new Error(
+      `GCS copy exhausted all retries: ${srcPath} -> ${destPath}`
+    );
   }
 
   async deleteByPrefix(prefix: string): Promise<void> {

@@ -393,7 +393,6 @@ export async function moveFrameV2Source(
     const copyResult = await copyFrameSourceAsNew({
       allowMatchingDestinationObjects: isRecovery,
       destinationMountPrefix,
-      makeError: (code, message) => new FrameSourceMoveError(code, message),
       sourceMountPrefix,
     });
     if (copyResult.isErr()) {
@@ -411,7 +410,12 @@ export async function moveFrameV2Source(
       }
       const restored = await restoreSourceReservation();
       return restored
-        ? new Err(copyResult.error.error)
+        ? new Err(
+            new FrameSourceMoveError(
+              copyResult.error.error.code,
+              copyResult.error.error.message
+            )
+          )
         : new Err(
             new FrameSourceMoveError(
               "internal",

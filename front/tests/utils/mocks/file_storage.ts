@@ -81,6 +81,7 @@ class FileStorageMock {
     () => null;
   private _copyFileShouldFail: (src: string, dest: string) => boolean = () =>
     false;
+  private _afterCopyFile: (src: string, dest: string) => void = () => {};
   private _deleteShouldFail: (filePath: string) => boolean = () => false;
   private _filesByPrefix: (
     prefix: string
@@ -172,6 +173,10 @@ class FileStorageMock {
     this._copyFileShouldFail = predicate;
   }
 
+  setAfterCopyFile(fn: (src: string, dest: string) => void): void {
+    this._afterCopyFile = fn;
+  }
+
   setDeleteFails(predicate: (filePath: string) => boolean): void {
     this._deleteShouldFail = predicate;
   }
@@ -257,6 +262,7 @@ class FileStorageMock {
     this._contentForPath = () => null;
     this._sortedFileVersions = () => null;
     this._copyFileShouldFail = () => false;
+    this._afterCopyFile = () => {};
     this._deleteShouldFail = () => false;
     this._filesByPrefix = () => null;
     this._subdirectoryNames = () => null;
@@ -499,7 +505,9 @@ class FileStorageMock {
             dest,
             this._objectStore.get(src) ?? this._contentForPath(src) ?? ""
           );
-          return Promise.resolve(undefined);
+          const copiedGeneration = this._objectGenerations.get(dest) ?? "0";
+          this._afterCopyFile(src, dest);
+          return Promise.resolve(copiedGeneration);
         }
       ),
       // Mirrors real GCS compose: concatenates each source's stored content, in order,

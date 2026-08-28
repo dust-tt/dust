@@ -21,21 +21,21 @@ export type FrameSourceCopyErrorCode =
   | "internal"
   | "invalid_source";
 
-function isFrameSourceCopyError(
-  error: unknown
-): error is Error & { code: FrameSourceCopyErrorCode } {
-  return (
-    error instanceof Error &&
-    "code" in error &&
-    ["conflict", "internal", "invalid_source"].includes(String(error.code))
-  );
+export class FrameSourceCopyError extends Error {
+  constructor(
+    readonly code: FrameSourceCopyErrorCode,
+    message: string
+  ) {
+    super(message);
+    this.name = "FrameSourceCopyError";
+  }
 }
 
 export type DestinationObject = { filePath: string; generation: string };
 
-type FrameSourceCopyFailure<E extends Error> = {
+type FrameSourceCopyFailure = {
   destinationObjects: DestinationObject[];
-  error: E;
+  error: FrameSourceCopyError;
 };
 
 function metadataValue(metadata: FileMetadata, key: keyof FileMetadata) {
@@ -86,32 +86,42 @@ export async function cleanupFrameSourceCopy(
   }
 }
 
-export async function copyFrameSourceAsNew<E extends Error>({
+export async function copyFrameSourceAsNew({
   allowMatchingDestinationObjects,
   destinationMountPrefix,
-  makeError,
   sourceMountPrefix,
 }: {
   allowMatchingDestinationObjects: boolean;
   destinationMountPrefix: string;
-  makeError: (code: FrameSourceCopyErrorCode, message: string) => E;
   sourceMountPrefix: string;
-}): Promise<Result<DestinationObject[], FrameSourceCopyFailure<E>>> {
+}): Promise<Result<DestinationObject[], FrameSourceCopyFailure>> {
   const bucket = getPrivateUploadBucket();
-  const [sourceFiles, destinationFiles] = await Promise.all([
-    bucket.getFiles({
-      prefix: sourceMountPrefix,
-      maxResults: MAX_FRAME_SOURCE_FILE_COUNT + 1,
-    }),
-    bucket.getFiles({
-      prefix: destinationMountPrefix,
-      maxResults: MAX_FRAME_SOURCE_FILE_COUNT + 1,
-    }),
-  ]);
+  let sourceFiles: File[];
+  let destinationFiles: File[];
+  try {
+    [sourceFiles, destinationFiles] = await Promise.all([
+      bucket.getFiles({
+        prefix: sourceMountPrefix,
+        maxResults: MAX_FRAME_SOURCE_FILE_COUNT + 1,
+      }),
+      bucket.getFiles({
+        prefix: destinationMountPrefix,
+        maxResults: MAX_FRAME_SOURCE_FILE_COUNT + 1,
+      }),
+    ]);
+  } catch (error) {
+    return new Err({
+      destinationObjects: [],
+      error: new FrameSourceCopyError(
+        "internal",
+        `Failed to list the Frame source: ${normalizeError(error).message}`
+      ),
+    });
+  }
   if (sourceFiles.length === 0) {
     return new Err({
       destinationObjects: [],
-      error: makeError(
+      error: new FrameSourceCopyError(
         "invalid_source",
         "Frame source folder is empty or no longer exists."
       ),
@@ -127,7 +137,7 @@ export async function copyFrameSourceAsNew<E extends Error>({
   ) {
     return new Err({
       destinationObjects: [],
-      error: makeError(
+      error: new FrameSourceCopyError(
         "invalid_source",
         "Frame source exceeds the copy size limit."
       ),
@@ -136,7 +146,7 @@ export async function copyFrameSourceAsNew<E extends Error>({
   if (destinationFiles.length > MAX_FRAME_SOURCE_FILE_COUNT) {
     return new Err({
       destinationObjects: [],
-      error: makeError(
+      error: new FrameSourceCopyError(
         "conflict",
         "Frame destination exceeds the copy file count limit."
       ),
@@ -145,7 +155,7 @@ export async function copyFrameSourceAsNew<E extends Error>({
   if (!allowMatchingDestinationObjects && destinationFiles.length > 0) {
     return new Err({
       destinationObjects: [],
-      error: makeError(
+      error: new FrameSourceCopyError(
         "conflict",
         "A file or folder already exists at the destination."
       ),
@@ -161,66 +171,103 @@ export async function copyFrameSourceAsNew<E extends Error>({
   const copyResults = await concurrentExecutor(
     sourceFiles,
     async (sourceFile) => {
-      try {
-        const relativePath = sourceFile.name.slice(sourceMountPrefix.length);
-        const destinationPath = `${destinationMountPrefix}${relativePath}`;
-        let destinationFile = destinationByRelativePath.get(relativePath);
-        let copied = false;
+      const relativePath = sourceFile.name.slice(sourceMountPrefix.length);
+      const destinationPath = `${destinationMountPrefix}${relativePath}`;
+      let destinationFile = destinationByRelativePath.get(relativePath);
+      let copied = false;
+      let copiedGeneration: string | null = null;
 
-        if (!destinationFile) {
-          try {
-            await bucket.copyFile(sourceFile.name, destinationPath, undefined, {
+      if (!destinationFile) {
+        try {
+          copiedGeneration = await bucket.copyFile(
+            sourceFile.name,
+            destinationPath,
+            undefined,
+            {
               destinationGenerationMatch:
                 GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
-            });
-            copied = true;
-          } catch (error) {
-            if (!isGCSPreconditionFailedError(error)) {
-              throw error;
             }
+          );
+          copied = true;
+        } catch (error) {
+          if (!isGCSPreconditionFailedError(error)) {
+            return new Err(
+              new FrameSourceCopyError(
+                "internal",
+                `Failed to copy the Frame source: ${normalizeError(error).message}`
+              )
+            );
           }
+        }
+        if (!copied) {
           destinationFile = bucket.file(destinationPath);
-          const [metadata] = await destinationFile.getMetadata();
-          destinationFile.metadata = metadata;
+          try {
+            const [metadata] = await destinationFile.getMetadata();
+            destinationFile.metadata = metadata;
+          } catch (error) {
+            return new Err(
+              new FrameSourceCopyError(
+                "internal",
+                `Failed to read the copied Frame source: ${normalizeError(error).message}`
+              )
+            );
+          }
         }
+      }
 
-        if (!copied && !allowMatchingDestinationObjects) {
-          throw makeError(
-            "conflict",
-            `Destination file already exists: ${relativePath}`
-          );
-        }
-        if (!copied && !isSameGCSObject(sourceFile, destinationFile)) {
-          throw makeError(
-            "conflict",
-            `Destination file already exists: ${relativePath}`
-          );
-        }
-
-        const generation = metadataValue(
-          destinationFile.metadata,
-          "generation"
-        );
-        if (!generation) {
-          throw makeError(
-            "internal",
-            `Destination generation is missing: ${relativePath}`
+      if (copied) {
+        if (!copiedGeneration) {
+          return new Err(
+            new FrameSourceCopyError(
+              "internal",
+              `Destination generation is missing: ${relativePath}`
+            )
           );
         }
         return new Ok<DestinationObject>({
           filePath: destinationPath,
-          generation,
+          generation: copiedGeneration,
         });
-      } catch (error) {
+      }
+      if (!destinationFile) {
         return new Err(
-          isFrameSourceCopyError(error)
-            ? (error as unknown as E)
-            : makeError(
-                "internal",
-                `Failed to copy the Frame source: ${normalizeError(error).message}`
-              )
+          new FrameSourceCopyError(
+            "internal",
+            `Destination file is missing: ${relativePath}`
+          )
         );
       }
+
+      if (!allowMatchingDestinationObjects) {
+        return new Err(
+          new FrameSourceCopyError(
+            "conflict",
+            `Destination file already exists: ${relativePath}`
+          )
+        );
+      }
+      if (!isSameGCSObject(sourceFile, destinationFile)) {
+        return new Err(
+          new FrameSourceCopyError(
+            "conflict",
+            `Destination file already exists: ${relativePath}`
+          )
+        );
+      }
+
+      const generation = metadataValue(destinationFile.metadata, "generation");
+      if (!generation) {
+        return new Err(
+          new FrameSourceCopyError(
+            "internal",
+            `Destination generation is missing: ${relativePath}`
+          )
+        );
+      }
+      return new Ok<DestinationObject>({
+        filePath: destinationPath,
+        generation,
+      });
     },
     { concurrency: FRAME_SOURCE_COPY_CONCURRENCY }
   );
