@@ -678,6 +678,12 @@ export async function createAgentConfiguration(
         existingAgent = agentConfiguration;
 
         if (existingAgent) {
+          if (existingAgent.status === "archived") {
+            throw new Error(
+              "An archived agent cannot be updated. Restore it first."
+            );
+          }
+
           // Handle pending agent: update in place (don't bump version, preserve id for FK relationships)
           // Otherwise: archive old versions and bump version
           if (existingAgent.status === "pending") {
@@ -1578,9 +1584,19 @@ export async function updateAgentPermissions(
       | "user_not_member"
       | "user_already_member"
       | "group_requirements_not_met"
+      | "invalid_request_error"
     >
   >
 > {
+  if (agent.status === "archived") {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "An archived agent cannot be updated. Restore it first."
+      )
+    );
+  }
+
   const editorGroupRes = await GroupResource.findEditorGroupForAgent(
     auth,
     agent
@@ -1725,6 +1741,17 @@ export async function updateAgentConfigurationsScope(
     variant: "light",
     dangerouslySkipPermissionFiltering: auth.isAdmin(),
   });
+
+  const archivedAgentNames = agentConfigs
+    .filter((agent) => agent.status === "archived")
+    .map((agent) => agent.name);
+  if (archivedAgentNames.length > 0) {
+    return new Err(
+      new Error(
+        `Archived agents cannot be updated: ${archivedAgentNames.join(", ")}. Restore them first.`
+      )
+    );
+  }
 
   const editableAgents = agentConfigs.filter(
     (a) => a.canEdit || auth.isAdmin()

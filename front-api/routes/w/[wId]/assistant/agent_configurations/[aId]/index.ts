@@ -11,6 +11,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { rejectArchivedAgent } from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 import analytics from "./analytics";
@@ -100,6 +101,11 @@ app.patch(
       });
     }
 
+    const archivedError = rejectArchivedAgent(ctx, agent);
+    if (archivedError) {
+      return archivedError;
+    }
+
     // Editors only, admins included: an admin who wants to change an agent has to add themselves
     // as an editor first. Batch operations on agents are a separate, admin-only path.
     if (!agent.canEdit) {
@@ -178,6 +184,11 @@ app.delete(
           message: "Only editors can delete workspace agent.",
         },
       });
+    }
+
+    const archivedError = rejectArchivedAgent(ctx, agent);
+    if (archivedError) {
+      return archivedError;
     }
 
     const archived = await archiveAgentConfiguration(auth, aId);

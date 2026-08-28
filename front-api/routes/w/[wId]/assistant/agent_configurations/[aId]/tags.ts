@@ -6,6 +6,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { rejectArchivedAgent } from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -61,6 +62,11 @@ app.patch(
             "Only editors of the agent or workspace admins can modify agent.",
         },
       });
+    }
+
+    const archivedError = rejectArchivedAgent(ctx, agent);
+    if (archivedError) {
+      return archivedError;
     }
 
     const { addTagIds = [], removeTagIds = [] } = ctx.req.valid("json");

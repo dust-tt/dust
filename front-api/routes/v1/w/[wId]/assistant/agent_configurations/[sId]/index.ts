@@ -15,6 +15,7 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { rejectArchivedAgent } from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 import yaml from "./export/yaml";
@@ -258,7 +259,7 @@ const VariantQuerySchema = z.object({
  *                 success:
  *                   type: boolean
  *       400:
- *         description: Bad Request. Invalid or missing parameters.
+ *         description: Bad Request. Invalid parameters or the agent is already archived.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
  *       403:
@@ -408,6 +409,11 @@ app.delete(
           message: "The agent configuration you requested was not found.",
         },
       });
+    }
+
+    const archivedError = rejectArchivedAgent(ctx, agentConfiguration);
+    if (archivedError) {
+      return archivedError;
     }
 
     // Space-scoping is enforced upstream: `getAgentConfiguration` (called above) returns null

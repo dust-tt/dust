@@ -1,3 +1,4 @@
+import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -119,6 +120,24 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
         message: "Failed to add tags",
       },
     });
+  });
+
+  it("rejects a batch containing an archived agent", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const tag = await TagFactory.create(workspace, { name: "governance" });
+    await archiveAgentConfiguration(auth, agent.sId);
+
+    const response = await batchUpdateTags(workspace, {
+      agentIds: [agent.sId],
+      addTagIds: [tag.sId],
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(agent.name);
   });
 
   it("returns 400 when removing tags fails", async () => {

@@ -1,4 +1,7 @@
-import { updateAgentPermissions } from "@app/lib/api/assistant/configuration/agent";
+import {
+  archiveAgentConfiguration,
+  updateAgentPermissions,
+} from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -116,6 +119,29 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/editors", () => {
 });
 
 describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => {
+  it("rejects editor changes on an archived agent", async () => {
+    const { workspace, agent } = await setupTest({
+      requestUserRole: "admin",
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await archiveAgentConfiguration(auth, agent.sId);
+
+    const newEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, newEditor, { role: "user" });
+
+    const response = await patchEditors(workspace, agent.sId, {
+      addEditorIds: [newEditor.sId],
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "An archived agent cannot be updated. Restore it first.",
+      },
+    });
+  });
+
   it("admin should successfully add an editor", async () => {
     const { workspace, agent, agentOwner } = await setupTest({
       requestUserRole: "admin",

@@ -9,6 +9,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { SuccessResponseBody } from "@front-api/routes/types";
+import { rejectArchivedAgent } from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -84,6 +85,11 @@ app.patch(
           message: "Only editors can modify agents.",
         },
       });
+    }
+
+    const archivedError = rejectArchivedAgent(ctx, agentConfiguration);
+    if (archivedError) {
+      return archivedError;
     }
 
     const connectorsAPI = new ConnectorsAPI(

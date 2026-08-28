@@ -6,6 +6,7 @@ import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { SuccessResponseBody } from "@front-api/routes/types";
+import { rejectArchivedAgent } from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 import details from "./details";
@@ -40,6 +41,11 @@ app.delete(
           message: "Could not find the agent configuration.",
         },
       });
+    }
+
+    const archivedError = rejectArchivedAgent(ctx, agentConfiguration);
+    if (archivedError) {
+      return archivedError;
     }
 
     await archiveAgentConfiguration(auth, agentConfiguration.sId);
