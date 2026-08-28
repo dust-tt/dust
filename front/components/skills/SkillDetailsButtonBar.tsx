@@ -64,6 +64,16 @@ export function SkillDetailsButtonBar({
             }
           />
         )}
+        {skill.canAdministrate && (
+          <Button
+            size="sm"
+            tooltip="Edit skill"
+            href={getSkillBuilderRoute(owner.sId, skill.sId)}
+            replace={replaceOnEdit}
+            variant="outline"
+            icon={Edit04}
+          />
+        )}
         <Button
           size="sm"
           tooltip="Copy link"
@@ -76,16 +86,6 @@ export function SkillDetailsButtonBar({
             );
           }}
         />
-        {skill.canAdministrate && (
-          <Button
-            size="sm"
-            tooltip="Edit skill"
-            href={getSkillBuilderRoute(owner.sId, skill.sId)}
-            replace={replaceOnEdit}
-            variant="outline"
-            icon={Edit04}
-          />
-        )}
         {skill.canAdministrate && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

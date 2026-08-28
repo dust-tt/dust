@@ -570,6 +570,7 @@ export function SkillsTable({
                       ? ClipboardCheck
                       : Clipboard,
                   onClick: async (e: React.MouseEvent) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     setCopiedSkillId(skill.sId);
                     await copySkillLink(
