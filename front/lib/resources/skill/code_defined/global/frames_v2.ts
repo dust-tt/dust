@@ -4,7 +4,7 @@ export const FRAMES_V2_INSTRUCTIONS = `\
 # Frames v2
 
 Frames are interactive React applications. Use the Computer to edit their source and the
-\`dsbx frame\` CLI to publish them.
+\`dsbx frame\` CLI for their lifecycle.
 
 ## Frames v2 vs legacy Frames
 
@@ -17,6 +17,29 @@ Frames are interactive React applications. Use the Computer to edit their source
   file and its local imports, then updates the existing Frame through the legacy bundle pipeline.
 - \`dsbx frame publish\` supports both formats. Edit and publish an existing legacy Frame in place;
   do not recreate it just to make it v2.
+
+## Create a Frame
+
+Create and register a new Frame folder on the mounted file system:
+
+\`\`\`bash
+dsbx frame create /files/conversation-<conversationId>/<frame-folder> --name "<name>"
+\`\`\`
+
+In a Pod, create it under \`/files/pod-<podId>/...\` instead. The command scaffolds
+\`manifest.json\` and \`index.tsx\`, then assigns the Frame's stable identity. Edit the generated
+source before publishing it.
+
+## Register an existing Frame folder
+
+When \`manifest.json\` and its source folder already exist but do not have a Frame identity, run:
+
+\`\`\`bash
+dsbx frame register /files/<scope>/<frame-folder>/manifest.json
+\`\`\`
+
+Registration validates the manifest and assigns its stable Frame identity. Repeating the command
+for the same manifest path returns the same Frame. Registration does not publish the source.
 
 ## Frames v2 source layout
 

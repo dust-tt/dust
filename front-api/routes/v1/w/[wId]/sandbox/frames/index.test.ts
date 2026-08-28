@@ -10,6 +10,7 @@ import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { honoApp } from "@front-api/app";
+import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/lock", async (importActual) => {
@@ -42,7 +43,22 @@ function requestFramePublish(
   });
 }
 
-async function setup() {
+function requestFrameRegister(
+  workspaceId: string,
+  token: string,
+  manifestPath: string
+) {
+  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/register`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ manifestPath }),
+  });
+}
+
+async function setup({ registered = true }: { registered?: boolean } = {}) {
   const context = await createSandboxTokenTestContext();
   await FeatureFlagFactory.basic(context.auth, "frames_v2");
   const sourceDirectoryPath = `conversation-${context.conversation.sId}/Status`;
@@ -51,15 +67,17 @@ async function setup() {
     workspaceId: context.workspace.sId,
     conversationId: context.conversation.sId,
   })}Status`;
-  const frame = await FileFactory.create(context.auth, null, {
-    contentType: frameV2ContentType,
-    fileName: FRAME_MANIFEST_FILE,
-    fileSize: Buffer.byteLength(manifest),
-    status: "created",
-    useCase: "conversation",
-    useCaseMetadata: { conversationId: context.conversation.sId },
-    mountFilePath: `${mountDirectoryPath}/${FRAME_MANIFEST_FILE}`,
-  });
+  const frame = registered
+    ? await FileFactory.create(context.auth, null, {
+        contentType: frameV2ContentType,
+        fileName: FRAME_MANIFEST_FILE,
+        fileSize: Buffer.byteLength(manifest),
+        status: "created",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: context.conversation.sId },
+        mountFilePath: `${mountDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+      })
+    : null;
   const sourceByPath = new Map([
     [`${mountDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
     [`${mountDirectoryPath}/index.tsx`, uiSource],
@@ -124,9 +142,32 @@ beforeEach(() => {
   fileStorageMock.reset();
 });
 
-describe("POST /api/v1/w/[wId]/sandbox/frames/publish", () => {
+describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
+  it("registers one stable Frame identity", async () => {
+    const context = await setup({ registered: false });
+
+    const firstResponse = await requestFrameRegister(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath
+    );
+    expect(firstResponse.status).toBe(200);
+    const first = await firstResponse.json();
+    expect(first.created).toBe(true);
+
+    const secondResponse = await requestFrameRegister(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath
+    );
+    expect(secondResponse.status).toBe(200);
+    const second = await secondResponse.json();
+    expect(second).toMatchObject({ frameId: first.frameId, created: false });
+  });
+
   it("publishes a registered Frame through the sandbox token", async () => {
     const context = await setup();
+    assert(context.frame);
 
     const response = await requestFramePublish(
       context.workspace.sId,

@@ -17,6 +17,8 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+import register from "./register";
+
 const FramePublishRequestSchema = z.object({
   manifestPath: z.string().min(1),
 });
@@ -67,6 +69,7 @@ function frameErrorStatus(error: PublishFrameFromSourceError): 400 | 403 | 500 {
 const app = sandboxApp();
 
 app.use("*", sandboxAuth({ allowedTokenKinds: ["action"] }));
+app.route("/register", register);
 
 /**
  * @ignoreswagger
