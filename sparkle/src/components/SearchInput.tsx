@@ -34,7 +34,6 @@ export interface SearchInputProps {
   /** Replaces the trailing icon with a small spinner while results are being fetched. */
   isLoading?: boolean;
   className?: string;
-  size?: "xs" | "sm" | "md";
 }
 
 /**
@@ -60,7 +59,6 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       disabled = false,
       isLoading = false,
       className,
-      size = "sm",
     },
     ref
   ) => {
@@ -69,12 +67,6 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     };
 
     const inputId = id ?? name;
-    // Mirror the Button size -> icon size scale (see ICON_SIZE_MAP in Button).
-    const iconSize = size === "md" ? "md" : size === "sm" ? "sm" : "xs";
-    // Align the trailing icon with the Input horizontal padding (see
-    // sizeVariantStyles in Input) so it sits flush with the text padding.
-    const iconPadding =
-      size === "md" ? "px-3" : size === "sm" ? "px-2" : "px-1.5";
 
     return (
       <div className={cn("relative", className)}>
@@ -92,31 +84,30 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           onBlur={onBlur}
           onKeyDown={onKeyDown}
           disabled={disabled}
-          size={size}
           ref={ref}
         />
         <div className="absolute inset-y-0 right-0 flex items-center pr-1">
           {isLoading ? (
             <div className="px-1">
-              <Spinner size={iconSize} />
+              <Spinner size="xs" />
             </div>
           ) : value ? (
             <Button
               icon={XClose}
               variant="ghost"
-              size={size === "md" ? "sm" : "xs"}
+              size="xs"
               onClick={clearInputField}
             />
           ) : (
             <div
               className={cn(
-                iconPadding,
+                "px-2",
                 disabled ? "text-muted-foreground" : "text-foreground"
               )}
             >
               <Icon
                 visual={SearchMd}
-                size={iconSize}
+                size="xs"
                 className="text-muted-foreground"
               />
             </div>

@@ -31,10 +31,6 @@ yarn-error.log*
 dist/
 public/spa/
 
-# next.js
-/.next/
-next-env.d.ts
-
 # cache
 .cache/
 .eslintcache

@@ -964,7 +964,6 @@ export function NewConversation({
               placeholder={
                 isAboutDust ? "Search Dust" : "Search skills and agents"
               }
-              size="md"
               className="w-full"
             />
           </div>

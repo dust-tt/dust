@@ -4403,7 +4403,6 @@ export function GroupConversationView({
                   value={knowledgeSearchText}
                   onChange={setKnowledgeSearchText}
                   placeholder="Search files..."
-                  size="md"
                   className="w-full max-w-xl"
                 />
               )}
