@@ -1,12 +1,12 @@
-# Interactive shell defaults for the Dust dev container.
+# Interactive shell defaults for the Dust shared dev container.
 
 case $- in
   *i*) ;;
   *) return ;;
 esac
 
-# 1Password Environment + local-dev overrides (materialized by start-infra / refresh-op-env).
-# Non-interactive bash uses the same file via BASH_ENV (see .cursor/Dockerfile).
+# 1Password Environment + local overrides (materialized by infra.sh / refresh-op-env).
+# Non-interactive bash uses the same file via BASH_ENV (see dev/Dockerfile).
 if [ -f /tmp/dust-shell-env.sh ]; then
   # shellcheck disable=SC1091
   source /tmp/dust-shell-env.sh

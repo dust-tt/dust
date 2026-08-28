@@ -1,18 +1,24 @@
 #!/usr/bin/env bash
-# Start infra services and bootstrap databases (migrations). Dev-user seed runs in start-mprocs.
+# Start in-container infra (Postgres/Redis/Qdrant/ES/Temporal), materialize secrets, migrate.
+# App processes (mprocs) are started separately via apps.sh or up.sh.
 set +e
 
-DUST_DEV_SCRIPT_NAME=start-infra
-# shellcheck source=.cursor/scripts/common.sh
-source "$(dirname "$0")/common.sh"
-# shellcheck source=.cursor/scripts/env.defaults.sh
-source "$(dirname "$0")/env.defaults.sh"
+DUST_DEV_SCRIPT_NAME=infra
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=dev/scripts/common.sh
+source "${SCRIPT_DIR}/common.sh"
+# shellcheck source=dev/scripts/env.sh
+source "${SCRIPT_DIR}/env.sh"
 
-install_cursor_runtime_config
+install_mprocs_config
 rm -f "${DUST_INFRA_LOG_DIR}/infra.ready"
 
 ensure_node_path
-ensure_workspace_deps
+ensure_client_built || {
+  log "Installing workspace deps once before migrations..."
+  bash "${SCRIPT_DIR}/install.sh" || exit 1
+  ensure_client_built || exit 1
+}
 
 start_bg() {
   local name="$1"
@@ -55,8 +61,8 @@ if ! curl -sf "http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}" >/dev/null 2>
     'ES_JAVA_OPTS="-Xms512m -Xmx512m" /opt/es/bin/elasticsearch -d -p /tmp/es.pid -E discovery.type=single-node -E xpack.security.enabled=false -E bootstrap.memory_lock=false -E path.data=/opt/es/data -E path.logs=/opt/es/logs'
 fi
 
-# --- Temporal dev server ---
-bash "$(dirname "$0")/ensure-temporal.sh" \
+# --- Temporal (start + namespaces + search attributes; single call) ---
+bash "${SCRIPT_DIR}/ensure-temporal.sh" \
   >"${DUST_INFRA_LOG_DIR}/ensure-temporal.log" 2>&1 || {
   log "Temporal setup failed; see ${DUST_INFRA_LOG_DIR}/ensure-temporal.log"
   tail -30 "${DUST_INFRA_LOG_DIR}/ensure-temporal.log"
@@ -64,32 +70,27 @@ bash "$(dirname "$0")/ensure-temporal.sh" \
 }
 
 log "Initializing databases..."
-bash "$(dirname "$0")/init-databases.sh" || exit 1
+bash "${SCRIPT_DIR}/init-databases.sh" || exit 1
 
 log "Ensuring Elasticsearch indices..."
-bash "$(dirname "$0")/init-elasticsearch-indices.sh" \
+bash "${SCRIPT_DIR}/init-elasticsearch-indices.sh" \
   >"${DUST_INFRA_LOG_DIR}/init-elasticsearch.log" 2>&1 || {
   log "Elasticsearch index init failed; see ${DUST_INFRA_LOG_DIR}/init-elasticsearch.log"
   tail -40 "${DUST_INFRA_LOG_DIR}/init-elasticsearch.log"
   exit 1
 }
 
-# Materialize 1Password env + local overrides for every subsequent shell/command
-# (BASH_ENV=/tmp/dust-shell-env.sh and .cursor/bashrc source the same files).
+# Materialize 1Password env + local overrides for every subsequent shell/command.
 materialize_dev_environment || log "Continuing without a full 1Password env"
 
 log "Running DB migrations..."
-bash "$(dirname "$0")/setup-dev-db.sh" \
+bash "${SCRIPT_DIR}/setup-dev-db.sh" \
   >"${DUST_INFRA_LOG_DIR}/setup-dev-db.log" 2>&1 || {
   log "setup-dev-db failed; see ${DUST_INFRA_LOG_DIR}/setup-dev-db.log"
   tail -30 "${DUST_INFRA_LOG_DIR}/setup-dev-db.log"
   exit 1
 }
 
-log "Ensuring Temporal namespaces exist..."
-bash "$(dirname "$0")/ensure-temporal.sh" \
-  >"${DUST_INFRA_LOG_DIR}/temporal-namespaces.log" 2>&1 || true
-
-log "Infra ready. App services run in Cursor terminals."
+log "Infra ready. App services: bash dev/scripts/apps.sh (or up.sh)."
 log "Infra logs: ${DUST_INFRA_LOG_DIR}/"
 date -u +%Y-%m-%dT%H:%M:%SZ >"${DUST_INFRA_LOG_DIR}/infra.ready"

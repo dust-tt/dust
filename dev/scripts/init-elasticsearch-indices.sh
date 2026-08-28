@@ -3,10 +3,10 @@
 set -euo pipefail
 
 DUST_DEV_SCRIPT_NAME=init-elasticsearch
-# shellcheck source=.cursor/scripts/common.sh
+# shellcheck source=dev/scripts/common.sh
 source "$(dirname "$0")/common.sh"
-# shellcheck source=.cursor/scripts/env.defaults.sh
-source "$(dirname "$0")/env.defaults.sh"
+# shellcheck source=dev/scripts/env.sh
+source "$(dirname "$0")/env.sh"
 
 export_local_dev_infra
 export NODE_ENV=development
@@ -15,7 +15,7 @@ export ELASTICSEARCH_USERNAME="${ELASTICSEARCH_USERNAME:-elastic}"
 export ELASTICSEARCH_PASSWORD="${ELASTICSEARCH_PASSWORD:-}"
 
 ensure_node_path
-ensure_workspace_deps
+ensure_client_built
 
 wait_for_elasticsearch() {
   log "Waiting for Elasticsearch at ${ELASTICSEARCH_URL}..."

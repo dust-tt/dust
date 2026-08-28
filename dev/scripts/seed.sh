@@ -3,10 +3,10 @@
 set -euo pipefail
 
 DUST_DEV_SCRIPT_NAME=seed-dev-user
-# shellcheck source=.cursor/scripts/common.sh
+# shellcheck source=dev/scripts/common.sh
 source "$(dirname "$0")/common.sh"
-# shellcheck source=.cursor/scripts/env.defaults.sh
-source "$(dirname "$0")/env.defaults.sh"
+# shellcheck source=dev/scripts/env.sh
+source "$(dirname "$0")/env.sh"
 
 SEED_LOG="${DUST_INFRA_LOG_DIR}/seed-dev-user.log"
 touch "$SEED_LOG"
@@ -30,7 +30,7 @@ trap on_seed_error ERR
 log "Starting dev user seed..."
 export_local_dev_infra
 ensure_node_path
-ensure_workspace_deps
+ensure_client_built
 
 for secret in DEV_WORKOS_USER_ID DEV_WORKOS_USER_EMAIL DEV_WORKOS_USER_PASSWORD; do
   eval "val=\${$secret:-}"

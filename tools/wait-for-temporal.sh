@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Ensure the local Temporal dev server is up before starting workers or connectors.
+# Wait until local Temporal gRPC is ready (and ensure namespaces when using the shared image).
 set -euo pipefail
-
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-exec bash "${ROOT}/.cursor/scripts/ensure-temporal.sh"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+exec bash "${ROOT}/dev/scripts/ensure-temporal.sh"

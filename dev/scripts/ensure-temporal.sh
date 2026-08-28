@@ -3,10 +3,10 @@
 set -euo pipefail
 
 DUST_DEV_SCRIPT_NAME=ensure-temporal
-# shellcheck source=.cursor/scripts/common.sh
+# shellcheck source=dev/scripts/common.sh
 source "$(dirname "$0")/common.sh"
-# shellcheck source=.cursor/scripts/env.defaults.sh
-source "$(dirname "$0")/env.defaults.sh"
+# shellcheck source=dev/scripts/env.sh
+source "$(dirname "$0")/env.sh"
 
 # Always probe/start the in-container dev server — never a cloud TEMPORAL_ADDRESS from 1Password.
 LOCAL_TEMPORAL_ADDRESS="${DUST_LOCAL_TEMPORAL_ADDRESS:-127.0.0.1:7233}"

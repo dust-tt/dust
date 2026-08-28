@@ -2,10 +2,10 @@
 set -euo pipefail
 
 DUST_DEV_SCRIPT_NAME=init-databases
-# shellcheck source=.cursor/scripts/common.sh
+# shellcheck source=dev/scripts/common.sh
 source "$(dirname "$0")/common.sh"
-# shellcheck source=.cursor/scripts/env.defaults.sh
-source "$(dirname "$0")/env.defaults.sh"
+# shellcheck source=dev/scripts/env.sh
+source "$(dirname "$0")/env.sh"
 
 admin_uri="postgres://dev:dev@${POSTGRES_HOST}:${POSTGRES_PORT}/postgres"
 

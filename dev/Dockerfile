@@ -1,15 +1,17 @@
 # syntax=docker/dockerfile:1.4
-# Dust Cloud Agent dev image — system toolchain and infra binaries only.
-# Application source is checked out by Cursor at runtime; deps are built in `install`.
+# Dust shared dev image — system toolchain and infra binaries only.
+# Used by Cursor Cloud Agents, local docker-run, and other AI agents.
+# Application source is bind-mounted or checked out at runtime; deps are built in `install`.
 #
 # Layer cache: keep this file stable — any ENV/RUN edit above the apt layer invalidates
 # all downstream steps (apt, rust, temporal, …). Shell/terminal defaults live in
-# .cursor/scripts/env.defaults.sh and .cursor/bashrc (bind-mounted at runtime).
+# dev/scripts/env.sh and dev/bashrc (bind-mounted at runtime).
 FROM node:24.16.0-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-typecheck,front-circular,front-docs-check,connectors-lint-test-filenames,connectors-typecheck,lint-staged \
-    OP_ENVIRONMENT_ID=r6iqd3y67zqlbsxnotrj6bm25q \
+    OP_ENVIRONMENT_ID=r6iqd3y67zqlbsxnotrj6bm25q  # pragma: allowlist secret \
+    DUST_IN_CONTAINER=1 \
     RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH="/usr/local/cargo/bin:/root/.temporalio/bin:/opt/qdrant:${PATH}" \
@@ -84,20 +86,20 @@ RUN curl -sSfLo /tmp/op.zip \
 
 # Postgres dev user (databases are created at agent start by init-databases.sh)
 RUN service postgresql start \
-  && sudo -u postgres psql -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN CREATE USER dev WITH PASSWORD 'dev' SUPERUSER; EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;" \
+  && sudo -u postgres psql -v ON_ERROR_STOP=1 -c "DO $$ BEGIN CREATE USER dev WITH PASSWORD 'dev' SUPERUSER; EXCEPTION WHEN duplicate_object THEN NULL; END $$;" \
   && sudo -u postgres psql -c "ALTER USER dev WITH SUPERUSER;" \
   && service postgresql stop
 
 RUN mkdir -p /tmp/dust-infra /opt/temporal /root/.config/mprocs \
   && printf '%s\n' \
-    '# Sourced via BASH_ENV until start-infra materializes 1Password + local-dev env.' \
+    '# Sourced via BASH_ENV until infra.sh materializes 1Password + local-dev env.' \
     'return 0 2>/dev/null || true' \
     > /tmp/dust-shell-env.sh \
   && printf '%s\n' \
     '# Source repo-local shell config when /workspace is mounted.' \
-    'if [ -f /workspace/.cursor/bashrc ]; then' \
+    'if [ -f /workspace/dev/bashrc ]; then' \
     '  # shellcheck disable=SC1091' \
-    '  source /workspace/.cursor/bashrc' \
+    '  source /workspace/dev/bashrc' \
     'fi' \
     > /root/.bashrc
 

@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
-# Run the Dust dev container locally with isolated Linux-native deps.
+# Run the Dust shared dev container locally (laptop) or attach to it.
 #
 # Binds the repo for live edits but overlays node_modules and core/target so
-# container npm install / cargo builds do not touch your Mac copies (lefthook,
-# esbuild, etc.).
+# container npm install / cargo builds do not touch your Mac copies.
 #
-# Default: gitignored host dirs under .cursor/docker-volumes/ (not in the image).
+# Default: gitignored host dirs under dev/docker-volumes/ (not in the image).
 # Alternative: DUST_DEV_VOLUME_MODE=docker for opaque Docker named volumes.
 #
 # Usage (from repo root):
-#   bash .cursor/scripts/docker-run.sh              # start container (if needed), then shell
-#   bash .cursor/scripts/docker-run.sh --terminal   # shell into the running container only
-#   bash .cursor/scripts/docker-run.sh --build      # rebuild image, then start + shell
-#   bash .cursor/scripts/docker-run.sh --reset-volumes --build
-#   bash .cursor/scripts/docker-run.sh bash .cursor/scripts/start-infra.sh
+#   bash dev/scripts/docker-run.sh                 # start container + up.sh (infra + mprocs)
+#   bash dev/scripts/docker-run.sh --shell         # interactive shell only
+#   bash dev/scripts/docker-run.sh --terminal      # alias for --shell into running container
+#   bash dev/scripts/docker-run.sh --infra-only    # start container + infra, no mprocs
+#   bash dev/scripts/docker-run.sh --build         # rebuild image, then default up
+#   bash dev/scripts/docker-run.sh --reset-volumes --build
+#   bash dev/scripts/docker-run.sh bash dev/scripts/refresh-op-env.sh
 #
 # Pass host secrets through the environment before running, e.g.:
 #   export OP_SERVICE_ACCOUNT_TOKEN=...
@@ -28,13 +29,14 @@ CONTAINER_NAME="${DUST_DEV_CONTAINER:-dust-dev}"
 PLATFORM="${DUST_DEV_PLATFORM:-linux/amd64}"
 VOLUME_MODE="${DUST_DEV_VOLUME_MODE:-host}"
 VOLUME_PREFIX="${DUST_DEV_VOLUME_PREFIX:-dust-dev}"
-HOST_VOLUME_ROOT="${DUST_DEV_HOST_VOLUME_ROOT:-$REPO_ROOT/.cursor/docker-volumes}"
+HOST_VOLUME_ROOT="${DUST_DEV_HOST_VOLUME_ROOT:-$REPO_ROOT/dev/docker-volumes}"
 NODE_MODULES_VOLUME="${VOLUME_PREFIX}-node-modules"
 CARGO_TARGET_VOLUME="${VOLUME_PREFIX}-cargo-target"
 
 BUILD=0
 RESET_VOLUMES=0
-TERMINAL=0
+SHELL_ONLY=0
+INFRA_ONLY=0
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --build)
@@ -45,8 +47,12 @@ while [ "$#" -gt 0 ]; do
       RESET_VOLUMES=1
       shift
       ;;
-    --terminal)
-      TERMINAL=1
+    --terminal|--shell)
+      SHELL_ONLY=1
+      shift
+      ;;
+    --infra-only)
+      INFRA_ONLY=1
       shift
       ;;
     *)
@@ -56,7 +62,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 collect_env_args() {
-  ENV_ARGS=()
+  ENV_ARGS=(-e DUST_IN_CONTAINER=1)
   for var in \
     OP_SERVICE_ACCOUNT_TOKEN \
     GCP_SERVICE_ACCOUNT \
@@ -77,24 +83,55 @@ exec_interactive() {
     -e SHELL=/bin/bash \
     -e LANG=C.UTF-8 \
     -e LC_ALL=C.UTF-8 \
+    -e DUST_IN_CONTAINER=1 \
     "${ENV_ARGS[@]}" \
     "$CONTAINER_NAME" \
     "${cmd[@]}"
 }
 
-if [ "$TERMINAL" = 1 ]; then
+ensure_container_running() {
+  if docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
+    if [ "$(docker container inspect -f '{{.State.Running}}' "$CONTAINER_NAME")" != "true" ]; then
+      echo "Starting existing container ${CONTAINER_NAME}..."
+      docker start "$CONTAINER_NAME" >/dev/null
+    fi
+    return 0
+  fi
+
+  echo "Starting dev container ${CONTAINER_NAME}..."
+  docker run -d --init --platform "$PLATFORM" \
+    --name "$CONTAINER_NAME" \
+    -e TERM="${TERM:-xterm-256color}" \
+    -e COLORTERM="${COLORTERM:-truecolor}" \
+    -e SHELL=/bin/bash \
+    -e LANG=C.UTF-8 \
+    -e LC_ALL=C.UTF-8 \
+    -e DUST_IN_CONTAINER=1 \
+    -p 3000:3000 \
+    -p 3011:3011 \
+    -p 3001:3001 \
+    -p 3007:3007 \
+    -p 7233:7233 \
+    -v "$REPO_ROOT:/workspace" \
+    "${VOLUME_ARGS[@]}" \
+    "${ENV_ARGS[@]}" \
+    "$IMAGE_NAME" \
+    sleep infinity >/dev/null
+}
+
+if [ "$SHELL_ONLY" = 1 ]; then
   if [ "$#" -gt 0 ]; then
-    echo "--terminal opens an interactive shell; omit the command." >&2
+    echo "--shell/--terminal opens an interactive shell; omit the command." >&2
     exit 1
   fi
   if ! docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
     echo "Container ${CONTAINER_NAME} is not running." >&2
-    echo "Start it with: bash .cursor/scripts/docker-run.sh" >&2
+    echo "Start it with: bash dev/scripts/docker-run.sh" >&2
     exit 1
   fi
   if [ "$(docker container inspect -f '{{.State.Running}}' "$CONTAINER_NAME")" != "true" ]; then
     echo "Container ${CONTAINER_NAME} exists but is not running." >&2
-    echo "Start it with: bash .cursor/scripts/docker-run.sh" >&2
+    echo "Start it with: bash dev/scripts/docker-run.sh" >&2
     exit 1
   fi
   collect_env_args
@@ -102,8 +139,8 @@ if [ "$TERMINAL" = 1 ]; then
 fi
 
 if [ "$BUILD" = 1 ] || ! docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
-  echo "Building ${IMAGE_NAME} from .cursor/Dockerfile..."
-  docker build --platform "$PLATFORM" -f "$REPO_ROOT/.cursor/Dockerfile" -t "$IMAGE_NAME" "$REPO_ROOT"
+  echo "Building ${IMAGE_NAME} from dev/Dockerfile..."
+  docker build --platform "$PLATFORM" -f "$REPO_ROOT/dev/Dockerfile" -t "$IMAGE_NAME" "$REPO_ROOT"
 fi
 
 if [ "$BUILD" = 1 ] && docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
@@ -154,33 +191,12 @@ esac
 collect_env_args
 
 if [ "$#" -eq 0 ]; then
-  set -- bash -l
-fi
-
-if docker container inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
-  if [ "$(docker container inspect -f '{{.State.Running}}' "$CONTAINER_NAME")" != "true" ]; then
-    echo "Starting existing container ${CONTAINER_NAME}..."
-    docker start "$CONTAINER_NAME" >/dev/null
+  if [ "$INFRA_ONLY" = 1 ]; then
+    set -- bash /workspace/dev/scripts/up.sh --install --infra-only
+  else
+    set -- bash /workspace/dev/scripts/up.sh --install
   fi
-else
-  echo "Starting dev container ${CONTAINER_NAME}..."
-  docker run -d --init --platform "$PLATFORM" \
-    --name "$CONTAINER_NAME" \
-    -e TERM="${TERM:-xterm-256color}" \
-    -e COLORTERM="${COLORTERM:-truecolor}" \
-    -e SHELL=/bin/bash \
-    -e LANG=C.UTF-8 \
-    -e LC_ALL=C.UTF-8 \
-    -p 3000:3000 \
-    -p 3011:3011 \
-    -p 3001:3001 \
-    -p 3007:3007 \
-    -p 7233:7233 \
-    -v "$REPO_ROOT:/workspace" \
-    "${VOLUME_ARGS[@]}" \
-    "${ENV_ARGS[@]}" \
-    "$IMAGE_NAME" \
-    sleep infinity >/dev/null
 fi
 
+ensure_container_running
 exec_interactive "$@"
