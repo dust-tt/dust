@@ -23,6 +23,9 @@ export async function resolvePodForRuntimeOwner(
   auth: Authenticator,
   owner: SandboxRuntimeOwner
 ): Promise<Result<SpaceResource | null, Error>> {
+  // SpaceResource.fetchById is workspace-scoped but intentionally does not
+  // permission-filter. Runtime configuration belongs to the owner and must
+  // not vary with the caller who triggered execution.
   switch (owner.kind) {
     case "conversation": {
       if (!owner.spaceId) {

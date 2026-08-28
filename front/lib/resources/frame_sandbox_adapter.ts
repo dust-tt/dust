@@ -10,12 +10,9 @@ import type {
   SandboxLifecycleOwner,
 } from "@app/lib/resources/sandbox_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { FileModel } from "@app/lib/resources/storage/models/files";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
-import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { frameV2ContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -24,12 +21,15 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 const SANDBOX_OWNER_LOOKUP_CONCURRENCY = 4;
-const SANDBOX_OWNER_DELETE_CONCURRENCY = 4;
+const FRAME_SANDBOX_WORKSPACE_DELETE_BATCH_SIZE = 1024;
 
 export type FrameSandboxOwner = Pick<
   FileResource,
   "id" | "sId" | "workspaceId"
 >;
+
+type FrameSandboxScopeOwner = FrameSandboxOwner &
+  Pick<FileResource, "fetchFreshFrameV2">;
 
 export type FrameSandboxScope = {
   spaceId: string | null;
@@ -98,17 +98,11 @@ export class FrameSandboxAdapter {
 
   private static async resolveScope(
     auth: Authenticator,
-    frame: FrameSandboxOwner
+    frame: FrameSandboxScopeOwner
   ): Promise<Result<FrameSandboxScope, Error>> {
     this.assertWorkspace(auth, frame);
 
-    const freshFrame = await FileModel.findOne({
-      where: {
-        contentType: frameV2ContentType,
-        id: frame.id,
-        workspaceId: frame.workspaceId,
-      },
-    });
+    const freshFrame = await frame.fetchFreshFrameV2(auth);
     if (!freshFrame) {
       return new Err(new FrameGoneError(`Frame ${frame.sId} not found.`));
     }
@@ -212,7 +206,7 @@ export class FrameSandboxAdapter {
 
   static async ensureSandboxActive(
     auth: Authenticator,
-    frame: FrameSandboxOwner
+    frame: FrameSandboxScopeOwner
   ): Promise<Result<EnsureSandboxResult<FrameSandboxScope>, Error>> {
     return SandboxResource.ensureActive(auth, {
       lockKey: this.lockKey(frame),
@@ -239,36 +233,38 @@ export class FrameSandboxAdapter {
     const workspaceModelId = auth.getNonNullableWorkspace().id;
     for (;;) {
       const links = await SandboxOwnerModel.findAll({
-        attributes: ["frameFileModelId"],
+        attributes: ["sandboxId"],
         where: {
           frameFileModelId: { [Op.ne]: null },
           workspaceId: workspaceModelId,
         },
-        limit: 1000,
+        limit: FRAME_SANDBOX_WORKSPACE_DELETE_BATCH_SIZE,
       });
       if (links.length === 0) {
         return;
       }
 
-      await concurrentExecutor(
-        links,
-        async (link) => {
-          assert(link.frameFileModelId !== null);
-          const frame: FrameSandboxOwner = {
-            id: link.frameFileModelId,
-            sId: makeSId("file", {
-              id: link.frameFileModelId,
-              workspaceId: workspaceModelId,
-            }),
-            workspaceId: workspaceModelId,
-          };
-          const result = await this.deleteSandbox(auth, frame);
-          if (result.isErr()) {
-            throw result.error;
-          }
-        },
-        { concurrency: SANDBOX_OWNER_DELETE_CONCURRENCY }
+      const sandboxModelIds = links.map((link) => link.sandboxId);
+      const sandboxes = await SandboxResource.fetchByModelIdsForWorkspace(
+        auth,
+        sandboxModelIds
       );
+      const result = await SandboxResource.deleteBatchForWorkspaceScrub(auth, {
+        sandboxes,
+        deleteOwnerLinks: async (transaction) => {
+          await SandboxOwnerModel.destroy({
+            where: {
+              frameFileModelId: { [Op.ne]: null },
+              sandboxId: { [Op.in]: sandboxModelIds },
+              workspaceId: workspaceModelId,
+            },
+            transaction,
+          });
+        },
+      });
+      if (result.isErr()) {
+        throw result.error;
+      }
     }
   }
 
