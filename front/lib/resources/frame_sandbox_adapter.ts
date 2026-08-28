@@ -13,6 +13,7 @@ import type {
   SandboxDeleteOwner,
   SandboxLifecycleOwner,
   SandboxPreSleepCheck,
+  ScopeTransitionDestroyError,
 } from "@app/lib/resources/sandbox_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
@@ -41,6 +42,8 @@ export type FrameSandboxScope = {
 };
 
 export class FrameGoneError extends Error {}
+
+export class FrameScopeTransitionStateError extends Error {}
 
 export class FrameSandboxAdapter {
   private static assertWorkspace(
@@ -270,6 +273,61 @@ export class FrameSandboxAdapter {
       this.toSandboxDeleteOwner(auth, frame),
       { afterSandboxCleanup }
     );
+  }
+
+  static async withScopeTransition<TPrep, T, E extends Error>(
+    auth: Authenticator,
+    frame: FrameSandboxScopeOwner,
+    {
+      prepare,
+      commit,
+    }: {
+      prepare: (freshFrame: FileResource) => Promise<Result<TPrep, E>>;
+      commit: (freshFrame: FileResource, prep: TPrep) => Promise<Result<T, E>>;
+    }
+  ): Promise<
+    Result<
+      T,
+      | E
+      | FrameGoneError
+      | FrameScopeTransitionStateError
+      | ScopeTransitionDestroyError
+    >
+  > {
+    return SandboxResource.runScopeTransition<
+      { freshFrame: FileResource; prep: TPrep },
+      T,
+      E | FrameGoneError | FrameScopeTransitionStateError
+    >(auth, this.toSandboxLifecycleOwner(auth, frame), {
+      prepare: async () => {
+        const freshFrame = await frame.fetchFreshFrameV2(auth);
+        if (!freshFrame) {
+          return new Err(new FrameGoneError(`Frame ${frame.sId} not found.`));
+        }
+        const prepResult = await prepare(freshFrame);
+        if (prepResult.isErr()) {
+          return prepResult;
+        }
+
+        const sandbox = await this.fetchSandboxByFrame(auth, frame);
+        if (sandbox?.status === "running") {
+          const stateResult = await this.sqliteStatePreSleepCheck(
+            auth,
+            frame
+          )(sandbox);
+          if (stateResult.isErr()) {
+            return new Err(
+              new FrameScopeTransitionStateError(
+                `Failed to flush Frame state for scope transition: ${stateResult.error.message}`
+              )
+            );
+          }
+        }
+
+        return new Ok({ freshFrame, prep: prepResult.value });
+      },
+      commit: ({ freshFrame, prep }) => commit(freshFrame, prep),
+    });
   }
 
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {

@@ -58,6 +58,22 @@ function requestFrameRegister(
   });
 }
 
+function requestFrameMove(
+  workspaceId: string,
+  token: string,
+  sourceDirectoryPath: string,
+  destinationDirectoryPath: string
+) {
+  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/move`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ sourceDirectoryPath, destinationDirectoryPath }),
+  });
+}
+
 async function setup({ registered = true }: { registered?: boolean } = {}) {
   const context = await createSandboxTokenTestContext();
   await FeatureFlagFactory.basic(context.auth, "frames_v2");
@@ -182,6 +198,39 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     const frame = await FileResource.fetchById(context.auth, published.frameId);
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(
       published.publicationId
+    );
+  });
+
+  it("moves a registered Frame folder while preserving its identity", async () => {
+    const context = await setup();
+    assert(context.frame);
+    fileStorageMock.setFileExists(() => false);
+    const sourceDirectoryPath = context.manifestPath.replace(
+      `/${FRAME_MANIFEST_FILE}`,
+      ""
+    );
+    const destinationDirectoryPath = sourceDirectoryPath.replace(
+      "/Status",
+      "/Renamed"
+    );
+
+    const response = await requestFrameMove(
+      context.workspace.sId,
+      context.token,
+      sourceDirectoryPath,
+      destinationDirectoryPath
+    );
+
+    const moved = await response.json();
+    expect(response.status, JSON.stringify(moved)).toBe(200);
+    expect(moved).toEqual({
+      destinationDirectoryPath,
+      frameId: context.frame.sId,
+      sourceDeletionFailed: false,
+    });
+    const frame = await FileResource.fetchById(context.auth, context.frame.sId);
+    expect(frame?.toScopedPath(context.auth)).toBe(
+      `${destinationDirectoryPath}/${FRAME_MANIFEST_FILE}`
     );
   });
 
