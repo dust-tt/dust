@@ -9,7 +9,7 @@ import * as readline from "readline";
  * Script to create an ElasticSearch index for front service
  *
  * Usage:
- * tsx front/scripts/create_elasticsearch_index.ts --index-name agent_message_analytics --index-version 1 [--skip-confirmation] [--remove-previous-alias]
+ * tsx front/scripts/create_elasticsearch_index.ts --index-name agent_message_analytics --index-version 1 [--skip-confirmation] [--remove-previous-alias] [--execute]
  *
  * The script looks up the index directory from INDEX_DIRECTORIES in lib/api/elasticsearch.ts
  * Then loads settings and mappings from [directory]/[index_name]_[version].settings.[region].json and [directory]/[index_name]_[version].mappings.json
@@ -40,7 +40,7 @@ makeScript(
     },
   },
   async (
-    { indexName, indexVersion, skipConfirmation, removePreviousAlias },
+    { indexName, indexVersion, skipConfirmation, removePreviousAlias, execute },
     logger
   ) => {
     if (removePreviousAlias && indexVersion === 1) {
@@ -131,7 +131,7 @@ makeScript(
       );
     }
 
-    if (!skipConfirmation) {
+    if (!skipConfirmation && execute) {
       logger.info(
         `CHECK: Create index '${indexFullname}' with alias '${indexAlias}' in region '${region}' (remove previous alias: ${removePreviousAlias})? (y to confirm)`
       );
@@ -151,6 +151,13 @@ makeScript(
       if (answer !== "y") {
         throw new Error("Aborted");
       }
+    }
+
+    if (!execute) {
+      logger.info(
+        `[DRY RUN] Would create index ${indexFullname} and alias ${indexAlias}`
+      );
+      return;
     }
 
     logger.info(`Creating index ${indexFullname}...`);

@@ -48,12 +48,24 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     tmux \
   && rm -rf /var/lib/apt/lists/*
 
-# Rust (core-api, oauth) + dev process runners (bacon, mprocs)
+# Rust toolchain (core-api, oauth dev)
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-    | sh -s -- -y --default-toolchain 1.94.1 \
-  && cargo install bacon mprocs
+    | sh -s -- -y --default-toolchain 1.94.1
+
+# bacon — no prebuilt binaries; install to /usr/local/bin (Cursor cloud agents replace image PATH)
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
+    cargo install --locked bacon \
+  && install -m 0755 /usr/local/cargo/bin/bacon /usr/local/bin/bacon \
+  && bacon --version
+
+# mprocs — prebuilt binary to /usr/local/bin (same PATH reason as bacon/temporal)
+ARG MPROCS_VERSION=0.9.6
+RUN curl -fsSL "https://github.com/pvolok/mprocs/releases/download/v${MPROCS_VERSION}/mprocs-${MPROCS_VERSION}-linux-x86_64-musl.tar.gz" \
+    | tar -xz -C /usr/local/bin \
+  && mprocs --version
 
 # Temporal dev server
 RUN curl -sSf https://temporal.download/cli.sh | sh \

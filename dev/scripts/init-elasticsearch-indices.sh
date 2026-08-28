@@ -16,6 +16,7 @@ export ELASTICSEARCH_PASSWORD="${ELASTICSEARCH_PASSWORD:-}"
 
 ensure_node_path
 ensure_client_built
+ensure_elasticsearch_create_index_built
 
 wait_for_elasticsearch() {
   log "Waiting for Elasticsearch at ${ELASTICSEARCH_URL}..."
@@ -34,51 +35,75 @@ output_already_exists() {
   grep -qi 'already exists' <<<"$1"
 }
 
+run_logged() {
+  local output_file
+  output_file="$(mktemp)"
+  trap 'rm -f "$output_file"' RETURN
+
+  if (
+    set -o pipefail
+    "$@" 2>&1 | tee "$output_file"
+  ); then
+    return 0
+  fi
+
+  if output_already_exists "$(cat "$output_file")"; then
+    return 2
+  fi
+  return 1
+}
+
 create_core_index() {
   local index_name="$1"
   local index_version="$2"
-  local output=""
+  local binary status
+  binary="$(elasticsearch_create_index_bin)"
 
   log "Ensuring core.${index_name}_${index_version}..."
-  output=$(
+  (
     cd "${DUST_REPO_ROOT}/core"
-    cargo run --bin elasticsearch_create_index -- \
+    run_logged "$binary" \
       --index-name "$index_name" \
       --index-version "$index_version" \
-      --skip-confirmation 2>&1
-  ) || {
-    if output_already_exists "$output"; then
-      log "core.${index_name}_${index_version} already exists"
-      return 0
-    fi
-    log "Failed to create core.${index_name}_${index_version}:"
-    echo "$output"
-    return 1
-  }
+      --skip-confirmation
+  )
+  status=$?
+  if [ "$status" -eq 0 ]; then
+    return 0
+  fi
+  if [ "$status" -eq 2 ]; then
+    log "core.${index_name}_${index_version} already exists"
+    return 0
+  fi
+  log "Failed to create core.${index_name}_${index_version}"
+  return 1
 }
 
 create_front_index() {
   local index_name="$1"
   local index_version="$2"
-  local output=""
+  local status
 
   log "Ensuring front.${index_name}_${index_version}..."
-  output=$(
+  (
     cd "${DUST_REPO_ROOT}/front"
-    export PATH="${DUST_REPO_ROOT}/node_modules/.bin:${PATH}"
-    npx tsx ./scripts/create_elasticsearch_index.ts \
+    run_logged env PATH="${DUST_REPO_ROOT}/node_modules/.bin:${PATH}" \
+      npx tsx ./scripts/create_elasticsearch_index.ts \
       --index-name "$index_name" \
       --index-version "$index_version" \
-      --skip-confirmation 2>&1
-  ) || {
-    if output_already_exists "$output"; then
-      log "front.${index_name}_${index_version} already exists"
-      return 0
-    fi
-    log "Failed to create front.${index_name}_${index_version}:"
-    echo "$output"
-    return 1
-  }
+      --skip-confirmation \
+      --execute
+  )
+  status=$?
+  if [ "$status" -eq 0 ]; then
+    return 0
+  fi
+  if [ "$status" -eq 2 ]; then
+    log "front.${index_name}_${index_version} already exists"
+    return 0
+  fi
+  log "Failed to create front.${index_name}_${index_version}"
+  return 1
 }
 
 wait_for_elasticsearch
