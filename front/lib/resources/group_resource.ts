@@ -569,8 +569,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
     });
 
-    // TODO(governance) group can be accessed if agent can be read
-    const [group] = groups.filter((g) => g.canRead(auth));
+    const [group] = groups;
     if (!group) {
       return new Err(
         new DustError("group_not_found", "Editor group not found for agent.")
@@ -626,11 +625,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
     });
 
-    // TODO(governance) group can be accessed if agent can be read
-    const accessibleGroups = groups.filter((group) => group.canRead(auth));
     const groupMap: Record<ModelId, GroupResource> = {};
-
-    for (const group of accessibleGroups) {
+    for (const group of groups) {
       groupMap[group.id] = group;
     }
 
@@ -1069,12 +1065,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const [group] = groups;
-
-    // TODO(governance) group can be accessed if agent can be read
-    if (!group.canRead(auth)) {
-      return null;
-    }
-
     return group;
   }
 
@@ -2576,36 +2566,6 @@ export class GroupResource extends BaseResource<GroupModel> {
    * configuration
    */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
-    // TODO(governance) remove this case once agent_editors are gone away
-    if (this.kind === "agent_editors") {
-      return [
-        {
-          groups: [
-            {
-              id: this.id,
-              permissions: ["read", "write", "admin"],
-            },
-          ],
-          roles: [
-            { role: "admin", permissions: ["read", "admin"] },
-            {
-              role: "manager",
-              permissions: ["read"],
-            },
-            {
-              role: "user",
-              permissions: ["read"],
-            },
-            {
-              role: "builder",
-              permissions: ["read"],
-            },
-          ],
-          workspaceId: this.workspaceId,
-        },
-      ];
-    }
-
     // regular_manual: admins and managers manage the group; everyone can read.
     if (this.isRegularManual()) {
       return [

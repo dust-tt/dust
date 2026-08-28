@@ -135,21 +135,11 @@ export async function createPendingAgentConfiguration(
       { transaction: t }
     );
 
-    const group = await GroupResource.makeNewAgentEditorsGroup(auth, agent, {
+    await GroupResource.makeNewAgentEditorsGroup(auth, agent, {
       transaction: t,
       authorId: user.id,
     });
     await auth.refresh({ transaction: t });
-    if (!group.canWrite(auth)) {
-      throw new DustError(
-        "unauthorized",
-        "User does not have write permission for the agent editors group."
-      );
-    }
-    await group.dangerouslySetMembers(auth, {
-      users: [user.toJSON()],
-      transaction: t,
-    });
   });
 
   return new Ok({ sId });
@@ -927,19 +917,8 @@ export async function createAgentConfiguration(
             }
           }
 
-          if (!group.canAdministrate(auth) && auth.user()) {
-            logger.error(
-              {
-                workspaceId: owner.sId,
-                agentConfigurationId: existingAgent.sId,
-              },
-              `Error setting members to agent ${existingAgent.sId}: You are not authorized to manage the editors of this agent`
-            );
-            throw new DustError(
-              "unauthorized",
-              "You are not authorized to manage the editors of this agent"
-            );
-          }
+          // Authorization is enforced by the `editors.some(...) || isAdmin(owner)`
+          // assertion earlier in this transaction; no need to re-check here.
           const setMembersRes = await group.dangerouslySetMembers(auth, {
             users: editors,
             transaction: t,
@@ -1592,8 +1571,11 @@ export async function updateAgentPermissions(
   try {
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
-        // Check authorization for agent_editors groups (allowing members and admins)
-        if (!editorGroupRes.value.canAdministrate(auth)) {
+        // TODO(governance) replace by permission check on agent resource
+        if (
+          !auth.isAdmin() &&
+          !(await editorGroupRes.value.isMember(auth.getNonNullableUser()))
+        ) {
           return new Err(
             new DustError(
               "unauthorized",
@@ -1611,8 +1593,11 @@ export async function updateAgentPermissions(
       }
 
       if (usersToRemove.length > 0) {
-        // Check authorization for agent_editors groups (allowing members and admins)
-        if (!editorGroupRes.value.canAdministrate(auth)) {
+        // TODO(governance) replace by permission check on agent resource
+        if (
+          !auth.isAdmin() &&
+          !(await editorGroupRes.value.isMember(auth.getNonNullableUser()))
+        ) {
           return new Err(
             new DustError(
               "unauthorized",
