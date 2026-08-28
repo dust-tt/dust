@@ -61,6 +61,11 @@ describe("framesSkill.fetchInstructions", () => {
     });
 
     expect(instructions).toContain("dsbx frame publish");
+    expect(instructions).toContain("package-like folder");
+    expect(instructions).toContain("canonical Frame resource");
+    expect(instructions).toContain("`index.tsx` by default");
+    expect(instructions).toContain("single `.tsx` entry file");
+    expect(instructions).toContain("atomically activates the publication");
     expect(instructions).toContain("legacy Frame");
     expect(instructions).toContain("<frame>.tsx");
     expect(instructions).not.toContain("dsbx frame create");
