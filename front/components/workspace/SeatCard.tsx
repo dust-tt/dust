@@ -12,7 +12,7 @@ import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
 import type { SupportedCurrency } from "@app/types/currency";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import type { MembershipSeatType } from "@app/types/memberships";
-import { DAY_MS } from "@app/types/shared/utils/date_utils";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   AlertCircle,
@@ -174,13 +174,13 @@ function prorateAmountForCurrentPeriod({
 }): { amountCents: number; daysRemaining: number } | null {
   const startMs = new Date(currentBillingPeriod.startsAt).getTime();
   const endMs = new Date(currentBillingPeriod.endsAt).getTime();
-  const totalDays = (endMs - startMs) / DAY_MS;
+  const totalDays = (endMs - startMs) / ONE_DAY_MS;
   if (!(totalDays > 0)) {
     return null;
   }
   const daysRemaining = Math.min(
     totalDays,
-    Math.max(0, (endMs - Date.now()) / DAY_MS)
+    Math.max(0, (endMs - Date.now()) / ONE_DAY_MS)
   );
   return {
     amountCents: Math.round(amountCents * (daysRemaining / totalDays)),

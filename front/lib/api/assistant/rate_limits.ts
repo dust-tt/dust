@@ -13,7 +13,7 @@ import type {
   MaxMessagesTimeframeType,
 } from "@app/types/plan";
 import { Err, Ok } from "@app/types/shared/result";
-import { DAY_MS } from "@app/types/shared/utils/date_utils";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE = 100;
@@ -162,7 +162,7 @@ function getPremiumModelDailyUsage({
   for (
     let dayStartMs = firstDayStartMs;
     dayStartMs <= lastDayStartMs;
-    dayStartMs += DAY_MS
+    dayStartMs += ONE_DAY_MS
   ) {
     const date = new Date(dayStartMs).toISOString().slice(0, 10);
     dailyUsage.push({ date, usedMessages: usageByDay.get(date) ?? 0 });

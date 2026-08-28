@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 
-export const HOUR_MS = 3_600_000;
-export const DAY_MS = 24 * HOUR_MS;
+export const ONE_HOUR_MS = 60 * 60 * 1000;
+export const ONE_DAY_MS = 24 * ONE_HOUR_MS;
 
 export function isValidDate(date: Date) {
   return !isNaN(date.valueOf());

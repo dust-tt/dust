@@ -3,7 +3,7 @@ import type {
   WakeUpType,
 } from "@app/types/assistant/wakeups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { DAY_MS } from "@app/types/shared/utils/date_utils";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { CronExpressionParser } from "cron-parser";
 import cronstrue from "cronstrue";
 
@@ -58,7 +58,7 @@ export function getNextWakeUpFireAtFromScheduleConfig(
 // the next firing is more than a day away the time of day on its own gives
 // the viewer no sense of when — show the abbreviated weekday instead.
 export function formatWakeUpSidebarLabel(timestamp: number): string {
-  if (timestamp - Date.now() > DAY_MS) {
+  if (timestamp - Date.now() > ONE_DAY_MS) {
     return new Date(timestamp).toLocaleDateString("en-US", {
       weekday: "short",
     });

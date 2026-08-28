@@ -1,20 +1,20 @@
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { DAY_MS, HOUR_MS } from "@app/types/shared/utils/date_utils";
+import { ONE_DAY_MS, ONE_HOUR_MS } from "@app/types/shared/utils/date_utils";
 
-export { DAY_MS, HOUR_MS };
+export { ONE_DAY_MS, ONE_HOUR_MS };
 
-const FOUR_HOURS_MS = 4 * HOUR_MS;
+const FOUR_HOURS_MS = 4 * ONE_HOUR_MS;
 
 export type WindowSize = "HOUR" | "FOUR_HOURS" | "DAY";
 
 function getWindowSizeMs(windowSize: WindowSize): number {
   switch (windowSize) {
     case "HOUR":
-      return HOUR_MS;
+      return ONE_HOUR_MS;
     case "FOUR_HOURS":
       return FOUR_HOURS_MS;
     case "DAY":
-      return DAY_MS;
+      return ONE_DAY_MS;
     default:
       assertNever(windowSize);
   }

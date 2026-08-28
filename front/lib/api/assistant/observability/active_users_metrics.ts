@@ -5,7 +5,7 @@ import {
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { DAY_MS } from "@app/types/shared/utils/date_utils";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
@@ -55,7 +55,7 @@ function computeRollingActiveUsers(
   endTimestamp: number,
   windowDays: number
 ): number {
-  const startMs = endTimestamp - (windowDays - 1) * DAY_MS;
+  const startMs = endTimestamp - (windowDays - 1) * ONE_DAY_MS;
   const uniqueUsers = new Set<string>();
 
   for (const [ts, users] of usersByDay) {

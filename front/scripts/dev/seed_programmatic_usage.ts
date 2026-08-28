@@ -7,7 +7,7 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { AgentMessageAnalyticsData } from "@app/types/assistant/analytics";
 import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
-import { DAY_MS } from "@app/types/shared/utils/date_utils";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 
 const MICRO_USD_PER_DOLLAR = 1_000_000;
 const TOKEN_PROMPT_RANGE = { min: 100, max: 5000 };
@@ -24,7 +24,7 @@ function randomInt(min: number, max: number): number {
 
 function randomDate(daysBack: number): Date {
   const now = Date.now();
-  const pastMs = daysBack * DAY_MS;
+  const pastMs = daysBack * ONE_DAY_MS;
   const randomOffset = Math.random() * pastMs;
   return new Date(now - randomOffset);
 }

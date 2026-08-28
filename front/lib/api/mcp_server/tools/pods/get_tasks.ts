@@ -1,7 +1,7 @@
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
-import { DAY_MS } from "@app/types/shared/utils/date_utils";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { mcpError, mcpJsonResponse } from "../response";
@@ -66,7 +66,7 @@ export function registerPodsGetTasksTool(server: McpServer) {
         });
       }
 
-      const cutoff = new Date(Date.now() - daysAgo * DAY_MS);
+      const cutoff = new Date(Date.now() - daysAgo * ONE_DAY_MS);
 
       if (statusFilter === "open") {
         rows = rows.filter((task) => task.status !== "done");

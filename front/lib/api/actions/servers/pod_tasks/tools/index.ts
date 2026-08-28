@@ -32,7 +32,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { DAY_MS } from "@app/types/shared/utils/date_utils";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 
 type PodTaskUpdateItem = {
   taskId: string;
@@ -233,7 +233,7 @@ export function createProjectTasksTools(
           });
         }
 
-        const cutoff = new Date(Date.now() - daysAgo * DAY_MS);
+        const cutoff = new Date(Date.now() - daysAgo * ONE_DAY_MS);
 
         if (statusFilter === "open") {
           rows = rows.filter((t) => t.status !== "done");

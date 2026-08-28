@@ -13,7 +13,7 @@ import type {
   CheckSummary,
   CheckSummaryStatus,
 } from "@app/types/production_checks";
-import { DAY_MS as ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { conjugate, pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Button,

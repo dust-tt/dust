@@ -22,7 +22,7 @@ import type {
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
-import { DAY_MS, HOUR_MS } from "@app/types/shared/utils/date_utils";
+import { ONE_DAY_MS, ONE_HOUR_MS } from "@app/types/shared/utils/date_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 import type { SeedContext } from "./types";
@@ -247,7 +247,7 @@ function planDayMessages(
     const index = startIndex + messages.length;
     const completedAtMs = Math.min(
       dayStartMs +
-        randomInt(random, FIRST_HOUR_UTC, LAST_HOUR_UTC) * HOUR_MS +
+        randomInt(random, FIRST_HOUR_UTC, LAST_HOUR_UTC) * ONE_HOUR_MS +
         randomInt(random, 0, 59) * 60 * 1000,
       nowMs
     );
@@ -497,12 +497,12 @@ function planDocuments(
 ): AgentMessageConsumptionAnalyticsData[] {
   const random = makeRandom(daysBack * 1000 + messagesPerDay);
   const nowMs = Date.now();
-  const todayStartMs = Math.floor(nowMs / DAY_MS) * DAY_MS;
+  const todayStartMs = Math.floor(nowMs / ONE_DAY_MS) * ONE_DAY_MS;
   const documents: AgentMessageConsumptionAnalyticsData[] = [];
   let messageIndex = 0;
 
   for (let dayOffset = daysBack - 1; dayOffset >= 0; dayOffset--) {
-    const dayStartMs = todayStartMs - dayOffset * DAY_MS;
+    const dayStartMs = todayStartMs - dayOffset * ONE_DAY_MS;
     const dayOfWeek = new Date(dayStartMs).getUTCDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     // A trend and a weekly rhythm, rather than noise around a flat line.
