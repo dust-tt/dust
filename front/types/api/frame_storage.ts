@@ -54,7 +54,7 @@ export function getFramePublicationBasePath({
   return `${getFramePublicationsBasePath({ workspaceId, frameId })}${safeSegment(publicationId, "publicationId")}/`;
 }
 
-export function getFramePublicationManifestPath(args: {
+export function getFramePublicationDescriptorPath(args: {
   workspaceId: string;
   frameId: string;
   publicationId: string;
@@ -77,13 +77,4 @@ export function getFramePublicationFunctionBundlePath(args: {
   functionName: string;
 }): string {
   return `${getFramePublicationBasePath(args)}functions/${safeSegment(args.functionName, "functionName")}.ts`;
-}
-
-export function getFramePublicationFunctionSchemaPath(args: {
-  workspaceId: string;
-  frameId: string;
-  publicationId: string;
-  functionName: string;
-}): string {
-  return `${getFramePublicationBasePath(args)}functions/${safeSegment(args.functionName, "functionName")}.schema.json`;
 }

@@ -15,7 +15,8 @@ import {
   FRAME_MANIFEST_FILE,
   FrameManifestSchema,
 } from "@app/types/api/frame_manifest";
-import { getFramePublicationManifestPath } from "@app/types/api/frame_storage";
+import { FramePublicationDescriptorSchema } from "@app/types/api/frame_publication";
+import { getFramePublicationDescriptorPath } from "@app/types/api/frame_storage";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import {
   getConversationFilesBasePath,
@@ -203,9 +204,16 @@ describe("publishFrameV2FromSource", () => {
       frameId: frame.sId,
       publicationId: result.value.publicationId,
     };
-    expect(
-      fileStorageMock.getObject(getFramePublicationManifestPath(identity))
-    ).toBe(JSON.stringify(FrameManifestSchema.parse(JSON.parse(manifest))));
+    const storedPublication = fileStorageMock.getObject(
+      getFramePublicationDescriptorPath(identity)
+    );
+    assert(storedPublication);
+    const publication = FramePublicationDescriptorSchema.parse(
+      JSON.parse(storedPublication)
+    );
+    expect(publication.manifest).toEqual(
+      FrameManifestSchema.parse(JSON.parse(manifest))
+    );
     expect(
       fileStorageMock.saveFileCalls.some(({ filePath }) =>
         filePath.startsWith(`${gcsSourceDirectoryPath}/`)
