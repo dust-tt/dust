@@ -21,6 +21,7 @@ import {
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
   AgentConfigurationModel,
+  AgentModel,
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -102,9 +103,17 @@ export async function createPendingAgentConfiguration(
   const { defaultModel } = await getModelsForAuth(auth);
 
   await withTransaction(async (t) => {
+    const agentIdentity = await AgentModel.create(
+      {
+        sId,
+        workspaceId: owner.id,
+      },
+      { transaction: t }
+    );
     const agent = await AgentConfigurationModel.create(
       {
         sId,
+        agentId: agentIdentity.id,
         version: 0,
         status: "pending",
         scope: "hidden",
@@ -641,6 +650,7 @@ export async function createAgentConfiguration(
               workspaceId: owner.id,
             },
             attributes: [
+              "agentId",
               "scope",
               "version",
               "id",
@@ -718,6 +728,22 @@ export async function createAgentConfiguration(
 
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const sId = agentConfigurationId || generateRandomModelSId();
+      let agentModelId = existingAgent?.agentId;
+      if (!agentModelId) {
+        const [agentIdentity] = await AgentModel.findOrCreate({
+          where: { sId, workspaceId: owner.id },
+          defaults: { sId, workspaceId: owner.id },
+          transaction: t,
+        });
+        agentModelId = agentIdentity.id;
+        await AgentConfigurationModel.update(
+          { agentId: agentModelId },
+          {
+            where: { sId, workspaceId: owner.id },
+            transaction: t,
+          }
+        );
+      }
 
       // Create or update Agent config.
       let agentConfigurationInstance: AgentConfigurationModel;
@@ -771,6 +797,7 @@ export async function createAgentConfiguration(
         agentConfigurationInstance = await AgentConfigurationModel.create(
           {
             sId,
+            agentId: agentModelId,
             version,
             status,
             scope,
@@ -1359,6 +1386,26 @@ export async function cleanupAgentScopedResourcesForHardDeletion(
   await AgentUserRelationResource.deleteForAgent(auth, agentConfigurationId);
 }
 
+async function deleteAgentIdentityIfUnused(
+  workspaceId: number,
+  sId: string,
+  transaction: Transaction
+): Promise<void> {
+  const remainingConfiguration = await AgentConfigurationModel.findOne({
+    where: { sId, workspaceId },
+    attributes: ["id"],
+    transaction,
+  });
+  if (remainingConfiguration) {
+    return;
+  }
+
+  await AgentModel.destroy({
+    where: { sId, workspaceId },
+    transaction,
+  });
+}
+
 // Should only be called when we need to clean up the agent configuration
 // right after creating it due to an error.
 export async function unsafeHardDeleteAgentConfiguration(
@@ -1444,6 +1491,8 @@ export async function unsafeHardDeleteAgentConfiguration(
       },
       transaction: t,
     });
+
+    await deleteAgentIdentityIfUnused(workspaceId, agentConfiguration.sId, t);
   });
 }
 
@@ -1495,6 +1544,10 @@ export async function batchHardDeletePendingAgentConfigurations(
       where: { id: agentIds, workspaceId },
       transaction: t,
     });
+
+    for (const sId of new Set(agents.map((agent) => agent.sId))) {
+      await deleteAgentIdentityIfUnused(workspaceId, sId, t);
+    }
   });
 }
 
