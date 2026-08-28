@@ -9,9 +9,9 @@ use tokio::time::sleep;
 use super::error::DustApiError;
 use super::types::{
     parse_action_poll_response, ActionPollResponse, CallToolPostResponse, CallToolRequest,
-    CallToolResponse, CallToolResult, FrameMoveRequest, FrameMoveResponse, FramePublishRequest,
-    FramePublishResponse, FrameRegisterRequest, FrameRegisterResponse, MCPServerView,
-    SandboxServerViewsResponse,
+    CallToolResponse, CallToolResult, FrameDeleteRequest, FrameDeleteResponse, FrameMoveRequest,
+    FrameMoveResponse, FramePublishRequest, FramePublishResponse, FrameRegisterRequest,
+    FrameRegisterResponse, MCPServerView, SandboxServerViewsResponse,
 };
 
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -166,6 +166,20 @@ impl DustApiClient {
             &FrameMoveRequest {
                 source_directory_path,
                 destination_directory_path,
+            },
+            POLL_MAX_DURATION,
+        )
+        .await
+    }
+
+    pub async fn delete_frame(
+        &self,
+        source_directory_path: &str,
+    ) -> anyhow::Result<FrameDeleteResponse> {
+        self.post_with_timeout(
+            "sandbox/frames/delete",
+            &FrameDeleteRequest {
+                source_directory_path,
             },
             POLL_MAX_DURATION,
         )

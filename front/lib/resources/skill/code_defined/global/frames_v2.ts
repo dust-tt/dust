@@ -54,6 +54,18 @@ dsbx frame move /files/<source-scope>/<frame-folder> /files/<destination-scope>/
 Moving to a different runtime scope safely refreshes the Frame-owned sandbox. Do not move a
 registered Frame folder with raw filesystem commands.
 
+## Delete a registered Frame
+
+Use the CLI to permanently remove the source folder, stable identity, publications, functions,
+invocations, sharing, sandbox, and database state:
+
+\`\`\`bash
+dsbx frame delete /files/<scope>/<frame-folder>
+\`\`\`
+
+Do not use \`rm\` on a registered Frame folder: it would only remove source files and leave the
+Frame-owned resources behind. Frame deletion cannot be undone.
+
 ## Frames v2 source layout
 
 Keep one Frame and everything it owns in one folder:
