@@ -118,11 +118,6 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
 
     const cookieDomain = getPostHogCookieDomain();
 
-    // Use the persistent _dust_aid cookie as the initial distinct_id so that
-    // anonymous events share a stable identity across page loads. Without this,
-    // memory persistence generates a new throwaway distinct_id on every page
-    // load, and only the last one gets stitched when identify() fires — all
-    // prior anonymous browsing events are orphaned.
     const anonymousId = getOrCreateAnonymousId();
 
     // PostHog keeps the session id ($sesid) in this store, so "memory" meant a
@@ -141,7 +136,16 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
       person_profiles: "identified_only",
       defaults: "2025-05-24",
       persistence,
-      ...(anonymousId ? { bootstrap: { distinctID: anonymousId } } : {}),
+      // Pre-consent, use the persistent _dust_aid cookie as distinct_id so
+      // anonymous events share an identity across page loads and across
+      // dust.tt / app.dust.tt (sessionStorage is per-origin). Post-consent we
+      // must not bootstrap: posthog-js applies bootstrap.distinctID
+      // unconditionally at init, which would clobber an identified user's sId
+      // back to the anonymous id on every load. PostHog's own cross-subdomain
+      // cookie carries the identity there.
+      ...(anonymousId && !hasAcceptedCookies
+        ? { bootstrap: { distinctID: anonymousId } }
+        : {}),
       // Share PostHog cookies (including distinct_id) across all *.dust.tt
       // subdomains so the same identity persists through dust.tt → signin →
       // app.dust.tt. Takes effect when persistence upgrades to cookie in Phase 2.
