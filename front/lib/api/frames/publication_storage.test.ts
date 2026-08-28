@@ -6,8 +6,8 @@ import {
   publishFramePublication,
   storeFramePublication,
 } from "@app/lib/api/frames/publication_storage";
-import type { Authenticator } from "@app/lib/auth";
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
+import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
