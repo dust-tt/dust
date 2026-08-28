@@ -1335,20 +1335,46 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     sandboxFunction: SandboxFunctionResource,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<number> {
+    return this.deleteAllForSandboxFunctionModelIds(
+      {
+        workspaceModelId: sandboxFunction.workspaceId,
+        sandboxFunctionModelIds: [sandboxFunction.id],
+      },
+      { transaction }
+    );
+  }
+
+  static async deleteAllForSandboxFunctionModelIds(
+    {
+      workspaceModelId,
+      sandboxFunctionModelIds,
+    }: {
+      workspaceModelId: ModelId;
+      sandboxFunctionModelIds: ModelId[];
+    },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<number> {
+    if (sandboxFunctionModelIds.length === 0) {
+      return 0;
+    }
+
     const where = {
-      sandboxFunctionId: sandboxFunction.id,
-      workspaceId: sandboxFunction.workspaceId,
+      sandboxFunctionId: sandboxFunctionModelIds,
+      workspaceId: workspaceModelId,
     };
     const invocations = await this.model.findAll({
-      attributes: ["gcsPath"],
+      attributes: ["id", "gcsPath"],
       where,
       transaction,
     });
     const gcsPaths = invocations.map(({ gcsPath }) => gcsPath);
 
     // MCP actions FK invocations with RESTRICT: delete them (rows + output GCS objects) first.
-    await SandboxFunctionMCPActionResource.deleteAllForSandboxFunction(
-      sandboxFunction,
+    await SandboxFunctionMCPActionResource.deleteAllForInvocationModelIds(
+      {
+        workspaceModelId,
+        invocationModelIds: invocations.map(({ id }) => id),
+      },
       { transaction }
     );
 

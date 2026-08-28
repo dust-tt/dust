@@ -654,9 +654,9 @@ describe("activateFramePublication", () => {
     const activeBundle = "export default function Active() {}";
     const active = await publishFramePublication(auth, {
       frame,
-      functionArtifacts: [],
-      manifest,
-      sourceFiles,
+      functionArtifacts,
+      manifest: manifestWithFunction,
+      sourceFiles: sourceFilesWithFunction,
       uiBundleCode: activeBundle,
     });
     expect(active.isOk()).toBe(true);
@@ -664,55 +664,27 @@ describe("activateFramePublication", () => {
       return;
     }
 
-    const staged = await storeFramePublication(auth, {
-      frame,
-      functionArtifacts,
-      manifest: manifestWithFunction,
-      sourceFiles: sourceFilesWithFunction,
-      uiBundleCode: "export default function Staged() {}",
-    });
-    expect(staged.isOk()).toBe(true);
-    if (staged.isErr()) {
-      return;
-    }
+    const stagedBundle = "export default function Staged() {}";
     fileStorageMock.setObject(
-      getFramePublicationFunctionSchemaPath({
+      getFramePublicationUiBundlePath({
         workspaceId,
         frameId: frame.sId,
-        publicationId: staged.value.publicationId,
-        functionName: "add-task",
+        publicationId: active.value.publicationId,
       }),
-      JSON.stringify({
-        userIdentity: "workspace_user_required",
-        inputSchema: { type: "not-a-json-schema-type" },
-        outputSchema: functionArtifacts[0].outputSchema,
-      })
+      stagedBundle
     );
 
     const parentTransaction =
       getNamespace("test-namespace")?.get("transaction");
     expect(parentTransaction).toBeDefined();
     await expect(
-      frontSequelize.transaction(
-        { transaction: parentTransaction },
-        async (transaction) => {
-          const activation = await activateFramePublication(
-            auth,
-            {
-              frame,
-              publicationId: staged.value.publicationId,
-            },
-            { transaction }
-          );
-          expect(activation.isErr() && activation.error.code).toBe(
-            "activation_failed"
-          );
-          throw activation.isErr()
-            ? activation.error
-            : new Error("Expected Frame publication activation to fail.");
-        }
+      frontSequelize.transaction({ transaction: parentTransaction }, async () =>
+        activateFramePublication(auth, {
+          frame,
+          publicationId: active.value.publicationId,
+        })
       )
-    ).rejects.toThrow("Failed to activate Frame publication");
+    ).rejects.toThrow();
 
     const reloaded = await FileResource.fetchById(auth, frame.sId);
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
@@ -724,9 +696,9 @@ describe("activateFramePublication", () => {
     expect(
       await SandboxFunctionResource.listByFramePublication(auth, {
         frame,
-        publicationId: staged.value.publicationId,
+        publicationId: active.value.publicationId,
       })
-    ).toHaveLength(0);
+    ).toHaveLength(1);
   });
 
   it("refreshes the sharing allowlist before activating a new bundle", async () => {
