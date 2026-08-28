@@ -361,15 +361,14 @@ export function toolSpecsToOpenAITools(
 ): Tool[] {
   const converted = tools.map((tool) =>
     // A forced tool cannot be deferred: the API requires the tool_choice target
-    // to be loaded. Neither can one a namespaceless call replays, which resolves
-    // against the default namespace.
-    toFunctionTool(
-      tool.name === forceTool ||
-        toolNamesRequiringDefaultNamespace.has(tool.name)
-        ? { ...tool, eager: true }
-        : tool,
-      { toolSearchEnabled }
-    )
+    // to be loaded. Neither can one that a namespaceless call replays: it
+    // resolves against the default namespace.
+    toFunctionTool(tool, {
+      toolSearchEnabled:
+        toolSearchEnabled &&
+        tool.name !== forceTool &&
+        !toolNamesRequiringDefaultNamespace.has(tool.name),
+    })
   );
 
   return converted.some((tool) => tool.defer_loading)
