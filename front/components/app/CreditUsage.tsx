@@ -9,12 +9,12 @@ import { Button } from "@dust-tt/sparkle";
 
 interface CreditUsageStateBase {
   usedPercentage: number;
-  target: CreditUsageTarget;
 }
 
 interface BillingPeriodCreditUsageState extends CreditUsageStateBase {
   kind: "billing_period";
   resetInDays: number;
+  target: CreditUsageTarget;
 }
 
 interface RollingWindowCreditUsageState extends CreditUsageStateBase {
@@ -76,12 +76,13 @@ function getUsageDescription(
 
 export function CreditUsage({ state, variant, onLearnMore }: CreditUsageProps) {
   const usageDescription = getUsageDescription(state, variant);
+  const tone = state.kind === "billing_period" ? state.target : "on_target";
 
   return (
     <CreditUsageCard
       label="Credits"
       usedPercentage={state.usedPercentage}
-      tone={state.target}
+      tone={tone}
       variant={variant}
     >
       {onLearnMore ? (

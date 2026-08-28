@@ -1,14 +1,13 @@
 import { CreditUsageCard } from "@app/components/app/CreditUsageCard";
 import { FairUsageModal } from "@app/components/FairUsageModal";
-import {
-  formatCredits,
-  formatFairUseTimeframe,
-  getFairUseCreditUsageTarget,
-} from "@app/lib/client/credits";
+import { formatCredits, formatFairUseTimeframe } from "@app/lib/client/credits";
 import { AGENT_MESSAGE_COMPLETED_EVENT } from "@app/lib/notifications/events";
 import { useFairUseCredits } from "@app/lib/swr/fair_use_credits";
 import { Hoverable } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
+
+const CREDITS_USAGE_DISPLAY_THRESHOLD = 0.75;
+const CREDITS_USAGE_CRITICAL_THRESHOLD = 0.9;
 
 // Credit accounting runs asynchronously after message completion; give it time to land before
 // refreshing the gauge.
@@ -59,11 +58,11 @@ export function FairUseCreditsUsage({ workspaceId }: FairUseCreditsUsageProps) {
 
   const { count, limit, timeframe } = fairUseAwuCreditsState;
   const percentage = count / limit;
-  const target = getFairUseCreditUsageTarget(percentage);
-  if (target === "on_target") {
+  if (percentage < CREDITS_USAGE_DISPLAY_THRESHOLD) {
     return null;
   }
 
+  const isCritical = percentage >= CREDITS_USAGE_CRITICAL_THRESHOLD;
   const timeframeLabel = formatFairUseTimeframe(timeframe);
 
   return (
@@ -77,7 +76,7 @@ export function FairUseCreditsUsage({ workspaceId }: FairUseCreditsUsageProps) {
         <CreditUsageCard
           label="Fair usage"
           usedPercentage={Math.round(percentage * 100)}
-          tone={target}
+          tone={isCritical ? "critical" : "elevated"}
           variant="companion"
         >
           {formatCredits(count)} / {formatCredits(limit)} credits

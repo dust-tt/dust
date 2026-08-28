@@ -89,7 +89,6 @@ describe("CreditUsage", () => {
           limitCredits: 20_000,
           timeframe: "week",
           usedPercentage: 10,
-          target: "on_target",
         }}
         variant="profile_menu"
       />

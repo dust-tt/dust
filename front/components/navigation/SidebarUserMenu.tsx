@@ -2,7 +2,6 @@ import type { CreditUsageState } from "@app/components/app/CreditUsage";
 import { CreditUsage } from "@app/components/app/CreditUsage";
 import { FairUseCreditsUsage } from "@app/components/app/FairUseCreditsUsage";
 import { UserMenu } from "@app/components/UserMenu";
-import { getFairUseCreditUsageTarget } from "@app/lib/client/credits";
 import { AGENT_MESSAGE_COMPLETED_EVENT } from "@app/lib/notifications/events";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useMyUsage } from "@app/lib/swr/credits";
@@ -88,32 +87,31 @@ export function SidebarUserMenu({
           target: creditUsageStatus.target,
         }
       : null;
-  const rollingCreditUsageRatio =
+  const rollingCreditUsageState: CreditUsageState | null =
     fairUseAwuCreditsState &&
     fairUseAwuCreditsState.limit > 0 &&
     fairUseAwuCreditsState.timeframe === "week"
-      ? fairUseAwuCreditsState.count / fairUseAwuCreditsState.limit
-      : null;
-  const rollingCreditUsageState: CreditUsageState | null =
-    fairUseAwuCreditsState && rollingCreditUsageRatio !== null
       ? {
           kind: "rolling_window",
           usedCredits: fairUseAwuCreditsState.count,
           limitCredits: fairUseAwuCreditsState.limit,
           timeframe: maxAwuCreditsTimeframe,
-          usedPercentage: Math.round(rollingCreditUsageRatio * 100),
-          target: getFairUseCreditUsageTarget(rollingCreditUsageRatio),
+          usedPercentage: Math.round(
+            (fairUseAwuCreditsState.count / fairUseAwuCreditsState.limit) * 100
+          ),
         }
       : null;
   const creditUsageState =
     billingPeriodCreditUsageState ?? rollingCreditUsageState;
-  const showCreditUsageInProfileMenu = creditUsageState?.target === "on_target";
+  const showCreditUsageInProfileMenu =
+    creditUsageState?.kind === "rolling_window" ||
+    (creditUsageState?.kind === "billing_period" &&
+      creditUsageState.target === "on_target");
 
   return (
     <>
       {subscription.plan.code !== FREE_TRIAL_PHONE_PLAN_CODE &&
         !isCreditBased &&
-        !hasRollingCreditUsage &&
         maxAwuCredits !== -1 && <FairUseCreditsUsage workspaceId={owner.sId} />}
       {creditUsageState && !showCreditUsageInProfileMenu && (
         <div className="mx-3 mb-3">

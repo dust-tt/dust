@@ -1,22 +1,6 @@
-import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
 import type { MaxAwuCreditsTimeframeType } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-
-const CREDITS_USAGE_ELEVATED_THRESHOLD = 0.75;
-const CREDITS_USAGE_CRITICAL_THRESHOLD = 0.9;
-
-export function getFairUseCreditUsageTarget(
-  usageRatio: number
-): CreditUsageTarget {
-  if (usageRatio >= CREDITS_USAGE_CRITICAL_THRESHOLD) {
-    return "critical";
-  }
-  if (usageRatio >= CREDITS_USAGE_ELEVATED_THRESHOLD) {
-    return "elevated";
-  }
-  return "on_target";
-}
 
 // Format a number of AWU credits for display (thousands separators, at most
 // one decimal). Shared across the credits usage table and the message /
