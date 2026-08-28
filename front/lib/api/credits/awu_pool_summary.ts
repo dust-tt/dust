@@ -28,7 +28,7 @@ import { isNumber } from "@app/types/shared/utils/general";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
 import { z } from "zod";
 
-export const DEFAULT_CYCLE_HISTORY_LIMIT = 5;
+const DEFAULT_CYCLE_HISTORY_LIMIT = 5;
 const MAX_CYCLE_HISTORY_LIMIT = 24;
 
 export const AwuPoolSummaryQuerySchema = z.object({
@@ -40,16 +40,7 @@ export const AwuPoolSummaryQuerySchema = z.object({
     .catch(DEFAULT_CYCLE_HISTORY_LIMIT),
 });
 
-// Invoices are fetched ahead of the requested cycle count so cycles with zero
-// pool consumption (e.g. an invoice with no pool-tagged usage line) still
-// leave enough real cycles to fill `cycleHistoryLimit`.
-const FINALIZED_INVOICES_FETCH_BUFFER = 7;
-
-// Pool consumption entries: each ledger entry already reflects the amount
-// drawn down from a single, known commit/credit, so — unlike invoice line
-// items — there's no `sub_line_items` split to reconstruct. Filtering to
-// `poolCommitIds` and the automated-deduction entry types is enough.
-const POOL_LEDGER_DEDUCTION_TYPES = new Set([
+const AUTOMATED_INVOICE_DEDUCTION_LEDGER_TYPES = new Set([
   "PREPAID_COMMIT_AUTOMATED_INVOICE_DEDUCTION",
   "POSTPAID_COMMIT_AUTOMATED_INVOICE_DEDUCTION",
   "CREDIT_AUTOMATED_INVOICE_DEDUCTION",
@@ -62,30 +53,13 @@ type PoolLedgerEntry = {
   timestampMs: number;
 };
 
-// Reads pool consumption straight off the pool commits'/credits' ledgers
-// instead of reconstructing it from invoice line items. Each automated
-// invoice-deduction ledger entry already carries the exact amount drawn from
-// that single commit/credit plus the invoice it was billed on, so summing
-// entries by `invoiceId` gives the same per-cycle consumption figure the
-// invoice line-item parsing used to compute, without the `commit_id`/
-// `sub_line_items` ambiguity that requires special-casing split usage lines.
-//
-// Fetched via `listMetronomeBalances` (`contracts.listBalances`), not
-// `customers.commits.list`/`customers.credits.list`: Metronome's docs only
-// guarantee "full transaction history" for `include_ledgers=true` on the
-// former — the latter's `include_ledgers` isn't documented as complete, and
-// in practice was observed silently returning only the most recent
-// deduction entry for a commit that had two, dropping older cycles'
-// consumption. Customer-wide (`coveringDate: null`, no contract filter,
-// `includeArchived`), not scoped to the workspace's *current*
-// `metronomeContractId` — a contract renewal/switch gives the workspace a
-// new contract id, but pool credits/commits granted under a superseded
-// contract are still real consumption history and must stay counted.
 async function getPoolLedgerEntries({
   metronomeCustomerId,
+  metronomeContractId,
   poolCommitIds,
 }: {
   metronomeCustomerId: string;
+  metronomeContractId: string;
   poolCommitIds: Set<string>;
 }): Promise<Result<PoolLedgerEntry[], Error>> {
   const balancesResult = await listMetronomeBalances(metronomeCustomerId, {
@@ -100,12 +74,15 @@ async function getPoolLedgerEntries({
 
   const entries: PoolLedgerEntry[] = [];
   for (const source of balancesResult.value) {
-    if (!poolCommitIds.has(source.id)) {
+    if (
+      source.contract?.id !== metronomeContractId ||
+      !poolCommitIds.has(source.id)
+    ) {
       continue;
     }
     for (const item of source.ledger ?? []) {
       if (
-        !POOL_LEDGER_DEDUCTION_TYPES.has(item.type) ||
+        !AUTOMATED_INVOICE_DEDUCTION_LEDGER_TYPES.has(item.type) ||
         !("invoice_id" in item)
       ) {
         continue;
@@ -121,10 +98,6 @@ async function getPoolLedgerEntries({
   return new Ok(entries);
 }
 
-// Deduction ledger entries carry the *delta applied to balance* — negative,
-// since a deduction reduces it — not a positive "amount consumed" the way
-// invoice line-item `quantity` was. `Math.abs` turns that debit back into a
-// consumption figure.
 function sumPoolLedgerEntriesForInvoice(
   ledgerEntries: PoolLedgerEntry[],
   invoiceId: string
@@ -134,42 +107,32 @@ function sumPoolLedgerEntriesForInvoice(
     .reduce((sum, entry) => sum + Math.abs(entry.amountCredits), 0);
 }
 
-// The set of commit/credit ids backing the workspace's pool, across both
-// currently active and past (expired/fully-consumed, or granted under a
-// superseded contract) grants — invoices from 2-3 cycles ago can reference
-// commits that are no longer active, or no longer on the workspace's
-// *current* contract, today, hence `coveringDate: null` and no contract
-// filter (see `getPoolLedgerEntries`).
+// The set of commit/credit ids backing the workspace's pool on its current
+// contract, across both currently active and past grants.
 async function getPoolCommitIds({
   metronomeCustomerId,
+  metronomeContractId,
 }: {
   metronomeCustomerId: string;
+  metronomeContractId: string;
 }): Promise<Result<Set<string>, Error>> {
   const poolBalancesResult = await listMetronomeBalances(metronomeCustomerId, {
     coveringDate: null,
     onlyPoolCredits: true,
-    // Without this, an archived pool-tagged commit/credit (e.g. a
-    // predecessor superseded by a rollover) is invisible here even though
-    // `getPoolLedgerEntries` fetches archived sources too — its consumption
-    // history would then be silently dropped for having an id that never
-    // made it into `poolCommitIds`.
     includeArchived: true,
   });
   if (poolBalancesResult.isErr()) {
     return new Err(poolBalancesResult.error);
   }
-  return new Ok(new Set(poolBalancesResult.value.map((entry) => entry.id)));
+  return new Ok(
+    new Set(
+      poolBalancesResult.value
+        .filter((entry) => entry.contract?.id === metronomeContractId)
+        .map((entry) => entry.id)
+    )
+  );
 }
 
-/**
- * Per-cycle pool consumption, over up to the last `cycleHistoryLimit`
- * finalized invoices for this contract that had non-zero pool consumption.
- * `finalizedInvoices` only ever contains FINALIZED invoices (drafts are
- * fetched separately and never mixed in), and cycles with zero pool
- * consumption are skipped — the caller fetches a longer window than
- * `cycleHistoryLimit` (see `FINALIZED_INVOICES_FETCH_BUFFER`) so a couple of
- * zero-usage cycles don't starve the breakdown of real data points.
- */
 function computeCycleBreakdown({
   finalizedInvoices,
   ledgerEntries,
@@ -211,100 +174,6 @@ function creditTypeIdToCurrency(
   return null;
 }
 
-// The redesigned usage page and the Poke Pool Usage page both hide the whole
-// "credit pool" block whenever `totalActiveCredits <= 0` (`hasPool`), and
-// independently hide the "this cycle" figure and the cycle-history table
-// whenever `currentCycleConsumedCredits`/`cycleBreakdown` come back
-// null/empty. Logs *why*, verbosely, whenever that happens, so a report of
-// "the numbers just aren't showing for this client" can be traced straight
-// to the upstream cause (no active grant, no draft invoice, a Metronome
-// fetch failure, no historical pool consumption, ...) via the `reasons`
-// facet in Datadog instead of re-derived by hand from a fresh ledger dump
-// every time.
-function logHiddenCycleInfoIfNeeded({
-  workspaceId,
-  metronomeCustomerId,
-  metronomeContractId,
-  hasActiveCurrentCycleInvoice,
-  currentInvoiceId,
-  poolCommitIdsOrFinalizedInvoicesFetchFailed,
-  ledgerFetchFailed,
-  ledgerEntriesCount,
-  poolCommitIds,
-  currentCycleConsumedCredits,
-  cycleBreakdown,
-  totalActiveCredits,
-  totalRemainingCredits,
-  latestCreditExpirationMs,
-}: {
-  workspaceId: string;
-  metronomeCustomerId: string;
-  metronomeContractId: string;
-  hasActiveCurrentCycleInvoice: boolean;
-  currentInvoiceId: string | null;
-  poolCommitIdsOrFinalizedInvoicesFetchFailed: boolean;
-  ledgerFetchFailed: boolean;
-  ledgerEntriesCount: number | null;
-  poolCommitIds: string[];
-  currentCycleConsumedCredits: number | null;
-  cycleBreakdown: AwuPoolCycleBreakdown[];
-  totalActiveCredits: number;
-  totalRemainingCredits: number;
-  latestCreditExpirationMs: number | null;
-}): void {
-  const reasons: string[] = [];
-
-  if (!hasActiveCurrentCycleInvoice) {
-    reasons.push("no_active_current_cycle_draft_invoice");
-  }
-  if (totalActiveCredits <= 0) {
-    reasons.push("pool_has_no_active_credits_hasPool_false");
-  }
-  if (currentCycleConsumedCredits === null) {
-    reasons.push(
-      ledgerFetchFailed
-        ? "current_cycle_consumed_credits_null_ledger_fetch_failed"
-        : poolCommitIdsOrFinalizedInvoicesFetchFailed
-          ? "current_cycle_consumed_credits_null_pool_commit_ids_or_invoices_fetch_failed"
-          : "current_cycle_consumed_credits_null_no_current_invoice"
-    );
-  }
-  if (cycleBreakdown.length === 0) {
-    reasons.push(
-      ledgerFetchFailed
-        ? "cycle_breakdown_empty_ledger_fetch_failed"
-        : poolCommitIdsOrFinalizedInvoicesFetchFailed
-          ? "cycle_breakdown_empty_pool_commit_ids_or_invoices_fetch_failed"
-          : "cycle_breakdown_empty_no_historical_pool_consumption"
-    );
-  }
-
-  if (reasons.length === 0) {
-    return;
-  }
-
-  logger.warn(
-    {
-      workspaceId,
-      metronomeCustomerId,
-      metronomeContractId,
-      reasons,
-      currentInvoiceId,
-      hasActiveCurrentCycleInvoice,
-      poolCommitIds,
-      poolCommitIdsOrFinalizedInvoicesFetchFailed,
-      ledgerFetchFailed,
-      ledgerEntriesCount,
-      currentCycleConsumedCredits,
-      cycleBreakdown,
-      totalActiveCredits,
-      totalRemainingCredits,
-      latestCreditExpirationMs,
-    },
-    "[AwuPoolSummary] Current-cycle/previous-cycle info hidden from the UI"
-  );
-}
-
 export class AwuPoolSummaryError extends Error {
   constructor(
     readonly type:
@@ -342,9 +211,9 @@ export async function getAwuPoolSummary(
   ] = await Promise.all([
     listMetronomeBalances(metronomeCustomerId),
     listMetronomeDraftInvoices(metronomeCustomerId),
-    getPoolCommitIds({ metronomeCustomerId }),
+    getPoolCommitIds({ metronomeCustomerId, metronomeContractId }),
     listMetronomeFinalizedInvoices(metronomeCustomerId, {
-      limit: cycleHistoryLimit + FINALIZED_INVOICES_FETCH_BUFFER,
+      limit: cycleHistoryLimit,
     }),
   ]);
 
@@ -359,23 +228,11 @@ export async function getAwuPoolSummary(
     );
   }
 
-  // Best-effort: a failure here degrades the cycle-history table (no
-  // breakdown) but shouldn't take down the rest of the pool summary.
   let poolCommitIds = new Set<string>();
-  // `null` means the ledger couldn't be read (fetch failure), as opposed to
-  // an empty array of entries (no consumption yet) — kept distinct so
-  // `currentCycleConsumedCredits` degrades to `null` rather than reading as
-  // a real zero.
+  // `null` means the ledger couldn't be read (fetch failure)
   let ledgerEntries: PoolLedgerEntry[] | null = null;
   let cycleBreakdown: AwuPoolCycleBreakdown[] = [];
-  // Tracked separately from the `logger.error` calls below so the
-  // hidden-cycle-info diagnostic further down can report *why* the figures
-  // ended up null/empty without re-deriving it from the (by-then-discarded)
-  // Result values.
-  let poolCommitIdsOrFinalizedInvoicesFetchFailed = false;
-  let ledgerFetchFailed = false;
   if (poolCommitIdsResult.isErr() || finalizedInvoicesResult.isErr()) {
-    poolCommitIdsOrFinalizedInvoicesFetchFailed = true;
     logger.error(
       {
         metronomeCustomerId,
@@ -393,10 +250,10 @@ export async function getAwuPoolSummary(
     poolCommitIds = poolCommitIdsResult.value;
     const ledgerEntriesResult = await getPoolLedgerEntries({
       metronomeCustomerId,
+      metronomeContractId,
       poolCommitIds,
     });
     if (ledgerEntriesResult.isErr()) {
-      ledgerFetchFailed = true;
       logger.error(
         {
           metronomeCustomerId,
@@ -430,33 +287,12 @@ export async function getAwuPoolSummary(
     return startMs <= now && now < endMs;
   });
 
-  // Elapsed pool consumption for the in-progress cycle: the pool commits'/
-  // credits' ledgers already carry an automated-deduction entry against the
-  // draft invoice as usage accrues, so this reads the same live figure the
-  // draft invoice's line items used to be parsed for — without the
-  // sub_line_items reconstruction.
   const currentCycleConsumedCredits =
     currentInvoice && ledgerEntries
       ? sumPoolLedgerEntriesForInvoice(ledgerEntries, currentInvoice.id)
       : null;
 
   if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
-    logHiddenCycleInfoIfNeeded({
-      workspaceId: workspace.sId,
-      metronomeCustomerId,
-      metronomeContractId,
-      hasActiveCurrentCycleInvoice: false,
-      currentInvoiceId: currentInvoice?.id ?? null,
-      poolCommitIdsOrFinalizedInvoicesFetchFailed,
-      ledgerFetchFailed,
-      ledgerEntriesCount: ledgerEntries?.length ?? null,
-      poolCommitIds: Array.from(poolCommitIds),
-      currentCycleConsumedCredits,
-      cycleBreakdown,
-      totalActiveCredits: 0,
-      totalRemainingCredits: 0,
-      latestCreditExpirationMs: null,
-    });
     return new Ok({
       totalRemainingCredits: 0,
       totalActiveCredits: 0,
@@ -465,7 +301,6 @@ export async function getAwuPoolSummary(
       overageCurrency: null,
       currentCycleStartMs: null,
       currentCycleEndMs: null,
-      latestCreditExpirationMs: null,
       currentCycleConsumedCredits,
       cycleBreakdown,
     });
@@ -499,19 +334,10 @@ export async function getAwuPoolSummary(
     }
   }
 
-  // Filter to active, non-seat AWU pool credits and commits. The set of
-  // seat product IDs is derived from the contract's tagged subscriptions
-  // (via the `DUST_SEAT_TYPE` custom field) rather than a hardcoded list.
-  //
-  // Not scoped to the workspace's *current* `metronomeContractId`, same as
-  // `getPoolLedgerEntries`/`getPoolCommitIds` above — a contract renewal
-  // gives the workspace a new contract id, but a pool grant issued under a
-  // superseded contract can still be the one actively covering `now`, and
-  // excluding it would incorrectly report the pool as exhausted (hasPool
-  // false) despite it holding a real, spendable balance. `onlyPoolCredits`
-  // (default on `listMetronomeBalances`) already restricts this to
-  // DUST_CONTRACT_CREDIT_TYPE=pool-tagged balances, so this isn't at risk of
-  // picking up unrelated sandbox contracts' balances.
+  // Filter to active, non-seat AWU pool credits and commits on the
+  // workspace's current contract. The set of seat product IDs is derived
+  // from the contract's tagged subscriptions (via the `DUST_SEAT_TYPE`
+  // custom field) rather than a hardcoded list.
   const activeContract = await getActiveContract(workspace.sId);
   const productSeatTypes = await getProductSeatTypes();
   const seatProductIds = activeContract
@@ -524,57 +350,27 @@ export async function getAwuPoolSummary(
     : new Set<string>();
   const awuBalances = balancesResult.value.filter(
     (entry) =>
+      entry.contract?.id === metronomeContractId &&
       entry.access_schedule?.credit_type?.id === awuCreditTypeId &&
       !seatProductIds.has(entry.product.id)
   );
 
   let totalRemainingCredits = 0;
   let totalActiveCredits = 0;
-  // Furthest-out expiration among the schedule items that are active right
-  // now — i.e. when the pool's currently granted credits actually run out,
-  // as opposed to when the surrounding contract ends (grants can expire
-  // well before the contract does).
-  let latestCreditExpirationMs: number | null = null;
   for (const entry of awuBalances) {
     const scheduleItems = entry.access_schedule?.schedule_items ?? [];
-    const activeItems = scheduleItems.filter((item) => {
+    const hasActiveItem = scheduleItems.some((item) => {
       const itemStartMs = new Date(item.starting_at).getTime();
       const itemEndMs = new Date(item.ending_before).getTime();
       return itemStartMs <= now && now < itemEndMs;
     });
-    if (activeItems.length > 0) {
+    if (hasActiveItem) {
       totalRemainingCredits += entry.balance ?? 0;
       for (const item of scheduleItems) {
         totalActiveCredits += item.amount;
       }
-      for (const item of activeItems) {
-        const itemEndMs = new Date(item.ending_before).getTime();
-        if (
-          latestCreditExpirationMs === null ||
-          itemEndMs > latestCreditExpirationMs
-        ) {
-          latestCreditExpirationMs = itemEndMs;
-        }
-      }
     }
   }
-
-  logHiddenCycleInfoIfNeeded({
-    workspaceId: workspace.sId,
-    metronomeCustomerId,
-    metronomeContractId,
-    hasActiveCurrentCycleInvoice: true,
-    currentInvoiceId: currentInvoice.id,
-    poolCommitIdsOrFinalizedInvoicesFetchFailed,
-    ledgerFetchFailed,
-    ledgerEntriesCount: ledgerEntries?.length ?? null,
-    poolCommitIds: Array.from(poolCommitIds),
-    currentCycleConsumedCredits,
-    cycleBreakdown,
-    totalActiveCredits,
-    totalRemainingCredits,
-    latestCreditExpirationMs,
-  });
 
   return new Ok({
     totalRemainingCredits,
@@ -584,7 +380,6 @@ export async function getAwuPoolSummary(
     overageCurrency: overageCredits !== null ? overageCurrency : null,
     currentCycleStartMs,
     currentCycleEndMs,
-    latestCreditExpirationMs,
     currentCycleConsumedCredits,
     cycleBreakdown,
   });

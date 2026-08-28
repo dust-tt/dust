@@ -31,7 +31,6 @@ const EMPTY_POOL_SUMMARY = {
   currentCycleEndMs: null,
   currentCycleConsumedCredits: null,
   cycleBreakdown: [],
-  latestCreditExpirationMs: null,
 };
 
 beforeEach(() => {

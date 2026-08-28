@@ -39,10 +39,4 @@ export type AwuPoolSummaryResponseBody = {
    */
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
-  /**
-   * Furthest-out expiration (ms epoch) among the workspace's currently
-   * active AWU pool credit grants — when the currently available pool
-   * credits will lapse if left unused. `null` when there's no active grant.
-   */
-  latestCreditExpirationMs: number | null;
 };

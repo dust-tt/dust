@@ -2286,7 +2286,7 @@ export async function listMetronomeDraftInvoices(
  */
 export async function listMetronomeFinalizedInvoices(
   metronomeCustomerId: string,
-  { limit = 3 }: { limit?: number } = {}
+  { limit }: { limit: number }
 ): Promise<Result<Invoice[], Error>> {
   try {
     const invoices: Invoice[] = [];
