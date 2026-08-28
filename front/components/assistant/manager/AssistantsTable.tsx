@@ -48,6 +48,8 @@ import type { CellContext, HeaderContext } from "@tanstack/react-table";
 import type { ComponentType, ReactNode } from "react";
 import { useMemo, useState } from "react";
 
+const SKELETON_ROW_COUNT = 16;
+
 type RowData = {
   sId: string;
   name: string;
@@ -70,7 +72,7 @@ type RowData = {
 };
 
 const ASSISTANTS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
-  { length: 20 },
+  { length: SKELETON_ROW_COUNT },
   (_, index) => ({
     sId: `assistant-skeleton-${index}`,
     name: "",

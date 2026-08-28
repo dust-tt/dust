@@ -33,6 +33,8 @@ import type {
 } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
+const SKELETON_ROW_COUNT = 16;
+
 // A Dust-provided skill can never be edited, and a "members and agents"
 // skill can only be batch-edited by someone who can make skills auto-discoverable.
 export function isSkillSelectable(
@@ -62,7 +64,7 @@ type RowData = {
 };
 
 const SKILLS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
-  { length: 20 },
+  { length: SKELETON_ROW_COUNT },
   (_, index) => ({
     sId: `skill-skeleton-${index}`,
     name: "",
