@@ -54,7 +54,7 @@ function getUsageDescription(
 ): string {
   switch (state.kind) {
     case "billing_period": {
-      const resetUnit = state.resetInDays === 1 ? "day" : "days";
+      const resetUnit = `day${pluralize(state.resetInDays)}`;
       const companionStatusLabel =
         variant === "companion" && state.target !== "on_target"
           ? COMPANION_STATUS_LABELS[state.target]
