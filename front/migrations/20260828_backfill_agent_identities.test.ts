@@ -2,6 +2,7 @@ import {
   AgentConfigurationModel,
   AgentModel,
 } from "@app/lib/models/agent/agent";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { backfillAgentIdentities } from "@app/migrations/20260828_backfill_agent_identities";
 import baseLogger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -69,16 +70,10 @@ describe("backfillAgentIdentities", () => {
     });
     const firstAgent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
-    const secondAgent = await AgentConfigurationFactory.createTestAgent(
-      authenticator,
-      { name: "Second agent" }
-    );
-    const secondIdentity = await AgentModel.findOne({
-      where: { sId: secondAgent.sId, workspaceId: workspace.id },
+    const secondIdentity = await AgentModel.create({
+      sId: generateRandomModelSId(),
+      workspaceId: workspace.id,
     });
-    if (!secondIdentity) {
-      throw new Error("Expected the second agent identity to exist.");
-    }
     await AgentConfigurationModel.update(
       { agentId: secondIdentity.id },
       { where: { sId: firstAgent.sId, workspaceId: workspace.id } }

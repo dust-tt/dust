@@ -8,7 +8,7 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Op } from "sequelize";
+import { literal, Op } from "sequelize";
 
 type MigrationWorkspace = Pick<LightWorkspaceType, "id" | "sId">;
 
@@ -120,7 +120,7 @@ export async function backfillAgentIdentities({
             where: {
               sId,
               workspaceId: workspace.id,
-              agentId: { [Op.is]: null },
+              [Op.and]: literal('"agentId" IS NULL'),
             },
             transaction,
           }
@@ -132,7 +132,10 @@ export async function backfillAgentIdentities({
 
   if (execute) {
     const missingIdentityCount = await AgentConfigurationModel.count({
-      where: { workspaceId: workspace.id, agentId: { [Op.is]: null } },
+      where: {
+        workspaceId: workspace.id,
+        [Op.and]: literal('"agentId" IS NULL'),
+      },
     });
     if (missingIdentityCount > 0) {
       throw new Error(
