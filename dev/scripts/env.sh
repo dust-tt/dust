@@ -9,6 +9,10 @@
 export DUST_REPO_ROOT="${DUST_REPO_ROOT:-/workspace}"
 export DUST_IN_CONTAINER="${DUST_IN_CONTAINER:-1}"
 
+# 1Password Environment id for shared cloud-agent / container secrets (not a credential).
+# Cloud agents get it injected as a runtime secret; this default serves local docker runs.
+export OP_ENVIRONMENT_ID="${OP_ENVIRONMENT_ID:-r6iqd3y67zqlbsxnotrj6bm25q}"  # pragma: allowlist secret
+
 export POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
 export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 export REDIS_HOST="${REDIS_HOST:-localhost}"

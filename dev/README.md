@@ -42,3 +42,15 @@ bash dev/scripts/docker-run.sh --shell
 | Mac compose | Host Docker Desktop | root `docker-compose.yml` via `tools/start-mprocs.sh` |
 
 Inside the container, compose-based mprocs procs (`docker-infra`, `kibana`, …) no-op when `DUST_IN_CONTAINER=1`.
+
+## Cursor Cloud snapshots
+
+Cloud agents boot from a prebuilt environment snapshot: `/workspace` is the checkout baked when
+that snapshot was built, and it is not re-fetched at boot. `.cursor/environment.json`, however, is
+read from current `main`. Moving or renaming anything it references therefore breaks every agent
+still booting an older snapshot — `start` fails once with exit 127 and is never retried.
+
+The skew closes on the next successful build, so when `start` fails that way, check that
+environment builds are green before touching the scripts. Keep `dev/Dockerfile` buildable:
+Docker has no inline comments, so `ENV k=v  # note` is a parse error, not a comment. Values that
+need a `# pragma: allowlist secret` marker therefore belong in `dev/scripts/env.sh`, not the image.

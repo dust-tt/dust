@@ -65,6 +65,7 @@ collect_env_args() {
   ENV_ARGS=(-e DUST_IN_CONTAINER=1)
   for var in \
     OP_SERVICE_ACCOUNT_TOKEN \
+    OP_ENVIRONMENT_ID \
     GCP_SERVICE_ACCOUNT \
     DEV_WORKOS_USER_EMAIL \
     DEV_WORKOS_USER_ID \
