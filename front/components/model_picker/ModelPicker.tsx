@@ -10,7 +10,6 @@ import {
 } from "@app/components/model_picker/modelPickerTracking";
 import type {
   MakerGroup,
-  ModelPickerView,
   ModelTierId,
   Selection,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -109,7 +108,7 @@ export function ModelPicker({
 
   const [isOpen, setIsOpen] = useState(false);
 
-  const [view, setView] = useState<ModelPickerView>("root");
+  const [isMakersExpanded, setIsMakersExpanded] = useState(false);
   const [activeMaker, setActiveMaker] = useState<ModelMakerIdType | null>(null);
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
@@ -224,7 +223,7 @@ export function ModelPicker({
   // through here rather than touching `setIsOpen` directly.
   const openMenu = () => {
     setIsOpen(true);
-    setView("root");
+    setIsMakersExpanded(false);
     setActiveMaker(null);
     if (trackingSurface) {
       trackModelPickerOpen({ surface: trackingSurface, clientType });
@@ -273,22 +272,16 @@ export function ModelPicker({
     );
   };
 
-  const onOpenMakers = () => {
-    setView("makers");
+  const onToggleMakers = () => {
+    setIsMakersExpanded((expanded) => !expanded);
   };
 
   const onSelectMaker = (makerId: ModelMakerIdType) => {
     setActiveMaker(makerId);
-    setView("models");
   };
 
   const onBack = () => {
-    if (view === "models") {
-      setActiveMaker(null);
-      setView("makers");
-    } else if (view === "makers") {
-      setView("root");
-    }
+    setActiveMaker(null);
   };
 
   const onChangeEffort = (effort: ReasoningEffort) => {
@@ -375,8 +368,8 @@ export function ModelPicker({
         makerGroups={makerGroups}
         streamModels={streamModels}
         streams={streams}
-        view={view}
-        onOpenMakers={onOpenMakers}
+        isMakersExpanded={isMakersExpanded}
+        onToggleMakers={onToggleMakers}
         activeMaker={activeMaker}
         onSelectMaker={onSelectMaker}
         onBack={onBack}

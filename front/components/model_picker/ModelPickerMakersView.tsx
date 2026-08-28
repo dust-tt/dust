@@ -9,25 +9,17 @@ import {
   getModelMakerDisplayName,
 } from "@app/types/assistant/models/providers";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
-import {
-  ArrowLeft,
-  Check,
-  ChevronRight,
-  DropdownMenuItem,
-  Icon,
-} from "@dust-tt/sparkle";
+import { Check, ChevronRight, DropdownMenuItem, Icon } from "@dust-tt/sparkle";
 
 interface ModelPickerMakersViewProps {
   makerGroups: MakerGroup[];
   shown: Selection;
-  onBack: () => void;
   onSelectMaker: (makerId: ModelMakerIdType) => void;
 }
 
 export function ModelPickerMakersView({
   makerGroups,
   shown,
-  onBack,
   onSelectMaker,
 }: ModelPickerMakersViewProps) {
   const { isDark } = useTheme();
@@ -37,13 +29,6 @@ export function ModelPickerMakersView({
 
   return (
     <>
-      <DropdownMenuItem
-        icon={ArrowLeft}
-        label="More models"
-        truncateText
-        onClick={onBack}
-        onSelect={(e) => e.preventDefault()}
-      />
       {makerGroups.map((maker) => (
         <DropdownMenuItem
           key={maker.makerId}

@@ -4,7 +4,6 @@ import { ModelPickerSelectionIndicator } from "@app/components/model_picker/Mode
 import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type {
   MakerGroup,
-  ModelPickerView,
   ModelTierId,
   Selection,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -25,6 +24,7 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import {
+  ChevronDown,
   ChevronRight,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -33,11 +33,6 @@ import {
   Icon,
   Lock01,
 } from "@dust-tt/sparkle";
-import { useRef } from "react";
-
-// root -> makers -> models: used to tell whether a view change is going
-// forward or back, so every swap slides the matching direction.
-const VIEW_ORDER: ModelPickerView[] = ["root", "makers", "models"];
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
@@ -51,8 +46,8 @@ interface ModelPickerContentProps {
   makerGroups: MakerGroup[];
   streamModels: EnabledModelConfigurationType[];
   streams: ModelStreamResolutionsType | null;
-  view: ModelPickerView;
-  onOpenMakers: () => void;
+  isMakersExpanded: boolean;
+  onToggleMakers: () => void;
   activeMaker: ModelMakerIdType | null;
   onSelectMaker: (makerId: ModelMakerIdType) => void;
   onBack: () => void;
@@ -72,8 +67,8 @@ export function ModelPickerContent({
   makerGroups,
   streamModels,
   streams,
-  view,
-  onOpenMakers,
+  isMakersExpanded,
+  onToggleMakers,
   activeMaker,
   onSelectMaker,
   onBack,
@@ -82,16 +77,9 @@ export function ModelPickerContent({
   onChangeEffort,
   onRevert,
 }: ModelPickerContentProps) {
-  const previousViewRef = useRef<ModelPickerView>(view);
-  const isGoingForward =
-    VIEW_ORDER.indexOf(view) >= VIEW_ORDER.indexOf(previousViewRef.current);
-  previousViewRef.current = view;
-
   const activeMakerGroup = makerGroups.find(
     (maker) => maker.makerId === activeMaker
   );
-
-  const stepClassName = `max-h-[26rem] overflow-y-auto animate-in duration-200 motion-reduce:animate-none ${isGoingForward ? "slide-in-from-right-4" : "slide-in-from-left-4"}`;
 
   return (
     <DropdownMenuContent
@@ -114,8 +102,31 @@ export function ModelPickerContent({
         }
       }}
     >
-      {view === "root" && (
-        <div key="root" className={stepClassName}>
+      {activeMakerGroup ? (
+        // Picking a provider swaps the whole dropdown for its model list —
+        // a real navigation, not an in-place reveal, so it slides in.
+        <div
+          key="models"
+          className="max-h-[26rem] overflow-y-auto animate-in slide-in-from-right-4 duration-200 motion-reduce:animate-none"
+        >
+          <ModelPickerModelsView
+            makerId={activeMakerGroup.makerId}
+            models={activeMakerGroup.models}
+            shown={shown}
+            agentDefault={agentDefault}
+            canRevert={canRevert}
+            lockPremiumEfforts={lockPremiumEfforts}
+            onBack={onBack}
+            onSelectModel={onSelectModel}
+            onChangeEffort={onChangeEffort}
+            onRevert={onRevert}
+          />
+        </div>
+      ) : (
+        <div
+          key="root"
+          className="max-h-[26rem] overflow-y-auto animate-in slide-in-from-left-4 duration-200 motion-reduce:animate-none"
+        >
           <DropdownMenuLabel label="Recommendations" className="text-sm" />
 
           {MODEL_TIERS.map((tier) => {
@@ -175,42 +186,26 @@ export function ModelPickerContent({
             label="More models"
             endComponent={
               <Icon
-                visual={ChevronRight}
+                visual={isMakersExpanded ? ChevronDown : ChevronRight}
                 size="xs"
                 className="text-muted-foreground"
               />
             }
-            onClick={onOpenMakers}
+            onClick={onToggleMakers}
             onSelect={(e) => e.preventDefault()}
           />
-        </div>
-      )}
 
-      {view === "makers" && (
-        <div key="makers" className={stepClassName}>
-          <ModelPickerMakersView
-            makerGroups={makerGroups}
-            shown={shown}
-            onBack={onBack}
-            onSelectMaker={onSelectMaker}
-          />
-        </div>
-      )}
-
-      {view === "models" && activeMakerGroup && (
-        <div key="models" className={stepClassName}>
-          <ModelPickerModelsView
-            makerId={activeMakerGroup.makerId}
-            models={activeMakerGroup.models}
-            shown={shown}
-            agentDefault={agentDefault}
-            canRevert={canRevert}
-            lockPremiumEfforts={lockPremiumEfforts}
-            onBack={onBack}
-            onSelectModel={onSelectModel}
-            onChangeEffort={onChangeEffort}
-            onRevert={onRevert}
-          />
+          {isMakersExpanded && (
+            // Expanding reveals more of the same list in place — a fade is
+            // enough, it isn't going anywhere the way the model swap does.
+            <div className="animate-in fade-in duration-200 motion-reduce:animate-none">
+              <ModelPickerMakersView
+                makerGroups={makerGroups}
+                shown={shown}
+                onSelectMaker={onSelectMaker}
+              />
+            </div>
+          )}
         </div>
       )}
     </DropdownMenuContent>
