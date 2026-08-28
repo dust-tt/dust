@@ -3,7 +3,7 @@ import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import { EnqueueUpsertTable } from "@app/lib/upsert_queue";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import mainLogger from "@app/logger/logger";
 
 import config from "@app/temporal/config";
@@ -105,12 +105,8 @@ export async function upsertTableActivity(
       },
       "[UpsertQueue] Failed table upsert"
     );
-    getStatsDClient().increment(
-      "upsert_queue_table_error.count",
-      1,
-      statsDTags
-    );
-    getStatsDClient().distribution(
+    statsDMetrics.increment("upsert_queue_table_error.count", 1, statsDTags);
+    statsDMetrics.distribution(
       "upsert_queue_upsert_table_error.duration.distribution",
       Date.now() - upsertTimestamp,
       []
@@ -134,17 +130,13 @@ export async function upsertTableActivity(
     },
     "[UpsertQueue] Successful table upsert"
   );
-  getStatsDClient().increment(
-    "upsert_queue_table_success.count",
-    1,
-    statsDTags
-  );
-  getStatsDClient().distribution(
+  statsDMetrics.increment("upsert_queue_table_success.count", 1, statsDTags);
+  statsDMetrics.distribution(
     "upsert_queue_upsert_table_success.duration.distribution",
     Date.now() - upsertTimestamp,
     []
   );
-  getStatsDClient().distribution(
+  statsDMetrics.distribution(
     "upsert_queue_table.duration.distribution",
     Date.now() - enqueueTimestamp,
     []

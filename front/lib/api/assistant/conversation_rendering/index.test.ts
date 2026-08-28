@@ -32,10 +32,10 @@ vi.mock(
 );
 
 vi.mock("@app/lib/utils/statsd", () => ({
-  getStatsDClient: () => ({
+  statsDMetrics: {
     distribution: vi.fn(),
     increment: vi.fn(),
-  }),
+  },
 }));
 
 vi.mock("@app/lib/api/provider_credentials", () => ({
@@ -63,6 +63,7 @@ function createConversation(owner: LightWorkspaceType): ConversationType {
     metadata: {},
     requestedSpaceIds: [],
     isRunningAgentLoop: true,
+    isParticipant: false,
     owner,
     visibility: "unlisted",
     content: [],

@@ -6,7 +6,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import { Op } from "sequelize";
@@ -91,7 +91,7 @@ export async function checkCostAndSubagentsThresholds({
         "Agent loop cost threshold crossed"
       );
 
-      getStatsDClient().increment(COST_THRESHOLD_CROSSED_METRIC, 1, [
+      statsDMetrics.increment(COST_THRESHOLD_CROSSED_METRIC, 1, [
         `threshold_usd:${thresholdUsd}`,
         `workspace_id:${workspace.sId}`,
       ]);

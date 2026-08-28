@@ -18,9 +18,16 @@ vi.mock("@app/temporal/project_task/client", () => ({
 }));
 
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { frameContentType } from "@app/types/files";
+import {
+  DEFAULT_POD_FRAME_TAB_ICON,
+  normalizeTabsOrder,
+} from "@app/types/pod_frame_tab";
 
 import { honoApp } from "@front-api/app";
 
@@ -221,6 +228,72 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+
+  it("allows removing a frame tab when another tab has a stale path", async () => {
+    const { workspace, auth, user } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+
+    await FeatureFlagFactory.basic(auth, "pod_frame_tabs");
+
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+
+    const validFrame = await ProjectFileFactory.create(
+      auth,
+      user,
+      projectSpace,
+      {
+        contentType: frameContentType,
+        fileName: "MyView.tsx",
+        fileSize: 100,
+        status: "ready",
+      }
+    );
+    const validPath = validFrame.toScopedPath(auth);
+    if (!validPath) {
+      throw new Error("Expected a scoped Pod Frame path.");
+    }
+
+    const stalePath = `pod-${projectSpace.sId}/frames/Activity.tsx`;
+    const framePaths = [stalePath, validPath];
+
+    await ProjectMetadataResource.makeNew(auth, projectSpace, {
+      description: null,
+      frameTabs: [
+        {
+          path: stalePath,
+          title: "Activity",
+          icon: DEFAULT_POD_FRAME_TAB_ICON,
+        },
+        {
+          path: validPath,
+          title: "My View",
+          icon: DEFAULT_POD_FRAME_TAB_ICON,
+        },
+      ],
+      tabsOrder: normalizeTabsOrder([stalePath, validPath], framePaths),
+    });
+
+    const response = await patchMetadata(workspace, projectSpace.sId, {
+      frameTabs: [
+        {
+          path: stalePath,
+          title: "Activity",
+          icon: DEFAULT_POD_FRAME_TAB_ICON,
+        },
+      ],
+      tabsOrder: normalizeTabsOrder([stalePath], [stalePath]),
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).projectMetadata.frameTabs).toEqual([
+      {
+        path: stalePath,
+        title: "Activity",
+        icon: DEFAULT_POD_FRAME_TAB_ICON,
+      },
+    ]);
   });
 
   it("restarts project tasks workflow when unarchiving a project", async () => {

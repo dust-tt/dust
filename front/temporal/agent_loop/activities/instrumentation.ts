@@ -1,4 +1,4 @@
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 
 // StatsD metric names.
 export const METRICS = {
@@ -44,5 +44,5 @@ export const METRICS = {
 
 // Log start of complete agent loop - only called once per loop (from client.ts).
 export function logAgentLoopStart(): void {
-  getStatsDClient().increment(METRICS.LOOP_STARTS, 1);
+  statsDMetrics.increment(METRICS.LOOP_STARTS, 1);
 }

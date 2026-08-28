@@ -3,6 +3,7 @@ import type { TriggerKind, TriggerStatus } from "@app/types/assistant/triggers";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 
 /**
  * Pure business rules for automatic archival of inactive agents: no database, no Temporal, no
@@ -10,7 +11,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
  * infrastructure.
  */
 
-export const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+export { ONE_DAY_MS };
 
 export const MIN_INACTIVITY_THRESHOLD_DAYS = 2;
 export const MAX_INACTIVITY_THRESHOLD_DAYS = 366;

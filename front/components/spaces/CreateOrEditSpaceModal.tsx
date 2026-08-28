@@ -1,5 +1,4 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
@@ -18,7 +17,7 @@ import type { GroupType } from "@app/types/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { PlanType } from "@app/types/plan";
 import type { SpaceType } from "@app/types/space";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Input,
   Page,
@@ -29,6 +28,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  Spinner,
 } from "@dust-tt/sparkle";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -58,8 +58,10 @@ export function CreateOrEditSpaceModal({
 }: CreateOrEditSpaceModalProps) {
   const confirm = React.useContext(ConfirmContext);
   const [spaceName, setSpaceName] = useState<string>(space?.name ?? "");
-  const [selectedMembers, setSelectedMembers] = useState<SearchMemberType[]>(
-    []
+  // The member selection is held as ids, not as user objects: the ids are what the save sends, so
+  // a member can never drop out of the space because the UI failed to resolve their user object.
+  const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(
+    () => new Set()
   );
   const [selectedGroups, setSelectedGroups] = useState<GroupType[]>([]);
 
@@ -86,7 +88,7 @@ export function CreateOrEditSpaceModal({
 
   const router = useAppRouter();
 
-  const { spaceInfo, mutateSpaceInfo } = useSpaceInfo({
+  const { spaceInfo, mutateSpaceInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: space?.sId ?? null,
     includeAllMembers: true, // Always include all members so we can see suspended ones when switching modes
@@ -132,19 +134,17 @@ export function CreateOrEditSpaceModal({
         : (defaultRestricted ?? false);
       setIsRestricted(isRestricted);
 
-      let initialMembers: UserType[] = [];
+      let initialMemberIds: string[] = [];
       if (spaceMembers && space) {
-        initialMembers = spaceMembers;
-      } else if (!space) {
-        initialMembers = [];
+        initialMemberIds = spaceMembers.map((member) => member.sId);
       }
 
       // Auto-add current user when opening with restricted access for new spaces
-      if (isRestricted && !space && user && initialMembers.length === 0) {
-        initialMembers = [user];
+      if (isRestricted && !space && user && initialMemberIds.length === 0) {
+        initialMemberIds = [user.sId];
       }
 
-      setSelectedMembers(initialMembers);
+      setSelectedMemberIds(new Set(initialMemberIds));
     }
   }, [
     defaultRestricted,
@@ -165,7 +165,7 @@ export function CreateOrEditSpaceModal({
       // Reset state.
       setSpaceName("");
       setIsRestricted(false);
-      setSelectedMembers([]);
+      setSelectedMemberIds(new Set());
       setSelectedGroups([]);
       setManagementType("manual");
       setIsDeleting(false);
@@ -210,7 +210,7 @@ export function CreateOrEditSpaceModal({
       } else {
         await doUpdate(space, {
           isRestricted,
-          memberIds: selectedMembers.map((vm) => vm.sId),
+          memberIds: Array.from(selectedMemberIds),
           editorIds: [],
           managementMode: "manual",
           name: trimmedName,
@@ -234,7 +234,7 @@ export function CreateOrEditSpaceModal({
         createdSpace = await doCreate({
           name: trimmedName,
           isRestricted,
-          memberIds: selectedMembers.map((vm) => vm.sId),
+          memberIds: Array.from(selectedMemberIds),
           managementMode: "manual",
           spaceKind: "regular",
         });
@@ -257,7 +257,7 @@ export function CreateOrEditSpaceModal({
     onCreated,
     space,
     spaceInfo,
-    selectedMembers,
+    selectedMemberIds,
     spaceName,
     managementType,
     selectedGroups,
@@ -293,7 +293,7 @@ export function CreateOrEditSpaceModal({
 
     const canSave =
       !isRestricted ||
-      (managementType === "manual" && selectedMembers.length > 0) ||
+      (managementType === "manual" && selectedMemberIds.size > 0) ||
       (managementType === "group" && selectedGroups.length > 0);
 
     if (!spaceInfo) {
@@ -304,13 +304,19 @@ export function CreateOrEditSpaceModal({
   }, [
     isRestricted,
     managementType,
-    selectedMembers.length,
+    selectedMemberIds.size,
     selectedGroups.length,
     spaceInfo,
     isDirty,
     spaceName,
   ]);
   const isManual = !scimEnabled || managementType === "manual";
+
+  // When editing an existing space, hold the access section back until its members have loaded: the
+  // toggle's state and the member table's contents both come from `spaceInfo`, and the table seeds
+  // its display cache once, at mount. Rendering it early shows an empty member list.
+  // `isSpaceInfoLoading` stays true when there is no space (the hook is disabled), hence the guard.
+  const isLoadingSpaceInfo = !!space && isSpaceInfoLoading;
 
   const handleNameChange = useCallback((value: string) => {
     setSpaceName(value);
@@ -339,64 +345,75 @@ export function CreateOrEditSpaceModal({
               isDeleting={isDeleting}
             />
 
-            <RestrictedAccessHeader
-              isRestricted={isRestricted}
-              onToggle={() => {
-                const newRestricted = !isRestricted;
-                setIsRestricted(newRestricted);
-                setIsDirty(true);
-                if (
-                  newRestricted &&
-                  !space &&
-                  user &&
-                  selectedMembers.length === 0
-                ) {
-                  setSelectedMembers([user, ...selectedMembers]);
-                }
-              }}
-              restrictedDescription={
-                <>
-                  <span>Restricted access is active.</span>
-                  <span>
-                    Members can read the content of the space and write data
-                    into it (upload files, delete documents...).
-                  </span>
-                </>
-              }
-              unrestrictedDescription={
-                <>
-                  <span>Restricted access is disabled. The space is open.</span>
-                  <span>
-                    Anyone in the workspace can read the data from this space.
-                  </span>
-                  <span>
-                    Members of the space can also write data (upload files,
-                    delete documents...).
-                  </span>
-                </>
-              }
-            />
+            {isLoadingSpaceInfo ? (
+              <div className="flex justify-center p-8">
+                <Spinner />
+              </div>
+            ) : (
+              <>
+                <RestrictedAccessHeader
+                  isRestricted={isRestricted}
+                  onToggle={() => {
+                    const newRestricted = !isRestricted;
+                    setIsRestricted(newRestricted);
+                    setIsDirty(true);
+                    if (
+                      newRestricted &&
+                      !space &&
+                      user &&
+                      selectedMemberIds.size === 0
+                    ) {
+                      setSelectedMemberIds(new Set([user.sId]));
+                    }
+                  }}
+                  restrictedDescription={
+                    <>
+                      <span>Restricted access is active.</span>
+                      <span>
+                        Members can read the content of the space and write data
+                        into it (upload files, delete documents...).
+                      </span>
+                    </>
+                  }
+                  unrestrictedDescription={
+                    <>
+                      <span>
+                        Restricted access is disabled. The space is open.
+                      </span>
+                      <span>
+                        Anyone in the workspace can read the data from this
+                        space.
+                      </span>
+                      <span>
+                        Members of the space can also write data (upload files,
+                        delete documents...).
+                      </span>
+                    </>
+                  }
+                />
 
-            {/* Shown in both states: an open space still has members, and they are the ones who
-                can write to it. The toggle only controls who can read. */}
-            <RestrictedAccessBody
-              isManual={isManual}
-              scimEnabled={scimEnabled}
-              managementType={managementType}
-              owner={owner}
-              selectedMembers={selectedMembers}
-              selectedGroups={selectedGroups}
-              onManagementTypeChange={handleManagementTypeChange}
-              onMembersUpdated={(members) => {
-                setSelectedMembers(members);
-                setIsDirty(true);
-              }}
-              onGroupsUpdated={(groups) => {
-                setSelectedGroups(groups);
-                setIsDirty(true);
-              }}
-              initialMembers={spaceInfo?.members}
-            />
+                {/* Shown in both states: an open space still has members, and they are the ones
+                    who can write to it. The toggle only controls who can read. */}
+                <RestrictedAccessBody
+                  isManual={isManual}
+                  scimEnabled={scimEnabled}
+                  managementType={managementType}
+                  owner={owner}
+                  selectedMemberIds={selectedMemberIds}
+                  selectedGroups={selectedGroups}
+                  onManagementTypeChange={handleManagementTypeChange}
+                  onMemberIdsUpdated={(memberIds) => {
+                    setSelectedMemberIds(memberIds);
+                    setIsDirty(true);
+                  }}
+                  onGroupsUpdated={(groups) => {
+                    setSelectedGroups(groups);
+                    setIsDirty(true);
+                  }}
+                  initialMembers={spaceInfo?.members}
+                />
+              </>
+            )}
           </div>
         </SheetContainer>
         <SheetFooter

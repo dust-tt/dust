@@ -1,4 +1,5 @@
 import { ModelPickerSelectionIndicator } from "@app/components/model_picker/ModelPickerSelectionIndicator";
+import { ModelTierChip } from "@app/components/model_picker/ModelTierChip";
 import type {
   EffortStop,
   ModelLockReason,
@@ -68,10 +69,13 @@ export function ModelPickerModelRow({
         truncateText
         endComponent={
           isSelected ? (
-            <ModelPickerSelectionIndicator
-              canRevert={canRevert}
-              onRevert={onRevert}
-            />
+            <div className="flex items-center gap-2">
+              <ModelTierChip model={model} reasoningEffort={effort} />
+              <ModelPickerSelectionIndicator
+                canRevert={canRevert}
+                onRevert={onRevert}
+              />
+            </div>
           ) : undefined
         }
         onClick={() => {

@@ -17,11 +17,13 @@ import {
   fetchMessageExportRows,
   MESSAGE_EXPORT_HEADERS,
 } from "@app/lib/api/analytics/messages_export";
+import { fetchSkillUsageExportRows } from "@app/lib/api/analytics/skill_usage_export";
 import type { SkillExportRow } from "@app/lib/api/analytics/skills_export";
 import {
   fetchSkillExportRows,
   SKILL_EXPORT_HEADERS,
 } from "@app/lib/api/analytics/skills_export";
+import { fetchToolUsageExportRows } from "@app/lib/api/analytics/tool_usage_export";
 import { fetchUsageMetricsExportRows } from "@app/lib/api/analytics/usage_metrics_export";
 import type { UserExportRow } from "@app/lib/api/analytics/users_export";
 import {
@@ -29,17 +31,7 @@ import {
   USER_EXPORT_HEADERS,
 } from "@app/lib/api/analytics/users_export";
 import { fetchContextOriginDailyBreakdown } from "@app/lib/api/assistant/observability/context_origin";
-import {
-  fetchAvailableSkills,
-  fetchSkillUsageMetrics,
-} from "@app/lib/api/assistant/observability/skill_usage";
-import {
-  fetchAvailableTools,
-  fetchToolUsageMetrics,
-} from "@app/lib/api/assistant/observability/tool_usage";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -216,9 +208,9 @@ export async function exportTable({
     case "skills":
       return exportSkills({ auth, startDate, endDate, timezone });
     case "skill_usage":
-      return exportSkillUsage({ startDate, endDate, timezone, owner });
+      return exportSkillUsage({ auth, startDate, endDate, timezone });
     case "tool_usage":
-      return exportToolUsage({ startDate, endDate, timezone, owner });
+      return exportToolUsage({ auth, startDate, endDate, timezone });
     case "messages":
       return exportMessages({ auth, startDate, endDate, timezone, owner });
     case "feedback":
@@ -509,130 +501,66 @@ async function exportSkills({
 }
 
 async function exportSkillUsage({
+  auth,
   startDate,
   endDate,
   timezone,
-  owner,
 }: {
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
-  owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
+  const baseQuery = buildExportConsumptionScopeQuery(auth, {
     startDate,
     endDate,
+    timezone,
   });
 
-  const skillsResult = await fetchAvailableSkills(baseQuery);
-  if (skillsResult.isErr()) {
+  const result = await fetchSkillUsageExportRows(auth, baseQuery, timezone);
+
+  if (result.isErr()) {
     return new Err(
-      new Error(
-        `Failed to retrieve available skills: ${skillsResult.error.message}`
-      )
+      new Error(`Failed to retrieve skill usage: ${result.error.message}`)
     );
   }
-
-  const nestedRows = await concurrentExecutor(
-    skillsResult.value,
-    async (item) => {
-      const usageResult = await fetchSkillUsageMetrics(
-        baseQuery,
-        item.skillName,
-        timezone
-      );
-      if (usageResult.isErr()) {
-        throw new Error(
-          `Failed to retrieve skill usage for ${item.skillName}: ${usageResult.error.message}`
-        );
-      }
-      return usageResult.value.map<SkillUsageRow>((point) => ({
-        date: point.date,
-        skillName: item.skillName,
-        executions: point.executionCount,
-        uniqueUsers: point.uniqueUsers,
-      }));
-    },
-    { concurrency: 8 }
-  );
-
-  const rows = nestedRows.flat().sort((a, b) => {
-    const dateCompare = a.date.localeCompare(b.date);
-    if (dateCompare !== 0) {
-      return dateCompare;
-    }
-    return a.skillName.localeCompare(b.skillName);
-  });
 
   return new Ok({
     table: "skill_usage",
     headers: SKILL_USAGE_HEADERS,
-    rows,
+    rows: result.value,
   });
 }
 
 async function exportToolUsage({
+  auth,
   startDate,
   endDate,
   timezone,
-  owner,
 }: {
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   timezone: string;
-  owner: WorkspaceType;
 }): Promise<Result<ExportTableData, Error>> {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
+  const baseQuery = buildExportConsumptionScopeQuery(auth, {
     startDate,
     endDate,
+    timezone,
   });
 
-  const toolsResult = await fetchAvailableTools(baseQuery);
-  if (toolsResult.isErr()) {
+  const result = await fetchToolUsageExportRows(baseQuery, timezone);
+
+  if (result.isErr()) {
     return new Err(
-      new Error(
-        `Failed to retrieve available tools: ${toolsResult.error.message}`
-      )
+      new Error(`Failed to retrieve tool usage: ${result.error.message}`)
     );
   }
-
-  const nestedRows = await concurrentExecutor(
-    toolsResult.value,
-    async (item) => {
-      const usageResult = await fetchToolUsageMetrics(
-        baseQuery,
-        item.serverName,
-        timezone
-      );
-      if (usageResult.isErr()) {
-        throw new Error(
-          `Failed to retrieve tool usage for ${item.serverName}: ${usageResult.error.message}`
-        );
-      }
-      return usageResult.value.map<ToolUsageRow>((point) => ({
-        date: point.date,
-        toolName: item.serverName,
-        executions: point.executionCount,
-        uniqueUsers: point.uniqueUsers,
-      }));
-    },
-    { concurrency: 8 }
-  );
-
-  const rows = nestedRows.flat().sort((a, b) => {
-    const dateCompare = a.date.localeCompare(b.date);
-    if (dateCompare !== 0) {
-      return dateCompare;
-    }
-    return a.toolName.localeCompare(b.toolName);
-  });
 
   return new Ok({
     table: "tool_usage",
     headers: TOOL_USAGE_HEADERS,
-    rows,
+    rows: result.value,
   });
 }
 

@@ -15,7 +15,7 @@ import {
 } from "@app/lib/resources/trigger_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type {
@@ -239,7 +239,7 @@ export function createTriggersManagementTools(
         throw err;
       }
 
-      getStatsDClient().increment("tools.triggers_management.created", 1, [
+      statsDMetrics.increment("tools.triggers_management.created", 1, [
         `workspace_id:${owner.sId}`,
         `agent_id:${agentConfiguration.sId}`,
       ]);
@@ -289,7 +289,7 @@ export function createTriggersManagementTools(
         );
       }
 
-      getStatsDClient().increment("tools.triggers_management.listed", 1, [
+      statsDMetrics.increment("tools.triggers_management.listed", 1, [
         `workspace_id:${owner.sId}`,
         `agent_id:${agentConfiguration.sId}`,
       ]);
@@ -418,7 +418,7 @@ export function createTriggersManagementTools(
         );
       }
 
-      getStatsDClient().increment("tools.triggers_management.disabled", 1, [
+      statsDMetrics.increment("tools.triggers_management.disabled", 1, [
         `workspace_id:${owner.sId}`,
         `agent_id:${agentConfiguration.sId}`,
       ]);
@@ -442,7 +442,7 @@ export function createTriggersManagementTools(
 
       const views = await getAccessibleWebhookSourceViews(auth);
 
-      getStatsDClient().increment(
+      statsDMetrics.increment(
         "tools.triggers_management.event_sources_listed",
         1,
         [`workspace_id:${owner.sId}`, `agent_id:${agentConfiguration.sId}`]
@@ -628,7 +628,7 @@ export function createTriggersManagementTools(
         throw err;
       }
 
-      getStatsDClient().increment(
+      statsDMetrics.increment(
         "tools.triggers_management.event_trigger_created",
         1,
         [`workspace_id:${owner.sId}`, `agent_id:${agentConfiguration.sId}`]

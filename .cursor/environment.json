@@ -1,0 +1,23 @@
+{
+  "name": "dust-tt/dust",
+  "build": {
+    "dockerfile": "../dev/Dockerfile",
+    "context": ".."
+  },
+  "install": "bash dev/scripts/install.sh",
+  "start": "bash dev/scripts/infra.sh",
+  "terminals": [
+    {
+      "name": "mprocs",
+      "command": "bash dev/scripts/apps.sh",
+      "description": "Dev stack via mprocs: sdks-js/sparkle watches, bacon Rust reload, all services"
+    }
+  ],
+  "ports": [
+    { "name": "front-api", "port": 3000 },
+    { "name": "front-spa", "port": 3011 },
+    { "name": "core-api", "port": 3001 },
+    { "name": "viz", "port": 3007 },
+    { "name": "temporal", "port": 7233 }
+  ]
+}

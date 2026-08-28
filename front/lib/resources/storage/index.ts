@@ -1,6 +1,6 @@
 import { SequelizeWithComments } from "@app/lib/api/database";
 import { dbConfig } from "@app/lib/resources/storage/config";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import { isDevelopment } from "@app/types/shared/env";
 import assert from "assert";
 import type { Sequelize } from "sequelize";
@@ -70,10 +70,10 @@ function reportPoolMetrics(
     return;
   }
 
-  getStatsDClient().gauge("sequelize.pool.size", pool.size, tags);
-  getStatsDClient().gauge("sequelize.pool.available", pool.available, tags);
-  getStatsDClient().gauge("sequelize.pool.using", pool.using, tags);
-  getStatsDClient().gauge("sequelize.pool.waiting", pool.waiting, tags);
+  statsDMetrics.gauge("sequelize.pool.size", pool.size, tags);
+  statsDMetrics.gauge("sequelize.pool.available", pool.available, tags);
+  statsDMetrics.gauge("sequelize.pool.using", pool.using, tags);
+  statsDMetrics.gauge("sequelize.pool.waiting", pool.waiting, tags);
 }
 
 const POOL_TAGS = ["pool:front_master"];
@@ -101,7 +101,7 @@ export const frontSequelize = new SequelizeWithComments(
           return;
         }
 
-        getStatsDClient().distribution(
+        statsDMetrics.distribution(
           "sequelize.connection_acquisition.duration",
           Date.now() - startMs,
           POOL_TAGS

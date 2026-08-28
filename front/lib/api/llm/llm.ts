@@ -48,7 +48,7 @@ import { getUsageType } from "@app/lib/metronome/events";
 import type { UsageType } from "@app/lib/metronome/types";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
 
@@ -198,22 +198,18 @@ export abstract class LLM<
 
     switch (outcomeTelemetry.outcome) {
       case "error":
-        getStatsDClient().increment("llm_error.count", 1, [
+        statsDMetrics.increment("llm_error.count", 1, [
           ...baseTags,
           `error_type:${outcomeTelemetry.errorType}`,
           `error_source:${outcomeTelemetry.errorSource}`,
         ]);
         break;
       case "success":
-        getStatsDClient().increment("llm_success.count", 1, baseTags);
+        statsDMetrics.increment("llm_success.count", 1, baseTags);
         break;
       case "success_without_usage":
-        getStatsDClient().increment("llm_success.count", 1, baseTags);
-        getStatsDClient().increment(
-          "llm_success_without_usage.count",
-          1,
-          baseTags
-        );
+        statsDMetrics.increment("llm_success.count", 1, baseTags);
+        statsDMetrics.increment("llm_success_without_usage.count", 1, baseTags);
         break;
       default:
         assertNever(outcomeTelemetry);
@@ -313,7 +309,7 @@ export abstract class LLM<
 
     const metricTags = this.getTelemetryTags({ surface: "stream" });
 
-    getStatsDClient().increment("llm_interaction.count", 1, metricTags);
+    statsDMetrics.increment("llm_interaction.count", 1, metricTags);
 
     let currentEvent: LLMEvent | null = null;
     let timeToFirstEventMs: number | undefined;
@@ -774,7 +770,7 @@ export abstract class LLM<
           hasError = true;
           const errorType = event.content.type;
           const errorSource = event.content.errorSource;
-          getStatsDClient().increment("llm_error.count", 1, [
+          statsDMetrics.increment("llm_error.count", 1, [
             ...metricTags,
             `error_type:${errorType}`,
             `error_source:${errorSource}`,
@@ -810,9 +806,9 @@ export abstract class LLM<
       }
 
       if (!hasError) {
-        getStatsDClient().increment("llm_success.count", 1, metricTags);
+        statsDMetrics.increment("llm_success.count", 1, metricTags);
       }
-      getStatsDClient().increment("llm_interaction.count", 1, metricTags);
+      statsDMetrics.increment("llm_interaction.count", 1, metricTags);
 
       const { tokenUsage, ...rest } = buffer.currentOutput;
 

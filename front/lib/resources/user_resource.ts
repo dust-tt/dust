@@ -19,7 +19,7 @@ import {
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
@@ -438,10 +438,7 @@ export class UserResource extends BaseResource<UserModel> {
       const foundUserIds = new Set(users.map((u) => u.sId));
       const missingUserIds = userIds.filter((sId) => !foundUserIds.has(sId));
 
-      getStatsDClient().increment(
-        "user_search.revoked_users_in_results.count",
-        1
-      );
+      statsDMetrics.increment("user_search.revoked_users_in_results.count", 1);
 
       logger.error(
         {

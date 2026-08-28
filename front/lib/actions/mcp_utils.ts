@@ -20,6 +20,7 @@ import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { isEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import {
+  attachmentUsageHintsFor,
   makeFileAttachment,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
@@ -34,6 +35,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { FileModel } from "@app/lib/resources/storage/models/files";
 import logger from "@app/logger/logger";
+import type { AttachmentCapabilityContext } from "@app/types/api/assistant/conversation/attachments";
 import type { SupportedImageContentType } from "@app/types/files";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -101,7 +103,8 @@ export function hideFileFromActionOutput({
 }
 
 export function rewriteContentForModel(
-  content: CallToolResult["content"][number]
+  content: CallToolResult["content"][number],
+  capabilities: AttachmentCapabilityContext
 ): CallToolResult["content"][number] | null {
   // Only render tool generated files that are supported.
   if (
@@ -116,8 +119,12 @@ export function rewriteContentForModel(
       snippet: content.resource.snippet,
       isInProjectContext: content.resource.isInProjectContext ?? false,
       hideFromUser: false, // Model do not care.
+      capabilities,
     });
-    const xml = renderAttachmentXml({ attachment });
+    const xml = renderAttachmentXml({
+      attachment,
+      usage: attachmentUsageHintsFor(capabilities),
+    });
     let text = content.resource.text;
     if (text) {
       text += `\n`;

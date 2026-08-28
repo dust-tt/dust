@@ -9,6 +9,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 
@@ -39,7 +40,6 @@ interface ActiveUsersExportAggs {
 const WAU_WINDOW_DAYS = 7;
 const MAU_WINDOW_DAYS = 28;
 const COMPOSITE_AGG_SIZE = 10_000;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
  * Computes the count of unique users over a rolling window ending at the given timestamp.
@@ -49,7 +49,7 @@ function computeRollingActiveUsers(
   endTimestampMs: number,
   windowDays: number
 ): number {
-  const startMs = endTimestampMs - (windowDays - 1) * MS_PER_DAY;
+  const startMs = endTimestampMs - (windowDays - 1) * ONE_DAY_MS;
   const uniqueUsers = new Set<string>();
 
   for (const [ts, users] of usersByDay) {

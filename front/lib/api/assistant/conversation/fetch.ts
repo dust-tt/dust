@@ -13,7 +13,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import type {
   AgentMessageType,
   CompactionMessageType,
@@ -252,7 +252,7 @@ async function _getConversation<V extends "light" | "full">(
     );
 
     // Purely observational, see TOOL_OUTPUT_FETCH_BATCH_SIZE above.
-    getStatsDClient().distribution(
+    statsDMetrics.distribution(
       "conversation.interactions_count",
       interactions.length
     );
@@ -342,6 +342,7 @@ async function _getConversation<V extends "light" | "full">(
       })
     );
 
+    // TODO(seb) Instead of building it from scratch and duplicate logic, we should use enrichWithParticipationAndReadState and then ConversationResource.toJSON().
     const conversationType: LightConversationType & {
       hasMore?: boolean;
       lastValue?: number | null;
@@ -364,6 +365,7 @@ async function _getConversation<V extends "light" | "full">(
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
       isRunningAgentLoop: conversation.isRunningAgentLoop,
+      isParticipant: !!lastReadAt, // Not really true but mostly harmless here, the user could be a participant but not have read the conversation yet (eg: added by someone else) see TODO above.
       ...(forkingData && { forkingData }),
     };
 
@@ -442,6 +444,7 @@ async function _getConversation<V extends "light" | "full">(
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
       isRunningAgentLoop: conversation.isRunningAgentLoop,
+      isParticipant: !!lastReadAt, // Not really true but mostly harmless here, the user could be a participant but not have read the conversation yet (eg: added by someone else) see TODO above.
       ...(forkingData && { forkingData }),
     };
 

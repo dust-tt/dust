@@ -9,7 +9,7 @@ import {
   isSandboxFunctionRunContext,
 } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
@@ -189,7 +189,7 @@ function withToolLogging<T>(
     const tags = [`tool:${toolNameForMonitoring}`];
 
     if (enableAlerting) {
-      getStatsDClient().increment("use_tools.count", 1, tags);
+      statsDMetrics.increment("use_tools.count", 1, tags);
     }
     const startTime = performance.now();
 
@@ -200,7 +200,7 @@ function withToolLogging<T>(
     // When we get an Err, we monitor it if tracked and return it as a text content.
     if (result.isErr()) {
       if (enableAlerting && result.error.tracked) {
-        getStatsDClient().increment("use_tools_error.count", 1, [
+        statsDMetrics.increment("use_tools_error.count", 1, [
           "error_type:run_error",
           ...tags,
         ]);
@@ -238,7 +238,7 @@ function withToolLogging<T>(
     }
 
     if (enableAlerting) {
-      getStatsDClient().distribution(
+      statsDMetrics.distribution(
         "run_tool.duration.distribution",
         elapsed,
         tags

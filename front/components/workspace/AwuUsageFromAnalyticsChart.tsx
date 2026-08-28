@@ -28,6 +28,7 @@ import type { AwuUsageAnalyticsResponse } from "@app/lib/api/analytics/awu_usage
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { useAwuUsageFromAnalytics } from "@app/lib/swr/workspaces";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import {
   Button,
   Chip,
@@ -102,8 +103,6 @@ function getColorClassName(
   return getIndexedColor(groupKey, allKeys);
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 function formatUtcMonthDay(date: Date): string {
   return date.toLocaleDateString("en-US", {
     month: "short",
@@ -128,12 +127,12 @@ export function formatBucketRange(
     now.getUTCDate()
   );
   // Mirrors the server-side window from daysToInstantRange(days, "UTC").
-  const windowStartMs = todayMs - (days - 1) * DAY_MS;
+  const windowStartMs = todayMs - (days - 1) * ONE_DAY_MS;
 
   const bucketStart = new Date(bucketStartMs);
   const bucketEndMs =
     granularity === "week"
-      ? bucketStartMs + 6 * DAY_MS
+      ? bucketStartMs + 6 * ONE_DAY_MS
       : Date.UTC(
           bucketStart.getUTCFullYear(),
           bucketStart.getUTCMonth() + 1,

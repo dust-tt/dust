@@ -8,6 +8,7 @@ import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { AttachmentCapabilityContext } from "@app/types/api/assistant/conversation/attachments";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -75,6 +76,12 @@ function footprintInput(
 // The auth is only forwarded to getLlmCredentials, which is mocked, so a bare stub is enough.
 const auth = {} as Authenticator;
 
+// None of these outputs are attachments, so the capabilities only need to be present.
+const capabilities: AttachmentCapabilityContext = {
+  isNewFileExplorer: false,
+  hasSandboxTools: false,
+};
+
 describe("toolCallFootprintTexts", () => {
   it("serializes a call from the emitted arguments, not the augmented params", () => {
     const { callText } = toolCallFootprintTexts(
@@ -85,7 +92,8 @@ describe("toolCallFootprintTexts", () => {
           params: { query: "hello", injectedSecret: "x".repeat(500) },
         }),
         '{"query":"hello"}'
-      )
+      ),
+      capabilities
     );
 
     expect(callText).toBe('search\n{"query":"hello"}');
@@ -98,7 +106,8 @@ describe("toolCallFootprintTexts", () => {
           status: "denied",
           output: [{ type: "text", text: "leaked" }],
         })
-      )
+      ),
+      capabilities
     );
 
     expect(inputText).toBe(
@@ -108,7 +117,8 @@ describe("toolCallFootprintTexts", () => {
 
   it("renders an action awaiting validation as the validation notice", () => {
     const { inputText } = toolCallFootprintTexts(
-      footprintInput(makeAction({ status: "blocked_validation_required" }))
+      footprintInput(makeAction({ status: "blocked_validation_required" })),
+      capabilities
     );
 
     expect(inputText).toBe(
@@ -118,7 +128,8 @@ describe("toolCallFootprintTexts", () => {
 
   it("renders an empty output as the no-output notice", () => {
     const { inputText } = toolCallFootprintTexts(
-      footprintInput(makeAction({ status: "succeeded", output: [] }))
+      footprintInput(makeAction({ status: "succeeded", output: [] })),
+      capabilities
     );
 
     expect(inputText).toBe("Successfully executed action, no output.");
@@ -134,7 +145,8 @@ describe("toolCallFootprintTexts", () => {
             { type: "text", text: "second" },
           ],
         })
-      )
+      ),
+      capabilities
     );
 
     expect(inputText).toBe("first\nsecond");
@@ -152,7 +164,8 @@ describe("toolCallFootprintTexts", () => {
             },
           ],
         })
-      )
+      ),
+      capabilities
     );
 
     expect(inputText).toBe(JSON.stringify([{ uri: "u", text: "body" }]));
@@ -171,6 +184,7 @@ describe("measureToolCallFootprints", () => {
 
   it("omits deferred enabled-skill definitions for an Anthropic tool-search model", async () => {
     await measureToolCallFootprints(auth, {
+      capabilities,
       modelId: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
       toolCalls: [footprintInput(makeAction())],
     });
@@ -184,6 +198,7 @@ describe("measureToolCallFootprints", () => {
 
   it("includes enabled-skill definitions when tool search is disabled", async () => {
     await measureToolCallFootprints(auth, {
+      capabilities,
       modelId: GPT_4_1_MODEL_CONFIG.modelId,
       toolCalls: [footprintInput(makeAction())],
     });
@@ -197,6 +212,7 @@ describe("measureToolCallFootprints", () => {
 
   it("returns an empty result without tokenizing when there are no actions", async () => {
     const res = await measureToolCallFootprints(auth, {
+      capabilities,
       modelId: GPT_5_MODEL_ID,
       toolCalls: [],
     });
@@ -208,6 +224,7 @@ describe("measureToolCallFootprints", () => {
 
   it("fails when the run's model is not a known configuration", async () => {
     const res = await measureToolCallFootprints(auth, {
+      capabilities,
       modelId: "not-a-real-model",
       toolCalls: [footprintInput(makeAction())],
     });
@@ -222,6 +239,7 @@ describe("measureToolCallFootprints", () => {
     STATIC_MODEL_IDS
   )("keeps a tool-footprint tokenizer configuration for static model %s", async (modelId) => {
     const res = await measureToolCallFootprints(auth, {
+      capabilities,
       modelId,
       toolCalls: [footprintInput(makeAction())],
     });
@@ -236,6 +254,7 @@ describe("measureToolCallFootprints", () => {
     GEMINI_3_FLASH_MODEL_CONFIG,
   ])("tokenizes historical $modelId runs whose model is no longer served", async (modelConfig) => {
     const res = await measureToolCallFootprints(auth, {
+      capabilities,
       modelId: modelConfig.modelId,
       toolCalls: [footprintInput(makeAction())],
     });
@@ -253,6 +272,7 @@ describe("measureToolCallFootprints", () => {
 
   it("tokenizes GPT-5 footprints without safety padding using o200k", async () => {
     const res = await measureToolCallFootprints(auth, {
+      capabilities,
       modelId: GPT_5_6_SOL_MODEL_ID,
       toolCalls: [footprintInput(makeAction())],
     });
@@ -282,6 +302,7 @@ describe("measureToolCallFootprints", () => {
     ];
 
     const res = await measureToolCallFootprints(auth, {
+      capabilities,
       modelId: GPT_5_MODEL_ID,
       toolCalls,
     });
@@ -313,6 +334,7 @@ describe("measureToolCallFootprints", () => {
     );
 
     const res = await measureToolCallFootprints(auth, {
+      capabilities,
       modelId: GPT_5_MODEL_ID,
       toolCalls: [footprintInput(makeAction())],
     });

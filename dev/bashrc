@@ -1,0 +1,62 @@
+# Interactive shell defaults for the Dust shared dev container.
+# Secret env is loaded by /root/.bashrc (interactive bash does not use BASH_ENV).
+
+case $- in
+  *i*) ;;
+  *) return ;;
+esac
+
+# Belt-and-suspenders if this file is sourced without going through /root/.bashrc.
+if [ -f /tmp/dust-shell-env.sh ]; then
+  # shellcheck disable=SC1091
+  source /tmp/dust-shell-env.sh
+fi
+
+export SHELL=/bin/bash
+export LANG="${LANG:-C.UTF-8}"
+export LC_ALL="${LC_ALL:-C.UTF-8}"
+export TERM="${TERM:-xterm-256color}"
+export COLORTERM="${COLORTERM:-truecolor}"
+export FORCE_COLOR="${FORCE_COLOR:-1}"
+export CLICOLOR="${CLICOLOR:-1}"
+export CLICOLOR_FORCE="${CLICOLOR_FORCE:-1}"
+
+# Cursor cloud-agent terminals replace image PATH; restore Rust/Qdrant tool locations.
+for _dev_bin_dir in /usr/local/cargo/bin /opt/qdrant; do
+  if [ -d "${_dev_bin_dir}" ]; then
+    case ":${PATH}:" in
+      *":${_dev_bin_dir}:"*) ;;
+      *) export PATH="${_dev_bin_dir}:${PATH}" ;;
+    esac
+  fi
+done
+unset _dev_bin_dir
+
+shopt -s checkwinsize histappend globstar 2>/dev/null || true
+
+HISTCONTROL=ignoreboth:erasedups
+HISTSIZE=10000
+HISTFILESIZE=20000
+
+if [ -x /usr/bin/dircolors ]; then
+  eval "$(dircolors -b)"
+  alias ls='ls --color=auto'
+  alias grep='grep --color=auto'
+fi
+
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+
+# Repo helper when /workspace is mounted.
+if [ -d /workspace/.git ]; then
+  alias cdust='cd /workspace'
+fi
+
+if [ -f /etc/bash_completion ]; then
+  # shellcheck disable=SC1091
+  source /etc/bash_completion
+fi
+
+# Explicit color prompt (docker/tmux sometimes report TERM without color by default).
+PS1='\[\e[01;32m\]\u@\h\[\e[00m\]:\[\e[01;34m\]\w\[\e[00m\]\$ '

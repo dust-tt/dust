@@ -2057,30 +2057,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new ConversationError("conversation_not_found"));
     }
 
-    const { actionRequired, lastReadAt } =
-      await ConversationResource.getActionRequiredAndLastReadAtForUser(
-        auth,
-        conversation.id
-      );
+    await this.enrichWithParticipationAndReadState(auth, [conversation]);
 
-    return new Ok({
-      actionRequired,
-      created: conversation.createdAt.getTime(),
-      depth: conversation.depth,
-      hasError: conversation.hasError,
-      id: conversation.id,
-      lastReadMs: lastReadAt?.getTime() ?? null,
-      metadata: conversation.metadata,
-      requestedGroupIds: [],
-      requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
-      sId: conversation.sId,
-      spaceId: conversation.space?.sId ?? null,
-      title: conversation.title,
-      triggerId: conversation.triggerSId,
-      unread: lastReadAt === null || conversation.updatedAt > lastReadAt,
-      updated: conversation.updatedAt.getTime(),
-      isRunningAgentLoop: conversation.isRunningAgentLoop,
-    });
+    return new Ok(conversation.toJSON());
   }
 
   private static async update(
@@ -2376,21 +2355,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       };
     }
 
-    const participationMap = await this.fetchParticipationMapForUser(
-      auth,
-      conversations.map((c) => c.id)
-    );
-    const participantConversationIds = new Set(participationMap.keys());
-
-    // Attach participation data and read state to all resources.
-    conversations.forEach((c) => {
-      const participation = participationMap.get(c.id);
-      if (participation) {
-        c.userParticipation = participation;
-      }
-    });
-
-    await this.enrichWithReadState(auth, conversations);
+    await this.enrichWithParticipationAndReadState(auth, conversations);
 
     // These conversations are used to display the unread count in the sidebar.
     // We do not count conversations the user does not participate in.
@@ -2402,15 +2367,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const nonParticipantUnreadConversations = conversations.filter(
       (c) =>
-        !participantConversationIds.has(c.id) &&
+        !c.userParticipation &&
         (c.userLastReadAt === null || c.updatedAt > c.userLastReadAt)
     );
 
-    // Hydrate next wake-up only for conversations returned to the summary (sidebar inbox).
-    await this.enrichWithNextWakeupAt(auth, [
-      ...unreadConversations,
-      ...nonParticipantUnreadConversations,
-    ]);
+    // Hydrate next wake-up only for participant unread conversations, which are
+    // serialized into the sidebar inbox. Non-participant unread IDs are only
+    // used for the activity badge.
+    await this.enrichWithNextWakeupAt(auth, unreadConversations);
 
     const lastUserActivityBySpace = new Map<number, Date>();
 
@@ -2832,6 +2796,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         depth: c.depth,
         metadata: c.metadata,
         isRunningAgentLoop: c.isRunningAgentLoop,
+        isParticipant: !!participation,
       };
     });
   }
@@ -2893,6 +2858,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       depth: c.depth,
       metadata: c.metadata,
       isRunningAgentLoop: c.isRunningAgentLoop,
+      isParticipant: false,
     }));
   }
 
@@ -5366,6 +5332,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         this.userLastReadAt === null || this.updatedAt > this.userLastReadAt,
       updated: this.updatedAt.getTime(),
       isRunningAgentLoop: this.isRunningAgentLoop,
+      isParticipant: !!this.userParticipation,
     };
   }
 

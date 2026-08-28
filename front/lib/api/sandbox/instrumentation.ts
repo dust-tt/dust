@@ -1,6 +1,6 @@
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import tracer from "@app/logger/tracer";
 
 // Intentionally NOT tagged by workspace_id: region (+ operation/status) is
@@ -85,7 +85,7 @@ export function recordSandboxStartupTotal(
   { region, cold }: { region?: string; cold: boolean },
   status: "success" | "error"
 ): void {
-  getStatsDClient().distribution("sandbox.startup.total.duration", durationMs, [
+  statsDMetrics.distribution("sandbox.startup.total.duration", durationMs, [
     `region:${region ?? regionConfig.getCurrentRegion()}`,
     `cold:${cold}`,
     `status:${status}`,
@@ -95,9 +95,7 @@ export function recordSandboxStartupTotal(
 export function recordLifecycleOperation(
   operation: "create" | "wake" | "sleep" | "destroy"
 ): void {
-  getStatsDClient().increment(`sandbox.lifecycle.${operation}`, 1, [
-    regionTag(),
-  ]);
+  statsDMetrics.increment(`sandbox.lifecycle.${operation}`, 1, [regionTag()]);
 }
 
 /**
@@ -115,8 +113,8 @@ export function recordSandboxFunctionRun({
   durationMs: number;
 }): void {
   const tags = [regionTag(), `runner_kind:${runnerKind}`, `status:${status}`];
-  getStatsDClient().increment("sandbox.functions.run", 1, tags);
-  getStatsDClient().distribution(
+  statsDMetrics.increment("sandbox.functions.run", 1, tags);
+  statsDMetrics.distribution(
     "sandbox.functions.run.duration",
     durationMs,
     tags
@@ -127,7 +125,7 @@ export function recordStateDuration(
   previousStatus: SandboxStatus,
   durationMs: number
 ): void {
-  getStatsDClient().distribution("sandbox.lifecycle.duration", durationMs, [
+  statsDMetrics.distribution("sandbox.lifecycle.duration", durationMs, [
     regionTag(),
     `status:${previousStatus}`,
   ]);
@@ -138,7 +136,7 @@ export function recordToolDuration(
   durationMs: number,
   status: "success" | "error" = "success"
 ): void {
-  getStatsDClient().distribution("sandbox.tools.duration", durationMs, [
+  statsDMetrics.distribution("sandbox.tools.duration", durationMs, [
     `tool:${tool}`,
     `status:${status}`,
   ]);
@@ -148,7 +146,7 @@ export function recordToolDuration(
 // monitors page on the failure count; the stable logger.error message next to
 // each failing call site carries the cause.
 export function recordPodStateHealth(status: "success" | "failure"): void {
-  getStatsDClient().increment("sandbox.pod_state.health", 1, [
+  statsDMetrics.increment("sandbox.pod_state.health", 1, [
     regionTag(),
     `status:${status}`,
   ]);

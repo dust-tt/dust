@@ -22,7 +22,8 @@
     "migration:check:post-deploy": "node ../scripts/db/run-migrate.cjs --command check-post-deploy --execute",
     "migration:mark:pre-deploy": "node ../scripts/db/run-migrate.cjs --command mark-pre-deploy --execute",
     "migration:mark:post-deploy": "node ../scripts/db/run-migrate.cjs --command mark-post-deploy --execute",
-    "tsgo": "tsgo"
+    "tsgo": "tsgo",
+    "check:bundled-deps": "tsx scripts/check-bundled-deps.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

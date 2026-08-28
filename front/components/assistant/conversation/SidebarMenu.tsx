@@ -746,7 +746,7 @@ export function AgentSidebarMenu({
     const hiddenOverflowHasActivity = hiddenStarredSummary.some(
       (s) =>
         s.unreadConversations.length > 0 ||
-        s.nonParticipantUnreadConversations.length > 0
+        s.nonParticipantUnreadConversationIds.length > 0
     );
 
     return (
@@ -793,7 +793,7 @@ export function AgentSidebarMenu({
     const hiddenOverflowHasActivity = hiddenSummary.some(
       (s) =>
         s.unreadConversations.length > 0 ||
-        s.nonParticipantUnreadConversations.length > 0
+        s.nonParticipantUnreadConversationIds.length > 0
     );
 
     return (

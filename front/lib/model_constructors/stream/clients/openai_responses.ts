@@ -11,7 +11,7 @@ import type { Payload } from "@app/lib/model_constructors/types/input/messages";
 import { OPENAI_LAB } from "@app/lib/model_constructors/types/labs";
 import type { Model } from "@app/lib/model_constructors/types/models";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 // Do not remove: front-api routes call into this client for the similar skill
@@ -149,7 +149,7 @@ export abstract class OpenAIResponsesStream extends WithOpenAIResponsesInputConv
       { err: normalizeError(err), tags },
       "OpenAI flex processing unavailable, replaying on standard processing"
     );
-    getStatsDClient().increment("llm_flex_fallback.count", 1, tags);
+    statsDMetrics.increment("llm_flex_fallback.count", 1, tags);
   }
 
   async *rawStreamOutputToEvents(

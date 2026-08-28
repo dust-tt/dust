@@ -23,7 +23,15 @@ export async function validatePodFrameTabs(
   auth: Authenticator,
   space: SpaceResource,
   frameTabs: PodFrameTab[],
-  tabsOrder: PodTabsOrder | undefined
+  tabsOrder: PodTabsOrder | undefined,
+  options?: {
+    /**
+     * Canonical frame tab paths already stored on the Pod. File existence is
+     * not re-checked for these paths so members can remove or reorder tabs
+     * even when another tab still points at a moved or deleted Frame.
+     */
+    existingFrameTabPaths?: ReadonlySet<string>;
+  }
 ): Promise<Result<{ frameTabs: PodFrameTab[]; tabsOrder: string[] }, Error>> {
   if (frameTabs.length > MAX_POD_FRAME_TABS) {
     return new Err(
@@ -56,17 +64,23 @@ export async function validatePodFrameTabs(
     seenPaths.add(normalizedPath);
     pathRemap.set(tab.path, normalizedPath);
 
-    const statResult = await fs.stat(normalizedPath);
-    if (statResult.isErr() || !statResult.value) {
-      return new Err(new Error(`Frame tab file not found: ${normalizedPath}`));
-    }
+    const isExistingTab =
+      options?.existingFrameTabPaths?.has(normalizedPath) ?? false;
+    if (!isExistingTab) {
+      const statResult = await fs.stat(normalizedPath);
+      if (statResult.isErr() || !statResult.value) {
+        return new Err(
+          new Error(`Frame tab file not found: ${normalizedPath}`)
+        );
+      }
 
-    if (!isInteractiveContentType(statResult.value.contentType)) {
-      return new Err(
-        new Error(
-          `Frame tab path is not an interactive frame: ${normalizedPath}`
-        )
-      );
+      if (!isInteractiveContentType(statResult.value.contentType)) {
+        return new Err(
+          new Error(
+            `Frame tab path is not an interactive frame: ${normalizedPath}`
+          )
+        );
+      }
     }
 
     normalized.push({

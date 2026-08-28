@@ -9,6 +9,7 @@ import {
   PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { framesSkill } from "@app/lib/resources/skill/code_defined/global/frames";
 import { POD_FUNCTIONS_SKILL_NAME } from "@app/lib/resources/skill/code_defined/global/pod_functions";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -51,6 +52,45 @@ function agentLoopDataInPod(spaceId: string | null): AgentLoopExecutionData {
 }
 
 describe("framesSkill.fetchInstructions", () => {
+  it("uses dsbx publish and keeps the remaining MCP tools under Frames v2", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).toContain("dsbx frame publish");
+    expect(instructions).toContain("package-like folder");
+    expect(instructions).toContain("canonical Frame resource");
+    expect(instructions).toContain("`index.tsx` by default");
+    expect(instructions).toContain("single `.tsx` entry file");
+    expect(instructions).toContain("atomically activates the publication");
+    expect(instructions).toContain("## Authoring a function");
+    expect(instructions).toContain('userIdentity: "workspace_user_required"');
+    expect(instructions).toContain("### Fast and durable functions");
+    expect(instructions).toContain("dsbx tools --json");
+    expect(instructions).toContain("usePodFunctionMutation");
+    expect(instructions).toContain("## Persisting state in a Frame database");
+    expect(instructions).toContain('db("comments")');
+    expect(instructions).toContain("reconciles the declared schemas");
+    expect(instructions).toContain("### React Component Rules");
+    expect(instructions).toContain("legacy Frame");
+    expect(instructions).toContain("<frame>.tsx");
+    expect(instructions).not.toContain("dsbx frame create");
+    expect(instructions).not.toContain("dsbx frame register");
+    expect(instructions).toContain(
+      "Other interactive-content tools remain available"
+    );
+    expect(framesSkill.mcpServers).toEqual([{ name: "interactive_content" }]);
+    await expect(
+      InternalMCPServerInMemoryResource.isRestrictedForWorkspace(
+        auth,
+        "interactive_content"
+      )
+    ).resolves.toBe(false);
+  });
+
   it("teaches the computer-first flow when the Computer is enabled", async () => {
     const { authenticator: auth } = await createResourceTest({});
 

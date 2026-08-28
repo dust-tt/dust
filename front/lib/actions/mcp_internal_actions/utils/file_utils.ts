@@ -1,5 +1,6 @@
 import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { resolveFile } from "@app/lib/api/actions/servers/files/tools/utils";
+import { getAttachmentCapabilityContext } from "@app/lib/api/assistant/conversation/attachment_capabilities";
 import {
   conversationAttachmentId,
   getAttachmentFromContentFragment,
@@ -226,12 +227,17 @@ export async function getFileFromConversationAttachment(
   const conversation = runContext.conversation;
   let attachment: ConversationAttachmentType | null = null;
 
+  const capabilities = await getAttachmentCapabilityContext(auth, conversation);
+
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
 
     if (isContentFragmentType(m)) {
       if (m.contentFragmentVersion === "latest") {
-        const candidateAttachment = getAttachmentFromContentFragment(m);
+        const candidateAttachment = getAttachmentFromContentFragment({
+          cf: m,
+          capabilities,
+        });
         if (
           candidateAttachment &&
           conversationAttachmentId(candidateAttachment) === fileId
@@ -255,6 +261,7 @@ export async function getFileFromConversationAttachment(
             snippet: f.snippet,
             isInProjectContext: f.isInProjectContext ?? false,
             hideFromUser: f.hidden ?? false,
+            capabilities,
           });
           break;
         }

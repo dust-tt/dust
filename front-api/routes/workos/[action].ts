@@ -20,7 +20,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import { extractUTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -275,7 +275,7 @@ async function handleLogin(ctx: Context) {
     return redirect(ctx, authorizationUrl);
   } catch (error) {
     logger.error({ error }, "Error during WorkOS login");
-    getStatsDClient().increment("login.error", 1);
+    statsDMetrics.increment("login.error", 1);
     return redirect(ctx, "/login-error?type=workos-login");
   }
 }
@@ -647,7 +647,7 @@ async function handleCallback(ctx: Context) {
       });
     }
 
-    getStatsDClient().increment("login.callback.error", 1);
+    statsDMetrics.increment("login.callback.error", 1);
     return redirectTo(ctx, `/login-error?type=workos-callback`);
   }
 }

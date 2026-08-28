@@ -132,7 +132,7 @@ return <p>Welcome back, {user.firstName}</p>;
 \`\`\`
 
 - Use it for presentation only: greet the viewer by name, or highlight the rows that are theirs.
-- It tells you who is looking, not what they are allowed to do, and a Frame on its own holds no state to protect. Do not build access control out of it: whatever a Frame renders, its viewer can read.
+- It tells you who is looking, not what they are allowed to do. Do not build access control out of client-side code: whatever a Frame renders, its viewer can read. Protect Frame-owned state in server functions.
 
 ### Interaction Rules
 

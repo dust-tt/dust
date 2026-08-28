@@ -10,6 +10,17 @@ import type {
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// These cases exercise message ordering and visibility, not attachments, so the capability lookup
+// is stubbed out rather than backed by a workspace.
+vi.mock(
+  import("@app/lib/api/assistant/conversation/attachment_capabilities"),
+  () => ({
+    getAttachmentCapabilityContext: vi
+      .fn()
+      .mockResolvedValue({ isNewFileExplorer: false, hasSandboxTools: false }),
+  })
+);
+
 // Mock the helpers module
 vi.mock(import("./helpers"), async (importOriginal) => {
   const mod = await importOriginal();
@@ -184,6 +195,7 @@ describe("renderAllMessages", () => {
       triggerId: null,
       metadata: {},
       isRunningAgentLoop: false,
+      isParticipant: false,
     } as ConversationType;
   }
 

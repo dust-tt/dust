@@ -1,7 +1,8 @@
+import type { AttachmentUsageHints } from "@app/lib/api/assistant/conversation/attachments";
 import {
+  attachmentUsageHintsFor,
   conversationAttachmentId,
   getAttachmentFromContentFragment,
-  isContentNodeAttachmentType,
   isFileAttachmentType,
   renderAttachmentXml,
   renderLargePasteXml,
@@ -37,7 +38,10 @@ import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
+import type {
+  AttachmentCapabilityContext,
+  ConversationAttachmentType,
+} from "@app/types/api/assistant/conversation/attachments";
 import type { ContentFragmentMessageTypeModel } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type {
@@ -1003,6 +1007,10 @@ async function getSignedUrlForVersion(
   });
 }
 
+/**
+ * Retrieves an attachment's content for the `cat` tool. The rendered XML therefore never carries a
+ * usage line: the content is already here, and the caller slices offset/limit over this text.
+ */
 export async function getContentFragmentFromAttachmentFile(
   auth: Authenticator,
   {
@@ -1043,7 +1051,7 @@ export async function getContentFragmentFromAttachmentFile(
         content: [
           {
             type: "text",
-            text: renderAttachmentXml({ attachment }),
+            text: renderAttachmentXml({ attachment, usage: null }),
           },
         ],
       });
@@ -1114,6 +1122,7 @@ export async function getContentFragmentFromAttachmentFile(
           text: renderAttachmentXml({
             attachment,
             content: document.document.text ?? null,
+            usage: null,
           }),
         },
       ],
@@ -1160,6 +1169,7 @@ export async function getContentFragmentFromAttachmentFile(
           text: renderAttachmentXml({
             attachment,
             content,
+            usage: null,
           }),
         },
       ],
@@ -1176,9 +1186,11 @@ function renderFileOrAttachmentXml(
   {
     content,
     isNewFileExplorer,
+    usage,
   }: {
     content?: string | null;
     isNewFileExplorer: boolean;
+    usage: AttachmentUsageHints;
   }
 ): string {
   if (isNewFileExplorer) {
@@ -1196,7 +1208,7 @@ function renderFileOrAttachmentXml(
       : `<file name="${attachment.title}"${pathAttr}${processedPathAttr}/>`;
   }
 
-  return renderAttachmentXml({ attachment, content: content ?? null });
+  return renderAttachmentXml({ attachment, content: content ?? null, usage });
 }
 
 // Render only a tag to specify that a content fragment was injected at a given position except for
@@ -1207,10 +1219,10 @@ export async function renderLightContentFragmentForModel(
   model: ModelConfigurationType,
   {
     excludeImages,
-    useFileSystem,
+    capabilities,
   }: {
     excludeImages: boolean;
-    useFileSystem: boolean;
+    capabilities: AttachmentCapabilityContext;
   }
 ): Promise<ContentFragmentMessageTypeModel | null> {
   const { contentType } = message;
@@ -1228,7 +1240,10 @@ export async function renderLightContentFragmentForModel(
     };
   }
 
-  const rawAttachment = getAttachmentFromContentFragment(message);
+  const rawAttachment = getAttachmentFromContentFragment({
+    cf: message,
+    capabilities,
+  });
   if (!rawAttachment) {
     return null;
   }
@@ -1238,7 +1253,13 @@ export async function renderLightContentFragmentForModel(
   const fileStringId =
     message.contentFragmentType === "file" ? message.fileId : null;
 
-  const isNewFileExplorer = fileStringId ? useFileSystem : false;
+  // Whether this specific attachment lives on the file mount. Content nodes never do, even in a
+  // file system conversation, so they keep the attachment XML rendering.
+  const isNewFileExplorer = fileStringId
+    ? capabilities.isNewFileExplorer
+    : false;
+  // Tool availability is conversation-wide, so it follows the context and not the attachment.
+  const usage = attachmentUsageHintsFor(capabilities);
 
   // Pasted content is always inlined regardless of feature flags.
   if (fileStringId && isPastedFile(contentType)) {
@@ -1281,6 +1302,7 @@ export async function renderLightContentFragmentForModel(
             type: "text",
             text: renderFileOrAttachmentXml(attachment, {
               isNewFileExplorer,
+              usage,
               content:
                 "[Image content interpreted by a vision-enabled model. " +
                 "Description not available in this context.",
@@ -1309,21 +1331,20 @@ export async function renderLightContentFragmentForModel(
         },
         {
           type: "text" as const,
-          text: renderFileOrAttachmentXml(attachment, { isNewFileExplorer }),
+          text: renderFileOrAttachmentXml(attachment, {
+            isNewFileExplorer,
+            usage,
+          }),
         },
       ],
     };
   }
 
-  // When the conversation uses the new file system, regular file attachments are accessible via
-  // the `files` server (path-based). Emit a slim <file> tag so the model knows the file exists
-  // and how to reach it. Queryable tables and content nodes are excluded: they rely on legacy
-  // attachment XML for query_tables_v2 and include_file wiring.
-  if (
-    isNewFileExplorer &&
-    !attachment.isQueryable &&
-    !isContentNodeAttachmentType(attachment)
-  ) {
+  // When the conversation uses the new file system, every regular file attachment is reached by
+  // path through the `files` server, tabular ones included (the Computer analyzes those). Emit a
+  // slim <file> tag so the model knows the file exists and how to reach it. `isNewFileExplorer` is
+  // already false for content nodes, which have no path and keep the attachment XML below.
+  if (isNewFileExplorer) {
     return {
       role: "content_fragment",
       name: `attach_${contentType}`,
@@ -1332,6 +1353,7 @@ export async function renderLightContentFragmentForModel(
           type: "text",
           text: renderFileOrAttachmentXml(attachment, {
             isNewFileExplorer,
+            usage,
             content: attachment.snippet,
           }),
         },
@@ -1349,6 +1371,7 @@ export async function renderLightContentFragmentForModel(
           // Use fileId as contentFragmentId to provide a consistent identifier for the model
           // to reference content fragments across different actions like include_file.
           attachment,
+          usage,
         }),
       },
     ],

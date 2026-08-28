@@ -130,7 +130,7 @@ import {
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
@@ -2830,10 +2830,10 @@ async function checkPoolCreditConcurrencyLimit(
       "Pool credit concurrency limit triggered."
     );
 
-    getStatsDClient().increment(
+    statsDMetrics.increment(
       "assistant.rate_limiter.pool_credit.concurrency_limit_triggered",
       1,
-      { workspace_id: owner.sId }
+      [`workspace_id:${owner.sId}`]
     );
 
     return {
@@ -2878,10 +2878,10 @@ async function checkProgrammaticCreditConcurrencyLimit(
       "Programmatic credit concurrency limit triggered."
     );
 
-    getStatsDClient().increment(
+    statsDMetrics.increment(
       "assistant.rate_limiter.programmatic_credit.concurrency_limit_triggered",
       1,
-      { workspace_id: owner.sId }
+      [`workspace_id:${owner.sId}`]
     );
 
     return {
@@ -2933,10 +2933,10 @@ async function checkProgrammaticUsageRateLimit(
       "Pre-emptive rate limit triggered for programmatic usage."
     );
 
-    getStatsDClient().increment(
+    statsDMetrics.increment(
       "assistant.rate_limiter.programmatic_usage.credit_based_limit_triggered",
       1,
-      { workspace_id: owner.sId }
+      [`workspace_id:${owner.sId}`]
     );
 
     return {
@@ -2976,10 +2976,10 @@ async function checkProgrammaticUsageRateLimit(
           "Pre-emptive rate limit triggered for key cap."
         );
 
-        getStatsDClient().increment(
+        statsDMetrics.increment(
           "assistant.rate_limiter.key_cap.credit_based_limit_triggered",
           1,
-          { workspace_id: owner.sId }
+          [`workspace_id:${owner.sId}`]
         );
 
         return {

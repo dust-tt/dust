@@ -9,20 +9,18 @@
 
 procs:
   _check-start-script:
-    shell: |
-      if [ -z "$DUST_USE_START_MPROCS" ]; then
-        echo ""
-        echo "ERROR: Run tools/start-mprocs.sh instead of invoking mprocs directly."
-        echo "       It sets up nvm, clears stale build artifacts, and installs dependencies."
-        echo ""
-        exit 1
-      fi
-      echo "OK"
+    cwd: "<CONFIG_DIR>/.."
+    cmd: ["bash", "tools/check-start-mprocs.sh"]
     autostart: true
+    autorestart: false
 
   docker-infra:
     cwd: "<CONFIG_DIR>/.."
     shell: |
+      if [ -f /.dockerenv ] || [ "${DUST_IN_CONTAINER:-}" = 1 ]; then
+        echo "Skipping docker-infra: already in the shared dev container (use infra.sh)."
+        exit 0
+      fi
       docker compose up -d db redis qdrant_primary qdrant_secondary elasticsearch
       docker compose logs -f db redis qdrant_primary qdrant_secondary elasticsearch
     autostart: false
@@ -30,6 +28,10 @@ procs:
   temporal-infra:
     cwd: "<CONFIG_DIR>/../temporal"
     shell: |
+      if [ -f /.dockerenv ] || [ "${DUST_IN_CONTAINER:-}" = 1 ]; then
+        echo "Skipping temporal-infra: already in the shared dev container (use infra.sh / ensure-temporal.sh)."
+        exit 0
+      fi
       docker compose up -d
       until nc -z localhost 7233 2>/dev/null; do sleep 2; done
       docker compose exec -T temporal-admin-tools temporal operator search-attribute create \
@@ -70,18 +72,13 @@ procs:
     cwd: "<CONFIG_DIR>/.."
     env:
       READY_FILE: "sdks/js/dist/client.esm.js.map"
-    shell: |
-      echo "Waiting for sdks-js to compile..."
-      echo "Expecting file: $READY_FILE"
-      while [ ! -f "$READY_FILE" ]; do sleep 1; done
-      echo "sdks-js ready. Starting migrations."
-      npm -w front run migration:apply
-      npm -w connectors run migration:apply
+    shell: "bash tools/run-migrations.sh"
 
   front-api-hono:
     cwd: "<CONFIG_DIR>/../front-api"
     env:
       NODE_ENV: "development"
+      HOSTNAME: "0.0.0.0"
       # Guard: throw if anything tries to load `next` at runtime.
       NODE_OPTIONS: "--require=./forbid-next.cjs"
       READY_FILE: "../sdks/js/dist/client.esm.js.map"
@@ -93,18 +90,15 @@ procs:
       npm run dev
 
   front-workers:
-    cwd: "<CONFIG_DIR>/../front"
-    shell: |
-      echo "Waiting for front to be ready..."
-      until curl -sf http://localhost:3000/api/healthz; do sleep 1; done
-      echo "front ready. Starting front-workers."
-      ./admin/dev_worker.sh
+    cwd: "<CONFIG_DIR>/.."
+    shell: "bash tools/wait-for-front-api.sh"
 
   connectors:
     cwd: "<CONFIG_DIR>/../connectors"
     env:
       READY_FILE: "../sdks/js/dist/client.esm.js.map"
     shell: |
+      bash ../tools/wait-for-temporal.sh
       echo "Waiting for sdks-js to compile..."
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       echo "sdks-js ready. Starting connectors."
@@ -179,26 +173,46 @@ procs:
 
   firebase-webhook-router:
     cwd: "<CONFIG_DIR>/../firebase-functions/webhook-router"
-    shell: "docker-compose up --build"
+    shell: |
+      if [ -f /.dockerenv ] || [ "${DUST_IN_CONTAINER:-}" = 1 ]; then
+        echo "Skipping firebase-webhook-router compose: no Docker socket in shared dev container."
+        exit 0
+      fi
+      docker-compose up --build
     autostart: false
 
   # apache-tika: Document text extraction. TIKA_URL=http://localhost:9998.
   apache-tika:
     cwd: "<CONFIG_DIR>/.."
-    shell: "docker compose up apache-tika"
+    shell: |
+      if [ -f /.dockerenv ] || [ "${DUST_IN_CONTAINER:-}" = 1 ]; then
+        echo "Skipping apache-tika compose: no Docker socket in shared dev container."
+        exit 0
+      fi
+      docker compose up apache-tika
     autostart: false
 
   # kibana: Elasticsearch UI. kibana_settings runs first as a docker-compose dep.
   kibana:
     cwd: "<CONFIG_DIR>/.."
-    shell: "docker compose up kibana_settings kibana"
+    shell: |
+      if [ -f /.dockerenv ] || [ "${DUST_IN_CONTAINER:-}" = 1 ]; then
+        echo "Skipping kibana compose: no Docker socket in shared dev container."
+        exit 0
+      fi
+      docker compose up kibana_settings kibana
     autostart: false
 
   # Gotenberg: Office/PDF document preview conversion (LibreOffice route).
   # front-api reads its URL from DOCUMENT_RENDERER_URL (set to http://localhost:3100).
   gotenberg:
     cwd: "<CONFIG_DIR>/.."
-    shell: "docker compose --profile gotenberg up gotenberg"
+    shell: |
+      if [ -f /.dockerenv ] || [ "${DUST_IN_CONTAINER:-}" = 1 ]; then
+        echo "Skipping gotenberg compose: no Docker socket in shared dev container."
+        exit 0
+      fi
+      docker compose --profile gotenberg up gotenberg
     autostart: false
 
   novu:

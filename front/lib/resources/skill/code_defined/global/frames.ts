@@ -3,7 +3,8 @@ import {
   INTERACTIVE_CONTENT_INSTRUCTIONS,
 } from "@app/lib/api/actions/servers/interactive_content/instructions";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
+import { getFeatureFlags, hasFeatureFlag } from "@app/lib/auth";
+import { FRAMES_V2_INSTRUCTIONS } from "@app/lib/resources/skill/code_defined/global/frames_v2";
 import { POD_FUNCTIONS_SKILL_NAME } from "@app/lib/resources/skill/code_defined/global/pod_functions";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -37,6 +38,10 @@ export const framesSkill = {
     auth: Authenticator,
     params: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
+    if (await hasFeatureFlag(auth, "frames_v2")) {
+      return FRAMES_V2_INSTRUCTIONS;
+    }
+
     const conversation = params.agentLoopData?.conversation;
     if (conversation && conversation.metadata?.useFileSystem !== true) {
       return INTERACTIVE_CONTENT_INSTRUCTIONS;
@@ -51,6 +56,6 @@ export const framesSkill = {
     });
   },
   mcpServers: [{ name: "interactive_content" }],
-  version: 3,
+  version: 4,
   icon: "ActionFrameIcon",
 } as const satisfies GlobalSkillDefinition;
