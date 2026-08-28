@@ -138,8 +138,6 @@ export abstract class OpenAIResponsesStream extends WithOpenAIResponsesInputConv
     const reason =
       err instanceof APIConnectionTimeoutError ? "timeout" : "error";
     const { model, host, region } = this.metadata();
-    // `host` is reserved by the Datadog agent (it overrides the metric's
-    // hostname), so the endpoint host ships under its own tag name.
     const tags = [
       `model_id:${model}`,
       `endpoint_host:${host}`,
