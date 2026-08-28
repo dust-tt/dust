@@ -173,7 +173,7 @@ export function PoolUsagePage() {
     pageSize: DEFAULT_PAGE_SIZE,
   });
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "consumedAwuCredits", desc: true },
+    { id: "consumedFromPoolAwuCredits", desc: true },
   ]);
 
   // Debounce the search input, and reset to the first page on a new query.
@@ -206,7 +206,7 @@ export function PoolUsagePage() {
   const sort = sorting[0];
   const orderColumn =
     sort?.id === "email" ||
-    sort?.id === "consumedAwuCredits" ||
+    sort?.id === "consumedFromPoolAwuCredits" ||
     sort?.id === "seatUsage"
       ? sort.id
       : "name";

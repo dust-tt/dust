@@ -543,12 +543,12 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
   },
 };
 
-function buildConsumedAwuCreditsColumn(
+function buildPoolCreditUsageColumn(
   creditsResetAt: string | null,
   variant: MembersUsageTableVariant
 ): ColumnDef<RowData, string> {
   return {
-    id: "consumedAwuCredits" as const,
+    id: "consumedFromPoolAwuCredits" as const,
     header: () => (
       <div className="flex flex-col">
         <span className="flex items-center gap-1">
@@ -571,7 +571,7 @@ function buildConsumedAwuCreditsColumn(
         )}
       </div>
     ),
-    accessorFn: (row) => row.consumedAwuCredits.toString(),
+    accessorFn: (row) => row.consumedFromPoolAwuCredits.toString(),
     cell: (info: Info) => (
       <div className="w-full pr-3">
         <AwuUsageBar
@@ -878,7 +878,7 @@ function buildColumns({
       }
     })(),
     {
-      ...buildConsumedAwuCreditsColumn(creditsResetAt, variant),
+      ...buildPoolCreditUsageColumn(creditsResetAt, variant),
       meta: { className: "w-64" },
     },
     actionsColumn,

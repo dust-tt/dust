@@ -224,7 +224,7 @@ export function usePokeMembersUsage({
   orderColumn?:
     | "name"
     | "email"
-    | "consumedAwuCredits"
+    | "consumedFromPoolAwuCredits"
     | "seatType"
     | "creditState"
     | "seatUsage";

@@ -217,7 +217,7 @@ export const MembersUsagePaginationSchema = z.object({
     .enum([
       "name",
       "email",
-      "consumedAwuCredits",
+      "consumedFromPoolAwuCredits",
       "seatType",
       "creditState",
       "seatUsage",
@@ -1646,7 +1646,7 @@ export async function resolveMatchingMemberUserIds({
   return new Ok(result.value.users.map((u) => u.sId));
 }
 
-// Per-user data computed while resolving the sort key for "consumedAwuCredits"
+// Per-user data computed while resolving the sort key for "consumedFromPoolAwuCredits"
 // / "seatUsage", keyed over the full matching set (a superset of whichever
 // page is ultimately returned). `getMembersUsage` reuses these instead of
 // re-fetching the same Metronome/ES data for just its page of users.
@@ -1729,13 +1729,13 @@ async function resolveMembersUsagePageUsers({
   );
 
   const sortKeyByUserId = new Map<string, number | string>();
-  // Only populated for "consumedAwuCredits": highest (effective spend limit -
-  // base seat allowance) breaks ties among members who've drawn the same
-  // amount from the pool, independent of the column's own sort direction.
+  // Only populated for "consumedFromPoolAwuCredits": highest (effective spend
+  // limit - base seat allowance) breaks ties among members who've drawn the
+  // same amount from the pool, independent of the column's own sort direction.
   const overageLimitByUserId = new Map<string, number>();
   const prefetch: MembersUsagePagePrefetch = {};
   switch (orderColumn) {
-    case "consumedAwuCredits": {
+    case "consumedFromPoolAwuCredits": {
       // The column shows pool draw, not total consumption: sort on
       // "consumed beyond the seat allowance" (`consumedFromPoolAwuCredits`),
       // not raw total credits — otherwise a heavy paid-seat user who never
@@ -1940,7 +1940,7 @@ async function resolveMembersUsagePageUsers({
       return cmp * directionFactor;
     }
     // Tiebreak on the highest overage limit, always descending (independent
-    // of the column's own sort direction) — only set for "consumedAwuCredits".
+    // of the column's own sort direction) — only set for "consumedFromPoolAwuCredits".
     const overageLimitA = overageLimitByUserId.get(a.sId) ?? 0;
     const overageLimitB = overageLimitByUserId.get(b.sId) ?? 0;
     if (overageLimitA !== overageLimitB) {

@@ -458,7 +458,7 @@ export function useMembersUsage({
   searchTerm?: string;
   pageIndex: number;
   pageSize: number;
-  orderColumn?: "name" | "email" | "consumedAwuCredits" | "seatUsage";
+  orderColumn?: "name" | "email" | "consumedFromPoolAwuCredits" | "seatUsage";
   orderDirection?: "asc" | "desc";
   seatType?: MembershipSeatType | "none";
   groupId?: string;
