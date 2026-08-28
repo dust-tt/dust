@@ -3,6 +3,7 @@
 import type { PokeRole } from "@app/lib/poke/roles";
 import type { WorkspacePermissions } from "@app/types/group_permissions";
 import type { SubscriptionType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 export type GetPokeNoWorkspaceAuthContextResponseType = {
@@ -19,4 +20,8 @@ export type GetPokeWorkspaceAuthContextResponseType = {
   isManager: true; // Superusers have manager privileges
   isSuperUser: true;
   workspacePermissions: WorkspacePermissions;
+  // The workspace's real feature flags, so poke pages built from shared
+  // components (which gate behavior via useFeatureFlags()/hasFeature())
+  // see the same flags as the workspace's own members instead of none.
+  featureFlags: WhitelistableFeature[];
 };
