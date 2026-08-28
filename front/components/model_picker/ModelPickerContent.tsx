@@ -117,41 +117,111 @@ export function ModelPickerContent({
     }
   }, [isExiting, targetView]);
 
-  // While exiting, keep rendering the view that's leaving; once its exit
-  // animation ends we jump straight to `targetView`, which then plays its
-  // own enter animation on the next render.
-  const viewToRender = isExiting ? displayedView : targetView;
-
   // Going back sets `activeMaker` to null on the same tick the exit starts,
   // so `activeMakerGroup` resolves to undefined immediately — but the
   // exiting models view still needs its maker group to render while it
   // slides out. Remember the last non-null one so the exit phase can still
-  // render real content instead of falling back to the root view mid-exit.
+  // render real content instead of losing it mid-exit.
   const lastMakerGroupRef = useRef(activeMakerGroup);
   if (activeMakerGroup) {
     lastMakerGroupRef.current = activeMakerGroup;
   }
-  const activeMakerGroupToRender =
-    viewToRender === "models"
-      ? (activeMakerGroup ?? lastMakerGroupRef.current)
-      : undefined;
 
-  const exitClassName = isExiting
-    ? `animate-out fill-mode-forwards duration-exit ease-enter motion-reduce:animate-none ${
-        viewToRender === "models"
-          ? "slide-out-to-right-4"
-          : "slide-out-to-left-4"
-      }`
-    : "";
+  const isForward = targetView === "models";
 
-  const enterClassName =
-    !isExiting && !(viewToRender === "root" && isInitialRenderRef.current)
-      ? `animate-in duration-enter ease-enter motion-reduce:animate-none ${
-          viewToRender === "models"
-            ? "slide-in-from-right-4"
-            : "slide-in-from-left-4"
-        }`
-      : "";
+  const renderView = (view: PickerView, makerGroup: MakerGroup | undefined) =>
+    view === "models" && makerGroup ? (
+      <ModelPickerModelsView
+        makerId={makerGroup.makerId}
+        models={makerGroup.models}
+        shown={shown}
+        agentDefault={agentDefault}
+        canRevert={canRevert}
+        lockPremiumEfforts={lockPremiumEfforts}
+        onBack={onBack}
+        onSelectModel={onSelectModel}
+        onChangeEffort={onChangeEffort}
+        onRevert={onRevert}
+      />
+    ) : (
+      <>
+        <DropdownMenuLabel label="Recommendations" className="text-sm" />
+
+        {MODEL_TIERS.map((tier) => {
+          const isSelected = isTierDisplayed(tier.id, shown.display);
+          const lockReason = getTierLockReason(tier.id, {
+            lockPremiumEfforts,
+            streamModels,
+          });
+          if (lockReason) {
+            return (
+              <DropdownMenuItem
+                key={tier.id}
+                icon={MODEL_TIER_ICON[tier.id]}
+                label={tier.name}
+                disabled
+                tooltip={getModelLockTooltip(lockReason)}
+                endComponent={
+                  <Icon
+                    visual={Lock01}
+                    size="sm"
+                    className="text-muted-foreground"
+                  />
+                }
+                onSelect={(e) => e.preventDefault()}
+              />
+            );
+          }
+          return (
+            <DropdownMenuItem
+              key={tier.id}
+              icon={MODEL_TIER_ICON[tier.id]}
+              label={tier.name}
+              className="text-foreground"
+              endComponent={
+                <div className="flex items-center gap-3">
+                  <span className="whitespace-nowrap text-xs text-muted-foreground">
+                    {getTierResolvedModelLabel(tier.id, streams)}
+                  </span>
+                  {isSelected && (
+                    <ModelPickerSelectionIndicator
+                      canRevert={canRevert}
+                      onRevert={onRevert}
+                      size="xs"
+                    />
+                  )}
+                </div>
+              }
+              onClick={() => onSelectTier(tier.id)}
+              onSelect={(e) => e.preventDefault()}
+            />
+          );
+        })}
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem
+          label="More models"
+          endComponent={
+            <Icon
+              visual={isMakersExpanded ? ChevronDown : ChevronRight}
+              size="xs"
+              className="text-muted-foreground"
+            />
+          }
+          onClick={onToggleMakers}
+          onSelect={(e) => e.preventDefault()}
+        />
+
+        {isMakersExpanded && (
+          <ModelPickerMakersView
+            makerGroups={makerGroups}
+            shown={shown}
+            onSelectMaker={onSelectMaker}
+          />
+        )}
+      </>
+    );
 
   return (
     <DropdownMenuContent
@@ -174,106 +244,47 @@ export function ModelPickerContent({
         }
       }}
     >
-      <div
-        key={isExiting ? `${viewToRender}-exit` : viewToRender}
-        className={`max-h-[26rem] overflow-y-auto ${isExiting ? exitClassName : enterClassName}`}
-        onAnimationEnd={isExiting ? handleExitAnimationEnd : undefined}
-      >
-        {viewToRender === "models" && activeMakerGroupToRender ? (
-          // Picking a provider swaps the whole dropdown for its model list —
-          // a real navigation, not an in-place reveal, so it slides in (and,
-          // symmetrically, the root view slides out behind it).
-          <ModelPickerModelsView
-            makerId={activeMakerGroupToRender.makerId}
-            models={activeMakerGroupToRender.models}
-            shown={shown}
-            agentDefault={agentDefault}
-            canRevert={canRevert}
-            lockPremiumEfforts={lockPremiumEfforts}
-            onBack={onBack}
-            onSelectModel={onSelectModel}
-            onChangeEffort={onChangeEffort}
-            onRevert={onRevert}
-          />
-        ) : (
-          <>
-            <DropdownMenuLabel label="Recommendations" className="text-sm" />
-
-            {MODEL_TIERS.map((tier) => {
-              const isSelected = isTierDisplayed(tier.id, shown.display);
-              const lockReason = getTierLockReason(tier.id, {
-                lockPremiumEfforts,
-                streamModels,
-              });
-              if (lockReason) {
-                return (
-                  <DropdownMenuItem
-                    key={tier.id}
-                    icon={MODEL_TIER_ICON[tier.id]}
-                    label={tier.name}
-                    disabled
-                    tooltip={getModelLockTooltip(lockReason)}
-                    endComponent={
-                      <Icon
-                        visual={Lock01}
-                        size="sm"
-                        className="text-muted-foreground"
-                      />
-                    }
-                    onSelect={(e) => e.preventDefault()}
-                  />
-                );
-              }
-              return (
-                <DropdownMenuItem
-                  key={tier.id}
-                  icon={MODEL_TIER_ICON[tier.id]}
-                  label={tier.name}
-                  className="text-foreground"
-                  endComponent={
-                    <div className="flex items-center gap-3">
-                      <span className="whitespace-nowrap text-xs text-muted-foreground">
-                        {getTierResolvedModelLabel(tier.id, streams)}
-                      </span>
-                      {isSelected && (
-                        <ModelPickerSelectionIndicator
-                          canRevert={canRevert}
-                          onRevert={onRevert}
-                          size="xs"
-                        />
-                      )}
-                    </div>
-                  }
-                  onClick={() => onSelectTier(tier.id)}
-                  onSelect={(e) => e.preventDefault()}
-                />
-              );
-            })}
-
-            <DropdownMenuSeparator />
-
-            <DropdownMenuItem
-              label="More models"
-              endComponent={
-                <Icon
-                  visual={isMakersExpanded ? ChevronDown : ChevronRight}
-                  size="xs"
-                  className="text-muted-foreground"
-                />
-              }
-              onClick={onToggleMakers}
-              onSelect={(e) => e.preventDefault()}
-            />
-
-            {isMakersExpanded && (
-              <ModelPickerMakersView
-                makerGroups={makerGroups}
-                shown={shown}
-                onSelectMaker={onSelectMaker}
-              />
+      {/* `overflow-hidden` clips the slide so the exiting and entering
+          layers never spill past the panel's fixed width; `grid` stacks
+          both layers (via `[grid-area:1/1]` below) in the same cell so the
+          container sizes to whichever is taller instead of collapsing —
+          plain `absolute` positioning wouldn't contribute to that sizing. */}
+      <div className="grid overflow-hidden">
+        {isExiting && (
+          // The outgoing view stays mounted and animates out concurrently
+          // with the incoming view below, instead of waiting for this exit
+          // to finish before the entrance starts — a sequential wait reads
+          // as a stall right when the user is watching for a response.
+          <div
+            key={`${displayedView}-exit`}
+            className={`[grid-area:1/1] pointer-events-none animate-out fill-mode-forwards duration-exit ease-enter motion-reduce:animate-none ${
+              isForward ? "slide-out-to-left-4" : "slide-out-to-right-4"
+            }`}
+            onAnimationEnd={handleExitAnimationEnd}
+          >
+            {renderView(
+              displayedView,
+              displayedView === "models"
+                ? (activeMakerGroup ?? lastMakerGroupRef.current)
+                : undefined
             )}
-          </>
+          </div>
         )}
+        <div
+          key={targetView}
+          className={`[grid-area:1/1] ${
+            isInitialRenderRef.current && targetView === "root"
+              ? ""
+              : `animate-in duration-enter ease-enter motion-reduce:animate-none ${
+                  isForward ? "slide-in-from-right-4" : "slide-in-from-left-4"
+                }`
+          }`}
+        >
+          {renderView(
+            targetView,
+            targetView === "models" ? activeMakerGroup : undefined
+          )}
+        </div>
       </div>
     </DropdownMenuContent>
   );
