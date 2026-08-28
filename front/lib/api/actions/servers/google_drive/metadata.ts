@@ -125,7 +125,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     schema: {
       fileId: z
         .string()
-        .describe("The ID of the file to retrieve content from."),
+        .describe("The ID of the file to retrieve content from. Can be extracted from the URL of a file, typically found at its end."),
       offset: z
         .number()
         .default(0)

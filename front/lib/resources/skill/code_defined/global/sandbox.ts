@@ -396,8 +396,8 @@ export const sandboxSkill = {
     "Execute code and commands in an isolated Linux sandbox. Useful to parse lengthy tool outputs, run code, " +
     "process data, manipulate files, or perform any task requiring shell access. " +
     "You must enable this skill proactively as soon as the user uploads files or you need to work with files, " +
-    "including PDFs, spreadsheets, archives, or generated artifacts. Use it to extract text from files, " +
-    "parse lengthy tool outputs, run code and shell commands, process data, manipulate files, or perform " +
+    "including PDFs, spreadsheets, archives, generated artifacts, or data pulled from tools. Use it to extract text " +
+    "from files, parse lengthy tool outputs, run code and shell commands, process data, manipulate files, or perform " +
     "any computer-related task. " +
     "Always call this environment 'the Computer' in any text you send to the user.",
   fetchInstructions: async (
