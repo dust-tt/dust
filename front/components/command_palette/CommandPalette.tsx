@@ -14,6 +14,7 @@ import {
   CommandPaletteSearchPhase,
 } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
+import type { Theme } from "@app/components/sparkle/ThemeContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -43,8 +44,6 @@ interface CommandPaletteProps {
   owner: LightWorkspaceType;
   user: UserType;
 }
-
-type Theme = "dark" | "light" | "system";
 
 const THEME_ORDER: Theme[] = ["light", "dark", "system"];
 
@@ -245,12 +244,19 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     [close, router, owner.sId]
   );
 
+  const executeCommand = useCallback(
+    (command: CommandPaletteCommand) => {
+      close();
+      setTheme(command.theme);
+    },
+    [close, setTheme]
+  );
+
   const handleItemSelect = useCallback(
     (item: CommandPaletteItem) => {
       switch (item.kind) {
         case "command":
-          close();
-          setTheme(item.command.theme);
+          executeCommand(item.command);
           return;
         case "pod":
           close();
@@ -274,7 +280,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
           assertNever(item);
       }
     },
-    [close, executeAction, owner.sId, router, setTheme]
+    [close, executeAction, executeCommand, owner.sId, router]
   );
 
   const handleBack = useCallback(() => {

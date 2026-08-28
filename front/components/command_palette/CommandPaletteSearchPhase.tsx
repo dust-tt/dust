@@ -4,6 +4,7 @@ import {
   ItemTitle,
   KeyboardHints,
 } from "@app/components/command_palette/CommandPaletteItems";
+import type { Theme } from "@app/components/sparkle/ThemeContext";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -23,7 +24,7 @@ import { useEffect, useMemo, useRef } from "react";
 export const CHANGE_THEME_COMMAND_PREFIX = "Change interface theme";
 
 export interface CommandPaletteCommand {
-  theme: "light" | "dark" | "system";
+  theme: Theme;
   label: string;
   icon: typeof Sun;
 }
