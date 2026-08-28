@@ -489,6 +489,30 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   }
 
   /**
+   * Resolve either owner kind for caller-facing invocation routes. Pod space access is still
+   * filtered here; Frame use rights and active-publication checks are applied by the route
+   * resolver once the owning Frame is known.
+   */
+  static async fetchByIdForInvocationResolution(
+    auth: Authenticator,
+    sandboxFunctionId: string
+  ): Promise<SandboxFunctionResource | null> {
+    if (!isResourceSId("sandbox_function", sandboxFunctionId)) {
+      return null;
+    }
+    const sandboxFunctionModelId = getResourceIdFromSId(sandboxFunctionId);
+    if (sandboxFunctionModelId === null) {
+      return null;
+    }
+
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { id: sandboxFunctionModelId },
+      includeFrameFunctions: true,
+    });
+    return sandboxFunction ?? null;
+  }
+
+  /**
    * Gets the function if a matching invocation exists.
    * In the context of a temporal activity or a sandbox callback, we don't have the original
    * caller's grant (e.g. a frame share token) in the auth, so the space permission filter is

@@ -81,6 +81,7 @@ import {
   isFrameContentType,
   isInteractiveContentType,
   isSandboxFunctionContentType,
+  isWorkspaceVisibleShareScope,
 } from "@app/types/files";
 import type { FrameScopedPathContext } from "@app/types/mount_path";
 import {
@@ -1764,6 +1765,49 @@ export class FileResource extends BaseResource<FileModel> {
     }
 
     return null;
+  }
+
+  /**
+   * Whether the current workspace member holds the Frame's use right. Source-path access is an
+   * authoring concern and deliberately does not participate here.
+   */
+  async canCurrentUserUseFrame(auth: Authenticator): Promise<boolean> {
+    if (
+      !this.isFrameV2 ||
+      this.workspaceId !== auth.getNonNullableWorkspace().id ||
+      !auth.isUser()
+    ) {
+      return false;
+    }
+
+    const user = auth.user();
+    if (!user) {
+      return false;
+    }
+    const shareableFile = await FileResource.shareableFileModel.findOne({
+      where: { fileId: this.id, workspaceId: this.workspaceId },
+    });
+    if (!shareableFile) {
+      return false;
+    }
+
+    if (
+      shareableFile.shareScope === "public" ||
+      isWorkspaceVisibleShareScope(shareableFile.shareScope) ||
+      this.userId === user.id
+    ) {
+      return true;
+    }
+
+    return (
+      (await FileResource.getActiveGrantForEmail(
+        auth.getNonNullableWorkspace(),
+        {
+          email: user.email,
+          shareableFileId: shareableFile.id,
+        }
+      )) !== null
+    );
   }
 
   static async revokePublicSharingInWorkspace(

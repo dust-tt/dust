@@ -31,7 +31,8 @@ export async function streamSandboxFunctionInvocationEventsForRoute(
   const sandboxFunction = await resolveSandboxFunctionWithCapability(
     auth,
     functionId,
-    ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
+    ctx.req.header(FRAME_SHARE_TOKEN_HEADER),
+    { allowInactiveFramePublication: true }
   );
   if (!sandboxFunction) {
     return ctx.notFound();
