@@ -13,6 +13,7 @@ import type {
   CheckSummary,
   CheckSummaryStatus,
 } from "@app/types/production_checks";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { conjugate, pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Button,
@@ -29,7 +30,6 @@ import type React from "react";
 import type { ComponentProps } from "react";
 import { useCallback, useMemo, useState } from "react";
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_VISIBLE = 5;
 
 const STATUS_CHIP_CONFIG: Record<
