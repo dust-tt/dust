@@ -1,8 +1,8 @@
 import type { EffortStop } from "@app/components/model_picker/modelPickerUtils";
-import { getReasoningEffortLabel } from "@app/components/model_picker/modelPickerUtils";
 import { classNames } from "@app/lib/utils";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { SliderSteps } from "@dust-tt/sparkle";
+import capitalize from "lodash/capitalize";
 
 interface ReasoningEffortSliderProps {
   stops: EffortStop[];
@@ -90,7 +90,7 @@ export function ReasoningEffortSlider({
                     : "translateX(-50%)",
               }}
             >
-              {getReasoningEffortLabel(stop.effort)}
+              {capitalize(stop.effort)}
             </button>
           );
         })}

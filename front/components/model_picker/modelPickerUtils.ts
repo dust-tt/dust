@@ -131,10 +131,6 @@ export function getDefaultTierId(
   return standard && !standard.isSelectable ? "fast" : "standard";
 }
 
-export function getReasoningEffortLabel(effort: ReasoningEffort): string {
-  return effort === "none" ? "None" : capitalize(effort);
-}
-
 export function getTierResolvedModelLabel(
   tierId: ModelTierId,
   streams: ModelStreamResolutionsType | null
@@ -145,7 +141,7 @@ export function getTierResolvedModelLabel(
   }
   return resolution.reasoningEffort === "none"
     ? resolution.displayName
-    : `${resolution.displayName} ${getReasoningEffortLabel(resolution.reasoningEffort)}`;
+    : `${resolution.displayName} ${capitalize(resolution.reasoningEffort)}`;
 }
 
 // What the picker is currently showing, decoupled from the payload we send:
