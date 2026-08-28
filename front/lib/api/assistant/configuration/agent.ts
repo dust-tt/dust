@@ -1162,16 +1162,7 @@ export async function archiveAgentConfiguration(
     }
   );
 
-  // Suspend all editor group memberships for this agent
   if (updated[0] > 0) {
-    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-      auth,
-      agentConfig
-    );
-    if (editorGroupRes.isOk()) {
-      await editorGroupRes.value.suspendMembers(auth);
-    }
-
     void emitAuditLogEvent({
       auth,
       action: "agent.archived",
@@ -1262,15 +1253,8 @@ export async function restoreAgentConfiguration(
     }
   );
 
-  // Restore all editor group memberships (set suspended → active) and re-enable triggers
+  // Re-enable triggers.
   if (updated[0] > 0) {
-    const editorGroupRes = await GroupResource.findEditorGroupForAgent(auth, {
-      id: latestConfig.id,
-    } as LightAgentConfigurationType);
-    if (editorGroupRes.isOk()) {
-      await editorGroupRes.value.restoreMembers(auth);
-    }
-
     const triggers = await TriggerResource.listByAgentConfigurationId(
       auth,
       agentConfigurationId

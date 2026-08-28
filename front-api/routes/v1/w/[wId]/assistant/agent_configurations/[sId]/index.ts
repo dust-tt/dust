@@ -233,7 +233,7 @@ const VariantQuerySchema = z.object({
  *         description: Internal Server Error.
  *   delete:
  *     summary: Archive agent configuration
- *     description: Archive the agent configuration identified by {sId} in the workspace identified by {wId}. The agent is soft-archived and triggers/editor-group memberships associated with it are disabled.
+ *     description: Archive the agent configuration identified by {sId} in the workspace identified by {wId}. The agent is soft-archived and its triggers are disabled.
  *     tags:
  *       - Agents
  *     parameters:
