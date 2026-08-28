@@ -22,10 +22,12 @@ import {
   getFramePublicationFunctionSchemaPath,
   getFramePublicationManifestPath,
   getFramePublicationSourcePath,
+  getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import {
+  frameContentType,
   frameV2ContentType,
   sandboxFunctionContentType,
 } from "@app/types/files";
@@ -58,6 +60,7 @@ export class FramePublicationError extends Error {
       | "invalid_source"
       | "publication_not_found"
       | "source_not_found"
+      | "ui_build_failed"
       | "unauthorized",
     message: string
   ) {
@@ -96,11 +99,13 @@ export async function storeFramePublication(
     functionArtifacts,
     manifest,
     sourceFiles,
+    uiBundleCode,
   }: {
     frame: FileResource;
     functionArtifacts: FramePublicationFunctionArtifact[];
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
+    uiBundleCode: string;
   }
 ): Promise<Result<{ publicationId: string }, FramePublicationError>> {
   const frameIdentity = getFrameIdentity(auth, frame);
@@ -188,6 +193,11 @@ export async function storeFramePublication(
   const storage = getPrivateUploadBucket();
 
   const publicationFiles = [
+    {
+      filePath: getFramePublicationUiBundlePath(identity),
+      content: uiBundleCode,
+      contentType: frameContentType,
+    },
     ...sourceFiles.map((sourceFile) => ({
       filePath: getFramePublicationSourcePath({
         ...identity,
@@ -336,11 +346,13 @@ export async function publishFramePublication(
     functionArtifacts,
     manifest,
     sourceFiles,
+    uiBundleCode,
   }: {
     frame: FileResource;
     functionArtifacts: FramePublicationFunctionArtifact[];
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
+    uiBundleCode: string;
   }
 ): Promise<Result<{ publicationId: string }, FramePublicationError>> {
   const publication = await storeFramePublication(auth, {
@@ -348,6 +360,7 @@ export async function publishFramePublication(
     functionArtifacts,
     manifest,
     sourceFiles,
+    uiBundleCode,
   });
   if (publication.isErr()) {
     return publication;

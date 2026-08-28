@@ -4,6 +4,7 @@ import {
   getFramePublicationFunctionSchemaPath,
   getFramePublicationManifestPath,
   getFramePublicationSourcePath,
+  getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import { describe, expect, it } from "vitest";
 
@@ -26,6 +27,9 @@ describe("Frames v2 GCS paths", () => {
       })
     ).toBe(
       "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/source/src/index.tsx"
+    );
+    expect(getFramePublicationUiBundlePath(IDS)).toBe(
+      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/ui/bundle.js"
     );
     expect(
       getFramePublicationFunctionBundlePath({

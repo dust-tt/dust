@@ -71,6 +71,14 @@ export function getFramePublicationSourcePath({
   return `${getFramePublicationSourceBasePath(args)}${relativePath}`;
 }
 
+export function getFramePublicationUiBundlePath(args: {
+  workspaceId: string;
+  frameId: string;
+  publicationId: string;
+}): string {
+  return `${getFramePublicationBasePath(args)}ui/bundle.js`;
+}
+
 export function getFramePublicationFunctionBasePath({
   functionName,
   ...args
