@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import { buildAndPublishFramePublication } from "@app/lib/api/frames/build_and_publish";
 import { ensureConversationSandboxReadyWithScope } from "@app/lib/api/sandbox/lifecycle";
 import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
@@ -12,6 +14,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FrameManifestSchema } from "@app/types/api/frame_manifest";
+import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { frameV2ContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
@@ -53,10 +56,18 @@ const manifest = FrameManifestSchema.parse({
   ],
 });
 
+const uiOnlyManifest = FrameManifestSchema.parse({
+  version: 1,
+  name: "Task List",
+  description: "Track tasks.",
+});
+
 const sourceFiles = [
   {
     relativePath: "index.tsx",
-    content: Buffer.from("export default function App() {}"),
+    content: Buffer.from(
+      "export default function App() { return <main>Tasks</main>; }"
+    ),
     contentType: "text/typescript" as const,
   },
   {
@@ -119,6 +130,31 @@ beforeEach(() => {
 });
 
 describe("buildAndPublishFramePublication", () => {
+  it("builds and publishes the UI without starting a sandbox", async () => {
+    const { auth, conversation, frame } = await setup();
+
+    const result = await buildAndPublishFramePublication(auth, {
+      conversation,
+      frame,
+      manifest: uiOnlyManifest,
+      sourceFiles: sourceFiles.slice(0, 1),
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(ensureConversationSandboxReadyWithScope).not.toHaveBeenCalled();
+    const uiBundlePath = getFramePublicationUiBundlePath({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      frameId: frame.sId,
+      publicationId: result.value.publicationId,
+    });
+    expect(fileStorageMock.getObject(uiBundlePath)).toContain(
+      'data-source="index.tsx:'
+    );
+  });
+
   it("builds every declared function before publishing", async () => {
     const { auth, conversation, frame, sandbox, space } = await setup();
     vi.mocked(ensureConversationSandboxReadyWithScope).mockResolvedValue(
@@ -187,7 +223,7 @@ describe("buildAndPublishFramePublication", () => {
       fileStorageMock.saveFileCalls.filter(({ filePath }) =>
         filePath.endsWith("/bundle.js")
       )
-    ).toHaveLength(2);
+    ).toHaveLength(3);
 
     const reloaded = await FileResource.fetchById(auth, frame.sId);
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
@@ -218,6 +254,34 @@ describe("buildAndPublishFramePublication", () => {
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
     const reloaded = await FileResource.fetchById(auth, frame.sId);
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBeUndefined();
+  });
+
+  it("keeps the active publication when the UI build fails", async () => {
+    const { auth, conversation, frame } = await setup();
+    const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
+    await frame.setActiveFramePublication(activePublicationId);
+
+    const result = await buildAndPublishFramePublication(auth, {
+      conversation,
+      frame,
+      manifest,
+      sourceFiles: [
+        {
+          ...sourceFiles[0],
+          content: Buffer.from("export default function App( {"),
+        },
+        ...sourceFiles.slice(1),
+      ],
+    });
+
+    expect(result.isErr() && result.error.code).toBe("ui_build_failed");
+    expect(ensureConversationSandboxReadyWithScope).not.toHaveBeenCalled();
+    expect(buildSandboxFunctionOnReadySandbox).not.toHaveBeenCalled();
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
+      activePublicationId
+    );
   });
 
   it("rejects an unsafe snapshot path before staging or building", async () => {

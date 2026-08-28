@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import {
   publishFrameFromSource,
   publishFrameV2FromSource,
