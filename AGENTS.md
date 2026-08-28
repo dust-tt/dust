@@ -24,3 +24,9 @@ Storybook's component and documentation knowledge before answering or taking any
 
 Remember: A story name might not reflect the property name correctly, so always verify
 properties through documentation or example stories before using them.
+
+# Cursor Cloud specific instructions
+
+You are provided with credentials to login to the app via email & password.
+They are available in the runtime secrets as DEV_WORKOS_USER_EMAIL & DEV_WORKOS_USER_PASSWORD.
+Note that in the login flow, you'll have to enter the email, continue and then you'll be able to enter the password.
