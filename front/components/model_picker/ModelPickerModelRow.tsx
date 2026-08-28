@@ -9,21 +9,9 @@ import type {
   ModelConfigurationType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import {
-  DropdownMenuItem,
-  Icon,
-  Lock01,
-  MOTION_DURATIONS,
-  MOTION_EASINGS,
-} from "@dust-tt/sparkle";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { DropdownMenuItem, Icon, Lock01 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { useRef } from "react";
-
-const EFFORT_REVEAL_TRANSITION = {
-  height: { type: "spring", bounce: 0, duration: MOTION_DURATIONS.enter },
-  opacity: { duration: MOTION_DURATIONS.exit, ease: MOTION_EASINGS.enter },
-} as const;
 
 interface ModelPickerModelRowProps {
   model: ModelConfigurationType;
@@ -53,7 +41,6 @@ export function ModelPickerModelRow({
   onRevert,
 }: ModelPickerModelRowProps) {
   const itemRef = useRef<HTMLDivElement>(null);
-  const prefersReducedMotion = useReducedMotion();
 
   if (lockReason) {
     return (
@@ -91,26 +78,13 @@ export function ModelPickerModelRow({
           onSelectModel(model);
         }}
       />
-      <AnimatePresence initial={false}>
-        {isSelected && effortStops.length > 0 && (
-          <motion.div
-            key="effort"
-            initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={
-              prefersReducedMotion ? { duration: 0 } : EFFORT_REVEAL_TRANSITION
-            }
-            className="overflow-hidden"
-          >
-            <ReasoningEffortSlider
-              stops={effortStops}
-              value={effort}
-              onChange={onChangeEffort}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {isSelected && effortStops.length > 0 && (
+        <ReasoningEffortSlider
+          stops={effortStops}
+          value={effort}
+          onChange={onChangeEffort}
+        />
+      )}
     </>
   );
 }
