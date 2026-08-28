@@ -196,15 +196,11 @@ export function ModelPickerContent({
           />
 
           {isMakersExpanded && (
-            // Expanding reveals more of the same list in place — a fade is
-            // enough, it isn't going anywhere the way the model swap does.
-            <div className="animate-in fade-in duration-200 motion-reduce:animate-none">
-              <ModelPickerMakersView
-                makerGroups={makerGroups}
-                shown={shown}
-                onSelectMaker={onSelectMaker}
-              />
-            </div>
+            <ModelPickerMakersView
+              makerGroups={makerGroups}
+              shown={shown}
+              onSelectMaker={onSelectMaker}
+            />
           )}
         </div>
       )}
