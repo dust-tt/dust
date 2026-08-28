@@ -45,14 +45,13 @@ export type RegisterFrameV2FromSourceError =
   | DustFileSystemError
   | FramePublicationError;
 
-/** Register the manifest already present on the invoking conversation's mounted GCS filesystem. */
-export async function registerFrameV2FromSource(
+export async function registerFrameV2FromSourceUsingFileSystem(
   auth: Authenticator,
   {
-    conversation,
+    dustFs,
     manifestPath,
   }: {
-    conversation: ConversationWithoutContentType;
+    dustFs: DustFileSystem;
     manifestPath: string;
   }
 ): Promise<
@@ -71,11 +70,6 @@ export async function registerFrameV2FromSource(
     );
   }
 
-  const fsResult = await DustFileSystem.forConversation(auth, conversation);
-  if (fsResult.isErr()) {
-    return new Err(fsResult.error);
-  }
-  const dustFs = fsResult.value;
   if (!dustFs.isGCSBacked()) {
     return registrationError(
       "Frames v2 registration does not yet support the database-backed filesystem."
@@ -160,4 +154,31 @@ export async function registerFrameV2FromSource(
     assert(concurrent.value, "Frame not found after mount path conflict");
     return new Ok({ frame: concurrent.value, created: false });
   }
+}
+
+/** Register a manifest from the invoking conversation's mounted GCS filesystem. */
+export async function registerFrameV2FromSource(
+  auth: Authenticator,
+  {
+    conversation,
+    manifestPath,
+  }: {
+    conversation: ConversationWithoutContentType;
+    manifestPath: string;
+  }
+): Promise<
+  Result<
+    { frame: FileResource; created: boolean },
+    RegisterFrameV2FromSourceError
+  >
+> {
+  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  if (fsResult.isErr()) {
+    return new Err(fsResult.error);
+  }
+
+  return registerFrameV2FromSourceUsingFileSystem(auth, {
+    dustFs: fsResult.value,
+    manifestPath,
+  });
 }

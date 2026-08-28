@@ -1,10 +1,15 @@
 import path from "node:path";
 
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { DustFileSystem, parseScopedPrefix } from "@app/lib/api/file_system";
 import type { FramePublicationError } from "@app/lib/api/frames/publication_storage";
 import { withFrameSourceAndPublishLock } from "@app/lib/api/frames/publication_storage";
 import { publishFrameV2FromSource } from "@app/lib/api/frames/publish_from_source";
-import { registerFrameV2FromSource } from "@app/lib/api/frames/register_from_source";
+import { registerFrameV2FromSourceUsingFileSystem } from "@app/lib/api/frames/register_from_source";
 import {
   cleanupFrameSourceCopy,
   copyFrameSourceAsNew,
@@ -212,7 +217,6 @@ export async function cloneFrameV2Source(
     const copyResult = await copyFrameSourceAsNew({
       allowMatchingDestinationObjects: false,
       destinationMountPrefix: `${path.posix.dirname(destinationMountPath)}/`,
-      makeError: (code, message) => new FrameSourceCloneError(code, message),
       sourceMountPrefix: `${path.posix.dirname(sourceMountPath)}/`,
     });
     if (copyResult.isErr()) {
@@ -221,15 +225,18 @@ export async function cloneFrameV2Source(
         { operation: "clone" }
       );
       return cleaned
-        ? new Err(copyResult.error.error)
+        ? cloneError(
+            copyResult.error.error.code,
+            copyResult.error.error.message
+          )
         : cloneError(
             "internal",
             "The Frame source copy failed and its destination objects could not be cleaned up."
           );
     }
 
-    const registration = await registerFrameV2FromSource(auth, {
-      conversation,
+    const registration = await registerFrameV2FromSourceUsingFileSystem(auth, {
+      dustFs,
       manifestPath: destinationManifestPath,
     });
     if (registration.isErr()) {
@@ -297,6 +304,25 @@ export async function cloneFrameV2Source(
       },
       "Cloned Frame v2"
     );
+
+    void emitAuditLogEvent({
+      auth,
+      action: "frame.cloned",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("frame", {
+          sId: clonedFrame.sId,
+          name: path.posix.basename(destination),
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        destination_path: destination,
+        publication_id: publication.value.publicationId,
+        source_frame_id: freshSource.sId,
+        source_path: source,
+      },
+    });
 
     return new Ok({
       destinationDirectoryPath: destination,

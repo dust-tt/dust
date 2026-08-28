@@ -3,6 +3,7 @@
 
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -186,6 +187,51 @@ async function setup({ registered = true }: { registered?: boolean } = {}) {
   return { ...context, frame, manifestPath };
 }
 
+function configureCloneStorage(
+  sourceGcsDirectoryPath: string,
+  destinationGcsDirectoryPath: string
+) {
+  const sourceEntries = [
+    {
+      relativePath: FRAME_MANIFEST_FILE,
+      content: manifest,
+      contentType: "application/json",
+    },
+    {
+      relativePath: "index.tsx",
+      content: uiSource,
+      contentType: "text/typescript",
+    },
+  ];
+  fileStorageMock.setFileExists(
+    (filePath) =>
+      filePath.startsWith(`${sourceGcsDirectoryPath}/`) ||
+      fileStorageMock.getObject(filePath) !== undefined
+  );
+  fileStorageMock.setFilesByPrefix((prefix) => {
+    const directory =
+      prefix === `${sourceGcsDirectoryPath}/`
+        ? sourceGcsDirectoryPath
+        : prefix === `${destinationGcsDirectoryPath}/` &&
+            fileStorageMock.getObject(
+              `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
+            ) !== undefined
+          ? destinationGcsDirectoryPath
+          : null;
+    return directory
+      ? sourceEntries.map(({ content, contentType, relativePath }) => ({
+          name: `${directory}/${relativePath}`,
+          metadata: {
+            contentType,
+            generation: "1",
+            md5Hash: relativePath,
+            size: String(Buffer.byteLength(content)),
+          },
+        }))
+      : null;
+  });
+}
+
 async function setupLegacyFrame() {
   const context = await createSandboxTokenTestContext();
   await FeatureFlagFactory.basic(context.auth, "frames_v2");
@@ -332,45 +378,7 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
       workspaceId: context.workspace.sId,
       conversationId: context.conversation.sId,
     })}Status Copy`;
-    const sourceEntries = [
-      {
-        relativePath: FRAME_MANIFEST_FILE,
-        content: manifest,
-        contentType: "application/json",
-      },
-      {
-        relativePath: "index.tsx",
-        content: uiSource,
-        contentType: "text/typescript",
-      },
-    ];
-    fileStorageMock.setFileExists(
-      (filePath) =>
-        filePath.startsWith(`${sourceGcsDirectoryPath}/`) ||
-        fileStorageMock.getObject(filePath) !== undefined
-    );
-    fileStorageMock.setFilesByPrefix((prefix) => {
-      const directory =
-        prefix === `${sourceGcsDirectoryPath}/`
-          ? sourceGcsDirectoryPath
-          : prefix === `${destinationGcsDirectoryPath}/` &&
-              fileStorageMock.getObject(
-                `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
-              ) !== undefined
-            ? destinationGcsDirectoryPath
-            : null;
-      return directory
-        ? sourceEntries.map(({ content, contentType, relativePath }) => ({
-            name: `${directory}/${relativePath}`,
-            metadata: {
-              contentType,
-              generation: "1",
-              md5Hash: relativePath,
-              size: String(Buffer.byteLength(content)),
-            },
-          }))
-        : null;
-    });
+    configureCloneStorage(sourceGcsDirectoryPath, destinationGcsDirectoryPath);
 
     const response = await requestFrameClone(
       context.workspace.sId,
@@ -413,6 +421,63 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     await expect(
       FrameSandboxAdapter.fetchSandbox(context.auth, clonedFrame!)
     ).resolves.toBeNull();
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "frame.cloned",
+        metadata: {
+          destination_path: destinationDirectoryPath,
+          publication_id: cloned.publicationId,
+          source_frame_id: context.frame.sId,
+          source_path: sourceDirectoryPath,
+        },
+      })
+    );
+  });
+
+  it("clones into another writable conversation", async () => {
+    const context = await setup();
+    assert(context.frame);
+    const destinationConversation = await ConversationFactory.create(
+      context.auth,
+      {
+        agentConfigurationId: context.agentConfig.sId,
+        messagesCreatedAt: [],
+      }
+    );
+    const sourceDirectoryPath = context.manifestPath.replace(
+      `/${FRAME_MANIFEST_FILE}`,
+      ""
+    );
+    const destinationDirectoryPath = `conversation-${destinationConversation.sId}/Status Copy`;
+    const sourceGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}Status`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: destinationConversation.sId,
+    })}Status Copy`;
+    configureCloneStorage(sourceGcsDirectoryPath, destinationGcsDirectoryPath);
+
+    const response = await requestFrameClone(
+      context.workspace.sId,
+      context.token,
+      sourceDirectoryPath,
+      destinationDirectoryPath
+    );
+
+    const cloned = await response.json();
+    expect(response.status, JSON.stringify(cloned)).toBe(200);
+    const clonedFrame = await FileResource.fetchById(
+      context.auth,
+      cloned.frameId
+    );
+    expect(clonedFrame?.toScopedPath(context.auth)).toBe(
+      `${destinationDirectoryPath}/${FRAME_MANIFEST_FILE}`
+    );
+    expect(clonedFrame?.useCaseMetadata).toMatchObject({
+      conversationId: destinationConversation.sId,
+    });
   });
 
   it("removes a partial clone when its first publication fails", async () => {
