@@ -42,11 +42,14 @@ export function isActionIconName(name: string): name is ActionIconName {
   return name in ActionIcons;
 }
 
-export function getFileTabIcon(iconName: string | undefined): ComponentType {
+export function getFileTabIcon(
+  iconName: string | undefined,
+  fallbackIcon: ComponentType = File02
+): ComponentType {
   if (iconName && isActionIconName(iconName)) {
     return ActionIcons[iconName];
   }
-  return File02;
+  return fallbackIcon;
 }
 
 export function reorderFileTabsInOrder(
@@ -133,7 +136,8 @@ export function getDefaultMainTabOrder(variant: PodVariant): string[] {
 export function buildPodTabOptions(
   variant: PodVariant,
   mainTabOrder: string[],
-  dynamicFileTabs: DynamicFileTab[]
+  dynamicFileTabs: DynamicFileTab[],
+  getFallbackIcon?: (dataSourceId: string) => ComponentType
 ): PodTabOption[] {
   const baseByValue = new Map(
     getBasePodTabOptions(variant).map((option) => [option.value, option])
@@ -144,7 +148,10 @@ export function buildPodTabOptions(
       {
         value: tab.value,
         label: tab.label,
-        icon: getFileTabIcon(tab.iconName),
+        icon: getFileTabIcon(
+          tab.iconName,
+          getFallbackIcon?.(tab.dataSourceId) ?? File02
+        ),
         removable: true,
       },
     ])

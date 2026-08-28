@@ -10,11 +10,7 @@ import {
   Cube01,
   CubeOutline,
   Dialog,
-  DialogContainer,
   DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +26,7 @@ import {
   DropdownMenuTrigger,
   Edit04,
   Eye,
+  File02,
   Heart,
   Lightbulb04,
   Link01,
@@ -59,10 +56,17 @@ import {
   XClose,
   ZapOff,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentType,
+} from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
 import { AddPodFileMenu } from "../components/AddPodFileMenu";
+import { AddToTopBarDialog } from "../components/AddToTopBarDialog";
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
@@ -97,7 +101,10 @@ import {
   type Space,
   type User,
 } from "../data";
-import { getDataSourcesBySpaceId } from "../data/dataSources";
+import {
+  getDataSourceIcon,
+  getDataSourcesBySpaceId,
+} from "../data/dataSources";
 import { getRandomGreetingForName } from "../data/greetings";
 import {
   buildPodTabOptions,
@@ -421,6 +428,24 @@ function Pods() {
     );
   }, [podContext, podTabsBySpaceId]);
 
+  const getFallbackFileTabIcon = useCallback(
+    (dataSourceId: string): ComponentType => {
+      if (!podContext) {
+        return File02;
+      }
+
+      const file = getDataSourcesBySpaceId(podContext.spaceId).find(
+        (item) => item.id === dataSourceId
+      );
+      if (!file) {
+        return File02;
+      }
+
+      return getDataSourceIcon(file) ?? File02;
+    },
+    [podContext]
+  );
+
   const basePodTabOptions = useMemo((): PodTabOption[] => {
     if (!podContext || !currentPodTabsState) {
       return [];
@@ -429,9 +454,10 @@ function Pods() {
     return buildPodTabOptions(
       podContext.variant,
       currentPodTabsState.mainTabOrder,
-      currentPodTabsState.dynamicFileTabs
+      currentPodTabsState.dynamicFileTabs,
+      getFallbackFileTabIcon
     );
-  }, [podContext, currentPodTabsState]);
+  }, [podContext, currentPodTabsState, getFallbackFileTabIcon]);
 
   const dynamicFileTabIds = useMemo(
     () =>
@@ -457,7 +483,10 @@ function Pods() {
   }, [podContext]);
 
   const handlePodFileDrop = useCallback(
-    (fileId: string, options?: { activateTab?: boolean }) => {
+    (
+      fileId: string,
+      options?: { activateTab?: boolean; iconName?: string }
+    ) => {
       if (!podContext) {
         return;
       }
@@ -487,6 +516,7 @@ function Pods() {
                 value: fileTabValue,
                 dataSourceId: fileId,
                 label: file.fileName,
+                ...(options?.iconName ? { iconName: options.iconName } : {}),
               },
             ];
         const mainTabOrder = alreadyOpen
@@ -671,12 +701,15 @@ function Pods() {
         {
           value: tab.value,
           label: tab.label,
-          icon: getFileTabIcon(tab.iconName),
+          icon: getFileTabIcon(
+            tab.iconName,
+            getFallbackFileTabIcon(tab.dataSourceId)
+          ),
           iconName: tab.iconName,
         },
       ];
     });
-  }, [currentPodTabsState]);
+  }, [currentPodTabsState, getFallbackFileTabIcon]);
 
   const tabContextMenuOption = tabContextMenu
     ? podTabOptions.find((option) => option.value === tabContextMenu.value)
@@ -1924,41 +1957,22 @@ function Pods() {
           )}
         </DialogContent>
       </Dialog>
-      <Dialog
-        open={pendingTopbarFile !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPendingTopbarFile(null);
+      <AddToTopBarDialog
+        key={pendingTopbarFile?.id ?? "closed"}
+        isOpen={pendingTopbarFile !== null}
+        fileName={pendingTopbarFile?.fileName ?? ""}
+        defaultIcon={
+          pendingTopbarFile
+            ? getFallbackFileTabIcon(pendingTopbarFile.id)
+            : File02
+        }
+        onClose={() => setPendingTopbarFile(null)}
+        onAdd={(iconName) => {
+          if (pendingTopbarFile) {
+            handlePodFileDrop(pendingTopbarFile.id, { iconName });
           }
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Want to add to the top?</DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            {pendingTopbarFile
-              ? `${pendingTopbarFile.fileName} will be added to the top bar.`
-              : null}
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "No",
-              variant: "outline",
-            }}
-            rightButtonProps={{
-              label: "Yes",
-              variant: "highlight",
-              onClick: () => {
-                if (pendingTopbarFile) {
-                  handlePodFileDrop(pendingTopbarFile.id);
-                  setPendingTopbarFile(null);
-                }
-              },
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+      />
       <InviteUsersScreen
         isOpen={isInviteUsersScreenOpen}
         spaceId={inviteSpaceId}
