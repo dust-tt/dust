@@ -2,12 +2,16 @@
 // @vitest-environment node
 
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { createSandboxTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
-import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
+import {
+  getFramePublicationDescriptorPath,
+  getFramePublicationUiBundlePath,
+} from "@app/types/api/frame_storage";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { honoApp } from "@front-api/app";
@@ -76,6 +80,22 @@ function requestFrameMove(
   destinationDirectoryPath: string
 ) {
   return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/move`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ sourceDirectoryPath, destinationDirectoryPath }),
+  });
+}
+
+function requestFrameClone(
+  workspaceId: string,
+  token: string,
+  sourceDirectoryPath: string,
+  destinationDirectoryPath: string
+) {
+  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/clone`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${token}`,
@@ -283,6 +303,182 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     expect(frame?.toScopedPath(context.auth)).toBe(
       `${destinationDirectoryPath}/${FRAME_MANIFEST_FILE}`
     );
+  });
+
+  it("clones a Frame into a fresh identity, publication, sharing record, and state", async () => {
+    const context = await setup();
+    assert(context.frame);
+    const sourcePublicationResponse = await requestFramePublish(
+      context.workspace.sId,
+      context.token,
+      context.manifestPath
+    );
+    expect(sourcePublicationResponse.status).toBe(200);
+    const sourcePublication = await sourcePublicationResponse.json();
+
+    const sourceDirectoryPath = context.manifestPath.replace(
+      `/${FRAME_MANIFEST_FILE}`,
+      ""
+    );
+    const destinationDirectoryPath = sourceDirectoryPath.replace(
+      "/Status",
+      "/Status Copy"
+    );
+    const sourceGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}Status`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}Status Copy`;
+    const sourceEntries = [
+      {
+        relativePath: FRAME_MANIFEST_FILE,
+        content: manifest,
+        contentType: "application/json",
+      },
+      {
+        relativePath: "index.tsx",
+        content: uiSource,
+        contentType: "text/typescript",
+      },
+    ];
+    fileStorageMock.setFileExists(
+      (filePath) =>
+        filePath.startsWith(`${sourceGcsDirectoryPath}/`) ||
+        fileStorageMock.getObject(filePath) !== undefined
+    );
+    fileStorageMock.setFilesByPrefix((prefix) => {
+      const directory =
+        prefix === `${sourceGcsDirectoryPath}/`
+          ? sourceGcsDirectoryPath
+          : prefix === `${destinationGcsDirectoryPath}/` &&
+              fileStorageMock.getObject(
+                `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
+              ) !== undefined
+            ? destinationGcsDirectoryPath
+            : null;
+      return directory
+        ? sourceEntries.map(({ content, contentType, relativePath }) => ({
+            name: `${directory}/${relativePath}`,
+            metadata: {
+              contentType,
+              generation: "1",
+              md5Hash: relativePath,
+              size: String(Buffer.byteLength(content)),
+            },
+          }))
+        : null;
+    });
+
+    const response = await requestFrameClone(
+      context.workspace.sId,
+      context.token,
+      sourceDirectoryPath,
+      destinationDirectoryPath
+    );
+
+    const cloned = await response.json();
+    expect(response.status, JSON.stringify(cloned)).toBe(200);
+    expect(cloned).toMatchObject({
+      destinationDirectoryPath,
+      sourceDirectoryPath,
+    });
+    expect(cloned.frameId).not.toBe(context.frame.sId);
+    expect(cloned.publicationId).not.toBe(sourcePublication.publicationId);
+
+    const clonedFrame = await FileResource.fetchById(
+      context.auth,
+      cloned.frameId
+    );
+    expect(clonedFrame?.useCaseMetadata?.activePublicationId).toBe(
+      cloned.publicationId
+    );
+    expect(clonedFrame?.toScopedPath(context.auth)).toBe(
+      `${destinationDirectoryPath}/${FRAME_MANIFEST_FILE}`
+    );
+    expect((await clonedFrame?.getShareInfo())?.shareUrl).not.toBe(
+      (await context.frame.getShareInfo())?.shareUrl
+    );
+    expect(
+      fileStorageMock.getObject(
+        getFramePublicationDescriptorPath({
+          workspaceId: context.workspace.sId,
+          frameId: cloned.frameId,
+          publicationId: cloned.publicationId,
+        })
+      )
+    ).toBeDefined();
+    await expect(
+      FrameSandboxAdapter.fetchSandbox(context.auth, clonedFrame!)
+    ).resolves.toBeNull();
+  });
+
+  it("removes a partial clone when its first publication fails", async () => {
+    const context = await setup();
+    assert(context.frame);
+    const sourceDirectoryPath = context.manifestPath.replace(
+      `/${FRAME_MANIFEST_FILE}`,
+      ""
+    );
+    const destinationDirectoryPath = sourceDirectoryPath.replace(
+      "/Status",
+      "/Broken Copy"
+    );
+    const filesBasePath = getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    });
+    const sourceGcsDirectoryPath = `${filesBasePath}Status`;
+    const destinationGcsDirectoryPath = `${filesBasePath}Broken Copy`;
+    const destinationManifestPath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    fileStorageMock.setFileExists(
+      (filePath) =>
+        filePath === `${sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}` ||
+        fileStorageMock.getObject(filePath) !== undefined
+    );
+    fileStorageMock.setFilesByPrefix((prefix) => {
+      const hasCopiedManifest =
+        fileStorageMock.getObject(destinationManifestPath) !== undefined;
+      const directory =
+        prefix === `${sourceGcsDirectoryPath}/`
+          ? sourceGcsDirectoryPath
+          : prefix === `${destinationGcsDirectoryPath}/` && hasCopiedManifest
+            ? destinationGcsDirectoryPath
+            : null;
+      return directory
+        ? [
+            {
+              name: `${directory}/${FRAME_MANIFEST_FILE}`,
+              metadata: {
+                contentType: "application/json",
+                generation: "1",
+                md5Hash: "manifest",
+                size: String(Buffer.byteLength(manifest)),
+              },
+            },
+          ]
+        : null;
+    });
+
+    const response = await requestFrameClone(
+      context.workspace.sId,
+      context.token,
+      sourceDirectoryPath,
+      destinationDirectoryPath
+    );
+
+    expect(response.status).toBe(400);
+    expect(fileStorageMock.getObject(destinationManifestPath)).toBeUndefined();
+    const destinationFrames = await FileResource.fetchByMountFilePaths(
+      context.auth,
+      [destinationManifestPath]
+    );
+    expect(destinationFrames).toEqual([]);
+    await expect(
+      FileResource.fetchById(context.auth, context.frame.sId)
+    ).resolves.not.toBeNull();
   });
 
   it("deletes a registered Frames v2 package through the sandbox token", async () => {
