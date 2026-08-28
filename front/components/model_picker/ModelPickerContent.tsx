@@ -122,7 +122,7 @@ export function ModelPickerContent({
     >
       <div
         key={view}
-        className={`animate-in fade-in duration-200 motion-reduce:animate-none ${isGoingForward ? "slide-in-from-right-4" : "slide-in-from-left-4"}`}
+        className={`animate-in duration-200 motion-reduce:animate-none ${isGoingForward ? "slide-in-from-right-4" : "slide-in-from-left-4"}`}
       >
         {view === "root" && (
           <div className={stepBodyClassName}>
