@@ -54,16 +54,20 @@ function getFlatItems(
   agents: LightAgentConfigurationType[],
   pods: PodType[],
   skills: SkillWithoutInstructionsAndToolsType[],
-  commands: CommandPaletteCommand[]
+  commands: CommandPaletteCommand[],
+  commandsFirst: boolean
 ): CommandPaletteItem[] {
-  return [
+  const commandItems = commands.map(
+    (command): CommandPaletteItem => ({ kind: "command", command })
+  );
+  const entityItems = [
     ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
     ...pods.map((pod): CommandPaletteItem => ({ kind: "pod", pod })),
     ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
-    ...commands.map(
-      (command): CommandPaletteItem => ({ kind: "command", command })
-    ),
   ];
+  return commandsFirst
+    ? [...commandItems, ...entityItems]
+    : [...entityItems, ...commandItems];
 }
 
 export function CommandPaletteSearchPhase({
@@ -82,10 +86,28 @@ export function CommandPaletteSearchPhase({
   onItemSelect,
   onClose,
 }: CommandPaletteSearchPhaseProps) {
+  // When the query matches a Settings command, surface it above the
+  // fuzzy-matched entities instead of always burying it at the bottom.
+  const commandsFirst = searchQuery.trim().length > 0 && commands.length > 0;
+
   const flatItems = useMemo(
-    () => getFlatItems(agents, pods, skills, commands),
-    [agents, pods, skills, commands]
+    () => getFlatItems(agents, pods, skills, commands, commandsFirst),
+    [agents, pods, skills, commands, commandsFirst]
   );
+
+  const offsets = commandsFirst
+    ? {
+        commands: 0,
+        agents: commands.length,
+        pods: commands.length + agents.length,
+        skills: commands.length + agents.length + pods.length,
+      }
+    : {
+        agents: 0,
+        pods: agents.length,
+        skills: agents.length + pods.length,
+        commands: agents.length + pods.length + skills.length,
+      };
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -106,8 +128,9 @@ export function CommandPaletteSearchPhase({
     }
   }, [selectedIndex, flatItems.length]);
 
-  // Reset selection and trim stale refs when the number of results changes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: commands.length, agents.length, pods.length and skills.length are intentional triggers
+  // Reset selection and trim stale refs when the results (or their order)
+  // change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: commands.length, agents.length, pods.length, skills.length and commandsFirst are intentional triggers
   useEffect(() => {
     itemRefs.current.length = flatItems.length;
     onSelectedIndexChange(0);
@@ -116,6 +139,7 @@ export function CommandPaletteSearchPhase({
     agents.length,
     pods.length,
     skills.length,
+    commandsFirst,
     onSelectedIndexChange,
   ]);
 
@@ -147,6 +171,35 @@ export function CommandPaletteSearchPhase({
         break;
     }
   }
+
+  const settingsSection = commands.length > 0 && (
+    <div>
+      <ItemTitle>Settings</ItemTitle>
+      {commands.map((command, i) => {
+        const globalIndex = offsets.commands + i;
+        return (
+          <ItemRow
+            key={command.id}
+            ref={(el) => {
+              itemRefs.current[globalIndex] = el;
+            }}
+            isSelected={selectedIndex === globalIndex}
+            onClick={() => onItemSelect({ kind: "command", command })}
+            onMouseMove={() => onSelectedIndexChange(globalIndex)}
+          >
+            <Icon visual={command.icon} size="xs" />
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground">
+                Change interface theme
+              </span>
+              <Icon visual={ChevronRight} size="xs" />
+              <span className="font-medium">{command.label}</span>
+            </div>
+          </ItemRow>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className="flex flex-col">
@@ -192,11 +245,13 @@ export function CommandPaletteSearchPhase({
           </ItemEmptyState>
         )}
 
+        {commandsFirst && settingsSection}
+
         {agents.length > 0 && (
           <div>
             <ItemTitle>Agents</ItemTitle>
             {agents.map((agent, i) => {
-              const globalIndex = i;
+              const globalIndex = offsets.agents + i;
               return (
                 <ItemRow
                   key={agent.sId}
@@ -230,7 +285,7 @@ export function CommandPaletteSearchPhase({
           <div>
             <ItemTitle>Pods</ItemTitle>
             {pods.map((pod, i) => {
-              const globalIndex = agents.length + i;
+              const globalIndex = offsets.pods + i;
               return (
                 <ItemRow
                   key={pod.sId}
@@ -270,7 +325,7 @@ export function CommandPaletteSearchPhase({
           <div>
             <ItemTitle>Skills</ItemTitle>
             {skills.map((skill, i) => {
-              const globalIndex = agents.length + pods.length + i;
+              const globalIndex = offsets.skills + i;
               const SkillAvatar = getSkillAvatarIcon(skill);
               return (
                 <ItemRow
@@ -301,35 +356,7 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
-        {commands.length > 0 && (
-          <div>
-            <ItemTitle>Settings</ItemTitle>
-            {commands.map((command, i) => {
-              const globalIndex =
-                agents.length + pods.length + skills.length + i;
-              return (
-                <ItemRow
-                  key={command.id}
-                  ref={(el) => {
-                    itemRefs.current[globalIndex] = el;
-                  }}
-                  isSelected={selectedIndex === globalIndex}
-                  onClick={() => onItemSelect({ kind: "command", command })}
-                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
-                >
-                  <Icon visual={command.icon} size="xs" />
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-muted-foreground">
-                      Change interface theme
-                    </span>
-                    <Icon visual={ChevronRight} size="xs" />
-                    <span className="font-medium">{command.label}</span>
-                  </div>
-                </ItemRow>
-              );
-            })}
-          </div>
-        )}
+        {!commandsFirst && settingsSection}
       </div>
       <KeyboardHints
         hints={[
