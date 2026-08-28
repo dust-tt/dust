@@ -78,6 +78,10 @@ export function CommandPaletteActionPhase({
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Tracks how the current selection was set — keyboard navigation must
+  // render the highlight instantly, while pointer moves keep the animated
+  // hover fade.
+  const lastInputRef = useRef<"keyboard" | "pointer">("pointer");
 
   useEffect(() => {
     containerRef.current?.focus();
@@ -93,10 +97,12 @@ export function CommandPaletteActionPhase({
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
+        lastInputRef.current = "keyboard";
         setSelectedIndex((prev) => (prev + 1) % actions.length);
         break;
       case "ArrowUp":
         e.preventDefault();
+        lastInputRef.current = "keyboard";
         setSelectedIndex(
           (prev) => (prev - 1 + actions.length) % actions.length
         );
@@ -155,14 +161,20 @@ export function CommandPaletteActionPhase({
           <div
             key={action}
             className={cn(
-              "flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors duration-100",
+              "flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5",
+              lastInputRef.current === "pointer"
+                ? "transition-colors duration-100"
+                : "",
               "text-foreground",
               selectedIndex === i
                 ? "bg-primary-100"
                 : "hover:bg-muted-background"
             )}
             onClick={() => onAction(action)}
-            onMouseEnter={() => setSelectedIndex(i)}
+            onMouseEnter={() => {
+              lastInputRef.current = "pointer";
+              setSelectedIndex(i);
+            }}
           >
             <Icon visual={icon} size="sm" className="shrink-0" />
             <div className="flex flex-col">

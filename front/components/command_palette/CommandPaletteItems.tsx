@@ -5,16 +5,23 @@ interface ItemRowProps {
   isSelected: boolean;
   onClick: () => void;
   onMouseMove: () => void;
+  // True only when the current selection state came from a pointer move —
+  // keyboard-driven selection must render instantly (100+/day surface).
+  transitionColors: boolean;
   children: React.ReactNode;
 }
 
 export const ItemRow = React.forwardRef<HTMLDivElement, ItemRowProps>(
-  function ItemRow({ isSelected, onClick, onMouseMove, children }, ref) {
+  function ItemRow(
+    { isSelected, onClick, onMouseMove, transitionColors, children },
+    ref
+  ) {
     return (
       <div
         ref={ref}
         className={cn(
-          "flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors duration-150",
+          "flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm",
+          transitionColors ? "transition-colors duration-150" : "",
           "text-foreground",
           // Match the hover/selected background used by menus and dropdowns.
           isSelected ? "bg-hover" : "hover:bg-hover"

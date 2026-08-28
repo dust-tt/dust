@@ -165,3 +165,23 @@
     color: oklch(87.12% 0.1363 154.45);
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  /* shake (used by .animate-shake, see InputBar.tsx) only moves the element
+     — no opacity/color component to preserve — so collapse the transform to
+     a no-op instead of animating it. */
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  /* cursor-blink (see WelcomeTourGuide.tsx) loops forever and is opacity-only,
+     so it's kept rather than killed, but paused on its steady "visible"
+     frame (half its duration in) instead of blinking indefinitely. */
+  .animate-cursor-blink {
+    animation-play-state: paused;
+    animation-delay: -0.45s;
+  }
+}

@@ -32,6 +32,8 @@ import {
   DropdownMenuSeparator,
   Icon,
   Lock01,
+  MOTION_DURATIONS,
+  MOTION_EASINGS,
 } from "@dust-tt/sparkle";
 import type { Variants } from "framer-motion";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -66,12 +68,36 @@ interface ModelPickerContentProps {
 // Slide direction for the drill-down transition, root < makers < models.
 const VIEW_ORDER: ModelPickerView[] = ["root", "makers", "models"];
 
-// A step further in (root -> makers -> models) slides the incoming view in
-// from the right and pushes the outgoing one left; going back reverses it.
-const slideVariants: Variants = {
-  enter: (direction: number) => ({ x: direction > 0 ? 24 : -24, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (direction: number) => ({ x: direction > 0 ? -24 : 24, opacity: 0 }),
+// A small directional shift + fade between steps — not a full-width push.
+// `mode="wait"` means exactly one step is ever mounted (no overlap to worry
+// about), and the outer `layout` animation (below) handles the resize, so
+// this only has to carry "which way did we go": a light touch is enough.
+// Uses the shared dropdown/popover tokens so this reads as the same kind of
+// motion as every other Sparkle dropdown, rather than a bespoke curve.
+const STEP_ENTER_TRANSITION = {
+  duration: MOTION_DURATIONS.enter,
+  ease: MOTION_EASINGS.enter,
+} as const;
+const STEP_EXIT_TRANSITION = {
+  duration: MOTION_DURATIONS.exit,
+  ease: MOTION_EASINGS.enter,
+} as const;
+
+const stepVariants: Variants = {
+  enter: (direction: number) => ({
+    opacity: 0,
+    transform: `translateX(${direction > 0 ? 12 : -12}px)`,
+  }),
+  center: {
+    opacity: 1,
+    transform: "translateX(0px)",
+    transition: STEP_ENTER_TRANSITION,
+  },
+  exit: (direction: number) => ({
+    opacity: 0,
+    transform: `translateX(${direction > 0 ? -12 : 12}px)`,
+    transition: STEP_EXIT_TRANSITION,
+  }),
 };
 
 export function ModelPickerContent({
@@ -113,9 +139,11 @@ export function ModelPickerContent({
     (maker) => maker.makerId === activeMaker
   );
 
+  const stepBodyClassName = "max-h-[26rem] overflow-y-auto";
+
   return (
     <DropdownMenuContent
-      className="w-84 max-w-(--radix-dropdown-menu-content-available-width) overflow-hidden"
+      className="w-84 max-w-(--radix-dropdown-menu-content-available-width)"
       align="start"
       side={side}
       onFocusOutside={(e) => {
@@ -134,85 +162,92 @@ export function ModelPickerContent({
         }
       }}
     >
-      <div className="relative">
-        <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+      {/* `layout` makes Motion measure the box before/after each step swap and
+          animate the size difference itself — no manual ResizeObserver or
+          pinned-height state needed for a resize this simple. */}
+      <motion.div layout={!prefersReducedMotion} className="overflow-hidden">
+        <AnimatePresence mode="wait" initial={false} custom={direction}>
           {view === "root" && (
             <motion.div
               key="root"
               custom={direction}
-              variants={prefersReducedMotion ? undefined : slideVariants}
+              variants={prefersReducedMotion ? undefined : stepVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
             >
-              <DropdownMenuLabel label="Recommendations" className="text-sm" />
+              <div className={stepBodyClassName}>
+                <DropdownMenuLabel
+                  label="Recommendations"
+                  className="text-sm"
+                />
 
-              {MODEL_TIERS.map((tier) => {
-                const isSelected = isTierDisplayed(tier.id, shown.display);
-                const lockReason = getTierLockReason(tier.id, {
-                  lockPremiumEfforts,
-                  streamModels,
-                });
-                if (lockReason) {
+                {MODEL_TIERS.map((tier) => {
+                  const isSelected = isTierDisplayed(tier.id, shown.display);
+                  const lockReason = getTierLockReason(tier.id, {
+                    lockPremiumEfforts,
+                    streamModels,
+                  });
+                  if (lockReason) {
+                    return (
+                      <DropdownMenuItem
+                        key={tier.id}
+                        icon={MODEL_TIER_ICON[tier.id]}
+                        label={tier.name}
+                        disabled
+                        tooltip={getModelLockTooltip(lockReason)}
+                        endComponent={
+                          <Icon
+                            visual={Lock01}
+                            size="sm"
+                            className="text-muted-foreground"
+                          />
+                        }
+                        onSelect={(e) => e.preventDefault()}
+                      />
+                    );
+                  }
                   return (
                     <DropdownMenuItem
                       key={tier.id}
                       icon={MODEL_TIER_ICON[tier.id]}
                       label={tier.name}
-                      disabled
-                      tooltip={getModelLockTooltip(lockReason)}
+                      className="text-foreground"
                       endComponent={
-                        <Icon
-                          visual={Lock01}
-                          size="sm"
-                          className="text-muted-foreground"
-                        />
+                        <div className="flex items-center gap-3">
+                          <span className="whitespace-nowrap text-xs text-muted-foreground">
+                            {getTierResolvedModelLabel(tier.id, streams)}
+                          </span>
+                          {isSelected && (
+                            <ModelPickerSelectionIndicator
+                              canRevert={canRevert}
+                              onRevert={onRevert}
+                              size="xs"
+                            />
+                          )}
+                        </div>
                       }
+                      onClick={() => onSelectTier(tier.id)}
                       onSelect={(e) => e.preventDefault()}
                     />
                   );
-                }
-                return (
-                  <DropdownMenuItem
-                    key={tier.id}
-                    icon={MODEL_TIER_ICON[tier.id]}
-                    label={tier.name}
-                    className="text-foreground"
-                    endComponent={
-                      <div className="flex items-center gap-3">
-                        <span className="whitespace-nowrap text-xs text-muted-foreground">
-                          {getTierResolvedModelLabel(tier.id, streams)}
-                        </span>
-                        {isSelected && (
-                          <ModelPickerSelectionIndicator
-                            canRevert={canRevert}
-                            onRevert={onRevert}
-                            size="xs"
-                          />
-                        )}
-                      </div>
-                    }
-                    onClick={() => onSelectTier(tier.id)}
-                    onSelect={(e) => e.preventDefault()}
-                  />
-                );
-              })}
+                })}
 
-              <DropdownMenuSeparator />
+                <DropdownMenuSeparator />
 
-              <DropdownMenuItem
-                label="More models"
-                endComponent={
-                  <Icon
-                    visual={ChevronRight}
-                    size="xs"
-                    className="text-muted-foreground"
-                  />
-                }
-                onClick={onOpenMakers}
-                onSelect={(e) => e.preventDefault()}
-              />
+                <DropdownMenuItem
+                  label="More models"
+                  endComponent={
+                    <Icon
+                      visual={ChevronRight}
+                      size="xs"
+                      className="text-muted-foreground"
+                    />
+                  }
+                  onClick={onOpenMakers}
+                  onSelect={(e) => e.preventDefault()}
+                />
+              </div>
             </motion.div>
           )}
 
@@ -220,27 +255,28 @@ export function ModelPickerContent({
             <motion.div
               key="makers"
               custom={direction}
-              variants={prefersReducedMotion ? undefined : slideVariants}
+              variants={prefersReducedMotion ? undefined : stepVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
             >
-              <ModelPickerMakersView
-                makerGroups={makerGroups}
-                allModels={allModels}
-                shown={shown}
-                agentDefault={agentDefault}
-                canRevert={canRevert}
-                lockPremiumEfforts={lockPremiumEfforts}
-                search={search}
-                onSearchChange={onSearchChange}
-                onBack={onBack}
-                onSelectMaker={onSelectMaker}
-                onSelectModel={onSelectModel}
-                onChangeEffort={onChangeEffort}
-                onRevert={onRevert}
-              />
+              <div className={stepBodyClassName}>
+                <ModelPickerMakersView
+                  makerGroups={makerGroups}
+                  allModels={allModels}
+                  shown={shown}
+                  agentDefault={agentDefault}
+                  canRevert={canRevert}
+                  lockPremiumEfforts={lockPremiumEfforts}
+                  search={search}
+                  onSearchChange={onSearchChange}
+                  onBack={onBack}
+                  onSelectMaker={onSelectMaker}
+                  onSelectModel={onSelectModel}
+                  onChangeEffort={onChangeEffort}
+                  onRevert={onRevert}
+                />
+              </div>
             </motion.div>
           )}
 
@@ -248,28 +284,29 @@ export function ModelPickerContent({
             <motion.div
               key="models"
               custom={direction}
-              variants={prefersReducedMotion ? undefined : slideVariants}
+              variants={prefersReducedMotion ? undefined : stepVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
             >
-              <ModelPickerModelsView
-                makerId={activeMakerGroup.makerId}
-                models={activeMakerGroup.models}
-                shown={shown}
-                agentDefault={agentDefault}
-                canRevert={canRevert}
-                lockPremiumEfforts={lockPremiumEfforts}
-                onBack={onBack}
-                onSelectModel={onSelectModel}
-                onChangeEffort={onChangeEffort}
-                onRevert={onRevert}
-              />
+              <div className={stepBodyClassName}>
+                <ModelPickerModelsView
+                  makerId={activeMakerGroup.makerId}
+                  models={activeMakerGroup.models}
+                  shown={shown}
+                  agentDefault={agentDefault}
+                  canRevert={canRevert}
+                  lockPremiumEfforts={lockPremiumEfforts}
+                  onBack={onBack}
+                  onSelectModel={onSelectModel}
+                  onChangeEffort={onChangeEffort}
+                  onRevert={onRevert}
+                />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
     </DropdownMenuContent>
   );
 }

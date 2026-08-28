@@ -1,4 +1,5 @@
 import { PersonalUsageCard } from "@app/components/credits/PersonalUsageCard";
+import { ANALYTICS_LAYOUT_TRANSITION } from "@app/components/workspace/analytics/analyticsMotion";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionChart } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
@@ -133,7 +134,7 @@ export function UserAnalyticsPopover({
             <LazyMotion features={domMax}>
               <m.div
                 layout={!shouldReduceMotion}
-                transition={{ duration: shouldReduceMotion ? 0 : 0.18 }}
+                transition={ANALYTICS_LAYOUT_TRANSITION(shouldReduceMotion)}
                 className="flex flex-col"
               >
                 <ConsumptionChart

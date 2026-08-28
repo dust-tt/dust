@@ -29,6 +29,7 @@ import {
   DropdownMenuSearchbar,
   Icon,
 } from "@dust-tt/sparkle";
+import { useEffect, useRef } from "react";
 
 interface ModelPickerMakersViewProps {
   makerGroups: MakerGroup[];
@@ -67,6 +68,19 @@ export function ModelPickerMakersView({
   onRevert,
 }: ModelPickerMakersViewProps) {
   const { isDark } = useTheme();
+
+  // Sparkle's own `autoFocus` calls `focus()` bare, which makes the browser
+  // scroll the input into view — and this step is mid-slide and clipped by the
+  // menu's animating height when that happens, so it visibly jumps. Focus it
+  // ourselves with `preventScroll` instead.
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const timeout = window.setTimeout(
+      () => searchInputRef.current?.focus({ preventScroll: true }),
+      0
+    );
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   const query = search.trim().toLowerCase();
   const isSearching = query !== "";
@@ -116,10 +130,11 @@ export function ModelPickerMakersView({
         label="More models"
         truncateText
         onClick={onBack}
+        onSelect={(e) => e.preventDefault()}
       />
       <div className="sticky top-0 z-10 bg-overlay-background">
         <DropdownMenuSearchbar
-          autoFocus
+          ref={searchInputRef}
           name="search-models"
           placeholder="Search for model"
           value={search}
@@ -157,6 +172,7 @@ export function ModelPickerMakersView({
               </div>
             }
             onClick={() => onSelectMaker(maker.makerId)}
+            onSelect={(e) => e.preventDefault()}
           />
         ))
       )}

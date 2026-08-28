@@ -49,6 +49,7 @@ export function ModelPickerModelsView({
         label={getModelMakerDisplayName(makerId)}
         truncateText
         onClick={onBack}
+        onSelect={(e) => e.preventDefault()}
       />
       {models.map((model) => {
         const isSelected = isModelSelection(model, shown.display);

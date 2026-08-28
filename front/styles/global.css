@@ -287,3 +287,28 @@ body.document-scroll-mode #root {
   background-color: var(--color-stone-50);
   font-weight: 600;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  /* grow-down is invoked via an inline `animation` shorthand (see
+     TimelineRow.tsx), not a class, so it can't be neutralized through a
+     selector on the animated element alone — redefining the keyframes here
+     collapses the scale to a no-op for every consumer. The companion
+     `fade-in` animation (opacity-only) is untouched. */
+  @keyframes grow-down {
+    from,
+    to {
+      transform: scaleY(1);
+    }
+  }
+
+  /* .loading-text (see InputBarContainer.tsx / useCustomEditor.tsx) runs two
+     animations: the one-shot `initialFade` color fade (left as-is) and the
+     infinite `rainbowLoop` background-position sweep. Target only the second
+     animation in the list via the comma-separated animation-play-state /
+     animation-delay syntax, pausing it mid-cycle (half its 3s duration)
+     rather than at frame 0. */
+  .loading-text {
+    animation-play-state: running, paused;
+    animation-delay: 0s, -1.5s;
+  }
+}

@@ -5,6 +5,7 @@ import {
   isInternalAllowedIcon,
 } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { ANALYTICS_LAYOUT_TRANSITION } from "@app/components/workspace/analytics/analyticsMotion";
 import { ConsumptionConversationAttribution } from "@app/components/workspace/analytics/consumption/ConsumptionConversationAttribution";
 import { ConsumptionExportPanel } from "@app/components/workspace/analytics/consumption/ConsumptionExportPanel";
 import {
@@ -716,10 +717,7 @@ export function ConsumptionAttributionRowsView({
         initial={shouldReduceMotion ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={shouldReduceMotion ? undefined : { opacity: 0 }}
-        transition={{
-          duration: shouldReduceMotion ? 0 : 0.1,
-          ease: MOTION_EASINGS.enter,
-        }}
+        transition={ANALYTICS_LAYOUT_TRANSITION(shouldReduceMotion)}
         aria-busy={isLoading || isTopValidating}
       >
         {content}

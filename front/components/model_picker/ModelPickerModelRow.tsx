@@ -9,9 +9,26 @@ import type {
   ModelConfigurationType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
-import { DropdownMenuItem, Icon, Lock01 } from "@dust-tt/sparkle";
+import {
+  DropdownMenuItem,
+  Icon,
+  Lock01,
+  MOTION_DURATIONS,
+  MOTION_EASINGS,
+} from "@dust-tt/sparkle";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { ComponentType } from "react";
 import { useRef } from "react";
+
+// Opening the slider both grows the row and reveals its contents; the opacity
+// lands first so the slider reads as present before the space finishes opening.
+// The height spring stays a spring (springs aren't part of the CSS-token
+// system) but the opacity fade now uses the same enter token as every other
+// dropdown/popover surface instead of a bare "easeOut" string.
+const EFFORT_REVEAL_TRANSITION = {
+  height: { type: "spring", bounce: 0, duration: MOTION_DURATIONS.enter },
+  opacity: { duration: MOTION_DURATIONS.exit, ease: MOTION_EASINGS.enter },
+} as const;
 
 interface ModelPickerModelRowProps {
   model: ModelConfigurationType;
@@ -41,6 +58,7 @@ export function ModelPickerModelRow({
   onRevert,
 }: ModelPickerModelRowProps) {
   const itemRef = useRef<HTMLDivElement>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   if (lockReason) {
     return (
@@ -78,13 +96,28 @@ export function ModelPickerModelRow({
           onSelectModel(model);
         }}
       />
-      {isSelected && effortStops.length > 0 && (
-        <ReasoningEffortSlider
-          stops={effortStops}
-          value={effort}
-          onChange={onChangeEffort}
-        />
-      )}
+      <AnimatePresence initial={false}>
+        {isSelected && effortStops.length > 0 && (
+          <motion.div
+            key="effort"
+            // The row is mid-list, so the reveal has to open space rather than
+            // fade in on top of the rows below it.
+            initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={
+              prefersReducedMotion ? { duration: 0 } : EFFORT_REVEAL_TRANSITION
+            }
+            className="overflow-hidden"
+          >
+            <ReasoningEffortSlider
+              stops={effortStops}
+              value={effort}
+              onChange={onChangeEffort}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
