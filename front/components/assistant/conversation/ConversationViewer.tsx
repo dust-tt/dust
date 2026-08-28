@@ -94,7 +94,6 @@ import {
   VirtuosoMessageList,
   VirtuosoMessageListLicense,
 } from "@virtuoso.dev/message-list";
-import type { MutableRefObject } from "react";
 import {
   useCallback,
   useContext,
@@ -107,7 +106,7 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
 import { ConversationErrorDisplay } from "./ConversationError";
-import { findFirstUnreadMessageIndex } from "./utils";
+import { findFirstUnreadMessageIndex, getAutoScrollEnabled } from "./utils";
 
 const DEFAULT_PAGE_LIMIT = 50;
 // SSE is the fast path; poll slowly in case the completion event is missed before subscription.
@@ -137,35 +136,6 @@ function customSmoothScroll() {
     animationFrameCount: 30,
     easing: easeOutQuint,
   };
-}
-
-// This function is used to update the auto scroll enabled state based on the scroll location.
-// Goal is to detect when the user is scrolling manually to pause the auto scroll.
-function updateAutoScrollEnabledFromLocation({
-  isAutoScrollEnabledRef,
-  location,
-  prevLocationRef,
-}: {
-  isAutoScrollEnabledRef: MutableRefObject<boolean>;
-  location: Pick<ListScrollLocation, "scrollHeight" | "bottomOffset">;
-  prevLocationRef: MutableRefObject<
-    Pick<ListScrollLocation, "scrollHeight" | "bottomOffset">
-  >;
-}) {
-  const { scrollHeight, bottomOffset } = location;
-  const prev = prevLocationRef.current;
-
-  // Scroll up with out change in content.
-  if (scrollHeight === prev.scrollHeight && bottomOffset > prev.bottomOffset) {
-    isAutoScrollEnabledRef.current = false;
-  }
-
-  // Scroll to bottom with no change in content.
-  if (scrollHeight === prev.scrollHeight && bottomOffset == 0) {
-    isAutoScrollEnabledRef.current = true;
-  }
-
-  prevLocationRef.current = { scrollHeight, bottomOffset };
 }
 
 function makeConversationForkNoticeMessage(
@@ -295,8 +265,8 @@ export const ConversationViewer = ({
   const isMobile = useIsMobile();
   const isAutoScrollEnabledRef = useRef(true);
   const prevScrollLocationRef = useRef({
-    scrollHeight: 0,
     bottomOffset: 0,
+    listOffset: 0,
   });
   const sendNotification = useSendNotification();
   const { incrementPendingSteeringCount } = useGenerationContext();
@@ -1380,11 +1350,20 @@ export const ConversationViewer = ({
 
   const onScroll = useCallback(
     (location: ListScrollLocation) => {
-      updateAutoScrollEnabledFromLocation({
-        isAutoScrollEnabledRef,
+      const wasAutoScrollEnabled = isAutoScrollEnabledRef.current;
+      isAutoScrollEnabledRef.current = getAutoScrollEnabled({
+        isAutoScrollEnabled: wasAutoScrollEnabled,
         location,
-        prevLocationRef: prevScrollLocationRef,
+        previousLocation: prevScrollLocationRef.current,
       });
+      prevScrollLocationRef.current = {
+        bottomOffset: location.bottomOffset,
+        listOffset: location.listOffset,
+      };
+
+      if (wasAutoScrollEnabled && !isAutoScrollEnabledRef.current) {
+        virtuosoMessageListRef.current?.cancelSmoothScroll();
+      }
 
       const isLoadingData =
         isLoadingInitialData || isMessagesLoading || isValidating;

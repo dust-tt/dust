@@ -1,4 +1,7 @@
-import { getGroupConversationsByUnreadAndActionRequired } from "@app/components/assistant/conversation/utils";
+import {
+  getAutoScrollEnabled,
+  getGroupConversationsByUnreadAndActionRequired,
+} from "@app/components/assistant/conversation/utils";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { describe, expect, it } from "vitest";
 
@@ -76,5 +79,47 @@ describe("getGroupConversationsByUnreadAndActionRequired", () => {
 
     expect(triggeredConversations.map((c) => c.sId)).toEqual(["active"]);
     expect(inboxConversations).toEqual([]);
+  });
+});
+
+describe("getAutoScrollEnabled", () => {
+  it("keeps following streamed content when the viewport does not move", () => {
+    expect(
+      getAutoScrollEnabled({
+        isAutoScrollEnabled: true,
+        previousLocation: { bottomOffset: 0, listOffset: -600 },
+        location: { bottomOffset: 120, listOffset: -600 },
+      })
+    ).toBe(true);
+  });
+
+  it("detaches when the reader scrolls up while content grows", () => {
+    expect(
+      getAutoScrollEnabled({
+        isAutoScrollEnabled: true,
+        previousLocation: { bottomOffset: 0, listOffset: -600 },
+        location: { bottomOffset: 200, listOffset: -520 },
+      })
+    ).toBe(false);
+  });
+
+  it("stays detached while the reader scrolls down before the bottom", () => {
+    expect(
+      getAutoScrollEnabled({
+        isAutoScrollEnabled: false,
+        previousLocation: { bottomOffset: 200, listOffset: -520 },
+        location: { bottomOffset: 140, listOffset: -580 },
+      })
+    ).toBe(false);
+  });
+
+  it("re-attaches at the bottom while content grows", () => {
+    expect(
+      getAutoScrollEnabled({
+        isAutoScrollEnabled: false,
+        previousLocation: { bottomOffset: 200, listOffset: -520 },
+        location: { bottomOffset: 0, listOffset: -720 },
+      })
+    ).toBe(true);
   });
 });

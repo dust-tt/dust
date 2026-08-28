@@ -25,6 +25,35 @@ import { isZeroHeightMessage } from "./types";
 const MAX_SOURCE_CONVERSATION_TITLE_LENGTH = 50;
 const UNNAMED_PARENT_CONVERSATION_TITLE = "Unnamed parent conversation";
 
+interface AutoScrollLocation {
+  bottomOffset: number;
+  listOffset: number;
+}
+
+export function getAutoScrollEnabled({
+  isAutoScrollEnabled,
+  location,
+  previousLocation,
+}: {
+  isAutoScrollEnabled: boolean;
+  location: AutoScrollLocation;
+  previousLocation: AutoScrollLocation;
+}): boolean {
+  // Re-attach as soon as the reader reaches the bottom, including while the
+  // streamed message is still growing.
+  if (location.bottomOffset === 0) {
+    return true;
+  }
+
+  // Growing content can increase bottomOffset without user scrolling, but it
+  // cannot increase listOffset. An increase means that the viewport moved up.
+  if (location.listOffset > previousLocation.listOffset) {
+    return false;
+  }
+
+  return isAutoScrollEnabled;
+}
+
 function isReinforcedSkillConversation(
   conversation: ConversationListItemType
 ): boolean {
