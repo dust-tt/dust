@@ -26,10 +26,10 @@ interface RestrictedAccessBodyProps {
   scimEnabled: boolean;
   managementType: MembersManagementType;
   owner: LightWorkspaceType;
-  selectedMembers: SearchMemberType[];
+  selectedMemberIds: Set<string>;
   selectedGroups: GroupType[];
   onManagementTypeChange: (managementType: MembersManagementType) => void;
-  onMembersUpdated: (members: SearchMemberType[]) => void;
+  onMemberIdsUpdated: (memberIds: Set<string>) => void;
   onGroupsUpdated: (groups: GroupType[]) => void;
   initialMembers?: SearchMemberType[];
 }
@@ -39,30 +39,22 @@ export function RestrictedAccessBody({
   scimEnabled,
   managementType,
   owner,
-  selectedMembers,
+  selectedMemberIds,
   selectedGroups,
   onManagementTypeChange,
-  onMembersUpdated,
+  onMemberIdsUpdated,
   onGroupsUpdated,
   initialMembers,
 }: RestrictedAccessBodyProps) {
   const confirm = useContext(ConfirmContext);
-
-  const selectedMemberIds = useMemo(
-    () => new Set(selectedMembers.map((m) => m.sId)),
-    [selectedMembers]
-  );
 
   const selectedGroupIds = useMemo(
     () => new Set(selectedGroups.map((g) => g.sId)),
     [selectedGroups]
   );
 
-  const handleMemberSelectionChange = (
-    _ids: Set<string>,
-    users: SearchMemberType[]
-  ) => {
-    onMembersUpdated(users);
+  const handleMemberSelectionChange = (ids: Set<string>) => {
+    onMemberIdsUpdated(ids);
   };
 
   const handleGroupSelectionChange = (
@@ -80,7 +72,7 @@ export function RestrictedAccessBody({
     if (
       managementType === "manual" &&
       newManagementType === "group" &&
-      selectedMembers.length > 0
+      selectedMemberIds.size > 0
     ) {
       const confirmed = await confirm({
         title: "Switch to groups",
