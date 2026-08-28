@@ -1,7 +1,8 @@
 import type { CreditUsageCardVariant } from "@app/components/app/CreditUsageCard";
 import { CreditUsageCard } from "@app/components/app/CreditUsageCard";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCredits, formatLimitTimeframe } from "@app/lib/client/credits";
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
+import type { MaxAwuCreditsTimeframeType } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import { Button } from "@dust-tt/sparkle";
@@ -20,7 +21,7 @@ interface RollingWindowCreditUsageState extends CreditUsageStateBase {
   kind: "rolling_window";
   usedCredits: number;
   limitCredits: number;
-  windowDays: number;
+  timeframe: MaxAwuCreditsTimeframeType;
 }
 
 export type CreditUsageState =
@@ -66,7 +67,7 @@ function getUsageDescription(
       return `${statusLabel}${RESET_LABEL_PREFIX[variant]} in ${state.resetInDays} ${resetUnit}`;
     }
     case "rolling_window":
-      return `${formatCredits(state.usedCredits)} / ${formatCredits(state.limitCredits)} credits over the past ${state.windowDays} day${pluralize(state.windowDays)}`;
+      return `${formatCredits(state.usedCredits)} / ${formatCredits(state.limitCredits)} credits ${formatLimitTimeframe(state.timeframe)}`;
     default:
       assertNeverAndIgnore(state);
       return "";

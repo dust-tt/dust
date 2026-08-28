@@ -87,7 +87,7 @@ describe("CreditUsage", () => {
           kind: "rolling_window",
           usedCredits: 2_000,
           limitCredits: 20_000,
-          windowDays: 7,
+          timeframe: "week",
           usedPercentage: 10,
           target: "on_target",
         }}

@@ -3,6 +3,7 @@ import {
   formatAvgCredits,
   formatCreditResetCountdown,
   formatFairUseAllowance,
+  formatLimitTimeframe,
 } from "./credits";
 
 describe("formatAvgCredits", () => {
@@ -24,6 +25,17 @@ describe("formatFairUseAllowance", () => {
     ["lifetime", "Monthly allowance"],
   ] as const)("formats the %s timeframe", (timeframe, expected) => {
     expect(formatFairUseAllowance(timeframe)).toBe(expected);
+  });
+});
+
+describe("formatLimitTimeframe", () => {
+  it.each([
+    ["day", "over the past 24 hours"],
+    ["week", "over the past 7 days"],
+    ["month", "over the past 30 days"],
+    ["lifetime", "for your current plan"],
+  ] as const)("formats the %s timeframe", (timeframe, expected) => {
+    expect(formatLimitTimeframe(timeframe)).toBe(expected);
   });
 });
 

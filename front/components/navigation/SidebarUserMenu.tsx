@@ -13,7 +13,6 @@ import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { useEffect, useRef } from "react";
 
 const DAY_DURATION_MS = 24 * 60 * 60 * 1000;
-const ROLLING_WINDOW_DAYS = 7;
 const CREDITS_USAGE_ELEVATED_THRESHOLD = 0.75;
 const CREDITS_USAGE_CRITICAL_THRESHOLD = 0.9;
 
@@ -113,7 +112,7 @@ export function SidebarUserMenu({
           kind: "rolling_window",
           usedCredits: fairUseAwuCreditsState.count,
           limitCredits: fairUseAwuCreditsState.limit,
-          windowDays: ROLLING_WINDOW_DAYS,
+          timeframe: maxAwuCreditsTimeframe,
           usedPercentage: Math.round(rollingCreditUsageRatio * 100),
           target: getRollingCreditUsageTarget(rollingCreditUsageRatio),
         }

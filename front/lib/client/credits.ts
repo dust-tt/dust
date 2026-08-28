@@ -54,6 +54,24 @@ export function formatFairUseTimeframe(
   }
 }
 
+export function formatLimitTimeframe(
+  timeframe: MaxAwuCreditsTimeframeType
+): string {
+  switch (timeframe) {
+    case "day":
+      return "over the past 24 hours";
+    case "week":
+      return "over the past 7 days";
+    case "month":
+      return "over the past 30 days";
+    case "lifetime":
+      return "for your current plan";
+    default:
+      assertNeverAndIgnore(timeframe);
+      return "";
+  }
+}
+
 export function formatFairUseAllowance(
   timeframe: MaxAwuCreditsTimeframeType
 ): string {
