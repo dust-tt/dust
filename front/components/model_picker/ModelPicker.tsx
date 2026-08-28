@@ -54,16 +54,27 @@ export interface ModelPickerProps {
   buttonVariant: "outline" | "ghost-secondary";
   buttonSize: "xs" | "sm";
   showLabel: boolean;
+  // Which side the dropdown opens toward. Mirrors the agent picker: "top" in an
+  // active conversation (input bar pinned to the bottom), "bottom" on the new
+  // conversation screen where there is room below.
   side?: "top" | "bottom";
   disabled?: boolean;
+  // Read-at-submit sink. The picker writes the current toSend here (including
+  // derived changes like agent switches); never triggers a parent re-render.
   selectionRef?: MutableRefObject<ModelSelectionType | undefined>;
+  // Fired only on intentional user picks / revert — safe to setState.
   onSelectionChange?: (modelSelection: ModelSelectionType | undefined) => void;
   stickyModelOverride?: ModelSelectionType | undefined;
   setStickyModelOverride?: (
     modelSelection: ModelSelectionType | undefined
   ) => void;
+  // Lets keyboard `/` Pick model commit through the same path as the button picker.
   commitApiRef?: MutableRefObject<((selection: Selection) => void) | null>;
+  // Lets components outside the input bar (e.g. the sidebar banner) open the menu.
   openApiRef?: MutableRefObject<(() => void) | null>;
+  // When set, emits `assistant:model_picker:*` analytics tagged with this
+  // surface. Consumers that don't pass it (e.g. the agent builder) are not
+  // tracked.
   trackingSurface?: ModelPickerSurface;
 }
 
@@ -117,6 +128,8 @@ export function ModelPicker({
     [agentModel, lastRequestedModel, stickyModelOverride, models]
   );
 
+  // When the user switches which agent they address, discard any model override
+  // so the picker falls back to the newly-selected agent's own default.
   const prevAgentIdRef = useRef(agentId);
   useEffect(() => {
     if (agentId === prevAgentIdRef.current) {
@@ -130,12 +143,16 @@ export function ModelPicker({
   const shown: Selection = userOverride ?? baseSelection;
   const shownModelSelection = shown.toSend;
 
+  // Keep the send-time ref current — including agent switches / sticky
+  // resolution where the user didn't pick anything. Mutating a ref during
+  // render is fine and avoids any parent re-render.
   if (selectionRef) {
     selectionRef.current = shownModelSelection;
   }
 
   const canRevert = !isSameSelection(shown.display, agentDefault.display);
 
+  // Concrete, selectable models (meta-models are surfaced as tiers instead).
   const allModels = useMemo<ModelConfigurationType[]>(
     () =>
       models.filter(
@@ -144,11 +161,15 @@ export function ModelPicker({
     [models]
   );
 
+  // Meta-models backing the tier rows: their `isSelectable` tells whether the
+  // member's model-tier cap allows the stream at all.
   const streamModels = useMemo(
     () => models.filter((model) => isModelStreamId(model.modelId)),
     [models]
   );
 
+  // Group models by maker, preserving first-seen order of both makers and
+  // models within each maker.
   const makerGroups = useMemo<MakerGroup[]>(() => {
     const groups = new Map<ModelMakerIdType, ModelConfigurationType[]>();
     for (const model of allModels) {
@@ -168,11 +189,16 @@ export function ModelPicker({
 
   const commit = (
     selection: Selection,
+    // What the user did to reach this selection. Defaults from the selection
+    // shape so the keyboard `/` pick path (which calls `commit` directly via
+    // `commitApiRef`) is still tracked with a sensible trigger.
     trigger: ModelPickerSelectTrigger = selection.display.kind === "tier"
       ? "tier"
       : "model"
   ) => {
     if (isSameSelection(selection.display, agentDefault.display)) {
+      // Exactly the agent default: keep no override so we defer to the agent's
+      // own config (toSend undefined).
       setStickyModelOverride?.(undefined);
     } else {
       setStickyModelOverride?.(selection.toSend);
@@ -194,6 +220,9 @@ export function ModelPicker({
     commitApiRef.current = commit;
   }
 
+  // Opening from the button and opening programmatically (sidebar banner) must
+  // reset the menu's transient state and emit the same `open` event, so both go
+  // through here rather than touching `setIsOpen` directly.
   const openMenu = () => {
     setIsOpen(true);
     setSearch("");
@@ -208,6 +237,11 @@ export function ModelPicker({
     openApiRef.current = openMenu;
   }
 
+  // Picking a concrete model (or nudging its effort slider) must keep the menu
+  // visible so the effort can still be adjusted. The click briefly moves
+  // focus/pointer in a way Radix treats as an interaction-outside and
+  // dismisses the menu; we record the pick time and veto the close that
+  // immediately follows it (see `onOpenChange` below).
   const lastModelInteractionAtMsRef = useRef(0);
 
   const shouldBlockDismiss = () =>
@@ -311,6 +345,9 @@ export function ModelPicker({
     <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
+        // Ignore the dismissal that a model/effort pick triggers, so the menu
+        // stays open. The window is short enough not to swallow a genuine
+        // click-outside a moment later.
         if (!open && shouldBlockDismiss()) {
           return;
         }

@@ -41,6 +41,8 @@ import { useRef } from "react";
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
+  // Vetoes the interaction-outside dismissal that a model/effort pick triggers
+  // on the open submenus, so they stay reachable after a pick.
   shouldBlockDismiss: () => boolean;
   shown: Selection;
   agentDefault: Selection;
