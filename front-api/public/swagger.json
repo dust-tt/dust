@@ -6825,9 +6825,6 @@
               }
             }
           },
-          "403": {
-            "description": "The workspace does not have access to consumption details"
-          },
           "404": {
             "description": "Conversation not found"
           }
