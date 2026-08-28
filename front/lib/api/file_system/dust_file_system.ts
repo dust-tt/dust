@@ -787,10 +787,6 @@ export class DustFileSystem {
     return this.mounts;
   }
 
-  isGCSBacked(): boolean {
-    return this.storageMode === "gcs";
-  }
-
   checkWriteAccess(scopedPath: string): Result<void, DustFileSystemError> {
     const resolved = this.requireWriteMount(scopedPath);
     return resolved.isErr() ? new Err(resolved.error) : new Ok(undefined);

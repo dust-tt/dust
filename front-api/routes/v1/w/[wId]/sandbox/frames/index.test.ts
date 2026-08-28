@@ -1,8 +1,10 @@
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { createSandboxTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import { frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -14,18 +16,18 @@ const manifest = JSON.stringify({
 });
 const uiSource = "export default function Status() { return <p>Ready</p>; }";
 
-function requestFrameLifecycle(
+function requestFramePublish(
   workspaceId: string,
   token: string,
-  body: { action: "register" | "publish"; manifestPath: string }
+  manifestPath: string
 ) {
-  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames`, {
+  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/publish`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${token}`,
       "content-type": "application/json",
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ manifestPath }),
   });
 }
 
@@ -38,6 +40,15 @@ async function setup() {
     workspaceId: context.workspace.sId,
     conversationId: context.conversation.sId,
   })}Status`;
+  const frame = await FileFactory.create(context.auth, null, {
+    contentType: frameV2ContentType,
+    fileName: FRAME_MANIFEST_FILE,
+    fileSize: Buffer.byteLength(manifest),
+    status: "created",
+    useCase: "conversation",
+    useCaseMetadata: { conversationId: context.conversation.sId },
+    mountFilePath: `${mountDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+  });
   const sourceByPath = new Map([
     [`${mountDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
     [`${mountDirectoryPath}/index.tsx`, uiSource],
@@ -57,36 +68,25 @@ async function setup() {
       : null
   );
 
-  return { ...context, manifestPath };
+  return { ...context, frame, manifestPath };
 }
 
 beforeEach(() => {
   fileStorageMock.reset();
 });
 
-describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
-  it("registers and publishes through the sandbox token", async () => {
+describe("POST /api/v1/w/[wId]/sandbox/frames/publish", () => {
+  it("publishes a registered Frame through the sandbox token", async () => {
     const context = await setup();
 
-    const registerResponse = await requestFrameLifecycle(
+    const response = await requestFramePublish(
       context.workspace.sId,
       context.token,
-      { action: "register", manifestPath: context.manifestPath }
+      context.manifestPath
     );
-    expect(registerResponse.status).toBe(200);
-    const registered = await registerResponse.json();
-    expect(registered.frameId).toMatch(/^fil_/);
-    expect(registered.created).toBe(true);
-
-    const publishResponse = await requestFrameLifecycle(
-      context.workspace.sId,
-      context.token,
-      { action: "publish", manifestPath: context.manifestPath }
-    );
-    expect(publishResponse.status).toBe(200);
-    const published = await publishResponse.json();
-    expect(published.frameId).toBe(registered.frameId);
-    expect(published.created).toBe(false);
+    expect(response.status).toBe(200);
+    const published = await response.json();
+    expect(published.frameId).toBe(context.frame.sId);
     expect(published.publicationId).toBeTypeOf("string");
 
     const frame = await FileResource.fetchById(context.auth, published.frameId);
@@ -95,16 +95,32 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     );
   });
 
-  it("refuses the lifecycle endpoint without the feature flag", async () => {
-    const context = await createSandboxTokenTestContext();
+  it("rejects an unregistered manifest path", async () => {
+    const context = await setup();
+    const unregisteredPath = context.manifestPath.replace(
+      "/Status/",
+      "/Other/"
+    );
 
-    const response = await requestFrameLifecycle(
+    const response = await requestFramePublish(
       context.workspace.sId,
       context.token,
-      {
-        action: "register",
-        manifestPath: `conversation-${context.conversation.sId}/Status/${FRAME_MANIFEST_FILE}`,
-      }
+      unregisteredPath
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { message: `No registered Frame found at ${unregisteredPath}.` },
+    });
+  });
+
+  it("refuses publication without the feature flag", async () => {
+    const context = await createSandboxTokenTestContext();
+
+    const response = await requestFramePublish(
+      context.workspace.sId,
+      context.token,
+      `conversation-${context.conversation.sId}/Status/${FRAME_MANIFEST_FILE}`
     );
 
     expect(response.status).toBe(403);

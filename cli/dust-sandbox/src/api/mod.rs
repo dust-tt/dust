@@ -4,4 +4,4 @@ mod types;
 
 pub use client::DustApiClient;
 pub use error::DustApiError;
-pub use types::{parse_content_block, CallToolResult, ContentBlock, FrameLifecycleResponse};
+pub use types::{parse_content_block, CallToolResult, ContentBlock, FramePublishResponse};

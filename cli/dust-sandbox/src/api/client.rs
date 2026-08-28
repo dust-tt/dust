@@ -9,7 +9,7 @@ use tokio::time::sleep;
 use super::error::DustApiError;
 use super::types::{
     parse_action_poll_response, ActionPollResponse, CallToolPostResponse, CallToolRequest,
-    CallToolResponse, CallToolResult, FrameLifecycleRequest, FrameLifecycleResponse, MCPServerView,
+    CallToolResponse, CallToolResult, FramePublishRequest, FramePublishResponse, MCPServerView,
     SandboxServerViewsResponse,
 };
 
@@ -133,30 +133,10 @@ impl DustApiClient {
             .context(format!("failed to parse response from POST {url}"))
     }
 
-    pub async fn register_frame(
-        &self,
-        manifest_path: &str,
-    ) -> anyhow::Result<FrameLifecycleResponse> {
-        self.post(
-            "sandbox/frames",
-            &FrameLifecycleRequest {
-                action: "register",
-                manifest_path,
-            },
-        )
-        .await
-    }
-
-    pub async fn publish_frame(
-        &self,
-        manifest_path: &str,
-    ) -> anyhow::Result<FrameLifecycleResponse> {
+    pub async fn publish_frame(&self, manifest_path: &str) -> anyhow::Result<FramePublishResponse> {
         self.post_with_timeout(
-            "sandbox/frames",
-            &FrameLifecycleRequest {
-                action: "publish",
-                manifest_path,
-            },
+            "sandbox/frames/publish",
+            &FramePublishRequest { manifest_path },
             POLL_MAX_DURATION,
         )
         .await

@@ -5,19 +5,16 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct FrameLifecycleRequest<'a> {
-    pub action: &'a str,
+pub struct FramePublishRequest<'a> {
     pub manifest_path: &'a str,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct FrameLifecycleResponse {
+pub struct FramePublishResponse {
     pub frame_id: String,
     pub manifest_path: String,
-    pub created: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub publication_id: Option<String>,
+    pub publication_id: String,
 }
 
 #[derive(Debug, Deserialize)]

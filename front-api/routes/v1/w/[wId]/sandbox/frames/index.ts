@@ -1,13 +1,14 @@
+import { DustFileSystem } from "@app/lib/api/file_system";
 import {
   type FramePublicationError,
   isFramePublicationError,
 } from "@app/lib/api/frames/publication_storage";
 import { publishFrameV2FromSource } from "@app/lib/api/frames/publish_from_source";
-import { registerFrameV2FromSource } from "@app/lib/api/frames/register_from_source";
 import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import { sandboxAuth } from "@front-api/middlewares/sandbox_auth";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -15,16 +16,14 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-const FrameLifecycleRequestSchema = z.object({
-  action: z.enum(["register", "publish"]),
+const FramePublishRequestSchema = z.object({
   manifestPath: z.string().min(1),
 });
 
-type FrameLifecycleResponse = {
+type FramePublishResponse = {
   frameId: string;
   manifestPath: string;
-  created: boolean;
-  publicationId?: string;
+  publicationId: string;
 };
 
 function frameErrorStatus(
@@ -51,9 +50,9 @@ app.use("*", sandboxAuth({ allowedTokenKinds: ["action"] }));
  * internal endpoint
  */
 app.post(
-  "/",
-  validate("json", FrameLifecycleRequestSchema),
-  async (ctx): HandlerResult<FrameLifecycleResponse> => {
+  "/publish",
+  validate("json", FramePublishRequestSchema),
+  async (ctx): HandlerResult<FramePublishResponse> => {
     const auth = ctx.get("auth");
     const claims = ctx.get("sandboxClaims");
     if (!isSandboxExecTokenPayload(claims)) {
@@ -61,7 +60,7 @@ app.post(
         status_code: 403,
         api_error: {
           type: "invalid_request_error",
-          message: "This sandbox token cannot manage Frames.",
+          message: "This sandbox token cannot publish Frames.",
         },
       });
     }
@@ -85,31 +84,55 @@ app.post(
         },
       });
     }
-    const { action, manifestPath } = ctx.req.valid("json");
 
-    const registration = await registerFrameV2FromSource(auth, {
-      conversation: conversation.toJSON(),
-      manifestPath,
-    });
-    if (registration.isErr()) {
+    const { manifestPath } = ctx.req.valid("json");
+    const normalizedPath = DustFileSystem.normalizeScopedPath(manifestPath);
+    if (!normalizedPath) {
       return apiError(ctx, {
-        status_code: registration.error.code === "unauthorized" ? 403 : 400,
+        status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: registration.error.message,
+          message: `Invalid Frame manifest path: ${manifestPath}`,
         },
       });
     }
-    const { frame, created } = registration.value;
 
-    if (action === "register") {
-      return ctx.json({ frameId: frame.sId, manifestPath, created }, 200);
+    const fsResult = await DustFileSystem.fromScopedPath(auth, normalizedPath);
+    const mountFilePath = fsResult.isOk()
+      ? fsResult.value.toMountFilePath(normalizedPath)
+      : null;
+    if (!mountFilePath) {
+      return apiError(ctx, {
+        status_code:
+          fsResult.isErr() && fsResult.error.code === "unauthorized"
+            ? 403
+            : 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: fsResult.isErr()
+            ? fsResult.error.message
+            : `Invalid Frame manifest path: ${manifestPath}`,
+        },
+      });
+    }
+
+    const [frame] = await FileResource.fetchByMountFilePaths(auth, [
+      mountFilePath,
+    ]);
+    if (!frame?.isFrameV2) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `No registered Frame found at ${normalizedPath}.`,
+        },
+      });
     }
 
     const publication = await publishFrameV2FromSource(auth, {
       conversation: conversation.toJSON(),
       frame,
-      manifestPath,
+      manifestPath: normalizedPath,
     });
     if (publication.isErr()) {
       const status = frameErrorStatus(publication.error);
@@ -126,8 +149,7 @@ app.post(
     return ctx.json(
       {
         frameId: frame.sId,
-        manifestPath,
-        created,
+        manifestPath: normalizedPath,
         publicationId: publication.value.publicationId,
       },
       200

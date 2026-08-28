@@ -53,7 +53,7 @@ function agentLoopDataInPod(spaceId: string | null): AgentLoopExecutionData {
 }
 
 describe("framesSkill.fetchInstructions", () => {
-  it("uses only the dsbx lifecycle and hides the legacy MCP under Frames v2", async () => {
+  it("uses only dsbx publish and hides the legacy MCP under Frames v2", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "frames_v2");
 
@@ -61,9 +61,9 @@ describe("framesSkill.fetchInstructions", () => {
       spaceIds: [],
     });
 
-    expect(instructions).toContain("dsbx frame create");
-    expect(instructions).toContain("dsbx frame register");
     expect(instructions).toContain("dsbx frame publish");
+    expect(instructions).not.toContain("dsbx frame create");
+    expect(instructions).not.toContain("dsbx frame register");
     expect(instructions).not.toContain(
       PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME
     );

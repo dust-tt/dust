@@ -34,7 +34,7 @@ enum Commands {
         #[command(subcommand)]
         command: commands::db::DbCommand,
     },
-    /// Create, register, and publish Frames
+    /// Publish Frames
     Frame {
         #[command(subcommand)]
         command: commands::frame::FrameCommand,
@@ -131,14 +131,6 @@ async fn run() -> anyhow::Result<()> {
             commands::db::DbCommand::Query { name } => commands::cmd_db_query(&name).await?,
         },
         Commands::Frame { command } => match command {
-            commands::frame::FrameCommand::Create {
-                directory,
-                name,
-                description,
-            } => commands::cmd_frame_create(&directory, name.as_deref(), &description).await?,
-            commands::frame::FrameCommand::Register { manifest } => {
-                commands::cmd_frame_register(&manifest).await?
-            }
             commands::frame::FrameCommand::Publish { manifest } => {
                 commands::cmd_frame_publish(&manifest).await?
             }
@@ -481,15 +473,14 @@ mod tests {
         ])
         .expect("parse");
         match cli.command {
-            Commands::Frame { command } => match command {
-                commands::frame::FrameCommand::Publish { manifest } => {
-                    assert_eq!(
-                        manifest,
-                        std::path::PathBuf::from("/files/pod-vlt_123/Status/manifest.json")
-                    );
-                }
-                _ => panic!("expected publish"),
-            },
+            Commands::Frame {
+                command: commands::frame::FrameCommand::Publish { manifest },
+            } => {
+                assert_eq!(
+                    manifest,
+                    std::path::PathBuf::from("/files/pod-vlt_123/Status/manifest.json")
+                );
+            }
             _ => panic!("expected frame"),
         }
     }

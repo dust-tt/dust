@@ -1,38 +1,18 @@
-mod create;
 mod publish;
-mod register;
 
 use std::path::{Component, Path, PathBuf};
 
 use anyhow::{bail, Context};
 use clap::Subcommand;
 
-use crate::api::FrameLifecycleResponse;
+use crate::api::FramePublishResponse;
 
-pub use create::run as cmd_frame_create;
 pub use publish::run as cmd_frame_publish;
-pub use register::run as cmd_frame_register;
 
 const FRAME_MANIFEST_FILE: &str = "manifest.json";
 
 #[derive(Subcommand)]
 pub enum FrameCommand {
-    /// Create and register a new Frame folder
-    Create {
-        /// Frame folder under /files/conversation-... or /files/pod-...
-        directory: PathBuf,
-        /// Display name (defaults to the folder name)
-        #[arg(long)]
-        name: Option<String>,
-        /// Frame description
-        #[arg(long, default_value = "")]
-        description: String,
-    },
-    /// Register an existing Frame manifest and assign its stable identity
-    Register {
-        /// Absolute /files/.../manifest.json path
-        manifest: PathBuf,
-    },
     /// Validate, build, and atomically publish a Frame
     Publish {
         /// Absolute /files/.../manifest.json path
@@ -65,7 +45,7 @@ fn scoped_manifest_path(path: &Path) -> anyhow::Result<String> {
     scoped_path(path)
 }
 
-fn print_response(response: &FrameLifecycleResponse) -> anyhow::Result<()> {
+fn print_response(response: &FramePublishResponse) -> anyhow::Result<()> {
     println!("{}", serde_json::to_string(response)?);
     Ok(())
 }
