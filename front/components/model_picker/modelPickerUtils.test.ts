@@ -93,31 +93,31 @@ describe("modelPickerUtils premium gating", () => {
           effort: "light",
           locked: false,
           lockedReason: null,
-        }),
+        })
       ).toBeNull();
       expect(
         getEffortStopTooltip({
           effort: "high",
           locked: true,
           lockedReason: "unsupported",
-        }),
+        })
       ).toBe("This model doesn't support High reasoning.");
       expect(
         getEffortStopTooltip({
           effort: "high",
           locked: true,
           lockedReason: "premium",
-        }),
+        })
       ).toBe(PREMIUM_MODEL_LOCKED_TOOLTIP);
       expect(
         getEffortStopTooltip({
           effort: "medium",
           locked: true,
           lockedReason: "model_tier",
-        }),
+        })
       ).toBe(
         "Your current model access doesn't include this option. " +
-          "Contact your administrator to get access.",
+          "Contact your administrator to get access."
       );
     });
   });

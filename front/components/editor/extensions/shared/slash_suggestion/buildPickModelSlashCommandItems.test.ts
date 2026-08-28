@@ -74,7 +74,7 @@ describe("buildPickModelSlashCommandItems", () => {
       .map((item) => item.description);
     expect(descriptions.length).toBeGreaterThan(0);
     expect(descriptions.every((description) => description === "Google")).toBe(
-      true,
+      true
     );
   });
 
