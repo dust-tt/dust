@@ -178,8 +178,11 @@ export async function createSandboxFunctionInvocationTokenTestContext({
 // them back (calling MCP tools from a function invocation).
 export async function createPersistedSandboxFunctionInvocationTokenTestContext({
   noTools = false,
+  tokenOwnerKind = "pod",
 }: {
   noTools?: boolean;
+  // The persisted function stays Pod-owned. Frame-claim route tests return before resolving it.
+  tokenOwnerKind?: "pod" | "frame";
 } = {}) {
   const context = await createSandboxTokenTestContext();
   const { workspace } = context;
@@ -230,7 +233,10 @@ export async function createPersistedSandboxFunctionInvocationTokenTestContext({
     sandboxFunction: {
       sId: sandboxFunction.sId,
     },
-    owner: { kind: "pod", spaceId: podSpace.sId },
+    owner:
+      tokenOwnerKind === "frame"
+        ? { kind: "frame", frameId: file.sId, spaceId: podSpace.sId }
+        : { kind: "pod", spaceId: podSpace.sId },
     invocationId: invocation.sId,
     execId: `test-function-exec-${context.sandbox.sId}`,
     noTools,

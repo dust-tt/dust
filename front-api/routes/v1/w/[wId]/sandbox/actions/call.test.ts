@@ -49,9 +49,18 @@ function callSandboxTool(
   });
 }
 
-async function setupWithView({ noTools = false }: { noTools?: boolean } = {}) {
+async function setupWithView({
+  noTools = false,
+  tokenOwnerKind = "pod",
+}: {
+  noTools?: boolean;
+  tokenOwnerKind?: "pod" | "frame";
+} = {}) {
   const context =
-    await createPersistedSandboxFunctionInvocationTokenTestContext({ noTools });
+    await createPersistedSandboxFunctionInvocationTokenTestContext({
+      noTools,
+      tokenOwnerKind,
+    });
   const commonUtilities = await InternalMCPServerInMemoryResource.makeNew(
     context.auth,
     { name: "common_utilities", useCase: null }
@@ -144,6 +153,27 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
       );
       expect(refetched?.executionMode).toBe("durable");
     });
+  });
+
+  it("keeps an immutable Frame publication fast after refusing its tool call", async () => {
+    const { auth, token, workspace, view, sandboxFunction } =
+      await setupWithView({ noTools: true, tokenOwnerKind: "frame" });
+
+    const response = await callSandboxTool(workspace, token, {
+      serverViewId: view.sId,
+      toolName: "generate_random_number",
+      arguments: { max: 10 },
+    });
+
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.error.type).toBe("fast_function_called_tools");
+    expect(body.error.message).toContain("Republish the Frame");
+    const refetched = await SandboxFunctionResource.fetchById(
+      auth,
+      sandboxFunction.sId
+    );
+    expect(refetched?.executionMode).toBe("fast");
   });
 
   it("leaves a durable function's mode alone when its tool call succeeds", async () => {
