@@ -34,6 +34,15 @@ function isValidTableName(table: string): boolean {
   return FIELD_NAME_REGEX.test(table);
 }
 
+// Fields ServiceNow manages itself (assigned on insert, immutable) — never writable by a
+// caller. Exported so `validateWritableFields` (helpers.ts) checks the same set rather than
+// maintaining its own copy that could drift.
+const SYSTEM_MANAGED_FIELD_NAMES = new Set(["sys_id", "number"]);
+
+export function isSystemManagedFieldName(name: string): boolean {
+  return name.startsWith("sys_") || SYSTEM_MANAGED_FIELD_NAMES.has(name);
+}
+
 // Row shape for the generic table tools: an identity (`sys_id`) plus an arbitrary set of
 // display-value fields. `.catchall()` rejects nested objects/arrays the same way
 // `validateWritableFields` does on the write path.
@@ -381,75 +390,6 @@ class ServiceNowClient {
     return new Ok(totalCount);
   }
 
-  // Generic create, on any table the connected account has access to. Passing
-  // sysparm_input_display_value=true lets callers use human-readable choice labels (e.g.
-  // "Resolved", "1 - Critical") instead of ServiceNow's internal numeric codes, on write as well
-  // as read.
-  async createRecord(
-    table: string,
-    fields: Record<string, string | number | boolean | null>
-  ): Promise<Result<GenericRecord, MCPError>> {
-    if (!isValidTableName(table)) {
-      return new Err(
-        new MCPError(
-          `Invalid table name: "${table}". Expected a ServiceNow table identifier, e.g. "incident" or "u_custom_table".`,
-          { tracked: false }
-        )
-      );
-    }
-
-    const result = await this.mutate(
-      `/api/now/table/${table}?sysparm_display_value=true&sysparm_input_display_value=true`,
-      "POST",
-      fields,
-      z.object({ result: GenericRecordSchema })
-    );
-
-    if (result.isErr()) {
-      return result;
-    }
-
-    return new Ok(result.value.result);
-  }
-
-  // Generic update by sys_id, on any table the connected account has access to.
-  async updateRecord(
-    table: string,
-    sysId: string,
-    fields: Record<string, string | number | boolean | null>
-  ): Promise<Result<GenericRecord, MCPError>> {
-    if (!isValidTableName(table)) {
-      return new Err(
-        new MCPError(
-          `Invalid table name: "${table}". Expected a ServiceNow table identifier, e.g. "incident" or "u_custom_table".`,
-          { tracked: false }
-        )
-      );
-    }
-
-    if (!isValidSysId(sysId)) {
-      return new Err(
-        new MCPError(
-          `Invalid sys_id: "${sysId}". Expected a 32-character hexadecimal identifier.`,
-          { tracked: false }
-        )
-      );
-    }
-
-    const result = await this.mutate(
-      `/api/now/table/${table}/${encodeURIComponent(sysId)}?sysparm_display_value=true&sysparm_input_display_value=true`,
-      "PATCH",
-      fields,
-      z.object({ result: GenericRecordSchema })
-    );
-
-    if (result.isErr()) {
-      return result;
-    }
-
-    return new Ok(result.value.result);
-  }
-
   // Generic, read-only listing across any table the connected account has access to.
   async listRecords(
     table: string,
@@ -553,6 +493,94 @@ class ServiceNowClient {
       if (result.error.code === 404) {
         return new Ok(null);
       }
+      return result;
+    }
+
+    return new Ok(result.value.result);
+  }
+
+  // Generic create, on any table the connected account has access to. Passing
+  // sysparm_input_display_value=true lets callers use human-readable choice labels (e.g.
+  // "Resolved", "1 - Critical") instead of ServiceNow's internal numeric codes, on write as well
+  // as read. Field names are validated here too (not just by validateWritableFields in
+  // helpers.ts) so that any future caller of this class — not only the create_record tool
+  // handler — is blocked from writing system-managed fields like sys_id.
+  async createRecord(
+    table: string,
+    fields: Record<string, string | number | boolean | null>
+  ): Promise<Result<GenericRecord, MCPError>> {
+    if (!isValidTableName(table)) {
+      return new Err(
+        new MCPError(
+          `Invalid table name: "${table}". Expected a ServiceNow table identifier, e.g. "incident" or "u_custom_table".`,
+          { tracked: false }
+        )
+      );
+    }
+
+    for (const name of Object.keys(fields)) {
+      if (!FIELD_NAME_REGEX.test(name) || isSystemManagedFieldName(name)) {
+        return new Err(
+          new MCPError(`Invalid field name: "${name}".`, { tracked: false })
+        );
+      }
+    }
+
+    const result = await this.mutate(
+      `/api/now/table/${table}?sysparm_display_value=true&sysparm_input_display_value=true`,
+      "POST",
+      fields,
+      z.object({ result: GenericRecordSchema })
+    );
+
+    if (result.isErr()) {
+      return result;
+    }
+
+    return new Ok(result.value.result);
+  }
+
+  // Generic update by sys_id, on any table the connected account has access to. See
+  // `createRecord` above for why field names are validated here as well as in helpers.ts.
+  async updateRecord(
+    table: string,
+    sysId: string,
+    fields: Record<string, string | number | boolean | null>
+  ): Promise<Result<GenericRecord, MCPError>> {
+    if (!isValidTableName(table)) {
+      return new Err(
+        new MCPError(
+          `Invalid table name: "${table}". Expected a ServiceNow table identifier, e.g. "incident" or "u_custom_table".`,
+          { tracked: false }
+        )
+      );
+    }
+
+    if (!isValidSysId(sysId)) {
+      return new Err(
+        new MCPError(
+          `Invalid sys_id: "${sysId}". Expected a 32-character hexadecimal identifier.`,
+          { tracked: false }
+        )
+      );
+    }
+
+    for (const name of Object.keys(fields)) {
+      if (!FIELD_NAME_REGEX.test(name) || isSystemManagedFieldName(name)) {
+        return new Err(
+          new MCPError(`Invalid field name: "${name}".`, { tracked: false })
+        );
+      }
+    }
+
+    const result = await this.mutate(
+      `/api/now/table/${table}/${encodeURIComponent(sysId)}?sysparm_display_value=true&sysparm_input_display_value=true`,
+      "PATCH",
+      fields,
+      z.object({ result: GenericRecordSchema })
+    );
+
+    if (result.isErr()) {
       return result;
     }
 

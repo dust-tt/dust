@@ -97,6 +97,9 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
     ]);
   },
 
+  // Note: `fields` here is a field-name-to-value map to write (see WRITE_FIELDS_SCHEMA in
+  // metadata.ts) — not the same shape as list_records/get_record's `fields`, which is an array
+  // of field names to project in the response.
   create_record: async ({ table, fields }, { authInfo }) => {
     const clientResult = createServiceNowClient(authInfo);
     if (clientResult.isErr()) {
@@ -108,6 +111,8 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
     if (validatedFields.isErr()) {
       return validatedFields;
     }
+    // Unlike update_record below, an empty field set here is an error rather than a benign
+    // no-op: there's no meaningful "create nothing" operation to fall back to.
     if (Object.keys(validatedFields.value).length === 0) {
       return new Err(
         new MCPError("No fields were provided to create the record with.", {
@@ -141,6 +146,8 @@ const handlers: ToolHandlers<typeof SERVICENOW_TOOLS_METADATA> = {
     if (validatedFields.isErr()) {
       return validatedFields;
     }
+    // Unlike create_record above, an empty field set is a benign no-op here — the caller may
+    // have legitimately requested no changes, so this isn't an error.
     if (Object.keys(validatedFields.value).length === 0) {
       return new Ok([
         {

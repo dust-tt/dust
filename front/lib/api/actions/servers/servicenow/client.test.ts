@@ -418,6 +418,26 @@ describe("ServiceNowClient generic table writes (createRecord/updateRecord)", ()
     expect(result.isErr()).toBe(true);
     expect(untrustedFetch).not.toHaveBeenCalled();
   });
+
+  it("rejects a system-managed field name on create without making a request, even without going through validateWritableFields first", async () => {
+    const client = getClient();
+    const result = await client.createRecord("incident", {
+      sys_id: "attacker-controlled",
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(untrustedFetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid field name on update without making a request, even without going through validateWritableFields first", async () => {
+    const client = getClient();
+    const result = await client.updateRecord("incident", SYS_ID_A, {
+      "not a field!": "value",
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(untrustedFetch).not.toHaveBeenCalled();
+  });
 });
 
 describe("ServiceNowClient error handling", () => {

@@ -1,6 +1,9 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { GenericRecord } from "@app/lib/api/actions/servers/servicenow/client";
-import { FIELD_NAME_REGEX } from "@app/lib/api/actions/servers/servicenow/client";
+import {
+  FIELD_NAME_REGEX,
+  isSystemManagedFieldName,
+} from "@app/lib/api/actions/servers/servicenow/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
@@ -48,8 +51,9 @@ export function renderPaginationFooter({
 // Fields writable through create_record/update_record must be valid ServiceNow field
 // identifiers and must not be system-managed (sys_* / sys_id / number, which ServiceNow assigns
 // itself — setting them would either be silently ignored or let a caller spoof identity fields).
-const SYSTEM_MANAGED_FIELD_NAMES = new Set(["sys_id", "number"]);
-
+// This produces the nicer aggregated error message for the tool-call path; client.ts's
+// createRecord/updateRecord re-check the same `isSystemManagedFieldName` independently as a
+// backstop for any caller that doesn't go through this validator.
 export function validateWritableFields(
   fields: Record<string, string | number | boolean | null> | undefined
 ): Result<Record<string, string | number | boolean | null>, MCPError> {
@@ -65,7 +69,7 @@ export function validateWritableFields(
       invalidNames.push(name);
       continue;
     }
-    if (name.startsWith("sys_") || SYSTEM_MANAGED_FIELD_NAMES.has(name)) {
+    if (isSystemManagedFieldName(name)) {
       systemManagedNames.push(name);
     }
   }
