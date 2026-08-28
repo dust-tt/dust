@@ -41,14 +41,3 @@ sign-in page. Enter the email, continue, then enter the password.
 `front-spa` is a Vite SPA: every path returns HTTP 200 with the same HTML shell.
 `curl` status codes cannot tell you whether a client route exists. `/login` falls through
 to the React catch-all and renders a 404 page. Do not type `/login` in the address bar.
-
-Chrome's omnibox will autocomplete previously typed URLs (including `/login`) from history.
-Paste the full URL, or use a cookie-less check (incognito / Playwright) when verifying
-unauthenticated redirects. Do not trust an address-bar navigation that may have been
-completed from history.
-
-`dev/scripts/infra.sh` installs Chrome managed policies from
-`dev/config/chrome-policies.json` into `/etc/opt/chrome/policies/managed/` (password
-manager, autofill, search suggest, and saving browser history disabled). Those policies
-are read when Chrome starts, so they apply to new agent sessions after this start script
-is what the pod runs — not to a Chrome process that is already running.
