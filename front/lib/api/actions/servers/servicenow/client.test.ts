@@ -43,7 +43,7 @@ function requestedUrl(callIndex = 0): string {
   return String(call[0]);
 }
 
-function makeIncident(sysId: string, overrides: Record<string, unknown> = {}) {
+function makeRecord(sysId: string, overrides: Record<string, unknown> = {}) {
   return {
     sys_id: sysId,
     number: `INC00${sysId.slice(0, 5)}`,
@@ -59,7 +59,7 @@ const SYS_ID_A = "1".repeat(32);
 const SYS_ID_B = "2".repeat(32);
 const SYS_ID_C = "3".repeat(32);
 
-describe("ServiceNowClient pagination (listIncidents)", () => {
+describe("ServiceNowClient pagination (via listRecords)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -68,15 +68,15 @@ describe("ServiceNowClient pagination (listIncidents)", () => {
     vi.mocked(untrustedFetch).mockResolvedValueOnce(
       jsonResponse({
         result: [
-          makeIncident(SYS_ID_A),
-          makeIncident(SYS_ID_B),
-          makeIncident(SYS_ID_C),
+          makeRecord(SYS_ID_A),
+          makeRecord(SYS_ID_B),
+          makeRecord(SYS_ID_C),
         ],
       })
     );
 
     const client = getClient();
-    const result = await client.listIncidents({ limit: 2 });
+    const result = await client.listRecords("incident", { limit: 2 });
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
@@ -98,11 +98,14 @@ describe("ServiceNowClient pagination (listIncidents)", () => {
 
   it("walks a second page with a keyset cursor and no gaps", async () => {
     vi.mocked(untrustedFetch).mockResolvedValueOnce(
-      jsonResponse({ result: [makeIncident(SYS_ID_B), makeIncident(SYS_ID_C)] })
+      jsonResponse({ result: [makeRecord(SYS_ID_B), makeRecord(SYS_ID_C)] })
     );
 
     const client = getClient();
-    const result = await client.listIncidents({ limit: 2, cursor: SYS_ID_A });
+    const result = await client.listRecords("incident", {
+      limit: 2,
+      cursor: SYS_ID_A,
+    });
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
@@ -120,7 +123,9 @@ describe("ServiceNowClient pagination (listIncidents)", () => {
 
   it("rejects a malformed cursor without making a request", async () => {
     const client = getClient();
-    const result = await client.listIncidents({ cursor: "not-a-sys-id" });
+    const result = await client.listRecords("incident", {
+      cursor: "not-a-sys-id",
+    });
 
     expect(result.isErr()).toBe(true);
     expect(untrustedFetch).not.toHaveBeenCalled();
@@ -132,30 +137,30 @@ describe("ServiceNowClient pagination (listIncidents)", () => {
     );
 
     const client = getClient();
-    await client.listIncidents({ limit: 1_000_000 });
+    await client.listRecords("incident", { limit: 1_000_000 });
 
     const url = new URL(requestedUrl());
     // MAX_PAGE_LIMIT (1000) + 1 for the hasMore probe row.
     expect(url.searchParams.get("sysparm_limit")).toBe("1001");
   });
 
-  it("force-includes sys_id/number when a field projection is requested", async () => {
+  it("force-includes sys_id when a field projection is requested", async () => {
     vi.mocked(untrustedFetch).mockResolvedValueOnce(
       jsonResponse({ result: [] })
     );
 
     const client = getClient();
-    await client.listIncidents({ fields: ["priority"] });
+    await client.listRecords("incident", { fields: ["priority"] });
 
     const url = new URL(requestedUrl());
-    expect(url.searchParams.get("sysparm_fields")).toBe(
-      "sys_id,number,priority"
-    );
+    expect(url.searchParams.get("sysparm_fields")).toBe("sys_id,priority");
   });
 
   it("rejects an invalid field name", async () => {
     const client = getClient();
-    const result = await client.listIncidents({ fields: ["../etc/passwd"] });
+    const result = await client.listRecords("incident", {
+      fields: ["../etc/passwd"],
+    });
 
     expect(result.isErr()).toBe(true);
     expect(untrustedFetch).not.toHaveBeenCalled();
@@ -167,22 +172,24 @@ describe("ServiceNowClient pagination (listIncidents)", () => {
     );
 
     const client = getClient();
-    await client.listIncidents({
-      openedAfter: "2026-01-01T00:00:00Z",
-      openedBefore: "2026-02-01T00:00:00Z",
+    await client.listRecords("incident", {
+      createdAfter: "2026-01-01T00:00:00Z",
+      createdBefore: "2026-02-01T00:00:00Z",
       updatedAfter: "2026-01-15T12:30:00Z",
     });
 
     const url = new URL(requestedUrl());
     expect(url.searchParams.get("sysparm_query")).toBe(
-      "opened_at>=2026-01-01 00:00:00^opened_at<=2026-02-01 00:00:00" +
+      "sys_created_on>=2026-01-01 00:00:00^sys_created_on<=2026-02-01 00:00:00" +
         "^sys_updated_on>=2026-01-15 12:30:00^ORDERBYsys_id"
     );
   });
 
   it("rejects an unparseable date filter", async () => {
     const client = getClient();
-    const result = await client.listIncidents({ openedAfter: "not-a-date" });
+    const result = await client.listRecords("incident", {
+      createdAfter: "not-a-date",
+    });
 
     expect(result.isErr()).toBe(true);
     expect(untrustedFetch).not.toHaveBeenCalled();
@@ -190,7 +197,7 @@ describe("ServiceNowClient pagination (listIncidents)", () => {
 
   it("fetches an exact total count only when includeTotalCount is set", async () => {
     vi.mocked(untrustedFetch)
-      .mockResolvedValueOnce(jsonResponse({ result: [makeIncident(SYS_ID_A)] }))
+      .mockResolvedValueOnce(jsonResponse({ result: [makeRecord(SYS_ID_A)] }))
       .mockResolvedValueOnce(
         jsonResponse(
           { result: [{ sys_id: SYS_ID_A }] },
@@ -199,7 +206,9 @@ describe("ServiceNowClient pagination (listIncidents)", () => {
       );
 
     const client = getClient();
-    const result = await client.listIncidents({ includeTotalCount: true });
+    const result = await client.listRecords("incident", {
+      includeTotalCount: true,
+    });
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
@@ -216,7 +225,7 @@ describe("ServiceNowClient pagination (listIncidents)", () => {
     vi.mocked(untrustedFetch)
       .mockResolvedValueOnce(
         jsonResponse({
-          result: [makeIncident(SYS_ID_B), makeIncident(SYS_ID_C)],
+          result: [makeRecord(SYS_ID_B), makeRecord(SYS_ID_C)],
         })
       )
       .mockResolvedValueOnce(
@@ -227,7 +236,7 @@ describe("ServiceNowClient pagination (listIncidents)", () => {
       );
 
     const client = getClient();
-    const result = await client.listIncidents({
+    const result = await client.listRecords("incident", {
       cursor: SYS_ID_A,
       includeTotalCount: true,
     });
@@ -402,11 +411,9 @@ describe("ServiceNowClient generic table writes (createRecord/updateRecord)", ()
 
   it("rejects a malformed sys_id on update without making a request", async () => {
     const client = getClient();
-    const result = await client.updateRecord(
-      "incident",
-      "'; DROP TABLE--",
-      { priority: "1" }
-    );
+    const result = await client.updateRecord("incident", "'; DROP TABLE--", {
+      priority: "1",
+    });
 
     expect(result.isErr()).toBe(true);
     expect(untrustedFetch).not.toHaveBeenCalled();
@@ -452,7 +459,7 @@ describe("ServiceNowClient error handling", () => {
     );
 
     const client = getClient();
-    const result = await client.getIncidentByNumber("INC0010001");
+    const result = await client.getRecord("incident", SYS_ID_A);
 
     expect(result.isErr()).toBe(true);
     if (!result.isErr()) {
@@ -470,7 +477,7 @@ describe("ServiceNowClient error handling", () => {
     );
 
     const client = getClient();
-    const result = await client.getIncidentByNumber("INC0010001");
+    const result = await client.getRecord("incident", SYS_ID_A);
 
     expect(result.isErr()).toBe(true);
     if (!result.isErr()) {
@@ -486,7 +493,7 @@ describe("ServiceNowClient error handling", () => {
     );
 
     const client = getClient();
-    const result = await client.getIncidentByNumber("INC0010001");
+    const result = await client.getRecord("incident", SYS_ID_A);
 
     expect(result.isErr()).toBe(true);
     if (!result.isErr()) {
@@ -494,13 +501,5 @@ describe("ServiceNowClient error handling", () => {
     }
     expect(result.error.code).toBe(429);
     expect(result.error.message.toLowerCase()).toContain("rate limit");
-  });
-
-  it("rejects incident-number lookups containing encoded-query metacharacters", async () => {
-    const client = getClient();
-    const result = await client.getIncidentByNumber("INC0010001^active=false");
-
-    expect(result.isErr()).toBe(true);
-    expect(untrustedFetch).not.toHaveBeenCalled();
   });
 });

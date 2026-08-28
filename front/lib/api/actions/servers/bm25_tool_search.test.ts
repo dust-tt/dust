@@ -1716,43 +1716,41 @@ const QUERIES: LabeledQuery[] = [
   },
 
   // --- servicenow ---
+  // list_incidents/get_incident were removed in favor of the fully generic list_records/
+  // get_record/create_record/update_record (no more incident-only convenience tools, and no
+  // more number-based lookup — get_record only takes a sys_id). Fixtures that specifically
+  // probed number-based lookup ("get ServiceNow incident INC0010001", "look up a single
+  // ServiceNow ticket by number") were dropped rather than remapped to get_record, since that
+  // would assert a capability that no longer exists.
   {
     query: "list open incidents in ServiceNow",
-    expected: "servicenow.list_incidents",
-    maxRank: 2, // create_record shares "incident"/"ServiceNow" tokens
+    expected: "servicenow.list_records",
+    maxRank: 2, // get_record shares "incident"/"ServiceNow" tokens
   },
   {
     query: "show me my ServiceNow tickets",
-    expected: "servicenow.list_incidents",
-    maxRank: 4, // get_incident/create_record share "ServiceNow"/"ticket" tokens
-  },
-  {
-    query: "get ServiceNow incident INC0010001",
-    expected: "servicenow.get_incident",
-  },
-  {
-    query: "look up a single ServiceNow ticket by number",
-    expected: "servicenow.get_incident",
+    expected: "servicenow.list_records",
+    maxRank: 4, // get_record/create_record/update_record all share "ServiceNow"/"ticket" tokens
   },
   {
     query: "create a new incident in ServiceNow",
     expected: "servicenow.create_record",
-    maxRank: 2, // list_incidents/get_incident share "incident"/"ServiceNow" tokens
+    maxRank: 2, // list_records/get_record share "incident"/"ServiceNow" tokens
   },
   {
     query: "open a ServiceNow ticket for this issue",
     expected: "servicenow.create_record",
-    maxRank: 4, // get_incident's short, dense description outranks on shared tokens
+    maxRank: 4, // list_records/get_record/update_record all share "ServiceNow"/"ticket" tokens
   },
   {
     query: "update the state of a ServiceNow incident",
     expected: "servicenow.update_record",
-    maxRank: 2, // get_incident shares "state"/"incident"/"ServiceNow" tokens
+    maxRank: 2, // get_record/list_records share "incident"/"ServiceNow" tokens
   },
   {
     query: "resolve a ServiceNow ticket and add close notes",
     expected: "servicenow.update_record",
-    maxRank: 2, // get_incident shares "ServiceNow"/"ticket" tokens
+    maxRank: 2, // get_record/list_records share "ServiceNow"/"ticket" tokens
   },
   {
     query: "list ServiceNow problem records",

@@ -16,7 +16,7 @@ const WRITE_FIELDS_SCHEMA = {
       z.union([z.string(), z.number(), z.boolean(), z.null()])
     )
     .describe(
-      "Field values to set, keyed by the raw ServiceNow field name, or a custom 'u_*' field. Flat scalar values only — no nested objects or arrays. Use human-readable choice labels where applicable, e.g. '1 - Critical' for priority. On incident-like tables, common fields include 'short_description', 'description', 'priority', 'urgency', 'impact', 'category', 'assignment_group', 'state' (e.g. 'In Progress', 'Resolved', 'Closed'), 'work_notes' (internal, not customer-visible), 'close_notes' (resolution notes), and 'close_code' (resolution code — required by ServiceNow to move state to 'Resolved' or 'Closed'; if unsure which value your instance accepts, list_records an already-resolved record to see one)."
+      "Field values to set, keyed by the raw ServiceNow field name, or a custom 'u_*' field. Flat scalar values only — no nested objects or arrays. Use human-readable choice labels where applicable, e.g. '1 - Critical' for priority. On incident-like tables, common fields include 'short_description', 'description', 'priority', 'urgency', 'impact', 'category', 'assignment_group', 'state' (e.g. 'In Progress', 'Resolved', 'Closed'), 'work_notes' (internal, not customer-visible), 'close_notes' (resolution notes), and 'close_code' (resolution code — required by ServiceNow to move state to 'Resolved' or 'Closed'; if unsure which value your instance accepts, call list_records on an already-resolved record to see one)."
     ),
 };
 
@@ -37,83 +37,9 @@ const PAGINATION_SCHEMA = {
 
 export const SERVICENOW_TOOLS_METADATA = [
   {
-    name: "list_incidents",
-    description:
-      "List ServiceNow incidents (tickets) in the connected instance. Supports filtering with a ServiceNow encoded query.",
-    schema: {
-      query: z
-        .string()
-        .optional()
-        .describe(
-          "ServiceNow encoded query (sysparm_query) to filter incidents, e.g. 'active=true^priority=1'."
-        ),
-      limit: z
-        .number()
-        .optional()
-        .describe(
-          "Maximum number of incidents to return per page. Defaults to 25, capped at 1000."
-        ),
-      fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          "Restrict the response to these ServiceNow field names (sys_id and number are always included)."
-        ),
-      openedAfter: z
-        .string()
-        .optional()
-        .describe(
-          "Only include incidents opened on or after this ISO 8601 timestamp, e.g. '2026-01-01T00:00:00Z'."
-        ),
-      openedBefore: z
-        .string()
-        .optional()
-        .describe(
-          "Only include incidents opened on or before this ISO 8601 timestamp."
-        ),
-      updatedAfter: z
-        .string()
-        .optional()
-        .describe(
-          "Only include incidents last updated on or after this ISO 8601 timestamp."
-        ),
-      updatedBefore: z
-        .string()
-        .optional()
-        .describe(
-          "Only include incidents last updated on or before this ISO 8601 timestamp."
-        ),
-      ...PAGINATION_SCHEMA,
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Listing ServiceNow incidents",
-      done: "List ServiceNow incidents",
-    },
-    toolCostCategory: "advanced",
-    freeUsage: false,
-  },
-  {
-    name: "get_incident",
-    description:
-      "Get a single ServiceNow incident (ticket) by its number, e.g. 'INC0010001'.",
-    schema: {
-      incidentNumber: z
-        .string()
-        .describe("The ServiceNow incident number, e.g. 'INC0010001'."),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Retrieving ServiceNow incident",
-      done: "Retrieve ServiceNow incident",
-    },
-    toolCostCategory: "advanced",
-    freeUsage: false,
-  },
-  {
     name: "list_records",
     description:
-      "List records from any ServiceNow table the connected account has access to (e.g. incident, problem, change_request, sc_request, kb_knowledge, or a custom table). Supports filtering with a ServiceNow encoded query.",
+      "List records from any ServiceNow table the connected account has access to (e.g. incident (ticket), problem, change_request, sc_request, kb_knowledge, or a custom table). Supports filtering with a ServiceNow encoded query.",
     schema: {
       ...TABLE_SCHEMA,
       query: z
@@ -171,7 +97,7 @@ export const SERVICENOW_TOOLS_METADATA = [
   {
     name: "get_record",
     description:
-      "Get a single record from any ServiceNow table the connected account has access to (e.g. incident, problem, change_request, sc_request, kb_knowledge, or a custom table) by its sys_id.",
+      "Get a single record from any ServiceNow table the connected account has access to (e.g. incident (ticket), problem, change_request, sc_request, kb_knowledge, or a custom table) by its sys_id.",
     schema: {
       ...TABLE_SCHEMA,
       sysId: z
@@ -237,7 +163,7 @@ export const SERVICENOW_SERVER = {
   serverInfo: {
     name: "servicenow",
     version: "1.0.0",
-    description: "Read and manage incidents and records in ServiceNow.",
+    description: "Read and manage records in ServiceNow.",
     authorization: {
       provider: "servicenow",
       supported_use_cases: ["platform_actions", "personal_actions"],

@@ -1,23 +1,12 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type {
-  GenericRecord,
-  Incident,
-} from "@app/lib/api/actions/servers/servicenow/client";
+import type { GenericRecord } from "@app/lib/api/actions/servers/servicenow/client";
 import { FIELD_NAME_REGEX } from "@app/lib/api/actions/servers/servicenow/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 
-export function renderIncident(incident: Incident): string {
-  let text = `- **${incident.number}**: ${incident.short_description || "(no description)"}`;
-  text += `\n  - State: ${incident.state || "unknown"}`;
-  text += `\n  - Priority: ${incident.priority || "unknown"}`;
-  text += `\n  - Opened: ${incident.opened_at || "unknown"}`;
-  return text;
-}
-
-// Generic rendering for the list_records/get_record tools, which can return an arbitrary field
-// set depending on the table and any requested field projection.
+// Generic rendering for the list_records/get_record/create_record/update_record tools, which
+// can return an arbitrary field set depending on the table and any requested field projection.
 export function renderRecord(record: GenericRecord): string {
   const { sys_id, number, ...rest } = record;
   const lines = [`- **sys_id**: ${sys_id}`];

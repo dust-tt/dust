@@ -34,18 +34,6 @@ function isValidTableName(table: string): boolean {
   return FIELD_NAME_REGEX.test(table);
 }
 
-export const IncidentSchema = z.object({
-  sys_id: z.string(),
-  number: z.string(),
-  // `.nullish()` (rather than `.nullable()`) so a projected-away field (absent key, because the
-  // caller restricted `fields`) parses the same way a `null` value already does.
-  short_description: z.string().nullish(),
-  priority: z.string().nullish(),
-  state: z.string().nullish(),
-  opened_at: z.string().nullish(),
-});
-export type Incident = z.infer<typeof IncidentSchema>;
-
 // Row shape for the generic table tools: an identity (`sys_id`) plus an arbitrary set of
 // display-value fields. `.catchall()` rejects nested objects/arrays the same way
 // `validateWritableFields` does on the write path.
@@ -225,11 +213,10 @@ class ServiceNowClient {
     );
   }
 
-  // Shared pagination primitive backing both `listIncidents` (fixed to the `incident` table,
-  // typed rows) and the generic `listRecords` tool (caller-selected table, generic rows).
-  // Fetches one extra row beyond the page size to detect `hasMore` without a second round-trip,
-  // and uses keyset pagination on `sys_id` (rather than sysparm_offset) so that records inserted
-  // or deleted between calls can't cause a page to skip or duplicate rows.
+  // Shared pagination primitive backing the generic `listRecords` tool. Fetches one extra row
+  // beyond the page size to detect `hasMore` without a second round-trip, and uses keyset
+  // pagination on `sys_id` (rather than sysparm_offset) so that records inserted or deleted
+  // between calls can't cause a page to skip or duplicate rows.
   private async fetchPage<R extends { sys_id: string }>(
     table: string,
     {
@@ -394,81 +381,6 @@ class ServiceNowClient {
     return new Ok(totalCount);
   }
 
-  async listIncidents({
-    query,
-    fields,
-    cursor,
-    limit,
-    openedAfter,
-    openedBefore,
-    updatedAfter,
-    updatedBefore,
-    includeTotalCount,
-  }: {
-    query?: string;
-    fields?: string[];
-    cursor?: string;
-    limit?: number;
-    openedAfter?: string;
-    openedBefore?: string;
-    updatedAfter?: string;
-    updatedBefore?: string;
-    includeTotalCount?: boolean;
-  }): Promise<Result<PageResult<Incident>, MCPError>> {
-    return this.fetchPage(
-      "incident",
-      {
-        query,
-        fields,
-        cursor,
-        limit,
-        dateFilters: [
-          { field: "opened_at", after: openedAfter, before: openedBefore },
-          {
-            field: "sys_updated_on",
-            after: updatedAfter,
-            before: updatedBefore,
-          },
-        ],
-        includeTotalCount,
-        forceFields: ["sys_id", "number"],
-      },
-      IncidentSchema
-    );
-  }
-
-  async getIncidentByNumber(
-    incidentNumber: string
-  ): Promise<Result<Incident | null, MCPError>> {
-    // ServiceNow's encoded query syntax treats "^" as a condition separator (and
-    // "=" as an operator), so passing it through unescaped would let a caller
-    // turn this exact-number lookup into an arbitrary compound query.
-    if (/[\^=]/.test(incidentNumber)) {
-      return new Err(
-        new MCPError(
-          `Invalid incident number: "${incidentNumber}". Expected a plain incident number, e.g. "INC0010001".`,
-          { tracked: false }
-        )
-      );
-    }
-
-    const params = new URLSearchParams();
-    params.set("sysparm_query", `number=${incidentNumber}`);
-    params.set("sysparm_limit", "1");
-    params.set("sysparm_display_value", "true");
-
-    const result = await this.get(
-      `/api/now/table/incident?${params.toString()}`,
-      z.object({ result: z.array(IncidentSchema) })
-    );
-
-    if (result.isErr()) {
-      return result;
-    }
-
-    return new Ok(result.value.result[0] ?? null);
-  }
-
   // Generic create, on any table the connected account has access to. Passing
   // sysparm_input_display_value=true lets callers use human-readable choice labels (e.g.
   // "Resolved", "1 - Critical") instead of ServiceNow's internal numeric codes, on write as well
@@ -538,8 +450,7 @@ class ServiceNowClient {
     return new Ok(result.value.result);
   }
 
-  // Generic, read-only listing across any table the connected account has access to. Shares
-  // the same keyset pagination, ordering, and field-projection behavior as `listIncidents`.
+  // Generic, read-only listing across any table the connected account has access to.
   async listRecords(
     table: string,
     {
