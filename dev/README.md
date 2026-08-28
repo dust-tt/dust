@@ -22,16 +22,11 @@ bash dev/scripts/docker-run.sh --shell
 | Script | Role |
 |--------|------|
 | `install.sh` | `npm install` + lefthook |
-| `wait-for-workspace.sh` | Wait for the git tree (Cloud warm-fork race), then `--then` exec infra/apps |
 | `infra.sh` | Postgres/Redis/Qdrant/ES/Temporal + materialize 1Password + migrations |
 | `apps.sh` | Wait for infra, optional WorkOS seed, mprocs |
 | `up.sh` | `install?` → `infra` → `apps` (serial entry for laptop / non-Cursor agents) |
 | `refresh-op-env.sh` | Re-fetch 1Password Environment into `/tmp` for all shells |
 | `docker-run.sh` | Local container launcher |
-
-## Cursor Cloud `start` / `terminals`
-
-`.cursor/environment.json` points `start` and the mprocs terminal at `wait-for-workspace.sh --then …` (with a short `until [ -f … ]` bootstrap, because the waiter itself lives in the checkout). That avoids exit 127 when Cursor fires those commands before `/workspace` has the git tree on warm-fork `gitSetup: reuse`. Laptop `docker-run.sh` / `up.sh` do not use the waiter.
 
 ## Secrets
 
@@ -47,3 +42,15 @@ bash dev/scripts/docker-run.sh --shell
 | Mac compose | Host Docker Desktop | root `docker-compose.yml` via `tools/start-mprocs.sh` |
 
 Inside the container, compose-based mprocs procs (`docker-infra`, `kibana`, …) no-op when `DUST_IN_CONTAINER=1`.
+
+## Cursor Cloud snapshots
+
+Cloud agents boot from a prebuilt environment snapshot: `/workspace` is the checkout baked when
+that snapshot was built, and it is not re-fetched at boot. `.cursor/environment.json`, however, is
+read from current `main`. Moving or renaming anything it references therefore breaks every agent
+still booting an older snapshot — `start` fails once with exit 127 and is never retried.
+
+The skew closes on the next successful build, so when `start` fails that way, check that
+environment builds are green before touching the scripts. Keep `dev/Dockerfile` buildable:
+Docker has no inline comments, so `ENV k=v  # note` is a parse error, not a comment. Values that
+need a `# pragma: allowlist secret` marker therefore belong in `dev/scripts/env.sh`, not the image.

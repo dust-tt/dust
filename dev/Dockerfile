@@ -16,8 +16,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH="/usr/local/cargo/bin:/root/.temporalio/bin:/opt/qdrant:${PATH}" \
     BASH_ENV=/tmp/dust-shell-env.sh
 
-# 1Password Environment id for shared cloud-agent / container secrets (not a credential).
-ENV OP_ENVIRONMENT_ID=r6iqd3y67zqlbsxnotrj6bm25q  # pragma: allowlist secret
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
