@@ -61,12 +61,15 @@ export type FileSystemMount = {
  * but that are not an agent-visible namespace, e.g. published sandbox-function bundles or the
  * pod-state litestream replica.
  */
-export type SandboxOnlyMountKind = "pod_sandbox_functions" | "pod_state";
+export type SandboxOnlyMountKind =
+  | "frame_publications"
+  | "pod_sandbox_functions"
+  | "pod_state";
 
 export type SandboxOnlyMount = {
   kind: SandboxOnlyMountKind;
 
-  /** sId of the pod this mount belongs to. */
+  /** Stable sId of the resource this mount belongs to. */
   id: string;
 
   sandboxMountPoint: string;

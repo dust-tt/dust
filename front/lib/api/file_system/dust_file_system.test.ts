@@ -12,11 +12,13 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { frameV2ContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -252,6 +254,66 @@ describe("DustFileSystem.forPodSandboxProvisioning", () => {
       otherWorkspaceAuth,
       projectSpace
     );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("unauthorized");
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// forFrameSandboxProvisioning
+// ---------------------------------------------------------------------------
+
+describe("DustFileSystem.forFrameSandboxProvisioning", () => {
+  it("builds a GCS filesystem without agent-visible source mounts", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 1,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: "spc_source" },
+    });
+    const sandboxOnlyMounts = [
+      {
+        kind: "frame_publications" as const,
+        id: frame.sId,
+        sandboxMountPoint: `/frames/${frame.sId}/publications`,
+        readOnly: true,
+      },
+    ];
+
+    const result = await DustFileSystem.forFrameSandboxProvisioning(
+      auth,
+      frame,
+      { sandboxOnlyMounts }
+    );
+
+    assert(result.isOk());
+    expect(result.value.getMounts()).toEqual([]);
+  });
+
+  it("rejects Frames from another workspace", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const { authenticator: otherAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const otherFrame = await FileFactory.create(otherAuth, null, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 1,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: "spc_source" },
+    });
+
+    const result = await DustFileSystem.forFrameSandboxProvisioning(
+      auth,
+      otherFrame
+    );
+
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.code).toBe("unauthorized");

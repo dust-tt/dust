@@ -1,7 +1,4 @@
-import {
-  FRAME_DATABASE_NAME_REGEX,
-  isSafeFrameRelativePath,
-} from "@app/types/api/frame_manifest";
+import { FRAME_DATABASE_NAME_REGEX } from "@app/types/api/frame_manifest";
 
 const SAFE_FRAME_STORAGE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
@@ -62,31 +59,7 @@ export function getFramePublicationManifestPath(args: {
   frameId: string;
   publicationId: string;
 }): string {
-  return `${getFramePublicationBasePath(args)}manifest.json`;
-}
-
-export function getFramePublicationSourceBasePath(args: {
-  workspaceId: string;
-  frameId: string;
-  publicationId: string;
-}): string {
-  return `${getFramePublicationBasePath(args)}source/`;
-}
-
-export function getFramePublicationSourcePath({
-  relativePath,
-  ...args
-}: {
-  workspaceId: string;
-  frameId: string;
-  publicationId: string;
-  relativePath: string;
-}): string {
-  if (!isSafeFrameRelativePath(relativePath)) {
-    throw new Error("Invalid relative source path for Frame storage.");
-  }
-
-  return `${getFramePublicationSourceBasePath(args)}${relativePath}`;
+  return `${getFramePublicationBasePath(args)}publication.json`;
 }
 
 export function getFramePublicationUiBundlePath(args: {
@@ -97,25 +70,13 @@ export function getFramePublicationUiBundlePath(args: {
   return `${getFramePublicationBasePath(args)}ui/bundle.js`;
 }
 
-export function getFramePublicationFunctionBasePath({
-  functionName,
-  ...args
-}: {
-  workspaceId: string;
-  frameId: string;
-  publicationId: string;
-  functionName: string;
-}): string {
-  return `${getFramePublicationBasePath(args)}functions/${safeSegment(functionName, "functionName")}/`;
-}
-
 export function getFramePublicationFunctionBundlePath(args: {
   workspaceId: string;
   frameId: string;
   publicationId: string;
   functionName: string;
 }): string {
-  return `${getFramePublicationFunctionBasePath(args)}bundle.js`;
+  return `${getFramePublicationBasePath(args)}functions/${safeSegment(args.functionName, "functionName")}.ts`;
 }
 
 export function getFramePublicationFunctionSchemaPath(args: {
@@ -124,5 +85,5 @@ export function getFramePublicationFunctionSchemaPath(args: {
   publicationId: string;
   functionName: string;
 }): string {
-  return `${getFramePublicationFunctionBasePath(args)}schema.json`;
+  return `${getFramePublicationBasePath(args)}functions/${safeSegment(args.functionName, "functionName")}.schema.json`;
 }

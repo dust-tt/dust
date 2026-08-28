@@ -14,7 +14,10 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FrameManifestSchema } from "@app/types/api/frame_manifest";
-import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
+import {
+  getFramePublicationFunctionBundlePath,
+  getFramePublicationUiBundlePath,
+} from "@app/types/api/frame_storage";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { frameV2ContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
@@ -219,11 +222,23 @@ describe("buildAndPublishFramePublication", () => {
       { user: "agent-proxied" }
     );
     expect(ensureConversationSandboxReadyWithScope).toHaveBeenCalledOnce();
-    expect(
-      fileStorageMock.saveFileCalls.filter(({ filePath }) =>
-        filePath.endsWith("/bundle.js")
-      )
-    ).toHaveLength(3);
+    const publicationId = result.isOk() ? result.value.publicationId : "";
+    const savedPaths = fileStorageMock.saveFileCalls.map(
+      ({ filePath }) => filePath
+    );
+    for (const functionName of ["add-task", "list-tasks"]) {
+      expect(savedPaths).toContain(
+        getFramePublicationFunctionBundlePath({
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          frameId: frame.sId,
+          publicationId,
+          functionName,
+        })
+      );
+    }
+    expect(savedPaths.some((filePath) => filePath.includes("/source/"))).toBe(
+      false
+    );
 
     const reloaded = await FileResource.fetchById(auth, frame.sId);
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(

@@ -98,6 +98,15 @@ export function getPodSandboxFunctionsMountPoint(podId: string): string {
 }
 
 /**
+ * Read-only root containing every immutable publication of one Frame. The stable Frame identity
+ * keeps the mount unchanged when a new publication activates; each invocation selects its exact
+ * publication below this root.
+ */
+export function getFramePublicationsMountPoint(frameId: string): string {
+  return `/frames/${frameId}/publications`;
+}
+
+/**
  * Absolute in-sandbox path of the pod's live SQLite databases (`{name}.db` files opened by
  * `@dust/pod`'s `db()`). Local disk, not a gcsfuse mount — Litestream replicates it to GCS.
  * Front is the only layer that hardcodes this location (the paths-env.v1 contract): it is
