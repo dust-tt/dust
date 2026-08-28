@@ -22,7 +22,7 @@ bash dev/scripts/docker-run.sh --shell
 | Script | Role |
 |--------|------|
 | `install.sh` | `npm install` + lefthook |
-| `infra.sh` | Postgres/Redis/Qdrant/ES/Temporal + materialize 1Password + migrations |
+| `infra.sh` | Postgres/Redis/Qdrant/ES/Temporal + Chrome managed policies + materialize 1Password + migrations |
 | `apps.sh` | Wait for infra, optional WorkOS seed, mprocs |
 | `up.sh` | `install?` → `infra` → `apps` (serial entry for laptop / non-Cursor agents) |
 | `refresh-op-env.sh` | Re-fetch 1Password Environment into `/tmp` for all shells |

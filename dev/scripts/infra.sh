@@ -11,6 +11,7 @@ source "${SCRIPT_DIR}/common.sh"
 source "${SCRIPT_DIR}/env.sh"
 
 install_mprocs_config
+install_chrome_policies
 rm -f "${DUST_INFRA_LOG_DIR}/infra.ready"
 
 ensure_node_path
