@@ -29,7 +29,6 @@ import {
   DropdownMenuSearchbar,
   Icon,
 } from "@dust-tt/sparkle";
-import { useEffect, useRef } from "react";
 
 interface ModelPickerMakersViewProps {
   makerGroups: MakerGroup[];
@@ -63,15 +62,6 @@ export function ModelPickerMakersView({
   onRevert,
 }: ModelPickerMakersViewProps) {
   const { isDark } = useTheme();
-
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    const timeout = window.setTimeout(
-      () => searchInputRef.current?.focus({ preventScroll: true }),
-      0
-    );
-    return () => window.clearTimeout(timeout);
-  }, []);
 
   const query = search.trim().toLowerCase();
   const isSearching = query !== "";
@@ -125,7 +115,7 @@ export function ModelPickerMakersView({
       />
       <div className="sticky top-0 z-10 bg-overlay-background">
         <DropdownMenuSearchbar
-          ref={searchInputRef}
+          autoFocus
           name="search-models"
           placeholder="Search for model"
           value={search}
