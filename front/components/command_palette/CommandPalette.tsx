@@ -5,9 +5,13 @@ import type {
 } from "@app/components/command_palette/CommandPaletteActionPhase";
 import { CommandPaletteActionPhase } from "@app/components/command_palette/CommandPaletteActionPhase";
 import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
-import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
+import type {
+  CommandPaletteCommand,
+  CommandPaletteItem,
+} from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { CommandPaletteSearchPhase } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSkills } from "@app/lib/swr/skill_configurations";
@@ -20,9 +24,16 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isProjectType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { Dialog, DialogContent } from "@dust-tt/sparkle";
+import {
+  Dialog,
+  DialogContent,
+  Monitor01,
+  Moon01,
+  Sun,
+} from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface CommandPaletteProps {
@@ -30,9 +41,26 @@ interface CommandPaletteProps {
   user: UserType;
 }
 
+type Theme = "dark" | "light" | "system";
+
+const THEME_ORDER: Theme[] = ["light", "dark", "system"];
+
+const THEME_ICONS: Record<Theme, typeof Sun> = {
+  system: Monitor01,
+  light: Sun,
+  dark: Moon01,
+};
+
+const THEME_LABELS: Record<Theme, string> = {
+  system: "System",
+  light: "Light",
+  dark: "Dark",
+};
+
 export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const { isOpen, close } = useCommandPalette();
   const router = useAppRouter();
+  const { theme, setTheme } = useTheme();
 
   // Dialog state.
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,6 +125,26 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const MAX_DISPLAYED_AGENTS = 5;
   const MAX_DISPLAYED_PODS = 5;
   const MAX_DISPLAYED_SKILLS = 5;
+
+  const allCommands: CommandPaletteCommand[] = useMemo(
+    () =>
+      THEME_ORDER.filter((t) => t !== theme).map((t) => ({
+        theme: t,
+        label: THEME_LABELS[t],
+        icon: THEME_ICONS[t],
+      })),
+    [theme]
+  );
+
+  const filteredCommands = useMemo(() => {
+    if (!debouncedQuery) {
+      return allCommands;
+    }
+    const lowerQuery = debouncedQuery.toLowerCase();
+    return allCommands.filter((c) =>
+      subFilter(lowerQuery, c.label.toLowerCase())
+    );
+  }, [allCommands, debouncedQuery]);
 
   const allFilteredAgents = useMemo(
     () =>
@@ -193,20 +241,34 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
   const handleItemSelect = useCallback(
     (item: CommandPaletteItem) => {
-      if (item.kind === "pod") {
-        close();
-        void router.push(getPodRoute(owner.sId, item.pod.sId));
-        return;
-      }
-      // Skills without administration access have only one action (view details).
-      if (item.kind === "skill" && !item.skill.canAdministrate) {
-        executeAction(item, "view_details");
-      } else {
-        setSelectedItem(item);
-        setPhase("action");
+      switch (item.kind) {
+        case "command":
+          close();
+          setTheme(item.command.theme);
+          return;
+        case "pod":
+          close();
+          void router.push(getPodRoute(owner.sId, item.pod.sId));
+          return;
+        case "agent":
+          setSelectedItem(item);
+          setPhase("action");
+          return;
+        case "skill":
+          // Skills without administration access have only one action
+          // (view details).
+          if (!item.skill.canAdministrate) {
+            executeAction(item, "view_details");
+          } else {
+            setSelectedItem(item);
+            setPhase("action");
+          }
+          return;
+        default:
+          assertNever(item);
       }
     },
-    [close, executeAction, owner.sId, router]
+    [close, executeAction, owner.sId, router, setTheme]
   );
 
   const handleBack = useCallback(() => {
@@ -240,6 +302,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
             <CommandPaletteSearchPhase
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
+              commands={filteredCommands}
               agents={filteredAgents}
               pods={filteredPods}
               skills={filteredSkills}
