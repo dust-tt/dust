@@ -122,7 +122,7 @@ export function SliderSteps({
       ? (stepTooltips?.[hoveredIndex] ?? null)
       : null;
 
-  const root = (
+  const slider = (
     <SliderPrimitive.Root
       className={cn(
         "relative flex h-5 w-full touch-none select-none items-center",
@@ -197,31 +197,18 @@ export function SliderSteps({
       >
         <span className="block h-4 w-4 rounded-full bg-white drop-shadow" />
       </SliderPrimitive.Thumb>
-      {stepTooltips ? (
-        <TooltipTrigger asChild>
-          <span
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 h-0 w-0 -translate-y-1/2"
-            style={{
-              left:
-                hoveredIndex !== null
-                  ? stepCenter(hoveredIndex, lastIndex)
-                  : "50%",
-            }}
-          />
-        </TooltipTrigger>
-      ) : null}
     </SliderPrimitive.Root>
   );
 
   if (!stepTooltips) {
-    return root;
+    return slider;
   }
 
   return (
     <TooltipProvider delayDuration={0}>
       <TooltipRoot open={activeTooltip !== null}>
-        {root}
+        {/* Keep the trigger geometry stable while the hovered step changes. */}
+        <TooltipTrigger asChild>{slider}</TooltipTrigger>
         {activeTooltip !== null ? (
           <TooltipContent>{activeTooltip}</TooltipContent>
         ) : null}
