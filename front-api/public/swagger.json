@@ -844,7 +844,7 @@
             }
           },
           "400": {
-            "description": "Bad Request. Invalid or missing parameters."
+            "description": "Bad Request. Invalid parameters or the agent is already archived."
           },
           "401": {
             "description": "Unauthorized. Invalid or missing authentication token."
