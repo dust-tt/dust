@@ -123,6 +123,7 @@ export function getFramePublicationFunctionsMountPoint({
  * replica is durable, under the stable Frame identity in GCS.
  */
 export const SANDBOX_STATE_REPLICA_MOUNT_POINT = "/pod-state/replica";
+export const SANDBOX_STATE_DATABASES_DIR = "/pod-state/databases";
 
 /**
  * Absolute in-sandbox path of the owner's live SQLite databases (`{name}.db` files opened by
@@ -130,12 +131,7 @@ export const SANDBOX_STATE_REPLICA_MOUNT_POINT = "/pod-state/replica";
  * Front is the only layer that hardcodes this location (the paths-env.v1 contract): it is
  * passed per exec to `dsbx function run` as `DUST_POD_DATABASES_DIR`, dsbx forwards it to
  * the bun child, and `@dust/pod` reads the env var — neither carries a fallback copy.
- *
- * TODO(pod-state): Track 1's parallel stack defines the same contract value as
- * `POD_STATE_DATABASES_DIR` in `front/lib/api/sandbox/db.ts` (litestream config /
- * restore side). Dedup into a single constant once both stacks are merged.
  */
-export const POD_SANDBOX_DATABASES_DIR = "/pod-state/databases";
 
 /**
  * Per-database size quota in bytes (1 GiB). The other half of the paths-env.v1 contract: like
@@ -144,7 +140,7 @@ export const POD_SANDBOX_DATABASES_DIR = "/pod-state/databases";
  * require it and carry no fallback (see `cli/dust-sandbox/pod/db.ts`). A single source here
  * keeps the quota the workload writes against identical to the one `db_query` enforces.
  */
-const POD_SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
+const SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
 
 /**
  * The env vars every sandbox-database exec (`dsbx function run` and every `dsbx db` subcommand)
@@ -167,9 +163,9 @@ export function sandboxDatabaseExecEnvVars({
   DUST_POD_DATABASE_PREFIX: string;
 } {
   return {
-    DUST_POD_DATABASES_DIR: POD_SANDBOX_DATABASES_DIR,
+    DUST_POD_DATABASES_DIR: SANDBOX_STATE_DATABASES_DIR,
     DUST_POD_DATABASE_MAX_SIZE_BYTES: String(
-      POD_SANDBOX_DATABASE_MAX_SIZE_BYTES
+      SANDBOX_DATABASE_MAX_SIZE_BYTES
     ),
     // Empty means unprefixed, which is what the shim reads an absent value as.
     DUST_POD_DATABASE_PREFIX: databasePrefix ?? "",

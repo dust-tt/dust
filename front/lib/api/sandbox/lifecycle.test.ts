@@ -44,8 +44,7 @@ const {
   };
 });
 
-// Partial mock: pod_mounts.ts imports POD_STATE_REPLICA_MOUNT_POINT from the
-// same module, so the real constants must be preserved.
+// Partial mock: lifecycle tests replace state startup but preserve the remaining helpers.
 vi.mock("@app/lib/api/sandbox/db", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@app/lib/api/sandbox/db")>();

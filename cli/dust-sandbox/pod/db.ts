@@ -45,7 +45,7 @@ import { podEnv } from "./context.ts";
 
 /**
  * Env var pointing at the live databases directory, required. The location is
- * hardcoded once, in front (`POD_SANDBOX_DATABASES_DIR`), passed per-exec to
+ * hardcoded once, in front (`SANDBOX_STATE_DATABASES_DIR`), passed per-exec to
  * `dsbx function run`, which forwards it here — no layer below front carries
  * its own copy of the path.
  */

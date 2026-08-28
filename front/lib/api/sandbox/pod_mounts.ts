@@ -1,7 +1,9 @@
-import { POD_STATE_REPLICA_MOUNT_POINT } from "@app/lib/api/sandbox/db";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { SandboxOnlyMount } from "@app/types/file_system";
-import { getPodSandboxFunctionsMountPoint } from "@app/types/mount_path";
+import {
+  getPodSandboxFunctionsMountPoint,
+  SANDBOX_STATE_REPLICA_MOUNT_POINT,
+} from "@app/types/mount_path";
 
 /**
  * The pod sandbox's sandbox-only mounts, shared by the bring-up path
@@ -32,7 +34,7 @@ function podStateReplicaMount(pod: PodRef): SandboxOnlyMount {
   return {
     kind: "pod_state",
     podId: pod.sId,
-    sandboxMountPoint: POD_STATE_REPLICA_MOUNT_POINT,
+    sandboxMountPoint: SANDBOX_STATE_REPLICA_MOUNT_POINT,
     readOnly: false,
   };
 }

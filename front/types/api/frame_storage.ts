@@ -10,14 +10,29 @@ function safeSegment(value: string, label: string): string {
   return value;
 }
 
-export function getFrameBasePath({
+export function getFramesBasePath({
   workspaceId,
+}: {
+  workspaceId: string;
+}): string {
+  return `w/${safeSegment(workspaceId, "workspaceId")}/frames/`;
+}
+
+export function getFrameBasePath({
   frameId,
+  ...args
 }: {
   workspaceId: string;
   frameId: string;
 }): string {
-  return `w/${safeSegment(workspaceId, "workspaceId")}/frames/${safeSegment(frameId, "frameId")}/`;
+  return `${getFramesBasePath(args)}${safeSegment(frameId, "frameId")}/`;
+}
+
+export function getFrameDatabaseReplicasBasePath(args: {
+  workspaceId: string;
+  frameId: string;
+}): string {
+  return `${getFrameBasePath(args)}state/databases/`;
 }
 
 export function getFramePublicationsBasePath(args: {
@@ -39,7 +54,7 @@ export function getFrameDatabaseReplicaBasePath({
     throw new Error("Invalid databaseName for Frame storage.");
   }
 
-  return `${getFrameBasePath(args)}state/databases/${databaseName}.db/`;
+  return `${getFrameDatabaseReplicasBasePath(args)}${databaseName}.db/`;
 }
 
 export function getFramePublicationBasePath({

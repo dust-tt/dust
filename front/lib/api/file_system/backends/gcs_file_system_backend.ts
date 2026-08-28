@@ -9,6 +9,7 @@ import type {
   FileSystemDirectoryEntry,
   FileSystemEntry,
 } from "@app/types/api/file_system/types";
+import { getFrameDatabaseReplicasBasePath } from "@app/types/api/frame_storage";
 import type { FileSystemMount, SandboxOnlyMount } from "@app/types/file_system";
 import {
   DustFileSystemError,
@@ -715,7 +716,10 @@ export class GCSFileSystemBackend implements FileSystemBackend {
         return `w/${this.workspaceId}/frames/${mount.frameId}/publications`;
 
       case "frame_state":
-        return `w/${this.workspaceId}/frames/${mount.frameId}/state`;
+        return getFrameDatabaseReplicasBasePath({
+          workspaceId: this.workspaceId,
+          frameId: mount.frameId,
+        }).replace(/\/$/, "");
 
       case "pod_sandbox_functions":
         return `w/${this.workspaceId}/pods/${mount.podId}/sandbox-functions`;
