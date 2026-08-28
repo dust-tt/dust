@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import {
@@ -141,8 +141,8 @@ export const requestInstrumentation =
       `streaming:${streaming}`,
       `status_code:${statusCode}`,
     ];
-    getStatsDClient().increment("requests.count", 1, tags);
-    getStatsDClient().distribution(
+    statsDMetrics.increment("requests.count", 1, tags);
+    statsDMetrics.distribution(
       "requests.duration.distribution",
       durationMs,
       tags

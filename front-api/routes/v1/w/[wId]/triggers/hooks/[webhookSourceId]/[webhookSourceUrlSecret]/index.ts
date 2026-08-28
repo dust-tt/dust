@@ -8,7 +8,7 @@ import {
   HEADERS_ALLOWED_LIST,
   processWebhookRequest,
 } from "@app/lib/triggers/webhook";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import { isString } from "@app/types/shared/utils/general";
 import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
 import { createHono } from "@front-api/lib/hono";
@@ -156,7 +156,7 @@ app.post(
 
     const provider = webhookSource.provider ?? "custom";
 
-    getStatsDClient().increment("webhook_request.count", 1, [
+    statsDMetrics.increment("webhook_request.count", 1, [
       `provider:${provider}`,
       `workspace_id:${workspace.sId}`,
     ]);

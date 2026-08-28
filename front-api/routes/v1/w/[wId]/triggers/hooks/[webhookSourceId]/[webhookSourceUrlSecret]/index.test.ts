@@ -31,10 +31,10 @@ vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
 
 // Avoid UDP socket usage from StatsD in tests
 vi.mock("@app/lib/utils/statsd", () => ({
-  getStatsDClient: () => ({
+  statsDMetrics: {
     increment: vi.fn(),
     distribution: vi.fn(),
-  }),
+  },
 }));
 
 vi.mock("@app/lib/file_storage", async (importOriginal) => {
