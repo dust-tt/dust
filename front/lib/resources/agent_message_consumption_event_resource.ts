@@ -102,6 +102,16 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
     }
   }
 
+  /**
+   * @cc [owner:id13,label:backend;concurrency] transactional-outbox-append
+   * Event creation MUST use the supplied transaction so the event commits or rolls back atomically
+   * with the consumption mutations that caused it.
+   */
+  /**
+   * @cc [owner:id13,label:backend;error-handling] immutable-event-idempotency
+   * Within a workspace, an idempotency key identifies exactly one event payload. Retrying the same
+   * payload MUST return the existing event; reusing the key for a different payload MUST fail.
+   */
   static async append(
     auth: Authenticator,
     {
@@ -140,26 +150,21 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
     return new this(this.model, row.get());
   }
 
-  static async listAfter(
+  /**
+   * @cc [owner:id13,label:backend;concurrency] ordered-pending-event-batch
+   * The requested limit MUST be between 1 and 1,000. The result MUST contain at most that many
+   * unprocessed events for the requested workspace and run, ordered by ascending event ID.
+   */
+  static async listUnprocessed(
     auth: Authenticator,
-    {
-      runKey,
-      afterEventModelId,
-      limit,
-    }: {
-      runKey: string;
-      afterEventModelId: ModelId | null;
-      limit: number;
-    }
+    { runKey, limit }: { runKey: string; limit: number }
   ): Promise<AgentMessageConsumptionEventResource[]> {
     assert(limit > 0 && limit <= 1_000, "Invalid consumption event batch size");
     const rows = await this.model.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         runKey,
-        ...(afterEventModelId === null
-          ? {}
-          : { id: { [Op.gt]: afterEventModelId } }),
+        processedAt: null,
       },
       order: [["id", "ASC"]],
       limit,
@@ -202,6 +207,48 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
     });
   }
 
+  /**
+   * @cc [owner:id13,label:backend;concurrency] monotonic-event-acknowledgement
+   * Acknowledgement MUST set `processedAt` on every currently unprocessed requested event ModelId
+   * belonging to the requested workspace and run. Retries, already processed events, and ModelIds
+   * from another scope MUST remain unchanged.
+   */
+  static async markProcessed(
+    auth: Authenticator,
+    {
+      runKey,
+      eventModelIds,
+      processedAt,
+    }: {
+      runKey: string;
+      eventModelIds: ModelId[];
+      processedAt: Date;
+    }
+  ): Promise<number> {
+    assert(
+      eventModelIds.length > 0 && eventModelIds.length <= 1_000,
+      "Invalid consumption event acknowledgement batch size"
+    );
+    const [updatedCount] = await this.model.update(
+      { processedAt },
+      {
+        validate: false,
+        where: {
+          id: { [Op.in]: eventModelIds },
+          workspaceId: auth.getNonNullableWorkspace().id,
+          runKey,
+          processedAt: null,
+        },
+      }
+    );
+    return updatedCount;
+  }
+
+  /**
+   * @cc [owner:id13,label:backend] retention-owned-deletion
+   * Individual resource deletion MUST fail; persisted events may be removed only by explicit agent
+   * message or workspace teardown methods, or by bounded retention cleanup.
+   */
   async delete(): Promise<Result<undefined, Error>> {
     return new Err(
       new Error("Consumption events can only be deleted by retention cleanup")
