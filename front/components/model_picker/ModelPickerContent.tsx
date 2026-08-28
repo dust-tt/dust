@@ -4,7 +4,6 @@ import { ModelPickerSelectionIndicator } from "@app/components/model_picker/Mode
 import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type {
   MakerGroup,
-  ModelPickerView,
   ModelTierId,
   Selection,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -25,19 +24,16 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import {
-  ChevronRight,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   Icon,
   Lock01,
 } from "@dust-tt/sparkle";
-import { useRef } from "react";
-
-// root -> makers -> models: used to tell whether a view change is going
-// forward or back, so the swap can slide the matching direction.
-const VIEW_ORDER: ModelPickerView[] = ["root", "makers", "models"];
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
@@ -54,9 +50,7 @@ interface ModelPickerContentProps {
   streams: ModelStreamResolutionsType | null;
   search: string;
   onSearchChange: (value: string) => void;
-  view: ModelPickerView;
   activeMaker: ModelMakerIdType | null;
-  onOpenMakers: () => void;
   onSelectMaker: (makerId: ModelMakerIdType) => void;
   onBack: () => void;
   onSelectTier: (tierId: ModelTierId) => void;
@@ -78,9 +72,7 @@ export function ModelPickerContent({
   streams,
   search,
   onSearchChange,
-  view,
   activeMaker,
-  onOpenMakers,
   onSelectMaker,
   onBack,
   onSelectTier,
@@ -88,151 +80,135 @@ export function ModelPickerContent({
   onChangeEffort,
   onRevert,
 }: ModelPickerContentProps) {
-  const previousViewRef = useRef<ModelPickerView>(view);
-  const isGoingForward =
-    VIEW_ORDER.indexOf(view) >= VIEW_ORDER.indexOf(previousViewRef.current);
-  previousViewRef.current = view;
-
   const activeMakerGroup = makerGroups.find(
     (maker) => maker.makerId === activeMaker
   );
-
-  const stepBodyClassName = "max-h-[26rem] overflow-y-auto";
+  const isShowingModels = activeMakerGroup !== undefined;
 
   return (
     <DropdownMenuContent
       className="w-84 max-w-(--radix-dropdown-menu-content-available-width)"
       align="start"
       side={side}
-      onFocusOutside={(e) => {
-        if (shouldBlockDismiss()) {
-          e.preventDefault();
-        }
-      }}
-      onPointerDownOutside={(e) => {
-        if (shouldBlockDismiss()) {
-          e.preventDefault();
-        }
-      }}
-      onInteractOutside={(e) => {
-        if (shouldBlockDismiss()) {
-          e.preventDefault();
-        }
-      }}
     >
-      <div
-        key={view}
-        className={`animate-in duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:animate-none ${isGoingForward ? "slide-in-from-right-4" : "slide-in-from-left-4"}`}
-      >
-        {view === "root" && (
-          <div className={stepBodyClassName}>
-            <DropdownMenuLabel label="Recommendations" className="text-sm" />
+      <DropdownMenuLabel label="Recommendations" className="text-sm" />
 
-            {MODEL_TIERS.map((tier) => {
-              const isSelected = isTierDisplayed(tier.id, shown.display);
-              const lockReason = getTierLockReason(tier.id, {
-                lockPremiumEfforts,
-                streamModels,
-              });
-              if (lockReason) {
-                return (
-                  <DropdownMenuItem
-                    key={tier.id}
-                    icon={MODEL_TIER_ICON[tier.id]}
-                    label={tier.name}
-                    disabled
-                    tooltip={getModelLockTooltip(lockReason)}
-                    endComponent={
-                      <Icon
-                        visual={Lock01}
-                        size="sm"
-                        className="text-muted-foreground"
-                      />
-                    }
-                    onSelect={(e) => e.preventDefault()}
-                  />
-                );
-              }
-              return (
-                <DropdownMenuItem
-                  key={tier.id}
-                  icon={MODEL_TIER_ICON[tier.id]}
-                  label={tier.name}
-                  className="text-foreground"
-                  endComponent={
-                    <div className="flex items-center gap-3">
-                      <span className="whitespace-nowrap text-xs text-muted-foreground">
-                        {getTierResolvedModelLabel(tier.id, streams)}
-                      </span>
-                      {isSelected && (
-                        <ModelPickerSelectionIndicator
-                          canRevert={canRevert}
-                          onRevert={onRevert}
-                          size="xs"
-                        />
-                      )}
-                    </div>
-                  }
-                  onClick={() => onSelectTier(tier.id)}
-                  onSelect={(e) => e.preventDefault()}
-                />
-              );
-            })}
-
-            <DropdownMenuSeparator />
-
+      {MODEL_TIERS.map((tier) => {
+        const isSelected = isTierDisplayed(tier.id, shown.display);
+        const lockReason = getTierLockReason(tier.id, {
+          lockPremiumEfforts,
+          streamModels,
+        });
+        if (lockReason) {
+          return (
             <DropdownMenuItem
-              label="More models"
+              key={tier.id}
+              icon={MODEL_TIER_ICON[tier.id]}
+              label={tier.name}
+              disabled
+              tooltip={getModelLockTooltip(lockReason)}
               endComponent={
                 <Icon
-                  visual={ChevronRight}
-                  size="xs"
+                  visual={Lock01}
+                  size="sm"
                   className="text-muted-foreground"
                 />
               }
-              onClick={onOpenMakers}
               onSelect={(e) => e.preventDefault()}
             />
-          </div>
-        )}
+          );
+        }
+        return (
+          <DropdownMenuItem
+            key={tier.id}
+            icon={MODEL_TIER_ICON[tier.id]}
+            label={tier.name}
+            className="text-foreground"
+            endComponent={
+              <div className="flex items-center gap-3">
+                <span className="whitespace-nowrap text-xs text-muted-foreground">
+                  {getTierResolvedModelLabel(tier.id, streams)}
+                </span>
+                {isSelected && (
+                  <ModelPickerSelectionIndicator
+                    canRevert={canRevert}
+                    onRevert={onRevert}
+                    size="xs"
+                  />
+                )}
+              </div>
+            }
+            onClick={() => onSelectTier(tier.id)}
+            onSelect={(e) => e.preventDefault()}
+          />
+        );
+      })}
 
-        {view === "makers" && (
-          <div className={stepBodyClassName}>
-            <ModelPickerMakersView
-              makerGroups={makerGroups}
-              allModels={allModels}
-              shown={shown}
-              agentDefault={agentDefault}
-              canRevert={canRevert}
-              lockPremiumEfforts={lockPremiumEfforts}
-              search={search}
-              onSearchChange={onSearchChange}
-              onBack={onBack}
-              onSelectMaker={onSelectMaker}
-              onSelectModel={onSelectModel}
-              onChangeEffort={onChangeEffort}
-              onRevert={onRevert}
-            />
-          </div>
-        )}
+      <DropdownMenuSeparator />
 
-        {view === "models" && activeMakerGroup && (
-          <div className={stepBodyClassName}>
-            <ModelPickerModelsView
-              makerId={activeMakerGroup.makerId}
-              models={activeMakerGroup.models}
-              shown={shown}
-              agentDefault={agentDefault}
-              canRevert={canRevert}
-              lockPremiumEfforts={lockPremiumEfforts}
-              onBack={onBack}
-              onSelectModel={onSelectModel}
-              onChangeEffort={onChangeEffort}
-              onRevert={onRevert}
-            />
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger
+          label="More models"
+          onClick={(e) => e.stopPropagation()}
+        />
+        <DropdownMenuSubContent
+          className="max-h-[28rem] w-64 overflow-y-auto"
+          // Clicks inside a portaled submenu bubble up the React tree to the
+          // parent menu, which would dismiss the whole picker (e.g. clicking
+          // the searchbar or empty space). Contain them here.
+          onClick={(e) => e.stopPropagation()}
+          onFocusOutside={(e) => {
+            if (shouldBlockDismiss()) {
+              e.preventDefault();
+            }
+          }}
+          onPointerDownOutside={(e) => {
+            if (shouldBlockDismiss()) {
+              e.preventDefault();
+            }
+          }}
+          onInteractOutside={(e) => {
+            if (shouldBlockDismiss()) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <div
+            key={isShowingModels ? "models" : "makers"}
+            className={`animate-in duration-200 motion-reduce:animate-none ${isShowingModels ? "slide-in-from-right-4" : "slide-in-from-left-4"}`}
+          >
+            {activeMakerGroup ? (
+              <ModelPickerModelsView
+                makerId={activeMakerGroup.makerId}
+                models={activeMakerGroup.models}
+                shown={shown}
+                agentDefault={agentDefault}
+                canRevert={canRevert}
+                lockPremiumEfforts={lockPremiumEfforts}
+                onBack={onBack}
+                onSelectModel={onSelectModel}
+                onChangeEffort={onChangeEffort}
+                onRevert={onRevert}
+              />
+            ) : (
+              <ModelPickerMakersView
+                makerGroups={makerGroups}
+                allModels={allModels}
+                shown={shown}
+                agentDefault={agentDefault}
+                canRevert={canRevert}
+                lockPremiumEfforts={lockPremiumEfforts}
+                search={search}
+                onSearchChange={onSearchChange}
+                onSelectMaker={onSelectMaker}
+                onSelectModel={onSelectModel}
+                onChangeEffort={onChangeEffort}
+                onRevert={onRevert}
+              />
+            )}
           </div>
-        )}
-      </div>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
     </DropdownMenuContent>
   );
 }

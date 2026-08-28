@@ -22,7 +22,6 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import {
-  ArrowLeft,
   Check,
   ChevronRight,
   DropdownMenuItem,
@@ -42,7 +41,6 @@ interface ModelPickerMakersViewProps {
   lockPremiumEfforts: boolean;
   search: string;
   onSearchChange: (value: string) => void;
-  onBack: () => void;
   onSelectMaker: (makerId: ModelMakerIdType) => void;
   onSelectModel: (model: ModelConfigurationType) => void;
   onChangeEffort: (effort: ReasoningEffort) => void;
@@ -58,7 +56,6 @@ export function ModelPickerMakersView({
   lockPremiumEfforts,
   search,
   onSearchChange,
-  onBack,
   onSelectMaker,
   onSelectModel,
   onChangeEffort,
@@ -109,13 +106,6 @@ export function ModelPickerMakersView({
 
   return (
     <>
-      <DropdownMenuItem
-        icon={ArrowLeft}
-        label="More models"
-        truncateText
-        onClick={onBack}
-        onSelect={(e) => e.preventDefault()}
-      />
       <div className="sticky top-0 z-10 bg-overlay-background">
         <DropdownMenuSearchbar
           autoFocus

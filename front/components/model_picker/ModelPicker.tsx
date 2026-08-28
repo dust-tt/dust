@@ -10,7 +10,6 @@ import {
 } from "@app/components/model_picker/modelPickerTracking";
 import type {
   MakerGroup,
-  ModelPickerView,
   ModelTierId,
   Selection,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -110,7 +109,6 @@ export function ModelPicker({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
 
-  const [view, setView] = useState<ModelPickerView>("root");
   const [activeMaker, setActiveMaker] = useState<ModelMakerIdType | null>(null);
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
@@ -226,7 +224,6 @@ export function ModelPicker({
   const openMenu = () => {
     setIsOpen(true);
     setSearch("");
-    setView("root");
     setActiveMaker(null);
     if (trackingSurface) {
       trackModelPickerOpen({ surface: trackingSurface, clientType });
@@ -275,24 +272,12 @@ export function ModelPicker({
     );
   };
 
-  const onOpenMakers = () => {
-    setSearch("");
-    setView("makers");
-  };
-
   const onSelectMaker = (makerId: ModelMakerIdType) => {
     setActiveMaker(makerId);
-    setView("models");
   };
 
   const onBack = () => {
-    if (view === "models") {
-      setActiveMaker(null);
-      setView("makers");
-    } else if (view === "makers") {
-      setSearch("");
-      setView("root");
-    }
+    setActiveMaker(null);
   };
 
   const onChangeEffort = (effort: ReasoningEffort) => {
@@ -382,9 +367,7 @@ export function ModelPicker({
         streams={streams}
         search={search}
         onSearchChange={setSearch}
-        view={view}
         activeMaker={activeMaker}
-        onOpenMakers={onOpenMakers}
         onSelectMaker={onSelectMaker}
         onBack={onBack}
         onSelectTier={onSelectTier}
