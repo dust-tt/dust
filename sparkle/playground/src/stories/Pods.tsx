@@ -3,10 +3,11 @@ import {
   Attachment01,
   Avatar,
   Bell01,
+  Brackets,
   Breadcrumbs,
   Button,
-  Card,
-  CheckDouble,
+  CheckDone01,
+  ChevronDown,
   Cube01,
   CubeOutline,
   Dialog,
@@ -27,12 +28,16 @@ import {
   Edit04,
   Eye,
   File02,
+  FolderOpen,
   Heart,
+  Icon,
+  IntersectDust,
   Lightbulb04,
   Link01,
   LogOut01,
-  MessageChatSquare,
+  MagicWand02,
   MessageCircle01,
+  MessagePlusCircle,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListCompactLabel,
@@ -43,19 +48,26 @@ import {
   NavTabPillTrigger,
   Planet,
   Plus,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
   PuzzlePiece01,
+  Robot,
   ScrollArea,
   ScrollBar,
   SearchInput,
   Settings01,
   SlackLogo,
+  Star01,
   Trash01,
   User03,
   Users01,
   UserSquare,
   XClose,
+  Zap,
   ZapOff,
 } from "@dust-tt/sparkle";
+import { cn } from "@sparkle/lib/utils";
 import {
   useCallback,
   useEffect,
@@ -65,8 +77,6 @@ import {
 } from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
-import { AddPodFileMenu } from "../components/AddPodFileMenu";
-import { AddToTopBarDialog } from "../components/AddToTopBarDialog";
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
@@ -133,11 +143,6 @@ type PodTabsState = {
 };
 
 type SelectedCitation = { title: string; icon?: string };
-
-type PendingTopbarFile = {
-  id: string;
-  fileName: string;
-};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -208,7 +213,11 @@ function Pods() {
         data: d,
       })),
     ]);
-    setSpaces(getRandomSpaces(Math.floor(Math.random() * 7) + 3));
+    const randomSpaces = getRandomSpaces(Math.floor(Math.random() * 7) + 3);
+    setSpaces(randomSpaces);
+    setStarredSpaceIds(
+      new Set(randomSpaces.slice(0, 2).map((space) => space.id))
+    );
     setConversationsWithMessages(createConversationsWithMessages(u.id));
   }, []);
 
@@ -244,9 +253,6 @@ function Pods() {
   const [fileToRevealInKnowledge, setFileToRevealInKnowledge] = useState<
     string | null
   >(null);
-  const [isAddFileMenuOpen, setIsAddFileMenuOpen] = useState(false);
-  const [pendingTopbarFile, setPendingTopbarFile] =
-    useState<PendingTopbarFile | null>(null);
   const [tabContextMenu, setTabContextMenu] = useState<{
     value: string;
     x: number;
@@ -258,7 +264,6 @@ function Pods() {
     "chat"
   );
   const [searchText, setSearchText] = useState("");
-  const [isAgentsDropdownOpen, setIsAgentsDropdownOpen] = useState(false);
   const [welcomeAgentTab, setWelcomeAgentTab] =
     useState<WelcomeAgentTab>("favorites");
   const [welcomeAgentSort, setWelcomeAgentSort] = useState<AgentSort>("custom");
@@ -267,9 +272,14 @@ function Pods() {
     string | null
   >(null);
   const [isWelcomeToolbarPinned, setIsWelcomeToolbarPinned] = useState(false);
-  const [inboxHideTriggered, setInboxHideTriggered] = useState(false);
+  const [inboxHideTriggered] = useState(false);
   const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
     useState<Map<string, SpaceNotificationPreference>>(new Map());
+  const [starredSpaceIds, setStarredSpaceIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [hideTriggeredConversations, setHideTriggeredConversations] =
+    useState(false);
 
   // ── Space management state ────────────────────────────────────────────────
   const [spaceMembers, setSpaceMembers] = useState<Map<string, string[]>>(
@@ -386,6 +396,29 @@ function Pods() {
         s.description.toLowerCase().includes(lower)
     );
   }, [searchText, sortedSpaces]);
+
+  const starredSpaces = useMemo(
+    () => filteredSpaces.filter((s) => starredSpaceIds.has(s.id)),
+    [filteredSpaces, starredSpaceIds]
+  );
+
+  const unstarredSpaces = useMemo(
+    () => filteredSpaces.filter((s) => !starredSpaceIds.has(s.id)),
+    [filteredSpaces, starredSpaceIds]
+  );
+
+  const [podBrowseSearch, setPodBrowseSearch] = useState("");
+  const browsableSpaces = useMemo(() => {
+    if (!podBrowseSearch.trim()) {
+      return sortedSpaces;
+    }
+    const lower = podBrowseSearch.toLowerCase();
+    return sortedSpaces.filter(
+      (s) =>
+        s.name.toLowerCase().includes(lower) ||
+        s.description.toLowerCase().includes(lower)
+    );
+  }, [podBrowseSearch, sortedSpaces]);
 
   const selectedConversationId =
     p2View.kind === "conversation" ? p2View.conversationId : null;
@@ -751,6 +784,18 @@ function Pods() {
     );
   };
 
+  const toggleSpaceStar = (spaceId: string) => {
+    setStarredSpaceIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(spaceId)) {
+        next.delete(spaceId);
+      } else {
+        next.add(spaceId);
+      }
+      return next;
+    });
+  };
+
   const handleUpdateSpacePublic = (spaceId: string, isPublic: boolean) => {
     setSpacePublicSettings((prev) => new Map(prev).set(spaceId, isPublic));
     setSpaces((prev) =>
@@ -833,6 +878,146 @@ function Pods() {
           />
         </DropdownMenuContent>
       </DropdownMenu>
+    );
+  };
+
+  const renderPodNavItem = (space: Space) => {
+    const isStarred = starredSpaceIds.has(space.id);
+    const isRestricted = space.id.charCodeAt(space.id.length - 1) % 2 === 0;
+    const { count, hasActivity } = getSpaceActivity(space);
+    const members = getMembersBySpaceId(space.id)
+      .map((id) => getUserById(id))
+      .filter((u): u is User => u != null);
+
+    return (
+      <NavigationListItem
+        key={space.id}
+        label={space.name}
+        icon={isRestricted ? CubeOutline : Cube01}
+        selected={p2View.kind === "space" && p2View.spaceId === space.id}
+        count={count}
+        hasActivity={hasActivity}
+        moreMenu={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <NavigationListItemAction />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                label={isStarred ? "Unstar" : "Star"}
+                icon={Star01}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleSpaceStar(space.id);
+                }}
+              />
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel label="My settings" />
+              <DropdownMenuItem
+                label="Leave"
+                icon={XClose}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger label="Notifications" icon={Bell01} />
+                <DropdownMenuSubContent>
+                  <DropdownMenuRadioGroup
+                    value={spaceNotificationPreferences.get(space.id) ?? "all"}
+                    onValueChange={(v) =>
+                      setSpaceNotificationPreferences((prev) =>
+                        new Map(prev).set(
+                          space.id,
+                          v as SpaceNotificationPreference
+                        )
+                      )
+                    }
+                  >
+                    <DropdownMenuRadioItem
+                      value="never"
+                      label="Don't notify me"
+                    />
+                    <DropdownMenuRadioItem
+                      value="mentions"
+                      label="Only when mentioned"
+                    />
+                    <DropdownMenuRadioItem value="all" label="All messages" />
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel label="Pod" />
+              <DropdownMenuItem
+                label="Rename"
+                icon={Edit04}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger label="Member list" icon={UserSquare} />
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem
+                    label="Manage members"
+                    icon={Users01}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleInviteMembers(space.id);
+                    }}
+                  />
+                  {members.map((m) => (
+                    <DropdownMenuItem
+                      key={m.id}
+                      label={m.fullName}
+                      icon={
+                        <Avatar
+                          name={m.fullName}
+                          visual={m.portrait}
+                          size="xxs"
+                          isRounded
+                        />
+                      }
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    />
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuItem
+                label="Archive"
+                icon={Archive}
+                variant="warning"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              />
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel label="Share" />
+              <DropdownMenuItem
+                label="Copy link"
+                icon={Link01}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+        onClick={() => {
+          setP2View({ kind: "space", spaceId: space.id });
+          setP3View(null);
+          setP4Citation(null);
+        }}
+      />
     );
   };
 
@@ -1056,31 +1241,6 @@ function Pods() {
           })}
         </NavTabPillList>
       </NavTabPill>
-      <AddPodFileMenu
-        files={addablePodFiles}
-        open={isAddFileMenuOpen}
-        onOpenChange={setIsAddFileMenuOpen}
-        onSelect={(file) => {
-          setPendingTopbarFile({
-            id: file.id,
-            fileName: file.fileName,
-          });
-        }}
-        trigger={
-          <Button
-            size="xs"
-            variant="outline"
-            icon={Plus}
-            tooltip="Add file to top bar"
-            className={
-              "shrink-0 transition-opacity duration-150 " +
-              (isAddFileMenuOpen
-                ? "opacity-100"
-                : "opacity-0 group-hover/topbar:opacity-100 focus-within:opacity-100")
-            }
-          />
-        }
-      />
       {tabContextMenu && tabContextMenuOption?.contextMenuItems && (
         <DropdownMenu
           open
@@ -1137,21 +1297,45 @@ function Pods() {
     return (
       <div className="flex items-center gap-2">
         {memberAvatars.length > 0 && (
-          <Avatar.Stack
-            avatars={memberAvatars}
-            nbVisibleItems={memberAvatars.length}
-            orientation="horizontal"
-            hasMagnifier={false}
-            size="sm"
-          />
+          <div className="hidden md:flex md:h-9 md:items-center">
+            <Avatar.Stack
+              avatars={memberAvatars}
+              nbVisibleItems={memberAvatars.length}
+              orientation="horizontal"
+              hasMagnifier={false}
+              size="sm"
+            />
+          </div>
         )}
-        <Button
-          size="sm"
-          variant="primary"
-          label="Join"
-          tooltip="Join the project"
-          onClick={() => {}}
-        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={DotsHorizontal}
+              variant="ghost"
+              size="sm"
+              tooltip="Pod options"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent collisionPadding={8}>
+            <DropdownMenuItem label="Leave the Pod" icon={XClose} />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger label="Notifications" icon={Bell01} />
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup value="all">
+                  <DropdownMenuRadioItem
+                    value="never"
+                    label="Don't notify me"
+                  />
+                  <DropdownMenuRadioItem
+                    value="mentions"
+                    label="Only when mentioned"
+                  />
+                  <DropdownMenuRadioItem value="all" label="All messages" />
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     );
   })();
@@ -1248,13 +1432,15 @@ function Pods() {
       onValueChange={(v) => setActiveTab(v as "chat" | "spaces" | "admin")}
     >
       <NavTabPillList>
-        <NavTabPillTrigger value="chat" icon={MessageChatSquare}>
-          Chat
+        <NavTabPillTrigger value="chat" icon={IntersectDust}>
+          Work
         </NavTabPillTrigger>
         <NavTabPillTrigger value="spaces" icon={Planet}>
           Spaces
         </NavTabPillTrigger>
-        <NavTabPillTrigger value="admin" icon={Settings01} />
+        <NavTabPillTrigger value="admin" icon={Settings01}>
+          Admin
+        </NavTabPillTrigger>
       </NavTabPillList>
     </NavTabPill>
   );
@@ -1267,130 +1453,51 @@ function Pods() {
         <div className="flex min-h-0 flex-1 flex-col">
           <ScrollArea className="flex-1">
             <ScrollBar orientation="vertical" size="minimal" />
-            <div className="flex gap-2 p-2">
-              <SearchInput
-                name="search"
-                value={searchText}
-                onChange={setSearchText}
-                placeholder="Search"
-                className="flex-1"
-              />
+            <div className="z-50 flex justify-end gap-2 p-sidebar-side-spacing">
+              <div className="flex-1">
+                <SearchInput
+                  name="search"
+                  value={searchText}
+                  onChange={setSearchText}
+                  placeholder="Search"
+                />
+              </div>
               <Button
-                variant="primary"
-                tooltip="New conversation, agent, skill"
+                variant="highlight"
+                tooltip="Create a new conversation"
                 size="sm"
-                icon={MessageCircle01}
+                icon={MessagePlusCircle}
                 label="New"
+                className="shrink-0"
+                onClick={() => {
+                  setP2View({ kind: "welcome" });
+                  setP3View(null);
+                  setP4Citation(null);
+                }}
               />
-              <DropdownMenu
-                open={isAgentsDropdownOpen}
-                onOpenChange={setIsAgentsDropdownOpen}
-              >
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost-secondary"
-                    size="sm"
-                    icon={DotsHorizontal}
-                    aria-label="More options"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuLabel label="Agents" />
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger
-                      icon={Plus}
-                      label="Build an agent"
-                    />
-                    <DropdownMenuSubContent>
-                      <DropdownMenuItem
-                        icon={Edit04}
-                        label="From scratch"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                      />
-                      <DropdownMenuItem
-                        icon={Lightbulb04}
-                        label="Browse templates"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setIsAgentsDropdownOpen(false);
-                          setP2View({ kind: "templates" });
-                          setP3View(null);
-                        }}
-                      />
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                  <DropdownMenuItem
-                    label="Manage agents"
-                    icon={UserSquare}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel label="Skills" />
-                  <DropdownMenuItem
-                    label="New skill"
-                    icon={Plus}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                  <DropdownMenuItem
-                    label="Manage skills"
-                    icon={PuzzlePiece01}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel label="Conversations" />
-                  <DropdownMenuItem
-                    label="Clear conversation history"
-                    icon={Trash01}
-                    variant="warning"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
 
-            {/* Inbox */}
-            {inboxConversations.length > 0 && (
-              <NavigationListCollapsibleSection
-                label="Inbox"
-                className="border-b border-t border bg-background/50 px-2 pb-2"
-                actionOnHover={false}
-                action={
-                  <>
-                    <Button
-                      size="xmini"
-                      icon={CheckDouble}
-                      variant="ghost-secondary"
-                      tooltip="Mark all as read"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                    />
-                    <DropdownMenu>
+            <NavigationList className="mx-sidebar-side-spacing pt-1">
+              <NavigationListItem
+                icon={Robot}
+                label="Agents"
+                keepHoverOnMoreMenu
+                moreMenu={
+                  <div
+                    className={cn(
+                      "absolute right-2 top-1.5",
+                      "transition-opacity",
+                      "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+                      "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
+                      "has-[[data-state=open]]:opacity-100"
+                    )}
+                  >
+                    <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
                         <Button
-                          size="xmini"
-                          icon={DotsHorizontal}
+                          size="xs"
+                          icon={Plus}
+                          label="New"
                           variant="ghost-secondary"
                           onClick={(e) => {
                             e.preventDefault();
@@ -1398,23 +1505,92 @@ function Pods() {
                           }}
                         />
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent>
+                      <DropdownMenuContent
+                        side="bottom"
+                        align="center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <DropdownMenuLabel label="New agent" />
+                        <DropdownMenuItem icon={File02} label="From scratch" />
                         <DropdownMenuItem
-                          label={
-                            inboxHideTriggered
-                              ? "Show triggered"
-                              : "Hide triggered"
-                          }
-                          icon={ZapOff}
+                          icon={MagicWand02}
+                          label="From template"
+                          onClick={() => {
+                            setP2View({ kind: "templates" });
+                            setP3View(null);
+                          }}
+                        />
+                        <DropdownMenuItem icon={Brackets} label="From YAML" />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                }
+              />
+              <NavigationListItem
+                icon={PuzzlePiece01}
+                label="Skills"
+                keepHoverOnMoreMenu
+                moreMenu={
+                  <div
+                    className={cn(
+                      "absolute right-2 top-1.5",
+                      "transition-opacity",
+                      "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+                      "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
+                      "has-[[data-state=open]]:opacity-100"
+                    )}
+                  >
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="xs"
+                          icon={Plus}
+                          label="New"
+                          variant="ghost-secondary"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            setInboxHideTriggered((v) => !v);
                           }}
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        side="bottom"
+                        align="center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <DropdownMenuLabel label="New skill" />
+                        <DropdownMenuItem
+                          icon={PuzzlePiece01}
+                          label="From scratch"
+                        />
+                        <DropdownMenuItem
+                          icon={FolderOpen}
+                          label="From existing"
                         />
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </>
+                  </div>
+                }
+              />
+            </NavigationList>
+
+            {inboxConversations.length > 0 && (
+              <NavigationListCollapsibleSection
+                label="Inbox"
+                count={inboxConversations.length}
+                className="bg-background rounded-xl border border-border p-1 mx-sidebar-side-spacing"
+                actionOnHover={false}
+                action={
+                  <Button
+                    size="xmini"
+                    variant="ghost-secondary"
+                    label="Mark all as read"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    hasLighterFont
+                  />
                 }
               >
                 {inboxConversations.map(({ conversation, status }) => (
@@ -1440,19 +1616,32 @@ function Pods() {
               </NavigationListCollapsibleSection>
             )}
 
-            <NavigationList className="px-2">
-              {/* Pods */}
-              {(filteredSpaces.length > 0 || !searchText.trim()) && (
+            {starredSpaces.length > 0 && (
+              <NavigationList className="mx-sidebar-side-spacing">
                 <NavigationListCollapsibleSection
-                  label="Pods"
+                  label="Starred"
                   type="collapse"
                   defaultOpen={true}
-                  visibleItems={4}
-                  action={
-                    <>
+                  visibleItems={5}
+                >
+                  {starredSpaces.map(renderPodNavItem)}
+                </NavigationListCollapsibleSection>
+              </NavigationList>
+            )}
+
+            <NavigationList className="mx-sidebar-side-spacing flex-shrink-0">
+              <NavigationListCollapsibleSection
+                label="Pods"
+                type="collapse"
+                defaultOpen={true}
+                visibleItems={4}
+                action={
+                  <>
+                    {unstarredSpaces.length > 0 && (
                       <Button
-                        size="xmini"
+                        size="xs"
                         icon={Plus}
+                        label="New"
                         variant="ghost-secondary"
                         onClick={(e) => {
                           e.preventDefault();
@@ -1460,229 +1649,133 @@ function Pods() {
                           setIsCreateRoomDialogOpen(true);
                         }}
                       />
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="xmini"
-                            icon={DotsHorizontal}
-                            variant="ghost-secondary"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                            }}
+                    )}
+                    <PopoverRoot>
+                      <PopoverTrigger asChild>
+                        <Button
+                          size="xs"
+                          icon={DotsHorizontal}
+                          variant="ghost"
+                        />
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="flex w-80 flex-col p-0"
+                        align="start"
+                        collisionPadding={16}
+                      >
+                        <div className="shrink-0 p-3 pb-2">
+                          <SearchInput
+                            name="browse-pods-search"
+                            placeholder="Search Pods..."
+                            value={podBrowseSearch}
+                            onChange={setPodBrowseSearch}
                           />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem
-                            icon={Plus}
-                            label="Create"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setIsCreateRoomDialogOpen(true);
-                            }}
-                          />
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
-                  }
-                >
-                  {filteredSpaces.map((space) => {
-                    const isRestricted =
-                      space.id.charCodeAt(space.id.length - 1) % 2 === 0;
-                    const { count, hasActivity } = getSpaceActivity(space);
-                    const members = getMembersBySpaceId(space.id)
-                      .map((id) => getUserById(id))
-                      .filter((u): u is User => u != null);
-                    return (
-                      <NavigationListItem
-                        key={space.id}
-                        label={space.name}
-                        icon={isRestricted ? Cube01 : CubeOutline}
-                        selected={
-                          p2View.kind === "space" && p2View.spaceId === space.id
-                        }
-                        count={count}
-                        hasActivity={hasActivity}
-                        moreMenu={
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <NavigationListItemAction />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuLabel label="My settings" />
-                              <DropdownMenuItem
-                                label="Leave"
-                                icon={XClose}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                }}
-                              />
-                              <DropdownMenuSub>
-                                <DropdownMenuSubTrigger
-                                  label="Notifications"
-                                  icon={Bell01}
-                                />
-                                <DropdownMenuSubContent>
-                                  <DropdownMenuRadioGroup
-                                    value={
-                                      spaceNotificationPreferences.get(
-                                        space.id
-                                      ) ?? "all"
-                                    }
-                                    onValueChange={(v) =>
-                                      setSpaceNotificationPreferences((prev) =>
-                                        new Map(prev).set(
-                                          space.id,
-                                          v as SpaceNotificationPreference
-                                        )
-                                      )
-                                    }
-                                  >
-                                    <DropdownMenuRadioItem
-                                      value="never"
-                                      label="Don't notify me"
-                                    />
-                                    <DropdownMenuRadioItem
-                                      value="mentions"
-                                      label="Only when mentioned"
-                                    />
-                                    <DropdownMenuRadioItem
-                                      value="all"
-                                      label="All messages"
-                                    />
-                                  </DropdownMenuRadioGroup>
-                                </DropdownMenuSubContent>
-                              </DropdownMenuSub>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuLabel label="Pod" />
-                              <DropdownMenuItem
-                                label="Rename"
-                                icon={Edit04}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                }}
-                              />
-                              <DropdownMenuSub>
-                                <DropdownMenuSubTrigger
-                                  label="Member list"
-                                  icon={UserSquare}
-                                />
-                                <DropdownMenuSubContent>
-                                  <DropdownMenuItem
-                                    label="Manage members"
-                                    icon={Users01}
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleInviteMembers(space.id);
-                                    }}
+                        </div>
+                        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+                          {browsableSpaces.length === 0 ? (
+                            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                              No Pods found
+                            </div>
+                          ) : (
+                            browsableSpaces.map((space) => {
+                              const isRestricted =
+                                space.id.charCodeAt(space.id.length - 1) % 2 ===
+                                0;
+                              return (
+                                <div
+                                  key={space.id}
+                                  className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted-background"
+                                  onClick={() => {
+                                    setP2View({
+                                      kind: "space",
+                                      spaceId: space.id,
+                                    });
+                                    setP3View(null);
+                                    setP4Citation(null);
+                                    setPodBrowseSearch("");
+                                  }}
+                                >
+                                  <Icon
+                                    visual={isRestricted ? CubeOutline : Cube01}
+                                    size="sm"
+                                    className="mt-0.5 shrink-0"
                                   />
-                                  {members.map((m) => (
-                                    <DropdownMenuItem
-                                      key={m.id}
-                                      label={m.fullName}
-                                      icon={
-                                        <Avatar
-                                          name={m.fullName}
-                                          visual={m.portrait}
-                                          size="xxs"
-                                          isRounded
-                                        />
-                                      }
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                      }}
-                                    />
-                                  ))}
-                                </DropdownMenuSubContent>
-                              </DropdownMenuSub>
-                              <DropdownMenuItem
-                                label="Archive"
-                                icon={Archive}
-                                variant="warning"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                }}
-                              />
-                              <DropdownMenuSeparator />
-                              <DropdownMenuLabel label="Share" />
-                              <DropdownMenuItem
-                                label="Copy link"
-                                icon={Link01}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                }}
-                              />
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        }
-                        onClick={() => {
-                          setP2View({ kind: "space", spaceId: space.id });
-                          setP3View(null);
-                          setP4Citation(null);
-                        }}
-                      />
-                    );
-                  })}
-                </NavigationListCollapsibleSection>
-              )}
+                                  <div className="min-w-0 flex-1">
+                                    <div className="truncate text-sm">
+                                      {space.name}
+                                    </div>
+                                    <div className="truncate text-xs text-muted-foreground">
+                                      {space.description || "No description"}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </PopoverRoot>
+                  </>
+                }
+              >
+                {unstarredSpaces.length > 0 ? (
+                  unstarredSpaces.map(renderPodNavItem)
+                ) : (
+                  <NavigationListItem
+                    label="Create a Pod"
+                    icon={Plus}
+                    onClick={() => setIsCreateRoomDialogOpen(true)}
+                  />
+                )}
+              </NavigationListCollapsibleSection>
+            </NavigationList>
 
-              {/* Conversations */}
+            <NavigationList className="mx-sidebar-side-spacing">
               {(filteredConversations.length > 0 || !searchText.trim()) && (
                 <NavigationListCollapsibleSection
                   label="Conversations"
+                  type="collapse"
                   defaultOpen={true}
                   action={
-                    <>
-                      <Button
-                        size="xmini"
-                        icon={MessageChatSquare}
-                        variant="ghost-secondary"
-                        tooltip="New Conversation"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                      />
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="xmini"
-                            icon={DotsHorizontal}
-                            variant="ghost-secondary"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                            }}
-                          />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem
-                            label="Hide triggered"
-                            icon={ZapOff}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                            }}
-                          />
-                          <DropdownMenuItem
-                            label="Clear history"
-                            variant="warning"
-                            icon={Trash01}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                            }}
-                          />
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="xmini"
+                          icon={DotsHorizontal}
+                          variant="ghost"
+                          aria-label="Conversations options"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuLabel label="Conversations" />
+                        <DropdownMenuItem
+                          label={
+                            hideTriggeredConversations
+                              ? "Show triggered"
+                              : "Hide triggered"
+                          }
+                          icon={hideTriggeredConversations ? Zap : ZapOff}
+                          onClick={() =>
+                            setHideTriggeredConversations(
+                              !hideTriggeredConversations
+                            )
+                          }
+                        />
+                        <DropdownMenuItem
+                          label="Edit history"
+                          icon={CheckDone01}
+                        />
+                        <DropdownMenuItem
+                          label="Clear history"
+                          variant="warning"
+                          icon={Trash01}
+                        />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   }
                 >
                   {groupedConversations.today.map((c) => (
@@ -1798,87 +1891,86 @@ function Pods() {
         </div>
       )}
 
-      {/* Bottom bar */}
-      <div className="flex h-14 items-center justify-between gap-2 border-t border pl-1 pr-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Card
-              size="xs"
-              onClick={(e) => e.preventDefault()}
-              className="p-1"
-              containerClassName="flex-1 min-w-0"
-            >
-              <div className="flex min-w-0 items-center gap-2 pr-1">
-                <Avatar
-                  name={user.fullName}
-                  visual={user.portrait}
-                  size="sm"
-                  isRounded
-                />
-                <div className="flex min-w-0 grow flex-col text-sm text-foreground">
-                  <span className="heading-sm truncate">{user.fullName}</span>
-                  <span className="-mt-0.5 truncate text-xs text-muted-foreground">
-                    ACME
-                  </span>
-                </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger className="hover:bg-hover data-[state=open]:bg-selected rounded-xl p-2 m-2">
+          <div className="group flex cursor-pointer items-center justify-between gap-2">
+            <span className="sr-only">Open user menu</span>
+            <div className="flex gap-2 items-center min-w-0">
+              <Avatar
+                name={user.fullName}
+                visual={user.portrait}
+                size="sm"
+                isRounded
+              />
+              <div className="flex min-w-0 flex-1 flex-col items-start text-left">
+                <span className="heading-sm w-full truncate text-foreground">
+                  {user.firstName}
+                </span>
+                <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground">
+                  ACME
+                </span>
               </div>
-            </Card>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem
-              label="Profile"
-              icon={User03}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setP2View({ kind: "profile" });
-                setP3View(null);
-                setP4Citation(null);
-              }}
+            </div>
+            <Icon
+              visual={ChevronDown}
+              className="text-muted-foreground group-hover:text-primary-400"
             />
-            <DropdownMenuItem
-              label="Administration"
-              icon={Settings01}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-            />
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger icon={Heart} label="Help & Support" />
-              <DropdownMenuPortal>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem
-                    label="Quickstart Guide"
-                    icon={Lightbulb04}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                  <DropdownMenuItem
-                    label="Join the Slack Community"
-                    icon={SlackLogo}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                </DropdownMenuSubContent>
-              </DropdownMenuPortal>
-            </DropdownMenuSub>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              label="Signout"
-              icon={LogOut01}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+          </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem
+            label="Profile"
+            icon={User03}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setP2View({ kind: "profile" });
+              setP3View(null);
+              setP4Citation(null);
+            }}
+          />
+          <DropdownMenuItem
+            label="Administration"
+            icon={Settings01}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger icon={Heart} label="Help & Support" />
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem
+                  label="Quickstart Guide"
+                  icon={Lightbulb04}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                />
+                <DropdownMenuItem
+                  label="Join the Slack Community"
+                  icon={SlackLogo}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                />
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            label="Signout"
+            icon={LogOut01}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 
@@ -1957,22 +2049,6 @@ function Pods() {
           )}
         </DialogContent>
       </Dialog>
-      <AddToTopBarDialog
-        key={pendingTopbarFile?.id ?? "closed"}
-        isOpen={pendingTopbarFile !== null}
-        fileName={pendingTopbarFile?.fileName ?? ""}
-        defaultIcon={
-          pendingTopbarFile
-            ? getFallbackFileTabIcon(pendingTopbarFile.id)
-            : File02
-        }
-        onClose={() => setPendingTopbarFile(null)}
-        onAdd={(iconName) => {
-          if (pendingTopbarFile) {
-            handlePodFileDrop(pendingTopbarFile.id, { iconName });
-          }
-        }}
-      />
       <InviteUsersScreen
         isOpen={isInviteUsersScreenOpen}
         spaceId={inviteSpaceId}

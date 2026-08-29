@@ -121,7 +121,7 @@ export function getBasePodTabOptions(_variant: PodVariant): PodTabOption[] {
   return [
     {
       value: "conversations",
-      label: "Chat",
+      label: "Conversations",
       icon: MessageChatSquare,
     },
     { value: "todos", label: "Tasks", icon: CheckCircle },

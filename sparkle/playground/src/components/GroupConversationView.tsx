@@ -14,6 +14,8 @@ import {
   CloudArrowLeftRight,
   ContentMessage,
   ConversationListItem,
+  Cube01,
+  CubeOutline,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -41,6 +43,7 @@ import {
   List,
   ListGroup,
   ListItemSection,
+  MagicWand02,
   MessageChatSquare,
   Plus,
   ReplySection,
@@ -53,7 +56,6 @@ import {
   SheetHeader,
   SheetTitle,
   SliderToggle,
-  Stars02,
   Table,
   Tabs,
   TabsContent,
@@ -63,6 +65,8 @@ import {
   UploadCloud02,
   Users01,
   XClose,
+  Zap,
+  ZapOff,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import { cn } from "@sparkle/lib/utils";
@@ -102,13 +106,13 @@ import type {
   Space,
   User,
 } from "../data/types";
+import { getRandomGreetingForName } from "../data/greetings";
 import { getUserById } from "../data/users";
 import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
 import {
   PodCustomizationSection,
   type PodTabCustomizationItem,
 } from "./PodCustomizationSection";
-import { ConversationTopSection } from "./ConversationTopSection";
 import { EmptyState } from "./EmptyState";
 import { DataTable } from "./DataTableDnd";
 import { FilePreviewPanel } from "./FilePreviewPanel";
@@ -1300,18 +1304,15 @@ function GroupConversationTabContent({
   if (topBox) {
     return (
       <TabsContent value={value}>
-        <div className="flex h-full w-full flex-col overflow-y-auto">
-          <ConversationTopSection>{topBox}</ConversationTopSection>
-          {/* Bottom portion: grows with its content; the page scrolls as a whole. */}
-          <div className="flex flex-none justify-center px-4 pb-8">
-            <div
-              className={cn(
-                "flex w-full max-w-4xl flex-col gap-3",
-                contentClassName
-              )}
-            >
-              {children}
-            </div>
+        <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
+          <div
+            className={cn(
+              "mx-auto flex w-full max-w-4xl flex-col gap-3 py-8",
+              contentClassName
+            )}
+          >
+            {topBox}
+            {children}
           </div>
         </div>
       </TabsContent>
@@ -1352,7 +1353,7 @@ function ProjectSetupEmptyState({
       action={
         <Button
           label="Let's go"
-          icon={Stars02}
+          icon={MagicWand02}
           size="md"
           variant="highlight"
           onClick={onSetupProject}
@@ -1393,12 +1394,23 @@ export function GroupConversationView({
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  // Greeting per tab uses the pod name: "<Pod>'s <Tab>", centered horizontally.
-  const renderPodGreeting = (tabLabel: string) => (
-    <h2 className="heading-2xl text-center">
-      <span className="text-foreground">{space.name}</span>
-      <span className="text-faint">{`'s ${tabLabel}`}</span>
-    </h2>
+  const [hideTriggeredConversations, setHideTriggeredConversations] =
+    useState(false);
+  const currentUser = currentUserId ? getUserById(currentUserId) : undefined;
+  const [greeting, setGreeting] = useState("");
+  useEffect(() => {
+    if (currentUser?.firstName) {
+      setGreeting(getRandomGreetingForName(currentUser.firstName));
+    }
+  }, [currentUser?.firstName, space.name]);
+  const isRestrictedSpace = space.id.charCodeAt(space.id.length - 1) % 2 === 0;
+  const renderPodGreeting = () => (
+    <div className="flex w-full items-center gap-2">
+      <Icon visual={isRestrictedSpace ? CubeOutline : Cube01} />
+      <h2 className="heading-2xl font-medium text-foreground">
+        {space.name} - {greeting}
+      </h2>
+    </div>
   );
   // Shared "Create" CTA for the Files tab so the empty state and the populated
   // toolbar expose the exact same button and menu.
@@ -3626,11 +3638,12 @@ export function GroupConversationView({
           value="conversations"
           topBox={
             <>
-              {renderPodGreeting("Chat")}
+              {renderPodGreeting()}
               <InputBar
                 autoFocus
                 placeholder="What are we working on?"
-                className="w-full max-w-4xl"
+                className="w-full"
+                isFloating={false}
               />
             </>
           }
@@ -3638,157 +3651,85 @@ export function GroupConversationView({
           {!hasHistory && (
             <ProjectSetupEmptyState onSetupProject={handleSetupProject} />
           )}
-          {/* Conversations list */}
-          {hasHistory &&
-            podVariant !== "personal" &&
-            ongoingSummary &&
-            ongoingSummary.projectPulse.length > 0 && (
-              <>
-                <h3 className="heading-lg text-foreground">
-                  {isSummaryUpdating ? (
-                    <AnimatedText
-                      variant="primary"
-                      className="text-muted-foreground"
-                    >
-                      Catching-up
-                    </AnimatedText>
-                  ) : (
-                    "Catching-up"
-                  )}
-                </h3>
-                <div className="text-sm text-muted-foreground">
-                  {ongoingSummary.projectPulse.map((item, index) => {
-                    const itemKey = getSummaryItemKey("projectPulse", item);
-                    const relatedConversationIds =
-                      summaryRelatedConversations[itemKey] ?? [];
-                    const shouldTypePulseItem =
-                      typingItemKeys.has(itemKey) &&
-                      (summaryItemDiffByKey[itemKey] === "modified" ||
-                        summaryItemDiffByKey[itemKey] === "added");
-
-                    return (
-                      <span key={itemKey}>
-                        {shouldTypePulseItem ? (
-                          <TypingAnimation
-                            key={`${itemKey}-${typingVersion}`}
-                            text={item.segments
-                              .map((segment) => segment.text)
-                              .join("")}
-                            duration={16}
-                          />
-                        ) : (
-                          renderProjectPulseItemWithInlineLinks(
-                            item,
-                            relatedConversationIds,
-                            false
-                          )
-                        )}
-                        {index < ongoingSummary.projectPulse.length - 1
-                          ? " "
-                          : null}
-                      </span>
-                    );
-                  })}
-                </div>
-                <div className="@container w-full">
-                  <div className="flex w-full flex-row items-center gap-2">
-                    <ButtonsSwitchList
-                      defaultValue={goodToKnowFilter}
-                      onValueChange={(value) => {
-                        if (
-                          value === "all" ||
-                          value === "shared" ||
-                          value === "mine"
-                        ) {
-                          setGoodToKnowFilter(value);
-                        }
-                      }}
-                    >
-                      <ButtonsSwitch
-                        value="mine"
-                        label="Mine"
-                        tooltip="Conversations you started"
-                      />
-                      <ButtonsSwitch
-                        value="shared"
-                        label="Group"
-                        tooltip="Conversations with more than one person"
-                      />
-                      <ButtonsSwitch
-                        value="all"
-                        label="All"
-                        tooltip="Every conversation in this project"
-                      />
-                    </ButtonsSwitchList>
-                    {hasHistory && (
-                      <div className="min-w-0 flex-1">
-                        <SearchInputWithPopover
-                          name="conversation-search"
-                          value={searchText}
-                          onChange={(value) => {
-                            setSearchText(value);
-                            if (!value.trim()) {
-                              setIsSearchOpen(false);
-                            }
-                          }}
-                          open={isSearchOpen}
-                          onOpenChange={setIsSearchOpen}
-                          placeholder={`Search in ${space.name}`}
-                          className="w-full"
-                          items={searchResults}
-                          availableHeight
-                          noResults={
-                            searchText.trim()
-                              ? "No results found"
-                              : "Start typing to search"
-                          }
-                          onItemSelect={handleSearchItemSelect}
-                          renderItem={(item, selected) => (
-                            <SearchResultItem item={item} selected={selected} />
-                          )}
-                        />
-                      </div>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      icon={CheckDouble}
-                      className="@sm:hidden"
-                      tooltip="Mark all as read"
-                      onClick={() => {
-                        setCheckedSummaryItems((previous) => ({
-                          ...previous,
-                          ...Object.fromEntries(
-                            ongoingSummary.projectPulse.map((item) => [
-                              getSummaryItemKey("projectPulse", item),
-                              true,
-                            ])
-                          ),
-                        }));
-                      }}
-                    />
-                    <Button
-                      size="sm"
-                      className="hidden @sm:inline-flex"
-                      variant="outline"
-                      icon={CheckDouble}
-                      label="Mark all as read"
-                      onClick={() => {
-                        setCheckedSummaryItems((previous) => ({
-                          ...previous,
-                          ...Object.fromEntries(
-                            ongoingSummary.projectPulse.map((item) => [
-                              getSummaryItemKey("projectPulse", item),
-                              true,
-                            ])
-                          ),
-                        }));
-                      }}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
+          {hasHistory && podVariant !== "personal" && (
+            <div className="flex flex-row items-center justify-between gap-3">
+              {spaceMemberIds.length > 1 && (
+                <ButtonsSwitchList
+                  defaultValue={goodToKnowFilter}
+                  onValueChange={(value) => {
+                    if (
+                      value === "all" ||
+                      value === "shared" ||
+                      value === "mine"
+                    ) {
+                      setGoodToKnowFilter(value);
+                    }
+                  }}
+                >
+                  <ButtonsSwitch
+                    value="mine"
+                    label="Mine"
+                    tooltip="Conversations where you have sent a message."
+                  />
+                  <ButtonsSwitch
+                    value="shared"
+                    label="Group"
+                    tooltip="Conversations with more than one person"
+                  />
+                  <ButtonsSwitch
+                    value="all"
+                    label="All"
+                    tooltip="Every conversation in this Pod."
+                  />
+                </ButtonsSwitchList>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                icon={hideTriggeredConversations ? ZapOff : Zap}
+                tooltip={
+                  hideTriggeredConversations
+                    ? "Show triggered"
+                    : "Hide triggered"
+                }
+                className="shrink-0"
+                onClick={() =>
+                  setHideTriggeredConversations((current) => !current)
+                }
+              />
+              <SearchInputWithPopover
+                name="conversation-search"
+                value={searchText}
+                onChange={(value) => {
+                  setSearchText(value);
+                  if (!value.trim()) {
+                    setIsSearchOpen(false);
+                  }
+                }}
+                open={isSearchOpen}
+                onOpenChange={setIsSearchOpen}
+                placeholder="Search..."
+                items={searchResults}
+                availableHeight
+                noResults={
+                  searchText.trim()
+                    ? "No results found"
+                    : "Start typing to search"
+                }
+                onItemSelect={handleSearchItemSelect}
+                renderItem={(item, selected) => (
+                  <SearchResultItem item={item} selected={selected} />
+                )}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                icon={CheckDouble}
+                label="Mark all as read"
+                className="shrink-0"
+              />
+            </div>
+          )}
           {hasHistory && podVariant === "personal" && (
             <div className="@container w-full">
               <div className="flex w-full flex-row items-center gap-2">
@@ -3839,7 +3780,7 @@ export function GroupConversationView({
                     }}
                     open={isSearchOpen}
                     onOpenChange={setIsSearchOpen}
-                    placeholder={`Search in ${space.name}`}
+                    placeholder="Search..."
                     className="w-full"
                     items={searchResults}
                     availableHeight
@@ -3889,8 +3830,6 @@ export function GroupConversationView({
                             ...conversation,
                             id: baseConversationId,
                           };
-                          const isSelectedConversation =
-                            selectedConversationRow?.rowId === conversation.id;
 
                           return (
                             <div
@@ -3918,10 +3857,7 @@ export function GroupConversationView({
                                     ? undefined
                                     : listItem.creator || undefined
                                 }
-                                className={cn(
-                                  "px-3 rounded-2xl",
-                                  isSelectedConversation && "bg-highlight-50"
-                                )}
+                                className="border-t-0 border-b-0 rounded-2xl hover:bg-hover"
                                 time={listItem.time}
                                 showFocus={
                                   conversationIdToShowFocus === conversation.id
@@ -3970,13 +3906,10 @@ export function GroupConversationView({
           value="todos"
           contentClassName="gap-4"
           topBox={
-            <>
-              {renderPodGreeting("Tasks")}
-              <TodoInputBar
-                placeholder="Describe the tasks to create"
-                onCreateTasks={handleCreateTodoSuggestions}
-              />
-            </>
+            <TodoInputBar
+              placeholder="Describe the tasks to create"
+              onCreateTasks={handleCreateTodoSuggestions}
+            />
           }
         >
           {isShowingTodoSuggestions && (
@@ -4408,18 +4341,15 @@ export function GroupConversationView({
           value="knowledge"
           contentClassName="gap-3"
           topBox={
-            <>
-              {renderPodGreeting("Files")}
-              {dataSources.length > 0 && (
-                <SearchInput
-                  name="knowledge-search"
-                  value={knowledgeSearchText}
-                  onChange={setKnowledgeSearchText}
-                  placeholder="Search files..."
-                  className="w-full max-w-xl"
-                />
-              )}
-            </>
+            dataSources.length > 0 ? (
+              <SearchInput
+                name="knowledge-search"
+                value={knowledgeSearchText}
+                onChange={setKnowledgeSearchText}
+                placeholder="Search files..."
+                className="w-full max-w-xl"
+              />
+            ) : undefined
           }
         >
           {dataSources.length === 0 ? (
@@ -4539,11 +4469,7 @@ export function GroupConversationView({
         )}
 
         {/* Settings Tab */}
-        <GroupConversationTabContent
-          value="settings"
-          contentClassName="gap-8"
-          topBox={renderPodGreeting("Settings")}
-        >
+        <GroupConversationTabContent value="settings" contentClassName="gap-8">
           <div className="flex justify-end">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
