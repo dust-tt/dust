@@ -3,10 +3,12 @@ import {
   Attachment01,
   Avatar,
   Bell01,
+  Brackets,
   Breadcrumbs,
   Button,
-  Card,
   CheckCircle,
+  CheckDone01,
+  ChevronDown,
   Cube01,
   CubeOutline,
   Dialog,
@@ -26,17 +28,22 @@ import {
   DropdownMenuTrigger,
   Edit04,
   Eye,
+  File02,
+  FolderOpen,
   Heart,
-  Hexagon01,
+  Icon,
   Inbox01,
   IntersectDust,
   Lightbulb04,
   Link01,
   LogOut01,
+  MagicWand02,
   MessageChatSquare,
   MessageCircle01,
+  MessagePlusCircle,
   NavigationList,
   NavigationListCollapsibleSection,
+  NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
   NavTabPill,
@@ -44,6 +51,11 @@ import {
   NavTabPillTrigger,
   Planet,
   Plus,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  PuzzlePiece01,
+  Robot,
   ScrollArea,
   ScrollBar,
   SearchInput,
@@ -55,14 +67,21 @@ import {
   Users01,
   UserSquare,
   XClose,
+  Zap,
   ZapOff,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { cn } from "@sparkle/lib/utils";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentType,
+} from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
-import { FreeButtonSwitch } from "../components/FreeButtonSwitch";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InboxView } from "../components/InboxView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
@@ -96,14 +115,19 @@ import {
   type Space,
   type User,
 } from "../data";
-import { getDataSourcesBySpaceId } from "../data/dataSources";
+import {
+  getDataSourceIcon,
+  getDataSourcesBySpaceId,
+} from "../data/dataSources";
 import { getRandomGreetingForName } from "../data/greetings";
 import {
   buildPodTabOptions,
   type DynamicFileTab,
   getDefaultMainTabOrder,
+  getFileTabIcon,
   getFileTabValue,
   type PodTabOption,
+  reorderFileTabsInOrder,
   resolvePodContext,
   shouldShowMemberChrome,
 } from "./podPanelConfig";
@@ -126,12 +150,6 @@ type SelectedCitation = { title: string; icon?: string };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function getSpaceActivity(space: Space) {
-  const c = space.id.charCodeAt(space.id.length - 1);
-  const count = c % 3 === 0 ? (c % 9) + 1 : undefined;
-  return { count, hasActivity: count ? true : c % 2 !== 0 };
-}
-
 function getRandomParticipants(conversation: Conversation) {
   const all = [
     ...conversation.userParticipants.map((id) => ({
@@ -153,9 +171,15 @@ function getRandomParticipants(conversation: Conversation) {
   );
 }
 
+function getSpaceActivity(space: Space) {
+  const c = space.id.charCodeAt(space.id.length - 1);
+  const count = c % 3 === 0 ? (c % 9) + 1 : undefined;
+  return { count, hasActivity: count ? true : c % 2 !== 0 };
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function Pods_After() {
+function Inbox() {
   // ── Bootstrap state ───────────────────────────────────────────────────────
   const [user, setUser] = useState<User | null>(null);
   const [greeting, setGreeting] = useState<string>("");
@@ -190,11 +214,7 @@ export default function Pods_After() {
     setStarredSpaceIds(
       new Set(randomSpaces.slice(0, 2).map((space) => space.id))
     );
-    const conversations = createConversationsWithMessages(u.id);
-    setConversationsWithMessages(conversations);
-    setStarredConversationIds(
-      new Set(conversations.slice(0, 2).map((conversation) => conversation.id))
-    );
+    setConversationsWithMessages(createConversationsWithMessages(u.id));
   }, []);
 
   // ── Navigation state ──────────────────────────────────────────────────────
@@ -202,14 +222,13 @@ export default function Pods_After() {
   type P2View =
     | { kind: "welcome" }
     | { kind: "inbox" }
-    | { kind: "myPod" }
+    | { kind: "conversations" }
     | { kind: "conversation"; conversationId: string }
     | { kind: "space"; spaceId: string }
     | { kind: "profile" }
     | { kind: "templates" };
 
   const [p2View, setP2View] = useState<P2View>({ kind: "inbox" });
-  const [cameFromInbox, setCameFromInbox] = useState(false);
 
   // P3: conversation from a space (level 2) OR citation from a level-1 conversation
   type P3View =
@@ -223,7 +242,6 @@ export default function Pods_After() {
 
   // ── Space panel tab state (lifted from GroupConversationView) ────────────
   const [spaceActiveTab, setSpaceActiveTab] = useState("conversations");
-  const [myPodActiveTab, setMyPodActiveTab] = useState("conversations");
   const [inboxActiveTab, setInboxActiveTab] = useState<
     "conversations" | "tasks"
   >("conversations");
@@ -233,12 +251,14 @@ export default function Pods_After() {
   const [draggingPodFileId, setDraggingPodFileId] = useState<string | null>(
     null
   );
-  const [draggingPodFileName, setDraggingPodFileName] = useState<string | null>(
-    null
-  );
   const [fileToRevealInKnowledge, setFileToRevealInKnowledge] = useState<
     string | null
   >(null);
+  const [tabContextMenu, setTabContextMenu] = useState<{
+    value: string;
+    x: number;
+    y: number;
+  } | null>(null);
 
   // ── Sidebar UI state ──────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
@@ -258,9 +278,8 @@ export default function Pods_After() {
   const [starredSpaceIds, setStarredSpaceIds] = useState<Set<string>>(
     new Set()
   );
-  const [starredConversationIds, setStarredConversationIds] = useState<
-    Set<string>
-  >(new Set());
+  const [hideTriggeredConversations, setHideTriggeredConversations] =
+    useState(false);
 
   // ── Space management state ────────────────────────────────────────────────
   const [spaceMembers, setSpaceMembers] = useState<Map<string, string[]>>(
@@ -309,14 +328,45 @@ export default function Pods_After() {
   );
 
   const unreadCount = useMemo(() => {
-    const now = new Date();
-    const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
-
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
     return allConversations.filter((conv) => {
       if (!conv.spaceId) return false;
       return conv.updatedAt >= twoDaysAgo;
     }).length;
   }, [allConversations]);
+
+  const filteredConversations = useMemo(() => {
+    if (!searchText.trim()) return allConversations;
+    const lower = searchText.toLowerCase();
+    return allConversations.filter((c) =>
+      c.title.toLowerCase().includes(lower)
+    );
+  }, [searchText, allConversations]);
+
+  const groupedConversations = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const lastWeek = new Date(today);
+    lastWeek.setDate(today.getDate() - 7);
+    const lastMonth = new Date(today);
+    lastMonth.setDate(today.getDate() - 30);
+    const groups = {
+      today: [] as Conversation[],
+      yesterday: [] as Conversation[],
+      lastWeek: [] as Conversation[],
+      lastMonth: [] as Conversation[],
+    };
+    filteredConversations.forEach((c) => {
+      if (c.updatedAt >= today) groups.today.push(c);
+      else if (c.updatedAt >= yesterday) groups.yesterday.push(c);
+      else if (c.updatedAt >= lastWeek) groups.lastWeek.push(c);
+      else if (c.updatedAt >= lastMonth) groups.lastMonth.push(c);
+    });
+    return groups;
+  }, [filteredConversations]);
 
   const sortedSpaces = useMemo(() => {
     return [...spaces].sort((a, b) => {
@@ -348,59 +398,46 @@ export default function Pods_After() {
     [filteredSpaces, starredSpaceIds]
   );
 
-  const podScopedConversations = useMemo(() => {
-    const spaceIds = new Set(spaces.map((s) => s.id));
-    return allConversations.filter(
-      (conv) =>
-        (conv.spaceId != null && spaceIds.has(conv.spaceId)) ||
-        conv.spaceId == null
+  const [podBrowseSearch, setPodBrowseSearch] = useState("");
+  const browsableSpaces = useMemo(() => {
+    if (!podBrowseSearch.trim()) {
+      return sortedSpaces;
+    }
+    const lower = podBrowseSearch.toLowerCase();
+    return sortedSpaces.filter(
+      (s) =>
+        s.name.toLowerCase().includes(lower) ||
+        s.description.toLowerCase().includes(lower)
     );
-  }, [allConversations, spaces]);
-
-  const starredConversations = useMemo(() => {
-    const pool = podScopedConversations.filter((c) =>
-      starredConversationIds.has(c.id)
-    );
-
-    const filtered = searchText.trim()
-      ? pool.filter((c) =>
-          c.title.toLowerCase().includes(searchText.toLowerCase())
-        )
-      : pool;
-
-    return [...filtered].sort(
-      (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
-    );
-  }, [podScopedConversations, starredConversationIds, searchText]);
-
-  const recentConversations = useMemo(() => {
-    const pool = podScopedConversations.filter(
-      (c) => !starredConversationIds.has(c.id)
-    );
-
-    const filtered = searchText.trim()
-      ? pool.filter((c) =>
-          c.title.toLowerCase().includes(searchText.toLowerCase())
-        )
-      : pool;
-
-    return [...filtered].sort(
-      (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
-    );
-  }, [podScopedConversations, starredConversationIds, searchText]);
+  }, [podBrowseSearch, sortedSpaces]);
 
   const selectedConversationId =
     p2View.kind === "conversation" ? p2View.conversationId : null;
 
+  const selectedConversation = useMemo(
+    () =>
+      selectedConversationId
+        ? (allConversations.find((c) => c.id === selectedConversationId) ??
+          null)
+        : null,
+    [selectedConversationId, allConversations]
+  );
+  const p3Conversation = useMemo(
+    () =>
+      p3View?.kind === "conversation"
+        ? (allConversations.find((c) => c.id === p3View.conversationId) ?? null)
+        : null,
+    [p3View, allConversations]
+  );
+
+  // ── Pod context & tab state ───────────────────────────────────────────────
   const podContext = useMemo(
     () => resolvePodContext(p2View, spaces, allConversations),
     [p2View, spaces, allConversations]
   );
 
-  const activePodTab =
-    podContext?.variant === "personal" ? myPodActiveTab : spaceActiveTab;
-  const setActivePodTab =
-    podContext?.variant === "personal" ? setMyPodActiveTab : setSpaceActiveTab;
+  const activePodTab = spaceActiveTab;
+  const setActivePodTab = setSpaceActiveTab;
 
   const currentPodTabsState = useMemo((): PodTabsState | null => {
     if (!podContext) {
@@ -415,6 +452,24 @@ export default function Pods_After() {
     );
   }, [podContext, podTabsBySpaceId]);
 
+  const getFallbackFileTabIcon = useCallback(
+    (dataSourceId: string): ComponentType => {
+      if (!podContext) {
+        return File02;
+      }
+
+      const file = getDataSourcesBySpaceId(podContext.spaceId).find(
+        (item) => item.id === dataSourceId
+      );
+      if (!file) {
+        return File02;
+      }
+
+      return getDataSourceIcon(file) ?? File02;
+    },
+    [podContext]
+  );
+
   const basePodTabOptions = useMemo((): PodTabOption[] => {
     if (!podContext || !currentPodTabsState) {
       return [];
@@ -423,9 +478,10 @@ export default function Pods_After() {
     return buildPodTabOptions(
       podContext.variant,
       currentPodTabsState.mainTabOrder,
-      currentPodTabsState.dynamicFileTabs
+      currentPodTabsState.dynamicFileTabs,
+      getFallbackFileTabIcon
     );
-  }, [podContext, currentPodTabsState]);
+  }, [podContext, currentPodTabsState, getFallbackFileTabIcon]);
 
   const dynamicFileTabIds = useMemo(
     () =>
@@ -450,33 +506,11 @@ export default function Pods_After() {
     });
   }, [podContext]);
 
-  const handlePodTabReorder = useCallback(
-    (nextOptions: PodTabOption[]) => {
-      if (!podContext) {
-        return;
-      }
-
-      const mainTabOrder = nextOptions
-        .filter((option) => option.pinned !== "end")
-        .map((option) => option.value);
-
-      setPodTabsBySpaceId((prev) => {
-        const existing = prev.get(podContext.spaceId) ?? {
-          mainTabOrder: getDefaultMainTabOrder(podContext.variant),
-          dynamicFileTabs: [],
-        };
-
-        return new Map(prev).set(podContext.spaceId, {
-          ...existing,
-          mainTabOrder,
-        });
-      });
-    },
-    [podContext]
-  );
-
   const handlePodFileDrop = useCallback(
-    (fileId: string) => {
+    (
+      fileId: string,
+      options?: { activateTab?: boolean; iconName?: string }
+    ) => {
       if (!podContext) {
         return;
       }
@@ -506,6 +540,7 @@ export default function Pods_After() {
                 value: fileTabValue,
                 dataSourceId: fileId,
                 label: file.fileName,
+                ...(options?.iconName ? { iconName: options.iconName } : {}),
               },
             ];
         const mainTabOrder = alreadyOpen
@@ -517,20 +552,17 @@ export default function Pods_After() {
           dynamicFileTabs,
         });
       });
-      setActivePodTab(fileTabValue);
+      if (options?.activateTab !== false) {
+        setActivePodTab(fileTabValue);
+      }
       setDraggingPodFileId(null);
-      setDraggingPodFileName(null);
     },
     [podContext, setActivePodTab]
   );
 
-  const handlePodFileDragChange = useCallback(
-    (fileId: string | null, fileName?: string | null) => {
-      setDraggingPodFileId(fileId);
-      setDraggingPodFileName(fileName ?? null);
-    },
-    []
-  );
+  const handlePodFileDragChange = useCallback((fileId: string | null) => {
+    setDraggingPodFileId(fileId);
+  }, []);
 
   const handlePodRemoveTab = useCallback(
     (tabValue: string) => {
@@ -559,6 +591,67 @@ export default function Pods_After() {
       }
     },
     [activePodTab, podContext, setActivePodTab]
+  );
+
+  const handlePodFileReorder = useCallback(
+    (draggedValue: string, targetValue: string) => {
+      if (!podContext) {
+        return;
+      }
+
+      setPodTabsBySpaceId((prev) => {
+        const existing = prev.get(podContext.spaceId);
+        if (!existing) {
+          return prev;
+        }
+
+        const nextMainTabOrder = reorderFileTabsInOrder(
+          existing.mainTabOrder,
+          draggedValue,
+          targetValue
+        );
+        if (nextMainTabOrder === existing.mainTabOrder) {
+          return prev;
+        }
+
+        const tabsByValue = new Map<string, DynamicFileTab>(
+          existing.dynamicFileTabs.map((tab) => [tab.value, tab])
+        );
+        const dynamicFileTabs = nextMainTabOrder.flatMap((value) => {
+          const tab = tabsByValue.get(value);
+          return tab ? [tab] : [];
+        });
+
+        return new Map(prev).set(podContext.spaceId, {
+          mainTabOrder: nextMainTabOrder,
+          dynamicFileTabs,
+        });
+      });
+    },
+    [podContext]
+  );
+
+  const handlePodTabIconChange = useCallback(
+    (tabValue: string, iconName: string) => {
+      if (!podContext) {
+        return;
+      }
+
+      setPodTabsBySpaceId((prev) => {
+        const existing = prev.get(podContext.spaceId);
+        if (!existing) {
+          return prev;
+        }
+
+        return new Map(prev).set(podContext.spaceId, {
+          ...existing,
+          dynamicFileTabs: existing.dynamicFileTabs.map((tab) =>
+            tab.value === tabValue ? { ...tab, iconName } : tab
+          ),
+        });
+      });
+    },
+    [podContext]
   );
 
   const handleShowFileInFiles = useCallback(
@@ -602,21 +695,49 @@ export default function Pods_After() {
     });
   }, [basePodTabOptions, handlePodRemoveTab, handleShowFileInFiles]);
 
-  const selectedConversation = useMemo(
-    () =>
-      selectedConversationId
-        ? (allConversations.find((c) => c.id === selectedConversationId) ??
-          null)
-        : null,
-    [selectedConversationId, allConversations]
-  );
-  const p3Conversation = useMemo(
-    () =>
-      p3View?.kind === "conversation"
-        ? (allConversations.find((c) => c.id === p3View.conversationId) ?? null)
-        : null,
-    [p3View, allConversations]
-  );
+  const addablePodFiles = useMemo(() => {
+    if (!podContext) {
+      return [];
+    }
+
+    const pinnedIds = new Set(dynamicFileTabIds);
+    return getDataSourcesBySpaceId(podContext.spaceId).filter(
+      (item) => item.kind === "file" && !pinnedIds.has(item.id)
+    );
+  }, [dynamicFileTabIds, podContext]);
+
+  const podTabCustomizationTabs = useMemo(() => {
+    if (!currentPodTabsState) {
+      return [];
+    }
+
+    const tabsByValue = new Map<string, DynamicFileTab>(
+      currentPodTabsState.dynamicFileTabs.map((tab) => [tab.value, tab])
+    );
+
+    return currentPodTabsState.mainTabOrder.flatMap((value) => {
+      const tab = tabsByValue.get(value);
+      if (!tab) {
+        return [];
+      }
+
+      return [
+        {
+          value: tab.value,
+          label: tab.label,
+          icon: getFileTabIcon(
+            tab.iconName,
+            getFallbackFileTabIcon(tab.dataSourceId)
+          ),
+          iconName: tab.iconName,
+        },
+      ];
+    });
+  }, [currentPodTabsState, getFallbackFileTabIcon]);
+
+  const tabContextMenuOption = tabContextMenu
+    ? podTabOptions.find((option) => option.value === tabContextMenu.value)
+    : undefined;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleRoomNameNext = (name: string, isPublic: boolean) => {
@@ -666,18 +787,6 @@ export default function Pods_After() {
     });
   };
 
-  const toggleConversationStar = (conversationId: string) => {
-    setStarredConversationIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(conversationId)) {
-        next.delete(conversationId);
-      } else {
-        next.add(conversationId);
-      }
-      return next;
-    });
-  };
-
   const handleUpdateSpacePublic = (spaceId: string, isPublic: boolean) => {
     setSpacePublicSettings((prev) => new Map(prev).set(spaceId, isPublic));
     setSpaces((prev) =>
@@ -685,152 +794,81 @@ export default function Pods_After() {
     );
   };
 
-  const handleConversationNavClick = (
-    conversation: Conversation,
-    options?: { openInPod?: boolean }
-  ) => {
-    setCameFromInbox(false);
-    setP4Citation(null);
-
-    if (options?.openInPod) {
-      if (conversation.spaceId) {
-        setP2View({ kind: "space", spaceId: conversation.spaceId });
-      } else {
-        setP2View({ kind: "myPod" });
-      }
-      setP3View({
-        kind: "conversation",
-        conversationId: conversation.id,
-      });
-      return;
-    }
-
-    setP2View({ kind: "conversation", conversationId: conversation.id });
-    setP3View(null);
-  };
-
-  const isConversationSidebarSelected = (conversationId: string) =>
-    (p2View.kind === "conversation" &&
-      p2View.conversationId === conversationId) ||
-    (p3View?.kind === "conversation" &&
-      p3View.conversationId === conversationId);
-
-  const renderConversationMenuItems = (
-    conversation: Conversation,
-    isStarred: boolean
-  ) => {
-    const participants = getRandomParticipants(conversation);
-    return (
-      <>
-        <DropdownMenuItem
-          label={isStarred ? "Unstar" : "Star"}
-          icon={isStarred ? Star01 : Star01}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleConversationStar(conversation.id);
-          }}
-        />
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          label="Rename"
-          icon={Edit04}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger icon={UserSquare} label="Participant list" />
-          <DropdownMenuPortal>
-            <DropdownMenuSubContent>
-              {participants.length > 0 ? (
-                participants.map((p) => (
-                  <DropdownMenuItem
-                    key={
-                      p.type === "user"
-                        ? `user-${p.data.id}`
-                        : `agent-${p.data.id}`
-                    }
-                    label={p.type === "user" ? p.data.fullName : p.data.name}
-                    icon={
-                      p.type === "user" ? (
-                        <Avatar
-                          size="xxs"
-                          name={p.data.fullName}
-                          visual={p.data.portrait}
-                          isRounded
-                        />
-                      ) : (
-                        <Avatar
-                          size="xxs"
-                          name={p.data.name}
-                          emoji={p.data.emoji}
-                          backgroundColor={p.data.backgroundColor}
-                          isRounded={false}
-                        />
-                      )
-                    }
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                ))
-              ) : (
-                <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-                  No participants
-                </div>
-              )}
-            </DropdownMenuSubContent>
-          </DropdownMenuPortal>
-        </DropdownMenuSub>
-        <DropdownMenuItem
-          label="Delete"
-          icon={Trash01}
-          variant="warning"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        />
-      </>
-    );
-  };
-
   const getConversationMoreMenu = (conversation: Conversation) => {
-    const isStarred = starredConversationIds.has(conversation.id);
+    const participants = getRandomParticipants(conversation);
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <NavigationListItemAction />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          {renderConversationMenuItems(conversation, isStarred)}
+          <DropdownMenuItem
+            label="Rename"
+            icon={Edit04}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger
+              icon={UserSquare}
+              label="Participant list"
+            />
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                {participants.length > 0 ? (
+                  participants.map((p) => (
+                    <DropdownMenuItem
+                      key={
+                        p.type === "user"
+                          ? `user-${p.data.id}`
+                          : `agent-${p.data.id}`
+                      }
+                      label={p.type === "user" ? p.data.fullName : p.data.name}
+                      icon={
+                        p.type === "user" ? (
+                          <Avatar
+                            size="xxs"
+                            name={p.data.fullName}
+                            visual={p.data.portrait}
+                            isRounded
+                          />
+                        ) : (
+                          <Avatar
+                            size="xxs"
+                            name={p.data.name}
+                            emoji={p.data.emoji}
+                            backgroundColor={p.data.backgroundColor}
+                            isRounded={false}
+                          />
+                        )
+                      }
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    />
+                  ))
+                ) : (
+                  <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                    No participants
+                  </div>
+                )}
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+          <DropdownMenuItem
+            label="Delete"
+            icon={Trash01}
+            variant="warning"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          />
         </DropdownMenuContent>
       </DropdownMenu>
-    );
-  };
-
-  const getConversationTopBarActions = (conversation: Conversation) => {
-    const isStarred = starredConversationIds.has(conversation.id);
-    return (
-      <>
-        <Button
-          size="sm"
-          variant="ghost-secondary"
-          icon={Attachment01}
-          isSelect
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost-secondary" icon={DotsHorizontal} />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            {renderConversationMenuItems(conversation, isStarred)}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </>
     );
   };
 
@@ -846,7 +884,7 @@ export default function Pods_After() {
       <NavigationListItem
         key={space.id}
         label={space.name}
-        icon={isRestricted ? Cube01 : CubeOutline}
+        icon={isRestricted ? CubeOutline : Cube01}
         selected={p2View.kind === "space" && p2View.spaceId === space.id}
         count={count}
         hasActivity={hasActivity}
@@ -858,7 +896,7 @@ export default function Pods_After() {
             <DropdownMenuContent>
               <DropdownMenuItem
                 label={isStarred ? "Unstar" : "Star"}
-                icon={isStarred ? Star01 : Star01}
+                icon={Star01}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -984,12 +1022,13 @@ export default function Pods_After() {
 
   // ── P2 content ────────────────────────────────────────────────────────────
   const p2Label = (() => {
+    if (p2View.kind === "inbox") return "Inbox";
+    if (p2View.kind === "conversations") return "Conversations";
     if (podContext) return podContext.space.name;
     if (p2View.kind === "conversation")
       return selectedConversation?.title ?? "Conversation";
     if (p2View.kind === "profile") return "Profile";
     if (p2View.kind === "templates") return "Templates";
-    if (p2View.kind === "inbox") return "Inbox";
     return "Home";
   })();
 
@@ -1004,6 +1043,7 @@ export default function Pods_After() {
           agents={mockAgents}
           currentUserId={user.id}
           activeTab={inboxActiveTab}
+          personalSectionLabel="Conversations"
           selectedConversationId={
             p3View?.kind === "conversation" ? p3View.conversationId : null
           }
@@ -1013,19 +1053,16 @@ export default function Pods_After() {
               conversationId: conversation.id,
             });
             setP4Citation(null);
-            setCameFromInbox(true);
           }}
           onSpaceClick={(space) => {
             setP2View({ kind: "space", spaceId: space.id });
             setP3View(null);
             setP4Citation(null);
-            setCameFromInbox(false);
           }}
           onMyPodClick={() => {
-            setP2View({ kind: "myPod" });
+            setP2View({ kind: "conversations" });
             setP3View(null);
             setP4Citation(null);
-            setCameFromInbox(false);
           }}
         />
       );
@@ -1089,11 +1126,13 @@ export default function Pods_After() {
               ? handleUpdateSpacePublic
               : undefined
           }
-          spacePublicSettings={
-            podContext.variant === "shared" ? spacePublicSettings : undefined
+          spacePublicSettings={spacePublicSettings}
+          activeTab={
+            podContext.variant === "personal" ? "conversations" : activePodTab
           }
-          activeTab={activePodTab}
-          onTabChange={setActivePodTab}
+          onTabChange={
+            podContext.variant === "personal" ? undefined : setActivePodTab
+          }
           dynamicFileTabIds={dynamicFileTabIds}
           onAddFileToTopbar={handlePodFileDrop}
           onFileDragChange={handlePodFileDragChange}
@@ -1102,7 +1141,21 @@ export default function Pods_After() {
             setFileToRevealInKnowledge(null)
           }
           podVariant={podContext.variant}
+          showComposer={podContext.variant === "shared"}
           currentUserId={user.id}
+          podTabCustomization={
+            podContext.variant === "shared"
+              ? {
+                  tabs: podTabCustomizationTabs,
+                  addableFiles: addablePodFiles,
+                  onReorder: handlePodFileReorder,
+                  onChangeIcon: handlePodTabIconChange,
+                  onRemove: handlePodRemoveTab,
+                  onAdd: (file) =>
+                    handlePodFileDrop(file.id, { activateTab: false }),
+                }
+              : undefined
+          }
           selectedConversationId={
             p3View?.kind === "conversation" ? p3View.conversationId : null
           }
@@ -1173,18 +1226,111 @@ export default function Pods_After() {
   ) : null;
 
   // ── Panel top bars ────────────────────────────────────────────────────────
-  const podTopBarLeft = podContext ? (
-    <FreeButtonSwitch
-      value={activePodTab}
-      onValueChange={setActivePodTab}
-      options={podTabOptions}
-      onOptionsReorder={handlePodTabReorder}
-      onDropCreateOption={handlePodFileDrop}
-      onRemoveOption={handlePodRemoveTab}
-      isFileDragActive={draggingPodFileId !== null}
-      draggingFileLabel={draggingPodFileName}
-    />
-  ) : null;
+  const conversationActions = (
+    <>
+      <Button
+        size="sm"
+        variant="ghost-secondary"
+        icon={Attachment01}
+        isSelect
+      />
+      <Button size="sm" variant="ghost-secondary" icon={DotsHorizontal} />
+    </>
+  );
+
+  const podTopBarLeft =
+    podContext?.variant === "shared" ? (
+      <div
+        className={
+          "flex min-w-0 flex-1 items-center gap-0.5 rounded-lg " +
+          (draggingPodFileId ? "bg-highlight-50" : "")
+        }
+        onDragOver={(event) => {
+          if (draggingPodFileId) {
+            event.preventDefault();
+          }
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          if (draggingPodFileId) {
+            handlePodFileDrop(draggingPodFileId);
+          }
+        }}
+      >
+        <NavTabPill
+          value={activePodTab}
+          onValueChange={setActivePodTab}
+          className="min-w-0 overflow-hidden"
+        >
+          <NavTabPillList>
+            {podTabOptions.map((option) => {
+              if (!option.icon) {
+                return null;
+              }
+
+              return (
+                <NavTabPillTrigger
+                  key={option.value}
+                  value={option.value}
+                  icon={option.icon}
+                  aria-label={option.tooltip ?? option.label}
+                  onContextMenu={(event) => {
+                    if (!option.contextMenuItems?.length) {
+                      return;
+                    }
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setTabContextMenu({
+                      value: option.value,
+                      x: event.clientX,
+                      y: event.clientY,
+                    });
+                  }}
+                >
+                  {option.label}
+                </NavTabPillTrigger>
+              );
+            })}
+          </NavTabPillList>
+        </NavTabPill>
+        {tabContextMenu && tabContextMenuOption?.contextMenuItems && (
+          <DropdownMenu
+            open
+            onOpenChange={(open) => {
+              if (!open) {
+                setTabContextMenu(null);
+              }
+            }}
+            modal
+          >
+            <DropdownMenuPortal>
+              <DropdownMenuContent
+                align="start"
+                className="whitespace-nowrap"
+                style={{
+                  position: "fixed",
+                  left: tabContextMenu.x,
+                  top: tabContextMenu.y,
+                }}
+              >
+                {tabContextMenuOption.contextMenuItems.map((item) => (
+                  <DropdownMenuItem
+                    key={item.label}
+                    label={item.label}
+                    icon={item.icon}
+                    variant={item.variant}
+                    onClick={() => {
+                      item.onClick?.();
+                      setTabContextMenu(null);
+                    }}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
+          </DropdownMenu>
+        )}
+      </div>
+    ) : null;
 
   const podTopBarRight = (() => {
     if (!podContext || !shouldShowMemberChrome(podContext.variant)) return null;
@@ -1203,21 +1349,45 @@ export default function Pods_After() {
     return (
       <div className="flex items-center gap-2">
         {memberAvatars.length > 0 && (
-          <Avatar.Stack
-            avatars={memberAvatars}
-            nbVisibleItems={memberAvatars.length}
-            orientation="horizontal"
-            hasMagnifier={false}
-            size="sm"
-          />
+          <div className="hidden md:flex md:h-9 md:items-center">
+            <Avatar.Stack
+              avatars={memberAvatars}
+              nbVisibleItems={memberAvatars.length}
+              orientation="horizontal"
+              hasMagnifier={false}
+              size="sm"
+            />
+          </div>
         )}
-        <Button
-          size="sm"
-          variant="primary"
-          label="Join"
-          tooltip="Join the project"
-          onClick={() => {}}
-        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={DotsHorizontal}
+              variant="ghost"
+              size="sm"
+              tooltip="Pod options"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent collisionPadding={8}>
+            <DropdownMenuItem label="Leave the Pod" icon={XClose} />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger label="Notifications" icon={Bell01} />
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup value="all">
+                  <DropdownMenuRadioItem
+                    value="never"
+                    label="Don't notify me"
+                  />
+                  <DropdownMenuRadioItem
+                    value="mentions"
+                    label="Only when mentioned"
+                  />
+                  <DropdownMenuRadioItem value="all" label="All messages" />
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     );
   })();
@@ -1233,17 +1403,36 @@ export default function Pods_After() {
       );
     if (p2View.kind === "inbox")
       return (
-        <FreeButtonSwitch<"conversations" | "tasks">
+        <NavTabPill
           value={inboxActiveTab}
-          onValueChange={setInboxActiveTab}
-          options={[
-            {
-              value: "conversations",
-              label: "Conversations",
-              icon: MessageChatSquare,
-            },
-            { value: "tasks", label: "Tasks", icon: CheckCircle },
-          ]}
+          onValueChange={(value) =>
+            setInboxActiveTab(value as "conversations" | "tasks")
+          }
+        >
+          <NavTabPillList>
+            <NavTabPillTrigger
+              value="conversations"
+              icon={MessageChatSquare}
+              aria-label="Conversations"
+            >
+              Conversations
+            </NavTabPillTrigger>
+            <NavTabPillTrigger
+              value="tasks"
+              icon={CheckCircle}
+              aria-label="Tasks"
+            >
+              Tasks
+            </NavTabPillTrigger>
+          </NavTabPillList>
+        </NavTabPill>
+      );
+    if (p2View.kind === "conversations")
+      return (
+        <Breadcrumbs
+          items={[{ label: "Conversations" }]}
+          size="sm"
+          hasLighterFont
         />
       );
     if (podContext) return podTopBarLeft;
@@ -1286,8 +1475,7 @@ export default function Pods_After() {
   })();
 
   const p2TopBarRight = (() => {
-    if (p2View.kind === "conversation" && selectedConversation)
-      return getConversationTopBarActions(selectedConversation);
+    if (p2View.kind === "conversation") return conversationActions;
     if (podContext) return podTopBarRight;
     return null;
   })();
@@ -1313,9 +1501,7 @@ export default function Pods_After() {
   })();
 
   const p3TopBarRight =
-    p3View?.kind === "conversation" && p3Conversation
-      ? getConversationTopBarActions(p3Conversation)
-      : null;
+    p3View?.kind === "conversation" ? conversationActions : null;
 
   const p4TopBarLeft = p4Citation ? (
     <Breadcrumbs
@@ -1338,7 +1524,9 @@ export default function Pods_After() {
         <NavTabPillTrigger value="spaces" icon={Planet}>
           Spaces
         </NavTabPillTrigger>
-        <NavTabPillTrigger value="admin" icon={Hexagon01} />
+        <NavTabPillTrigger value="admin" icon={Settings01}>
+          Admin
+        </NavTabPillTrigger>
       </NavTabPillList>
     </NavTabPill>
   );
@@ -1351,87 +1539,174 @@ export default function Pods_After() {
         <div className="flex min-h-0 flex-1 flex-col">
           <ScrollArea className="flex-1">
             <ScrollBar orientation="vertical" size="minimal" />
-            <div className="flex gap-2 p-2">
-              <SearchInput
-                name="search"
-                value={searchText}
-                onChange={setSearchText}
-                placeholder="Search"
-                className="flex-1"
-              />
+            <div className="z-50 flex justify-end gap-2 p-sidebar-side-spacing">
+              <div className="flex-1">
+                <SearchInput
+                  name="search"
+                  value={searchText}
+                  onChange={setSearchText}
+                  placeholder="Search"
+                />
+              </div>
               <Button
-                variant="primary"
-                tooltip="New Conversation, Agent, Skill…"
+                variant="highlight"
+                tooltip="Create a new conversation"
                 size="sm"
+                icon={MessagePlusCircle}
                 label="New"
+                className="shrink-0"
                 onClick={() => {
                   setP2View({ kind: "welcome" });
                   setP3View(null);
                   setP4Citation(null);
-                  setCameFromInbox(false);
                 }}
               />
             </div>
 
-            <NavigationList className="px-2">
-              {!searchText.trim() && (
-                <>
-                  <NavigationListItem
-                    label="Inbox"
-                    icon={Inbox01}
-                    selected={p2View.kind === "inbox"}
-                    count={unreadCount > 0 ? unreadCount : undefined}
-                    onClick={() => {
-                      setP2View({ kind: "inbox" });
-                      setP3View(null);
-                      setP4Citation(null);
-                      setCameFromInbox(false);
-                    }}
-                  />
-                  <NavigationListItem
-                    label="My Pod"
-                    icon={User03}
-                    selected={p2View.kind === "myPod"}
-                    onClick={() => {
-                      setP2View({ kind: "myPod" });
-                      setP3View(null);
-                      setP4Citation(null);
-                      setCameFromInbox(false);
-                    }}
-                  />
-                </>
-              )}
-              {(starredSpaces.length > 0 ||
-                starredConversations.length > 0) && (
+            <NavigationList className="mx-sidebar-side-spacing pt-1">
+              <NavigationListItem
+                icon={Robot}
+                label="Agents"
+                keepHoverOnMoreMenu
+                moreMenu={
+                  <div
+                    className={cn(
+                      "absolute right-2 top-1.5",
+                      "transition-opacity",
+                      "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+                      "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
+                      "has-[[data-state=open]]:opacity-100"
+                    )}
+                  >
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="xs"
+                          icon={Plus}
+                          label="New"
+                          variant="ghost-secondary"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        side="bottom"
+                        align="center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <DropdownMenuLabel label="New agent" />
+                        <DropdownMenuItem icon={File02} label="From scratch" />
+                        <DropdownMenuItem
+                          icon={MagicWand02}
+                          label="From template"
+                          onClick={() => {
+                            setP2View({ kind: "templates" });
+                            setP3View(null);
+                          }}
+                        />
+                        <DropdownMenuItem icon={Brackets} label="From YAML" />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                }
+              />
+              <NavigationListItem
+                icon={PuzzlePiece01}
+                label="Skills"
+                keepHoverOnMoreMenu
+                moreMenu={
+                  <div
+                    className={cn(
+                      "absolute right-2 top-1.5",
+                      "transition-opacity",
+                      "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+                      "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
+                      "has-[[data-state=open]]:opacity-100"
+                    )}
+                  >
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="xs"
+                          icon={Plus}
+                          label="New"
+                          variant="ghost-secondary"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        side="bottom"
+                        align="center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <DropdownMenuLabel label="New skill" />
+                        <DropdownMenuItem
+                          icon={PuzzlePiece01}
+                          label="From scratch"
+                        />
+                        <DropdownMenuItem
+                          icon={FolderOpen}
+                          label="From existing"
+                        />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                }
+              />
+              <NavigationListItem
+                label="Inbox"
+                icon={Inbox01}
+                selected={p2View.kind === "inbox"}
+                count={unreadCount > 0 ? unreadCount : undefined}
+                onClick={() => {
+                  setP2View({ kind: "inbox" });
+                  setP3View(null);
+                  setP4Citation(null);
+                }}
+              />
+              <NavigationListItem
+                label="Conversations"
+                icon={MessageChatSquare}
+                selected={p2View.kind === "conversations"}
+                onClick={() => {
+                  setP2View({ kind: "conversations" });
+                  setP3View(null);
+                  setP4Citation(null);
+                }}
+              />
+            </NavigationList>
+
+            {starredSpaces.length > 0 && (
+              <NavigationList className="mx-sidebar-side-spacing">
                 <NavigationListCollapsibleSection
                   label="Starred"
+                  type="collapse"
                   defaultOpen={true}
+                  visibleItems={5}
                 >
                   {starredSpaces.map(renderPodNavItem)}
-                  {starredConversations.map((c) => (
-                    <NavigationListItem
-                      key={c.id}
-                      label={c.title}
-                      icon={MessageCircle01}
-                      selected={isConversationSidebarSelected(c.id)}
-                      moreMenu={getConversationMoreMenu(c)}
-                      onClick={() =>
-                        handleConversationNavClick(c, { openInPod: true })
-                      }
-                    />
-                  ))}
                 </NavigationListCollapsibleSection>
-              )}
-              {/* Pods */}
-              {(unstarredSpaces.length > 0 || !searchText.trim()) && (
-                <NavigationListCollapsibleSection
-                  label="Pods"
-                  defaultOpen={true}
-                  action={
-                    <>
+              </NavigationList>
+            )}
+
+            <NavigationList className="mx-sidebar-side-spacing flex-shrink-0">
+              <NavigationListCollapsibleSection
+                label="Pods"
+                type="collapse"
+                defaultOpen={true}
+                visibleItems={4}
+                action={
+                  <>
+                    {unstarredSpaces.length > 0 && (
                       <Button
-                        size="xmini"
+                        size="xs"
                         icon={Plus}
+                        label="New"
                         variant="ghost-secondary"
                         onClick={(e) => {
                           e.preventDefault();
@@ -1439,96 +1714,226 @@ export default function Pods_After() {
                           setIsCreateRoomDialogOpen(true);
                         }}
                       />
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="xmini"
-                            icon={DotsHorizontal}
-                            variant="ghost-secondary"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                            }}
+                    )}
+                    <PopoverRoot>
+                      <PopoverTrigger asChild>
+                        <Button
+                          size="xs"
+                          icon={DotsHorizontal}
+                          variant="ghost"
+                        />
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="flex w-80 flex-col p-0"
+                        align="start"
+                        collisionPadding={16}
+                      >
+                        <div className="shrink-0 p-3 pb-2">
+                          <SearchInput
+                            name="browse-pods-search"
+                            placeholder="Search Pods..."
+                            value={podBrowseSearch}
+                            onChange={setPodBrowseSearch}
                           />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem
-                            icon={Plus}
-                            label="Create"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setIsCreateRoomDialogOpen(true);
-                            }}
-                          />
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
-                  }
-                >
-                  {unstarredSpaces.map(renderPodNavItem)}
-                </NavigationListCollapsibleSection>
-              )}
-              {(recentConversations.length > 0 || !searchText.trim()) && (
+                        </div>
+                        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+                          {browsableSpaces.length === 0 ? (
+                            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                              No Pods found
+                            </div>
+                          ) : (
+                            browsableSpaces.map((space) => {
+                              const isRestricted =
+                                space.id.charCodeAt(space.id.length - 1) % 2 ===
+                                0;
+                              return (
+                                <div
+                                  key={space.id}
+                                  className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted-background"
+                                  onClick={() => {
+                                    setP2View({
+                                      kind: "space",
+                                      spaceId: space.id,
+                                    });
+                                    setP3View(null);
+                                    setP4Citation(null);
+                                    setPodBrowseSearch("");
+                                  }}
+                                >
+                                  <Icon
+                                    visual={isRestricted ? CubeOutline : Cube01}
+                                    size="sm"
+                                    className="mt-0.5 shrink-0"
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="truncate text-sm">
+                                      {space.name}
+                                    </div>
+                                    <div className="truncate text-xs text-muted-foreground">
+                                      {space.description || "No description"}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </PopoverRoot>
+                  </>
+                }
+              >
+                {unstarredSpaces.length > 0 ? (
+                  unstarredSpaces.map(renderPodNavItem)
+                ) : (
+                  <NavigationListItem
+                    label="Create a Pod"
+                    icon={Plus}
+                    onClick={() => setIsCreateRoomDialogOpen(true)}
+                  />
+                )}
+              </NavigationListCollapsibleSection>
+            </NavigationList>
+
+            <NavigationList className="mx-sidebar-side-spacing">
+              {(filteredConversations.length > 0 || !searchText.trim()) && (
                 <NavigationListCollapsibleSection
                   label="Recent"
+                  type="collapse"
                   defaultOpen={true}
                   action={
-                    <>
-                      <Button
-                        size="xmini"
-                        icon={MessageChatSquare}
-                        variant="ghost-secondary"
-                        tooltip="New Conversation"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                      />
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="xmini"
-                            icon={DotsHorizontal}
-                            variant="ghost-secondary"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                            }}
-                          />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem
-                            label="Hide triggered"
-                            icon={ZapOff}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                            }}
-                          />
-                          <DropdownMenuItem
-                            label="Clear history"
-                            variant="warning"
-                            icon={Trash01}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                            }}
-                          />
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="xmini"
+                          icon={DotsHorizontal}
+                          variant="ghost"
+                          aria-label="Recent options"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuLabel label="Recent" />
+                        <DropdownMenuItem
+                          label={
+                            hideTriggeredConversations
+                              ? "Show triggered"
+                              : "Hide triggered"
+                          }
+                          icon={hideTriggeredConversations ? Zap : ZapOff}
+                          onClick={() =>
+                            setHideTriggeredConversations(
+                              !hideTriggeredConversations
+                            )
+                          }
+                        />
+                        <DropdownMenuItem
+                          label="Edit history"
+                          icon={CheckDone01}
+                        />
+                        <DropdownMenuItem
+                          label="Clear history"
+                          variant="warning"
+                          icon={Trash01}
+                        />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   }
                 >
-                  {recentConversations.map((c) => (
+                  {groupedConversations.today.map((c) => (
                     <NavigationListItem
                       key={c.id}
                       label={c.title}
-                      selected={isConversationSidebarSelected(c.id)}
+                      selected={
+                        p2View.kind === "conversation" &&
+                        p2View.conversationId === c.id
+                      }
                       moreMenu={getConversationMoreMenu(c)}
-                      onClick={() => handleConversationNavClick(c)}
+                      onClick={() => {
+                        setP2View({
+                          kind: "conversation",
+                          conversationId: c.id,
+                        });
+                        setP3View(null);
+                        setP4Citation(null);
+                      }}
                     />
                   ))}
+                  {groupedConversations.yesterday.length > 0 && (
+                    <>
+                      <NavigationListCompactLabel label="Yesterday" isSticky />
+                      {groupedConversations.yesterday.map((c) => (
+                        <NavigationListItem
+                          key={c.id}
+                          label={c.title}
+                          selected={
+                            p2View.kind === "conversation" &&
+                            p2View.conversationId === c.id
+                          }
+                          moreMenu={getConversationMoreMenu(c)}
+                          onClick={() => {
+                            setP2View({
+                              kind: "conversation",
+                              conversationId: c.id,
+                            });
+                            setP3View(null);
+                            setP4Citation(null);
+                          }}
+                        />
+                      ))}
+                    </>
+                  )}
+                  {groupedConversations.lastWeek.length > 0 && (
+                    <>
+                      <NavigationListCompactLabel label="Last week" isSticky />
+                      {groupedConversations.lastWeek.map((c) => (
+                        <NavigationListItem
+                          key={c.id}
+                          label={c.title}
+                          selected={
+                            p2View.kind === "conversation" &&
+                            p2View.conversationId === c.id
+                          }
+                          moreMenu={getConversationMoreMenu(c)}
+                          onClick={() => {
+                            setP2View({
+                              kind: "conversation",
+                              conversationId: c.id,
+                            });
+                            setP3View(null);
+                            setP4Citation(null);
+                          }}
+                        />
+                      ))}
+                    </>
+                  )}
+                  {groupedConversations.lastMonth.length > 0 && (
+                    <>
+                      <NavigationListCompactLabel label="Last month" />
+                      {groupedConversations.lastMonth.map((c) => (
+                        <NavigationListItem
+                          key={c.id}
+                          label={c.title}
+                          selected={
+                            p2View.kind === "conversation" &&
+                            p2View.conversationId === c.id
+                          }
+                          moreMenu={getConversationMoreMenu(c)}
+                          onClick={() => {
+                            setP2View({
+                              kind: "conversation",
+                              conversationId: c.id,
+                            });
+                            setP3View(null);
+                            setP4Citation(null);
+                          }}
+                        />
+                      ))}
+                    </>
+                  )}
                 </NavigationListCollapsibleSection>
               )}
             </NavigationList>
@@ -1551,87 +1956,86 @@ export default function Pods_After() {
         </div>
       )}
 
-      {/* Bottom bar */}
-      <div className="flex h-14 items-center justify-between gap-2 border-t border pl-1 pr-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Card
-              size="xs"
-              onClick={(e) => e.preventDefault()}
-              className="p-1"
-              containerClassName="flex-1 min-w-0"
-            >
-              <div className="flex min-w-0 items-center gap-2 pr-1">
-                <Avatar
-                  name={user.fullName}
-                  visual={user.portrait}
-                  size="sm"
-                  isRounded
-                />
-                <div className="flex min-w-0 grow flex-col text-sm text-foreground">
-                  <span className="heading-sm truncate">{user.fullName}</span>
-                  <span className="-mt-0.5 truncate text-xs text-muted-foreground">
-                    ACME
-                  </span>
-                </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger className="hover:bg-hover data-[state=open]:bg-selected rounded-xl p-2 m-2">
+          <div className="group flex cursor-pointer items-center justify-between gap-2">
+            <span className="sr-only">Open user menu</span>
+            <div className="flex gap-2 items-center min-w-0">
+              <Avatar
+                name={user.fullName}
+                visual={user.portrait}
+                size="sm"
+                isRounded
+              />
+              <div className="flex min-w-0 flex-1 flex-col items-start text-left">
+                <span className="heading-sm w-full truncate text-foreground">
+                  {user.firstName}
+                </span>
+                <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground">
+                  ACME
+                </span>
               </div>
-            </Card>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem
-              label="Profile"
-              icon={User03}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setP2View({ kind: "profile" });
-                setP3View(null);
-                setP4Citation(null);
-              }}
+            </div>
+            <Icon
+              visual={ChevronDown}
+              className="text-muted-foreground group-hover:text-primary-400"
             />
-            <DropdownMenuItem
-              label="Administration"
-              icon={Settings01}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-            />
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger icon={Heart} label="Help & Support" />
-              <DropdownMenuPortal>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem
-                    label="Quickstart Guide"
-                    icon={Lightbulb04}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                  <DropdownMenuItem
-                    label="Join the Slack Community"
-                    icon={SlackLogo}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                </DropdownMenuSubContent>
-              </DropdownMenuPortal>
-            </DropdownMenuSub>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              label="Signout"
-              icon={LogOut01}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+          </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem
+            label="Profile"
+            icon={User03}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setP2View({ kind: "profile" });
+              setP3View(null);
+              setP4Citation(null);
+            }}
+          />
+          <DropdownMenuItem
+            label="Administration"
+            icon={Settings01}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger icon={Heart} label="Help & Support" />
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem
+                  label="Quickstart Guide"
+                  icon={Lightbulb04}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                />
+                <DropdownMenuItem
+                  label="Join the Slack Community"
+                  icon={SlackLogo}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                />
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            label="Signout"
+            icon={LogOut01}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 
@@ -1734,3 +2138,5 @@ export default function Pods_After() {
     </>
   );
 }
+
+export default Inbox;

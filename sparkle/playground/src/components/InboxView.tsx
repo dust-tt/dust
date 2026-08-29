@@ -49,6 +49,7 @@ interface InboxViewProps {
   onConversationClick?: (conversation: Conversation) => void;
   onMyPodClick?: () => void;
   onSpaceClick?: (space: Space) => void;
+  personalSectionLabel?: string;
 }
 
 const INBOX_TASK_ITEMS: InboxTask[] = [
@@ -255,6 +256,7 @@ export function InboxView({
   onConversationClick,
   onMyPodClick,
   onSpaceClick,
+  personalSectionLabel = "My Pod",
 }: InboxViewProps) {
   const currentUserFirstName = currentUserId
     ? (getUserById(currentUserId)?.firstName ?? "there")
@@ -430,7 +432,7 @@ export function InboxView({
     if (myPodTasks.length > 0) {
       groups.push({
         key: "my-pod",
-        label: "My Pod",
+        label: personalSectionLabel,
         onHeaderClick: onMyPodClick,
         tasks: myPodTasks,
       });
@@ -451,7 +453,13 @@ export function InboxView({
     });
 
     return groups;
-  }, [checkedTaskKeys, onMyPodClick, onSpaceClick, spaces]);
+  }, [
+    checkedTaskKeys,
+    onMyPodClick,
+    onSpaceClick,
+    personalSectionLabel,
+    spaces,
+  ]);
 
   const inboxTaskGroups = useMemo(() => {
     const normalizedSearch = taskSearchText.trim().toLowerCase();
@@ -718,7 +726,7 @@ export function InboxView({
               <CollapsibleContent>
                 <div className="flex flex-col gap-1">
                   {renderInboxSectionHeader(
-                    "My Pod",
+                    personalSectionLabel,
                     onMyPodClick,
                     () => toggleSectionCollapse("my-conversations"),
                     "Mark as read"

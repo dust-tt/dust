@@ -151,6 +151,7 @@ interface GroupConversationViewProps {
   fileToRevealInKnowledge?: string | null;
   onFileToRevealInKnowledgeHandled?: () => void;
   podVariant?: "shared" | "personal";
+  showComposer?: boolean;
   currentUserId?: string;
   podTabCustomization?: {
     tabs: PodTabCustomizationItem[];
@@ -1389,6 +1390,7 @@ export function GroupConversationView({
   fileToRevealInKnowledge = null,
   onFileToRevealInKnowledgeHandled,
   podVariant = "shared",
+  showComposer = true,
   currentUserId,
   podTabCustomization,
 }: GroupConversationViewProps) {
@@ -3637,19 +3639,27 @@ export function GroupConversationView({
         <GroupConversationTabContent
           value="conversations"
           topBox={
-            <>
-              {renderPodGreeting()}
-              <InputBar
-                autoFocus
-                placeholder="What are we working on?"
-                className="w-full"
-                isFloating={false}
-              />
-            </>
+            showComposer ? (
+              <>
+                {renderPodGreeting()}
+                <InputBar
+                  autoFocus
+                  placeholder="What are we working on?"
+                  className="w-full"
+                  isFloating={false}
+                />
+              </>
+            ) : undefined
           }
         >
-          {!hasHistory && (
+          {!hasHistory && showComposer && (
             <ProjectSetupEmptyState onSetupProject={handleSetupProject} />
+          )}
+          {!hasHistory && !showComposer && (
+            <EmptyState
+              title="No conversations"
+              description="Start a conversation from New, or pick one from Recent."
+            />
           )}
           {hasHistory && podVariant !== "personal" && (
             <div className="flex flex-row items-center justify-between gap-3">

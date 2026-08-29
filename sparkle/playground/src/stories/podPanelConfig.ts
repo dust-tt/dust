@@ -93,7 +93,7 @@ export function resolvePodContext(
   spaces: Space[],
   allConversations: Conversation[]
 ): PodContext | null {
-  if (p2View.kind === "myPod") {
+  if (p2View.kind === "myPod" || p2View.kind === "conversations") {
     return {
       variant: "personal",
       space: MY_POD_SPACE,
