@@ -105,8 +105,10 @@ export const POD_DATABASE_BUSY_TIMEOUT_MS = 5000;
 
 /** Valid database names (also the manifest/publish contract). */
 export const POD_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
+export const SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION = 1;
 
 const framePublicationDatabaseContractSchema = z.object({
+  schemaVersion: z.literal(SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION),
   manifest: z.object({
     databases: z.array(
       z.object({

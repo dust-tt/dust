@@ -21,6 +21,7 @@ import {
   PodDatabaseNotDeclaredError,
   PodDatabasesUnavailableError,
   runWithInvocationEnv,
+  SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION,
 } from "@dust/pod";
 import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
@@ -133,6 +134,7 @@ describe("Frame publication database contract", () => {
     writeFileSync(
       descriptorPath,
       JSON.stringify({
+        schemaVersion: SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION,
         manifest: {
           databases: databaseNames.map((name) => ({
             name,
@@ -195,6 +197,23 @@ describe("Frame publication database contract", () => {
 
     const descriptorPath = join(databasesDir, "invalid-publication.json");
     writeFileSync(descriptorPath, "not-json");
+    expect(() =>
+      runWithInvocationEnv(frameInvocationEnv(descriptorPath), () => db(name))
+    ).toThrow(FramePublicationDescriptorError);
+  });
+
+  test("rejects an unsupported publication descriptor version", () => {
+    const name = uniqueName("frame_db");
+    createDatabaseFile(name);
+    const descriptorPath = createPublicationDescriptor([name]);
+    writeFileSync(
+      descriptorPath,
+      JSON.stringify({
+        schemaVersion: SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION + 1,
+        manifest: { databases: [{ name }] },
+      })
+    );
+
     expect(() =>
       runWithInvocationEnv(frameInvocationEnv(descriptorPath), () => db(name))
     ).toThrow(FramePublicationDescriptorError);
