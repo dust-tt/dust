@@ -5,6 +5,7 @@ import type {
   FileExplorerPathEntry,
   FileExplorerSortMode,
   FileSystemTreeNode,
+  FramePackageEntry,
 } from "@app/components/file_explorer/types";
 import {
   buildFileSystemTree,
@@ -17,6 +18,8 @@ import {
   getVirtualScopeRootNodes,
   isFileExplorerNodeHidden,
 } from "@app/components/file_explorer/utils";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import { frameV2ContentType } from "@app/types/files";
 
 interface FileExplorerPipeline {
   /** Tree nodes at the current folder level, filtered + sorted. */
@@ -38,8 +41,129 @@ interface GetFileExplorerPipelineParams {
   files: FileExplorerPathEntry[];
   searchQuery: string;
   sortMode: FileExplorerSortMode;
+  /** Collapse registered Frames v2 source folders into package entries. */
+  displayFramePackages?: boolean;
   /** Top-level scope folders at the virtual root (e.g. `conversation`, `pod`). */
   virtualScopeRoots?: readonly string[];
+}
+
+function getParentPath(relativePath: string): string {
+  const lastSlash = relativePath.lastIndexOf("/");
+  return lastSlash < 0 ? "" : relativePath.slice(0, lastSlash);
+}
+
+function getPathBasename(relativePath: string): string {
+  const lastSlash = relativePath.lastIndexOf("/");
+  return relativePath.slice(lastSlash + 1);
+}
+
+function isPathAtOrBelow(path: string, parentPath: string): boolean {
+  return path === parentPath || path.startsWith(`${parentPath}/`);
+}
+
+function getCollapsedFramePackages({
+  currentFolderPath,
+  files,
+}: {
+  currentFolderPath: string;
+  files: FileExplorerPathEntry[];
+}): FramePackageEntry[] {
+  const candidates = new Map<string, FramePackageEntry>();
+
+  for (const file of files) {
+    if (
+      file.isDirectory ||
+      file.contentType !== frameV2ContentType ||
+      file.fileName !== FRAME_MANIFEST_FILE ||
+      !file.fileId
+    ) {
+      continue;
+    }
+
+    const manifestExplorerPath = getExplorerRelativePath(file);
+    const sourceFolderPath = getParentPath(manifestExplorerPath);
+    if (
+      !sourceFolderPath ||
+      isPathAtOrBelow(currentFolderPath, sourceFolderPath)
+    ) {
+      continue;
+    }
+
+    candidates.set(sourceFolderPath, {
+      ...file,
+      kind: "frame_package",
+      contentType: frameV2ContentType,
+      fileId: file.fileId,
+      fileName: getPathBasename(sourceFolderPath),
+      manifestPath: file.path,
+      sourceFolderPath,
+      virtualPath: sourceFolderPath,
+    });
+  }
+
+  // If packages are nested, only the outer package is visible until its source is opened.
+  const packages: FramePackageEntry[] = [];
+  const packagePaths = new Set(candidates.keys());
+  for (const [sourceFolderPath, framePackage] of candidates) {
+    let ancestorPath = getParentPath(sourceFolderPath);
+    let hasPackageAncestor = false;
+    while (ancestorPath) {
+      if (packagePaths.has(ancestorPath)) {
+        hasPackageAncestor = true;
+        break;
+      }
+      ancestorPath = getParentPath(ancestorPath);
+    }
+    if (!hasPackageAncestor) {
+      packages.push(framePackage);
+    }
+  }
+
+  return packages;
+}
+
+function collapseFramePackages({
+  currentFolderPath,
+  displayFramePackages,
+  files,
+}: {
+  currentFolderPath: string;
+  displayFramePackages: boolean;
+  files: FileExplorerPathEntry[];
+}): {
+  files: FileExplorerPathEntry[];
+  packagesByPath: Map<string, FramePackageEntry>;
+} {
+  if (!displayFramePackages) {
+    return { files, packagesByPath: new Map() };
+  }
+
+  const packages = getCollapsedFramePackages({ currentFolderPath, files });
+  if (packages.length === 0) {
+    return { files, packagesByPath: new Map() };
+  }
+
+  const packagesByPath = new Map(
+    packages.map((framePackage) => [
+      framePackage.sourceFolderPath,
+      framePackage,
+    ])
+  );
+  const visibleFiles = files.filter((file) => {
+    let candidatePath = getExplorerRelativePath(file);
+    while (candidatePath) {
+      if (packagesByPath.has(candidatePath)) {
+        return false;
+      }
+      candidatePath = getParentPath(candidatePath);
+    }
+    return true;
+  });
+
+  return {
+    files: [...visibleFiles, ...packages],
+    packagesByPath,
+  };
 }
 
 function filterVisibleNodes(
@@ -67,19 +191,29 @@ export function getFileExplorerPipeline({
   activeFilter,
   contentNodes,
   currentFolderPath,
+  displayFramePackages = false,
   files,
   searchQuery,
   sortMode,
   virtualScopeRoots,
 }: GetFileExplorerPipelineParams): FileExplorerPipeline {
+  const collapsed = collapseFramePackages({
+    currentFolderPath,
+    displayFramePackages,
+    files,
+  });
   const entryByRelativePath = new Map<string, FileExplorerEntry>();
-  for (const f of files) {
+  for (const f of collapsed.files) {
     if (f.isDirectory) {
       continue;
     }
 
     const relativePath = getExplorerRelativePath(f);
-    entryByRelativePath.set(relativePath, { ...f, kind: "file" });
+    const framePackage = collapsed.packagesByPath.get(relativePath);
+    entryByRelativePath.set(
+      relativePath,
+      framePackage ?? { ...f, kind: "file" }
+    );
   }
 
   // Content nodes are always flat (no folder structure). They appear only at
@@ -88,7 +222,7 @@ export function getFileExplorerPipeline({
     entryByRelativePath.set(node.path, node);
   }
 
-  const tree = buildFileSystemTree(files);
+  const tree = buildFileSystemTree(collapsed.files);
 
   // Synthetic tree nodes for content-node entries — always flat, at root level.
   const contentNodeTreeNodes: FileSystemTreeNode[] = contentNodes.map((cn) => ({

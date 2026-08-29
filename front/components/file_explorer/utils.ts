@@ -2,6 +2,7 @@ import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import {
   frameSlideshowContentType,
   getFileFormatCategory,
+  isFrameV2ContentType,
   isInteractiveContentType,
   isMarkdownContentType,
   isPdfContentType,
@@ -71,7 +72,10 @@ export function getFilePreviewConfig(
   const contentType = stripMimeParameters(rawContentType);
   const category = getFileFormatCategory(contentType);
 
-  if (isInteractiveContentType(contentType)) {
+  if (
+    isInteractiveContentType(contentType) ||
+    isFrameV2ContentType(contentType)
+  ) {
     return {
       category: "frame",
       needsProcessedVersion: false,

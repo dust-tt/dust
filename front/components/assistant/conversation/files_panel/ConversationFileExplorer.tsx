@@ -9,6 +9,7 @@ import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useFolderPathUrlState } from "@app/hooks/useFolderPathUrlState";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
 import { usePodFiles } from "@app/lib/swr/pods";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -30,6 +31,7 @@ export function ConversationFileExplorer({
   owner,
 }: ConversationFileExplorerProps) {
   const { closePanel, openPanel } = useConversationSidePanelContext();
+  const { hasFeature } = useFeatureFlags();
   const isPod = isPodConversation(conversation);
 
   const [currentFolderPath, setCurrentFolderPath] = useFolderPathUrlState();
@@ -105,6 +107,7 @@ export function ConversationFileExplorer({
         <FileExplorer
           currentFolderPath={currentFolderPath}
           defaultViewMode={isPod ? "list" : "grid"}
+          displayFramePackages={hasFeature("frames_v2")}
           files={files}
           hideBreadcrumbAtRoot={!isPod}
           isLoading={

@@ -176,11 +176,19 @@ export async function enrichListWithFileResourceIds(
     mountPaths
   );
 
-  // Map every known mountFilePath to its FileResource sId.
-  const byMountPath = new Map<string, string>();
+  // FileResource is authoritative for both identity and semantic type. Raw GCS metadata still
+  // describes the source bytes (for example manifest.json is JSON), while the linked resource can
+  // represent a higher-level object such as a registered Frame package.
+  const byMountPath = new Map<
+    string,
+    { contentType: string; fileId: string }
+  >();
   for (const fr of fileResources) {
     if (fr.mountFilePath) {
-      byMountPath.set(fr.mountFilePath, fr.sId);
+      byMountPath.set(fr.mountFilePath, {
+        contentType: fr.contentType,
+        fileId: fr.sId,
+      });
     }
   }
 
@@ -193,9 +201,15 @@ export async function enrichListWithFileResourceIds(
       return entry;
     }
     const legacyPath = gcsPath.replace(/\/pods\//, "/projects/");
-    const fileId =
+    const linkedFile =
       byMountPath.get(gcsPath) ?? byMountPath.get(legacyPath) ?? null;
-    return { ...entry, fileId };
+    return linkedFile
+      ? {
+          ...entry,
+          contentType: linkedFile.contentType,
+          fileId: linkedFile.fileId,
+        }
+      : entry;
   });
 }
 

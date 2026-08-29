@@ -1,7 +1,10 @@
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import { frameV2ContentType } from "@app/types/files";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -10,9 +13,9 @@ vi.mock("@app/lib/lock", () => ({
 }));
 
 async function setupProject() {
-  const { workspace, user } = await createPrivateApiMockRequest();
+  const { auth, workspace, user } = await createPrivateApiMockRequest();
   const project = await SpaceFactory.project(workspace, user.id);
-  return { workspace, user, project };
+  return { auth, workspace, user, project };
 }
 
 function makeGCSFile(
@@ -122,6 +125,36 @@ describe("GET /api/w/:wId/spaces/:spaceId/files", () => {
     expect(dir).toBeDefined();
     expect(dir.path).toBe(`pod-${project.sId}/reports`);
     expect(dir.fileName).toBe("reports");
+  });
+
+  it("uses a linked Frame resource's identity and content type", async () => {
+    const { auth, workspace, project } = await setupProject();
+    const manifestMountPath = `w/${workspace.sId}/pods/${project.sId}/files/status/${FRAME_MANIFEST_FILE}`;
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: 100,
+      mountFilePath: manifestMountPath,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: project.sId },
+    });
+
+    fileStorageMock.setFilesByPrefix(() => [
+      makeGCSFile(workspace.sId, project.sId, `status/${FRAME_MANIFEST_FILE}`, {
+        contentType: "application/json",
+      }),
+    ]);
+
+    const res = await honoApp.request(
+      `/api/w/${workspace.sId}/spaces/${project.sId}/files`
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.files).toMatchObject([
+      { contentType: frameV2ContentType, fileId: frame.sId },
+    ]);
   });
 });
 

@@ -1,4 +1,8 @@
-import { frameContentType, frameSlideshowContentType } from "@app/types/files";
+import {
+  frameContentType,
+  frameSlideshowContentType,
+  frameV2ContentType,
+} from "@app/types/files";
 import {
   ActionFrame,
   BigQueryLogo,
@@ -110,7 +114,11 @@ const FILE_TYPE_MAPPINGS: FileTypeMapping[] = [
   },
   {
     icon: ActionFrame,
-    mimeTypes: [frameContentType, frameSlideshowContentType],
+    mimeTypes: [
+      frameContentType,
+      frameSlideshowContentType,
+      frameV2ContentType,
+    ],
     extensions: [".js", ".jsx", ".ts", ".tsx"],
   },
 ];
