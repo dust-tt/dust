@@ -16,6 +16,7 @@ import {
   SandboxFunctionResource,
 } from "@app/lib/resources/sandbox_function_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { launchRetiredFramePublicationCleanupWorkflow } from "@app/temporal/sandbox_functions/client";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -47,6 +48,10 @@ vi.mock("@app/lib/lock", async (importOriginal) => {
     distributedUnlock: vi.fn(),
   };
 });
+
+vi.mock("@app/temporal/sandbox_functions/client", () => ({
+  launchRetiredFramePublicationCleanupWorkflow: vi.fn(),
+}));
 
 async function setupFrame(): Promise<{
   frame: FileResource;
@@ -137,6 +142,9 @@ beforeEach(() => {
   vi.mocked(distributedLock).mockResolvedValue("test-frame-publish-lock");
   vi.mocked(distributedUnlock).mockResolvedValue(undefined);
   vi.mocked(reconcileFramePublicationDatabases).mockResolvedValue(
+    new Ok(undefined)
+  );
+  vi.mocked(launchRetiredFramePublicationCleanupWorkflow).mockResolvedValue(
     new Ok(undefined)
   );
   fileStorageMock.reset();
@@ -849,6 +857,15 @@ describe("activateFramePublication", () => {
     expect(frame.useCaseMetadata?.activePublicationId).toBe(
       second.isOk() ? second.value.publicationId : undefined
     );
+    if (first.isOk()) {
+      expect(launchRetiredFramePublicationCleanupWorkflow).toHaveBeenCalledWith(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          frameId: frame.sId,
+          publicationId: first.value.publicationId,
+        }
+      );
+    }
   });
 });
 
@@ -899,7 +916,7 @@ describe("publishFramePublication", () => {
     );
   });
 
-  it("cleans only stale uncommitted publication artifacts", async () => {
+  it("cleans uncommitted artifacts and schedules committed publications", async () => {
     const { auth, frame } = await setupFrame();
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
     const committedPublicationId = "243542bc-54b1-4dfe-9bb9-e02f75a0fb9f";
@@ -927,6 +944,16 @@ describe("publishFramePublication", () => {
     expect(deletedPrefixes).toEqual([
       `w/${auth.getNonNullableWorkspace().sId}/frames/${frame.sId}/publications/${stalePublicationId}/`,
     ]);
+    expect(launchRetiredFramePublicationCleanupWorkflow).toHaveBeenCalledWith({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      frameId: frame.sId,
+      publicationId: committedPublicationId,
+    });
+    expect(launchRetiredFramePublicationCleanupWorkflow).toHaveBeenCalledWith({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      frameId: frame.sId,
+      publicationId: activePublicationId,
+    });
   });
 
   it("publishes when stale artifact cleanup fails", async () => {

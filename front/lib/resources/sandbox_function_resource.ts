@@ -51,6 +51,7 @@ import assert from "assert";
 import { createHash } from "crypto";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { Attributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxFunctionResource
@@ -667,6 +668,85 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       where: { fileId: frame.id, publicationId },
       includeFrameFunctions: true,
     });
+  }
+
+  static async hasRunningInvocationsForFramePublication(
+    auth: Authenticator,
+    { frame, publicationId }: { frame: FileResource; publicationId: string }
+  ): Promise<boolean> {
+    const owner = auth.getNonNullableWorkspace();
+    assert(
+      frame.isFrameV2 && frame.workspaceId === owner.id,
+      "Frame publication functions require a Frames v2 file from the current workspace."
+    );
+
+    const runningInvocationCount = await SandboxFunctionInvocationModel.count({
+      include: [
+        {
+          model: SandboxFunctionModel,
+          as: "sandboxFunction",
+          attributes: [],
+          required: true,
+          where: {
+            workspaceId: owner.id,
+            fileId: frame.id,
+            publicationId,
+          },
+        },
+      ],
+      where: {
+        workspaceId: owner.id,
+        status: "created",
+      },
+    });
+    return runningInvocationCount > 0;
+  }
+
+  static async deleteUnreferencedFramePublicationFunctions(
+    auth: Authenticator,
+    { frame, publicationId }: { frame: FileResource; publicationId: string }
+  ): Promise<void> {
+    const owner = auth.getNonNullableWorkspace();
+    assert(
+      frame.isFrameV2 && frame.workspaceId === owner.id,
+      "Frame publication functions require a Frames v2 file from the current workspace."
+    );
+
+    const functions = await this.model.findAll({
+      attributes: ["id"],
+      where: {
+        workspaceId: owner.id,
+        fileId: frame.id,
+        publicationId,
+      },
+    });
+    const functionIds = functions.map(({ id }) => id);
+    if (functionIds.length === 0) {
+      return;
+    }
+
+    const referencedFunctions = await SandboxFunctionInvocationModel.findAll({
+      attributes: ["sandboxFunctionId"],
+      where: {
+        workspaceId: owner.id,
+        sandboxFunctionId: { [Op.in]: functionIds },
+      },
+      group: ["sandboxFunctionId"],
+    });
+    const referencedFunctionIds = new Set(
+      referencedFunctions.map(({ sandboxFunctionId }) => sandboxFunctionId)
+    );
+    const unreferencedFunctionIds = functionIds.filter(
+      (id) => !referencedFunctionIds.has(id)
+    );
+    if (unreferencedFunctionIds.length > 0) {
+      await this.model.destroy({
+        where: {
+          workspaceId: owner.id,
+          id: { [Op.in]: unreferencedFunctionIds },
+        },
+      });
+    }
   }
 
   static async fetchByFramePublicationAndSlug(

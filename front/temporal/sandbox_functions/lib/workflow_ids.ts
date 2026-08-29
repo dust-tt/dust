@@ -17,3 +17,15 @@ export function makeSandboxFunctionInvocationWorkflowId({
 }) {
   return `sandbox-function-invocation-workflow-${workspaceId}-${invocationId}`;
 }
+
+export function makeRetiredFramePublicationCleanupWorkflowId({
+  workspaceId,
+  frameId,
+  publicationId,
+}: {
+  workspaceId: string;
+  frameId: string;
+  publicationId: string;
+}) {
+  return `retired-frame-publication-cleanup-${workspaceId}-${frameId}-${publicationId}`;
+}

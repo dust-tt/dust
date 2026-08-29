@@ -23,6 +23,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import { launchRetiredFramePublicationCleanupWorkflow } from "@app/temporal/sandbox_functions/client";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
 import type { FramePublicationDescriptor } from "@app/types/api/frame_publication";
@@ -286,6 +287,11 @@ async function cleanupStaleFramePublicationArtifacts(
                 publicationId,
               })
             );
+          } else {
+            await scheduleRetiredFramePublicationCleanup(
+              frameIdentity.value,
+              publicationId
+            );
           }
         } catch (error) {
           logger.error(
@@ -309,6 +315,28 @@ async function cleanupStaleFramePublicationArtifacts(
         workspaceId: frameIdentity.value.workspaceId,
       },
       "Failed to list stale Frame publication artifacts"
+    );
+  }
+}
+
+async function scheduleRetiredFramePublicationCleanup(
+  { frameId, workspaceId }: { frameId: string; workspaceId: string },
+  publicationId: string
+): Promise<void> {
+  const result = await launchRetiredFramePublicationCleanupWorkflow({
+    frameId,
+    publicationId,
+    workspaceId,
+  });
+  if (result.isErr()) {
+    logger.error(
+      {
+        err: result.error,
+        frameId,
+        publicationId,
+        workspaceId,
+      },
+      "Failed to schedule retired Frame publication cleanup"
     );
   }
 }
@@ -820,6 +848,8 @@ export async function publishFramePublication(
     { publicationId: string },
     FramePublicationError | SandboxFunctionError
   >(frame.sId, async () => {
+    const previousActivePublicationId = (await frame.fetchFreshFrameV2(auth))
+      ?.useCaseMetadata?.activePublicationId;
     await cleanupStaleFramePublicationArtifacts(auth, { frame });
 
     const publication = await storeFramePublication(auth, {
@@ -857,6 +887,18 @@ export async function publishFramePublication(
       }
 
       publicationActivated = true;
+      if (
+        previousActivePublicationId &&
+        previousActivePublicationId !== publicationId
+      ) {
+        await scheduleRetiredFramePublicationCleanup(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            frameId: frame.sId,
+          },
+          previousActivePublicationId
+        );
+      }
       return publication;
     } finally {
       if (!publicationActivated) {

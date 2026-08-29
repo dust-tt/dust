@@ -5,10 +5,12 @@ import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_functio
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { QUEUE_NAME } from "@app/temporal/sandbox_functions/config";
 import {
+  makeRetiredFramePublicationCleanupWorkflowId,
   makeSandboxFunctionInvocationWorkflowId,
   makeSandboxFunctionToolWorkflowId,
 } from "@app/temporal/sandbox_functions/lib/workflow_ids";
 import {
+  cleanupRetiredFramePublicationWorkflow,
   runSandboxFunctionInvocationWorkflow,
   runSandboxFunctionToolWorkflow,
 } from "@app/temporal/sandbox_functions/workflows";
@@ -16,6 +18,46 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
+
+export async function launchRetiredFramePublicationCleanupWorkflow({
+  frameId,
+  publicationId,
+  workspaceId,
+}: {
+  frameId: string;
+  publicationId: string;
+  workspaceId: string;
+}): Promise<Result<undefined, Error>> {
+  const workflowId = makeRetiredFramePublicationCleanupWorkflowId({
+    workspaceId,
+    frameId,
+    publicationId,
+  });
+
+  try {
+    const client = await getTemporalClientForFrontNamespace();
+    await client.workflow.start(cleanupRetiredFramePublicationWorkflow, {
+      args: [{ frameId, publicationId, workspaceId }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      searchAttributes: {
+        workspaceId: [workspaceId],
+      },
+      memo: {
+        frameId,
+        publicationId,
+        workspaceId,
+      },
+    });
+  } catch (error) {
+    if (error instanceof WorkflowExecutionAlreadyStartedError) {
+      return new Ok(undefined);
+    }
+    return new Err(normalizeError(error));
+  }
+
+  return new Ok(undefined);
+}
 
 export async function launchSandboxFunctionToolWorkflow(
   auth: Authenticator,
