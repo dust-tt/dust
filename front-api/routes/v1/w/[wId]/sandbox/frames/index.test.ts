@@ -74,6 +74,22 @@ function requestFrameRegister(
   });
 }
 
+function requestFrameConvert(
+  workspaceId: string,
+  token: string,
+  sourcePath: string,
+  manifestPath: string
+) {
+  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/convert`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ sourcePath, manifestPath }),
+  });
+}
+
 function requestFrameMove(
   workspaceId: string,
   token: string,
@@ -270,12 +286,97 @@ async function setupLegacyFrame() {
   return { ...context, frame, sourcePath };
 }
 
+async function setupLegacyFrameConversion({
+  includeUi = true,
+}: {
+  includeUi?: boolean;
+} = {}) {
+  const context = await setupLegacyFrame();
+  await context.frame.ensureShareableFrame(context.auth);
+  const sourceDirectoryPath = `conversation-${context.conversation.sId}/Converted`;
+  const manifestPath = `${sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+  const mountDirectoryPath = `${getConversationFilesBasePath({
+    workspaceId: context.workspace.sId,
+    conversationId: context.conversation.sId,
+  })}Converted`;
+  const sourceByPath = new Map([
+    [`${mountDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
+    ...(includeUi
+      ? ([[`${mountDirectoryPath}/index.tsx`, uiSource]] as const)
+      : []),
+  ]);
+  fileStorageMock.setFileContent(
+    (filePath) => sourceByPath.get(filePath) ?? null
+  );
+  fileStorageMock.setFilesByPrefix((prefix) =>
+    prefix === `${mountDirectoryPath}/`
+      ? [...sourceByPath.entries()].map(([name, content]) => ({
+          name,
+          metadata: {
+            contentType: name.endsWith(".tsx")
+              ? "text/typescript"
+              : "application/json",
+            size: String(Buffer.byteLength(content)),
+          },
+        }))
+      : null
+  );
+
+  return { ...context, manifestPath };
+}
+
 beforeEach(() => {
   fileStorageMock.reset();
   mockEmitAuditLogEvent.mockClear();
 });
 
 describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
+  it("converts a legacy Frame while preserving identity and use rights", async () => {
+    const context = await setupLegacyFrameConversion();
+    const shareInfo = await context.frame.getShareInfo();
+
+    const response = await requestFrameConvert(
+      context.workspace.sId,
+      context.token,
+      context.sourcePath,
+      context.manifestPath
+    );
+
+    const converted = await response.json();
+    expect(response.status, JSON.stringify(converted)).toBe(200);
+    expect(converted).toMatchObject({
+      frameId: context.frame.sId,
+      manifestPath: context.manifestPath,
+      publicationId: expect.any(String),
+    });
+    const frame = await FileResource.fetchById(context.auth, context.frame.sId);
+    expect(frame?.isFrameV2).toBe(true);
+    expect(frame?.toScopedPath(context.auth)).toBe(context.manifestPath);
+    expect(frame?.useCaseMetadata?.activePublicationId).toBe(
+      converted.publicationId
+    );
+    expect(await frame?.getShareInfo()).toEqual(shareInfo);
+  });
+
+  it("restores the legacy Frame when its first v2 publication fails", async () => {
+    const context = await setupLegacyFrameConversion({ includeUi: false });
+    const shareInfo = await context.frame.getShareInfo();
+
+    const response = await requestFrameConvert(
+      context.workspace.sId,
+      context.token,
+      context.sourcePath,
+      context.manifestPath
+    );
+
+    expect(response.status).toBe(400);
+    const frame = await FileResource.fetchById(context.auth, context.frame.sId);
+    expect(frame?.isInteractiveContent).toBe(true);
+    expect(frame?.isFrameV2).toBe(false);
+    expect(frame?.toScopedPath(context.auth)).toBe(context.sourcePath);
+    expect(await frame?.getShareInfo()).toEqual(shareInfo);
+  });
+
   it("registers one stable Frame identity", async () => {
     const context = await setup({ registered: false });
 

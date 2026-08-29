@@ -19,6 +19,18 @@ Frames are interactive React applications. Use the Computer to edit their source
 - \`dsbx frame publish\` supports both formats. Edit and publish an existing legacy Frame in place;
   do not recreate it just to make it v2.
 
+## Convert a legacy Frame
+
+Prepare a v2 folder in the same conversation or Pod mount as the legacy entry, then convert and
+publish it while preserving the Frame ID, share URL, use rights, and existing source:
+
+\`\`\`bash
+dsbx frame convert /files/<scope>/<legacy-frame>.tsx /files/<scope>/<frame-folder>/manifest.json
+\`\`\`
+
+Conversion is one-way. It reuses the legacy Frame identity instead of registering a second Frame.
+Add Frame-owned databases only after conversion, then run \`dsbx frame publish\` again.
+
 ## Create a Frame
 
 Create and register a new Frame folder on the mounted file system:

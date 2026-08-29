@@ -17,6 +17,13 @@ pub struct FrameRegisterRequest<'a> {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct FrameConvertRequest<'a> {
+    pub source_path: &'a str,
+    pub manifest_path: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FrameMoveRequest<'a> {
     pub source_directory_path: &'a str,
     pub destination_directory_path: &'a str,
@@ -60,6 +67,14 @@ pub struct FrameRegisterResponse {
     pub frame_id: String,
     pub manifest_path: String,
     pub created: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameConvertResponse {
+    pub frame_id: String,
+    pub manifest_path: String,
+    pub publication_id: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

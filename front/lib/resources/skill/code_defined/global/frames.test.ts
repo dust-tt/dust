@@ -65,6 +65,7 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("dsbx frame register");
     expect(instructions).toContain("dsbx frame move");
     expect(instructions).toContain("dsbx frame clone");
+    expect(instructions).toContain("dsbx frame convert");
     expect(instructions).toContain("dsbx frame share");
     expect(instructions).toContain("dsbx frame delete");
     expect(instructions).toContain("registered Frame folder with raw");
@@ -72,6 +73,7 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("canonical Frame resource");
     expect(instructions).toContain("`index.tsx` by default");
     expect(instructions).toContain("single `.tsx` entry file");
+    expect(instructions).toContain("Conversion is one-way");
     expect(instructions).toContain("atomically activates the publication");
     expect(instructions).toContain("## Authoring a function");
     expect(instructions).toContain('userIdentity: "workspace_user_required"');

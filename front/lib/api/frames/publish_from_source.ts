@@ -153,7 +153,7 @@ export async function publishFrameFromSource(
  * Publish a Frames v2 FileResource from its current source folder. The FileResource path is the
  * authority: callers cannot point a Frame identity at a different manifest or source tree.
  */
-async function publishFrameV2FromSourceWithLockHeld(
+export async function publishFrameV2FromSourceWithLockHeld(
   auth: Authenticator,
   {
     conversation,

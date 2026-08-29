@@ -17,6 +17,7 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 import clone from "./clone";
+import convert from "./convert";
 import deleteFrame from "./delete";
 import move from "./move";
 import register from "./register";
@@ -73,6 +74,7 @@ const app = sandboxApp();
 
 app.use("*", sandboxAuth({ allowedTokenKinds: ["action"] }));
 app.route("/clone", clone);
+app.route("/convert", convert);
 app.route("/delete", deleteFrame);
 app.route("/move", move);
 app.route("/register", register);

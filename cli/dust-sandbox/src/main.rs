@@ -135,6 +135,9 @@ async fn run() -> anyhow::Result<()> {
                 source,
                 destination,
             } => commands::cmd_frame_clone(&source, &destination).await?,
+            commands::frame::FrameCommand::Convert { source, manifest } => {
+                commands::cmd_frame_convert(&source, &manifest).await?
+            }
             commands::frame::FrameCommand::Create {
                 directory,
                 name,
@@ -506,6 +509,34 @@ mod tests {
                 );
             }
             Commands::Frame { .. } => panic!("expected publish"),
+            _ => panic!("expected frame"),
+        }
+    }
+
+    #[test]
+    fn frame_convert_parses() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "frame",
+            "convert",
+            "/files/conversation-conv_123/Legacy.tsx",
+            "/files/conversation-conv_123/Legacy/manifest.json",
+        ])
+        .expect("parse");
+        match cli.command {
+            Commands::Frame {
+                command: commands::frame::FrameCommand::Convert { source, manifest },
+            } => {
+                assert_eq!(
+                    source,
+                    std::path::PathBuf::from("/files/conversation-conv_123/Legacy.tsx")
+                );
+                assert_eq!(
+                    manifest,
+                    std::path::PathBuf::from("/files/conversation-conv_123/Legacy/manifest.json")
+                );
+            }
+            Commands::Frame { .. } => panic!("expected convert"),
             _ => panic!("expected frame"),
         }
     }

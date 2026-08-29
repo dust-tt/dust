@@ -1,4 +1,5 @@
 mod clone;
+mod convert;
 mod create;
 mod delete;
 mod move_frame;
@@ -12,6 +13,7 @@ use anyhow::{bail, Context};
 use clap::{Subcommand, ValueEnum};
 
 pub use clone::run as cmd_frame_clone;
+pub use convert::run as cmd_frame_convert;
 pub use create::run as cmd_frame_create;
 pub use delete::run as cmd_frame_delete;
 pub use move_frame::run as cmd_frame_move;
@@ -46,6 +48,13 @@ pub enum FrameCommand {
         source: PathBuf,
         /// New Frame folder path under /files
         destination: PathBuf,
+    },
+    /// Convert a legacy Frame to v2 while preserving its identity and use rights
+    Convert {
+        /// Existing legacy Frame entry file under /files
+        source: PathBuf,
+        /// Prepared v2 manifest under the same conversation or Pod mount
+        manifest: PathBuf,
     },
     /// Create and register a new Frame folder
     Create {
