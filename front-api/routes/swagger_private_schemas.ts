@@ -1654,6 +1654,67 @@
  *         userId:
  *           type: string
  *           description: sId of the user who owns the wake-up.
+ *     PrivateSandboxFunctionInvocation:
+ *       type: object
+ *       required: [sId, functionId, status, createdAt]
+ *       properties:
+ *         sId:
+ *           type: string
+ *         functionId:
+ *           type: string
+ *         status:
+ *           type: string
+ *           enum: [created, errored, succeeded]
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *     PrivateSandboxFunctionCallError:
+ *       type: object
+ *       required: [code, message]
+ *       properties:
+ *         code:
+ *           type: string
+ *           description: Classification forwarded from the runner, API, or invocation layer.
+ *         message:
+ *           type: string
+ *         status:
+ *           type: integer
+ *     PrivateFrameFunctionInvocationRequest:
+ *       type: object
+ *       additionalProperties: false
+ *       properties:
+ *         input:
+ *           description: Input validated against the published function contract.
+ *         context:
+ *           type: object
+ *           additionalProperties: false
+ *           properties:
+ *             timezone:
+ *               type: string
+ *     PrivateFrameFunctionInvocationResponse:
+ *       type: object
+ *       required: [invocation]
+ *       properties:
+ *         invocation:
+ *           $ref: '#/components/schemas/PrivateSandboxFunctionInvocation'
+ *         outcome:
+ *           oneOf:
+ *             - type: object
+ *               required: [status, result]
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   enum: [succeeded]
+ *                 result:
+ *                   description: Parsed result validated against the function output schema.
+ *             - type: object
+ *               required: [status, error]
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   enum: [errored]
+ *                 error:
+ *                   $ref: '#/components/schemas/PrivateSandboxFunctionCallError'
  *     PrivateSandboxFunctionInvocationEvent:
  *       type: object
  *       description: Server-Sent Event for sandbox function invocation streaming. Discriminated on the `type` field.
@@ -1673,19 +1734,7 @@
  *         created:
  *           type: integer
  *         invocation:
- *           type: object
- *           required: [sId, functionId, status, createdAt]
- *           properties:
- *             sId:
- *               type: string
- *             functionId:
- *               type: string
- *             status:
- *               type: string
- *               enum: [created]
- *             createdAt:
- *               type: string
- *               format: date-time
+ *           $ref: '#/components/schemas/PrivateSandboxFunctionInvocation'
  *     PrivateSandboxFunctionInvocationResultEvent:
  *       type: object
  *       required: [type, created, invocationId, functionId, result]
@@ -1715,16 +1764,7 @@
  *         functionId:
  *           type: string
  *         error:
- *           type: object
- *           required: [code, message]
- *           properties:
- *             code:
- *               type: string
- *               description: Whatever classified the failure, forwarded as-is (a runner code such as `threw` or `http_error`, or the `type` of the API error that failed the call). Open by design, branch on the codes you handle and treat the rest as generic failures.
- *             message:
- *               type: string
- *             status:
- *               type: integer
+ *           $ref: '#/components/schemas/PrivateSandboxFunctionCallError'
  *           description: A structured error describing why the invocation failed.
  *     PrivateAgentMessageEvent:
  *       type: object

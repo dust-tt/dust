@@ -54,6 +54,7 @@ import extension from "./extension";
 import fairUseCredits from "./fair-use-credits";
 import featureFlags from "./feature-flags";
 import files from "./files";
+import frames from "./frames";
 import googleDrivePickerToken from "./google_drive/picker_token";
 import googleDriveSearchForAuthorization from "./google_drive/search_for_authorization";
 import governancePermissions from "./governance-permissions";
@@ -1053,6 +1054,7 @@ app.route("/dust_app_secrets", dustAppSecrets);
 app.route("/extension", extension);
 app.route("/fair-use-credits", fairUseCredits);
 app.route("/files", files);
+app.route("/frames", frames);
 app.route("/google_drive/picker_token", googleDrivePickerToken);
 app.route(
   "/google_drive/search_for_authorization",

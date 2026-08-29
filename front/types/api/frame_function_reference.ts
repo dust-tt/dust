@@ -14,6 +14,10 @@ export type FrameFunctionReferenceScope =
 
 export type FrameFunctionReferenceKind = FrameFunctionReferenceScope["kind"];
 
+export type ResolvedFrameFunctionReference =
+  | { kind: "v2"; frameId: string; functionName: string }
+  | { kind: "legacy"; functionIdOrSlug: string };
+
 /** Classify only known Frame MIME types. Missing metadata must never imply a legacy Frame. */
 export function getFrameFunctionReferenceKind(
   contentType: string | null | undefined
@@ -31,7 +35,7 @@ export function getFrameFunctionReferenceKind(
 export function resolveFrameFunctionReference(
   reference: string,
   scope: FrameFunctionReferenceScope
-): Result<string, Error> {
+): Result<ResolvedFrameFunctionReference, Error> {
   switch (scope.kind) {
     case "v2":
       if (!isRelativePodFunctionReference(reference)) {
@@ -41,9 +45,20 @@ export function resolveFrameFunctionReference(
           )
         );
       }
-      return new Ok(`${scope.frameId}/${reference}`);
-    case "legacy":
-      return resolvePodFunctionReference(reference, scope.podFunctionScope);
+      return new Ok({
+        kind: "v2",
+        frameId: scope.frameId,
+        functionName: reference,
+      });
+    case "legacy": {
+      const resolved = resolvePodFunctionReference(
+        reference,
+        scope.podFunctionScope
+      );
+      return resolved.isErr()
+        ? resolved
+        : new Ok({ kind: "legacy", functionIdOrSlug: resolved.value });
+    }
     default:
       return assertNever(scope);
   }

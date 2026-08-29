@@ -1,4 +1,8 @@
-import { getFrameRuntimeAccess } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import {
+  getFrameRuntimeAccess,
+  getSandboxFunctionInvocationEventsUrl,
+  getSandboxFunctionInvocationUrl,
+} from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import type { ScopedWorkspaceUserIdentity } from "@app/types/assistant/visualization";
 import { describe, expect, it } from "vitest";
 
@@ -98,5 +102,48 @@ describe("getFrameRuntimeAccess", () => {
         user,
       },
     });
+  });
+});
+
+describe("Frame function invocation routes", () => {
+  it("uses stable Frame identity and a bare function name for Frames v2", () => {
+    const reference = {
+      kind: "v2" as const,
+      frameId: "fil_123",
+      functionName: "list-comments",
+    };
+
+    expect(getSandboxFunctionInvocationUrl("w_123", reference)).toBe(
+      "/api/w/w_123/frames/fil_123/functions/list-comments/invocations"
+    );
+    expect(
+      getSandboxFunctionInvocationEventsUrl({
+        workspaceId: "w_123",
+        reference,
+        functionId: "sfn_old_publication",
+        invocationId: "sfi_123",
+      })
+    ).toBe("/api/sse/w/w_123/frames/fil_123/invocations/sfi_123/events");
+  });
+
+  it("keeps legacy Frames and Pod Functions on their existing routes", () => {
+    const reference = {
+      kind: "legacy" as const,
+      functionIdOrSlug: "vlt_123/comments__list-comments",
+    };
+
+    expect(getSandboxFunctionInvocationUrl("w_123", reference)).toBe(
+      "/api/w/w_123/sandbox-functions/vlt_123%2Fcomments__list-comments/invocations"
+    );
+    expect(
+      getSandboxFunctionInvocationEventsUrl({
+        workspaceId: "w_123",
+        reference,
+        functionId: "sfn_123",
+        invocationId: "sfi_123",
+      })
+    ).toBe(
+      "/api/sse/w/w_123/sandbox-functions/sfn_123/invocations/sfi_123/events"
+    );
   });
 });

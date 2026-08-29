@@ -89,17 +89,10 @@ async function resolveFrameV2Function(
     ) {
       return null;
     }
-    const frame = await FileResource.fetchById(auth, frameId);
-    const publicationId = frame?.useCaseMetadata?.activePublicationId;
-    if (!frame?.isFrameV2 || !publicationId) {
-      return null;
-    }
-    sandboxFunction =
-      await SandboxFunctionResource.fetchByFramePublicationAndSlug(auth, {
-        frame,
-        publicationId,
-        slug,
-      });
+    return resolveActiveFrameFunctionForUse(auth, {
+      frameId,
+      functionName: slug,
+    });
   }
 
   const frame = sandboxFunction?.frame;
@@ -117,6 +110,41 @@ async function resolveFrameV2Function(
     return null;
   }
   return sandboxFunction;
+}
+
+/** Resolve one function from the active publication of a Frame the caller may use. */
+export async function resolveActiveFrameFunctionForUse(
+  auth: Authenticator,
+  {
+    frameId,
+    functionName,
+  }: {
+    frameId: string;
+    functionName: string;
+  }
+): Promise<SandboxFunctionResource | null> {
+  if (
+    !isResourceSId("file", frameId) ||
+    !isValidSandboxFunctionSlug(functionName)
+  ) {
+    return null;
+  }
+
+  const frame = await FileResource.fetchById(auth, frameId);
+  const publicationId = frame?.useCaseMetadata?.activePublicationId;
+  if (
+    !frame?.isFrameV2 ||
+    !publicationId ||
+    !(await frame.canCurrentUserUseFrame(auth))
+  ) {
+    return null;
+  }
+
+  return SandboxFunctionResource.fetchByFramePublicationAndSlug(auth, {
+    frame,
+    publicationId,
+    slug: functionName,
+  });
 }
 
 /**

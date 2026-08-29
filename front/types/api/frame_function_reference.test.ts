@@ -17,7 +17,11 @@ describe("resolveFrameFunctionReference", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(result.isOk() && result.value).toBe("file_123/list-comments");
+    expect(result.isOk() && result.value).toEqual({
+      kind: "v2",
+      frameId: "file_123",
+      functionName: "list-comments",
+    });
   });
 
   it("rejects cross-Frame references from Frames v2", () => {
@@ -36,9 +40,10 @@ describe("resolveFrameFunctionReference", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(result.isOk() && result.value).toBe(
-      "pod_123/comments__list-comments"
-    );
+    expect(result.isOk() && result.value).toEqual({
+      kind: "legacy",
+      functionIdOrSlug: "pod_123/comments__list-comments",
+    });
   });
 });
 

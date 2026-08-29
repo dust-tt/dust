@@ -10,7 +10,10 @@ import type {
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { FrameFunctionReferenceScope } from "@app/types/api/frame_function_reference";
+import type {
+  FrameFunctionReferenceScope,
+  ResolvedFrameFunctionReference,
+} from "@app/types/api/frame_function_reference";
 import { resolveFrameFunctionReference } from "@app/types/api/frame_function_reference";
 import { podFunctionScopeFromFramePath } from "@app/types/api/pod_function_reference";
 import type {
@@ -113,6 +116,41 @@ export function getFrameRuntimeAccess(
   };
 }
 
+export function getSandboxFunctionInvocationUrl(
+  workspaceId: string,
+  reference: ResolvedFrameFunctionReference
+): string {
+  switch (reference.kind) {
+    case "v2":
+      return `/api/w/${workspaceId}/frames/${encodeURIComponent(reference.frameId)}/functions/${encodeURIComponent(reference.functionName)}/invocations`;
+    case "legacy":
+      return `/api/w/${workspaceId}/sandbox-functions/${encodeURIComponent(reference.functionIdOrSlug)}/invocations`;
+    default:
+      return assertNever(reference);
+  }
+}
+
+export function getSandboxFunctionInvocationEventsUrl({
+  workspaceId,
+  reference,
+  functionId,
+  invocationId,
+}: {
+  workspaceId: string;
+  reference: ResolvedFrameFunctionReference;
+  functionId: string;
+  invocationId: string;
+}): string {
+  switch (reference.kind) {
+    case "v2":
+      return `/api/sse/w/${workspaceId}/frames/${encodeURIComponent(reference.frameId)}/invocations/${encodeURIComponent(invocationId)}/events`;
+    case "legacy":
+      return `/api/sse/w/${workspaceId}/sandbox-functions/${encodeURIComponent(functionId)}/invocations/${encodeURIComponent(invocationId)}/events`;
+    default:
+      return assertNever(reference);
+  }
+}
+
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   request: { command: T } & VisualizationRPCRequest,
   response: CommandResultMap[T],
@@ -205,6 +243,7 @@ export interface FrameViewer {
 
 interface SandboxFunctionInvocationProps {
   workspaceId: string;
+  reference: ResolvedFrameFunctionReference;
   functionId: string;
   invocationId: string;
   frameShareToken?: string;
@@ -232,6 +271,7 @@ type QueuedBlockingEvent = {
 // every in-flight invocation.
 function SandboxFunctionInvocation({
   workspaceId,
+  reference,
   functionId,
   invocationId,
   frameShareToken,
@@ -240,7 +280,12 @@ function SandboxFunctionInvocation({
 }: SandboxFunctionInvocationProps) {
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      const esURL = `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events`;
+      const esURL = getSandboxFunctionInvocationEventsUrl({
+        workspaceId,
+        reference,
+        functionId,
+        invocationId,
+      });
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: { eventId: string } = JSON.parse(lastEvent);
@@ -248,7 +293,7 @@ function SandboxFunctionInvocation({
       }
       return esURL + "?lastEventId=" + lastEventId;
     },
-    [workspaceId, functionId, invocationId]
+    [workspaceId, reference, functionId, invocationId]
   );
 
   const onEventCallback = useCallback(
@@ -408,7 +453,7 @@ function useVisualizationDataHandler({
 }: {
   conversationId: string | null;
   createSandboxFunctionInvocation: (
-    functionIdOrSlug: string,
+    reference: ResolvedFrameFunctionReference,
     input?: unknown
   ) => Promise<
     Result<PostSandboxFunctionInvocationResponseBody, SandboxFunctionCallError>
@@ -423,6 +468,7 @@ function useVisualizationDataHandler({
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
   userIdentity: UserIdentityState;
   waitForSandboxFunctionInvocationResult: (params: {
+    reference: ResolvedFrameFunctionReference;
     functionId: string;
     invocationId: string;
   }) => Promise<Result<unknown, SandboxFunctionCallError>>;
@@ -523,6 +569,7 @@ function useVisualizationDataHandler({
           const result = outcome
             ? resultFromInvocationOutcome(outcome)
             : await waitForSandboxFunctionInvocationResult({
+                reference: referenceRes.value,
                 functionId: invocation.functionId,
                 invocationId: invocation.sId,
               });
@@ -708,7 +755,11 @@ export const VisualizationActionIframe = forwardRef<
   // SandboxFunctionInvocation; the resolver of the pending `callFunction` promise is kept
   // in a ref so settling stays a pure state update.
   const [activeInvocations, setActiveInvocations] = useState<
-    { functionId: string; invocationId: string }[]
+    {
+      reference: ResolvedFrameFunctionReference;
+      functionId: string;
+      invocationId: string;
+    }[]
   >([]);
   const invocationResolversRef = useRef<Map<
     string,
@@ -753,15 +804,20 @@ export const VisualizationActionIframe = forwardRef<
 
   const waitForSandboxFunctionInvocationResult = useCallback(
     ({
+      reference,
       functionId,
       invocationId,
     }: {
+      reference: ResolvedFrameFunctionReference;
       functionId: string;
       invocationId: string;
     }) =>
       new Promise<Result<unknown, SandboxFunctionCallError>>((resolve) => {
         invocationResolvers.set(invocationId, resolve);
-        setActiveInvocations((prev) => [...prev, { functionId, invocationId }]);
+        setActiveInvocations((prev) => [
+          ...prev,
+          { reference, functionId, invocationId },
+        ]);
       }),
     [invocationResolvers]
   );
@@ -873,7 +929,7 @@ export const VisualizationActionIframe = forwardRef<
 
   const createSandboxFunctionInvocation = useCallback(
     async (
-      functionIdOrSlug: string,
+      reference: ResolvedFrameFunctionReference,
       input?: unknown
     ): Promise<
       Result<
@@ -896,9 +952,8 @@ export const VisualizationActionIframe = forwardRef<
           },
         };
 
-        const encodedFunctionIdOrSlug = encodeURIComponent(functionIdOrSlug);
         const response = await clientFetch(
-          `/api/w/${workspaceId}/sandbox-functions/${encodedFunctionIdOrSlug}/invocations`,
+          getSandboxFunctionInvocationUrl(workspaceId, reference),
           {
             method: "POST",
             headers: {
@@ -1016,6 +1071,7 @@ export const VisualizationActionIframe = forwardRef<
         <SandboxFunctionInvocation
           key={invocation.invocationId}
           workspaceId={workspaceId}
+          reference={invocation.reference}
           functionId={invocation.functionId}
           invocationId={invocation.invocationId}
           frameShareToken={props.viewer?.frameShareToken}
