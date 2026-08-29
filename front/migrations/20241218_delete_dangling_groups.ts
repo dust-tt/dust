@@ -14,7 +14,9 @@ const cleanDanglingGroups = async (
 ) => {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-  const allGroups = await GroupResource.listAllWorkspaceGroups(auth);
+  const allGroups = await GroupResource.listAllWorkspaceGroups(auth, {
+    groupKinds: ["global", "regular_auto", "provisioned"],
+  });
 
   for (const group of allGroups) {
     frontSequelize.transaction(async (transaction) => {

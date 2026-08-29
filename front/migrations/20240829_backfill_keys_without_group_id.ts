@@ -18,7 +18,8 @@ async function backfillApiKeys(
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   if (execute) {
-    const systemGroup = await GroupResource.fetchWorkspaceSystemGroup(auth);
+    const systemGroup =
+      await GroupResource.dangerouslyFetchWorkspaceSystemGroup(auth);
     if (systemGroup.isOk()) {
       await KeyResource.model.update(
         // @ts-ignore -- Legacy migration: groupId column was removed.

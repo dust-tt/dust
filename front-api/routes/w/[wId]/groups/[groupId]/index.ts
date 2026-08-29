@@ -41,6 +41,14 @@ app.get(
               message: groupRes.error.message,
             },
           });
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: groupRes.error.message,
+            },
+          });
         case "group_not_found":
           return apiError(ctx, {
             status_code: 404,
@@ -106,6 +114,14 @@ app.patch(
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
+              message: groupRes.error.message,
+            },
+          });
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
               message: groupRes.error.message,
             },
           });
@@ -206,6 +222,14 @@ app.delete(
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
+              message: groupRes.error.message,
+            },
+          });
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
               message: groupRes.error.message,
             },
           });

@@ -32,6 +32,7 @@ import {
   GROUP_KINDS,
   isAgentEditorGroupKind,
   isRegularManualGroupKind,
+  USER_VISIBLE_GROUP_KINDS,
 } from "@app/types/groups";
 import type { AccessControlList } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -459,8 +460,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     const owner = auth.getNonNullableWorkspace();
 
-    const existing = await GroupResource.fetchByName(auth, name);
-    if (existing) {
+    if (await GroupResource.groupExistsByName(auth, name)) {
       return new Err(
         new DustError(
           "name_conflict",
@@ -848,8 +848,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       groupKinds,
       transaction,
     }: { groupKinds?: GroupKind[]; transaction?: Transaction } = {}
-  ) {
-    return this.baseFetch(
+  ): Promise<GroupResource[]> {
+    const groups = await this.baseFetch(
       auth,
       {
         where: {
@@ -861,13 +861,17 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
       transaction
     );
+    return groups.filter((group) => group.canRead(auth));
   }
 
   static async fetchById(
     auth: Authenticator,
     id: string
   ): Promise<
-    Result<GroupResource, DustError<"group_not_found" | "invalid_id">>
+    Result<
+      GroupResource,
+      DustError<"group_not_found" | "unauthorized" | "invalid_id">
+    >
   > {
     const groupRes = await this.fetchByIds(auth, [id]);
 
@@ -882,7 +886,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     ids: string[]
   ): Promise<
-    Result<GroupResource[], DustError<"group_not_found" | "invalid_id">>
+    Result<
+      GroupResource[],
+      DustError<"group_not_found" | "unauthorized" | "invalid_id">
+    >
   > {
     const groupModelIds = removeNulls(
       ids.map((id) => getResourceIdFromSId(id))
@@ -908,6 +915,25 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
+    const unreadable = groups.filter((group) => !group.canRead(auth));
+    if (unreadable.length > 0) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          unreadableGroupIds: unreadable.map((g) => g.sId),
+          authRole: auth.role(),
+          authGroupIds: auth.groupIds(),
+        },
+        "[GroupResource.fetchByIds] User cannot read some groups"
+      );
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Only `admins` or members can view groups"
+        )
+      );
+    }
+
     return new Ok(groups);
   }
 
@@ -920,8 +946,26 @@ export class GroupResource extends BaseResource<GroupModel> {
         workOSGroupId,
       },
     });
+    if (!group || !group.canRead(auth)) {
+      return null;
+    }
+    return group;
+  }
 
-    return group ?? null;
+  // Returns whether a group of the given name exists in the workspace, without
+  // an ACL check. Used for name-conflict checks in `makeNew` and the
+  // regular_manual rename path — those must detect any group in the workspace
+  // regardless of caller visibility.
+  static async groupExistsByName(
+    auth: Authenticator,
+    name: string
+  ): Promise<boolean> {
+    const [group] = await this.baseFetch(auth, {
+      where: {
+        name,
+      },
+    });
+    return !!group;
   }
 
   static async fetchByName(
@@ -933,6 +977,9 @@ export class GroupResource extends BaseResource<GroupModel> {
         name,
       },
     });
+    if (group && !group.canRead(auth)) {
+      return null;
+    }
 
     return group ?? null;
   }
@@ -1031,16 +1078,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     return group;
   }
 
-  static async fetchWorkspaceSystemGroup(
+  // Fetches the system group without any ACL check. Only used in scripts and
+  // system-flow plumbing — the system group is deny-all in `getAccessControlLists`
+  // and must never be exposed to interactive callers.
+  static async dangerouslyFetchWorkspaceSystemGroup(
     auth: Authenticator
   ): Promise<Result<GroupResource, DustError>> {
-    // Only admins can fetch the system group.
-    if (!auth.isAdmin()) {
-      return new Err(
-        new DustError("unauthorized", "Only `admins` can view the system group")
-      );
-    }
-
     const [group] = await this.baseFetch(auth, {
       where: {
         kind: "system",
@@ -1080,17 +1123,17 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     options: { groupKinds?: GroupKind[] } = {}
   ): Promise<GroupResource[]> {
-    const { groupKinds = ["global", "regular_auto", "provisioned"] } = options;
-    // Visibility is a caller concern: callers pick which kinds to list (user-facing
-    // callers restrict to `USER_VISIBLE_GROUP_KINDS`, admin/poke callers may request
-    // anything). This method only scopes by kind and does not filter per-caller.
-    return this.baseFetch(auth, {
+    // Default to user-visible kinds only. Internal kinds (regular_auto, system,
+    // agent_editors) must be requested explicitly.
+    const { groupKinds = [...USER_VISIBLE_GROUP_KINDS] } = options;
+    const groups = await this.baseFetch(auth, {
       where: {
         kind: {
           [Op.in]: groupKinds,
         },
       },
     });
+    return groups.filter((group) => group.canRead(auth));
   }
 
   /**
@@ -2232,8 +2275,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     if (name !== undefined) {
-      const existing = await GroupResource.fetchByName(auth, name);
-      if (existing && existing.id !== this.id) {
+      // Only check for a collision when the name actually changes, so renaming
+      // to the same name never raises a conflict against self.
+      if (
+        name !== this.name &&
+        (await GroupResource.groupExistsByName(auth, name))
+      ) {
         return new Err(
           new DustError(
             "name_conflict",
@@ -2569,6 +2616,22 @@ export class GroupResource extends BaseResource<GroupModel> {
           roles: [
             { role: "admin", permissions: ["read", "write", "admin"] },
             { role: "manager", permissions: ["read"] },
+          ],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
+
+    // regular_auto: read for every workspace member. Write/admin are gated through
+    // the associated resource (space/agent), not the group.
+    if (this.isRegularAuto()) {
+      return [
+        {
+          roles: [
+            { role: "admin", permissions: ["read", "write", "admin"] },
+            { role: "manager", permissions: ["read"] },
+            { role: "user", permissions: ["read"] },
+            { role: "builder", permissions: ["read"] },
           ],
           workspaceId: this.workspaceId,
         },
