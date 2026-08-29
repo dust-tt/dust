@@ -2601,9 +2601,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       ];
     }
 
-    // Provisioned groups are directory-synced (SCIM), so membership is not editable in-app:
-    // managers get read (e.g. to grant them governance capabilities) but not write/admin.
-    if (this.isProvisioned()) {
+    // provisioned (SCIM-synced) and regular_auto: admin manages, manager reads,
+    // members read via the self-grant. #31360 switches these to pure roles.
+    if (this.isProvisioned() || this.isRegularAuto()) {
       return [
         {
           groups: [
@@ -2615,22 +2615,6 @@ export class GroupResource extends BaseResource<GroupModel> {
           roles: [
             { role: "admin", permissions: ["read", "write", "admin"] },
             { role: "manager", permissions: ["read"] },
-          ],
-          workspaceId: this.workspaceId,
-        },
-      ];
-    }
-
-    // regular_auto: read for every workspace member. Write/admin are gated through
-    // the associated resource (space/agent), not the group.
-    if (this.isRegularAuto()) {
-      return [
-        {
-          roles: [
-            { role: "admin", permissions: ["read", "write", "admin"] },
-            { role: "manager", permissions: ["read"] },
-            { role: "user", permissions: ["read"] },
-            { role: "builder", permissions: ["read"] },
           ],
           workspaceId: this.workspaceId,
         },
