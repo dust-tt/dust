@@ -234,6 +234,7 @@ app.get(
 
     return ctx.json({
       accessToken,
+      activePublicationId: file.useCaseMetadata?.activePublicationId ?? null,
       file: file.toJSON(),
       // Only return the conversation URL if the user is a participant of the conversation.
       conversationUrl: isParticipant

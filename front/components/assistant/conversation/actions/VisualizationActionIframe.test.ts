@@ -1,5 +1,6 @@
 import {
   getFrameRuntimeAccess,
+  getSandboxFunctionInvocationAccessError,
   getSandboxFunctionInvocationEventsUrl,
   getSandboxFunctionInvocationUrl,
 } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
@@ -124,6 +125,46 @@ describe("Frame function invocation routes", () => {
         invocationId: "sfi_123",
       })
     ).toBe("/api/sse/w/w_123/frames/fil_123/invocations/sfi_123/events");
+  });
+
+  it("returns a typed workspace-membership error to a Frames v2 guest", () => {
+    const reference = {
+      kind: "v2" as const,
+      frameId: "fil_123",
+      functionName: "list-comments",
+    };
+    const runtimeAccess = getFrameRuntimeAccess("w_123", false);
+
+    expect(
+      getSandboxFunctionInvocationAccessError(
+        reference,
+        runtimeAccess.canInvokeFunctions,
+        runtimeAccess.userIdentity.isWorkspaceMember
+      )
+    ).toEqual({
+      code: "user_authentication_required",
+      message:
+        "This Frame function requires a logged-in user from its workspace.",
+    });
+  });
+
+  it("keeps the generic unsupported error for disabled legacy calls", () => {
+    const reference = {
+      kind: "legacy" as const,
+      functionIdOrSlug: "comments__list-comments",
+    };
+    const runtimeAccess = getFrameRuntimeAccess("w_123", false);
+
+    expect(
+      getSandboxFunctionInvocationAccessError(
+        reference,
+        runtimeAccess.canInvokeFunctions,
+        runtimeAccess.userIdentity.isWorkspaceMember
+      )
+    ).toEqual({
+      code: "not_supported",
+      message: "Function calls are not available in this Frame.",
+    });
   });
 
   it("keeps legacy Frames and Pod Functions on their existing routes", () => {

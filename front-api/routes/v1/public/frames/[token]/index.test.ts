@@ -13,7 +13,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { FileShareScope } from "@app/types/files";
-import { frameContentType } from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -217,6 +217,29 @@ describe("GET /api/v1/public/frames/[token]", () => {
   });
 
   describe("workspace_and_emails scope", () => {
+    it("returns the active Frames v2 publication metadata", async () => {
+      const activePublicationId = "publication-1";
+      const file = await FileFactory.create(auth, user, {
+        contentType: frameV2ContentType,
+        fileName: "manifest.json",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { activePublicationId },
+      });
+      await file.setShareScope(auth, "workspace_and_emails");
+      const shareInfo = await file.getShareInfo();
+      const token = shareInfo!.shareUrl.split("/").at(-1)!;
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(auth);
+
+      const response = await requestFrame(token);
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.file.sId).toBe(file.sId);
+      expect(body.activePublicationId).toBe(activePublicationId);
+    });
+
     it("allows logged-in workspace member without a grant", async () => {
       const { token } = await createFrameWithScope("workspace_and_emails");
       vi.mocked(resolveOptionalAuth).mockResolvedValue(auth);
