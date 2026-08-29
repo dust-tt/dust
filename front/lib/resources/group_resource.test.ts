@@ -126,12 +126,19 @@ describe("GroupResource", () => {
       });
       const ids = [autoGroup.id, globalGroup.id, systemGroup.id];
 
-      const all = await GroupResource.fetchByModelIds(authenticator, ids);
+      const all = await GroupResource.dangerouslyFetchByModelIds(
+        authenticator,
+        ids
+      );
       expect(all.map((g) => g.id).sort()).toEqual([...ids].sort());
 
-      const autoOnly = await GroupResource.fetchByModelIds(authenticator, ids, {
-        groupKinds: ["regular_auto"],
-      });
+      const autoOnly = await GroupResource.dangerouslyFetchByModelIds(
+        authenticator,
+        ids,
+        {
+          groupKinds: ["regular_auto"],
+        }
+      );
       expect(autoOnly.map((g) => g.id)).toEqual([autoGroup.id]);
     });
   });

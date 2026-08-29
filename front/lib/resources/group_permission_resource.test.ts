@@ -726,7 +726,7 @@ describe("GroupPermissionResource", () => {
       );
       expect(grants).toHaveLength(1);
 
-      const group = await GroupResource.fetchByModelIds(auth, [
+      const group = await GroupResource.dangerouslyFetchByModelIds(auth, [
         grants[0].groupId,
       ]);
       expect(group[0].kind).toBe("regular_auto");
@@ -762,9 +762,10 @@ describe("GroupPermissionResource", () => {
       );
       expect(grants).toHaveLength(1);
 
-      const [backingGroup] = await GroupResource.fetchByModelIds(auth, [
-        grants[0].groupId,
-      ]);
+      const [backingGroup] = await GroupResource.dangerouslyFetchByModelIds(
+        auth,
+        [grants[0].groupId]
+      );
       expect(await backingGroup.getMemberCount(auth)).toBe(1);
     });
 
@@ -886,7 +887,7 @@ describe("GroupPermissionResource", () => {
       );
       expect(grants).toHaveLength(1);
 
-      const [group] = await GroupResource.fetchByModelIds(auth, [
+      const [group] = await GroupResource.dangerouslyFetchByModelIds(auth, [
         grants[0].groupId,
       ]);
       expect(await group.isMember(user1)).toBe(false);

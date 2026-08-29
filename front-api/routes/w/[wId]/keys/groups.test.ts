@@ -21,7 +21,10 @@ async function spaceMemberGroupName(
   const groupModelIds = [...referencesBySpaceModelId.values()]
     .flat()
     .map((reference) => reference.groupId);
-  const groups = await GroupResource.fetchByModelIds(auth, groupModelIds);
+  const groups = await GroupResource.dangerouslyFetchByModelIds(
+    auth,
+    groupModelIds
+  );
   const memberGroup = groups.find((group) => group.kind === "regular_auto");
   if (!memberGroup) {
     throw new Error("Expected a regular_auto member group for the space.");
@@ -30,7 +33,7 @@ async function spaceMemberGroupName(
 }
 
 describe("GET /api/w/:wId/keys/groups", () => {
-  it("lists the groups of regular restricted spaces, and only those", async () => {
+  it("lists the groups of restricted spaces (regular and pods), and only those", async () => {
     const { workspace, auth, globalGroup } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
@@ -62,21 +65,49 @@ describe("GET /api/w/:wId/keys/groups", () => {
     expect(names).not.toContain("Unassociated");
   });
 
-  it("excludes pod (project) groups", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+  it("includes restricted pod (project) groups", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
     });
 
-    // Projects (pods) are not regular spaces, so their groups are never scopable.
-    await SpaceFactory.project(workspace, undefined, { name: "SecretPod" });
+    // Restricted pod: its member/editor groups are scopable.
+    const restrictedPod = await SpaceFactory.project(workspace, undefined, {
+      name: "SecretPod",
+    });
+    const restrictedPodGroupName = await spaceMemberGroupName(
+      auth,
+      restrictedPod
+    );
 
     const response = await getScopableGroups(workspace);
 
     expect(response.status).toBe(200);
     const { groups } = await response.json();
     const names = groups.map((g: { name: string }) => g.name);
-    expect(names.some((n: string) => n.includes("SecretPod"))).toBe(false);
+    expect(names).toContain(restrictedPodGroupName);
+  });
+
+  it("excludes open pod (project) groups", async () => {
+    const { workspace, auth, globalGroup } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    // Open pod (global group attached as viewer): not restricted, so its
+    // groups are excluded.
+    const openPod = await SpaceFactory.project(workspace, undefined, {
+      name: "OpenPod",
+    });
+    const openPodGroupName = await spaceMemberGroupName(auth, openPod);
+    await SpaceFactory.attachGroup(openPod, globalGroup, "project_viewer");
+
+    const response = await getScopableGroups(workspace);
+
+    expect(response.status).toBe(200);
+    const { groups } = await response.json();
+    const names = groups.map((g: { name: string }) => g.name);
+    expect(names).not.toContain(openPodGroupName);
   });
 
   it("returns 403 for a regular user", async () => {

@@ -46,8 +46,12 @@ async function fetchAssociatedGroups(
     .map((gs) => gs.groupId);
 
   const [members, editors] = await Promise.all([
-    GroupResource.fetchByModelIds(auth, memberGroupIds, { transaction }),
-    GroupResource.fetchByModelIds(auth, editorGroupIds, { transaction }),
+    GroupResource.dangerouslyFetchByModelIds(auth, memberGroupIds, {
+      transaction,
+    }),
+    GroupResource.dangerouslyFetchByModelIds(auth, editorGroupIds, {
+      transaction,
+    }),
   ]);
 
   return { members, editors };

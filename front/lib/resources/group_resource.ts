@@ -841,7 +841,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groupModels.map((b) => new this(this.model, b.get()));
   }
 
-  static async fetchByModelIds(
+  static async dangerouslyFetchByModelIds(
     auth: Authenticator,
     ids: ModelId[],
     {
@@ -849,7 +849,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       transaction,
     }: { groupKinds?: GroupKind[]; transaction?: Transaction } = {}
   ): Promise<GroupResource[]> {
-    const groups = await this.baseFetch(
+    return this.baseFetch(
       auth,
       {
         where: {
@@ -861,7 +861,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
       transaction
     );
-    return groups.filter((group) => group.canRead(auth));
   }
 
   static async fetchById(
@@ -915,12 +914,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    const unreadable = groups.filter((group) => !group.canRead(auth));
-    if (unreadable.length > 0) {
+    const unreadableGroups = groups.filter((group) => !group.canRead(auth));
+    if (unreadableGroups.length > 0) {
       logger.error(
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
-          unreadableGroupIds: unreadable.map((g) => g.sId),
+          unreadableGroupIds: unreadableGroups.map((g) => g.sId),
           authRole: auth.role(),
           authGroupIds: auth.groupIds(),
         },

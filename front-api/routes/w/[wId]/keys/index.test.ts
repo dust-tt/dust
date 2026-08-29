@@ -113,10 +113,10 @@ describe("POST /api/w/:wId/keys — role restrictions", () => {
 });
 
 describe("POST /api/w/:wId/keys — group scoping", () => {
-  it("rejects scoping to a group not tied to a regular restricted space", async () => {
+  it("rejects scoping to a group not tied to a restricted space or pod", async () => {
     const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
 
-    // This group is not associated to any regular restricted space, so it is
+    // This group is not associated to any restricted space or pod, so it is
     // not scopable — even for an admin.
     const group = await GroupFactory.regularManual(workspace, "Backend");
 

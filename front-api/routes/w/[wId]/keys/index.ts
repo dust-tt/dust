@@ -176,7 +176,7 @@ app.post(
         : [];
 
     if (additionalGroupIds.length > 0) {
-      // A key can only be scoped to groups of regular restricted spaces.
+      // A key can only be scoped to groups of restricted spaces or pods.
       const scopableGroupIds = new Set(
         (await listKeyScopableGroups(auth)).map((group) => group.sId)
       );
@@ -189,7 +189,7 @@ app.post(
           api_error: {
             type: "workspace_auth_error",
             message:
-              "An API key can only be scoped to groups of regular restricted spaces.",
+              "An API key can only be scoped to groups of restricted spaces or pods.",
           },
         });
       }

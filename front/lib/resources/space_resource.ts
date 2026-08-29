@@ -358,7 +358,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return [];
     }
 
-    const groups = await GroupResource.fetchByModelIds(
+    const groups = await GroupResource.dangerouslyFetchByModelIds(
       auth,
       references.map((group) => group.groupId),
       { transaction }
@@ -409,6 +409,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       includeConversationsSpace?: boolean;
       includeProjectSpaces?: boolean;
       includeDeleted?: boolean;
+      includeOpen?: boolean;
+      includeRestricted?: boolean;
     },
     t?: Transaction
   ): Promise<SpaceResource[]> {
@@ -434,7 +436,30 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         t
       );
 
-      return spaces;
+      const includeOpen = options?.includeOpen ?? true;
+      const includeRestricted = options?.includeRestricted ?? true;
+      assert(
+        includeOpen || includeRestricted,
+        "listWorkspaceSpaces: at least one of includeOpen / includeRestricted must be true."
+      );
+      if (includeOpen && includeRestricted) {
+        return spaces;
+      }
+
+      // Openness is determined by the presence of a reader grant for the
+      // workspace global group; resolved for regular/project spaces only.
+      const regularOrProject = spaces.filter(
+        (space) => space.isRegular() || space.isProject()
+      );
+      const openIds = await this.listOpenSpaceModelIds(auth, regularOrProject);
+
+      return spaces.filter((space) => {
+        if (!space.isRegular() && !space.isProject()) {
+          return true;
+        }
+        const open = openIds.has(space.id);
+        return open ? includeOpen : includeRestricted;
+      });
     });
   }
 
@@ -2354,7 +2379,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         allGroupModelIds.add(reference.groupId);
       }
     }
-    const allGroups = await GroupResource.fetchByModelIds(auth, [
+    const allGroups = await GroupResource.dangerouslyFetchByModelIds(auth, [
       ...allGroupModelIds,
     ]);
     const regularAutoGroups = allGroups.filter((group) =>

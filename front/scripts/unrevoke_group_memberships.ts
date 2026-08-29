@@ -83,7 +83,7 @@ makeScript(
     }
 
     // Fetch all groups and users
-    const groups = await GroupResource.fetchByModelIds(auth, [
+    const groups = await GroupResource.dangerouslyFetchByModelIds(auth, [
       ...groupIdToUserIds.keys(),
     ]);
     const allUserIds = [...new Set(memberships.map((m) => m.userId))];
