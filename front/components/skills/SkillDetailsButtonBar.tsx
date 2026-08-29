@@ -76,7 +76,7 @@ export function SkillDetailsButtonBar({
         )}
         <Button
           size="sm"
-          label={isSkillLinkCopied ? "Copied!" : "Copy link"}
+          tooltip={isSkillLinkCopied ? "Copied!" : "Copy link"}
           variant="outline"
           icon={isSkillLinkCopied ? ClipboardCheck : Clipboard}
           onClick={(e) => {
