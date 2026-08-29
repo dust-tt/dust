@@ -14,8 +14,32 @@ import type {
 } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { Err, Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 import assert from "assert";
 import type { ParsedUrlQuery } from "querystring";
+
+type SlackOAuthResponseWithUserScope = {
+  authed_user: {
+    scope: string;
+  };
+};
+
+function hasSlackOAuthUserScope(
+  value: unknown
+): value is SlackOAuthResponseWithUserScope {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !("authed_user" in value) ||
+    typeof value.authed_user !== "object" ||
+    value.authed_user === null ||
+    !("scope" in value.authed_user)
+  ) {
+    return false;
+  }
+
+  return isString(value.authed_user.scope);
+}
 
 /**
  * OAuth provider for Slack Tools MCP server.
@@ -168,44 +192,98 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
     if (useCase === "personal_actions") {
+      const keys = Object.keys(extraConfig);
       return (
-        Object.keys(extraConfig).length === 1 && "mcp_server_id" in extraConfig
+        typeof extraConfig.mcp_server_id === "string" &&
+        extraConfig.mcp_server_id.length > 0 &&
+        keys.every((key) => key === "mcp_server_id" || key === "scope") &&
+        (extraConfig.scope === undefined || extraConfig.scope.length > 0)
       );
     }
     // For platform_actions, no extra config is required.
     return Object.keys(extraConfig).length === 0;
   }
 
-  checkConnectionValidPostFinalize(connection: OAuthConnectionType) {
+  async checkConnectionValidPostFinalize(connection: OAuthConnectionType) {
     // If a team was requested, we need to check that the team id is the same as the requested team id.
     if ("requested_team_id" in connection.metadata) {
       if (
-        connection.metadata.team_id === connection.metadata.requested_team_id
+        connection.metadata.team_id !== connection.metadata.requested_team_id
       ) {
-        return new Ok(undefined);
+        logger.warn(
+          {
+            requestedTeamId: connection.metadata.requested_team_id,
+            requestedTeamName: connection.metadata.requested_team_name,
+            actualTeamId: connection.metadata.team_id,
+            actualTeamName: connection.metadata.team_name,
+          },
+          "OAuth: Slack team mismatch on Slack tools connection"
+        );
+        return new Err({
+          message:
+            "You must select `" +
+            connection.metadata.requested_team_name +
+            " (" +
+            connection.metadata.requested_team_id +
+            ")` as the team to connect, instead of `" +
+            connection.metadata.team_name +
+            " (" +
+            connection.metadata.team_id +
+            ")`.",
+        });
       }
-      logger.warn(
+    }
+
+    const requiredScopes = connection.metadata.scope
+      ?.split(/[\s,]+/)
+      .filter(Boolean);
+    if (!requiredScopes?.length) {
+      return new Ok(undefined);
+    }
+
+    const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+    const tokenRes = await oauthApi.getAccessToken({
+      connectionId: connection.connection_id,
+    });
+    if (tokenRes.isErr()) {
+      logger.error(
         {
-          requestedTeamId: connection.metadata.requested_team_id,
-          requestedTeamName: connection.metadata.requested_team_name,
-          actualTeamId: connection.metadata.team_id,
-          actualTeamName: connection.metadata.team_name,
+          connectionId: connection.connection_id,
+          error: tokenRes.error,
         },
-        "OAuth: Slack team mismatch on Slack tools connection"
+        "OAuth: Failed to verify Slack tools connection scopes"
       );
       return new Err({
         message:
-          "You must select `" +
-          connection.metadata.requested_team_name +
-          " (" +
-          connection.metadata.requested_team_id +
-          ")` as the team to connect, instead of `" +
-          connection.metadata.team_name +
-          " (" +
-          connection.metadata.team_id +
-          ")`.",
+          "Failed to verify the permissions granted by Slack. Please try again.",
       });
     }
+
+    const rawJson = tokenRes.value.scrubbed_raw_json;
+    const grantedScopeString = hasSlackOAuthUserScope(rawJson)
+      ? rawJson.authed_user.scope
+      : "";
+    const grantedScopes = new Set(
+      grantedScopeString.split(/[\s,]+/).filter(Boolean)
+    );
+    const missingScopes = requiredScopes.filter(
+      (scope) => !grantedScopes.has(scope)
+    );
+    if (missingScopes.length > 0) {
+      logger.warn(
+        {
+          connectionId: connection.connection_id,
+          missingScopes,
+        },
+        "OAuth: Slack tools connection missing required scopes"
+      );
+      return new Err({
+        message:
+          `Slack did not grant the required permission${missingScopes.length > 1 ? "s" : ""}: ` +
+          `${missingScopes.join(", ")}. Ask a Slack workspace admin to reconnect this Slack tool and approve the missing permissions, then try again.`,
+      });
+    }
+
     return new Ok(undefined);
   }
 }

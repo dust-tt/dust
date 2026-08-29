@@ -21,6 +21,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isRecord, isString } from "@app/types/shared/utils/general";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { KnownBlock, WebAPICallResult } from "@slack/web-api";
 import { WebClient } from "@slack/web-api";
@@ -49,14 +50,46 @@ const CHANNEL_CACHE_TTL_MS = 60 * 10 * 1000;
 export const MAX_USER_SEARCH_RESULTS = 20;
 const USER_CACHE_TTL_MS = 60 * 10 * 1000;
 
-export function isSlackMissingScope(error: unknown): boolean {
+function hasStringProperty<Property extends string>(
+  value: unknown,
+  property: Property
+): value is Record<Property, string> {
   return (
-    typeof error === "object" &&
-    error !== null &&
-    "message" in error &&
-    typeof error.message === "string" &&
+    typeof value === "object" &&
+    value !== null &&
+    isRecord(value) &&
+    property in value &&
+    isString(value[property])
+  );
+}
+
+type SlackMissingScopeError = Record<"message", string> & {
+  data?: unknown;
+};
+
+function hasSlackMissingScopeData(
+  error: SlackMissingScopeError
+): error is SlackMissingScopeError & {
+  data: Record<"needed", string>;
+} {
+  return hasStringProperty(error.data, "needed");
+}
+
+export function isSlackMissingScope(
+  error: unknown
+): error is SlackMissingScopeError {
+  return (
+    hasStringProperty(error, "message") &&
     error.message.includes("missing_scope")
   );
+}
+
+export function getSlackMissingScope(error: unknown): string | undefined {
+  if (!isSlackMissingScope(error) || !hasSlackMissingScopeData(error)) {
+    return undefined;
+  }
+
+  return error.data.needed;
 }
 
 export const getSlackClient = async (accessToken?: string) => {

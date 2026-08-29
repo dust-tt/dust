@@ -2,7 +2,7 @@ import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
-  ToolDefinition,
+  BaseToolHandlerExtra,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -25,6 +25,7 @@ import {
   executeSetUserStatus,
   executeWriteCanvas,
   getSlackClient,
+  getSlackMissingScope,
   isSlackMissingScope,
   resolveChannelDisplayName,
   resolveChannelId,
@@ -64,6 +65,8 @@ type SlackSearchMatch = {
 type SlackSearchResponse = {
   ok: boolean;
   error?: string;
+  needed?: string;
+  provided?: string;
   results: {
     messages: Array<{
       author_id?: string;
@@ -145,7 +148,7 @@ class SlackRateLimitError extends Error {
   }
 }
 
-const slackSearch = async (
+export const slackSearch = async (
   query: string,
   accessToken: string
 ): Promise<SlackSearchMatch[]> => {
@@ -181,7 +184,7 @@ const slackSearch = async (
     if (data.error === SLACK_RATE_LIMITED_ERROR) {
       throw new SlackRateLimitError();
     }
-    throw new Error(data.error ?? "unknown_error");
+    throw Object.assign(new Error(data.error ?? "unknown_error"), { data });
   }
 
   // Transform API response to match SlackSearchMatch format.
@@ -332,8 +335,16 @@ function isSlackTokenRevoked(error: unknown): boolean {
 // Returns an authentication error response if the error is token-related,
 // or null if the error should be handled by the caller.
 function handleSlackAuthError(error: unknown) {
-  if (isSlackTokenRevoked(error) || isSlackMissingScope(error)) {
+  if (isSlackTokenRevoked(error)) {
     return new Ok(makePersonalAuthenticationError("slack_tools").content);
+  }
+  if (isSlackMissingScope(error)) {
+    return new Ok(
+      makePersonalAuthenticationError(
+        "slack_tools",
+        getSlackMissingScope(error)
+      ).content
+    );
   }
   return null;
 }
@@ -360,21 +371,19 @@ function handleSlackSearchError(error: unknown) {
   );
 }
 
-interface SlackPersonalToolsResult {
-  searchMessagesTool: ToolDefinition;
-  semanticSearchMessagesTool: ToolDefinition;
-  commonTools: ToolDefinition[];
-}
-
 export function createSlackPersonalTools(
   auth: Authenticator,
   mcpServerId: string,
   toolContext?: ToolContext
-): SlackPersonalToolsResult {
+) {
   const allowFooterRemoval =
     auth.workspace()?.metadata?.slackPersonalAllowFooterRemoval ?? false;
 
-  const handlers: ToolHandlers<typeof SLACK_PERSONAL_TOOLS_METADATA> = {
+  const handlers: ToolHandlers<
+    typeof SLACK_PERSONAL_TOOLS_METADATA,
+    (typeof SLACK_PERSONAL_TOOLS_METADATA)[number]["name"],
+    BaseToolHandlerExtra
+  > = {
     search_messages: async (
       {
         keywords,
@@ -880,15 +889,25 @@ export function createSlackPersonalTools(
         return new Err(new MCPError("Access token not found"));
       }
 
-      return executeReadThreadMessages({
-        channel,
-        threadTs,
-        limit,
-        cursor,
-        oldest,
-        latest,
-        accessToken,
-      });
+      try {
+        return await executeReadThreadMessages({
+          channel,
+          threadTs,
+          limit,
+          cursor,
+          oldest,
+          latest,
+          accessToken,
+        });
+      } catch (error) {
+        const authError = handleSlackAuthError(error);
+        if (authError) {
+          return authError;
+        }
+        return new Err(
+          new MCPError(`Error reading thread: ${normalizeError(error)}`)
+        );
+      }
     },
 
     get_channel_canvases: async ({ channel_id }, { authInfo }) => {
