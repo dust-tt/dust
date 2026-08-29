@@ -3,6 +3,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { listKeyScopableGroups } from "@app/lib/api/keys/scopable_groups";
 import {
   MAX_API_KEY_SPEND_LIMIT_AWU_CREDITS,
   MIN_API_KEY_SPEND_LIMIT_AWU_CREDITS,
@@ -24,6 +25,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import keyId from "./[id]";
+import keyGroups from "./groups";
 
 const MAX_API_KEY_CREATION_PER_DAY = 30;
 
@@ -174,6 +176,24 @@ app.post(
         : [];
 
     if (additionalGroupIds.length > 0) {
+      // A key can only be scoped to groups of restricted spaces or pods.
+      const scopableGroupIds = new Set(
+        (await listKeyScopableGroups(auth)).map((group) => group.sId)
+      );
+      const invalidGroupIds = additionalGroupIds.filter(
+        (gId) => !scopableGroupIds.has(gId)
+      );
+      if (invalidGroupIds.length > 0) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "An API key can only be scoped to groups of restricted spaces or pods.",
+          },
+        });
+      }
+
       const groupsRes = await GroupResource.fetchByIds(
         auth,
         additionalGroupIds
@@ -285,6 +305,7 @@ app.post(
   }
 );
 
+app.route("/groups", keyGroups);
 app.route("/:id", keyId);
 
 export default app;

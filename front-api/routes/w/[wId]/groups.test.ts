@@ -53,7 +53,7 @@ describe("GET /api/w/:wId/groups", () => {
       role: "admin",
     });
 
-    const group = await GroupFactory.regularAuto(workspace, "Engineering");
+    const group = await GroupFactory.regularManual(workspace, "Engineering");
     await GroupFactory.withMembers(auth, group, [user]);
 
     const response = await getGroups(workspace);
@@ -80,7 +80,7 @@ describe("GET /api/w/:wId/groups", () => {
       role: "admin",
     });
 
-    const group = await GroupFactory.regularAuto(workspace, "Design");
+    const group = await GroupFactory.regularManual(workspace, "Design");
 
     const extraUsers = await Promise.all([
       UserFactory.basic(),
@@ -117,7 +117,7 @@ describe("GET /api/w/:wId/groups", () => {
       role: "admin",
     });
 
-    await GroupFactory.regularAuto(workspace, "Empty");
+    await GroupFactory.regularManual(workspace, "Empty");
 
     const response = await getGroups(workspace);
 
@@ -135,22 +135,43 @@ describe("GET /api/w/:wId/groups", () => {
       role: "admin",
     });
 
-    const group = await GroupFactory.regularAuto(workspace, "Backend");
+    const group = await GroupFactory.regularManual(workspace, "Backend");
     await GroupFactory.withMembers(auth, group, [user]);
+    await GroupFactory.provisioned(workspace, "Directory");
 
-    const response = await getGroups(workspace, { kind: "regular_auto" });
+    const response = await getGroups(workspace, { kind: "regular_manual" });
 
     expect(response.status).toBe(200);
     const { groups } = await response.json();
 
     expect(
-      groups.every((g: { kind: string }) => g.kind === "regular_auto")
+      groups.every((g: { kind: string }) => g.kind === "regular_manual")
     ).toBe(true);
     const backendGroup = groups.find(
       (g: { name: string }) => g.name === "Backend"
     );
     expect(backendGroup).toBeDefined();
     expect(backendGroup.memberCount).toBe(1);
+  });
+
+  it("never lists internal group kinds, even when explicitly requested", async () => {
+    const { workspace, auth, user } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const group = await GroupFactory.regularAuto(workspace, "Backend");
+    await GroupFactory.withMembers(auth, group, [user]);
+
+    // `regular_auto` is an internal kind: it is never surfaced by this endpoint,
+    // even for an admin explicitly asking for it.
+    const response = await getGroups(workspace, { kind: "regular_auto" });
+
+    expect(response.status).toBe(200);
+    const { groups } = await response.json();
+    expect(groups.some((g: { name: string }) => g.name === "Backend")).toBe(
+      false
+    );
   });
 
   it("lets a manager list provisioned groups", async () => {

@@ -65,7 +65,7 @@ async function resetWorkspaceOpenSpaceMembers(
       )
     ),
   ];
-  const memberGroups = await GroupResource.fetchByModelIds(
+  const memberGroups = await GroupResource.dangerouslyFetchByModelIds(
     auth,
     groupModelIds,
     {

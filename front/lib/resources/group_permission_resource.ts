@@ -306,10 +306,14 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
 
     const groupIds = [...new Set(grants.map((grant) => grant.groupId))];
-    const autoGroups = await GroupResource.fetchByModelIds(auth, groupIds, {
-      groupKinds: ["regular_auto"],
-      transaction,
-    });
+    const autoGroups = await GroupResource.dangerouslyFetchByModelIds(
+      auth,
+      groupIds,
+      {
+        groupKinds: ["regular_auto"],
+        transaction,
+      }
+    );
 
     return autoGroups[0] ?? null;
   }
@@ -344,7 +348,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       return [];
     }
 
-    return GroupResource.fetchByModelIds(auth, groupIds, {
+    return GroupResource.dangerouslyFetchByModelIds(auth, groupIds, {
       groupKinds: ["regular_auto"],
       transaction,
     });
@@ -383,10 +387,14 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
 
     const groupIds = [...new Set(rows.map((row) => row.groupId))];
-    const autoGroups = await GroupResource.fetchByModelIds(auth, groupIds, {
-      groupKinds: ["regular_auto"],
-      transaction,
-    });
+    const autoGroups = await GroupResource.dangerouslyFetchByModelIds(
+      auth,
+      groupIds,
+      {
+        groupKinds: ["regular_auto"],
+        transaction,
+      }
+    );
     const autoGroupById = new Map(autoGroups.map((group) => [group.id, group]));
 
     for (const row of rows) {
@@ -1083,7 +1091,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       ),
     ];
     const groups = groupModelIds.length
-      ? await GroupResource.fetchByModelIds(auth, groupModelIds)
+      ? await GroupResource.dangerouslyFetchByModelIds(auth, groupModelIds)
       : [];
     const groupByModelId = new Map(groups.map((group) => [group.id, group]));
 

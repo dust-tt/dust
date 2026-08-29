@@ -28,7 +28,8 @@ async function backfillApiKeys(
       );
     }
 
-    const systemGroup = await GroupResource.fetchWorkspaceSystemGroup(auth);
+    const systemGroup =
+      await GroupResource.dangerouslyFetchWorkspaceSystemGroup(auth);
     if (systemGroup.isOk()) {
       await KeyResource.model.update(
         // @ts-ignore -- Legacy migration: groupId column was removed.

@@ -1784,7 +1784,7 @@ describe("SkillResource", () => {
       expect(skillAfter).toBeNull();
 
       // The grant group existed only to hold this skill's grant, so it goes too.
-      const groupsAfter = await GroupResource.fetchByModelIds(
+      const groupsAfter = await GroupResource.dangerouslyFetchByModelIds(
         testContext.authenticator,
         [grantGroup!.id]
       );

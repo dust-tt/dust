@@ -407,7 +407,7 @@ export async function listUserAllowedTierNames(
   }
 
   const groupIds = [...new Set(rows.map((row) => row.groupId))];
-  const groups = await GroupResource.fetchByModelIds(auth, groupIds);
+  const groups = await GroupResource.dangerouslyFetchByModelIds(auth, groupIds);
   const autoGroups = groups.filter(
     (group) =>
       group.kind === "regular_auto" &&
@@ -480,7 +480,7 @@ export async function listGroupAllowedTierNames(
   }
 
   const groupIds = [...new Set(rows.map((row) => row.groupId))];
-  const groups = await GroupResource.fetchByModelIds(auth, groupIds);
+  const groups = await GroupResource.dangerouslyFetchByModelIds(auth, groupIds);
   const overrideGroups = groups.filter((group) =>
     isModelTierOverrideGroupKind(group.kind)
   );
@@ -532,7 +532,7 @@ async function loadUserOverrideTierGrants({
   }
 
   const groupIds = [...new Set(rows.map((row) => row.groupId))];
-  const groups = await GroupResource.fetchByModelIds(auth, groupIds);
+  const groups = await GroupResource.dangerouslyFetchByModelIds(auth, groupIds);
   const autoGroups = groups.filter(
     (group) =>
       group.kind === "regular_auto" &&
@@ -568,7 +568,10 @@ async function listUserModelTierOverrideGroupModelIds(
     return [];
   }
 
-  const groups = await GroupResource.fetchByModelIds(auth, groupModelIds);
+  const groups = await GroupResource.dangerouslyFetchByModelIds(
+    auth,
+    groupModelIds
+  );
   return groups
     .filter((group) => isModelTierOverrideGroupKind(group.kind))
     .map((group) => group.id);
