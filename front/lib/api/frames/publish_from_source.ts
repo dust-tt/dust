@@ -156,13 +156,17 @@ export async function publishFrameFromSource(
 export async function publishFrameV2FromSourceWithLockHeld(
   auth: Authenticator,
   {
+    capturedManifest,
     conversation,
     frame,
     manifestPath,
+    requireNoDatabases = false,
   }: {
+    capturedManifest?: Buffer;
     conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifestPath: string;
+    requireNoDatabases?: boolean;
   }
 ): Promise<
   Result<
@@ -211,21 +215,30 @@ export async function publishFrameV2FromSourceWithLockHeld(
     return frameError("unauthorized", writeAccess.error.message);
   }
 
-  const manifestBufferResult = await dustFs.readBuffer(canonicalManifestPath);
-  if (manifestBufferResult.isErr()) {
-    return frameError("invalid_source", manifestBufferResult.error.message);
+  let manifestBuffer = capturedManifest;
+  if (!manifestBuffer) {
+    const manifestBufferResult = await dustFs.readBuffer(canonicalManifestPath);
+    if (manifestBufferResult.isErr()) {
+      return frameError("invalid_source", manifestBufferResult.error.message);
+    }
+    if (manifestBufferResult.value === null) {
+      return frameError(
+        "invalid_source",
+        `Frame manifest not found: ${canonicalManifestPath}`
+      );
+    }
+    manifestBuffer = manifestBufferResult.value;
   }
-  if (manifestBufferResult.value === null) {
-    return frameError(
-      "invalid_source",
-      `Frame manifest not found: ${canonicalManifestPath}`
-    );
-  }
-  const manifestBuffer = manifestBufferResult.value;
 
   const manifestResult = parseFrameManifest(manifestBuffer);
   if (manifestResult.isErr()) {
     return frameError("invalid_manifest", manifestResult.error);
+  }
+  if (requireNoDatabases && manifestResult.value.databases.length > 0) {
+    return frameError(
+      "invalid_source",
+      "Convert the legacy Frame before adding Frame-owned databases, then publish again."
+    );
   }
 
   const sourceDirectoryPath = path.posix.dirname(canonicalManifestPath);

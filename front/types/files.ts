@@ -36,7 +36,7 @@ export type FileUseCase =
   // Workspace branding: logo/favicon uploaded by workspace admins.
   | "workspace_branding";
 
-export type FileUseCaseMetadata = {
+type StableFileUseCaseMetadata = {
   conversationId?: string;
   skillId?: string;
   spaceId?: string;
@@ -68,6 +68,24 @@ export type FileUseCaseMetadata = {
   pendingFrameSourceMove?: {
     sourceMountFilePath: string;
     destinationMountFilePath: string;
+  };
+};
+
+export type FileUseCaseMetadata = StableFileUseCaseMetadata & {
+  // A crash-retryable v1 -> v2 transition. While present without an active v2 publication, the
+  // renderer continues serving the legacy artifact and `dsbx frame convert` may resume or restore
+  // the original binding.
+  pendingFrameV2Conversion?: {
+    legacyContentType: InteractiveContentFileContentType;
+    legacyFileName: string;
+    legacyFileSize: number;
+    legacyMountFilePath: string;
+    legacyRenderableVersion: "original" | "processed";
+    legacyUseCase: FileUseCase;
+    legacyUseCaseMetadata: StableFileUseCaseMetadata;
+    manifestMountFilePath: string;
+    manifestPath: string;
+    sourcePath: string;
   };
 };
 

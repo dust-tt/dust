@@ -901,8 +901,14 @@ export class FileResource extends BaseResource<FileModel> {
     }
 
     const publicationId = this.useCaseMetadata?.activePublicationId;
-    if (!publicationId || owner.id !== this.workspaceId) {
+    if (owner.id !== this.workspaceId) {
       return null;
+    }
+    if (!publicationId) {
+      const pendingConversion = this.useCaseMetadata?.pendingFrameV2Conversion;
+      return pendingConversion
+        ? this.getFileContent(owner, pendingConversion.legacyRenderableVersion)
+        : null;
     }
 
     try {
@@ -1731,6 +1737,13 @@ export class FileResource extends BaseResource<FileModel> {
       useCase,
       useCaseMetadata,
     });
+  }
+
+  finishFrameV2Conversion() {
+    assert(this.isFrameV2, "Only Frames v2 can finish a conversion");
+    const { pendingFrameV2Conversion: _pendingFrameV2Conversion, ...metadata } =
+      this.useCaseMetadata ?? {};
+    return this.update({ useCaseMetadata: metadata });
   }
 
   // Sharing logic.

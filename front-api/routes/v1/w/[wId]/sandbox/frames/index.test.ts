@@ -287,9 +287,13 @@ async function setupLegacyFrame() {
 }
 
 async function setupLegacyFrameConversion({
+  extraSources = {},
   includeUi = true,
+  manifestContent = manifest,
 }: {
+  extraSources?: Record<string, string>;
   includeUi?: boolean;
+  manifestContent?: string;
 } = {}) {
   const context = await setupLegacyFrame();
   await context.frame.ensureShareableFrame(context.auth);
@@ -300,10 +304,14 @@ async function setupLegacyFrameConversion({
     conversationId: context.conversation.sId,
   })}Converted`;
   const sourceByPath = new Map([
-    [`${mountDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
+    [`${mountDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifestContent],
     ...(includeUi
       ? ([[`${mountDirectoryPath}/index.tsx`, uiSource]] as const)
       : []),
+    ...Object.entries(extraSources).map(
+      ([relativePath, content]) =>
+        [`${mountDirectoryPath}/${relativePath}`, content] as const
+    ),
   ]);
   fileStorageMock.setFileContent(
     (filePath) => sourceByPath.get(filePath) ?? null
@@ -322,7 +330,11 @@ async function setupLegacyFrameConversion({
       : null
   );
 
-  return { ...context, manifestPath };
+  return {
+    ...context,
+    manifestMountFilePath: `${mountDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+    manifestPath,
+  };
 }
 
 beforeEach(() => {
@@ -355,7 +367,18 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(
       converted.publicationId
     );
+    expect(frame?.useCaseMetadata?.pendingFrameV2Conversion).toBeUndefined();
     expect(await frame?.getShareInfo()).toEqual(shareInfo);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "frame.converted",
+        metadata: {
+          manifest_path: context.manifestPath,
+          publication_id: converted.publicationId,
+          source_path: context.sourcePath,
+        },
+      })
+    );
   });
 
   it("restores the legacy Frame when its first v2 publication fails", async () => {
@@ -375,6 +398,80 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     expect(frame?.isFrameV2).toBe(false);
     expect(frame?.toScopedPath(context.auth)).toBe(context.sourcePath);
     expect(await frame?.getShareInfo()).toEqual(shareInfo);
+  });
+
+  it("resumes a conversion activated before its transition marker was cleared", async () => {
+    const context = await setupLegacyFrameConversion();
+    const activePublicationId = "already-active";
+    await context.frame.updateFrameSourceBinding({
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: Buffer.byteLength(manifest),
+      mountFilePath: context.manifestMountFilePath,
+      useCase: "conversation",
+      useCaseMetadata: {
+        activePublicationId,
+        conversationId: context.conversation.sId,
+        pendingFrameV2Conversion: {
+          legacyContentType: frameContentType,
+          legacyFileName: context.frame.fileName,
+          legacyFileSize: context.frame.fileSize,
+          legacyMountFilePath: context.frame.mountFilePath!,
+          legacyRenderableVersion: "original",
+          legacyUseCase: context.frame.useCase,
+          legacyUseCaseMetadata: {
+            conversationId: context.conversation.sId,
+          },
+          manifestMountFilePath: context.manifestMountFilePath,
+          manifestPath: context.manifestPath,
+          sourcePath: context.sourcePath,
+        },
+      },
+    });
+
+    const response = await requestFrameConvert(
+      context.workspace.sId,
+      context.token,
+      context.sourcePath,
+      context.manifestPath
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      frameId: context.frame.sId,
+      publicationId: activePublicationId,
+    });
+    const frame = await FileResource.fetchById(context.auth, context.frame.sId);
+    expect(frame?.useCaseMetadata?.pendingFrameV2Conversion).toBeUndefined();
+  });
+
+  it("keeps the legacy Frame when the first v2 manifest declares a database", async () => {
+    const manifestWithDatabase = JSON.stringify({
+      version: 1,
+      name: "Status",
+      description: "Show the current status.",
+      databases: [{ name: "tasks", schema: "tasks.ts" }],
+    });
+    const context = await setupLegacyFrameConversion({
+      extraSources: { "tasks.ts": "export default {};" },
+      manifestContent: manifestWithDatabase,
+    });
+
+    const response = await requestFrameConvert(
+      context.workspace.sId,
+      context.token,
+      context.sourcePath,
+      context.manifestPath
+    );
+
+    expect(response.status).toBe(400);
+    const frame = await FileResource.fetchById(context.auth, context.frame.sId);
+    expect(frame?.isInteractiveContent).toBe(true);
+    expect(frame?.isFrameV2).toBe(false);
+    expect(frame?.toScopedPath(context.auth)).toBe(context.sourcePath);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: "frame.converted" })
+    );
   });
 
   it("registers one stable Frame identity", async () => {

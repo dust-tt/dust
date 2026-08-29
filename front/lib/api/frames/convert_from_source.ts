@@ -1,27 +1,24 @@
 import path from "node:path";
 
-import { DustFileSystem, parseScopedPrefix } from "@app/lib/api/file_system";
 import {
-  FramePublicationError,
-  withFrameSourceLock,
-} from "@app/lib/api/frames/publication_storage";
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
+import { DustFileSystem, parseScopedPrefix } from "@app/lib/api/file_system";
+import type { FramePublicationError } from "@app/lib/api/frames/publication_storage";
+import { withFrameSourceLock } from "@app/lib/api/frames/publication_storage";
 import { publishFrameV2FromSourceWithLockHeld } from "@app/lib/api/frames/publish_from_source";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
+import { executeWithLock } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import {
-  FRAME_MANIFEST_FILE,
-  parseFrameManifest,
-} from "@app/types/api/frame_manifest";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { DustFileSystemError } from "@app/types/file_system";
-import type {
-  FileUseCase,
-  FileUseCaseMetadata,
-  FrameFileContentType,
-} from "@app/types/files";
-import { frameV2ContentType } from "@app/types/files";
+import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
+import { frameV2ContentType, isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -59,6 +56,10 @@ type SourceOwner = {
   useCase: FileUseCase;
   useCaseMetadata: Pick<FileUseCaseMetadata, "conversationId" | "spaceId">;
 };
+
+type PendingFrameV2Conversion = NonNullable<
+  FileUseCaseMetadata["pendingFrameV2Conversion"]
+>;
 
 function conversionError(
   code: FrameV2ConversionError["code"],
@@ -101,11 +102,62 @@ function convertedMetadata(
     frameBundleRootPath: _frameBundleRootPath,
     frameEntryRelPath: _frameEntryRelPath,
     pendingFrameSourceMove: _pendingFrameSourceMove,
+    pendingFrameV2Conversion: _pendingFrameV2Conversion,
     spaceId: _spaceId,
     ...stableMetadata
   } = frame.useCaseMetadata ?? {};
 
   return { ...stableMetadata, ...owner.useCaseMetadata };
+}
+
+function matchesPendingConversion(
+  pending: PendingFrameV2Conversion | undefined,
+  {
+    manifest,
+    manifestMountFilePath,
+    source,
+    sourceMountFilePath,
+  }: {
+    manifest: string;
+    manifestMountFilePath: string;
+    source: string;
+    sourceMountFilePath: string;
+  }
+): pending is PendingFrameV2Conversion {
+  return (
+    pending?.manifestPath === manifest &&
+    pending.manifestMountFilePath === manifestMountFilePath &&
+    pending.sourcePath === source &&
+    pending.legacyMountFilePath === sourceMountFilePath
+  );
+}
+
+function emitFrameConvertedAuditEvent(
+  auth: Authenticator,
+  {
+    frameId,
+    manifestPath,
+    publicationId,
+    sourcePath,
+  }: ConvertLegacyFrameToV2Result & { sourcePath: string }
+) {
+  void emitAuditLogEvent({
+    auth,
+    action: "frame.converted",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("frame", {
+        sId: frameId,
+        name: path.posix.basename(path.posix.dirname(manifestPath)),
+      }),
+    ],
+    context: getAuditLogContext(auth),
+    metadata: {
+      manifest_path: manifestPath,
+      publication_id: publicationId,
+      source_path: sourcePath,
+    },
+  });
 }
 
 /** Convert a legacy Frame in place, preserving its stable identity and use-rights rows. */
@@ -171,38 +223,31 @@ export async function convertLegacyFrameToV2(
     return conversionError("invalid_source", "Invalid Frame source path.");
   }
 
-  const manifestBufferResult = await dustFs.readBuffer(manifest);
-  if (manifestBufferResult.isErr()) {
-    return manifestBufferResult;
-  }
-  if (!manifestBufferResult.value) {
-    return conversionError(
-      "invalid_source",
-      `Frame manifest not found: ${manifest}`
-    );
-  }
-  const manifestBuffer = manifestBufferResult.value;
-  const parsedManifest = parseFrameManifest(manifestBuffer);
-  if (parsedManifest.isErr()) {
-    return new Err(
-      new FramePublicationError("invalid_manifest", parsedManifest.error)
-    );
-  }
-  if (parsedManifest.value.databases.length > 0) {
-    return conversionError(
-      "invalid_source",
-      "Convert the legacy Frame before adding Frame-owned databases, then publish again."
-    );
-  }
-
   const candidates = await FileResource.fetchByMountFilePaths(auth, [
     sourceMountPath,
     manifestMountPath,
   ]);
-  const legacyFrame = candidates.find(
-    (candidate) => candidate.mountFilePath === sourceMountPath
-  );
-  if (!legacyFrame?.isInteractiveContent || legacyFrame.isFrameV2) {
+  const candidate =
+    candidates.find(
+      (file) =>
+        file.mountFilePath === sourceMountPath &&
+        isInteractiveContentType(file.contentType)
+    ) ??
+    candidates.find(
+      (file) =>
+        file.mountFilePath === manifestMountPath &&
+        file.isFrameV2 &&
+        matchesPendingConversion(
+          file.useCaseMetadata?.pendingFrameV2Conversion,
+          {
+            manifest,
+            manifestMountFilePath: manifestMountPath,
+            source,
+            sourceMountFilePath: sourceMountPath,
+          }
+        )
+    );
+  if (!candidate) {
     return conversionError(
       "invalid_source",
       `No legacy Frame found at ${source}.`
@@ -210,7 +255,8 @@ export async function convertLegacyFrameToV2(
   }
   if (
     candidates.some(
-      (candidate) => candidate.mountFilePath === manifestMountPath
+      (file) =>
+        file.id !== candidate.id && file.mountFilePath === manifestMountPath
     )
   ) {
     return conversionError(
@@ -219,106 +265,206 @@ export async function convertLegacyFrameToV2(
     );
   }
 
-  return withFrameSourceLock<
-    ConvertLegacyFrameToV2Result,
-    ConvertLegacyFrameToV2Error
-  >(legacyFrame.sId, async () => {
-    const frame = await FileResource.fetchById(auth, legacyFrame.sId);
-    if (
-      !frame?.isInteractiveContent ||
-      frame.isFrameV2 ||
-      frame.mountFilePath !== sourceMountPath
-    ) {
-      return conversionError(
-        "conflict",
-        "The legacy Frame changed while it was being converted; retry from its current path."
-      );
-    }
-    const [registeredManifest] = await FileResource.fetchByMountFilePaths(
-      auth,
-      [manifestMountPath]
-    );
-    if (registeredManifest) {
-      return conversionError(
-        "conflict",
-        "A registered file already uses the v2 manifest path."
-      );
-    }
+  try {
+    return await executeWithLock(`file:edit:${candidate.sId}`, () =>
+      withFrameSourceLock<
+        ConvertLegacyFrameToV2Result,
+        ConvertLegacyFrameToV2Error
+      >(candidate.sId, async () => {
+        const frame = await FileResource.fetchById(auth, candidate.sId);
+        if (!frame) {
+          return conversionError(
+            "conflict",
+            "The legacy Frame was deleted while it was being converted."
+          );
+        }
 
-    const original = {
-      contentType: frame.contentType as FrameFileContentType,
-      fileName: frame.fileName,
-      fileSize: frame.fileSize,
-      mountFilePath: sourceMountPath,
-      useCase: frame.useCase,
-      useCaseMetadata: frame.useCaseMetadata ?? {},
-    };
-    const restore = async (): Promise<boolean> => {
-      try {
-        await frame.updateFrameSourceBinding(original);
-        return true;
-      } catch (error) {
-        logger.error(
-          {
-            error: normalizeError(error),
+        let pending = frame.useCaseMetadata?.pendingFrameV2Conversion;
+        if (
+          pending &&
+          !matchesPendingConversion(pending, {
+            manifest,
+            manifestMountFilePath: manifestMountPath,
+            source,
+            sourceMountFilePath: sourceMountPath,
+          })
+        ) {
+          return conversionError(
+            "conflict",
+            "The legacy Frame is already being converted from another source path."
+          );
+        }
+
+        const activePublicationId = frame.useCaseMetadata?.activePublicationId;
+        if (frame.isFrameV2 && pending && activePublicationId) {
+          await frame.finishFrameV2Conversion();
+          const result = {
             frameId: frame.sId,
             manifestPath: manifest,
-            sourcePath: source,
-          },
-          "Failed to roll back a legacy Frame conversion"
+            publicationId: activePublicationId,
+          };
+          emitFrameConvertedAuditEvent(auth, { ...result, sourcePath: source });
+          return new Ok(result);
+        }
+
+        if (
+          !pending &&
+          (!isInteractiveContentType(frame.contentType) ||
+            frame.mountFilePath !== sourceMountPath)
+        ) {
+          return conversionError(
+            "conflict",
+            "The legacy Frame changed while it was being converted; retry from its current path."
+          );
+        }
+
+        const [registeredManifest] = await FileResource.fetchByMountFilePaths(
+          auth,
+          [manifestMountPath]
         );
-        return false;
-      }
-    };
+        if (registeredManifest && registeredManifest.id !== frame.id) {
+          return conversionError(
+            "conflict",
+            "A registered file already uses the v2 manifest path."
+          );
+        }
 
-    try {
-      await frame.updateFrameSourceBinding({
-        contentType: frameV2ContentType,
-        fileName: FRAME_MANIFEST_FILE,
-        fileSize: manifestBuffer.length,
-        mountFilePath: manifestMountPath,
-        useCase: targetOwner.useCase,
-        useCaseMetadata: convertedMetadata(frame, targetOwner),
-      });
+        const manifestBufferResult = await dustFs.readBuffer(manifest);
+        if (manifestBufferResult.isErr()) {
+          return manifestBufferResult;
+        }
+        if (!manifestBufferResult.value) {
+          return conversionError(
+            "invalid_source",
+            `Frame manifest not found: ${manifest}`
+          );
+        }
+        const manifestBuffer = manifestBufferResult.value;
 
-      const publication = await publishFrameV2FromSourceWithLockHeld(auth, {
-        conversation,
-        frame,
-        manifestPath: manifest,
-      });
-      if (publication.isErr()) {
-        return (await restore())
-          ? new Err(publication.error)
-          : conversionError(
-              "internal",
-              "Frame conversion failed and its legacy source binding could not be restored."
+        if (!pending) {
+          if (!isInteractiveContentType(frame.contentType)) {
+            return conversionError(
+              "conflict",
+              "The legacy Frame changed while it was being converted; retry from its current path."
             );
-      }
+          }
+          const legacyMetadata = convertedMetadata(frame, legacyOwner);
+          pending = {
+            legacyContentType: frame.contentType,
+            legacyFileName: frame.fileName,
+            legacyFileSize: frame.fileSize,
+            legacyMountFilePath: sourceMountPath,
+            legacyRenderableVersion: frame.useCaseMetadata?.frameBundleRootPath
+              ? "processed"
+              : "original",
+            legacyUseCase: frame.useCase,
+            legacyUseCaseMetadata: legacyMetadata,
+            manifestMountFilePath: manifestMountPath,
+            manifestPath: manifest,
+            sourcePath: source,
+          };
 
-      logger.info(
-        {
-          frameId: frame.sId,
-          manifestPath: manifest,
-          publicationId: publication.value.publicationId,
-          sourcePath: source,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-        },
-        "Converted legacy Frame to Frames v2"
-      );
+          try {
+            await frame.updateFrameSourceBinding({
+              contentType: frameV2ContentType,
+              fileName: FRAME_MANIFEST_FILE,
+              fileSize: manifestBuffer.length,
+              mountFilePath: manifestMountPath,
+              useCase: targetOwner.useCase,
+              useCaseMetadata: {
+                ...convertedMetadata(frame, targetOwner),
+                pendingFrameV2Conversion: pending,
+              },
+            });
+          } catch (error) {
+            return conversionError(
+              "internal",
+              `Frame conversion failed: ${normalizeError(error).message}`
+            );
+          }
+        }
 
-      return new Ok({
-        frameId: frame.sId,
-        manifestPath: manifest,
-        publicationId: publication.value.publicationId,
-      });
-    } catch (error) {
-      const restored = await restore();
-      return conversionError(
-        "internal",
-        restored
-          ? `Frame conversion failed: ${normalizeError(error).message}`
-          : "Frame conversion failed and its legacy source binding could not be restored."
-      );
-    }
-  });
+        const restore = async (): Promise<boolean> => {
+          try {
+            await frame.updateFrameSourceBinding({
+              contentType: pending.legacyContentType,
+              fileName: pending.legacyFileName,
+              fileSize: pending.legacyFileSize,
+              mountFilePath: pending.legacyMountFilePath,
+              useCase: pending.legacyUseCase,
+              useCaseMetadata: pending.legacyUseCaseMetadata,
+            });
+            return true;
+          } catch (error) {
+            logger.error(
+              {
+                error: normalizeError(error),
+                frameId: frame.sId,
+                manifestPath: manifest,
+                sourcePath: source,
+              },
+              "Failed to roll back a legacy Frame conversion"
+            );
+            return false;
+          }
+        };
+
+        try {
+          const publication = await publishFrameV2FromSourceWithLockHeld(auth, {
+            capturedManifest: manifestBuffer,
+            conversation,
+            frame,
+            manifestPath: manifest,
+            requireNoDatabases: true,
+          });
+          if (publication.isErr()) {
+            return (await restore())
+              ? new Err(publication.error)
+              : conversionError(
+                  "internal",
+                  "Frame conversion failed and its legacy source binding could not be restored."
+                );
+          }
+
+          await frame.finishFrameV2Conversion();
+          const result = {
+            frameId: frame.sId,
+            manifestPath: manifest,
+            publicationId: publication.value.publicationId,
+          };
+
+          logger.info(
+            {
+              ...result,
+              sourcePath: source,
+              workspaceId: auth.getNonNullableWorkspace().sId,
+            },
+            "Converted legacy Frame to Frames v2"
+          );
+          emitFrameConvertedAuditEvent(auth, { ...result, sourcePath: source });
+          return new Ok(result);
+        } catch (error) {
+          const currentFrame = await FileResource.fetchById(auth, frame.sId);
+          if (currentFrame?.useCaseMetadata?.activePublicationId) {
+            return conversionError(
+              "internal",
+              "Frame conversion was activated but not finalized; retry the conversion command."
+            );
+          }
+          const restored = await restore();
+          return conversionError(
+            "internal",
+            restored
+              ? `Frame conversion failed: ${normalizeError(error).message}`
+              : "Frame conversion failed and its legacy source binding could not be restored."
+          );
+        }
+      })
+    );
+  } catch (error) {
+    return conversionError(
+      "internal",
+      `Frame conversion failed: ${normalizeError(error).message}`
+    );
+  }
 }

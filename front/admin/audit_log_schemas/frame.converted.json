@@ -1,0 +1,12 @@
+{
+  "action": "frame.converted",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "frame" }
+  ],
+  "metadata": {
+    "manifest_path": "string",
+    "publication_id": "string",
+    "source_path": "string"
+  }
+}

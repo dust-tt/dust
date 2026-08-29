@@ -15,7 +15,11 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { frameContentType, sandboxFunctionContentType } from "@app/types/files";
+import {
+  frameContentType,
+  frameV2ContentType,
+  sandboxFunctionContentType,
+} from "@app/types/files";
 import { splitFrameEntryScopedPath } from "@app/types/mount_path";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
@@ -212,9 +216,13 @@ describe("publishFrame", () => {
     }
 
     // The frame now renders the bundle, and the build root and entry are recorded for republish.
-    expect(file.getRenderableVersion()).toBe("processed");
-    expect(file.useCaseMetadata?.frameBundleRootPath).toBe(ROOT);
-    expect(file.useCaseMetadata?.frameEntryRelPath).toBe("Dashboard.tsx");
+    const publishedFile = await FileResource.fetchById(auth, file.sId);
+    assert(publishedFile);
+    expect(publishedFile.getRenderableVersion()).toBe("processed");
+    expect(publishedFile.useCaseMetadata?.frameBundleRootPath).toBe(ROOT);
+    expect(publishedFile.useCaseMetadata?.frameEntryRelPath).toBe(
+      "Dashboard.tsx"
+    );
 
     expect(uploadBundleSpy).toHaveBeenCalledTimes(1);
     const bundle = uploadBundleSpy.mock.calls[0][1];
@@ -431,7 +439,8 @@ export default function Dashboard() {
     if (result.isOk()) {
       expect(result.value.warnings).toEqual([]);
     }
-    expect(file.getRenderableVersion()).toBe("processed");
+    const publishedFile = await FileResource.fetchById(auth, file.sId);
+    expect(publishedFile?.getRenderableVersion()).toBe("processed");
     expect(uploadBundleSpy).toHaveBeenCalledTimes(1);
 
     // Only the entry was read (graph-driven), so the broken sibling could not contribute a
@@ -484,6 +493,35 @@ export default function Dashboard() {
     if (result.isErr()) {
       expect(result.error.code).toBe("not_interactive_content");
     }
+  });
+
+  it("refuses a queued legacy publish after the Frame was converted", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const file = await createFrameFile(auth);
+    const staleLegacyFile = await FileResource.fetchById(auth, file.sId);
+    assert(staleLegacyFile);
+    await file.updateFrameSourceBinding({
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 100,
+      mountFilePath: "w/wrk_test/conversations/conv_test/files/manifest.json",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: "conv_test" },
+    });
+    const uploadBundleSpy = vi.spyOn(FileResource.prototype, "uploadProcessed");
+
+    const result = await publishFrame(auth, {
+      file: staleLegacyFile,
+      reader: inMemoryReader(VALID_SOURCES),
+      entryRelPath: "Dashboard.tsx",
+      rootScopedPath: ROOT,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("not_interactive_content");
+    }
+    expect(uploadBundleSpy).not.toHaveBeenCalled();
   });
 
   it("publishes two frames sharing a fileName independently, each from its own content", async () => {
@@ -553,12 +591,14 @@ export default function Dashboard() {
 
     expect(firstResult.isOk()).toBe(true);
     expect(secondResult.isOk()).toBe(true);
-    expect(first.getRenderableVersion()).toBe("processed");
-    expect(second.getRenderableVersion()).toBe("processed");
-    expect(first.useCaseMetadata?.frameEntryRelPath).toBe(
+    const publishedFirst = await FileResource.fetchById(auth, first.sId);
+    const publishedSecond = await FileResource.fetchById(auth, second.sId);
+    expect(publishedFirst?.getRenderableVersion()).toBe("processed");
+    expect(publishedSecond?.getRenderableVersion()).toBe("processed");
+    expect(publishedFirst?.useCaseMetadata?.frameEntryRelPath).toBe(
       firstSplit.value.entryRelPath
     );
-    expect(second.useCaseMetadata?.frameEntryRelPath).toBe(
+    expect(publishedSecond?.useCaseMetadata?.frameEntryRelPath).toBe(
       secondSplit.value.entryRelPath
     );
   });

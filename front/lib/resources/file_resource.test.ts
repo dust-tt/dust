@@ -176,6 +176,49 @@ describe("FileResource", () => {
       expect(result?.content).toBe(expectedContent);
     });
 
+    it("keeps serving the legacy artifact during a pending v2 conversion", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameV2ContentType,
+        fileName: "manifest.json",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: {
+          conversationId: "conv-frame-conversion",
+          pendingFrameV2Conversion: {
+            legacyContentType: frameContentType,
+            legacyFileName: "Legacy.tsx",
+            legacyFileSize: 1000,
+            legacyMountFilePath: "legacy/Legacy.tsx",
+            legacyRenderableVersion: "processed",
+            legacyUseCase: "conversation",
+            legacyUseCaseMetadata: {
+              conversationId: "conv-frame-conversion",
+            },
+            manifestMountFilePath: "converted/manifest.json",
+            manifestPath:
+              "conversation-conv-frame-conversion/Converted/manifest.json",
+            sourcePath: "conversation-conv-frame-conversion/Legacy.tsx",
+          },
+        },
+      });
+      const getSharedReadStream = vi
+        .spyOn(frameFile, "getSharedReadStream")
+        .mockReturnValue(Readable.from([Buffer.from(expectedContent)]));
+
+      const owner = auth.getNonNullableWorkspace();
+      expect(frameFile.isFrameV2).toBe(true);
+      expect(frameFile.workspaceId).toBe(owner.id);
+      expect(frameFile.useCaseMetadata?.pendingFrameV2Conversion).toBeDefined();
+      await expect(frameFile.getRenderableContent(owner)).resolves.toBe(
+        expectedContent
+      );
+      expect(getSharedReadStream).toHaveBeenCalledWith(owner, "processed");
+    });
+
     it("should return null for soft-deleted conversation", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",

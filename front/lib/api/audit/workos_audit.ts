@@ -177,6 +177,7 @@ export const AUDIT_ACTIONS = [
   "file.moved",
   "frame.authorized_files_updated",
   "frame.cloned",
+  "frame.converted",
   "frame.deleted",
   "frame.deleted_admin",
   "frame.email_grant_added",
