@@ -153,7 +153,11 @@ describe("GET /api/w/:wId/spaces/:spaceId/files", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.files).toMatchObject([
-      { contentType: frameV2ContentType, fileId: frame.sId },
+      {
+        contentType: "application/json",
+        fileId: frame.sId,
+        fileResourceContentType: frameV2ContentType,
+      },
     ]);
   });
 });

@@ -25,11 +25,13 @@ vi.mock("@app/lib/swr/useIsMobile", () => ({
 function makeFile({
   contentType,
   fileName,
+  fileResourceContentType,
   lastModifiedMs,
   path = fileName,
 }: {
   contentType: string;
   fileName: string;
+  fileResourceContentType?: string;
   lastModifiedMs: number;
   path?: string;
 }): FileSystemFileEntry {
@@ -39,6 +41,7 @@ function makeFile({
     path: `conversation-c1/${path}`,
     contentType,
     fileId: `file-${fileName}`,
+    fileResourceContentType,
     sizeBytes: 100,
     lastModifiedMs,
     thumbnailUrl: null,
@@ -204,9 +207,11 @@ describe("FileExplorer navigation", () => {
 describe("FileExplorer Frame packages", () => {
   it("opens the Frame and exposes its source without generic file actions", async () => {
     const user = userEvent.setup();
+    mockClientFetch.mockResolvedValue(new Response("preview content"));
     const manifest = makeFile({
-      contentType: frameV2ContentType,
+      contentType: "application/json",
       fileName: "manifest.json",
+      fileResourceContentType: frameV2ContentType,
       lastModifiedMs: 2,
       path: "status/manifest.json",
     });
@@ -239,7 +244,7 @@ describe("FileExplorer Frame packages", () => {
       expect.objectContaining({
         fileId: "file-manifest.json",
         kind: "frame_package",
-        manifestPath: "conversation-c1/status/manifest.json",
+        path: "conversation-c1/status/manifest.json",
         sourceFolderPath: "status",
       })
     );
@@ -256,7 +261,13 @@ describe("FileExplorer Frame packages", () => {
     expect(screen.queryByText("Delete")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText("View source"));
-    expect(await screen.findByText("manifest.json")).toBeInTheDocument();
+    const manifestTitle = await screen.findByText("manifest.json");
     expect(screen.getByText("index.tsx")).toBeInTheDocument();
+
+    fireEvent.click(manifestTitle);
+    expect(
+      await screen.findByRole("dialog", { name: "manifest.json" })
+    ).toBeInTheDocument();
+    expect(await screen.findByText("preview content")).toBeInTheDocument();
   });
 });

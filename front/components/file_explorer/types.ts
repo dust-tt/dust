@@ -26,8 +26,6 @@ export type FramePackageEntry = Omit<
   contentType: typeof frameV2ContentType;
   /** Display name of the source folder represented by this package. */
   fileName: string;
-  /** Canonical scoped path of the registered manifest. */
-  manifestPath: string;
   /** Explorer navigation path of the package's source folder. */
   sourceFolderPath: string;
 };

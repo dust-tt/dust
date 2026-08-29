@@ -138,7 +138,7 @@ export async function streamThumbnail(
 // ---------------------------------------------------------------------------
 
 /**
- * Enrich a list of file entries with their linked FileResource sId (fileId).
+ * Enrich file entries with their linked FileResource identity and semantic content type.
  * A single batch DB query covers all entries; pod files probe the legacy projects/ path too.
  *
  * Intended for endpoints that expose file listings to the client (conversation files,
@@ -176,9 +176,8 @@ export async function enrichListWithFileResourceIds(
     mountPaths
   );
 
-  // FileResource is authoritative for both identity and semantic type. Raw GCS metadata still
-  // describes the source bytes (for example manifest.json is JSON), while the linked resource can
-  // represent a higher-level object such as a registered Frame package.
+  // Keep raw GCS contentType for source previews. The linked resource can represent a higher-level
+  // object such as a registered Frame package, so expose its semantic type separately.
   const byMountPath = new Map<
     string,
     { contentType: string; fileId: string }
@@ -206,8 +205,8 @@ export async function enrichListWithFileResourceIds(
     return linkedFile
       ? {
           ...entry,
-          contentType: linkedFile.contentType,
           fileId: linkedFile.fileId,
+          fileResourceContentType: linkedFile.contentType,
         }
       : entry;
   });

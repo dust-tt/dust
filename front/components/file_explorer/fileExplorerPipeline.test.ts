@@ -11,7 +11,12 @@ function mountFile(
   {
     contentType = "text/plain",
     fileId = "file-1",
-  }: { contentType?: string; fileId?: string | null } = {}
+    fileResourceContentType,
+  }: {
+    contentType?: string;
+    fileId?: string | null;
+    fileResourceContentType?: string;
+  } = {}
 ): FileSystemEntry {
   return {
     isDirectory: false,
@@ -19,6 +24,7 @@ function mountFile(
     path: scopedPath,
     contentType,
     fileId,
+    fileResourceContentType,
     sizeBytes: 100,
     lastModifiedMs: 0,
     thumbnailUrl: null,
@@ -27,8 +33,9 @@ function mountFile(
 
 function frameManifest(scopedPath: string): FileSystemEntry {
   return mountFile(scopedPath, FRAME_MANIFEST_FILE, {
-    contentType: frameV2ContentType,
+    contentType: "application/json",
     fileId: "frame-1",
+    fileResourceContentType: frameV2ContentType,
   });
 }
 
@@ -60,7 +67,6 @@ describe("getFileExplorerPipeline Frame packages", () => {
     expect(pipeline.entryByRelativePath.get("apps/status")).toMatchObject({
       kind: "frame_package",
       fileId: "frame-1",
-      manifestPath: "conversation-c1/apps/status/manifest.json",
       sourceFolderPath: "apps/status",
     });
     expect(pipeline.filterCounts.frames).toBe(1);

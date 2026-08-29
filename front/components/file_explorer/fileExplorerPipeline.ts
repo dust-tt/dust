@@ -15,6 +15,7 @@ import {
   getChildrenAtFolderPath,
   getExplorerRelativePath,
   getFileExplorerBucket,
+  getParentFolderRelativePath,
   getVirtualScopeRootNodes,
   isFileExplorerNodeHidden,
 } from "@app/components/file_explorer/utils";
@@ -47,16 +48,6 @@ interface GetFileExplorerPipelineParams {
   virtualScopeRoots?: readonly string[];
 }
 
-function getParentPath(relativePath: string): string {
-  const lastSlash = relativePath.lastIndexOf("/");
-  return lastSlash < 0 ? "" : relativePath.slice(0, lastSlash);
-}
-
-function getPathBasename(relativePath: string): string {
-  const lastSlash = relativePath.lastIndexOf("/");
-  return relativePath.slice(lastSlash + 1);
-}
-
 function isPathAtOrBelow(path: string, parentPath: string): boolean {
   return path === parentPath || path.startsWith(`${parentPath}/`);
 }
@@ -73,7 +64,7 @@ function getCollapsedFramePackages({
   for (const file of files) {
     if (
       file.isDirectory ||
-      file.contentType !== frameV2ContentType ||
+      file.fileResourceContentType !== frameV2ContentType ||
       file.fileName !== FRAME_MANIFEST_FILE ||
       !file.fileId
     ) {
@@ -81,7 +72,7 @@ function getCollapsedFramePackages({
     }
 
     const manifestExplorerPath = getExplorerRelativePath(file);
-    const sourceFolderPath = getParentPath(manifestExplorerPath);
+    const sourceFolderPath = getParentFolderRelativePath(manifestExplorerPath);
     if (
       !sourceFolderPath ||
       isPathAtOrBelow(currentFolderPath, sourceFolderPath)
@@ -94,8 +85,7 @@ function getCollapsedFramePackages({
       kind: "frame_package",
       contentType: frameV2ContentType,
       fileId: file.fileId,
-      fileName: getPathBasename(sourceFolderPath),
-      manifestPath: file.path,
+      fileName: sourceFolderPath.slice(sourceFolderPath.lastIndexOf("/") + 1),
       sourceFolderPath,
       virtualPath: sourceFolderPath,
     });
@@ -105,14 +95,14 @@ function getCollapsedFramePackages({
   const packages: FramePackageEntry[] = [];
   const packagePaths = new Set(candidates.keys());
   for (const [sourceFolderPath, framePackage] of candidates) {
-    let ancestorPath = getParentPath(sourceFolderPath);
+    let ancestorPath = getParentFolderRelativePath(sourceFolderPath);
     let hasPackageAncestor = false;
     while (ancestorPath) {
       if (packagePaths.has(ancestorPath)) {
         hasPackageAncestor = true;
         break;
       }
-      ancestorPath = getParentPath(ancestorPath);
+      ancestorPath = getParentFolderRelativePath(ancestorPath);
     }
     if (!hasPackageAncestor) {
       packages.push(framePackage);
@@ -155,7 +145,7 @@ function collapseFramePackages({
       if (packagesByPath.has(candidatePath)) {
         return false;
       }
-      candidatePath = getParentPath(candidatePath);
+      candidatePath = getParentFolderRelativePath(candidatePath);
     }
     return true;
   });

@@ -72,10 +72,7 @@ export function getFilePreviewConfig(
   const contentType = stripMimeParameters(rawContentType);
   const category = getFileFormatCategory(contentType);
 
-  if (
-    isInteractiveContentType(contentType) ||
-    isFrameV2ContentType(contentType)
-  ) {
+  if (isInteractiveContentType(contentType)) {
     return {
       category: "frame",
       needsProcessedVersion: false,
@@ -221,7 +218,10 @@ export function getFileExplorerBucket(
     return null;
   }
 
-  if (isInteractiveContentType(contentType)) {
+  if (
+    isInteractiveContentType(contentType) ||
+    isFrameV2ContentType(contentType)
+  ) {
     return "frames";
   }
 
