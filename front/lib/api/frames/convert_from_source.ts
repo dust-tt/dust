@@ -6,8 +6,8 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { DustFileSystem, parseScopedPrefix } from "@app/lib/api/file_system";
+import { withFrameSourceLock } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationError } from "@app/lib/api/frames/publication_storage";
-import { withFrameSourceLock } from "@app/lib/api/frames/publication_storage";
 import { publishFrameV2FromSourceWithLockHeld } from "@app/lib/api/frames/publish_from_source";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";

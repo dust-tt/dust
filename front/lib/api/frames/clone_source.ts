@@ -6,8 +6,8 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { DustFileSystem, parseScopedPrefix } from "@app/lib/api/file_system";
+import { withFrameSourceAndPublishLock } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationError } from "@app/lib/api/frames/publication_storage";
-import { withFrameSourceAndPublishLock } from "@app/lib/api/frames/publication_storage";
 import { publishFrameV2FromSource } from "@app/lib/api/frames/publish_from_source";
 import { registerFrameV2FromSourceUsingFileSystem } from "@app/lib/api/frames/register_from_source";
 import {

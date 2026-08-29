@@ -1,4 +1,4 @@
-import { withFramePublishLock } from "@app/lib/api/frames/publication_storage";
+import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";

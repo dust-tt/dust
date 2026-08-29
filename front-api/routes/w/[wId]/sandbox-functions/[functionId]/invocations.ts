@@ -130,7 +130,7 @@ app.post(
     if (invocationResult.isErr()) {
       if (isSandboxFunctionInvocationError(invocationResult.error)) {
         return apiError(ctx, {
-          status_code: 401,
+          status_code: invocationResult.error.status,
           api_error: {
             type: invocationResult.error.code,
             message: invocationResult.error.message,

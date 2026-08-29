@@ -6,7 +6,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { DustFileSystem } from "@app/lib/api/file_system";
-import { withFrameSourceAndPublishLock } from "@app/lib/api/frames/publication_storage";
+import { withFrameSourceAndPublishLock } from "@app/lib/api/frames/operation_lock";
 import { removeFileFromProject } from "@app/lib/api/projects/context";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";

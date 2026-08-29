@@ -5,8 +5,8 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
-import { getRedisStreamClient } from "@app/lib/api/redis";
-import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
+import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
 import type { Authenticator } from "@app/lib/auth";
@@ -15,14 +15,12 @@ import {
   getPrivateUploadBucket,
 } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
-import { distributedLock, distributedUnlock } from "@app/lib/lock";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FramePublicationFunctionDefinition } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import tracer from "@app/logger/tracer";
 import { launchRetiredFramePublicationCleanupWorkflow } from "@app/temporal/sandbox_functions/client";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
@@ -53,11 +51,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const FRAME_PUBLICATION_UPLOAD_CONCURRENCY = 4;
 const FRAME_PUBLICATION_READ_CONCURRENCY = 4;
-const FRAME_PUBLISH_LOCK_ACQUIRE_TIMEOUT_MS = 30_000;
-const FRAME_PUBLISH_LOCK_RETRY_INTERVAL_MS = 100;
-// Publication work is synchronous and bounded. Lease expiry defines an abandoned publisher;
-// stale-prefix recovery may remove its uncommitted artifacts once a new publisher owns the lock.
-const FRAME_PUBLISH_LOCK_TTL_MS = 10 * 60_000;
 
 export type FramePublicationSourceFile = {
   relativePath: string;
@@ -90,88 +83,6 @@ export class FramePublicationError extends Error {
     super(message);
     this.name = "FramePublicationError";
   }
-}
-
-export function getFramePublishLockName(frameId: string): string {
-  return `frame:publish:${frameId}`;
-}
-
-function getFrameSourceLockName(frameId: string): string {
-  return `frame:source:${frameId}`;
-}
-
-async function withFrameOperationLock<T, E>(
-  lockName: string,
-  resource: string,
-  callback: () => Promise<Result<T, E>>
-): Promise<Result<T, E | SandboxFunctionError>> {
-  const client = await getRedisStreamClient({ origin: "lock" });
-  const lockValue = await tracer.trace(
-    "lock.acquire",
-    { resource },
-    async () => {
-      const startMs = Date.now();
-      while (Date.now() - startMs < FRAME_PUBLISH_LOCK_ACQUIRE_TIMEOUT_MS) {
-        const acquired = await distributedLock(
-          client,
-          lockName,
-          FRAME_PUBLISH_LOCK_TTL_MS
-        );
-        if (acquired) {
-          return acquired;
-        }
-        await new Promise((resolve) =>
-          setTimeout(resolve, FRAME_PUBLISH_LOCK_RETRY_INTERVAL_MS)
-        );
-      }
-      return undefined;
-    }
-  );
-  if (!lockValue) {
-    return new Err(
-      new SandboxFunctionError(
-        "publish_conflict",
-        "Another publication or source operation is in progress for this Frame; retry shortly."
-      )
-    );
-  }
-
-  try {
-    return await callback();
-  } finally {
-    await distributedUnlock(client, lockName, lockValue);
-  }
-}
-
-export async function withFramePublishLock<T, E>(
-  frameId: string,
-  callback: () => Promise<Result<T, E>>
-): Promise<Result<T, E | SandboxFunctionError>> {
-  return withFrameOperationLock(
-    getFramePublishLockName(frameId),
-    "frame.publish",
-    callback
-  );
-}
-
-export async function withFrameSourceLock<T, E>(
-  frameId: string,
-  callback: () => Promise<Result<T, E>>
-): Promise<Result<T, E | SandboxFunctionError>> {
-  return withFrameOperationLock(
-    getFrameSourceLockName(frameId),
-    "frame.source",
-    callback
-  );
-}
-
-export async function withFrameSourceAndPublishLock<T, E>(
-  frameId: string,
-  callback: () => Promise<Result<T, E>>
-): Promise<Result<T, E | SandboxFunctionError>> {
-  return withFrameSourceLock(frameId, () =>
-    withFramePublishLock(frameId, callback)
-  );
 }
 
 function sha256(content: string | Buffer): string {

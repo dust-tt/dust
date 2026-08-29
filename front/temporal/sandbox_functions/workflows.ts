@@ -8,7 +8,7 @@ import type * as cleanupRetiredFramePublicationActivities from "@app/temporal/sa
 import type * as markSandboxFunctionInvocationFailedActivities from "@app/temporal/sandbox_functions/activities/mark_sandbox_function_invocation_failed";
 import type * as runSandboxFunctionInvocationActivities from "@app/temporal/sandbox_functions/activities/run_sandbox_function_invocation";
 import type * as runSandboxFunctionToolActivities from "@app/temporal/sandbox_functions/activities/run_sandbox_function_tool";
-import { proxyActivities, sleep } from "@temporalio/workflow";
+import { continueAsNew, proxyActivities, sleep } from "@temporalio/workflow";
 
 const toolActivityStartToCloseTimeoutMs =
   Math.max(RUN_AGENT_CALL_TOOL_TIMEOUT_MS, DEFAULT_MCP_REQUEST_TIMEOUT_MS) +
@@ -58,19 +58,29 @@ const { cleanupRetiredFramePublicationActivity } = proxyActivities<
 
 const RETIRED_FRAME_PUBLICATION_GRACE_PERIOD_MS = 60 * 60 * 1000;
 const RETIRED_FRAME_PUBLICATION_RETRY_DELAY_MS = 60 * 60 * 1000;
+const RETIRED_FRAME_PUBLICATION_ATTEMPTS_PER_RUN = 24;
 
 export async function cleanupRetiredFramePublicationWorkflow(args: {
   frameId: string;
   publicationId: string;
   workspaceId: string;
 }) {
-  // A canonical invocation can resolve the old active publication immediately before a publish
-  // commits and create its invocation row immediately after. The grace period closes that small
-  // resolver-to-row race before the activity decides whether the publication is still referenced.
-  await sleep(RETIRED_FRAME_PUBLICATION_GRACE_PERIOD_MS);
-  while (!(await cleanupRetiredFramePublicationActivity(args))) {
-    await sleep(RETIRED_FRAME_PUBLICATION_RETRY_DELAY_MS);
+  for (
+    let attempt = 0;
+    attempt < RETIRED_FRAME_PUBLICATION_ATTEMPTS_PER_RUN;
+    attempt++
+  ) {
+    await sleep(
+      attempt === 0
+        ? RETIRED_FRAME_PUBLICATION_GRACE_PERIOD_MS
+        : RETIRED_FRAME_PUBLICATION_RETRY_DELAY_MS
+    );
+    if (await cleanupRetiredFramePublicationActivity(args)) {
+      return;
+    }
   }
+
+  await continueAsNew<typeof cleanupRetiredFramePublicationWorkflow>(args);
 }
 
 export async function runSandboxFunctionToolWorkflow({

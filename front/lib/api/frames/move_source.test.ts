@@ -2,11 +2,9 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/api/frames/publication_storage", async (importActual) => {
+vi.mock("@app/lib/api/frames/operation_lock", async (importActual) => {
   const actual =
-    await importActual<
-      typeof import("@app/lib/api/frames/publication_storage")
-    >();
+    await importActual<typeof import("@app/lib/api/frames/operation_lock")>();
   return {
     ...actual,
     withFramePublishLock: async (

@@ -27,11 +27,28 @@ export function isSandboxFunctionError(
 }
 
 export class SandboxFunctionInvocationError extends Error {
-  readonly code = "user_authentication_required";
+  readonly code: "user_authentication_required" | "sandbox_function_not_found";
+  readonly status: 401 | 404;
 
-  constructor(message: string) {
+  constructor(
+    message: string,
+    {
+      code = "user_authentication_required",
+      status = 401,
+    }:
+      | {
+          code?: "user_authentication_required";
+          status?: 401;
+        }
+      | {
+          code: "sandbox_function_not_found";
+          status: 404;
+        } = {}
+  ) {
     super(message);
     this.name = "SandboxFunctionInvocationError";
+    this.code = code;
+    this.status = status;
   }
 }
 

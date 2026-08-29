@@ -12,11 +12,9 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importActual) => {
   return { ...actual, emitAuditLogEvent: mockEmitAuditLogEvent };
 });
 
-vi.mock("@app/lib/api/frames/publication_storage", async (importActual) => {
+vi.mock("@app/lib/api/frames/operation_lock", async (importActual) => {
   const actual =
-    await importActual<
-      typeof import("@app/lib/api/frames/publication_storage")
-    >();
+    await importActual<typeof import("@app/lib/api/frames/operation_lock")>();
   return {
     ...actual,
     withFrameSourceAndPublishLock: async (

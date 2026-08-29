@@ -2,8 +2,8 @@ import { cleanupRetiredFramePublication } from "@app/lib/api/frames/publication_
 import type { Authenticator } from "@app/lib/auth";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import { SandboxFunctionInvocationModel } from "@app/lib/resources/storage/models/sandbox_function";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -113,13 +113,9 @@ describe("cleanupRetiredFramePublication", () => {
 
   it("retains a publication while an invocation is running", async () => {
     const { auth, frame, sandboxFunction } = await setup();
-    await SandboxFunctionInvocationModel.create({
-      workspaceId: auth.getNonNullableWorkspace().id,
-      sandboxFunctionId: sandboxFunction.id,
-      userId: null,
-      origin: "delegated",
-      status: "created",
-      gcsPath: "sandbox-functions/invocations/running.json",
+    await SandboxFunctionInvocationResource.makeNew(auth, {
+      sandboxFunction,
+      input: {},
     });
     const deletedPrefixes: string[] = [];
     fileStorageMock.setOnDeleteByPrefix((prefix) =>
@@ -144,14 +140,11 @@ describe("cleanupRetiredFramePublication", () => {
 
   it("cleans artifacts but retains function rows referenced by history", async () => {
     const { auth, frame, sandboxFunction } = await setup();
-    await SandboxFunctionInvocationModel.create({
-      workspaceId: auth.getNonNullableWorkspace().id,
-      sandboxFunctionId: sandboxFunction.id,
-      userId: null,
-      origin: "delegated",
-      status: "succeeded",
-      gcsPath: "sandbox-functions/invocations/succeeded.json",
+    const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
+      sandboxFunction,
+      input: {},
     });
+    await invocation.succeed({ ok: true });
 
     await expect(
       cleanupRetiredFramePublication(auth, {
@@ -191,5 +184,19 @@ describe("cleanupRetiredFramePublication", () => {
         publicationId: retiredPublicationId,
       })
     ).resolves.toHaveLength(1);
+  });
+
+  it("rejects invocation admission for a retired publication", async () => {
+    const { auth, sandboxFunction } = await setup();
+
+    const result = await sandboxFunction.invoke(auth, { input: {} });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toMatchObject({
+        code: "sandbox_function_not_found",
+        status: 404,
+      });
+    }
   });
 });

@@ -1,3 +1,4 @@
+import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
 import type {
   PokePodFunction,
   PokePodFunctionDetails,
@@ -720,8 +721,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         publicationId,
       },
     });
-    const functionIds = functions.map(({ id }) => id);
-    if (functionIds.length === 0) {
+    const sandboxFunctionModelIds = functions.map(({ id }) => id);
+    if (sandboxFunctionModelIds.length === 0) {
       return;
     }
 
@@ -729,21 +730,21 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       attributes: ["sandboxFunctionId"],
       where: {
         workspaceId: owner.id,
-        sandboxFunctionId: { [Op.in]: functionIds },
+        sandboxFunctionId: { [Op.in]: sandboxFunctionModelIds },
       },
       group: ["sandboxFunctionId"],
     });
-    const referencedFunctionIds = new Set(
+    const referencedSandboxFunctionModelIds = new Set(
       referencedFunctions.map(({ sandboxFunctionId }) => sandboxFunctionId)
     );
-    const unreferencedFunctionIds = functionIds.filter(
-      (id) => !referencedFunctionIds.has(id)
+    const unreferencedSandboxFunctionModelIds = sandboxFunctionModelIds.filter(
+      (id) => !referencedSandboxFunctionModelIds.has(id)
     );
-    if (unreferencedFunctionIds.length > 0) {
+    if (unreferencedSandboxFunctionModelIds.length > 0) {
       await this.model.destroy({
         where: {
           workspaceId: owner.id,
-          id: { [Op.in]: unreferencedFunctionIds },
+          id: { [Op.in]: unreferencedSandboxFunctionModelIds },
         },
       });
     }
@@ -962,25 +963,78 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         )
       );
     }
+    const authorize = async (
+      frame: FileResource | null
+    ): Promise<Result<undefined, SandboxFunctionInvocationError>> => {
+      const authorization = await authorizeSandboxFunctionInvocation(auth, {
+        userIdentity: this.userIdentity,
+        origin,
+        owner: frame
+          ? { kind: "frame" as const, frame }
+          : { kind: "pod" as const, space: this.space },
+      });
+      if (!authorization.authorized) {
+        return new Err(
+          new SandboxFunctionInvocationError(authorization.errorMessage)
+        );
+      }
+      return new Ok(undefined);
+    };
+
     const frame = this.frame;
-    const authorization = await authorizeSandboxFunctionInvocation(auth, {
-      userIdentity: this.userIdentity,
-      origin,
-      owner: frame
-        ? { kind: "frame", frame }
-        : { kind: "pod", space: this.space },
-    });
-    if (!authorization.authorized) {
-      return new Err(
-        new SandboxFunctionInvocationError(authorization.errorMessage)
-      );
+    if (!frame) {
+      const authorization = await authorize(null);
+      if (authorization.isErr()) {
+        return authorization;
+      }
+      return SandboxFunctionInvocationResource.createAndStartExecution(auth, {
+        sandboxFunction: this,
+        body,
+        origin,
+      });
     }
 
-    return SandboxFunctionInvocationResource.createAndStartExecution(auth, {
-      sandboxFunction: this,
-      body,
-      origin,
+    // Publishing, invocation admission, and retired-publication cleanup share this lock. Once
+    // admission persists a `created` invocation, cleanup keeps the immutable publication until
+    // that invocation settles. If cleanup wins first, this fresh active-publication check rejects
+    // the stale function before it can create an invocation against deleted artifacts.
+    const admission = await withFramePublishLock(frame.sId, async () => {
+      const freshFrame = await frame.fetchFreshFrameV2(auth);
+      if (
+        !freshFrame ||
+        !this.publicationId ||
+        freshFrame.useCaseMetadata?.activePublicationId !== this.publicationId
+      ) {
+        return new Err(
+          new SandboxFunctionInvocationError(
+            "This Frame function is no longer active.",
+            {
+              code: "sandbox_function_not_found",
+              status: 404,
+            }
+          )
+        );
+      }
+
+      this.file = freshFrame;
+      const authorization = await authorize(freshFrame);
+      if (authorization.isErr()) {
+        return authorization;
+      }
+
+      const invocation =
+        await SandboxFunctionInvocationResource.createForExecution(auth, {
+          sandboxFunction: this,
+          body,
+          origin,
+        });
+      return new Ok(invocation);
     });
+    if (admission.isErr()) {
+      return admission;
+    }
+
+    return admission.value.startExecution(auth);
   }
 
   toPokeJSON(author: UserResource | null): PokePodFunction {

@@ -1128,7 +1128,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return resource;
   }
 
-  static async createAndStartExecution(
+  static async createForExecution(
     auth: Authenticator,
     {
       sandboxFunction,
@@ -1139,7 +1139,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       body: PostSandboxFunctionInvocationRequestBody;
       origin?: SandboxFunctionInvocationOrigin;
     }
-  ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
+  ): Promise<SandboxFunctionInvocationResource> {
     // An inline invocation runs in the request that creates it. Only a fast function qualifies:
     // a durable one may call a tool that waits on the user for approval or authentication, and
     // holding the request there would deadlock, since the approval card only renders once the
@@ -1148,7 +1148,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     // Deferring is only safe because no other process reads the blob during execution, which
     // holds because every run is started with `--result-delivery stdout`: the result comes back
     // on the exec's own stdout, so nothing fetches the invocation, and its blob, mid-execution.
-    const invocation = await this.makeNew(
+    return this.makeNew(
       auth,
       {
         sandboxFunction,
@@ -1159,6 +1159,14 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       undefined,
       { deferInitialWrite: inline }
     );
+  }
+
+  async startExecution(
+    auth: Authenticator
+  ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
+    const invocation = this;
+    const { sandboxFunction } = invocation;
+    const inline = sandboxFunction.executionMode === "fast";
     const publishCreated = () =>
       publishSandboxFunctionInvocationEvent(
         {
@@ -1235,6 +1243,18 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     }
 
     return new Ok(invocation);
+  }
+
+  static async createAndStartExecution(
+    auth: Authenticator,
+    args: {
+      sandboxFunction: SandboxFunctionResource;
+      body: PostSandboxFunctionInvocationRequestBody;
+      origin?: SandboxFunctionInvocationOrigin;
+    }
+  ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
+    const invocation = await this.createForExecution(auth, args);
+    return invocation.startExecution(auth);
   }
 
   async markCreatedAsErrored(
