@@ -99,20 +99,27 @@ export function recordLifecycleOperation(
 }
 
 /**
- * One fast Pod function run, tagged by which runner served it (resident warm
- * server vs cold spawn). The warm share is the number the warm-runner rollout
- * turns on; duration is the exec's wall time as front saw it.
+ * One sandbox function run, tagged by owner and by which runner served it
+ * (resident warm server vs cold spawn). The warm share is the number the
+ * warm-runner rollout turns on; duration is the exec's wall time as front saw it.
  */
 export function recordSandboxFunctionRun({
+  ownerKind,
   runnerKind,
   status,
   durationMs,
 }: {
+  ownerKind: "frame" | "pod";
   runnerKind: "warm" | "cold" | "unknown";
   status: "success" | "error";
   durationMs: number;
 }): void {
-  const tags = [regionTag(), `runner_kind:${runnerKind}`, `status:${status}`];
+  const tags = [
+    regionTag(),
+    `owner_kind:${ownerKind}`,
+    `runner_kind:${runnerKind}`,
+    `status:${status}`,
+  ];
   statsDMetrics.increment("sandbox.functions.run", 1, tags);
   statsDMetrics.distribution(
     "sandbox.functions.run.duration",
