@@ -47,9 +47,17 @@ const { emitMetronomeUsageEventsActivity } = proxyActivities<typeof activities>(
 // same open-ended Metronome seat edits, which are cumulative deltas that stack
 // when a retry re-reads a value not yet reflecting the prior edit — an
 // unconvergeable sync became a multi-day edit storm (incident: 481 contract
-// edits on one subscription, piling ~548 phantom unassigned seats). Two guards:
+// edits on one subscription, piling ~548 phantom unassigned seats). Three guards:
 //
 //  - `maximumAttempts` bounds how many times a stuck sync re-applies its edits.
+//  - A long `initialInterval` (minutes) is the key one: the stacking happened
+//    because a retry re-read the seat state BEFORE Metronome's seat-history read
+//    model reflected the prior attempt's edit, so it re-applied the same delta.
+//    Spacing retries several minutes apart lets the read catch up, so the next
+//    attempt reads the converged value and computes a zero delta — it converges
+//    instead of stacking. Seat-*count* sync is a billing reconcile, not a
+//    user-facing path (immediate effects go through `assignSeatForUser`), so a
+//    few minutes between retries is fine.
 //  - A generous `heartbeatTimeout` (with `startToCloseTimeout` headroom) stops
 //    *false* timeouts on a large, rate-limited customer: the sync makes hundreds
 //    of paced Metronome calls, and a 1-minute heartbeat window was tight enough
@@ -60,9 +68,9 @@ const { syncMetronomeSeatCountActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "20 minutes",
   heartbeatTimeout: "5 minutes",
   retry: {
-    initialInterval: "30s",
+    initialInterval: "5 minutes",
     backoffCoefficient: 2,
-    maximumInterval: "5 minutes",
+    maximumInterval: "10 minutes",
     maximumAttempts: 5,
   },
   scheduleToCloseTimeout: "2 hours",
