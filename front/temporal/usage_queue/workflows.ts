@@ -41,9 +41,24 @@ const { emitMetronomeUsageEventsActivity } = proxyActivities<typeof activities>(
   }
 );
 
+// A failing seat sync (e.g. a Metronome edit that can't converge) must not
+// retry forever: without a cap it inherits Temporal's default policy (unlimited
+// attempts), and since every attempt re-runs the full sync — re-issuing the
+// same Metronome contract edits — an unconvergeable sync becomes a multi-day
+// edit storm that saturates Metronome's rate limit (incident: ~300 edits over
+// 25h on a single workspace). Bound both the attempts and the total lifetime so
+// a stuck sync fails loudly instead of hammering Metronome; the next real
+// membership change re-triggers a fresh run anyway.
 const { syncMetronomeSeatCountActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
   heartbeatTimeout: "1 minute",
+  retry: {
+    initialInterval: "30s",
+    backoffCoefficient: 2,
+    maximumInterval: "5 minutes",
+    maximumAttempts: 5,
+  },
+  scheduleToCloseTimeout: "1 hour",
 });
 
 const { reconcileApiKeyCreditStateActivity } = proxyActivities<
