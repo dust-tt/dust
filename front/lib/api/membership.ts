@@ -4,7 +4,7 @@ import {
   emitAuditLogEventDirect,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
+import { assignSeatForUser } from "@app/lib/api/metronome/seat_sync";
 import type { AuditLogActor } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -967,9 +967,16 @@ export async function updateMembershipSeatAndTrack({
   }
 
   if (isDirectSync && resultingActiveSeatType !== previousSeatType) {
-    const directSyncResult = await syncMetronomeSeatCountForWorkspace({
+    // Immediate, single-seat write only (never a full reconcile): assign this
+    // user's seat + reconcile their credit state so they're unblocked now. The
+    // debounced workflow launched above owns the workspace-wide reconcile —
+    // running a second full reconcile here in parallel is what stacked
+    // open-ended unassigned-seat edits in the seat-sync incident.
+    const directSyncResult = await assignSeatForUser({
       workspace,
-      reconcileUserId: user.sId,
+      userId: user.sId,
+      seatType: resultingActiveSeatType,
+      previousSeatType,
     });
     if (directSyncResult.isErr()) {
       logger.warn(
@@ -978,7 +985,7 @@ export async function updateMembershipSeatAndTrack({
           userId: user.sId,
           err: directSyncResult.error.message,
         },
-        "[Metronome] Direct seat sync failed; debounced workflow will retry"
+        "[Metronome] Immediate seat assignment failed; debounced workflow will retry"
       );
     }
   }

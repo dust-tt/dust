@@ -6,9 +6,11 @@ import { syncDefaultPoolCapAlertsForWorkspace } from "@app/lib/api/workspace/def
 import { Authenticator } from "@app/lib/auth";
 import { getMetronomeContractById } from "@app/lib/metronome/client";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
+import { getProductSeatTypes } from "@app/lib/metronome/seat_types";
 import type { SyncSeatCountSummary } from "@app/lib/metronome/seats";
 import {
   hasContractSeatSubscription,
+  moveSeatWithCreditCarry,
   remapMembershipSeatTypesForContract,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
@@ -17,6 +19,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { heartbeat } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
+import type { MembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -236,6 +239,109 @@ export async function syncMetronomeSeatCountForWorkspace({
     activeContractSummary,
     workspaceUserCreditStatesReconciled: true,
   });
+}
+
+/**
+ * Immediately assign (or move) a SINGLE user's seat in Metronome, plus reconcile
+ * that one user's credit state — nothing else.
+ *
+ * This is the only seat write allowed outside the debounced Temporal workflow.
+ * It touches just this user's `seat_id` (and their per-user credit); it never
+ * writes the unassigned pool, other users, alerts, or credit transfers. That
+ * narrow scope is what makes it safe to run concurrently with the workflow's
+ * full reconcile — unlike a full `syncMetronomeSeatCountForWorkspace`, which
+ * must be serialized: two full reconciles in parallel stack open-ended
+ * unassigned-seat deltas (the seat-sync rate-limit incident). Callers that need
+ * to unblock a just-upgraded user should call this AND launch the debounced
+ * workflow as the workspace-wide backstop (unassigned floor, other members,
+ * alerts, transfers).
+ *
+ * Best-effort and idempotent: `add_seat_ids` of an already-assigned seat is a
+ * no-op, and the credit state is reconciled from live balances. A missing
+ * contract or a target seat type with no billable subscription is skipped (the
+ * workflow reconciles it). Downgrades to a non-billable seat type only reconcile
+ * credit state here; the seat removal is left to the workflow (access is
+ * DB-gated, so billing removal is not latency-sensitive).
+ */
+export async function assignSeatForUser({
+  workspace,
+  userId,
+  seatType,
+  previousSeatType,
+}: {
+  workspace: LightWorkspaceType;
+  userId: string;
+  seatType: MembershipSeatType;
+  previousSeatType?: MembershipSeatType;
+}): Promise<Result<undefined, Error>> {
+  const workspaceId = workspace.sId;
+  if (!workspace.metronomeCustomerId) {
+    return new Ok(undefined);
+  }
+
+  const activeSubscription =
+    await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
+  if (!activeSubscription?.metronomeContractId) {
+    return new Ok(undefined);
+  }
+  const contractId = activeSubscription.metronomeContractId;
+
+  const contract = await getActiveContract(workspaceId);
+  if (!contract) {
+    return new Ok(undefined);
+  }
+  const productSeatTypes = await getProductSeatTypes();
+
+  // Move (or add) just this user's seat, carrying seat-credit consumption across
+  // a recurring-credit change (pro↔max: empty the old credit, carry consumed AWU
+  // onto the new one). Scoped to this one user — never the unassigned pool or
+  // other members — so it's safe to run alongside the debounced workflow, which
+  // still owns the workspace-wide reconcile. The carry has to happen here (not
+  // only in the later workflow sync) because we move the seat immediately, which
+  // would otherwise hide the seat-type change from the workflow.
+  const moveResult = await moveSeatWithCreditCarry({
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    contractId,
+    contract,
+    productSeatTypes,
+    workspaceId,
+    userId,
+    fromSeatType: previousSeatType,
+    toSeatType: seatType,
+  });
+  if (moveResult.isErr()) {
+    logger.warn(
+      { workspaceId, userId, seatType, err: moveResult.error.message },
+      "[SeatSync] Immediate single-seat assignment failed; debounced workflow will reconcile"
+    );
+    return new Err(moveResult.error);
+  }
+
+  // Reconcile just this user's credit state from live balances so they land in
+  // the correct seat↔pool state immediately. Never fails the assignment.
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const workspaceResource = await WorkspaceResource.fetchById(workspaceId);
+  if (workspaceResource) {
+    const userReconcile = await reconcileUser({
+      auth,
+      workspace: workspaceResource,
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      userId,
+      execute: true,
+    });
+    if (userReconcile.isErr()) {
+      logger.warn(
+        { workspaceId, userId, err: userReconcile.error.message },
+        "[SeatSync] Single-user credit-state reconcile failed; continuing"
+      );
+    }
+  }
+
+  logger.info(
+    { workspaceId, userId, seatType },
+    "[SeatSync] assignSeatForUser done"
+  );
+  return new Ok(undefined);
 }
 
 /**
