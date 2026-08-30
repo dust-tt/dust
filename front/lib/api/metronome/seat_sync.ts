@@ -4,18 +4,13 @@ import {
 } from "@app/lib/api/metronome/reconcile_credit_state";
 import { syncDefaultPoolCapAlertsForWorkspace } from "@app/lib/api/workspace/default_user_spend_limit";
 import { Authenticator } from "@app/lib/auth";
-import {
-  getMetronomeContractById,
-  updateSubscriptionSeats,
-} from "@app/lib/metronome/client";
+import { getMetronomeContractById } from "@app/lib/metronome/client";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
-import {
-  getProductSeatTypes,
-  getSeatSubscriptionsFromContract,
-} from "@app/lib/metronome/seat_types";
+import { getProductSeatTypes } from "@app/lib/metronome/seat_types";
 import type { SyncSeatCountSummary } from "@app/lib/metronome/seats";
 import {
   hasContractSeatSubscription,
+  moveSeatWithCreditCarry,
   remapMembershipSeatTypesForContract,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
@@ -296,42 +291,30 @@ export async function assignSeatForUser({
     return new Ok(undefined);
   }
   const productSeatTypes = await getProductSeatTypes();
-  const seatSubscriptions = getSeatSubscriptionsFromContract(
-    contract,
-    productSeatTypes
-  );
-  const targetSubId = seatSubscriptions.get(seatType)?.id;
-  const previousSubId = previousSeatType
-    ? seatSubscriptions.get(previousSeatType)?.id
-    : undefined;
 
-  // Only touch Metronome seats when the target seat type maps to a billable
-  // subscription. Anything else ("none", or a type not entitled on this
-  // contract) is left to the debounced workflow.
-  if (targetSubId) {
-    const isMove = !!previousSubId && previousSubId !== targetSubId;
-    const seatUpdate = await updateSubscriptionSeats({
-      metronomeCustomerId: workspace.metronomeCustomerId,
-      contractId,
-      // On a seat-type move, remove from the old sub and add to the new one in
-      // a single edit; on a plain add, just add to the target sub.
-      fromSubscriptionId: isMove ? previousSubId : targetSubId,
-      toSubscriptionId: isMove ? targetSubId : undefined,
-      addSeatIds: [userId],
-      removeSeatIds: isMove ? [userId] : [],
-    });
-    if (seatUpdate.isErr()) {
-      logger.warn(
-        { workspaceId, userId, seatType, err: seatUpdate.error.message },
-        "[SeatSync] Immediate single-seat assignment failed; debounced workflow will reconcile"
-      );
-      return new Err(seatUpdate.error);
-    }
-  } else {
-    logger.info(
-      { workspaceId, userId, seatType },
-      "[SeatSync] No billable subscription for target seat type — leaving to debounced workflow"
+  // Move (or add) just this user's seat, carrying seat-credit consumption across
+  // a recurring-credit change (pro↔max: empty the old credit, carry consumed AWU
+  // onto the new one). Scoped to this one user — never the unassigned pool or
+  // other members — so it's safe to run alongside the debounced workflow, which
+  // still owns the workspace-wide reconcile. The carry has to happen here (not
+  // only in the later workflow sync) because we move the seat immediately, which
+  // would otherwise hide the seat-type change from the workflow.
+  const moveResult = await moveSeatWithCreditCarry({
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    contractId,
+    contract,
+    productSeatTypes,
+    workspaceId,
+    userId,
+    fromSeatType: previousSeatType,
+    toSeatType: seatType,
+  });
+  if (moveResult.isErr()) {
+    logger.warn(
+      { workspaceId, userId, seatType, err: moveResult.error.message },
+      "[SeatSync] Immediate single-seat assignment failed; debounced workflow will reconcile"
     );
+    return new Err(moveResult.error);
   }
 
   // Reconcile just this user's credit state from live balances so they land in

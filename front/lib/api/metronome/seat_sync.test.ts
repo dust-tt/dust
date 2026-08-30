@@ -1,35 +1,33 @@
 import type { CachedContract } from "@app/lib/metronome/plan_type";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { assignSeatForUser } from "./seat_sync";
 
 const {
-  mockUpdateSubscriptionSeats,
+  mockMoveSeatWithCreditCarry,
   mockGetActiveContract,
   mockGetProductSeatTypes,
-  mockGetSeatSubscriptionsFromContract,
   mockReconcileUser,
   mockFetchActiveSubscription,
   mockFetchWorkspaceById,
   mockInternalAdmin,
 } = vi.hoisted(() => ({
-  mockUpdateSubscriptionSeats: vi.fn(),
+  mockMoveSeatWithCreditCarry: vi.fn(),
   mockGetActiveContract: vi.fn(),
   mockGetProductSeatTypes: vi.fn(),
-  mockGetSeatSubscriptionsFromContract: vi.fn(),
   mockReconcileUser: vi.fn(),
   mockFetchActiveSubscription: vi.fn(),
   mockFetchWorkspaceById: vi.fn(),
   mockInternalAdmin: vi.fn(),
 }));
 
-vi.mock("@app/lib/metronome/client", async () => {
+vi.mock("@app/lib/metronome/seats", async () => {
   const actual = await vi.importActual<
-    typeof import("@app/lib/metronome/client")
-  >("@app/lib/metronome/client");
-  return { ...actual, updateSubscriptionSeats: mockUpdateSubscriptionSeats };
+    typeof import("@app/lib/metronome/seats")
+  >("@app/lib/metronome/seats");
+  return { ...actual, moveSeatWithCreditCarry: mockMoveSeatWithCreditCarry };
 });
 
 vi.mock("@app/lib/metronome/plan_type", async () => {
@@ -43,11 +41,7 @@ vi.mock("@app/lib/metronome/seat_types", async () => {
   const actual = await vi.importActual<
     typeof import("@app/lib/metronome/seat_types")
   >("@app/lib/metronome/seat_types");
-  return {
-    ...actual,
-    getProductSeatTypes: mockGetProductSeatTypes,
-    getSeatSubscriptionsFromContract: mockGetSeatSubscriptionsFromContract,
-  };
+  return { ...actual, getProductSeatTypes: mockGetProductSeatTypes };
 });
 
 vi.mock("@app/lib/api/metronome/reconcile_credit_state", async () => {
@@ -85,19 +79,13 @@ describe("assignSeatForUser", () => {
     });
     mockGetActiveContract.mockResolvedValue({} as CachedContract);
     mockGetProductSeatTypes.mockResolvedValue(new Map());
-    mockGetSeatSubscriptionsFromContract.mockReturnValue(
-      new Map([
-        ["pro", { id: "sub_pro" }],
-        ["max", { id: "sub_max" }],
-      ])
-    );
-    mockUpdateSubscriptionSeats.mockResolvedValue(new Ok(undefined));
+    mockMoveSeatWithCreditCarry.mockResolvedValue(new Ok(undefined));
     mockReconcileUser.mockResolvedValue(new Ok({}));
     mockFetchWorkspaceById.mockResolvedValue({ sId: "ws_1" });
     mockInternalAdmin.mockResolvedValue({});
   });
 
-  it("assigns only the user's single seat — never touches the unassigned pool", async () => {
+  it("delegates the single-seat move (with credit carry) then reconciles the user", async () => {
     const result = await assignSeatForUser({
       workspace: WORKSPACE,
       userId: "u1",
@@ -105,24 +93,41 @@ describe("assignSeatForUser", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(mockUpdateSubscriptionSeats).toHaveBeenCalledTimes(1);
-    // A single add of this user's seat to the target sub — and crucially, no
-    // add/remove_unassigned in the payload (that math belongs to the workflow).
-    expect(mockUpdateSubscriptionSeats).toHaveBeenCalledWith({
-      metronomeCustomerId: "cus_1",
-      contractId: "con_1",
-      fromSubscriptionId: "sub_pro",
-      toSubscriptionId: undefined,
-      addSeatIds: ["u1"],
-      removeSeatIds: [],
-    });
-    const call = mockUpdateSubscriptionSeats.mock.calls[0][0];
-    expect(call.addUnassignedSeats).toBeUndefined();
-    expect(call.removeUnassignedSeats).toBeUndefined();
+    expect(mockMoveSeatWithCreditCarry).toHaveBeenCalledTimes(1);
+    expect(mockMoveSeatWithCreditCarry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metronomeCustomerId: "cus_1",
+        contractId: "con_1",
+        userId: "u1",
+        fromSeatType: undefined,
+        toSeatType: "pro",
+      })
+    );
     expect(mockReconcileUser).toHaveBeenCalledTimes(1);
   });
 
-  it("moves the seat between subscriptions on a seat-type change", async () => {
+  it("passes the from→to seat types for a pro→max upgrade (drives the ledger carry)", async () => {
+    await assignSeatForUser({
+      workspace: WORKSPACE,
+      userId: "u1",
+      seatType: "max",
+      previousSeatType: "pro",
+    });
+
+    expect(mockMoveSeatWithCreditCarry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u1",
+        fromSeatType: "pro",
+        toSeatType: "max",
+      })
+    );
+  });
+
+  it("returns Err (and still reconciles nothing extra) when the seat move fails", async () => {
+    mockMoveSeatWithCreditCarry.mockResolvedValue(
+      new Err(new Error("metronome down"))
+    );
+
     const result = await assignSeatForUser({
       workspace: WORKSPACE,
       userId: "u1",
@@ -130,30 +135,8 @@ describe("assignSeatForUser", () => {
       previousSeatType: "pro",
     });
 
-    expect(result.isOk()).toBe(true);
-    expect(mockUpdateSubscriptionSeats).toHaveBeenCalledWith({
-      metronomeCustomerId: "cus_1",
-      contractId: "con_1",
-      fromSubscriptionId: "sub_pro",
-      toSubscriptionId: "sub_max",
-      addSeatIds: ["u1"],
-      removeSeatIds: ["u1"],
-    });
-  });
-
-  it("skips the seat edit when the target seat type has no billable subscription", async () => {
-    const result = await assignSeatForUser({
-      workspace: WORKSPACE,
-      userId: "u1",
-      seatType: "none",
-      previousSeatType: "pro",
-    });
-
-    expect(result.isOk()).toBe(true);
-    // No seat write for a non-billable target (the workflow handles removal),
-    // but the user's credit state is still reconciled.
-    expect(mockUpdateSubscriptionSeats).not.toHaveBeenCalled();
-    expect(mockReconcileUser).toHaveBeenCalledTimes(1);
+    expect(result.isErr()).toBe(true);
+    expect(mockReconcileUser).not.toHaveBeenCalled();
   });
 
   it("no-ops when the workspace is not on Metronome", async () => {
@@ -165,6 +148,6 @@ describe("assignSeatForUser", () => {
 
     expect(result.isOk()).toBe(true);
     expect(mockFetchActiveSubscription).not.toHaveBeenCalled();
-    expect(mockUpdateSubscriptionSeats).not.toHaveBeenCalled();
+    expect(mockMoveSeatWithCreditCarry).not.toHaveBeenCalled();
   });
 });
