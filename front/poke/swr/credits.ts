@@ -173,6 +173,10 @@ export function usePokeAwuPoolSummary({
         currentCycleConsumedCredits: data.currentCycleConsumedCredits ?? null,
         currentCycleStartMs: data.currentCycleStartMs ?? null,
         currentCycleEndMs: data.currentCycleEndMs ?? null,
+        excessConsumedCredits: data.excessConsumedCredits ?? null,
+        excessCycleBreakdown: data.excessCycleBreakdown ?? [],
+        programmaticConsumedCredits: data.programmaticConsumedCredits ?? null,
+        otherConsumedCredits: data.otherConsumedCredits ?? null,
       }
     : null;
 
@@ -224,9 +228,10 @@ export function usePokeMembersUsage({
   orderColumn?:
     | "name"
     | "email"
-    | "consumedAwuCredits"
+    | "consumedFromPoolAwuCredits"
     | "seatType"
-    | "creditState";
+    | "creditState"
+    | "seatUsage";
   orderDirection?: "asc" | "desc";
   seatType?: MembershipSeatType;
   creditState?: UserCreditState;
