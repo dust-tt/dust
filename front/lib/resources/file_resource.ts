@@ -124,6 +124,8 @@ import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_mod
 
 export type FileVersion = "processed" | "original" | "public";
 
+export type FrameV2SourceDeletion = () => Promise<Result<void, Error>>;
+
 const FRAME_CONTENT_TYPES = new Set([
   frameContentType,
   frameSlideshowContentType,
@@ -718,16 +720,37 @@ export class FileResource extends BaseResource<FileModel> {
     }
   }
 
-  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
+  async delete(
+    auth: Authenticator,
+    {
+      deleteFrameSource,
+    }: {
+      deleteFrameSource?: FrameV2SourceDeletion;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<Result<undefined, Error>> {
     if (!this.isFrameV2) {
       return this.deleteAfterSandboxCleanup(auth);
     }
 
-    return withFramePublishLock(this.sId, () =>
-      FrameSandboxAdapter.deleteSandbox(auth, this, {
+    if (!deleteFrameSource) {
+      return new Err(
+        new Error(
+          "Frames v2 must be deleted through the package-aware Frame deletion flow."
+        )
+      );
+    }
+
+    return withFramePublishLock(this.sId, async () => {
+      const sourceResult = await deleteFrameSource();
+      if (sourceResult.isErr()) {
+        return sourceResult;
+      }
+
+      return FrameSandboxAdapter.deleteSandbox(auth, this, {
         afterSandboxCleanup: () => this.deleteAfterSandboxCleanup(auth),
-      })
-    );
+      });
+    });
   }
 
   get sId(): string {

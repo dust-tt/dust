@@ -31,6 +31,7 @@ import {
   isUnverifiableFrameFileRefsShareError,
   sandboxFunctionContentType,
 } from "@app/types/files";
+import { Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -1780,7 +1781,9 @@ describe("FileResource", () => {
       })
     ).toHaveLength(1);
 
-    const result = await frame.delete(auth);
+    const result = await frame.delete(auth, {
+      deleteFrameSource: async () => new Ok(undefined),
+    });
 
     expect(result.isOk(), result.isErr() ? result.error.message : "").toBe(
       true

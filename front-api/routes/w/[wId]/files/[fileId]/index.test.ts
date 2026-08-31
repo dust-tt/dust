@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -340,6 +341,35 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
     });
 
     expect(response.status).toBe(204);
+  });
+
+  it("should reject generic deletion of a Frames v2 file", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "manager",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date()],
+    });
+    const frame = await FileFactory.create(auth, user, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 128,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: {
+        activePublicationId: "active-publication",
+        conversationId: conversation.sId,
+      },
+    });
+
+    const response = await honoApp.request(fileUrl(workspace, frame.sId), {
+      method: "DELETE",
+    });
+
+    expect(response.status).toBe(400);
+    expect(await FileResource.fetchById(auth, frame.sId)).not.toBeNull();
   });
 
   it("should allow file author with admin role to delete upload files", async () => {

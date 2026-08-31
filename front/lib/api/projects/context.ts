@@ -20,6 +20,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { FrameV2SourceDeletion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -516,9 +517,11 @@ export async function addContentNodeToProject(
 export async function removeFileFromProject(
   auth: Authenticator,
   {
+    deleteFrameSource,
     space,
     fileId,
   }: {
+    deleteFrameSource?: FrameV2SourceDeletion;
     space: SpaceResource;
     fileId: string; // file sId
   }
@@ -577,7 +580,7 @@ export async function removeFileFromProject(
     }
   }
 
-  const deleteRes = await file.delete(auth);
+  const deleteRes = await file.delete(auth, { deleteFrameSource });
   if (deleteRes.isErr()) {
     return new Err(deleteRes.error);
   }

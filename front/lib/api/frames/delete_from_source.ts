@@ -6,10 +6,12 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { DustFileSystem } from "@app/lib/api/file_system";
-import { withFrameSourceAndPublishLock } from "@app/lib/api/frames/publication_storage";
+import { withFrameSourceLock } from "@app/lib/api/frames/operation_lock";
 import { removeFileFromProject } from "@app/lib/api/projects/context";
-import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Authenticator } from "@app/lib/auth";
+import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
+import type { FrameV2SourceDeletion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -17,6 +19,7 @@ import logger from "@app/logger/logger";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { DustFileSystemError } from "@app/types/file_system";
+import { isDustFileSystemError } from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -52,13 +55,15 @@ function deletionError(
 async function deleteFrameResource(
   auth: Authenticator,
   frame: FileResource,
-  manifestPath: string
-): Promise<Result<void, FrameDeletionError>> {
+  manifestPath: string,
+  deleteFrameSource: FrameV2SourceDeletion
+): Promise<Result<void, DeleteFrameV2FromSourceError>> {
   if (frame.useCase !== "project_context") {
-    const result = await frame.delete(auth);
-    return result.isErr()
-      ? deletionError("internal", result.error.message)
-      : new Ok(undefined);
+    const result = await frame.delete(auth, { deleteFrameSource });
+    if (result.isErr()) {
+      return frameResourceDeletionError(result.error);
+    }
+    return new Ok(undefined);
   }
 
   const podId = frame.useCaseMetadata?.spaceId;
@@ -67,15 +72,18 @@ async function deleteFrameResource(
     return deletionError("invalid_source", "Frame source Pod not found.");
   }
 
+  // Load Pod metadata before deleting the Frame identity. A failed fetch must leave the operation
+  // retryable; the update itself remains best-effort after deletion, as in the legacy flow.
+  const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
   const result = await removeFileFromProject(auth, {
+    deleteFrameSource,
     space: pod,
     fileId: frame.sId,
   });
   if (result.isErr()) {
-    return deletionError("internal", result.error.message);
+    return frameResourceDeletionError(result.error);
   }
 
-  const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
   if (metadata) {
     try {
       await metadata.removeFramePath(manifestPath);
@@ -94,6 +102,23 @@ async function deleteFrameResource(
   }
 
   return new Ok(undefined);
+}
+
+function frameResourceDeletionError(
+  error: Error
+): Err<DeleteFrameV2FromSourceError> {
+  if (isDustFileSystemError(error)) {
+    return new Err(error);
+  }
+  if (isLockAcquisitionTimeoutError(error)) {
+    return new Err(
+      new SandboxFunctionError(
+        "publish_conflict",
+        "Another publication or source operation is in progress for this Frame; retry shortly."
+      )
+    );
+  }
+  return deletionError("internal", error.message);
 }
 
 /** Delete a registered Frame package and every resource owned by its stable identity. */
@@ -157,9 +182,9 @@ export async function deleteFrameV2FromSource(
     );
   }
 
-  return withFrameSourceAndPublishLock<
+  return withFrameSourceLock<
     { frameId: string; sourceDirectoryPath: string },
-    DustFileSystemError | FrameDeletionError
+    DeleteFrameV2FromSourceError
   >(frame.sId, async () => {
     const freshFrame = await FileResource.fetchById(auth, frame.sId);
     if (
@@ -172,21 +197,16 @@ export async function deleteFrameV2FromSource(
       );
     }
 
-    // Delete source first. If resource cleanup fails, the identity remains and this operation can
-    // be retried; deleting the identity first would leave an unregistered folder with no retry key.
-    const sourceResult = await dustFs.delete(sourceDirectory, {
-      ignoreNotFound: true,
-    });
-    if (sourceResult.isErr()) {
-      return new Err(sourceResult.error);
-    }
-
     const activePublicationId =
       freshFrame.useCaseMetadata?.activePublicationId ?? "";
     const resourceResult = await deleteFrameResource(
       auth,
       freshFrame,
-      manifestPath
+      manifestPath,
+      () =>
+        dustFs.delete(sourceDirectory, {
+          ignoreNotFound: true,
+        })
     );
     if (resourceResult.isErr()) {
       return resourceResult;
