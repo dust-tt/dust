@@ -217,7 +217,7 @@ export function WelcomeTourGuide({
           >
             <div className="flex gap-1">
               <div className="flex gap-1">
-                <div className="heading-2xl text-highlight">tra</div>
+                <div className="heading-2xl text-highlight">@tra</div>
                 <div className="h-8 w-1 animate-cursor-blink bg-foreground" />
               </div>
               <div className="flex h-60 flex-col gap-3 rounded-xl border p-3 pr-5 shadow-xl">
@@ -238,7 +238,8 @@ export function WelcomeTourGuide({
             </div>
           </div>
           <div className="heading-lg px-3 pt-4">
-            Choose an agent to start a conversation.
+            Use <span className="font-semibold text-highlight">@mentions</span>{" "}
+            to call agents and&nbsp;start a conversation.
           </div>
         </>
       ),
