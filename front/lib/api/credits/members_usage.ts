@@ -888,22 +888,35 @@ export async function sumActiveMembersPoolConsumedCredits({
     return user ? [{ sId: user.sId, seatType: m.seatType ?? null }] : [];
   });
 
-  const [usageByMetronomeUserId, seatDataByUserId, { freeStartingByUserId }] =
-    await Promise.all([
-      fetchPerUserUsageCreditsForMembersTable({
-        workspaceId: workspace.sId,
-        metronomeCustomerId,
-        metronomeContractId,
-        userIds: members.map((m) =>
-          m.seatType === "free" ? toFreeMetronomeUserId(m.sId) : m.sId
-        ),
-      }),
-      fetchSeatDataForMembersTable({
-        metronomeCustomerId,
-        metronomeContractId,
-      }),
-      fetchFreeSeatCreditsForMembersTable({ metronomeCustomerId }),
-    ]);
+  // Same per-seat-type allowance the members table uses (source of truth for
+  // "seat usage"), rather than the live per-member Metronome seat allocation:
+  // the two can diverge when a contract sells both monthly and yearly variants
+  // of a tier, which previously made this sum drift from what the table shows.
+  let seatAllowanceBySeatType: Partial<
+    Record<NormalizedPoolLimitSeatType, number>
+  > = {};
+  try {
+    seatAllowanceBySeatType = await getSeatAllowancesByNormalizedSeatType(
+      workspace.sId
+    );
+  } catch (err) {
+    logger.warn(
+      { err: normalizeError(err), workspaceId: workspace.sId },
+      "[MembersUsage] Failed to resolve seat allowances, degrading to zero allocation"
+    );
+  }
+
+  const [usageByMetronomeUserId, { freeStartingByUserId }] = await Promise.all([
+    fetchPerUserUsageCreditsForMembersTable({
+      workspaceId: workspace.sId,
+      metronomeCustomerId,
+      metronomeContractId,
+      userIds: members.map((m) =>
+        m.seatType === "free" ? toFreeMetronomeUserId(m.sId) : m.sId
+      ),
+    }),
+    fetchFreeSeatCreditsForMembersTable({ metronomeCustomerId }),
+  ]);
 
   let sumConsumedFromPoolAwuCredits = 0;
   for (const member of members) {
@@ -913,10 +926,12 @@ export async function sumActiveMembersPoolConsumedCredits({
         : member.sId;
     const totalConsumedCredits =
       usageByMetronomeUserId.get(metronomeUserId) ?? 0;
+    const normalizedSeatType = normalizeToPoolLimitSeatType(member.seatType);
     const effectiveAllocationAwu =
       freeStartingByUserId.get(member.sId) ??
-      seatDataByUserId.get(member.sId)?.awuAllocation ??
-      0;
+      (normalizedSeatType
+        ? (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
+        : 0);
     const consumedFromAllowanceAwuCredits = Math.min(
       totalConsumedCredits,
       effectiveAllocationAwu
