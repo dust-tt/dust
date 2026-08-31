@@ -350,6 +350,7 @@ const lastEditedColumn = {
   meta: { className: "hidden @sm:w-32 @sm:table-cell" },
 };
 
+// Control the menu locally so "Copy link" can keep it open without changing Sparkle.
 function SkillActionsMenuButton({ menuItems }: { menuItems: MenuItem[] }) {
   const [isOpen, setIsOpen] = useState(false);
 
