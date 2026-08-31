@@ -16,7 +16,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
+import move from "./move";
 import register from "./register";
 
 const FramePublishRequestSchema = z.object({
@@ -69,6 +69,7 @@ function frameErrorStatus(error: PublishFrameFromSourceError): 400 | 403 | 500 {
 const app = sandboxApp();
 
 app.use("*", sandboxAuth({ allowedTokenKinds: ["action"] }));
+app.route("/move", move);
 app.route("/register", register);
 
 /**

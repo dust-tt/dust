@@ -58,6 +58,22 @@ function requestFrameRegister(
   });
 }
 
+function requestFrameMove(
+  workspaceId: string,
+  token: string,
+  sourceDirectoryPath: string,
+  destinationDirectoryPath: string
+) {
+  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/move`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ sourceDirectoryPath, destinationDirectoryPath }),
+  });
+}
+
 async function setup({ registered = true }: { registered?: boolean } = {}) {
   const context = await createSandboxTokenTestContext();
   await FeatureFlagFactory.basic(context.auth, "frames_v2");
@@ -82,18 +98,24 @@ async function setup({ registered = true }: { registered?: boolean } = {}) {
     [`${mountDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
     [`${mountDirectoryPath}/index.tsx`, uiSource],
   ]);
+  for (const [filePath, content] of sourceByPath) {
+    fileStorageMock.setObject(filePath, content);
+  }
   fileStorageMock.setFileContent((path) => sourceByPath.get(path) ?? null);
   fileStorageMock.setFilesByPrefix((prefix) =>
     prefix === `${mountDirectoryPath}/`
-      ? [...sourceByPath.entries()].map(([name, content]) => ({
-          name,
-          metadata: {
-            contentType: name.endsWith(".tsx")
-              ? "text/typescript"
-              : "application/json",
-            size: String(Buffer.byteLength(content)),
-          },
-        }))
+      ? [...sourceByPath.entries()]
+          .filter(([name]) => fileStorageMock.getObject(name) !== undefined)
+          .map(([name, content], index) => ({
+            name,
+            metadata: {
+              contentType: name.endsWith(".tsx")
+                ? "text/typescript"
+                : "application/json",
+              generation: String(index + 1),
+              size: String(Buffer.byteLength(content)),
+            },
+          }))
       : null
   );
 
@@ -183,6 +205,52 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(
       published.publicationId
     );
+  });
+
+  it("moves a registered Frame folder while preserving its identity", async () => {
+    const context = await setup();
+    assert(context.frame);
+    fileStorageMock.setFileExists(() => false);
+    const sourceDirectoryPath = context.manifestPath.replace(
+      `/${FRAME_MANIFEST_FILE}`,
+      ""
+    );
+    const destinationDirectoryPath = sourceDirectoryPath.replace(
+      "/Status",
+      "/Renamed"
+    );
+
+    const response = await requestFrameMove(
+      context.workspace.sId,
+      context.token,
+      sourceDirectoryPath,
+      destinationDirectoryPath
+    );
+
+    const moved = await response.json();
+    expect(response.status, JSON.stringify(moved)).toBe(200);
+    expect(moved).toEqual({
+      destinationDirectoryPath,
+      frameId: context.frame.sId,
+      sourceDeletionFailed: false,
+    });
+    const frame = await FileResource.fetchById(context.auth, context.frame.sId);
+    expect(frame?.toScopedPath(context.auth)).toBe(
+      `${destinationDirectoryPath}/${FRAME_MANIFEST_FILE}`
+    );
+  });
+
+  it("refuses Frame moves without the feature flag", async () => {
+    const context = await createSandboxTokenTestContext();
+
+    const response = await requestFrameMove(
+      context.workspace.sId,
+      context.token,
+      `conversation-${context.conversation.sId}/Status`,
+      `conversation-${context.conversation.sId}/Renamed`
+    );
+
+    expect(response.status).toBe(403);
   });
 
   it("publishes a legacy Frame through its existing publication flow", async () => {

@@ -1,0 +1,2 @@
+export const MAX_FRAME_SOURCE_FILE_COUNT = 1024;
+export const MAX_FRAME_SOURCE_BYTES = 100 * 1024 * 1024;

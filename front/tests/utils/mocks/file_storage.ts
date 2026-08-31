@@ -23,6 +23,14 @@ interface MockFileMetadata {
   size: string;
   contentEncoding?: string;
   contentDisposition?: string;
+  crc32c?: string;
+  generation?: string;
+  md5Hash?: string;
+}
+
+interface DeleteCall {
+  filePath: string;
+  options: { ifGenerationMatch?: string; ignoreNotFound?: boolean } | undefined;
 }
 
 class MockGcsError extends Error {
@@ -60,6 +68,10 @@ class FileStorageMock {
   private _signedUploadUrlCalls: SignedUrlCall[] = [];
   private _metadataCalls: string[] = [];
   private _objectStore = new Map<string, string>();
+  private _objectGenerations = new Map<string, string>();
+  private _objectVersions = new Map<string, Map<string, string>>();
+  private _nextGeneration = 1;
+  private _deleteCalls: DeleteCall[] = [];
   private _fetchNotFoundPredicate: (filePath: string) => boolean = () => false;
   private _existsPredicate: (filePath: string) => boolean = () => true;
   private _saveShouldFail: (filePath: string) => boolean = () => false;
@@ -70,6 +82,8 @@ class FileStorageMock {
     () => null;
   private _copyFileShouldFail: (src: string, dest: string) => boolean = () =>
     false;
+  private _afterCopyFile: (src: string, dest: string) => void = () => {};
+  private _deleteShouldFail: (filePath: string) => boolean = () => false;
   private _filesByPrefix: (
     prefix: string
   ) => { name: string; metadata: Record<string, unknown> }[] | null = () =>
@@ -103,12 +117,20 @@ class FileStorageMock {
     return this._metadataCalls;
   }
 
+  get deleteCalls(): readonly DeleteCall[] {
+    return this._deleteCalls;
+  }
+
   /**
    * Controls what `file(path).exists()` resolves to, keyed by the GCS path.
    * Defaults to always-exists. Reset between tests via `reset()`.
    */
   setFileExists(predicate: (filePath: string) => boolean): void {
     this._existsPredicate = predicate;
+  }
+
+  setAfterCopyFile(callback: (src: string, dest: string) => void): void {
+    this._afterCopyFile = callback;
   }
 
   /**
@@ -154,6 +176,10 @@ class FileStorageMock {
    */
   setCopyFileFails(predicate: (src: string, dest: string) => boolean): void {
     this._copyFileShouldFail = predicate;
+  }
+
+  setDeleteFails(predicate: (filePath: string) => boolean): void {
+    this._deleteShouldFail = predicate;
   }
 
   /**
@@ -215,7 +241,12 @@ class FileStorageMock {
 
   // Seed the in-memory object store directly (no write path).
   setObject(filePath: string, content: string): void {
+    const generation = String(this._nextGeneration++);
     this._objectStore.set(filePath, content);
+    this._objectGenerations.set(filePath, generation);
+    const versions = this._objectVersions.get(filePath) ?? new Map();
+    versions.set(generation, content);
+    this._objectVersions.set(filePath, versions);
   }
 
   reset(): void {
@@ -225,7 +256,11 @@ class FileStorageMock {
     this._signedUrlCalls.length = 0;
     this._signedUploadUrlCalls.length = 0;
     this._metadataCalls.length = 0;
+    this._deleteCalls.length = 0;
     this._objectStore.clear();
+    this._objectGenerations.clear();
+    this._objectVersions.clear();
+    this._nextGeneration = 1;
     this._fetchNotFoundPredicate = () => false;
     this._existsPredicate = () => true;
     this._saveShouldFail = () => false;
@@ -233,6 +268,8 @@ class FileStorageMock {
     this._contentForPath = () => null;
     this._sortedFileVersions = () => null;
     this._copyFileShouldFail = () => false;
+    this._afterCopyFile = () => {};
+    this._deleteShouldFail = () => false;
     this._filesByPrefix = () => null;
     this._subdirectoryNames = () => null;
     this._deletedPrefixes.length = 0;
@@ -291,8 +328,24 @@ class FileStorageMock {
           }
           return stream;
         }),
-      delete: vi.fn().mockImplementation(() => {
-        this._objectStore.delete(filePath ?? "unknown");
+      delete: vi.fn().mockImplementation((options?: DeleteCall["options"]) => {
+        const path = filePath ?? "unknown";
+        this._deleteCalls.push({ filePath: path, options });
+        if (this._deleteShouldFail(path)) {
+          return Promise.reject(
+            new Error(`Simulated GCS delete failure: ${path}`)
+          );
+        }
+        if (
+          options?.ifGenerationMatch &&
+          this._objectGenerations.get(path) !== options.ifGenerationMatch
+        ) {
+          return Promise.reject(
+            new MockGcsError(412, `Object generation changed: ${path}`)
+          );
+        }
+        this._objectStore.delete(path);
+        this._objectGenerations.delete(path);
         return Promise.resolve(undefined);
       }),
       download: vi.fn().mockImplementation(() => {
@@ -308,6 +361,7 @@ class FileStorageMock {
         return Promise.resolve([
           this._metadataForPath(path) ?? {
             contentType: "text/plain",
+            generation: this._objectGenerations.get(path) ?? "1",
             size: "0",
           },
         ]);
@@ -433,14 +487,55 @@ class FileStorageMock {
         }
         return Promise.resolve(new Uint8Array());
       }),
-      copyFile: vi.fn((src: string, dest: string) => {
-        if (this._copyFileShouldFail(src, dest)) {
-          return Promise.reject(
-            new Error(`Simulated GCS copy failure: ${src} -> ${dest}`)
+      copyFile: vi.fn(
+        (
+          src: string,
+          dest: string,
+          _destinationStorage?: unknown,
+          options?: {
+            destinationGenerationMatch?: number;
+            sourceGeneration?: string;
+          }
+        ) => {
+          if (
+            options?.destinationGenerationMatch === 0 &&
+            this._objectStore.has(dest)
+          ) {
+            return Promise.reject(
+              new MockGcsError(412, `Object already exists: ${dest}`)
+            );
+          }
+          if (this._copyFileShouldFail(src, dest)) {
+            return Promise.reject(
+              new Error(`Simulated GCS copy failure: ${src} -> ${dest}`)
+            );
+          }
+          const versionedContent = options?.sourceGeneration
+            ? this._objectVersions.get(src)?.get(options.sourceGeneration)
+            : undefined;
+          if (options?.sourceGeneration && versionedContent === undefined) {
+            return Promise.reject(
+              new MockGcsError(
+                404,
+                `Source generation does not exist: ${src}@${options.sourceGeneration}`
+              )
+            );
+          }
+          this.setObject(
+            dest,
+            versionedContent ??
+              this._objectStore.get(src) ??
+              this._contentForPath(src) ??
+              ""
           );
+          const copiedGeneration = this._objectGenerations.get(dest);
+          this._afterCopyFile(src, dest);
+          return Promise.resolve({
+            destinationFile: this.createMockGCSFile(dest),
+            destinationGeneration: copiedGeneration,
+          });
         }
-        return Promise.resolve(undefined);
-      }),
+      ),
       // Mirrors real GCS compose: concatenates each source's stored content, in order,
       // into the destination object.
       composeFiles: vi.fn((sourcePaths: string[], destinationPath: string) => {
@@ -457,8 +552,23 @@ class FileStorageMock {
         });
         return Promise.resolve(undefined);
       }),
-      delete: vi.fn((filePath: string) => {
+      delete: vi.fn((filePath: string, options?: DeleteCall["options"]) => {
+        this._deleteCalls.push({ filePath, options });
+        if (this._deleteShouldFail(filePath)) {
+          return Promise.reject(
+            new Error(`Simulated GCS delete failure: ${filePath}`)
+          );
+        }
+        if (
+          options?.ifGenerationMatch &&
+          this._objectGenerations.get(filePath) !== options.ifGenerationMatch
+        ) {
+          return Promise.reject(
+            new MockGcsError(412, `Object generation changed: ${filePath}`)
+          );
+        }
         this._objectStore.delete(filePath);
+        this._objectGenerations.delete(filePath);
         return Promise.resolve(undefined);
       }),
       deleteByPrefix: vi.fn(async (prefix: string) => {
