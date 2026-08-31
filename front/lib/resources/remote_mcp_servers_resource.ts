@@ -69,7 +69,13 @@ export function getMCPAuthorizationScope({
       : (resourceScopes ?? authorizationServerScopes ?? [])
   );
 
-  if (authorizationServerScopes?.includes("offline_access")) {
+  // `offline_access` gates refresh tokens on some providers, and either metadata document may be
+  // the one advertising it (e.g. Atlassian's authv2 lists it in the protected resource metadata
+  // while its authorization server metadata publishes no scopes at all), so honor both.
+  if (
+    resourceScopes?.includes("offline_access") ||
+    authorizationServerScopes?.includes("offline_access")
+  ) {
     scopes.add("offline_access");
   } else {
     scopes.delete("offline_access");
