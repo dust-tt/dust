@@ -2,6 +2,7 @@ import type { StaticModelIdType } from "@app/types/assistant/models/models";
 import { isStaticModelId } from "@app/types/assistant/models/models";
 import { STATIC_MODEL_SUPPORTED_REASONING_EFFORTS } from "@app/types/assistant/models/static_model_reasoning_efforts";
 import type {
+  ModelConfigurationType,
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
@@ -486,4 +487,19 @@ export function getTierForModel(
     return "premium";
   }
   return STATIC_MODEL_TIERS[modelId][reasoningEffort] ?? null;
+}
+
+// A stored selection can carry a reasoning effort its model maps to no tier
+// (e.g. an effort kept from a previous model after switching to a stream);
+// fall back to the model's default effort rather than resolving no tier.
+export function getTierForModelConfiguration(
+  model: ModelConfigurationType,
+  reasoningEffort?: ReasoningEffort
+): ModelsTierName | null {
+  return (
+    getTierForModel(
+      model.modelId,
+      reasoningEffort ?? model.defaultReasoningEffort
+    ) ?? getTierForModel(model.modelId, model.defaultReasoningEffort)
+  );
 }

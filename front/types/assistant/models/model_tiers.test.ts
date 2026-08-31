@@ -3,8 +3,10 @@ import {
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
+import { AUTO_MODEL_CONFIG } from "@app/types/assistant/models/auto";
 import {
   getTierForModel,
+  getTierForModelConfiguration,
   getTierForSelection,
   MODELS_TIERS,
   STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
@@ -134,5 +136,42 @@ describe("model_tiers", () => {
         reasoningEffort: "high",
       })
     ).toBe("premium");
+  });
+
+  describe("getTierForModelConfiguration", () => {
+    const getConfig = (modelId: ModelIdType) => {
+      const config = SUPPORTED_MODEL_CONFIGS.find(
+        (c) => c.modelId === modelId
+      );
+      if (!config) {
+        throw new Error(`No supported model config for ${modelId}`);
+      }
+      return config;
+    };
+
+    it("resolves the tier for a mapped reasoning effort", () => {
+      expect(
+        getTierForModelConfiguration(
+          getConfig(CLAUDE_SONNET_5_MODEL_ID),
+          "high"
+        )
+      ).toBe("premium");
+    });
+
+    it("falls back to the default effort when none is given", () => {
+      const config = getConfig(CLAUDE_SONNET_5_MODEL_ID);
+
+      expect(getTierForModelConfiguration(config)).toBe(
+        getTierForModel(config.modelId, config.defaultReasoningEffort)
+      );
+    });
+
+    it("falls back to the default effort for a stale unmapped effort", () => {
+      // The auto stream only maps "none"; a stale "medium" kept from a
+      // previous model must resolve to the stream's own tier, not to no tier.
+      expect(getTierForModelConfiguration(AUTO_MODEL_CONFIG, "medium")).toBe(
+        "balanced"
+      );
+    });
   });
 });

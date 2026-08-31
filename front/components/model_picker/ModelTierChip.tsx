@@ -1,6 +1,6 @@
 import {
   getModelsTierDisplayName,
-  getTierForModel,
+  getTierForModelConfiguration,
 } from "@app/types/assistant/models/model_tiers";
 import type {
   ModelConfigurationType,
@@ -13,16 +13,8 @@ interface ModelTierChipProps {
   reasoningEffort?: ReasoningEffort;
 }
 
-export function ModelTierChip({
-  model,
-  reasoningEffort = model.defaultReasoningEffort,
-}: ModelTierChipProps) {
-  // An agent can carry a reasoning effort its model no longer maps to a tier
-  // (e.g. "medium" kept from a previous model after switching to "auto");
-  // fall back to the model's default effort rather than showing nothing.
-  const tier =
-    getTierForModel(model.modelId, reasoningEffort) ??
-    getTierForModel(model.modelId, model.defaultReasoningEffort);
+export function ModelTierChip({ model, reasoningEffort }: ModelTierChipProps) {
+  const tier = getTierForModelConfiguration(model, reasoningEffort);
   if (!tier) {
     return null;
   }
