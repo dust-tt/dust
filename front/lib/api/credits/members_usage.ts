@@ -841,16 +841,6 @@ async function fetchFreeSeatCreditsForMembersTable({
   return { freeBalanceByUserId, freeStartingByUserId };
 }
 
-export type MemberPoolConsumedCredits = {
-  username: string;
-  poolConsumedCredits: number;
-};
-
-export type ActiveMembersPoolConsumedCredits = {
-  totalPoolConsumedCredits: number;
-  byMember: MemberPoolConsumedCredits[];
-};
-
 export async function sumActiveMembersPoolConsumedCredits({
   workspace,
   metronomeCustomerId,
@@ -859,7 +849,7 @@ export async function sumActiveMembersPoolConsumedCredits({
   workspace: LightWorkspaceType;
   metronomeCustomerId: string | null;
   metronomeContractId: string | null;
-}): Promise<ActiveMembersPoolConsumedCredits | null> {
+}): Promise<number | null> {
   if (!metronomeCustomerId || !metronomeContractId) {
     return null;
   }
@@ -868,7 +858,7 @@ export async function sumActiveMembersPoolConsumedCredits({
     workspace,
   });
   if (memberships.length === 0) {
-    return { totalPoolConsumedCredits: 0, byMember: [] };
+    return 0;
   }
   const users = await UserResource.fetchByModelIds(
     memberships.map((m) => m.userId)
@@ -876,15 +866,7 @@ export async function sumActiveMembersPoolConsumedCredits({
   const userByModelId = new Map(users.map((u) => [u.id, u]));
   const members = memberships.flatMap((m) => {
     const user = userByModelId.get(m.userId);
-    return user
-      ? [
-          {
-            sId: user.sId,
-            username: user.username,
-            seatType: m.seatType ?? null,
-          },
-        ]
-      : [];
+    return user ? [{ sId: user.sId, seatType: m.seatType ?? null }] : [];
   });
 
   const [usageByMetronomeUserId, { freeStartingByUserId }, seatDataByUserId] =
@@ -904,8 +886,7 @@ export async function sumActiveMembersPoolConsumedCredits({
       }),
     ]);
 
-  let totalPoolConsumedCredits = 0;
-  const byMember: MemberPoolConsumedCredits[] = [];
+  let sumConsumedFromPoolAwuCredits = 0;
   for (const member of members) {
     const metronomeUserId =
       member.seatType === "free"
@@ -928,12 +909,10 @@ export async function sumActiveMembersPoolConsumedCredits({
       totalConsumedCredits,
       effectiveAllocationAwu
     );
-    const poolConsumedCredits =
+    sumConsumedFromPoolAwuCredits +=
       totalConsumedCredits - consumedFromAllowanceAwuCredits;
-    totalPoolConsumedCredits += poolConsumedCredits;
-    byMember.push({ username: member.username, poolConsumedCredits });
   }
-  return { totalPoolConsumedCredits, byMember };
+  return sumConsumedFromPoolAwuCredits;
 }
 
 /**
