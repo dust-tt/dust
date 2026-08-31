@@ -22,10 +22,11 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
+import { getNamespace } from "@app/tests/utils/test_cls";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("SpaceResource", () => {
   describe("updatePermissions", () => {
@@ -166,6 +167,24 @@ describe("SpaceResource", () => {
           },
         })
       ).resolves.toBe(0);
+    });
+
+    it("checks remaining group grants in the deletion transaction", async () => {
+      const transaction = getNamespace("test-namespace")?.get("transaction");
+      expect(transaction).toBeDefined();
+      const listForGroupSpy = vi.spyOn(GroupPermissionResource, "listForGroup");
+
+      const deleteResult = await regularSpace.delete(adminAuth, {
+        hardDelete: false,
+        transaction,
+      });
+
+      expect(deleteResult.isOk()).toBe(true);
+      expect(listForGroupSpy).toHaveBeenCalledWith(
+        adminAuth,
+        expect.objectContaining({ id: regularGroup.id }),
+        transaction
+      );
     });
 
     it("should delete pod-scoped sandbox env vars but keep workspace-scoped ones when hard deleting a space", async () => {
