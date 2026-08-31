@@ -1,11 +1,11 @@
 import { processAndStoreFile } from "@app/lib/api/files/processing";
-import { loadActiveFrameUiBundle } from "@app/lib/api/frames/publication_storage";
 import { addFileToProject } from "@app/lib/api/projects/context";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { frameContentType, isConversationFileUseCase } from "@app/types/files";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
@@ -223,8 +223,11 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const action = getSecureFileAction(ctx.req.query("action"), file);
   if (action === "view") {
     if (file.isFrameV2 && (await hasFeatureFlag(auth, "frames_v2"))) {
-      const uiBundle = await loadActiveFrameUiBundle(auth, { frame: file });
-      if (uiBundle.isErr()) {
+      const owner = renderLightWorkspaceType({
+        workspace: auth.getNonNullableWorkspace(),
+      });
+      const uiBundle = await file.getRenderableContent(owner);
+      if (!uiBundle) {
         return apiError(ctx, {
           status_code: 404,
           api_error: {
@@ -234,7 +237,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
         });
       }
 
-      return ctx.body(uiBundle.value, 200, {
+      return ctx.body(uiBundle, 200, {
         "Content-Type": frameContentType,
       });
     }

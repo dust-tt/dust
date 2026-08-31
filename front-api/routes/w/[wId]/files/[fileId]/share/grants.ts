@@ -10,7 +10,6 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import {
   isConversationFileUseCase,
-  isInteractiveContentType,
   MAX_EMAILS_PER_INVITE,
 } from "@app/types/files";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -228,10 +227,7 @@ async function fetchShareableFile(
     }
   }
 
-  if (
-    !file.isInteractiveContent ||
-    !isInteractiveContentType(file.contentType)
-  ) {
+  if (!file.isShareableFrame) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
@@ -239,6 +235,10 @@ async function fetchShareableFile(
         message: "Only Frame files support sharing grants.",
       },
     });
+  }
+
+  if (file.isFrameV2) {
+    await file.ensureShareableFrame(auth);
   }
 
   return file;

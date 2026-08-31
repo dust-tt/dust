@@ -33,6 +33,7 @@ import {
   getPublicUploadBucket,
   getUpsertQueueBucket,
 } from "@app/lib/file_storage";
+import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -53,6 +54,7 @@ import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
 import { CoreAPI } from "@app/types/core/core_api";
 import type {
   AuthorizedFileAccessAllowlist,
@@ -72,6 +74,7 @@ import {
   frameSlideshowContentType,
   frameV2ContentType,
   isConversationFileUseCase,
+  isFrameContentType,
   isInteractiveContentType,
   isSandboxFunctionContentType,
 } from "@app/types/files";
@@ -242,11 +245,7 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
-    // Serve what renders: a published frame's bundle (processed), else the source.
-    const content = await r.value.file.getFileContent(
-      r.value.workspace,
-      r.value.file.getRenderableVersion()
-    );
+    const content = await r.value.file.getRenderableContent(r.value.workspace);
     if (!content) {
       return null;
     }
@@ -629,22 +628,7 @@ export class FileResource extends BaseResource<FileModel> {
 
     const updateResult = await this.update({ status: "ready" });
 
-    // For Interactive Content conversation files, automatically create a ShareableFileModel with
-    // a default scope based on the workspace sharing policy.
-    if (this.isInteractiveContent) {
-      const defaultScope = getDefaultFrameShareScope(
-        auth.getNonNullableWorkspace().sharingPolicy
-      );
-
-      await FileResource.shareableFileModel.upsert({
-        fileId: this.id,
-        shareScope: defaultScope,
-        sharedBy: this.userId ?? null,
-        workspaceId: this.workspaceId,
-        sharedAt: new Date(),
-        token: crypto.randomUUID(),
-      });
-    }
+    await this.ensureShareableFrame(auth);
 
     await this.resolveAndSetMountFilePath(auth);
 
@@ -655,9 +639,11 @@ export class FileResource extends BaseResource<FileModel> {
    * Mark a Frames v2 manifest that already exists at its mount path as ready.
    * Unlike markAsReady(), this must not copy from the canonical upload path.
    */
-  async markFrameV2AsReadyFromMount() {
+  async markFrameV2AsReadyFromMount(auth: Authenticator) {
     assert(this.isFrameV2, "Only Frames v2 can be adopted from a mount path");
     assert(this.mountFilePath, "A mounted Frames v2 manifest requires a path");
+
+    await this.ensureShareableFrame(auth);
 
     if (this.status === "ready") {
       return;
@@ -686,13 +672,48 @@ export class FileResource extends BaseResource<FileModel> {
     return this.contentType === frameV2ContentType;
   }
 
-  async setActiveFramePublication(publicationId: string) {
-    return this.update({
-      useCaseMetadata: {
-        ...this.useCaseMetadata,
-        activePublicationId: publicationId,
+  get isShareableFrame(): boolean {
+    return isFrameContentType(this.contentType);
+  }
+
+  async ensureShareableFrame(auth: Authenticator): Promise<void> {
+    if (!this.isShareableFrame) {
+      return;
+    }
+
+    const defaultScope = getDefaultFrameShareScope(
+      auth.getNonNullableWorkspace().sharingPolicy
+    );
+
+    await FileResource.shareableFileModel.findOrCreate({
+      where: {
+        fileId: this.id,
+        workspaceId: this.workspaceId,
+      },
+      defaults: {
+        fileId: this.id,
+        shareScope: defaultScope,
+        sharedBy: this.userId ?? null,
+        workspaceId: this.workspaceId,
+        sharedAt: new Date(),
+        token: crypto.randomUUID(),
       },
     });
+  }
+
+  async setActiveFramePublication(
+    publicationId: string,
+    transaction?: Transaction
+  ) {
+    return this.update(
+      {
+        useCaseMetadata: {
+          ...this.useCaseMetadata,
+          activePublicationId: publicationId,
+        },
+      },
+      transaction
+    );
   }
 
   // Content access logic.
@@ -741,6 +762,43 @@ export class FileResource extends BaseResource<FileModel> {
       return "processed";
     }
     return "original";
+  }
+
+  async getRenderableContent(
+    owner: LightWorkspaceType
+  ): Promise<string | null> {
+    if (!this.isFrameV2) {
+      return this.getFileContent(owner, this.getRenderableVersion());
+    }
+
+    const publicationId = this.useCaseMetadata?.activePublicationId;
+    if (!publicationId || owner.id !== this.workspaceId) {
+      return null;
+    }
+
+    try {
+      return await getPrivateUploadBucket().fetchFileContent(
+        getFramePublicationUiBundlePath({
+          workspaceId: owner.sId,
+          frameId: this.sId,
+          publicationId,
+        })
+      );
+    } catch (error) {
+      if (!isGCSNotFoundError(error)) {
+        throw error;
+      }
+      logger.error(
+        {
+          err: normalizeError(error),
+          fileId: this.sId,
+          publicationId,
+          workspaceId: owner.sId,
+        },
+        "getRenderableContent failed"
+      );
+      return null;
+    }
   }
 
   /**
@@ -1526,25 +1584,22 @@ export class FileResource extends BaseResource<FileModel> {
     shareableFileToken: string;
   }): string {
     assert(
-      this.isInteractiveContent,
-      "getShareUrlForShareableFile called on non-interactive content file"
+      this.isShareableFrame,
+      "getShareUrlForShareableFile called on a non-Frame file"
     );
 
-    if (isInteractiveContentType(this.contentType)) {
-      return `${config.getAppUrl()}/share/frame/${shareableFileToken}`;
-    }
-
-    return `${config.getAppUrl()}/share/file/${shareableFileToken}`;
+    return `${config.getAppUrl()}/share/frame/${shareableFileToken}`;
   }
 
   async setShareScope(
     auth: Authenticator,
     scope: FileShareScope
   ): Promise<void> {
-    // Only Interactive Content files can be shared.
-    if (!this.isInteractiveContent) {
-      throw new Error("Only Interactive Content files can be shared");
+    if (!this.isShareableFrame) {
+      throw new Error("Only Frame files can be shared");
     }
+
+    await this.ensureShareableFrame(auth);
 
     const user = auth.getNonNullableUser();
 
@@ -1570,7 +1625,7 @@ export class FileResource extends BaseResource<FileModel> {
     sharedAt: number;
     shareUrl: string;
   } | null> {
-    if (!this.isInteractiveContent) {
+    if (!this.isShareableFrame) {
       return null;
     }
 
@@ -1963,14 +2018,17 @@ export class FileResource extends BaseResource<FileModel> {
     };
   }
 
-  private async getShareableFile(): Promise<ShareableFileModel> {
+  private async getShareableFile(
+    transaction?: Transaction
+  ): Promise<ShareableFileModel> {
     assert(
-      this.isInteractiveContent,
-      `Shareable file access requires interactive content (file: ${this.sId})`
+      this.isShareableFrame,
+      `Shareable file access requires a Frame (file: ${this.sId})`
     );
 
     const shareableFile = await FileResource.shareableFileModel.findOne({
       where: { fileId: this.id, workspaceId: this.workspaceId },
+      transaction,
     });
 
     assert(
@@ -2013,9 +2071,12 @@ export class FileResource extends BaseResource<FileModel> {
 
   async persistAuthorizedFileAccess(
     computed: ComputedAuthorizedFileAccess,
-    allowedAt: Date = new Date()
+    {
+      allowedAt = new Date(),
+      transaction,
+    }: { allowedAt?: Date; transaction?: Transaction } = {}
   ): Promise<void> {
-    const shareableFile = await this.getShareableFile();
+    const shareableFile = await this.getShareableFile(transaction);
 
     const baseRow = {
       workspaceId: this.workspaceId,
@@ -2049,10 +2110,13 @@ export class FileResource extends BaseResource<FileModel> {
         shareableFileId: shareableFile.id,
         workspaceId: this.workspaceId,
       },
+      transaction,
     });
 
     if (rows.length > 0) {
-      await FileResource.authorizedFileAccessModel.bulkCreate(rows);
+      await FileResource.authorizedFileAccessModel.bulkCreate(rows, {
+        transaction,
+      });
     }
   }
 
@@ -2099,10 +2163,8 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     { emails }: { emails: string[] }
   ): Promise<SharingGrantType[]> {
-    assert(
-      this.isInteractiveContent,
-      "addSharingGrants requires interactive content file"
-    );
+    assert(this.isShareableFrame, "addSharingGrants requires a Frame file");
+    await this.ensureShareableFrame(auth);
     const user = auth.getNonNullableUser();
     const shareableFileId = await this.getShareableFileId();
 
@@ -2173,10 +2235,7 @@ export class FileResource extends BaseResource<FileModel> {
   }: {
     grantId: ModelId;
   }): Promise<Result<{ email: string }, DustError>> {
-    assert(
-      this.isInteractiveContent,
-      "revokeSharingGrant requires interactive content file"
-    );
+    assert(this.isShareableFrame, "revokeSharingGrant requires a Frame file");
     const shareableFileId = await this.getShareableFileId();
 
     const grant = await SharingGrantModel.findOne({
@@ -2224,8 +2283,8 @@ export class FileResource extends BaseResource<FileModel> {
 
   async listActiveSharingGrants(): Promise<SharingGrantType[]> {
     assert(
-      this.isInteractiveContent,
-      "listActiveSharingGrants requires interactive content file"
+      this.isShareableFrame,
+      "listActiveSharingGrants requires a Frame file"
     );
     const shareableFileId = await this.getShareableFileId();
 
@@ -2246,10 +2305,7 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   async listAllSharingGrants(): Promise<SharingGrantType[]> {
-    assert(
-      this.isInteractiveContent,
-      "listAllSharingGrants requires interactive content file"
-    );
+    assert(this.isShareableFrame, "listAllSharingGrants requires a Frame file");
     const shareableFileId = await this.getShareableFileId();
 
     const grants = await SharingGrantModel.findAll({

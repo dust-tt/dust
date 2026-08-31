@@ -6,6 +6,7 @@ import {
   publishFramePublication,
   storeFramePublication,
 } from "@app/lib/api/frames/publication_storage";
+import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -25,7 +26,7 @@ import {
   sandboxFunctionContentType,
 } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 async function setupFrame(): Promise<{
   frame: FileResource;
@@ -516,6 +517,62 @@ describe("activateFramePublication", () => {
     const reloaded = await FileResource.fetchById(auth, frame.sId);
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       stored.value.publicationId
+    );
+  });
+
+  it("refreshes the sharing allowlist before activating a new bundle", async () => {
+    const { auth, frame } = await setupFrame();
+    vi.spyOn(frame, "computeAuthorizedFileAccess").mockImplementation(
+      async (_auth, { frameContent }) => ({
+        generatedByUserId: auth.getNonNullableUser().id,
+        frameContentHash: computeFrameContentHash(frameContent),
+        refs: [
+          {
+            kind: "file_id",
+            ref: "fil_ABCDEFGHIJ",
+          },
+        ],
+      })
+    );
+
+    const firstBundle = "export default function First() {}";
+    const first = await publishFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceFiles,
+      uiBundleCode: firstBundle,
+    });
+    expect(first.isOk()).toBe(true);
+    expect(
+      (await frame.getActiveAuthorizedFileAccessAllowlist())?.frameContentHash
+    ).toBe(computeFrameContentHash(firstBundle));
+
+    const setActivePublication = vi.spyOn(frame, "setActiveFramePublication");
+    const persistAuthorizedFileAccess = vi.spyOn(
+      frame,
+      "persistAuthorizedFileAccess"
+    );
+
+    const secondBundle = "export default function Second() {}";
+    const second = await publishFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceFiles,
+      uiBundleCode: secondBundle,
+    });
+    expect(second.isOk()).toBe(true);
+    expect(
+      (await frame.getActiveAuthorizedFileAccessAllowlist())?.frameContentHash
+    ).toBe(computeFrameContentHash(secondBundle));
+    expect(frame.useCaseMetadata?.activePublicationId).toBe(
+      second.isOk() ? second.value.publicationId : undefined
+    );
+    const activationTransaction = setActivePublication.mock.calls[0]?.[1];
+    expect(activationTransaction).toBeDefined();
+    expect(persistAuthorizedFileAccess.mock.calls[0]?.[1]?.transaction).toBe(
+      activationTransaction
     );
   });
 });

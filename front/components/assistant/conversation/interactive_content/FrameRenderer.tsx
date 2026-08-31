@@ -439,6 +439,23 @@ export function FrameRenderer({
             </div>
           </div>
         )}
+        {renderMode === "v2" && (
+          <div className="flex w-full justify-end">
+            <ExportContentDropdown
+              iframeRef={iframeRef}
+              owner={owner}
+              fileId={fileId}
+              fileContent={fileContent ?? null}
+              fileName={fileMetadata?.fileName}
+            />
+            <ShareFrameSheet
+              key={contentHash ?? fileId}
+              fileId={fileId}
+              owner={owner}
+              contentHash={contentHash}
+            />
+          </div>
+        )}
       </ConversationSidePanelHeader>
 
       <div className="flex-1 overflow-hidden">

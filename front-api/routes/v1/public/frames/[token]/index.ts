@@ -11,7 +11,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import {
-  isInteractiveContentType,
+  isFrameContentType,
   isWorkspaceVisibleShareScope,
 } from "@app/types/files";
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
@@ -78,11 +78,8 @@ app.get(
       });
     }
 
-    // Only allow conversation Frame files.
-    if (
-      !file.isInteractiveContent ||
-      !isInteractiveContentType(file.contentType)
-    ) {
+    // Only allow Frame files.
+    if (!isFrameContentType(file.contentType)) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {

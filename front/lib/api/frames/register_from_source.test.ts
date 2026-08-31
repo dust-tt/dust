@@ -52,6 +52,7 @@ describe("registerFrameV2FromSource", () => {
     expect(first.value.created).toBe(true);
     expect(first.value.frame.mountFilePath).toBe(mountFilePath);
     expect(first.value.frame.isReady).toBe(true);
+    expect(await first.value.frame.getShareInfo()).not.toBeNull();
 
     const second = await registerFrameV2FromSource(auth, {
       conversation,
@@ -60,6 +61,9 @@ describe("registerFrameV2FromSource", () => {
     assert(second.isOk());
     expect(second.value.created).toBe(false);
     expect(second.value.frame.sId).toBe(first.value.frame.sId);
+    expect(await second.value.frame.getShareInfo()).toEqual(
+      await first.value.frame.getShareInfo()
+    );
 
     const files = await FileResource.fetchByMountFilePaths(auth, [
       mountFilePath,

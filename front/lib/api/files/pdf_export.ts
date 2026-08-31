@@ -12,7 +12,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import {
   frameSlideshowContentType,
-  isInteractiveContentType,
+  isFrameContentType,
 } from "@app/types/files";
 import type {
   PdfOptions,
@@ -51,10 +51,7 @@ export async function exportInteractiveContentFileAsPdf(
     return new Err({ type: "file_not_found", message: "File not found." });
   }
 
-  if (
-    !file.isInteractiveContent ||
-    !isInteractiveContentType(file.contentType)
-  ) {
+  if (!isFrameContentType(file.contentType)) {
     return new Err({
       type: "invalid_request",
       message: "Only Frame files can be exported as PDF.",
@@ -69,6 +66,10 @@ export async function exportInteractiveContentFileAsPdf(
     if (!conversation) {
       return new Err({ type: "file_not_found", message: "File not found." });
     }
+  }
+
+  if (file.isFrameV2) {
+    await file.ensureShareableFrame(auth);
   }
 
   const shareInfo = await file.getShareInfo();

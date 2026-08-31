@@ -4,6 +4,8 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { computeAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
+import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
 import type { Authenticator } from "@app/lib/auth";
 import {
   GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
@@ -12,6 +14,7 @@ import {
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import {
   isSafeFrameRelativePath,
@@ -58,6 +61,7 @@ export class FramePublicationError extends Error {
       | "invalid_function_artifact"
       | "invalid_manifest"
       | "invalid_source"
+      | "allowlist_failed"
       | "publication_not_found"
       | "source_not_found"
       | "ui_build_failed"
@@ -299,50 +303,6 @@ export async function loadFramePublicationManifest(
   return manifest;
 }
 
-export async function loadActiveFrameUiBundle(
-  auth: Authenticator,
-  {
-    frame,
-  }: {
-    frame: FileResource;
-  }
-): Promise<Result<string, FramePublicationError>> {
-  const frameIdentity = getFrameIdentity(auth, frame);
-  if (frameIdentity.isErr()) {
-    return frameIdentity;
-  }
-
-  const publicationId = frame.useCaseMetadata?.activePublicationId;
-  if (!publicationId) {
-    return new Err(
-      new FramePublicationError(
-        "publication_not_found",
-        "Frame has no active publication."
-      )
-    );
-  }
-
-  const uiBundlePath = getFramePublicationUiBundlePath({
-    ...frameIdentity.value,
-    publicationId,
-  });
-  try {
-    const uiBundle =
-      await getPrivateUploadBucket().fetchFileContent(uiBundlePath);
-    return new Ok(uiBundle);
-  } catch (error) {
-    if (isGCSNotFoundError(error)) {
-      return new Err(
-        new FramePublicationError(
-          "publication_not_found",
-          `Frame publication not found: ${publicationId}`
-        )
-      );
-    }
-    throw error;
-  }
-}
-
 export async function activateFramePublication(
   auth: Authenticator,
   {
@@ -361,7 +321,55 @@ export async function activateFramePublication(
     return manifest;
   }
 
-  await frame.setActiveFramePublication(publicationId);
+  const frameIdentity = getFrameIdentity(auth, frame);
+  if (frameIdentity.isErr()) {
+    return frameIdentity;
+  }
+
+  let uiBundleCode: string;
+  try {
+    uiBundleCode = await getPrivateUploadBucket().fetchFileContent(
+      getFramePublicationUiBundlePath({
+        ...frameIdentity.value,
+        publicationId,
+      })
+    );
+  } catch (error) {
+    if (!isGCSNotFoundError(error)) {
+      throw error;
+    }
+    return new Err(
+      new FramePublicationError(
+        "publication_not_found",
+        `Frame publication UI bundle not found: ${publicationId}`
+      )
+    );
+  }
+
+  await frame.ensureShareableFrame(auth);
+  const allowlist = await computeAuthorizedFileAccessForShare(auth, frame, {
+    frameContent: uiBundleCode,
+  });
+  if (allowlist.isErr()) {
+    return new Err(
+      new FramePublicationError("allowlist_failed", allowlist.error.message)
+    );
+  }
+  const shareScope = await frame.getShareScope();
+
+  await withTransaction(async (transaction) => {
+    // Updating the Frame first serializes concurrent activations. Neither the new
+    // pointer nor its allowlist becomes visible until the transaction commits.
+    await frame.setActiveFramePublication(publicationId, transaction);
+    await frame.persistAuthorizedFileAccess(allowlist.value, { transaction });
+  });
+
+  emitFrameAuthorizedFilesUpdatedAuditLog(
+    auth,
+    frame,
+    allowlist.value,
+    shareScope
+  );
 
   void emitAuditLogEvent({
     auth,
