@@ -22,12 +22,15 @@ describe("backfillAgentIdentities", () => {
       authenticator,
       firstVersion.sId
     );
+    await AgentConfigurationFactory.createTestAgent(authenticator, {
+      name: "Second Agent",
+    });
     await AgentConfigurationModel.update(
       { agentId: null },
-      { where: { sId: firstVersion.sId, workspaceId: workspace.id } }
+      { where: { workspaceId: workspace.id } }
     );
     await AgentModel.destroy({
-      where: { sId: firstVersion.sId, workspaceId: workspace.id },
+      where: { workspaceId: workspace.id },
     });
 
     const dryRun = await backfillAgentIdentities({
@@ -36,9 +39,9 @@ describe("backfillAgentIdentities", () => {
       workspace,
     });
     expect(dryRun).toMatchObject({
-      logicalAgentCount: 1,
-      identitiesToCreate: 1,
-      versionsToAttach: 2,
+      logicalAgentCount: 2,
+      identitiesToCreate: 2,
+      versionsToAttach: 3,
       orphanIdentityCount: 0,
     });
     expect(
@@ -47,13 +50,25 @@ describe("backfillAgentIdentities", () => {
       })
     ).toBeNull();
 
-    await backfillAgentIdentities({ execute: true, logger, workspace });
+    await backfillAgentIdentities({
+      execute: true,
+      logger,
+      workspace,
+      batchSize: 1,
+    });
     const versions = await AgentConfigurationModel.findAll({
-      where: { sId: firstVersion.sId, workspaceId: workspace.id },
-      attributes: ["agentId"],
+      where: { workspaceId: workspace.id },
+      attributes: ["agentId", "sId"],
     });
     expect(versions.every(({ agentId }) => agentId !== null)).toBe(true);
-    expect(new Set(versions.map(({ agentId }) => agentId)).size).toBe(1);
+    expect(new Set(versions.map(({ agentId }) => agentId)).size).toBe(2);
+    expect(
+      new Set(
+        versions
+          .filter(({ sId }) => sId === firstVersion.sId)
+          .map(({ agentId }) => agentId)
+      ).size
+    ).toBe(1);
 
     const rerun = await backfillAgentIdentities({
       execute: true,
