@@ -24,10 +24,7 @@ import { ModelTiersSettingsCard } from "@app/components/workspace/usage/ModelTie
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
-import {
-  WorkspaceCreditPoolCycleHistoryTable,
-  WorkspaceCreditPoolValueCards,
-} from "@app/components/workspace/WorkspaceCreditPoolCards";
+import { WorkspaceCreditPoolSection } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
 import {
@@ -123,7 +120,6 @@ import {
   Page,
   ProgressBar,
   SearchInput,
-  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -157,6 +153,7 @@ function memberFromUpgradeRequest(
     rateLimiterSpendAwuCredits: null,
     metronomeConsumedAwuCredits: null,
     spendLimitSource: "none",
+    spendLimitGroupName: null,
     spendLimitAlertId: null,
     spendLimitWarningAlertId: null,
     freeCreditLowAlert: null,
@@ -474,6 +471,10 @@ export function UsagePageRedesign() {
     currentCycleStartMs,
     currentCycleEndMs,
     cycleBreakdown,
+    excessConsumedCredits,
+    excessCycleBreakdown,
+    programmaticConsumedCredits,
+    otherConsumedCredits,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
     mutateAwuPoolSummary,
@@ -903,6 +904,10 @@ export function UsagePageRedesign() {
 
   const initialTotalCredits = creditUsage?.capCredits ?? totalActiveCredits;
   const hasPool = totalActiveCredits > 0;
+  // No pool, but there's still PAYG excess consumption to show — either live
+  // (this cycle) or as history from previous invoices.
+  const hasExcessData =
+    excessConsumedCredits !== null || excessCycleBreakdown.length > 0;
 
   const usedPercentage =
     creditUsage?.status.usedPercentage ??
@@ -1269,55 +1274,42 @@ export function UsagePageRedesign() {
           </Page.Vertical>
         ) : null}
 
-        {!showConsumptionAnalytics &&
-        !isAwuPoolSummaryLoading &&
-        (isAwuPoolSummaryError || hasPool || isReadOnly) ? (
-          <Page.Vertical gap="xs" align="stretch">
-            <Page.H variant="h4">Workspace credit pool</Page.H>
-
-            {isAwuPoolSummaryError ? (
-              <ContentMessage
-                title="Failed to load Workspace Credits Pool"
-                icon={AlertCircle}
-                variant="warning"
-              >
-                An error occurred while loading your Workspace Credits Pool
-                data. Please refresh the page or contact support if the issue
-                persists.
-              </ContentMessage>
-            ) : isAwuPoolSummaryLoading ? (
-              <div className="flex justify-center py-8">
-                <Spinner />
-              </div>
-            ) : (
-              <>
-                <WorkspaceCreditPoolValueCards
-                  totalRemainingCredits={totalRemainingCredits}
-                  currentCycleConsumedCredits={currentCycleConsumedCredits}
-                  currentCycleStartMs={currentCycleStartMs}
-                  currentCycleEndMs={currentCycleEndMs}
-                  isLoading={false}
-                />
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    {isReadOnly ? (
+        {!showConsumptionAnalytics && (
+          <WorkspaceCreditPoolSection
+            isLoading={isAwuPoolSummaryLoading}
+            isError={!!isAwuPoolSummaryError}
+            showPoolBranch={hasPool || isReadOnly}
+            isVisible={hasPool || isReadOnly || hasExcessData}
+            totalRemainingCredits={totalRemainingCredits}
+            currentCycleConsumedCredits={currentCycleConsumedCredits}
+            currentCycleStartMs={currentCycleStartMs}
+            currentCycleEndMs={currentCycleEndMs}
+            cycleBreakdown={cycleBreakdown}
+            excessConsumedCredits={excessConsumedCredits}
+            excessCycleBreakdown={excessCycleBreakdown}
+            programmaticConsumedCredits={programmaticConsumedCredits}
+            otherConsumedCredits={otherConsumedCredits}
+            poolSecondaryContent={
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  {isReadOnly ? (
+                    <span className="copy-sm text-muted-foreground">
+                      {formatCredits(periodSpendCredits)} credits spent this
+                      period
+                    </span>
+                  ) : (
+                    overageCredits !== null &&
+                    overageCredits > 0 && (
                       <span className="copy-sm text-muted-foreground">
-                        {formatCredits(periodSpendCredits)} credits spent this
-                        period
+                        {formatCredits(overageCredits)} overage credits
                       </span>
-                    ) : (
-                      overageCredits !== null &&
-                      overageCredits > 0 && (
-                        <span className="copy-sm text-muted-foreground">
-                          {formatCredits(overageCredits)} overage credits
-                        </span>
-                      )
-                    )}
-                  </div>
+                    )
+                  )}
                 </div>
-                <WorkspaceCreditPoolCycleHistoryTable
-                  cycleBreakdown={cycleBreakdown}
-                />
+              </div>
+            }
+            footer={
+              <>
                 <div className="pt-2">
                   <Page.Separator />
                 </div>
@@ -1325,9 +1317,9 @@ export function UsagePageRedesign() {
                   {topUpButton}
                 </div>
               </>
-            )}
-          </Page.Vertical>
-        ) : null}
+            }
+          />
+        )}
 
         <Tabs
           value={usageTab}

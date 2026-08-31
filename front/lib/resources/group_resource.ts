@@ -1332,19 +1332,23 @@ export class GroupResource extends BaseResource<GroupModel> {
     return result;
   }
 
-  // For each user, the highest per-group pool cap (excluding seat allowance)
-  // among the cap-eligible (provisioned) groups they belong to. Users with no
-  // capped group are absent from the map (the caller falls back to the workspace
-  // default). Used to resolve the "max(group caps)" term of a user's effective
-  // spend limit.
-  static async listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+  // For each user, the cap-eligible (provisioned) group with the highest pool
+  // cap (excluding seat allowance) among the groups they belong to, and the
+  // cap itself. Users with no capped group are absent from the map (the
+  // caller falls back to the workspace default). Used to resolve the
+  // "max(group caps)" term of a user's effective spend limit, and to name the
+  // group behind that term in the UI.
+  static async listMaxPoolCapGroupByUserModelIdInWorkspace({
     workspace,
     userModelIds,
   }: {
     workspace: LightWorkspaceType;
     userModelIds: ModelId[];
-  }): Promise<Map<ModelId, number>> {
-    const result = new Map<ModelId, number>();
+  }): Promise<Map<ModelId, { capAwuCredits: number; groupName: string }>> {
+    const result = new Map<
+      ModelId,
+      { capAwuCredits: number; groupName: string }
+    >();
     if (userModelIds.length === 0) {
       return result;
     }
@@ -1372,22 +1376,48 @@ export class GroupResource extends BaseResource<GroupModel> {
         poolCapAwuCredits: { [Op.ne]: null },
       },
     });
-    const capByGroupId = new Map(
-      groups.map((g) => [g.id, g.poolCapAwuCredits])
-    );
+    const cappedGroupById = new Map(groups.map((g) => [g.id, g]));
 
     for (const m of memberships) {
-      const cap = capByGroupId.get(m.groupId);
-      if (cap === undefined || cap === null) {
+      const group = cappedGroupById.get(m.groupId);
+      if (!group || group.poolCapAwuCredits === null) {
         continue;
       }
       const existing = result.get(m.userId);
-      if (existing === undefined || cap > existing) {
-        result.set(m.userId, cap);
+      if (
+        existing === undefined ||
+        group.poolCapAwuCredits > existing.capAwuCredits
+      ) {
+        result.set(m.userId, {
+          capAwuCredits: group.poolCapAwuCredits,
+          groupName: group.name,
+        });
       }
     }
 
     return result;
+  }
+
+  // Numeric-only view of `listMaxPoolCapGroupByUserModelIdInWorkspace`, for
+  // callers that only need the cap amount (spend-limit resolution) and not
+  // the group's identity.
+  static async listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+    workspace,
+    userModelIds,
+  }: {
+    workspace: LightWorkspaceType;
+    userModelIds: ModelId[];
+  }): Promise<Map<ModelId, number>> {
+    const byGroup = await this.listMaxPoolCapGroupByUserModelIdInWorkspace({
+      workspace,
+      userModelIds,
+    });
+    return new Map(
+      [...byGroup].map(([userModelId, { capAwuCredits }]) => [
+        userModelId,
+        capAwuCredits,
+      ])
+    );
   }
 
   static async getMemberCountsForGroups(

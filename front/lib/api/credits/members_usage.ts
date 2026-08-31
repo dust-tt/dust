@@ -141,6 +141,10 @@ export type MemberUsageType = {
   // Where `spendLimitAwuCredits` comes from: a user-specific `override`, the
   // seat-type `default`, or `none` (no cap configured / unlimited).
   spendLimitSource: EffectiveSpendLimitSource;
+  // Name of the group behind `spendLimitAwuCredits` when `spendLimitSource`
+  // is `"group"` (the cap-eligible group with the highest pool cap among the
+  // member's groups). Null for every other source.
+  spendLimitGroupName: string | null;
   // Id of the Metronome alert backing the effective cap (override or default),
   // for deep-linking to the dashboard. Null when uncapped.
   spendLimitAlertId: string | null;
@@ -601,6 +605,63 @@ export async function getEsConsumedProgrammaticAwuCredits(
   );
 }
 
+/**
+ * The workspace's total Elasticsearch-derived AWU consumption for the
+ * current billing cycle — the sum of every member's "Credits usage" figure
+ * (`consumedAwuCredits`). Used by `getAwuPoolSummary` to show live
+ * consumption for workspaces with no credit pool (PAYG-only "excess credit
+ * consumption" workspaces), where there's no pool ledger to sum instead.
+ * Returns `null` when it can't be determined (no billing cycle, or the
+ * analytics read failed) — callers must treat `null` as "unknown", never 0.
+ */
+export async function getEsConsumedAwuCreditsForWorkspace(
+  workspace: LightWorkspaceType,
+  { cycle }: { cycle?: BillingCycle } = {}
+): Promise<number | null> {
+  const resolvedCycle = cycle ?? (await resolveMetronomeCycle(workspace));
+  if (!resolvedCycle) {
+    return null;
+  }
+  const { cycleStart, cycleEnd } = resolvedCycle;
+
+  const result = await searchAnalytics<
+    never,
+    { credits?: estypes.AggregationsSumAggregate }
+  >(
+    {
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          {
+            range: {
+              timestamp: {
+                gte: cycleStart.toISOString(),
+                lte: cycleEnd.toISOString(),
+              },
+            },
+          },
+        ],
+      },
+    },
+    {
+      aggregations: { credits: { sum: { field: "cost.billable_awu" } } },
+      size: 0,
+    }
+  );
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, workspaceId: workspace.sId },
+      "[MembersUsage] Failed to read total consumed credits from analytics index"
+    );
+    return null;
+  }
+
+  return Math.max(
+    0,
+    Math.round(result.value.aggregations?.credits?.value ?? 0)
+  );
+}
+
 async function fetchPerUserUsageCreditsForMembersTable({
   workspaceId,
   metronomeCustomerId,
@@ -783,6 +844,86 @@ async function fetchFreeSeatCreditsForMembersTable({
     );
   }
   return { freeBalanceByUserId, freeStartingByUserId };
+}
+
+/**
+ * Sum, across every active member, the portion of their AWU consumption that
+ * draws from the workspace pool rather than their own seat allowance — the
+ * same `consumedFromPoolAwuCredits` split shown per-row in the members table,
+ * but totaled workspace-wide instead of per page. Used to compute the
+ * "unattributed" pool consumption left over once member and programmatic
+ * usage are subtracted from the cycle total (see `getAwuPoolSummary`).
+ *
+ * Reuses the same batched, cached fetchers as the members table (per-user
+ * usage, seat allocations, free-seat allowances) so this stays a handful of
+ * Metronome calls regardless of workspace size, not one per member.
+ * Returns `null` when Metronome isn't configured for the workspace.
+ */
+export async function sumActiveMembersPoolConsumedCredits({
+  workspace,
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  workspace: LightWorkspaceType;
+  metronomeCustomerId: string | null;
+  metronomeContractId: string | null;
+}): Promise<number | null> {
+  if (!metronomeCustomerId || !metronomeContractId) {
+    return null;
+  }
+
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+  });
+  if (memberships.length === 0) {
+    return 0;
+  }
+  const users = await UserResource.fetchByModelIds(
+    memberships.map((m) => m.userId)
+  );
+  const userByModelId = new Map(users.map((u) => [u.id, u]));
+  const members = memberships.flatMap((m) => {
+    const user = userByModelId.get(m.userId);
+    return user ? [{ sId: user.sId, seatType: m.seatType ?? null }] : [];
+  });
+
+  const [usageByMetronomeUserId, seatDataByUserId, { freeStartingByUserId }] =
+    await Promise.all([
+      fetchPerUserUsageCreditsForMembersTable({
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        metronomeContractId,
+        userIds: members.map((m) =>
+          m.seatType === "free" ? toFreeMetronomeUserId(m.sId) : m.sId
+        ),
+      }),
+      fetchSeatDataForMembersTable({
+        metronomeCustomerId,
+        metronomeContractId,
+      }),
+      fetchFreeSeatCreditsForMembersTable({ metronomeCustomerId }),
+    ]);
+
+  let sumConsumedFromPoolAwuCredits = 0;
+  for (const member of members) {
+    const metronomeUserId =
+      member.seatType === "free"
+        ? toFreeMetronomeUserId(member.sId)
+        : member.sId;
+    const totalConsumedCredits =
+      usageByMetronomeUserId.get(metronomeUserId) ?? 0;
+    const effectiveAllocationAwu =
+      freeStartingByUserId.get(member.sId) ??
+      seatDataByUserId.get(member.sId)?.awuAllocation ??
+      0;
+    const consumedFromAllowanceAwuCredits = Math.min(
+      totalConsumedCredits,
+      effectiveAllocationAwu
+    );
+    sumConsumedFromPoolAwuCredits +=
+      totalConsumedCredits - consumedFromAllowanceAwuCredits;
+  }
+  return sumConsumedFromPoolAwuCredits;
 }
 
 /**
@@ -1355,17 +1496,18 @@ export async function getMemberUsage({
     return { member: null };
   }
 
-  const [groupNamesByUserModelId, groupCapByUserModelId] = await Promise.all([
-    GroupResource.listGroupNamesByUserModelIdInWorkspace({
-      workspace,
-      userModelIds: [userResource.id],
-      groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
-    }),
-    GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
-      workspace,
-      userModelIds: [userResource.id],
-    }),
-  ]);
+  const [groupNamesByUserModelId, maxPoolCapGroupByUserModelId] =
+    await Promise.all([
+      GroupResource.listGroupNamesByUserModelIdInWorkspace({
+        workspace,
+        userModelIds: [userResource.id],
+        groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
+      }),
+      GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
+        workspace,
+        userModelIds: [userResource.id],
+      }),
+    ]);
 
   const metronomeUserId =
     membership.seatType === "free" ? toFreeMetronomeUserId(userId) : userId;
@@ -1432,8 +1574,8 @@ export async function getMemberUsage({
 
   // Max group cap (pool-only) + seat allowance, matching override/default units.
   // Only pool-bearing seats (pro/max/workspace) get a group cap.
-  const groupPoolCapAwuCredits =
-    groupCapByUserModelId.get(userResource.id) ?? null;
+  const maxPoolCapGroup = maxPoolCapGroupByUserModelId.get(userResource.id);
+  const groupPoolCapAwuCredits = maxPoolCapGroup?.capAwuCredits ?? null;
   const groupCapAwuCredits =
     groupPoolCapAwuCredits !== null && normalizedSeatType !== null
       ? groupPoolCapAwuCredits +
@@ -1475,6 +1617,10 @@ export async function getMemberUsage({
     rateLimiterSpendAwuCredits: null,
     metronomeConsumedAwuCredits: null,
     spendLimitSource,
+    spendLimitGroupName:
+      spendLimitSource === "group"
+        ? (maxPoolCapGroup?.groupName ?? null)
+        : null,
     spendLimitAlertId: null,
     spendLimitWarningAlertId: null,
     freeCreditLowAlert: null,
@@ -1650,9 +1796,7 @@ type MembersUsagePagePrefetch = {
     ReturnType<typeof fetchEffectivePerUserSpendLimits>
   >;
   groupCapByUserModelId?: Awaited<
-    ReturnType<
-      typeof GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace
-    >
+    ReturnType<typeof GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace>
   >;
 };
 
@@ -1754,7 +1898,7 @@ async function resolveMembersUsagePageUsers({
               freeBalanceByUserId: new Map<string, number>(),
               freeStartingByUserId: new Map<string, number>(),
             }),
-        GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+        GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
           workspace,
           userModelIds: allUsers.map((u) => u.id),
         }),
@@ -1794,7 +1938,8 @@ async function resolveMembersUsagePageUsers({
           seatType !== "none"
             ? membership.poolCapOverrideAwuCredits + seatAllowance
             : null;
-        const groupPoolCapAwuCredits = groupCapByUserModelId.get(u.id) ?? null;
+        const groupPoolCapAwuCredits =
+          groupCapByUserModelId.get(u.id)?.capAwuCredits ?? null;
         const groupCapAwuCredits =
           groupPoolCapAwuCredits !== null && normalizedSeatType !== null
             ? groupPoolCapAwuCredits + seatAllowance
@@ -2087,7 +2232,7 @@ export async function getMembersUsage({
       groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
     }),
     prefetch.groupCapByUserModelId ??
-      GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+      GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
         workspace,
         userModelIds: users.map((u) => u.id),
       }),
@@ -2269,7 +2414,8 @@ export async function getMembersUsage({
     // Max group cap (pool-only, stored on the group) + seat allowance, to match
     // the units of override/default above. Only pool-bearing seats
     // (pro/max/workspace) get a group cap; free/none have no pool.
-    const groupPoolCapAwuCredits = groupCapByUserModelId.get(u.id) ?? null;
+    const maxPoolCapGroup = groupCapByUserModelId.get(u.id);
+    const groupPoolCapAwuCredits = maxPoolCapGroup?.capAwuCredits ?? null;
     const groupCapAwuCredits =
       groupPoolCapAwuCredits !== null && normalizedSeatType !== null
         ? groupPoolCapAwuCredits +
@@ -2341,6 +2487,10 @@ export async function getMembersUsage({
           ? (metronomeConsumedByUserId.get(userId) ?? 0)
           : null,
         spendLimitSource,
+        spendLimitGroupName:
+          spendLimitSource === "group"
+            ? (maxPoolCapGroup?.groupName ?? null)
+            : null,
         spendLimitAlertId,
         spendLimitWarningAlertId,
         freeCreditLowAlert: freeCreditAlerts?.low ?? null,
