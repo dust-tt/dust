@@ -4,7 +4,6 @@ import {
   getFramePublicationFunctionBundlePath,
   getFramePublicationFunctionSchemaPath,
   getFramePublicationManifestPath,
-  getFramePublicationSourcePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import { describe, expect, it } from "vitest";
@@ -19,15 +18,7 @@ describe("Frames v2 GCS paths", () => {
   it("keeps publications under the Frame identity", () => {
     expect(getFrameBasePath(IDS)).toBe("w/w_123/frames/fil_456/");
     expect(getFramePublicationManifestPath(IDS)).toBe(
-      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/manifest.json"
-    );
-    expect(
-      getFramePublicationSourcePath({
-        ...IDS,
-        relativePath: "src/index.tsx",
-      })
-    ).toBe(
-      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/source/src/index.tsx"
+      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/publication.json"
     );
     expect(getFramePublicationUiBundlePath(IDS)).toBe(
       "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/ui/bundle.js"
@@ -38,7 +29,7 @@ describe("Frames v2 GCS paths", () => {
         functionName: "add-task",
       })
     ).toBe(
-      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions/add-task/bundle.js"
+      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions/add-task.ts"
     );
     expect(
       getFramePublicationFunctionSchemaPath({
@@ -46,7 +37,7 @@ describe("Frames v2 GCS paths", () => {
         functionName: "add-task",
       })
     ).toBe(
-      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions/add-task/schema.json"
+      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions/add-task.schema.json"
     );
   });
 
@@ -61,12 +52,6 @@ describe("Frames v2 GCS paths", () => {
   });
 
   it("rejects path traversal and unsafe identity segments", () => {
-    expect(() =>
-      getFramePublicationSourcePath({
-        ...IDS,
-        relativePath: "../secret",
-      })
-    ).toThrow("Invalid relative source path");
     expect(() =>
       getFrameBasePath({ workspaceId: "../other", frameId: IDS.frameId })
     ).toThrow("Invalid workspaceId");

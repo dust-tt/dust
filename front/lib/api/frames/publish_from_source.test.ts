@@ -11,8 +11,11 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
-import { getFramePublicationSourcePath } from "@app/types/api/frame_storage";
+import {
+  FRAME_MANIFEST_FILE,
+  FrameManifestSchema,
+} from "@app/types/api/frame_manifest";
+import { getFramePublicationManifestPath } from "@app/types/api/frame_storage";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import {
   getConversationFilesBasePath,
@@ -178,9 +181,15 @@ describe("publishFrameFromSource", () => {
 });
 
 describe("publishFrameV2FromSource", () => {
-  it("snapshots the source folder and activates one publication", async () => {
-    const { auth, conversation, frame, manifestPath, workspace } =
-      await setup();
+  it("publishes artifacts without copying source and activates one publication", async () => {
+    const {
+      auth,
+      conversation,
+      frame,
+      gcsSourceDirectoryPath,
+      manifestPath,
+      workspace,
+    } = await setup();
 
     const result = await publishFrameV2FromSource(auth, {
       conversation,
@@ -195,21 +204,13 @@ describe("publishFrameV2FromSource", () => {
       publicationId: result.value.publicationId,
     };
     expect(
-      fileStorageMock.getObject(
-        getFramePublicationSourcePath({
-          ...identity,
-          relativePath: FRAME_MANIFEST_FILE,
-        })
-      )
-    ).toBe(manifest);
+      fileStorageMock.getObject(getFramePublicationManifestPath(identity))
+    ).toBe(JSON.stringify(FrameManifestSchema.parse(JSON.parse(manifest))));
     expect(
-      fileStorageMock.getObject(
-        getFramePublicationSourcePath({
-          ...identity,
-          relativePath: "index.tsx",
-        })
+      fileStorageMock.saveFileCalls.some(({ filePath }) =>
+        filePath.startsWith(`${gcsSourceDirectoryPath}/`)
       )
-    ).toBe(uiSource);
+    ).toBe(false);
 
     const reloaded = await FileResource.fetchById(auth, frame.sId);
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(

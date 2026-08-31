@@ -3,7 +3,6 @@ import type { FramePublicationFunctionArtifact } from "@app/lib/api/frames/publi
 import {
   activateFramePublication,
   loadFramePublicationManifest,
-  loadFramePublicationSourceFile,
   publishFramePublication,
   storeFramePublication,
 } from "@app/lib/api/frames/publication_storage";
@@ -25,7 +24,6 @@ import {
   getFramePublicationFunctionBundlePath,
   getFramePublicationFunctionSchemaPath,
   getFramePublicationManifestPath,
-  getFramePublicationSourcePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import {
@@ -142,7 +140,7 @@ beforeEach(() => {
 });
 
 describe("storeFramePublication", () => {
-  it("stores the UI bundle and immutable source before the manifest commit marker", async () => {
+  it("stores runtime artifacts without source before the publication commit marker", async () => {
     const { auth, frame, workspaceId } = await setupFrame();
 
     const result = await storeFramePublication(auth, {
@@ -163,17 +161,7 @@ describe("storeFramePublication", () => {
       ({ filePath }) => filePath
     );
     expect(new Set(savedPaths.slice(0, -1))).toEqual(
-      new Set([
-        getFramePublicationUiBundlePath(identity),
-        getFramePublicationSourcePath({
-          ...identity,
-          relativePath: "index.tsx",
-        }),
-        getFramePublicationSourcePath({
-          ...identity,
-          relativePath: "data.json",
-        }),
-      ])
+      new Set([getFramePublicationUiBundlePath(identity)])
     );
     expect(savedPaths.at(-1)).toBe(getFramePublicationManifestPath(identity));
     expect(fileStorageMock.saveFileCalls.at(-1)?.contentType).toBe(
@@ -193,7 +181,7 @@ describe("storeFramePublication", () => {
     ).toBe(false);
   });
 
-  it("stores function artifacts before the manifest commit marker", async () => {
+  it("stores function artifacts before the publication commit marker", async () => {
     const { auth, frame, workspaceId } = await setupFrame();
 
     const result = await storeFramePublication(auth, {
@@ -250,8 +238,8 @@ describe("storeFramePublication", () => {
     ).toBe("application/json");
   });
 
-  it("stores declared database schemas in the immutable source snapshot", async () => {
-    const { auth, frame, workspaceId } = await setupFrame();
+  it("retains declared database schemas in publication metadata", async () => {
+    const { auth, frame } = await setupFrame();
     const databaseSchema = {
       relativePath: "databases/tasks.db.ts",
       content: Buffer.from("export const tasks = {};"),
@@ -271,22 +259,9 @@ describe("storeFramePublication", () => {
       return;
     }
 
-    const identity = {
-      workspaceId,
-      frameId: frame.sId,
-      publicationId: result.value.publicationId,
-    };
-    expect(
-      fileStorageMock.getObject(
-        getFramePublicationSourcePath({
-          ...identity,
-          relativePath: databaseSchema.relativePath,
-        })
-      )
-    ).toBe(databaseSchema.content.toString());
     const loadedManifest = await loadFramePublicationManifest(auth, {
       frame,
-      publicationId: identity.publicationId,
+      publicationId: result.value.publicationId,
     });
     expect(loadedManifest.isOk() && loadedManifest.value.databases).toEqual(
       manifestWithDatabase.databases
@@ -418,10 +393,10 @@ describe("storeFramePublication", () => {
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
-  it("does not write the manifest after a partial source failure", async () => {
+  it("does not write publication.json after an artifact failure", async () => {
     const { auth, frame } = await setupFrame();
     fileStorageMock.setFileSaveFails((filePath) =>
-      filePath.endsWith("/source/data.json")
+      filePath.endsWith("/ui/bundle.js")
     );
 
     await expect(
@@ -435,14 +410,14 @@ describe("storeFramePublication", () => {
     ).rejects.toThrow("Simulated GCS write failure");
     expect(
       fileStorageMock.saveFileCalls.some(({ filePath }) =>
-        filePath.endsWith("/manifest.json")
+        filePath.endsWith("/publication.json")
       )
     ).toBe(false);
   });
 });
 
 describe("Frame publication reads", () => {
-  it("loads the manifest and source of a committed publication", async () => {
+  it("loads the manifest of a committed publication", async () => {
     const { auth, frame } = await setupFrame();
     const stored = await storeFramePublication(auth, {
       frame,
@@ -461,38 +436,6 @@ describe("Frame publication reads", () => {
       publicationId: stored.value.publicationId,
     });
     expect(loadedManifest).toEqual(new Ok(manifest));
-
-    const loadedSource = await loadFramePublicationSourceFile(auth, {
-      frame,
-      publicationId: stored.value.publicationId,
-      relativePath: "index.tsx",
-    });
-    expect(loadedSource.isOk() && loadedSource.value.toString("utf8")).toBe(
-      "export default function App() {}"
-    );
-  });
-
-  it("does not expose source without the manifest commit marker", async () => {
-    const { auth, frame, workspaceId } = await setupFrame();
-    const publicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
-    fileStorageMock.setObject(
-      getFramePublicationSourcePath({
-        workspaceId,
-        frameId: frame.sId,
-        publicationId,
-        relativePath: "index.tsx",
-      }),
-      "partial source"
-    );
-    fileStorageMock.setFetchFileContentNotFound(() => true);
-
-    const result = await loadFramePublicationSourceFile(auth, {
-      frame,
-      publicationId,
-      relativePath: "index.tsx",
-    });
-
-    expect(result.isErr() && result.error.code).toBe("publication_not_found");
   });
 
   it("rejects an invalid stored manifest", async () => {
@@ -513,42 +456,6 @@ describe("Frame publication reads", () => {
     });
 
     expect(result.isErr() && result.error.code).toBe("invalid_manifest");
-  });
-
-  it("returns a typed error for a missing source file", async () => {
-    const { auth, frame } = await setupFrame();
-    const stored = await storeFramePublication(auth, {
-      frame,
-      functionArtifacts: [],
-      manifest,
-      sourceFiles,
-      uiBundleCode,
-    });
-    expect(stored.isOk()).toBe(true);
-    if (stored.isErr()) {
-      return;
-    }
-    fileStorageMock.setFetchFileContentNotFound(() => true);
-
-    const result = await loadFramePublicationSourceFile(auth, {
-      frame,
-      publicationId: stored.value.publicationId,
-      relativePath: "missing.ts",
-    });
-
-    expect(result.isErr() && result.error.code).toBe("source_not_found");
-  });
-
-  it("rejects unsafe source paths before reading", async () => {
-    const { auth, frame } = await setupFrame();
-
-    const result = await loadFramePublicationSourceFile(auth, {
-      frame,
-      publicationId: "b8c2b796-534a-4ad2-a5ad-071da692ca0b",
-      relativePath: "../index.tsx",
-    });
-
-    expect(result.isErr() && result.error.code).toBe("invalid_source");
   });
 });
 
@@ -803,7 +710,7 @@ describe("publishFramePublication", () => {
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
     await frame.setActiveFramePublication(activePublicationId);
     fileStorageMock.setFileSaveFails((filePath) =>
-      filePath.endsWith("/schema.json")
+      filePath.endsWith(".schema.json")
     );
 
     await expect(
@@ -817,7 +724,7 @@ describe("publishFramePublication", () => {
     ).rejects.toThrow("Simulated GCS write failure");
     expect(
       fileStorageMock.saveFileCalls.some(({ filePath }) =>
-        filePath.endsWith("/manifest.json")
+        filePath.endsWith("/publication.json")
       )
     ).toBe(false);
     const reloaded = await FileResource.fetchById(auth, frame.sId);

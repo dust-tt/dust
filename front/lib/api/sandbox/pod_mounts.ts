@@ -19,7 +19,7 @@ type PodRef = Pick<SpaceResource, "sId">;
 function podSandboxFunctionsMount(pod: PodRef): SandboxOnlyMount {
   return {
     kind: "pod_sandbox_functions",
-    id: pod.sId,
+    podId: pod.sId,
     sandboxMountPoint: getPodSandboxFunctionsMountPoint(pod.sId),
     readOnly: true,
   };
@@ -31,7 +31,7 @@ function podSandboxFunctionsMount(pod: PodRef): SandboxOnlyMount {
 function podStateReplicaMount(pod: PodRef): SandboxOnlyMount {
   return {
     kind: "pod_state",
-    id: pod.sId,
+    podId: pod.sId,
     sandboxMountPoint: POD_STATE_REPLICA_MOUNT_POINT,
     readOnly: false,
   };

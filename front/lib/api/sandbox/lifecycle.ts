@@ -4,6 +4,7 @@ import {
   ensureSandboxEgressOnExec,
   prepareSandboxEgressBeforeMount,
 } from "@app/lib/api/sandbox/egress";
+import { frameSandboxOnlyMounts } from "@app/lib/api/sandbox/frame_mounts";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
   recordSandboxStartupTotal,
@@ -15,6 +16,8 @@ import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import type { ConversationSandboxScope } from "@app/lib/resources/conversation_sandbox_adapter";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
+import type { FileResource } from "@app/lib/resources/file_resource";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import type {
   EnsureSandboxResult,
@@ -286,6 +289,28 @@ export async function ensurePodSandboxReady(
         spaceId: pod.sId,
       },
       egressPolicyOwnerId: pod.sId,
+    }),
+  });
+}
+
+export async function ensureFrameSandboxReady(
+  auth: Authenticator,
+  frame: FileResource
+): Promise<Result<EnsureSandboxReadyResult, Error>> {
+  return ensureOwnerSandboxReady(auth, {
+    ensureActive: () => FrameSandboxAdapter.ensureSandboxActive(auth, frame),
+    deriveConfig: (scope) => ({
+      getFileSystem: () =>
+        DustFileSystem.forFrameSandboxProvisioning(auth, frame, {
+          sandboxOnlyMounts: frameSandboxOnlyMounts(frame),
+        }),
+      runtimeOwner: {
+        kind: "frame",
+        frameId: frame.sId,
+        spaceId: scope.spaceId,
+      },
+      egressPolicyOwnerId: frame.sId,
+      egressPolicyPodId: scope.spaceId ?? undefined,
     }),
   });
 }
