@@ -130,6 +130,7 @@ export function ScheduleEditionSheetContent({
         <ScheduleEditionMessageInput isEditor={isEditor} />
         <TriggerPoolSelector
           name="schedule.executionMode"
+          currentExecutionMode={trigger?.executionMode ?? null}
           isEditor={isEditor}
         />
         <Separator />

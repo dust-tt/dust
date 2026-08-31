@@ -28,6 +28,7 @@ async function createOtherEditorAuth(workspace: WorkspaceType) {
 describe("PATCH /api/w/:wId/triggers/:tId/status", () => {
   it("lets the editor enable their own disabled trigger", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "PATCH",
       role: "user",
     });
@@ -51,6 +52,7 @@ describe("PATCH /api/w/:wId/triggers/:tId/status", () => {
 
   it("lets an admin disable another member's enabled trigger, locking it", async () => {
     const { workspace } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "PATCH",
       role: "admin",
     });
@@ -72,6 +74,7 @@ describe("PATCH /api/w/:wId/triggers/:tId/status", () => {
 
   it("stores a plain disabled status when the editor pauses their own trigger", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "PATCH",
       role: "user",
     });
@@ -101,6 +104,7 @@ describe("PATCH /api/w/:wId/triggers/:tId/status", () => {
     target,
   }) => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "PATCH",
       role: "user",
     });
@@ -125,6 +129,7 @@ describe("PATCH /api/w/:wId/triggers/:tId/status", () => {
 
   it("lets an admin re-enable an admin-locked trigger", async () => {
     const { workspace } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "PATCH",
       role: "admin",
     });
@@ -146,6 +151,7 @@ describe("PATCH /api/w/:wId/triggers/:tId/status", () => {
 
   it("lets a manager disable and re-enable a trigger they own", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "PATCH",
       role: "manager",
     });
@@ -178,6 +184,7 @@ describe("PATCH /api/w/:wId/triggers/:tId/status", () => {
 
   it("lets a manager disable and lock another member's trigger", async () => {
     const { workspace } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "PATCH",
       role: "manager",
     });
@@ -199,6 +206,7 @@ describe("PATCH /api/w/:wId/triggers/:tId/status", () => {
 
   it("lets a manager re-enable an admin-locked trigger", async () => {
     const { workspace } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "PATCH",
       role: "manager",
     });
@@ -220,6 +228,7 @@ describe("PATCH /api/w/:wId/triggers/:tId/status", () => {
 
   it("rejects a member who is neither admin nor editor", async () => {
     const { workspace } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "PATCH",
       role: "user",
     });
@@ -249,6 +258,7 @@ describe("PATCH /api/w/:wId/triggers/:tId/status", () => {
     target,
   }) => {
     const { workspace, user } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
       method: "PATCH",
       role: "admin",
     });

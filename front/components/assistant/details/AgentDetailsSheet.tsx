@@ -460,6 +460,7 @@ function TriggerEditView({
     isEditor,
     isOnSelectionPage,
     pageTitle,
+    canUseSelectedExecutionMode,
     handleScheduleSelect,
     handleWebhookSelect,
     handleCancel,
@@ -529,6 +530,7 @@ function TriggerEditView({
           <Button
             label="Save"
             variant="primary"
+            disabled={!canUseSelectedExecutionMode}
             onClick={form.handleSubmit(handleFormSubmit)}
           />
         </div>

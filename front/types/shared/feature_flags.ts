@@ -459,6 +459,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "tdraier",
   },
+  legacy_trigger_limits: {
+    description:
+      "Keep the legacy trigger limits: automations may still be charged to personal credits on a non credit-priced plan.",
+    stage: "self_serve",
+    owner: "adrsimon",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";

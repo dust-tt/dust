@@ -16,6 +16,7 @@ async function setupTest({
   withWorkspacePoolGrant?: boolean;
 }) {
   const { workspace, user } = await createPrivateApiMockRequest({
+    plan: "creditPriced",
     method: "POST",
     role,
   });
