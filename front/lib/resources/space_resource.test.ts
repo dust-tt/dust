@@ -185,6 +185,7 @@ describe("SpaceResource", () => {
         expect.objectContaining({ id: regularGroup.id }),
         transaction
       );
+      listForGroupSpy.mockRestore();
     });
 
     it("should delete pod-scoped sandbox env vars but keep workspace-scoped ones when hard deleting a space", async () => {
