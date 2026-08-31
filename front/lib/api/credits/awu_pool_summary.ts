@@ -68,9 +68,7 @@ type PoolLedgerData = {
   ledgerEntries: PoolLedgerEntry[];
 };
 
-// Single full-history balance listing (with embedded ledgers) covers both the
-// pool commit ids and their ledger entries, avoiding a second near-duplicate
-// paginated Metronome call.
+// Single full-history balance listing
 async function getPoolLedgerData({
   metronomeCustomerId,
 }: {
@@ -270,7 +268,6 @@ export class AwuPoolSummaryError extends Error {
 
 type AwuPoolSummaryErrorType = AwuPoolSummaryError["type"];
 
-// Discriminated union so the Metronome round-trip below can be redis cached
 type SerializableAwuPoolSummaryOutcome =
   | { status: "ok"; body: AwuPoolSummaryResponseBody }
   | { status: "error"; errorType: AwuPoolSummaryErrorType };

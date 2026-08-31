@@ -143,8 +143,7 @@ export type MemberUsageType = {
   // seat-type `default`, or `none` (no cap configured / unlimited).
   spendLimitSource: EffectiveSpendLimitSource;
   // Name of the group behind `spendLimitAwuCredits` when `spendLimitSource`
-  // is `"group"` (the cap-eligible group with the highest pool cap among the
-  // member's groups). Null for every other source.
+  // is `"group"`. Null for every other source.
   spendLimitGroupName: string | null;
   // Id of the Metronome alert backing the effective cap (override or default),
   // for deep-linking to the dashboard. Null when uncapped.
@@ -608,12 +607,7 @@ export async function getEsConsumedProgrammaticAwuCredits(
 
 /**
  * The workspace's total Elasticsearch-derived AWU consumption for the
- * current billing cycle — the sum of every member's "Credits usage" figure
- * (`consumedAwuCredits`). Used by `getAwuPoolSummary` to show live
- * consumption for workspaces with no credit pool (PAYG-only "excess credit
- * consumption" workspaces), where there's no pool ledger to sum instead.
- * Returns `null` when it can't be determined (no billing cycle, or the
- * analytics read failed) — callers must treat `null` as "unknown", never 0.
+ * current billing cycle.
  */
 export async function getEsConsumedAwuCreditsForWorkspace(
   workspace: LightWorkspaceType,
@@ -847,19 +841,6 @@ async function fetchFreeSeatCreditsForMembersTable({
   return { freeBalanceByUserId, freeStartingByUserId };
 }
 
-/**
- * Sum, across every active member, the portion of their AWU consumption that
- * draws from the workspace pool rather than their own seat allowance — the
- * same `consumedFromPoolAwuCredits` split shown per-row in the members table,
- * but totaled workspace-wide instead of per page. Used to compute the
- * "unattributed" pool consumption left over once member and programmatic
- * usage are subtracted from the cycle total (see `getAwuPoolSummary`).
- *
- * Reuses the same batched, cached fetchers as the members table (per-user
- * usage, seat allocations, free-seat allowances) so this stays a handful of
- * Metronome calls regardless of workspace size, not one per member.
- * Returns `null` when Metronome isn't configured for the workspace.
- */
 export type MemberPoolConsumedCredits = {
   username: string;
   poolConsumedCredits: number;
@@ -906,35 +887,22 @@ export async function sumActiveMembersPoolConsumedCredits({
       : [];
   });
 
-  // Same per-seat-type allowance the members table uses (source of truth for
-  // "seat usage"), rather than the live per-member Metronome seat allocation:
-  // the two can diverge when a contract sells both monthly and yearly variants
-  // of a tier, which previously made this sum drift from what the table shows.
-  let seatAllowanceBySeatType: Partial<
-    Record<NormalizedPoolLimitSeatType, number>
-  > = {};
-  try {
-    seatAllowanceBySeatType = await getSeatAllowancesByNormalizedSeatType(
-      workspace.sId
-    );
-  } catch (err) {
-    logger.warn(
-      { err: normalizeError(err), workspaceId: workspace.sId },
-      "[MembersUsage] Failed to resolve seat allowances, degrading to zero allocation"
-    );
-  }
-
-  const [usageByMetronomeUserId, { freeStartingByUserId }] = await Promise.all([
-    fetchPerUserUsageCreditsForMembersTable({
-      workspaceId: workspace.sId,
-      metronomeCustomerId,
-      metronomeContractId,
-      userIds: members.map((m) =>
-        m.seatType === "free" ? toFreeMetronomeUserId(m.sId) : m.sId
-      ),
-    }),
-    fetchFreeSeatCreditsForMembersTable({ metronomeCustomerId }),
-  ]);
+  const [usageByMetronomeUserId, { freeStartingByUserId }, seatDataByUserId] =
+    await Promise.all([
+      fetchPerUserUsageCreditsForMembersTable({
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        metronomeContractId,
+        userIds: members.map((m) =>
+          m.seatType === "free" ? toFreeMetronomeUserId(m.sId) : m.sId
+        ),
+      }),
+      fetchFreeSeatCreditsForMembersTable({ metronomeCustomerId }),
+      fetchSeatDataForMembersTable({
+        metronomeCustomerId,
+        metronomeContractId,
+      }),
+    ]);
 
   let totalPoolConsumedCredits = 0;
   const byMember: MemberPoolConsumedCredits[] = [];
@@ -945,12 +913,10 @@ export async function sumActiveMembersPoolConsumedCredits({
         : member.sId;
     const totalConsumedCredits =
       usageByMetronomeUserId.get(metronomeUserId) ?? 0;
-    const normalizedSeatType = normalizeToPoolLimitSeatType(member.seatType);
     const effectiveAllocationAwu =
       freeStartingByUserId.get(member.sId) ??
-      (normalizedSeatType
-        ? (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
-        : 0);
+      seatDataByUserId.get(member.sId)?.awuAllocation ??
+      0;
     const consumedFromAllowanceAwuCredits = Math.min(
       totalConsumedCredits,
       effectiveAllocationAwu
@@ -1842,20 +1808,12 @@ type MembersUsageRankableOrderColumn = Exclude<
   "name" | "email"
 >;
 
-// Discriminated union so the ranking computed below can be cached with
-// `cacheWithRedis`, which requires a plain JSON-serializable return value —
-// `Result`/`Err` (and the `Error` it carries) aren't serializable.
 type SerializableMembersUsageRankingOutcome =
   | { status: "ok"; userIds: string[]; total: number }
   | { status: "error"; message: string };
 
 // The expensive part of sorting the members table by a non-indexed column:
-// fetch the full matching set, rank every member by the relevant signal
-// (Metronome/ES-derived for `consumedFromPoolAwuCredits`/`seatUsage`,
-// membership-derived otherwise), and sort. Returns the full ranked sId order
-// rather than a page slice — the same ranking backs every page and both the
-// initial sort and subsequent page navigation, so it's cached as a unit (see
-// `getCachedMembersUsageRanking`) instead of being recomputed per request.
+// fetch the full matching set, rank every member by the relevant signal.
 async function computeMembersUsageRanking({
   auth,
   workspace,
@@ -1870,9 +1828,6 @@ async function computeMembersUsageRanking({
   orderDirection: "asc" | "desc";
   search: string;
   restrictToUserIds: string[] | undefined;
-  // Only used by `getCachedMembersUsageRanking`'s resolver below, to fold the
-  // seat-type/credit-state/group filters into the cache key without also
-  // keying on the (potentially large) resolved `restrictToUserIds` list.
   filterKey: string;
 }): Promise<SerializableMembersUsageRankingOutcome> {
   const allUsersResult = await UserResource.searchAllUsers(auth, {
@@ -2105,9 +2060,6 @@ async function computeMembersUsageRanking({
 // member) but identical for every page of the same sort/filter combination,
 // so it's cached as a unit: paginating or re-sorting into the same order
 // within the TTL reuses it instead of re-scanning the whole workspace.
-// Matches the TTL of `getPerUserAwuUsage`, the per-user cache this ranking
-// is itself built from — caching it longer would just serve a ranking
-// staler than the consumption figures it was computed from.
 const MEMBERS_USAGE_RANKING_CACHE_ID = "membersUsageRanking";
 const MEMBERS_USAGE_RANKING_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -2121,10 +2073,6 @@ const getCachedMembersUsageRanking = cacheWithRedis(
   }
 );
 
-// "name"/"email" live in the user search index, which owns sort + pagination
-// for those columns. Every other column is not indexed, so sorting by it
-// ranks the full matching set (cached, see `getCachedMembersUsageRanking`)
-// and slices out the requested page.
 async function resolveMembersUsagePageUsers({
   auth,
   workspace,
@@ -2160,11 +2108,7 @@ async function resolveMembersUsagePageUsers({
     return result.isOk() ? new Ok({ ...result.value, prefetch: {} }) : result;
   }
 
-  // Only the filter *parameters* go into the cache key (not the resolved
-  // `restrictToUserIds`, which can be large and would blow up the key
-  // space) — they determine `restrictToUserIds` deterministically for a
-  // given membership state, and the cache's TTL already bounds how stale a
-  // membership change can make the ranking.
+  // Only the filter *parameters* go into the cache key
   const filterKey = [
     paginationParams.seatType ?? "",
     paginationParams.creditState ?? "",
