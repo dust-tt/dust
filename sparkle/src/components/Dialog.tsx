@@ -85,8 +85,11 @@ const variantClasses: Record<DialogVariantType, string> = {
     "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
     "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
   ),
+  // Faster than the default variant on purpose: a command palette is opened
+  // from the keyboard many times a day, and anything slower reads as lag on
+  // the one surface people summon most.
   command: cn(
-    "top-[20%] duration-200 ease-emphasized data-[state=closed]:duration-150 motion-reduce:animate-none",
+    "top-[20%] duration-150 ease-emphasized data-[state=closed]:duration-100 motion-reduce:animate-none",
     "data-[state=open]:animate-in data-[state=closed]:animate-out",
     "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
     "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",

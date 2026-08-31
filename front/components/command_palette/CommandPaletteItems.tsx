@@ -14,8 +14,11 @@ export const ItemRow = React.forwardRef<HTMLDivElement, ItemRowProps>(
       <div
         ref={ref}
         className={cn(
-          "flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors duration-150",
+          "flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm",
           "text-foreground",
+          // No transition on the highlight: rows are stepped through with the
+          // arrow keys, and a colour fade smears into a trail when a key is
+          // held down. Instant is what makes the list feel fast.
           // Match the hover/selected background used by menus and dropdowns.
           isSelected ? "bg-hover" : "hover:bg-hover"
         )}

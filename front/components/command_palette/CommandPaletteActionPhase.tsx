@@ -154,11 +154,11 @@ export function CommandPaletteActionPhase({
           <div
             key={action}
             className={cn(
-              "flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors duration-100",
+              "flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5",
               "text-foreground",
-              selectedIndex === i
-                ? "bg-primary-100"
-                : "hover:bg-muted-background"
+              // Same instant, same colours as the search phase rows: the two
+              // phases are one surface and should not highlight differently.
+              selectedIndex === i ? "bg-hover" : "hover:bg-hover"
             )}
             onClick={() => onAction(action)}
             onMouseEnter={() => setSelectedIndex(i)}

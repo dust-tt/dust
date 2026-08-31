@@ -227,8 +227,14 @@ export function CommandPaletteSearchPhase({
                   onClick={() => onItemSelect({ kind: "command", command })}
                   onMouseMove={() => onSelectedIndexChange(globalIndex)}
                 >
-                  <Icon visual={command.icon} size="xs" />
-                  <span className="font-medium">{command.label}</span>
+                  <Icon
+                    visual={command.icon}
+                    size="xs"
+                    className="text-muted-foreground"
+                  />
+                  <span className="min-w-0 truncate font-medium">
+                    {command.label}
+                  </span>
                 </ItemRow>
               );
             })}
