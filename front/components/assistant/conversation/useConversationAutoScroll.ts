@@ -19,28 +19,26 @@ export function useConversationAutoScroll({
   messageListRef,
 }: UseConversationAutoScrollProps) {
   const isAutoScrollEnabledRef = useRef(true);
-  const hasLeftBottomSinceDetachRef = useRef(false);
+  const hasLeftBottomRef = useRef(false);
 
   const enableAutoScroll = useCallback(() => {
     isAutoScrollEnabledRef.current = true;
-    hasLeftBottomSinceDetachRef.current = false;
+    hasLeftBottomRef.current = false;
   }, []);
 
-  // While the list's scroll direction is "up", Virtuoso compensates row-height
-  // growth by adding the same delta to scrollTop. Streaming markdown can keep
-  // that compensation alive indefinitely. A native listener recognizes those
-  // matching deltas and restores the detached position before the next paint.
+  // Virtuoso's public onScroll fires before its row-height compensation, so a
+  // native listener restores the detached position after Virtuoso updates it.
   useEffect(() => {
+    const methods = messageListRef.current;
     const scrollElement = isMobile
       ? document.scrollingElement
-      : messageListRef.current?.scrollerElement();
-    if (!(scrollElement instanceof HTMLElement)) {
+      : methods?.scrollerElement();
+    if (!methods || !(scrollElement instanceof HTMLElement)) {
       return;
     }
 
     const scrollTarget = isMobile ? window : scrollElement;
-    const listElement =
-      messageListRef.current?.scrollerElement()?.firstElementChild;
+    const listElement = methods.scrollerElement()?.firstElementChild;
     let previousScrollHeight = scrollElement.scrollHeight;
     let previousScrollTop = scrollElement.scrollTop;
     let lastTouchY: number | null = null;
@@ -52,40 +50,35 @@ export function useConversationAutoScroll({
 
     const detachFromAutoScroll = () => {
       captureScrollPosition();
-      if (!isAutoScrollEnabledRef.current) {
-        return;
+      if (isAutoScrollEnabledRef.current) {
+        isAutoScrollEnabledRef.current = false;
+        hasLeftBottomRef.current = false;
+        methods.cancelSmoothScroll();
       }
-
-      isAutoScrollEnabledRef.current = false;
-      hasLeftBottomSinceDetachRef.current = false;
-      messageListRef.current?.cancelSmoothScroll();
     };
 
     const resizeObserver = new ResizeObserver(() => {
-      // Keep the height baseline current when the list grows without moving.
-      // If scrollTop changed, the scroll listener still needs the old values
-      // to recognize and undo Virtuoso's height compensation.
+      // Advance the height baseline when content grows without scrolling.
       if (
         !isAutoScrollEnabledRef.current &&
         scrollElement.scrollTop === previousScrollTop
       ) {
-        captureScrollPosition();
+        previousScrollHeight = scrollElement.scrollHeight;
       }
     });
     if (listElement) {
       resizeObserver.observe(listElement);
     }
 
-    const preserveDetachedScrollPosition = () => {
+    const onScroll = () => {
       const scrollHeight = scrollElement.scrollHeight;
-      let scrollTop = scrollElement.scrollTop;
+      const scrollTop = scrollElement.scrollTop;
       const scrollHeightDelta = scrollHeight - previousScrollHeight;
       const scrollTopDelta = scrollTop - previousScrollTop;
       const isHeightCompensation =
         scrollHeightDelta !== 0 &&
         Math.abs(scrollTopDelta - scrollHeightDelta) <= 1;
-      const isAtBottom =
-        messageListRef.current?.getScrollLocation().isAtBottom === true;
+      const isAtBottom = methods.getScrollLocation().isAtBottom;
 
       if (
         isAutoScrollEnabledRef.current &&
@@ -93,28 +86,26 @@ export function useConversationAutoScroll({
         !isHeightCompensation &&
         !isAtBottom
       ) {
-        isAutoScrollEnabledRef.current = false;
-        hasLeftBottomSinceDetachRef.current = true;
-        messageListRef.current?.cancelSmoothScroll();
+        detachFromAutoScroll();
+        hasLeftBottomRef.current = true;
       }
 
       // Reattach before correcting concurrent height compensation. Otherwise
       // the correction can move the viewport away from the bottom again.
       if (!isAutoScrollEnabledRef.current) {
         if (!isAtBottom) {
-          hasLeftBottomSinceDetachRef.current = true;
-        } else if (hasLeftBottomSinceDetachRef.current) {
+          hasLeftBottomRef.current = true;
+        } else if (hasLeftBottomRef.current) {
           enableAutoScroll();
         }
       }
 
       if (!isAutoScrollEnabledRef.current && isHeightCompensation) {
-        scrollElement.scrollTop -= scrollTopDelta;
-        scrollTop = scrollElement.scrollTop;
+        scrollElement.scrollTop = previousScrollTop;
       }
 
       previousScrollHeight = scrollHeight;
-      previousScrollTop = scrollTop;
+      previousScrollTop = scrollElement.scrollTop;
     };
 
     const onTouchStart = (event: TouchEvent) => {
@@ -135,19 +126,13 @@ export function useConversationAutoScroll({
       lastTouchY = touchY;
     };
 
-    scrollTarget.addEventListener("scroll", preserveDetachedScrollPosition, {
-      passive: true,
-    });
-    scrollElement.addEventListener("touchstart", onTouchStart, {
-      passive: true,
-    });
-    scrollElement.addEventListener("touchmove", onTouchMove, { passive: true });
+    const passiveOptions = { passive: true };
+    scrollTarget.addEventListener("scroll", onScroll, passiveOptions);
+    scrollElement.addEventListener("touchstart", onTouchStart, passiveOptions);
+    scrollElement.addEventListener("touchmove", onTouchMove, passiveOptions);
     return () => {
       resizeObserver.disconnect();
-      scrollTarget.removeEventListener(
-        "scroll",
-        preserveDetachedScrollPosition
-      );
+      scrollTarget.removeEventListener("scroll", onScroll);
       scrollElement.removeEventListener("touchstart", onTouchStart);
       scrollElement.removeEventListener("touchmove", onTouchMove);
     };
