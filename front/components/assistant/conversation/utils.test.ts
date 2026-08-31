@@ -1,7 +1,4 @@
-import {
-  getGroupConversationsByUnreadAndActionRequired,
-  getNextAutoScrollState,
-} from "@app/components/assistant/conversation/utils";
+import { getGroupConversationsByUnreadAndActionRequired } from "@app/components/assistant/conversation/utils";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { describe, expect, it } from "vitest";
 
@@ -79,56 +76,5 @@ describe("getGroupConversationsByUnreadAndActionRequired", () => {
 
     expect(triggeredConversations.map((c) => c.sId)).toEqual(["active"]);
     expect(inboxConversations).toEqual([]);
-  });
-});
-
-describe("getNextAutoScrollState", () => {
-  it("stays attached when streamed content moves the bottom away", () => {
-    expect(
-      getNextAutoScrollState(
-        { isEnabled: true, hasLeftBottom: false },
-        { type: "scroll", bottomOffset: 120 }
-      )
-    ).toEqual({ isEnabled: true, hasLeftBottom: false });
-  });
-
-  it("detaches immediately when the reader scrolls up", () => {
-    expect(
-      getNextAutoScrollState(
-        { isEnabled: true, hasLeftBottom: false },
-        { type: "user_scrolled_up" }
-      )
-    ).toEqual({ isEnabled: false, hasLeftBottom: false });
-  });
-
-  it("does not re-attach to a stale bottom event after detaching", () => {
-    expect(
-      getNextAutoScrollState(
-        { isEnabled: false, hasLeftBottom: false },
-        { type: "scroll", bottomOffset: 0 }
-      )
-    ).toEqual({ isEnabled: false, hasLeftBottom: false });
-  });
-
-  it("preserves the evidence that the reader left the bottom", () => {
-    const awayFromBottom = getNextAutoScrollState(
-      { isEnabled: false, hasLeftBottom: false },
-      { type: "scroll", bottomOffset: 100 }
-    );
-
-    expect(
-      getNextAutoScrollState(awayFromBottom, {
-        type: "user_scrolled_up",
-      })
-    ).toEqual({ isEnabled: false, hasLeftBottom: true });
-  });
-
-  it("re-attaches after the reader returns to the bottom", () => {
-    expect(
-      getNextAutoScrollState(
-        { isEnabled: false, hasLeftBottom: true },
-        { type: "scroll", bottomOffset: 0.5 }
-      )
-    ).toEqual({ isEnabled: true, hasLeftBottom: false });
   });
 });

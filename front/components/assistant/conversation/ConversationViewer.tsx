@@ -34,11 +34,7 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
-import type { AutoScrollEvent } from "@app/components/assistant/conversation/utils";
-import {
-  findFirstUnreadMessageIndex,
-  getNextAutoScrollState,
-} from "@app/components/assistant/conversation/utils";
+import { findFirstUnreadMessageIndex } from "@app/components/assistant/conversation/utils";
 import {
   requestConversationMarkAsRead,
   useConversation,
@@ -114,6 +110,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
 
 const DEFAULT_PAGE_LIMIT = 50;
+const AUTO_SCROLL_BOTTOM_THRESHOLD_PX = 4;
 const TOUCH_SCROLL_UP_THRESHOLD_PX = 4;
 // SSE is the fast path; poll slowly in case the completion event is missed before subscription.
 const FORK_PREPARATION_POLL_INTERVAL_MS = 60_000;
@@ -270,22 +267,10 @@ export const ConversationViewer = ({
     >(null);
   const isMobile = useIsMobile();
   const isAutoScrollEnabledRef = useRef(true);
-  const hasLeftBottomSinceDetachRef = useRef(false);
   const touchStartYRef = useRef<number | null>(null);
-  const updateAutoScrollState = useCallback((event: AutoScrollEvent) => {
-    const wasAutoScrollEnabled = isAutoScrollEnabledRef.current;
-    const nextState = getNextAutoScrollState(
-      {
-        isEnabled: wasAutoScrollEnabled,
-        hasLeftBottom: hasLeftBottomSinceDetachRef.current,
-      },
-      event
-    );
-
-    isAutoScrollEnabledRef.current = nextState.isEnabled;
-    hasLeftBottomSinceDetachRef.current = nextState.hasLeftBottom;
-
-    if (wasAutoScrollEnabled && !nextState.isEnabled) {
+  const detachFromAutoScroll = useCallback(() => {
+    if (isAutoScrollEnabledRef.current) {
+      isAutoScrollEnabledRef.current = false;
       virtuosoMessageListRef.current?.cancelSmoothScroll();
     }
   }, []);
@@ -1202,7 +1187,7 @@ export const ConversationViewer = ({
           );
 
         if (!hasRunningAgent) {
-          updateAutoScrollState({ type: "attach" });
+          isAutoScrollEnabledRef.current = true;
         }
 
         if (hasRunningAgent && conversationId) {
@@ -1370,16 +1355,14 @@ export const ConversationViewer = ({
       submitMessage,
       user,
       incrementPendingSteeringCount,
-      updateAutoScrollState,
     ]
   );
 
   const onScroll = useCallback(
     (location: ListScrollLocation) => {
-      updateAutoScrollState({
-        type: "scroll",
-        bottomOffset: location.bottomOffset,
-      });
+      if (location.bottomOffset <= AUTO_SCROLL_BOTTOM_THRESHOLD_PX) {
+        isAutoScrollEnabledRef.current = true;
+      }
 
       const isLoadingData =
         isLoadingInitialData || isMessagesLoading || isValidating;
@@ -1400,17 +1383,16 @@ export const ConversationViewer = ({
       setSize,
       size,
       messages,
-      updateAutoScrollState,
     ]
   );
 
   const onWheel = useCallback(
     (event: WheelEvent<HTMLDivElement>) => {
       if (!event.ctrlKey && event.deltaY < 0) {
-        updateAutoScrollState({ type: "user_scrolled_up" });
+        detachFromAutoScroll();
       }
     },
-    [updateAutoScrollState]
+    [detachFromAutoScroll]
   );
 
   const onTouchStart = useCallback((event: TouchEvent<HTMLDivElement>) => {
@@ -1425,10 +1407,10 @@ export const ConversationViewer = ({
         touchStartYRef.current !== null &&
         touchY - touchStartYRef.current >= TOUCH_SCROLL_UP_THRESHOLD_PX
       ) {
-        updateAutoScrollState({ type: "user_scrolled_up" });
+        detachFromAutoScroll();
       }
     },
-    [updateAutoScrollState]
+    [detachFromAutoScroll]
   );
 
   const onTouchEnd = useCallback(() => {
