@@ -15,7 +15,7 @@ import {
   getPrivateUploadBucket,
 } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
-import { LockAcquisitionTimeoutError } from "@app/lib/lock";
+import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FramePublicationFunctionDefinition } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -622,7 +622,7 @@ export async function publishFramePublication(
   });
   if (publication.isErr()) {
     const error = publication.error;
-    if (error instanceof LockAcquisitionTimeoutError) {
+    if (isLockAcquisitionTimeoutError(error)) {
       return new Err(
         new SandboxFunctionError(
           "publish_conflict",

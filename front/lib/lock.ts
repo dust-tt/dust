@@ -60,6 +60,12 @@ export class LockAcquisitionTimeoutError extends Error {
   }
 }
 
+export function isLockAcquisitionTimeoutError(
+  error: unknown
+): error is LockAcquisitionTimeoutError {
+  return error instanceof LockAcquisitionTimeoutError;
+}
+
 type ExecuteWithLockOptions = {
   lockTtlMs?: number;
   // How long a waiter sleeps between acquisition attempts. The wait is blind
