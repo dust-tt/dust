@@ -1,6 +1,6 @@
 import {
   getModelsTierDisplayName,
-  getTierForModel,
+  getTierForModelConfiguration,
 } from "@app/types/assistant/models/model_tiers";
 import type {
   ModelConfigurationType,
@@ -13,11 +13,8 @@ interface ModelTierChipProps {
   reasoningEffort?: ReasoningEffort;
 }
 
-export function ModelTierChip({
-  model,
-  reasoningEffort = model.defaultReasoningEffort,
-}: ModelTierChipProps) {
-  const tier = getTierForModel(model.modelId, reasoningEffort);
+export function ModelTierChip({ model, reasoningEffort }: ModelTierChipProps) {
+  const tier = getTierForModelConfiguration(model, reasoningEffort);
   if (!tier) {
     return null;
   }
