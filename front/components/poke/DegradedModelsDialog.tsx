@@ -1,12 +1,11 @@
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import { DEGRADABLE_MODEL_CONFIGS } from "@app/lib/poke/degradable_models";
-import { useUpdatePokeDegradedModels } from "@app/poke/swr/kill";
-import {
-  getProviderDisplayName,
-  MODEL_PROVIDER_IDS,
-} from "@app/types/assistant/models/providers";
+import type { DegradableModelEndpointType } from "@app/lib/api/poke/degraded_models";
+import type { DegradedModelEndpointType } from "@app/lib/model_constructors/types/degradations";
+import { degradedModelEndpointKey } from "@app/lib/model_constructors/types/degradations";
+import { useUpdatePokeDegradedModels } from "@app/poke/swr/degraded_models";
+import { getProviderDisplayName } from "@app/types/assistant/models/providers";
 import type {
-  ModelConfigurationType,
+  ModelIdType,
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
 import {
@@ -22,52 +21,82 @@ import {
   DialogTrigger,
   Label,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+
+interface ModelGroup {
+  modelId: ModelIdType;
+  displayName: string;
+  endpoints: DegradableModelEndpointType[];
+}
 
 interface ProviderGroup {
   providerId: ModelProviderIdType;
   displayName: string;
-  models: ModelConfigurationType[];
+  models: ModelGroup[];
+  endpointKeys: string[];
 }
 
-// Degradable models grouped by provider, in the canonical provider order. Built
-// once: the catalog is a build-time constant.
-const PROVIDER_GROUPS: ProviderGroup[] = MODEL_PROVIDER_IDS.map(
-  (providerId) => ({
-    providerId,
-    displayName: getProviderDisplayName(providerId),
-    models: DEGRADABLE_MODEL_CONFIGS.filter((m) => m.providerId === providerId),
-  })
-).filter((group) => group.models.length > 0);
+// The catalog grouped provider -> model -> host, preserving the order the API
+// returns it in.
+function groupEndpoints(
+  degradableEndpoints: DegradableModelEndpointType[]
+): ProviderGroup[] {
+  const providers = new Map<
+    ModelProviderIdType,
+    Map<ModelIdType, ModelGroup>
+  >();
+
+  for (const endpoint of degradableEndpoints) {
+    const models =
+      providers.get(endpoint.providerId) ?? new Map<ModelIdType, ModelGroup>();
+    const model = models.get(endpoint.modelId) ?? {
+      modelId: endpoint.modelId,
+      displayName: endpoint.displayName,
+      endpoints: [],
+    };
+
+    model.endpoints.push(endpoint);
+    models.set(endpoint.modelId, model);
+    providers.set(endpoint.providerId, models);
+  }
+
+  return [...providers.entries()].map(([providerId, models]) => {
+    const modelGroups = [...models.values()];
+
+    return {
+      providerId,
+      displayName: getProviderDisplayName(providerId),
+      models: modelGroups,
+      endpointKeys: modelGroups.flatMap((model) =>
+        model.endpoints.map(degradedModelEndpointKey)
+      ),
+    };
+  });
+}
 
 interface DegradedModelsFormValues {
-  degradedModelIds: string[];
+  degradedEndpointKeys: string[];
 }
 
-function sameModelIds(a: string[], b: string[]): boolean {
+function sameKeys(a: string[], b: string[]): boolean {
   if (a.length !== b.length) {
     return false;
   }
   const aSet = new Set(a);
 
-  return b.every((modelId) => aSet.has(modelId));
-}
-
-function displayNameForModelId(modelId: string): string {
-  return (
-    DEGRADABLE_MODEL_CONFIGS.find((m) => m.modelId === modelId)?.displayName ??
-    modelId
-  );
+  return b.every((key) => aSet.has(key));
 }
 
 interface DegradedModelsDialogProps {
-  degradedModelIds: string[];
+  degradableEndpoints: DegradableModelEndpointType[];
+  degradedEndpoints: DegradedModelEndpointType[];
   onSaved: () => Promise<void>;
 }
 
 export function DegradedModelsDialog({
-  degradedModelIds,
+  degradableEndpoints,
+  degradedEndpoints,
   onSaved,
 }: DegradedModelsDialogProps) {
   const [open, setOpen] = useState(false);
@@ -79,9 +108,9 @@ export function DegradedModelsDialog({
           variant="outline"
           size="sm"
           label={
-            degradedModelIds.length === 0
+            degradedEndpoints.length === 0
               ? "Manage"
-              : `${degradedModelIds.length} degraded`
+              : `${degradedEndpoints.length} degraded`
           }
         />
       </DialogTrigger>
@@ -89,9 +118,10 @@ export function DegradedModelsDialog({
         <DialogHeader>
           <DialogTitle>Degraded models</DialogTitle>
           <DialogDescription>
-            Take a model out of the auto streams for every workspace in this
-            region: Basic, Standard and Premium skip it and pick the next
-            candidate in their pool instead.
+            Flag the endpoints hit by a provider incident. A model is taken out
+            of the auto streams for every workspace in this region as soon as
+            one of its endpoints is degraded: Basic, Standard and Premium skip
+            it and pick the next candidate in their pool instead.
           </DialogDescription>
           <DialogDescription>
             Nothing else changes. An agent configured on the model, and a user
@@ -105,7 +135,8 @@ export function DegradedModelsDialog({
         </DialogHeader>
         {open && (
           <DegradedModelsEditor
-            degradedModelIds={degradedModelIds}
+            degradableEndpoints={degradableEndpoints}
+            degradedEndpoints={degradedEndpoints}
             onCancel={() => setOpen(false)}
             onSaved={async () => {
               await onSaved();
@@ -119,93 +150,135 @@ export function DegradedModelsDialog({
 }
 
 interface DegradedModelsEditorProps {
-  degradedModelIds: string[];
+  degradableEndpoints: DegradableModelEndpointType[];
+  degradedEndpoints: DegradedModelEndpointType[];
   onCancel: () => void;
   onSaved: () => Promise<void>;
 }
 
 function DegradedModelsEditor({
-  degradedModelIds,
+  degradableEndpoints,
+  degradedEndpoints,
   onCancel,
   onSaved,
 }: DegradedModelsEditorProps) {
   const updateDegradedModels = useUpdatePokeDegradedModels();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const providerGroups = useMemo(
+    () => groupEndpoints(degradableEndpoints),
+    [degradableEndpoints]
+  );
+  const endpointByKey = useMemo(
+    () =>
+      new Map(
+        degradableEndpoints.map((endpoint) => [
+          degradedModelEndpointKey(endpoint),
+          endpoint,
+        ])
+      ),
+    [degradableEndpoints]
+  );
+  const degradedEndpointKeys = useMemo(
+    () => degradedEndpoints.map(degradedModelEndpointKey),
+    [degradedEndpoints]
+  );
+
   const form = useForm<DegradedModelsFormValues>({
-    defaultValues: { degradedModelIds },
+    defaultValues: { degradedEndpointKeys },
   });
-  const selected = form.watch("degradedModelIds");
+  const selected = form.watch("degradedEndpointKeys");
   const selectedSet = new Set(selected);
 
-  // The switches are refetched while the dialog is open, so re-seed the form
+  // The degraded set is refetched while the dialog is open, so re-seed the form
   // when the server state changes under it — unless the operator already has
   // pending edits, which must not be thrown away.
   useEffect(() => {
     if (!form.formState.isDirty) {
-      form.reset({ degradedModelIds });
+      form.reset({ degradedEndpointKeys });
     }
-  }, [form, degradedModelIds]);
+  }, [form, degradedEndpointKeys]);
 
-  const setSelected = (modelIds: string[]) => {
-    form.setValue("degradedModelIds", modelIds, { shouldDirty: true });
+  const setSelected = (keys: string[]) => {
+    form.setValue("degradedEndpointKeys", keys, { shouldDirty: true });
   };
 
-  const toggleModel = (modelId: string, degraded: boolean) => {
-    setSelected(
-      degraded
-        ? [...selected, modelId]
-        : selected.filter((id) => id !== modelId)
-    );
+  const toggleKeys = (keys: string[], degraded: boolean) => {
+    const toggled = new Set(keys);
+    const withoutToggled = selected.filter((key) => !toggled.has(key));
+
+    setSelected(degraded ? [...withoutToggled, ...keys] : withoutToggled);
   };
 
-  const toggleProvider = (group: ProviderGroup, degraded: boolean) => {
-    const groupModelIds = new Set<string>(group.models.map((m) => m.modelId));
-    const withoutGroup = selected.filter((id) => !groupModelIds.has(id));
+  const hasChanges = !sameKeys(selected, degradedEndpointKeys);
 
-    setSelected(degraded ? [...withoutGroup, ...groupModelIds] : withoutGroup);
+  const labelForKey = (key: string): string => {
+    const endpoint = endpointByKey.get(key);
+
+    return endpoint ? `${endpoint.displayName} (${endpoint.host})` : key;
   };
 
-  const hasChanges = !sameModelIds(selected, degradedModelIds);
+  const onSubmit = form.handleSubmit(
+    async ({ degradedEndpointKeys: nextKeys }) => {
+      const newlyDegraded = nextKeys.filter(
+        (key) => !degradedEndpointKeys.includes(key)
+      );
+      const restored = degradedEndpointKeys.filter(
+        (key) => !nextKeys.includes(key)
+      );
 
-  const onSubmit = form.handleSubmit(async ({ degradedModelIds: nextIds }) => {
-    const newlyDegraded = nextIds.filter(
-      (id) => !degradedModelIds.includes(id)
-    );
-    const restored = degradedModelIds.filter((id) => !nextIds.includes(id));
+      const summary = [
+        newlyDegraded.length > 0 &&
+          `Degrade: ${newlyDegraded.map(labelForKey).join(", ")}`,
+        restored.length > 0 &&
+          `Restore: ${restored.map(labelForKey).join(", ")}`,
+      ]
+        .filter((line) => typeof line === "string")
+        .join("\n");
 
-    const summary = [
-      newlyDegraded.length > 0 &&
-        `Degrade: ${newlyDegraded.map(displayNameForModelId).join(", ")}`,
-      restored.length > 0 &&
-        `Restore: ${restored.map(displayNameForModelId).join(", ")}`,
-    ]
-      .filter((line) => typeof line === "string")
-      .join("\n");
-
-    if (!window.confirm(`Apply these degraded models?\n\n${summary}`)) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      if (await updateDegradedModels(nextIds)) {
-        await onSaved();
+      if (!window.confirm(`Apply these degraded endpoints?\n\n${summary}`)) {
+        return;
       }
-    } finally {
-      setIsSubmitting(false);
+
+      // Only what the operator toggled, so a colleague's endpoints survive.
+      const updates = [
+        ...newlyDegraded.map((key) => ({ key, degraded: true })),
+        ...restored.map((key) => ({ key, degraded: false })),
+      ]
+        .map(({ key, degraded }) => {
+          const endpoint = endpointByKey.get(key);
+
+          return endpoint
+            ? {
+                modelId: endpoint.modelId,
+                providerId: endpoint.providerId,
+                host: endpoint.host,
+                degraded,
+              }
+            : undefined;
+        })
+        .filter((update) => update !== undefined);
+
+      setIsSubmitting(true);
+      try {
+        if (await updateDegradedModels(updates)) {
+          await onSaved();
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
     }
-  });
+  );
 
   return (
     <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
       <DialogContainer>
         <div className="space-y-6">
-          {PROVIDER_GROUPS.map((group) => {
-            const degradedInGroup = group.models.filter((m) =>
-              selectedSet.has(m.modelId)
+          {providerGroups.map((group) => {
+            const degradedInGroup = group.endpointKeys.filter((key) =>
+              selectedSet.has(key)
             ).length;
-            const allDegraded = degradedInGroup === group.models.length;
+            const allDegraded = degradedInGroup === group.endpointKeys.length;
 
             return (
               <div key={group.providerId} className="space-y-3">
@@ -226,7 +299,7 @@ function DegradedModelsEditor({
                             : false
                       }
                       onCheckedChange={() =>
-                        toggleProvider(group, !allDegraded)
+                        toggleKeys(group.endpointKeys, !allDegraded)
                       }
                     />
                     <Label
@@ -237,30 +310,18 @@ function DegradedModelsEditor({
                     </Label>
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {degradedInGroup} / {group.models.length} degraded
+                    {degradedInGroup} / {group.endpointKeys.length} degraded
                   </span>
                 </div>
 
                 <div className="grid gap-3 pl-1 sm:grid-cols-2">
                   {group.models.map((model) => (
-                    <div
+                    <ModelRow
                       key={model.modelId}
-                      className="flex items-center gap-2.5"
-                    >
-                      <Checkbox
-                        id={`model-${model.modelId}`}
-                        checked={selectedSet.has(model.modelId)}
-                        onCheckedChange={(checked) =>
-                          toggleModel(model.modelId, checked === true)
-                        }
-                      />
-                      <Label
-                        htmlFor={`model-${model.modelId}`}
-                        className="cursor-pointer text-sm"
-                      >
-                        {model.displayName}
-                      </Label>
-                    </div>
+                      model={model}
+                      selectedSet={selectedSet}
+                      onToggle={toggleKeys}
+                    />
                   ))}
                 </div>
               </div>
@@ -285,5 +346,64 @@ function DegradedModelsEditor({
         />
       </DialogFooter>
     </form>
+  );
+}
+
+interface ModelRowProps {
+  model: ModelGroup;
+  selectedSet: Set<string>;
+  onToggle: (keys: string[], degraded: boolean) => void;
+}
+
+// A model served from a single host is one checkbox; one served from several
+// gets a per-host checkbox under a tri-state parent, so an incident on one host
+// can be flagged without touching the others.
+function ModelRow({ model, selectedSet, onToggle }: ModelRowProps) {
+  const modelKeys = model.endpoints.map(degradedModelEndpointKey);
+  const degradedCount = modelKeys.filter((key) => selectedSet.has(key)).length;
+  const allDegraded = degradedCount === modelKeys.length;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2.5">
+        <Checkbox
+          id={`model-${model.modelId}`}
+          checked={allDegraded ? true : degradedCount > 0 ? "partial" : false}
+          onCheckedChange={() => onToggle(modelKeys, !allDegraded)}
+        />
+        <Label
+          htmlFor={`model-${model.modelId}`}
+          className="cursor-pointer text-sm"
+        >
+          {model.displayName}
+        </Label>
+      </div>
+
+      {model.endpoints.length > 1 && (
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 pl-7">
+          {model.endpoints.map((endpoint) => {
+            const key = degradedModelEndpointKey(endpoint);
+
+            return (
+              <div key={key} className="flex items-center gap-2">
+                <Checkbox
+                  id={`endpoint-${key}`}
+                  checked={selectedSet.has(key)}
+                  onCheckedChange={(checked) =>
+                    onToggle([key], checked === true)
+                  }
+                />
+                <Label
+                  htmlFor={`endpoint-${key}`}
+                  className="cursor-pointer text-xs text-muted-foreground"
+                >
+                  {endpoint.host}
+                </Label>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

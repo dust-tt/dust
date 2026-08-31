@@ -3,11 +3,9 @@ import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { KillSwitchType } from "@app/lib/poke/types";
-import {
-  degradedModelIdsFromKillSwitches,
-  TOGGLABLE_KILL_SWITCH_TYPES,
-} from "@app/lib/poke/types";
+import { TOGGLABLE_KILL_SWITCH_TYPES } from "@app/lib/poke/types";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
+import { usePokeDegradedModels } from "@app/poke/swr/degraded_models";
 import { usePokeKillSwitches } from "@app/poke/swr/kill";
 import {
   usePokeSandboxKillImages,
@@ -101,7 +99,8 @@ export function KillPage() {
     useState<KillSwitchType | null>(null);
   const sendNotification = useSendNotification();
   const enabledKillSwitches = new Set(killSwitches);
-  const degradedModelIds = degradedModelIdsFromKillSwitches(killSwitches);
+  const { degradableEndpoints, degradedEndpoints, mutateDegradedModels } =
+    usePokeDegradedModels();
 
   const { images, isImagesLoading } = usePokeSandboxKillImages();
   const requestSandboxKill = useRequestSandboxKill();
@@ -270,25 +269,30 @@ export function KillPage() {
                 </h3>
 
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Take individual models out of the auto streams, one switch per
-                  model.
-                  {degradedModelIds.length > 0 &&
-                    ` Currently degraded: ${degradedModelIds.join(", ")}.`}
+                  Flag the model endpoints hit by a provider incident, one
+                  switch per model and host.
+                  {degradedEndpoints.length > 0 &&
+                    ` Currently degraded: ${degradedEndpoints
+                      .map(
+                        (endpoint) => `${endpoint.modelId} (${endpoint.host})`
+                      )
+                      .join(", ")}.`}
                 </p>
 
                 <p className="text-xs leading-5 text-muted-foreground">
-                  The Basic, Standard and Premium streams skip a degraded model
-                  and pick the next candidate in their pool; agents and users
-                  pinned to it keep running on it. Takes up to 60s to apply on
-                  each pod, as stream resolution reads the switches from an
-                  in-process cache.
+                  The Basic, Standard and Premium streams skip a model as soon
+                  as one of its endpoints is degraded and pick the next
+                  candidate in their pool; agents and users pinned to it keep
+                  running on it. Takes up to 60s to apply on each pod, as stream
+                  resolution reads the degraded models from an in-process cache.
                 </p>
               </div>
 
               <DegradedModelsDialog
-                degradedModelIds={degradedModelIds}
+                degradableEndpoints={degradableEndpoints}
+                degradedEndpoints={degradedEndpoints}
                 onSaved={async () => {
-                  await mutateKillSwitches();
+                  await mutateDegradedModels();
                 }}
               />
             </div>
