@@ -237,7 +237,7 @@ export function UsagePageRedesign() {
     pageSize: DEFAULT_PAGE_SIZE,
   });
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "name", desc: false },
+    { id: "consumedFromPoolAwuCredits", desc: true },
   ]);
 
   // Members are sorted server-side; reset to the first page when the sort
@@ -271,7 +271,9 @@ export function UsagePageRedesign() {
 
   const sort = sorting[0];
   const membersOrderColumn =
-    sort?.id === "email" || sort?.id === "consumedAwuCredits"
+    sort?.id === "email" ||
+    sort?.id === "consumedFromPoolAwuCredits" ||
+    sort?.id === "seatUsage"
       ? sort.id
       : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
@@ -1069,7 +1071,8 @@ export function UsagePageRedesign() {
       totalRowCount={totalMembersUsage}
       sorting={sorting}
       setSorting={handleSetSorting}
-      showGroupsColumn={groups.length > 0}
+      showGroupsColumn={false}
+      variant="compact"
       enableSelection={!isReadOnly}
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
