@@ -153,6 +153,7 @@ function memberFromUpgradeRequest(
     rateLimiterSpendAwuCredits: null,
     metronomeConsumedAwuCredits: null,
     spendLimitSource: "none",
+    spendLimitGroupName: null,
     spendLimitAlertId: null,
     spendLimitWarningAlertId: null,
     freeCreditLowAlert: null,
@@ -472,6 +473,8 @@ export function UsagePageRedesign() {
     cycleBreakdown,
     excessConsumedCredits,
     excessCycleBreakdown,
+    programmaticConsumedCredits,
+    otherConsumedCredits,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
     mutateAwuPoolSummary,
@@ -1284,6 +1287,8 @@ export function UsagePageRedesign() {
             cycleBreakdown={cycleBreakdown}
             excessConsumedCredits={excessConsumedCredits}
             excessCycleBreakdown={excessCycleBreakdown}
+            programmaticConsumedCredits={programmaticConsumedCredits}
+            otherConsumedCredits={otherConsumedCredits}
             poolSecondaryContent={
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">

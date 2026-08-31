@@ -1,4 +1,7 @@
-import { getEsConsumedAwuCreditsForWorkspace } from "@app/lib/api/credits/members_usage";
+import {
+  getEsConsumedAwuCreditsForWorkspace,
+  sumActiveMembersPoolConsumedCredits,
+} from "@app/lib/api/credits/members_usage";
 import type { Authenticator } from "@app/lib/auth";
 import { amountCents } from "@app/lib/metronome/amounts";
 import {
@@ -11,8 +14,11 @@ import {
   CREDIT_TYPE_GBP_ID,
   CREDIT_TYPE_USD_ID,
   getCreditTypeAwuId,
+  USAGE_TYPE_GROUP_KEY,
+  USAGE_TYPE_PROGRAMMATIC,
 } from "@app/lib/metronome/constants";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
+import { fetchProgrammaticAwuSpend } from "@app/lib/metronome/programmatic_awu_usage";
 import {
   getProductSeatTypes,
   getSeatTypesByProductIdFromContract,
@@ -26,6 +32,7 @@ import type { SupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isNumber } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
 import { z } from "zod";
 
@@ -212,6 +219,67 @@ function computeExcessCycleBreakdown(
     .slice(0, cycleHistoryLimit);
 }
 
+// Programmatic AWU spend against the pool, read straight from the current
+// draft invoice's own usage line items — the same snapshot backing
+// `currentCycleConsumedCredits` (via its pool-ledger deductions), instead of
+// a live Metronome usage query racing ahead of it with usage the ledger
+// hasn't caught up to yet.
+//
+// Scoped twice: `commit_id` must be one of `poolCommitIds` (only usage that
+// actually drew from the pool, not general workspace spend that spilled to
+// overage/PAYG), and `pricing_group_values` must carry
+// `usage_type: "programmatic"` (how the AWU rate cards are dimensioned — see
+// `setup_new_pricing.ts`).
+function sumProgrammaticPoolConsumedFromInvoice({
+  invoice,
+  poolCommitIds,
+  awuCreditTypeId,
+}: {
+  invoice: Invoice;
+  poolCommitIds: Set<string>;
+  awuCreditTypeId: string;
+}): number {
+  return invoice.line_items
+    .filter(
+      (item) =>
+        item.type === "usage" &&
+        item.commit_id != null &&
+        poolCommitIds.has(item.commit_id) &&
+        item.credit_type.id === awuCreditTypeId &&
+        item.pricing_group_values?.[USAGE_TYPE_GROUP_KEY] ===
+          USAGE_TYPE_PROGRAMMATIC
+    )
+    .reduce((sum, item) => sum + item.total, 0);
+}
+
+// Read live from Metronome rather than ES: usage events already carry the
+// `usage_type` group key needed to isolate programmatic spend, so there's no
+// need to duplicate that split in our own analytics index. Returns `null` on
+// a Metronome read failure — callers must treat that as "unknown", not 0.
+//
+// Only used as a fallback when there's no current draft invoice to read line
+// items from (see `sumProgrammaticPoolConsumedFromInvoice`).
+async function fetchProgrammaticConsumedCreditsOrNull({
+  workspace,
+  metronomeCustomerId,
+}: {
+  workspace: LightWorkspaceType;
+  metronomeCustomerId: string;
+}): Promise<number | null> {
+  const result = await fetchProgrammaticAwuSpend({
+    workspaceId: workspace.sId,
+    metronomeCustomerId,
+  });
+  if (result.isErr()) {
+    logger.warn(
+      { workspaceId: workspace.sId, error: result.error },
+      "[AwuPoolSummary] Failed to fetch programmatic AWU spend from Metronome"
+    );
+    return null;
+  }
+  return result.value;
+}
+
 export class AwuPoolSummaryError extends Error {
   constructor(
     readonly type:
@@ -246,12 +314,18 @@ export async function getAwuPoolSummary(
     invoicesResult,
     poolCommitIdsResult,
     finalizedInvoicesResult,
+    membersPoolConsumedCredits,
   ] = await Promise.all([
     listMetronomeBalances(metronomeCustomerId),
     listMetronomeDraftInvoices(metronomeCustomerId),
     getPoolCommitIds({ metronomeCustomerId }),
     listMetronomeFinalizedInvoices(metronomeCustomerId, {
       limit: cycleHistoryLimit,
+    }),
+    sumActiveMembersPoolConsumedCredits({
+      workspace,
+      metronomeCustomerId,
+      metronomeContractId,
     }),
   ]);
 
@@ -339,6 +413,11 @@ export async function getAwuPoolSummary(
   if (!currentInvoice?.start_timestamp || !currentInvoice.end_timestamp) {
     const excessConsumedCredits =
       await getEsConsumedAwuCreditsForWorkspace(workspace);
+    const programmaticConsumedCredits =
+      await fetchProgrammaticConsumedCreditsOrNull({
+        workspace,
+        metronomeCustomerId,
+      });
     return new Ok({
       totalRemainingCredits: 0,
       totalActiveCredits: 0,
@@ -351,6 +430,8 @@ export async function getAwuPoolSummary(
       cycleBreakdown,
       excessConsumedCredits,
       excessCycleBreakdown,
+      programmaticConsumedCredits,
+      otherConsumedCredits: null,
     });
   }
 
@@ -411,6 +492,39 @@ export async function getAwuPoolSummary(
         })
       : null;
 
+  // Unlike `excessConsumedCredits`, computed regardless of pool state — it's
+  // a distinct "not attributable to a member" figure shown alongside the
+  // per-cycle total whether or not the workspace has an active pool.
+  //
+  // Derived from the invoice, scoped to `poolCommitIds`, same as
+  // `currentCycleConsumedCredits` — so the two are directly comparable and
+  // programmatic no longer outpaces the ledger-derived total just because it
+  // was read live. `null` when `poolCommitIds` itself couldn't be determined
+  // (fetch failure above): without it there's no way to tell a pool-drawing
+  // line from any other usage line on the invoice.
+  const programmaticConsumedCredits = poolCommitIdsResult.isErr()
+    ? null
+    : sumProgrammaticPoolConsumedFromInvoice({
+        invoice: currentInvoice,
+        poolCommitIds,
+        awuCreditTypeId,
+      });
+
+  // Whatever is left of the cycle total once programmatic and per-member pool
+  // draw are subtracted — mainly usage the invoice tags as member usage
+  // (`usage_type: "user"`) for someone with no active membership anymore.
+  const otherConsumedCredits =
+    currentCycleConsumedCredits !== null &&
+    programmaticConsumedCredits !== null &&
+    membersPoolConsumedCredits !== null
+      ? Math.max(
+          0,
+          currentCycleConsumedCredits -
+            programmaticConsumedCredits -
+            membersPoolConsumedCredits
+        )
+      : null;
+
   return new Ok({
     totalRemainingCredits,
     totalActiveCredits,
@@ -423,5 +537,7 @@ export async function getAwuPoolSummary(
     cycleBreakdown,
     excessConsumedCredits,
     excessCycleBreakdown,
+    programmaticConsumedCredits,
+    otherConsumedCredits,
   });
 }

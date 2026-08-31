@@ -84,6 +84,8 @@ function PoolCreditCard({ owner, isEnterprise }: PoolCreditCardProps) {
     currentCycleEndMs,
     excessConsumedCredits,
     excessCycleBreakdown,
+    programmaticConsumedCredits,
+    otherConsumedCredits,
   } = awuPoolSummary ?? {
     totalRemainingCredits: 0,
     totalActiveCredits: 0,
@@ -94,6 +96,8 @@ function PoolCreditCard({ owner, isEnterprise }: PoolCreditCardProps) {
     currentCycleEndMs: null,
     excessConsumedCredits: null,
     excessCycleBreakdown: [] as AwuPoolCycleBreakdown[],
+    programmaticConsumedCredits: null,
+    otherConsumedCredits: null,
   };
 
   const hasPool = totalActiveCredits > 0;
@@ -113,6 +117,8 @@ function PoolCreditCard({ owner, isEnterprise }: PoolCreditCardProps) {
       cycleBreakdown={cycleBreakdown}
       excessConsumedCredits={excessConsumedCredits}
       excessCycleBreakdown={excessCycleBreakdown}
+      programmaticConsumedCredits={programmaticConsumedCredits}
+      otherConsumedCredits={otherConsumedCredits}
       poolSecondaryContent={
         <div className="flex items-center gap-2">
           {overageCredits !== null && overageCredits > 0 && (
