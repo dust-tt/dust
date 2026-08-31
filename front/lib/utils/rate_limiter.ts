@@ -496,11 +496,15 @@ export async function addRateLimiterCount({
   key,
   timeframeSeconds,
   incrementBy,
+  idempotencyKey,
+  throwOnError = false,
   logger,
 }: {
   key: string;
   timeframeSeconds: number;
   incrementBy: number;
+  idempotencyKey?: string;
+  throwOnError?: boolean;
   logger: LoggerInterface;
 }): Promise<void> {
   // Fail open on a non-positive/non-finite amount: recording runs on the
@@ -519,20 +523,29 @@ export async function addRateLimiterCount({
   }
 
   const redisKey = makeRateLimiterKey(key);
+  const idempotencyRedisKey = makeRateLimiterKey(`${key}:idempotency`);
   const windowMs = timeframeSeconds * 1000;
 
   const luaScript = `
     local key = KEYS[1]
+    local idempotency_key = KEYS[2]
     local window_ms = tonumber(ARGV[1])
     local member = ARGV[2]
+    local idempotency_field = ARGV[3]
 
     -- Use Redis server time to avoid client clock skew
     local t = redis.call('TIME') -- { seconds, microseconds }
     local now_ms = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
 
-    -- Always record unconditionally: no limit check, no dropped writes. A single
-    -- entry carries the amount (microCredits prefix + uuid for uniqueness); the
-    -- reader sums the prefixes via getWeightedRateLimiterCount.
+    if idempotency_field ~= '' then
+      redis.call('ZREMRANGEBYSCORE', idempotency_key, '-inf', now_ms - window_ms)
+      local first_write = redis.call('ZADD', idempotency_key, 'NX', now_ms, idempotency_field)
+      redis.call('PEXPIRE', idempotency_key, window_ms + 60000)
+      if first_write == 0 then
+        return
+      end
+    end
+
     redis.call('ZADD', key, now_ms, member)
 
     -- Keep the key around a bit longer than the window to allow trims
@@ -541,10 +554,10 @@ export async function addRateLimiterCount({
 
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
-    const member = `${microCredits}:${uuidv4()}`;
+    const member = `${microCredits}:${idempotencyKey ?? uuidv4()}`;
     await redis.eval(luaScript, {
-      keys: [redisKey],
-      arguments: [windowMs.toString(), member],
+      keys: [redisKey, idempotencyRedisKey],
+      arguments: [windowMs.toString(), member, idempotencyKey ?? ""],
     });
   } catch (e) {
     reportRedisCounterError({
@@ -553,6 +566,9 @@ export async function addRateLimiterCount({
       context: { key, incrementBy },
       logger,
     });
+    if (throwOnError) {
+      throw normalizeError(e);
+    }
   }
 }
 

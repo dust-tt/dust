@@ -9,10 +9,10 @@ import {
   makeConsumptionRootSubagentField,
 } from "@app/lib/api/assistant/consumption/keys";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
-import { runOnRedisCache } from "@app/lib/api/redis";
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
+import { runOnRedisCache } from "@app/lib/api/redis";
 import { recordUserSpendLimitUsage } from "@app/lib/api/users/spend_limit";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -369,14 +369,12 @@ export async function readExecutionTotal({
 export async function recordExecutionCreditCounters(
   auth: Authenticator,
   {
-    agentMessageModelId,
+    billingMarkerItemId,
     creditAmount,
-    runKey,
     userMessageOrigin,
   }: {
-    agentMessageModelId: ModelId;
+    billingMarkerItemId: ModelId;
     creditAmount: number;
-    runKey: string;
     userMessageOrigin: UserMessageOrigin;
   }
 ): Promise<void> {
@@ -387,7 +385,7 @@ export async function recordExecutionCreditCounters(
   const user = auth.user();
   const assistantLimits = auth.plan()?.limits.assistant;
   const featureFlags = await getFeatureFlags(auth);
-  const idempotencyKey = `consumption:${agentMessageModelId}:${runKey}`;
+  const idempotencyKey = `execution:${billingMarkerItemId}`;
 
   if (
     user &&
