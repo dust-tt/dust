@@ -28,7 +28,7 @@ describe("getApprovalArgsLabel", () => {
         argumentsRequiringApproval: ["dustPod"],
       })
     ).resolves.toBe(
-      'Always allow assistant to Create conversation in "pod://dust/w/ws123/pods/prj456".'
+      'Always allow @assistant to Create conversation in "pod://dust/w/ws123/pods/prj456".'
     );
 
     expect(fetchByIdSpy).toHaveBeenCalledWith(auth, "prj456");
@@ -58,7 +58,7 @@ describe("getApprovalArgsLabel", () => {
         argumentsRequiringApproval: ["dustPod"],
       })
     ).resolves.toBe(
-      'Always allow assistant to Create conversation in "Revenue Ops".'
+      'Always allow @assistant to Create conversation in "Revenue Ops".'
     );
 
     expect(fetchByIdSpy).toHaveBeenCalledWith(auth, "prj456");

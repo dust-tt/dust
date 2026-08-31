@@ -155,9 +155,9 @@ const MCP_TOOL_OVERRIDES: Partial<
           return `Allow agent to set the Pod default agent?`;
         }
         if (inputs.agentName === null) {
-          return `Allow agent to reset the Pod default agent to Dust?`;
+          return `Allow agent to reset the Pod default agent to @dust?`;
         }
-        return `Allow agent to set the Pod default agent to ${inputs.agentName}?`;
+        return `Allow agent to set the Pod default agent to @${inputs.agentName}?`;
       },
       alwaysAllowLabel: () => "Always allow agent to set the Pod default agent",
     },

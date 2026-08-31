@@ -478,7 +478,7 @@ export function createProjectManagerTools(
             defaultAgentId,
             message: defaultAgentId
               ? `Pod default agent set to ${
-                  defaultAgentName || defaultAgentId
+                  defaultAgentName ? `@${defaultAgentName}` : defaultAgentId
                 }.`
               : "Pod default agent reset to the default (Dust).",
           })
@@ -1298,8 +1298,8 @@ export function createProjectManagerTools(
           context: {
             username: agentName,
             fullName: user
-              ? `${agentName} on behalf of ${user.fullName()}`
-              : agentName,
+              ? `@${agentName} on behalf of ${user.fullName()}`
+              : `@${agentName}`,
             email: null,
             profilePictureUrl: agentProfilePictureUrl,
             timezone,
@@ -1601,8 +1601,8 @@ export function createProjectManagerTools(
           context: {
             username: agentName,
             fullName: user
-              ? `${agentName} on behalf of ${user.fullName()}`
-              : agentName,
+              ? `@${agentName} on behalf of ${user.fullName()}`
+              : `@${agentName}`,
             email: null,
             profilePictureUrl: agentProfilePictureUrl,
             timezone,
