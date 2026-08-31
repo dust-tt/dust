@@ -1708,37 +1708,56 @@ const QUERIES: LabeledQuery[] = [
   // --- servicenow ---
   {
     query: "list open incidents in ServiceNow",
-    expected: "servicenow.list_incidents",
+    expected: "servicenow.list_records",
+    maxRank: 6, // create_record/get_record/update_record still share TABLE_SCHEMA's field text
   },
   {
     query: "show me my ServiceNow tickets",
-    expected: "servicenow.list_incidents",
-    maxRank: 2, // get_incident shares "ServiceNow"/"ticket" tokens
-  },
-  {
-    query: "get ServiceNow incident INC0010001",
-    expected: "servicenow.get_incident",
-  },
-  {
-    query: "look up a single ServiceNow ticket by number",
-    expected: "servicenow.get_incident",
+    expected: "servicenow.list_records",
+    maxRank: 6, // get_record/create_record/update_record all share "ServiceNow"/"ticket" tokens
   },
   {
     query: "create a new incident in ServiceNow",
-    expected: "servicenow.create_incident",
+    expected: "servicenow.create_record",
+    maxRank: 3, // list_records/get_record share "incident"/"ServiceNow" tokens
   },
   {
     query: "open a ServiceNow ticket for this issue",
-    expected: "servicenow.create_incident",
-    maxRank: 4, // get_incident's short, dense description outranks on shared tokens
+    expected: "servicenow.create_record",
+    maxRank: 4, // list_records/get_record/update_record all share "ServiceNow"/"ticket" tokens
   },
   {
     query: "update the state of a ServiceNow incident",
-    expected: "servicenow.update_incident",
+    expected: "servicenow.update_record",
+    maxRank: 3, // get_record/list_records share "incident"/"ServiceNow" tokens
   },
   {
     query: "resolve a ServiceNow ticket and add close notes",
-    expected: "servicenow.update_incident",
+    expected: "servicenow.update_record",
+    maxRank: 3, // get_record/list_records share "ServiceNow"/"ticket" tokens
+  },
+  {
+    query: "list ServiceNow problem records",
+    expected: "servicenow.list_records",
+    maxRank: 6, // same shared-field-text issue as above
+  },
+  {
+    query: "list change requests in ServiceNow",
+    expected: "servicenow.list_records",
+    maxRank: 6, // same shared-field-text issue as the other list_records cases above
+  },
+  {
+    query: "get a ServiceNow record by sys_id",
+    expected: "servicenow.get_record",
+    maxRank: 2, // list_records shares "ServiceNow"/"record"/"sys_id" tokens
+  },
+  {
+    query: "look up a knowledge base article by sys_id in ServiceNow",
+    expected: "servicenow.get_record",
+    // "kb_knowledge" now only appears in the shared TABLE_SCHEMA field text (not repeated in
+    // get_record's own top-level description), so this can lose to an unrelated server's
+    // knowledge-base tool (e.g. freshservice's solution-articles tool) on "knowledge"/"article".
+    maxRank: 4,
   },
 
   // --- slab ---
