@@ -66,12 +66,16 @@ async function setup() {
   });
   await frame.markFrameV2AsReadyFromMount(auth);
 
+  const sourceManifestPath = `${sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+  const sourceUiPath = `${sourceGcsDirectoryPath}/index.tsx`;
+  fileStorageMock.setObject(sourceManifestPath, manifest);
+  fileStorageMock.setObject(sourceUiPath, "ui source");
   fileStorageMock.setFileExists(() => false);
   fileStorageMock.setFilesByPrefix((prefix) =>
     prefix === `${sourceGcsDirectoryPath}/`
       ? [
           {
-            name: `${sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+            name: sourceManifestPath,
             metadata: {
               contentType: frameV2ContentType,
               generation: "1",
@@ -80,15 +84,15 @@ async function setup() {
             },
           },
           {
-            name: `${sourceGcsDirectoryPath}/index.tsx`,
+            name: sourceUiPath,
             metadata: {
               contentType: "text/typescript",
-              generation: "1",
+              generation: "2",
               md5Hash: "ui",
               size: "1",
             },
           },
-        ]
+        ].filter(({ name }) => fileStorageMock.getObject(name) !== undefined)
       : null
   );
 
@@ -152,6 +156,85 @@ describe("moveFrameV2Source", () => {
       conversationId: context.conversation.sId,
     });
     await expect(reloaded?.getShareInfo()).resolves.toEqual(beforeShare);
+  });
+
+  it("requires write access to the destination scope", async () => {
+    const context = await setup();
+    const destinationPod = await SpaceFactory.project(context.workspace);
+    await SpaceFactory.attachGroup(
+      destinationPod,
+      context.globalGroup,
+      "project_viewer"
+    );
+    const viewerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      context.user.sId,
+      context.workspace.sId
+    );
+    assert(viewerAuth);
+
+    const moved = await moveFrameV2Source(viewerAuth, {
+      conversation: context.conversation,
+      destinationDirectoryPath: `pod-${destinationPod.sId}/Status`,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    expect(moved.isErr() && moved.error).toMatchObject({
+      code: "unauthorized",
+    });
+    const reloaded = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reloaded?.mountFilePath).toBe(
+      `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
+    );
+  });
+
+  it("requires write access to the source scope", async () => {
+    const context = await setup();
+    const sourcePod = await SpaceFactory.project(context.workspace);
+    await SpaceFactory.attachGroup(
+      sourcePod,
+      context.globalGroup,
+      "project_viewer"
+    );
+    const viewerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      context.user.sId,
+      context.workspace.sId
+    );
+    assert(viewerAuth);
+    const sourceDirectoryPath = `pod-${sourcePod.sId}/Status`;
+    const sourceGcsDirectoryPath = `${getPodFilesBasePath({
+      workspaceId: context.workspace.sId,
+      podId: sourcePod.sId,
+    })}Status`;
+    const sourceManifestPath = `${sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    fileStorageMock.setObject(sourceManifestPath, manifest);
+    fileStorageMock.setObject(
+      `${sourceGcsDirectoryPath}/index.tsx`,
+      "ui source"
+    );
+    await context.frame.updateMount({
+      destFileName: FRAME_MANIFEST_FILE,
+      destMountFilePath: sourceManifestPath,
+      destUseCase: "project_context",
+      destUseCaseMetadata: { spaceId: sourcePod.sId },
+    });
+
+    const moved = await moveFrameV2Source(viewerAuth, {
+      conversation: context.conversation,
+      destinationDirectoryPath: `conversation-${context.conversation.sId}/Moved`,
+      sourceDirectoryPath,
+    });
+
+    expect(moved.isErr() && moved.error).toMatchObject({
+      code: "unauthorized",
+    });
+    const reloaded = await FileResource.fetchById(
+      context.auth,
+      context.frame.sId
+    );
+    expect(reloaded?.mountFilePath).toBe(sourceManifestPath);
   });
 
   it("recycles the runtime when moving to another scope while keeping state ownership", async () => {
@@ -254,6 +337,68 @@ describe("moveFrameV2Source", () => {
     );
   });
 
+  it("copies pinned source generations and preserves concurrent edits", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/Edited`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}Edited`;
+    const sourceManifestPath = `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const sourceUiPath = `${context.sourceGcsDirectoryPath}/index.tsx`;
+    const newSourcePath = `${context.sourceGcsDirectoryPath}/new.ts`;
+    let sourceListings = 0;
+    fileStorageMock.setFilesByPrefix((prefix) => {
+      if (prefix !== `${context.sourceGcsDirectoryPath}/`) {
+        return null;
+      }
+      sourceListings++;
+      if (sourceListings === 1) {
+        const snapshot = [
+          {
+            name: sourceManifestPath,
+            metadata: {
+              contentType: frameV2ContentType,
+              generation: "1",
+              md5Hash: "manifest",
+              size: String(Buffer.byteLength(manifest)),
+            },
+          },
+          {
+            name: sourceUiPath,
+            metadata: {
+              contentType: "text/typescript",
+              generation: "2",
+              md5Hash: "ui",
+              size: "1",
+            },
+          },
+        ];
+        fileStorageMock.setObject(sourceUiPath, "edited ui");
+        fileStorageMock.setObject(newSourcePath, "new source");
+        return snapshot;
+      }
+      return [sourceManifestPath, sourceUiPath, newSourcePath]
+        .filter((filePath) => fileStorageMock.getObject(filePath) !== undefined)
+        .map((filePath) => ({ name: filePath, metadata: {} }));
+    });
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
+    expect(moved.value.sourceDeletionFailed).toBe(true);
+    expect(
+      fileStorageMock.getObject(`${destinationGcsDirectoryPath}/index.tsx`)
+    ).toBe("ui source");
+    expect(fileStorageMock.getObject(sourceUiPath)).toBe("edited ui");
+    expect(fileStorageMock.getObject(newSourcePath)).toBe("new source");
+    expect(fileStorageMock.getObject(sourceManifestPath)).toBeUndefined();
+  });
+
   it("keeps the recovery reservation when exact-generation cleanup fails", async () => {
     const context = await setup();
     const destinationDirectoryPath = `conversation-${context.conversation.sId}/Retry`;
@@ -342,12 +487,14 @@ describe("moveFrameV2Source", () => {
           name: `${directoryPath}/index.tsx`,
           metadata: {
             contentType: "text/typescript",
-            generation: isSource ? "1" : "2",
+            generation: "2",
             md5Hash: "ui",
             size: "1",
           },
         },
-      ];
+      ].filter(
+        ({ name }) => !isSource || fileStorageMock.getObject(name) !== undefined
+      );
     });
 
     const moved = await moveFrameV2Source(context.auth, {

@@ -241,6 +241,34 @@ describe("publishFrameV2FromSource", () => {
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
+  it("revalidates the Frame source path after acquiring the source lock", async () => {
+    const { auth, conversation, frame, manifestPath, workspace } =
+      await setup();
+    const staleFrame = await FileResource.fetchById(auth, frame.sId);
+    assert(staleFrame);
+    const movedManifestPath = `${getConversationFilesBasePath({
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+    })}Moved/${FRAME_MANIFEST_FILE}`;
+    await frame.updateMount({
+      destFileName: FRAME_MANIFEST_FILE,
+      destMountFilePath: movedManifestPath,
+      destUseCase: "conversation",
+      destUseCaseMetadata: { conversationId: conversation.sId },
+    });
+
+    const result = await publishFrameV2FromSource(auth, {
+      conversation,
+      frame: staleFrame,
+      manifestPath,
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "invalid_source",
+    });
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
   it("rejects publication from a read-only Pod", async () => {
     const {
       authenticator: auth,

@@ -345,11 +345,19 @@ export async function publishFrameV2FromSource(
     FramePublicationError | SandboxFunctionError
   >
 > {
-  return withFrameSourceLock(frame.sId, () =>
-    publishFrameV2FromSourceWithLockHeld(auth, {
+  return withFrameSourceLock(frame.sId, async () => {
+    const freshFrame = await frame.fetchFreshFrameV2(auth);
+    if (!freshFrame) {
+      return frameError(
+        "invalid_frame",
+        `Frame '${frame.sId}' no longer exists.`
+      );
+    }
+
+    return publishFrameV2FromSourceWithLockHeld(auth, {
       conversation,
-      frame,
+      frame: freshFrame,
       manifestPath,
-    })
-  );
+    });
+  });
 }

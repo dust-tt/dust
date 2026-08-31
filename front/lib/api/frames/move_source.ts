@@ -206,14 +206,18 @@ function isSameGCSObject(source: File, destination: File): boolean {
   );
 }
 
-type DestinationObject = { filePath: string; generation: string };
+type GCSObjectGeneration = { filePath: string; generation: string };
+type FrameSourceCopy = {
+  destinationObjects: GCSObjectGeneration[];
+  sourceObjects: GCSObjectGeneration[];
+};
 type FrameSourceCopyFailure = {
-  destinationObjects: DestinationObject[];
+  destinationObjects: GCSObjectGeneration[];
   error: FrameSourceMoveError;
 };
 
 async function cleanupDestinationObjects(
-  objects: DestinationObject[]
+  objects: GCSObjectGeneration[]
 ): Promise<boolean> {
   const bucket = getPrivateUploadBucket();
   try {
@@ -236,6 +240,35 @@ async function cleanupDestinationObjects(
   }
 }
 
+async function deleteCopiedSourceObjects(
+  objects: GCSObjectGeneration[],
+  sourceMountPrefix: string
+): Promise<boolean> {
+  const bucket = getPrivateUploadBucket();
+  try {
+    await concurrentExecutor(
+      objects,
+      ({ filePath, generation }) =>
+        bucket.delete(filePath, {
+          ignoreNotFound: true,
+          ifGenerationMatch: generation,
+        }),
+      { concurrency: FRAME_SOURCE_MOVE_COPY_CONCURRENCY }
+    );
+    const remaining = await bucket.getFiles({
+      prefix: sourceMountPrefix,
+      maxResults: 1,
+    });
+    return remaining.length === 0;
+  } catch (error) {
+    logger.warn(
+      { error: normalizeError(error), sourceMountPrefix },
+      "Failed to delete copied Frame source object generations"
+    );
+    return false;
+  }
+}
+
 async function copyFrameSourceAsNew({
   allowMatchingDestinationObjects,
   destinationMountPrefix,
@@ -244,7 +277,7 @@ async function copyFrameSourceAsNew({
   allowMatchingDestinationObjects: boolean;
   destinationMountPrefix: string;
   sourceMountPrefix: string;
-}): Promise<Result<DestinationObject[], FrameSourceCopyFailure>> {
+}): Promise<Result<FrameSourceCopy, FrameSourceCopyFailure>> {
   const bucket = getPrivateUploadBucket();
   const [sourceFiles, destinationFiles] = await Promise.all([
     bucket.getFiles({
@@ -303,6 +336,16 @@ async function copyFrameSourceAsNew({
       try {
         const relativePath = sourceFile.name.slice(sourceMountPrefix.length);
         const destinationPath = `${destinationMountPrefix}${relativePath}`;
+        const sourceGeneration = metadataValue(
+          sourceFile.metadata,
+          "generation"
+        );
+        if (!sourceGeneration) {
+          throw new FrameSourceMoveError(
+            "internal",
+            `Source generation is missing: ${relativePath}`
+          );
+        }
         let destinationFile = destinationByRelativePath.get(relativePath);
         const destinationWasListed = Boolean(destinationFile);
         let copied = false;
@@ -312,6 +355,7 @@ async function copyFrameSourceAsNew({
             await bucket.copyFile(sourceFile.name, destinationPath, undefined, {
               destinationGenerationMatch:
                 GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+              sourceGeneration,
             });
             copied = true;
           } catch (error) {
@@ -344,9 +388,15 @@ async function copyFrameSourceAsNew({
             `Destination generation is missing: ${relativePath}`
           );
         }
-        return new Ok<DestinationObject>({
-          filePath: destinationPath,
-          generation,
+        return new Ok<{
+          destination: GCSObjectGeneration;
+          source: GCSObjectGeneration;
+        }>({
+          destination: { filePath: destinationPath, generation },
+          source: {
+            filePath: sourceFile.name,
+            generation: sourceGeneration,
+          },
         });
       } catch (error) {
         return new Err(
@@ -361,9 +411,12 @@ async function copyFrameSourceAsNew({
     },
     { concurrency: FRAME_SOURCE_MOVE_COPY_CONCURRENCY }
   );
-  const destinationObjects = copyResults
+  const copiedObjects = copyResults
     .filter((result) => result.isOk())
     .map((result) => result.value);
+  const destinationObjects = copiedObjects.map(
+    ({ destination }) => destination
+  );
   const failedCopy = copyResults.find((result) => result.isErr());
   if (failedCopy?.isErr()) {
     return new Err({
@@ -371,7 +424,10 @@ async function copyFrameSourceAsNew({
       error: failedCopy.error,
     });
   }
-  return new Ok(destinationObjects);
+  return new Ok({
+    destinationObjects,
+    sourceObjects: copiedObjects.map(({ source }) => source),
+  });
 }
 
 /** Move a registered Frame folder while retaining its stable FileResource identity. */
@@ -432,6 +488,14 @@ export async function moveFrameV2Source(
     return invalidSource(
       "Frames v2 source moves do not yet support the database-backed filesystem."
     );
+  }
+  const sourceWriteAccess = dustFs.checkWriteAccess(source);
+  if (sourceWriteAccess.isErr()) {
+    return sourceWriteAccess;
+  }
+  const destinationWriteAccess = dustFs.checkWriteAccess(destination);
+  if (destinationWriteAccess.isErr()) {
+    return destinationWriteAccess;
   }
 
   const sourceManifestPath = path.posix.join(source, FRAME_MANIFEST_FILE);
@@ -676,7 +740,9 @@ export async function moveFrameV2Source(
           });
 
     if (updateResult.isErr()) {
-      const cleaned = await cleanupDestinationObjects(copyResult.value);
+      const cleaned = await cleanupDestinationObjects(
+        copyResult.value.destinationObjects
+      );
       const restored = cleaned ? await restoreSourceReservation() : false;
       if (!restored) {
         logger.error(
@@ -698,15 +764,15 @@ export async function moveFrameV2Source(
       return updateResult;
     }
 
-    const sourceDeletion = await dustFs.delete(source, {
-      ignoreNotFound: true,
-    });
-    const sourceDeletionFailed = sourceDeletion.isErr();
+    const sourceDeleted = await deleteCopiedSourceObjects(
+      copyResult.value.sourceObjects,
+      sourceMountPrefix
+    );
+    const sourceDeletionFailed = !sourceDeleted;
     if (sourceDeletionFailed) {
       logger.warn(
         {
           destinationDirectoryPath: destination,
-          error: sourceDeletion.error,
           frameId: frame.sId,
           sourceDirectoryPath: source,
         },

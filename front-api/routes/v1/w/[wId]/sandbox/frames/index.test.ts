@@ -98,18 +98,24 @@ async function setup({ registered = true }: { registered?: boolean } = {}) {
     [`${mountDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
     [`${mountDirectoryPath}/index.tsx`, uiSource],
   ]);
+  for (const [filePath, content] of sourceByPath) {
+    fileStorageMock.setObject(filePath, content);
+  }
   fileStorageMock.setFileContent((path) => sourceByPath.get(path) ?? null);
   fileStorageMock.setFilesByPrefix((prefix) =>
     prefix === `${mountDirectoryPath}/`
-      ? [...sourceByPath.entries()].map(([name, content]) => ({
-          name,
-          metadata: {
-            contentType: name.endsWith(".tsx")
-              ? "text/typescript"
-              : "application/json",
-            size: String(Buffer.byteLength(content)),
-          },
-        }))
+      ? [...sourceByPath.entries()]
+          .filter(([name]) => fileStorageMock.getObject(name) !== undefined)
+          .map(([name, content], index) => ({
+            name,
+            metadata: {
+              contentType: name.endsWith(".tsx")
+                ? "text/typescript"
+                : "application/json",
+              generation: String(index + 1),
+              size: String(Buffer.byteLength(content)),
+            },
+          }))
       : null
   );
 

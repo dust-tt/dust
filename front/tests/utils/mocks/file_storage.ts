@@ -69,6 +69,7 @@ class FileStorageMock {
   private _metadataCalls: string[] = [];
   private _objectStore = new Map<string, string>();
   private _objectGenerations = new Map<string, string>();
+  private _objectVersions = new Map<string, Map<string, string>>();
   private _nextGeneration = 1;
   private _deleteCalls: DeleteCall[] = [];
   private _fetchNotFoundPredicate: (filePath: string) => boolean = () => false;
@@ -235,8 +236,12 @@ class FileStorageMock {
 
   // Seed the in-memory object store directly (no write path).
   setObject(filePath: string, content: string): void {
+    const generation = String(this._nextGeneration++);
     this._objectStore.set(filePath, content);
-    this._objectGenerations.set(filePath, String(this._nextGeneration++));
+    this._objectGenerations.set(filePath, generation);
+    const versions = this._objectVersions.get(filePath) ?? new Map();
+    versions.set(generation, content);
+    this._objectVersions.set(filePath, versions);
   }
 
   reset(): void {
@@ -249,6 +254,7 @@ class FileStorageMock {
     this._deleteCalls.length = 0;
     this._objectStore.clear();
     this._objectGenerations.clear();
+    this._objectVersions.clear();
     this._nextGeneration = 1;
     this._fetchNotFoundPredicate = () => false;
     this._existsPredicate = () => true;
@@ -480,7 +486,10 @@ class FileStorageMock {
           src: string,
           dest: string,
           _destinationStorage?: unknown,
-          options?: { destinationGenerationMatch?: number }
+          options?: {
+            destinationGenerationMatch?: number;
+            sourceGeneration?: string;
+          }
         ) => {
           if (
             options?.destinationGenerationMatch === 0 &&
@@ -495,9 +504,23 @@ class FileStorageMock {
               new Error(`Simulated GCS copy failure: ${src} -> ${dest}`)
             );
           }
+          const versionedContent = options?.sourceGeneration
+            ? this._objectVersions.get(src)?.get(options.sourceGeneration)
+            : undefined;
+          if (options?.sourceGeneration && versionedContent === undefined) {
+            return Promise.reject(
+              new MockGcsError(
+                404,
+                `Source generation does not exist: ${src}@${options.sourceGeneration}`
+              )
+            );
+          }
           this.setObject(
             dest,
-            this._objectStore.get(src) ?? this._contentForPath(src) ?? ""
+            versionedContent ??
+              this._objectStore.get(src) ??
+              this._contentForPath(src) ??
+              ""
           );
           return Promise.resolve(undefined);
         }
