@@ -31,21 +31,41 @@ type VirtuosoMethods = VirtuosoMessageListMethods<
   VirtuosoMessageListContext
 >;
 
-function mapMessagesWithScrollPolicy(
+function createAutoScrollToBottomBehavior(
+  isAutoScrollEnabledRef: MutableRefObject<boolean>
+) {
+  return ({
+    scrollLocation,
+    scrollInProgress,
+  }: {
+    scrollLocation: { bottomOffset: number };
+    scrollInProgress: boolean;
+  }) => {
+    if (!isAutoScrollEnabledRef.current || scrollInProgress) {
+      return false;
+    }
+
+    if (scrollLocation.bottomOffset < 0) {
+      return false;
+    }
+
+    return {
+      index: "LAST" as const,
+      align: "end" as const,
+      behavior: "smooth" as const,
+    };
+  };
+}
+
+function batchMapMessagesWithAutoScroll(
   methods: VirtuosoMethods,
   isAutoScrollEnabledRef: MutableRefObject<boolean>,
   mapFn: (message: VirtuosoMessage, index: number) => VirtuosoMessage
 ) {
-  methods.data.map(mapFn, {
-    location: () =>
-      isAutoScrollEnabledRef.current
-        ? {
-            index: "LAST",
-            align: "end",
-            behavior: "instant",
-          }
-        : null,
-  });
+  methods.data.batch(
+    () => methods.data.map(mapFn),
+    createAutoScrollToBottomBehavior(isAutoScrollEnabledRef)
+  );
 }
 
 function createUpdateMessageThrottled(
@@ -62,7 +82,7 @@ function createUpdateMessageThrottled(
       content: string;
       sId: string;
     }) => {
-      mapMessagesWithScrollPolicy(methods, isAutoScrollEnabledRef, (m) => {
+      batchMapMessagesWithAutoScroll(methods, isAutoScrollEnabledRef, (m) => {
         if (isAgentMessageWithStreaming(m) && m.sId === sId) {
           return {
             ...m,
@@ -314,7 +334,7 @@ export function useAgentMessageStream({
 
   const mapMessagesWithAutoScroll = useCallback(
     (mapFn: (message: VirtuosoMessage, index: number) => VirtuosoMessage) => {
-      mapMessagesWithScrollPolicy(methods, isAutoScrollEnabledRef, mapFn);
+      batchMapMessagesWithAutoScroll(methods, isAutoScrollEnabledRef, mapFn);
     },
     [methods, isAutoScrollEnabledRef]
   );

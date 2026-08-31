@@ -96,7 +96,6 @@ import {
   VirtuosoMessageList,
   VirtuosoMessageListLicense,
 } from "@virtuoso.dev/message-list";
-import type { TouchEvent, WheelEvent } from "react";
 import {
   useCallback,
   useContext,
@@ -266,44 +265,15 @@ export const ConversationViewer = ({
   const isMobile = useIsMobile();
   const isAutoScrollEnabledRef = useRef(true);
   const hasLeftBottomSinceDetachRef = useRef(false);
-  const lastTouchYRef = useRef<number | null>(null);
-  const previousScrollPositionRef = useRef({
-    scrollHeight: 0,
-    scrollTop: 0,
-  });
-  const getScrollElement = useCallback(
-    () =>
-      isMobile
-        ? document.scrollingElement
-        : virtuosoMessageListRef.current?.scrollerElement(),
-    [isMobile]
-  );
-  const captureScrollPosition = useCallback(() => {
-    const scrollElement = getScrollElement();
-    if (scrollElement) {
-      previousScrollPositionRef.current = {
-        scrollHeight: scrollElement.scrollHeight,
-        scrollTop: scrollElement.scrollTop,
-      };
-    }
-  }, [getScrollElement]);
-  const detachFromAutoScroll = useCallback(() => {
-    captureScrollPosition();
-    if (!isAutoScrollEnabledRef.current) {
-      return;
-    }
-
-    isAutoScrollEnabledRef.current = false;
-    hasLeftBottomSinceDetachRef.current = false;
-    virtuosoMessageListRef.current?.cancelSmoothScroll();
-  }, [captureScrollPosition]);
 
   // While the list's scroll direction is "up", Virtuoso compensates row-height
   // growth by adding the same delta to scrollTop. Streaming markdown can keep
   // that compensation alive indefinitely. A native listener recognizes those
   // matching deltas and restores the detached position before the next paint.
   useEffect(() => {
-    const scrollElement = getScrollElement();
+    const scrollElement = isMobile
+      ? (document.scrollingElement as HTMLElement | null)
+      : virtuosoMessageListRef.current?.scrollerElement();
     if (!scrollElement) {
       return;
     }
@@ -311,7 +281,25 @@ export const ConversationViewer = ({
     const scrollTarget = isMobile ? window : scrollElement;
     const listElement =
       virtuosoMessageListRef.current?.scrollerElement()?.firstElementChild;
-    captureScrollPosition();
+    let previousScrollHeight = scrollElement.scrollHeight;
+    let previousScrollTop = scrollElement.scrollTop;
+    let lastTouchY: number | null = null;
+
+    const captureScrollPosition = () => {
+      previousScrollHeight = scrollElement.scrollHeight;
+      previousScrollTop = scrollElement.scrollTop;
+    };
+
+    const detachFromAutoScroll = () => {
+      captureScrollPosition();
+      if (!isAutoScrollEnabledRef.current) {
+        return;
+      }
+
+      isAutoScrollEnabledRef.current = false;
+      hasLeftBottomSinceDetachRef.current = false;
+      virtuosoMessageListRef.current?.cancelSmoothScroll();
+    };
 
     const resizeObserver = new ResizeObserver(() => {
       // Keep the height baseline current when the list grows without moving.
@@ -319,7 +307,7 @@ export const ConversationViewer = ({
       // to recognize and undo Virtuoso's height compensation.
       if (
         !isAutoScrollEnabledRef.current &&
-        scrollElement.scrollTop === previousScrollPositionRef.current.scrollTop
+        scrollElement.scrollTop === previousScrollTop
       ) {
         captureScrollPosition();
       }
@@ -330,15 +318,17 @@ export const ConversationViewer = ({
 
     const preserveDetachedScrollPosition = () => {
       const scrollHeight = scrollElement.scrollHeight;
-      const previousScrollPosition = previousScrollPositionRef.current;
       let scrollTop = scrollElement.scrollTop;
-      const scrollHeightDelta =
-        scrollHeight - previousScrollPosition.scrollHeight;
-      const scrollTopDelta = scrollTop - previousScrollPosition.scrollTop;
+      const scrollHeightDelta = scrollHeight - previousScrollHeight;
+      const scrollTopDelta = scrollTop - previousScrollTop;
+      const isHeightCompensation =
+        scrollHeightDelta !== 0 &&
+        Math.abs(scrollTopDelta - scrollHeightDelta) <= 1;
 
       if (
         isAutoScrollEnabledRef.current &&
-        scrollTop < previousScrollPosition.scrollTop &&
+        scrollTopDelta < 0 &&
+        !isHeightCompensation &&
         virtuosoMessageListRef.current?.getScrollLocation().isAtBottom === false
       ) {
         isAutoScrollEnabledRef.current = false;
@@ -346,29 +336,64 @@ export const ConversationViewer = ({
         virtuosoMessageListRef.current?.cancelSmoothScroll();
       }
 
-      if (
-        !isAutoScrollEnabledRef.current &&
-        scrollHeightDelta !== 0 &&
-        Math.abs(scrollTopDelta - scrollHeightDelta) <= 1
-      ) {
+      if (!isAutoScrollEnabledRef.current && isHeightCompensation) {
         scrollElement.scrollTop -= scrollTopDelta;
         scrollTop = scrollElement.scrollTop;
       }
 
-      previousScrollPositionRef.current = { scrollHeight, scrollTop };
+      previousScrollHeight = scrollHeight;
+      previousScrollTop = scrollTop;
+    };
+
+    const onWheel = (event: globalThis.WheelEvent) => {
+      if (event.ctrlKey) {
+        return;
+      }
+
+      if (event.deltaY < 0) {
+        detachFromAutoScroll();
+      } else if (!isAutoScrollEnabledRef.current) {
+        captureScrollPosition();
+      }
+    };
+
+    const onTouchStart = (event: globalThis.TouchEvent) => {
+      lastTouchY = event.touches[0]?.clientY ?? null;
+    };
+
+    const onTouchMove = (event: globalThis.TouchEvent) => {
+      const touchY = event.touches[0]?.clientY;
+      if (touchY === undefined) {
+        return;
+      }
+
+      if (lastTouchY !== null && touchY > lastTouchY) {
+        detachFromAutoScroll();
+      } else if (!isAutoScrollEnabledRef.current) {
+        captureScrollPosition();
+      }
+      lastTouchY = touchY;
     };
 
     scrollTarget.addEventListener("scroll", preserveDetachedScrollPosition, {
       passive: true,
     });
+    scrollElement.addEventListener("wheel", onWheel, { passive: true });
+    scrollElement.addEventListener("touchstart", onTouchStart, {
+      passive: true,
+    });
+    scrollElement.addEventListener("touchmove", onTouchMove, { passive: true });
     return () => {
       resizeObserver.disconnect();
       scrollTarget.removeEventListener(
         "scroll",
         preserveDetachedScrollPosition
       );
+      scrollElement.removeEventListener("wheel", onWheel);
+      scrollElement.removeEventListener("touchstart", onTouchStart);
+      scrollElement.removeEventListener("touchmove", onTouchMove);
     };
-  }, [captureScrollPosition, getScrollElement, isMobile]);
+  }, [isMobile]);
   const sendNotification = useSendNotification();
   const { incrementPendingSteeringCount } = useGenerationContext();
   const { peekPendingFirstMessage } = useContext(InputBarContext);
@@ -1487,42 +1512,6 @@ export const ConversationViewer = ({
     ]
   );
 
-  const onWheel = useCallback(
-    (event: WheelEvent<HTMLDivElement>) => {
-      if (event.ctrlKey) {
-        return;
-      }
-
-      if (event.deltaY < 0) {
-        detachFromAutoScroll();
-      } else if (!isAutoScrollEnabledRef.current) {
-        captureScrollPosition();
-      }
-    },
-    [captureScrollPosition, detachFromAutoScroll]
-  );
-
-  const onTouchStart = useCallback((event: TouchEvent<HTMLDivElement>) => {
-    lastTouchYRef.current = event.touches[0]?.clientY ?? null;
-  }, []);
-
-  const onTouchMove = useCallback(
-    (event: TouchEvent<HTMLDivElement>) => {
-      const touchY = event.touches[0]?.clientY;
-      if (touchY === undefined) {
-        return;
-      }
-
-      if (lastTouchYRef.current !== null && touchY > lastTouchYRef.current) {
-        detachFromAutoScroll();
-      } else if (!isAutoScrollEnabledRef.current) {
-        captureScrollPosition();
-      }
-      lastTouchYRef.current = touchY;
-    },
-    [captureScrollPosition, detachFromAutoScroll]
-  );
-
   const computeItemKey = useCallback(
     ({
       data,
@@ -1654,9 +1643,6 @@ export const ConversationViewer = ({
           shortSizeAlign="top"
           computeItemKey={computeItemKey}
           onScroll={onScroll}
-          onWheel={onWheel}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
           context={context}
           itemIdentity={itemIdentity}
           EmptyPlaceholder={ConversationViewerEmptyState}

@@ -20,16 +20,12 @@ const mockMutateContextUsage = vi.fn();
 const mockUseVirtuosoMethods = vi.fn();
 const mockIsAutoScrollEnabledRef = { current: true };
 
-function makeVirtuosoMethodsMock<T>(
-  map: (updater: (message: T) => T) => T[],
-  onMap?: (scrollToBottom: unknown) => void
-) {
+function makeVirtuosoMethodsMock<T>(map: (updater: (message: T) => T) => T[]) {
   return {
     data: {
-      map: (updater: (message: T) => T, scrollToBottom?: unknown): T[] => {
-        const result = map(updater);
-        onMap?.(scrollToBottom);
-        return result;
+      map,
+      batch: (callback: () => void) => {
+        callback();
       },
     },
   };
@@ -295,100 +291,6 @@ describe("appendThinkingStep", () => {
 });
 
 describe("useAgentMessageStream", () => {
-  it("does not re-attach when generation switches from thinking to content", () => {
-    let currentMessage = makeInitialMessageStreamState(
-      makeLightAgentMessage({ content: null, chainOfThought: null })
-    );
-    let onEventCallback: ((event: string) => void) | null = null;
-    let autoScrollToBottom: { location: () => unknown } | null = null;
-
-    mockUseVirtuosoMethods.mockReturnValue(
-      makeVirtuosoMethodsMock(
-        (
-          updater: (message: typeof currentMessage) => typeof currentMessage
-        ) => {
-          currentMessage = updater(currentMessage);
-          return [currentMessage];
-        },
-        (scrollToBottom) => {
-          if (
-            typeof scrollToBottom === "object" &&
-            scrollToBottom !== null &&
-            "location" in scrollToBottom
-          ) {
-            autoScrollToBottom = scrollToBottom as {
-              location: () => unknown;
-            };
-          }
-        }
-      )
-    );
-
-    mockUseEventSource.mockImplementation(
-      (
-        _buildURL: unknown,
-        callback: (event: string) => void
-      ): { isError: null } => {
-        onEventCallback = callback;
-        return { isError: null };
-      }
-    );
-
-    renderHook(() =>
-      useAgentMessageStream({
-        agentMessage: currentMessage,
-        conversationId: "conv_123",
-        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
-        owner: mockOwner,
-        streamId: "stream_123",
-      })
-    );
-
-    act(() => {
-      onEventCallback!(
-        JSON.stringify({
-          eventId: "1-0",
-          data: {
-            type: "generation_tokens",
-            created: Date.now(),
-            configurationId: "agent_123",
-            messageId: currentMessage.sId,
-            text: "Thinking",
-            classification: "chain_of_thought",
-          },
-        })
-      );
-    });
-
-    expect(autoScrollToBottom).not.toBeNull();
-    expect(autoScrollToBottom!.location()).toEqual({
-      index: "LAST",
-      align: "end",
-      behavior: "instant",
-    });
-
-    mockIsAutoScrollEnabledRef.current = false;
-
-    act(() => {
-      onEventCallback!(
-        JSON.stringify({
-          eventId: "2-0",
-          data: {
-            type: "generation_tokens",
-            created: Date.now(),
-            configurationId: "agent_123",
-            messageId: currentMessage.sId,
-            text: "Answer",
-            classification: "tokens",
-          },
-        })
-      );
-    });
-
-    expect(mockIsAutoScrollEnabledRef.current).toBe(false);
-    expect(autoScrollToBottom!.location()).toBeNull();
-  });
-
   it("clears stale database content before replaying fresh-mount tokens", () => {
     let currentMessage = makeInitialMessageStreamState(makeLightAgentMessage());
     const snapshots: Array<{
@@ -636,6 +538,12 @@ describe("useAgentMessageStream", () => {
           },
         })
       );
+    });
+
+    // Scrolling up during thinking must survive the transition to answer content.
+    mockIsAutoScrollEnabledRef.current = false;
+
+    act(() => {
       onEventCallback!(
         JSON.stringify({
           eventId: "2-0",
@@ -680,6 +588,7 @@ describe("useAgentMessageStream", () => {
       },
     ]);
     expect(currentMessage.content).toBe("");
+    expect(mockIsAutoScrollEnabledRef.current).toBe(false);
   });
 
   it("applies the server-rendered content view at success", () => {

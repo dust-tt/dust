@@ -298,7 +298,6 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
 
     const canUp = fullyAboveIndices.length > 0;
     const canDown =
-      !context.isAutoScrollEnabledRef.current &&
       (belowTopQuarterIndices.length > 0 || bottomOffset > 0) &&
       !methods.getScrollLocation().isAtBottom;
 
@@ -338,13 +337,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
         }
       },
     };
-  }, [
-    context.isAutoScrollEnabledRef,
-    methods,
-    listOffset,
-    visibleListHeight,
-    bottomOffset,
-  ]);
+  }, [methods, listOffset, visibleListHeight, bottomOffset]);
 
   const blockedActionItems = getBlockedActionItems(context.user.sId);
   const blockedActions = blockedActionItems.map((item) => item.blockedAction);
