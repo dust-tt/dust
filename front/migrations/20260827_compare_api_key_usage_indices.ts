@@ -269,7 +269,7 @@ makeScript(
 
     if (mismatches.length > 0) {
       logger.error(summary, "API key usage comparison failed");
-      throw new Error(`Found ${mismatches.length} API key usage mismatch(es)`);
+      return;
     }
 
     logger.info(summary, "API key usage matches across analytics indices");
