@@ -222,16 +222,7 @@ function computeExcessCycleBreakdown(
 }
 
 // Programmatic AWU spend against the pool, read straight from the current
-// draft invoice's own usage line items — the same snapshot backing
-// `currentCycleConsumedCredits` (via its pool-ledger deductions), instead of
-// a live Metronome usage query racing ahead of it with usage the ledger
-// hasn't caught up to yet.
-//
-// Scoped twice: `commit_id` must be one of `poolCommitIds` (only usage that
-// actually drew from the pool, not general workspace spend that spilled to
-// overage/PAYG), and `pricing_group_values` must carry
-// `usage_type: "programmatic"` (how the AWU rate cards are dimensioned — see
-// `setup_new_pricing.ts`).
+// draft invoice's own usage line items
 function sumProgrammaticPoolConsumedFromInvoice({
   invoice,
   poolCommitIds,
@@ -254,13 +245,7 @@ function sumProgrammaticPoolConsumedFromInvoice({
     .reduce((sum, item) => sum + item.total, 0);
 }
 
-// Read live from Metronome rather than ES: usage events already carry the
-// `usage_type` group key needed to isolate programmatic spend, so there's no
-// need to duplicate that split in our own analytics index. Returns `null` on
-// a Metronome read failure — callers must treat that as "unknown", not 0.
-//
-// Only used as a fallback when there's no current draft invoice to read line
-// items from (see `sumProgrammaticPoolConsumedFromInvoice`).
+// Read live from Metronome rather than ES
 async function fetchProgrammaticConsumedCreditsOrNull({
   workspace,
   metronomeCustomerId,
@@ -296,9 +281,7 @@ export class AwuPoolSummaryError extends Error {
 
 type AwuPoolSummaryErrorType = AwuPoolSummaryError["type"];
 
-// Discriminated union so the Metronome round-trip below can be cached with
-// `cacheWithRedis`, which requires a plain JSON-serializable return value —
-// `Result`/`Err` instances (and the `Error` they carry) aren't serializable.
+// Discriminated union so the Metronome round-trip below can be redis cached
 type SerializableAwuPoolSummaryOutcome =
   | { status: "ok"; body: AwuPoolSummaryResponseBody }
   | { status: "error"; errorType: AwuPoolSummaryErrorType };
@@ -315,11 +298,7 @@ async function computeAwuPoolSummaryOutcome(
 }
 
 // Draft invoice, finalized invoices, balances, and members usage are the
-// same Metronome/ES data regardless of which surface asks for them — the
-// usage page's top card, its cycle-history table, the consumption-overview
-// widget, and the poke admin usage page all resolve to the same workspace.
-// Cache the outcome so those don't each trigger their own live Metronome
-// round-trip when loading the same page.
+// same Metronome/ES data regardless of which surface asks for them
 const AWU_POOL_SUMMARY_CACHE_ID = "awuPoolSummary";
 const AWU_POOL_SUMMARY_CACHE_TTL_MS = 60 * 1000;
 
@@ -343,11 +322,6 @@ const getCachedAwuPoolSummaryOutcome = cacheWithRedis(
   }
 );
 
-// Callers that mutate Metronome balances/invoices outside of a request that
-// already carries an `Authenticator` (e.g. a webhook resolving an AWU
-// purchase) invalidate by workspace id directly, rather than through
-// `invalidateCacheWithRedis`, which would otherwise require constructing an
-// `Authenticator` just to satisfy the cached function's resolver signature.
 export async function invalidateAwuPoolSummaryCache(
   workspaceId: string,
   cycleHistoryLimit: number = DEFAULT_CYCLE_HISTORY_LIMIT
@@ -576,16 +550,6 @@ async function getAwuPoolSummaryUncached(
         })
       : null;
 
-  // Unlike `excessConsumedCredits`, computed regardless of pool state — it's
-  // a distinct "not attributable to a member" figure shown alongside the
-  // per-cycle total whether or not the workspace has an active pool.
-  //
-  // Derived from the invoice, scoped to `poolCommitIds`, same as
-  // `currentCycleConsumedCredits` — so the two are directly comparable and
-  // programmatic no longer outpaces the ledger-derived total just because it
-  // was read live. `null` when `poolCommitIds` itself couldn't be determined
-  // (fetch failure above): without it there's no way to tell a pool-drawing
-  // line from any other usage line on the invoice.
   const programmaticConsumedCredits = poolCommitIdsResult.isErr()
     ? null
     : sumProgrammaticPoolConsumedFromInvoice({
