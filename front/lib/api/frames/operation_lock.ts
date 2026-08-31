@@ -1,7 +1,8 @@
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import type { LockAcquisitionTimeoutError } from "@app/lib/lock";
 import {
   executeWithLockResult,
-  LockAcquisitionTimeoutError,
+  isLockAcquisitionTimeoutError,
 } from "@app/lib/lock";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
@@ -38,7 +39,7 @@ async function withTypedFrameOperationLock<T, E>(
   });
   if (result.isErr()) {
     const error = result.error;
-    if (error instanceof LockAcquisitionTimeoutError) {
+    if (isLockAcquisitionTimeoutError(error)) {
       return new Err(
         new SandboxFunctionError(
           "publish_conflict",
