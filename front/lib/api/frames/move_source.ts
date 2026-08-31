@@ -347,30 +347,45 @@ async function copyFrameSourceAsNew({
           );
         }
         let destinationFile = destinationByRelativePath.get(relativePath);
-        const destinationWasListed = Boolean(destinationFile);
-        let copied = false;
+        let ownedDestinationObject: GCSObjectGeneration | null = null;
 
         if (!destinationFile) {
           try {
-            await bucket.copyFile(sourceFile.name, destinationPath, undefined, {
-              destinationGenerationMatch:
-                GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
-              sourceGeneration,
-            });
-            copied = true;
+            const copied = await bucket.copyFile(
+              sourceFile.name,
+              destinationPath,
+              undefined,
+              {
+                destinationGenerationMatch:
+                  GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+                sourceGeneration,
+              }
+            );
+            destinationFile = copied.destinationFile;
+            ownedDestinationObject = {
+              filePath: destinationPath,
+              generation: copied.destinationGeneration,
+            };
           } catch (error) {
             if (!isGCSPreconditionFailedError(error)) {
               throw error;
             }
+            if (!allowMatchingDestinationObjects) {
+              throw new FrameSourceMoveError(
+                "conflict",
+                `Destination file already exists: ${relativePath}`
+              );
+            }
+            destinationFile = bucket.file(destinationPath);
+            const [metadata] = await destinationFile.getMetadata();
+            destinationFile.metadata = metadata;
           }
-          destinationFile = bucket.file(destinationPath);
-          const [metadata] = await destinationFile.getMetadata();
-          destinationFile.metadata = metadata;
         }
 
         if (
-          (!copied && !isSameGCSObject(sourceFile, destinationFile)) ||
-          (!allowMatchingDestinationObjects && destinationWasListed)
+          !ownedDestinationObject &&
+          (!allowMatchingDestinationObjects ||
+            !isSameGCSObject(sourceFile, destinationFile))
         ) {
           throw new FrameSourceMoveError(
             "conflict",
@@ -378,21 +393,11 @@ async function copyFrameSourceAsNew({
           );
         }
 
-        const generation = metadataValue(
-          destinationFile.metadata,
-          "generation"
-        );
-        if (!generation) {
-          throw new FrameSourceMoveError(
-            "internal",
-            `Destination generation is missing: ${relativePath}`
-          );
-        }
         return new Ok<{
-          destination: GCSObjectGeneration;
+          destination: GCSObjectGeneration | null;
           source: GCSObjectGeneration;
         }>({
-          destination: { filePath: destinationPath, generation },
+          destination: ownedDestinationObject,
           source: {
             filePath: sourceFile.name,
             generation: sourceGeneration,
@@ -414,8 +419,8 @@ async function copyFrameSourceAsNew({
   const copiedObjects = copyResults
     .filter((result) => result.isOk())
     .map((result) => result.value);
-  const destinationObjects = copiedObjects.map(
-    ({ destination }) => destination
+  const destinationObjects = copiedObjects.flatMap(({ destination }) =>
+    destination ? [destination] : []
   );
   const failedCopy = copyResults.find((result) => result.isErr());
   if (failedCopy?.isErr()) {

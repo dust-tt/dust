@@ -56,6 +56,24 @@ type RawContentSaveOptions = Pick<
   "preconditionOpts" | "resumable"
 >;
 
+export type FileCopyResult = {
+  destinationFile: File;
+  destinationGeneration: string;
+};
+
+function isCopyResponseWithGeneration(
+  response: unknown
+): response is { generation: string | number } {
+  if (
+    !response ||
+    typeof response !== "object" ||
+    !("generation" in response)
+  ) {
+    return false;
+  }
+  return isString(response.generation) || isNumber(response.generation);
+}
+
 function isRetryableGCSError(err: unknown): boolean {
   // ApiError only adds optional fields on top of Error, so a normalized Error
   // is safe to hand to the SDK's default retryable check.
@@ -518,7 +536,7 @@ export class FileStorage {
       destinationGenerationMatch?: number;
       sourceGeneration?: string;
     } = {}
-  ): Promise<void> {
+  ): Promise<FileCopyResult> {
     const destinationFile = destinationStorage.file(destPath);
     const sourceFile = sourceGeneration
       ? this.bucket.file(srcPath, { generation: sourceGeneration })
@@ -530,13 +548,22 @@ export class FileStorage {
       attempt++
     ) {
       try {
-        await sourceFile.copy(destinationFile, {
-          preconditionOpts:
-            destinationGenerationMatch !== undefined
-              ? { ifGenerationMatch: destinationGenerationMatch }
-              : undefined,
-        });
-        return;
+        const [copiedFile, copyResponse] = await sourceFile.copy(
+          destinationFile,
+          {
+            preconditionOpts:
+              destinationGenerationMatch !== undefined
+                ? { ifGenerationMatch: destinationGenerationMatch }
+                : undefined,
+          }
+        );
+        if (!isCopyResponseWithGeneration(copyResponse)) {
+          throw new Error("GCS copy response is missing its generation.");
+        }
+        return {
+          destinationFile: copiedFile,
+          destinationGeneration: String(copyResponse.generation),
+        };
       } catch (err) {
         // Preconditions are deterministic. In particular, a create-only copy
         // must let its caller inspect the existing destination instead of
@@ -567,6 +594,8 @@ export class FileStorage {
         await setTimeoutAsync(delayMs);
       }
     }
+
+    throw new Error("GCS copy retry loop exhausted unexpectedly.");
   }
 
   async deleteByPrefix(prefix: string): Promise<void> {

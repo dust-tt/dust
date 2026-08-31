@@ -337,6 +337,39 @@ describe("moveFrameV2Source", () => {
     );
   });
 
+  it("does not adopt a matching destination object created during the move", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/MatchingCollision`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}MatchingCollision`;
+    const destinationManifestPath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    fileStorageMock.setObject(destinationManifestPath, manifest);
+    fileStorageMock.setFileMetadata((filePath) =>
+      filePath === destinationManifestPath
+        ? {
+            contentType: frameV2ContentType,
+            generation: "3",
+            md5Hash: "manifest",
+            size: String(Buffer.byteLength(manifest)),
+          }
+        : null
+    );
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    expect(moved.isErr() && moved.error).toMatchObject({ code: "conflict" });
+    expect(fileStorageMock.getObject(destinationManifestPath)).toBe(manifest);
+    expect(fileStorageMock.deleteCalls).not.toContainEqual(
+      expect.objectContaining({ filePath: destinationManifestPath })
+    );
+  });
+
   it("copies pinned source generations and preserves concurrent edits", async () => {
     const context = await setup();
     const destinationDirectoryPath = `conversation-${context.conversation.sId}/Edited`;
@@ -399,6 +432,56 @@ describe("moveFrameV2Source", () => {
     expect(fileStorageMock.getObject(sourceManifestPath)).toBeUndefined();
   });
 
+  it("does not delete a destination generation overwritten after copy", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/Overwritten`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}Overwritten`;
+    const destinationUiPath = `${destinationGcsDirectoryPath}/index.tsx`;
+    fileStorageMock.setAfterCopyFile((_sourcePath, destinationPath) => {
+      if (destinationPath === destinationUiPath) {
+        fileStorageMock.setObject(
+          destinationPath,
+          "concurrent destination edit"
+        );
+      }
+    });
+    const updateMount = FileResource.prototype.updateMount;
+    let updateMountCalls = 0;
+    vi.spyOn(FileResource.prototype, "updateMount").mockImplementation(
+      function (this: FileResource, args) {
+        updateMountCalls++;
+        if (updateMountCalls === 2) {
+          return Promise.reject(
+            new Error("Simulated final Frame update failure")
+          );
+        }
+        return updateMount.call(this, args);
+      }
+    );
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    expect(moved.isErr() && moved.error).toMatchObject({ code: "internal" });
+    expect(fileStorageMock.getObject(destinationUiPath)).toBe(
+      "concurrent destination edit"
+    );
+    expect(fileStorageMock.deleteCalls).toContainEqual(
+      expect.objectContaining({
+        filePath: destinationUiPath,
+        options: expect.objectContaining({
+          ifGenerationMatch: expect.any(String),
+        }),
+      })
+    );
+  });
+
   it("keeps the recovery reservation when exact-generation cleanup fails", async () => {
     const context = await setup();
     const destinationDirectoryPath = `conversation-${context.conversation.sId}/Retry`;
@@ -439,6 +522,95 @@ describe("moveFrameV2Source", () => {
           }),
         }),
       ])
+    );
+  });
+
+  it("does not delete a matching recovery object that this attempt did not copy", async () => {
+    const context = await setup();
+    const destinationDirectoryPath = `conversation-${context.conversation.sId}/RecoveryRollback`;
+    const destinationGcsDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    })}RecoveryRollback`;
+    const destinationManifestPath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const destinationMountFilePath = destinationManifestPath;
+    const sourceMountFilePath = `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    await context.frame.updateMount({
+      destFileName: FRAME_MANIFEST_FILE,
+      destMountFilePath: destinationMountFilePath,
+      destUseCase: "conversation",
+      destUseCaseMetadata: {
+        activePublicationId: "publication-1",
+        conversationId: context.conversation.sId,
+        pendingFrameSourceMove: {
+          destinationMountFilePath,
+          sourceMountFilePath,
+        },
+      },
+    });
+    fileStorageMock.setObject(destinationManifestPath, manifest);
+    fileStorageMock.setFilesByPrefix((prefix) => {
+      if (prefix === `${context.sourceGcsDirectoryPath}/`) {
+        return [
+          {
+            name: sourceMountFilePath,
+            metadata: {
+              contentType: frameV2ContentType,
+              generation: "1",
+              md5Hash: "manifest",
+              size: String(Buffer.byteLength(manifest)),
+            },
+          },
+          {
+            name: `${context.sourceGcsDirectoryPath}/index.tsx`,
+            metadata: {
+              contentType: "text/typescript",
+              generation: "2",
+              md5Hash: "ui",
+              size: "1",
+            },
+          },
+        ];
+      }
+      if (prefix === `${destinationGcsDirectoryPath}/`) {
+        return [
+          {
+            name: destinationManifestPath,
+            metadata: {
+              contentType: frameV2ContentType,
+              generation: "3",
+              md5Hash: "manifest",
+              size: String(Buffer.byteLength(manifest)),
+            },
+          },
+        ];
+      }
+      return null;
+    });
+    const updateMount = FileResource.prototype.updateMount;
+    let updateMountCalls = 0;
+    vi.spyOn(FileResource.prototype, "updateMount").mockImplementation(
+      function (this: FileResource, args) {
+        updateMountCalls++;
+        if (updateMountCalls === 1) {
+          return Promise.reject(
+            new Error("Simulated final Frame update failure")
+          );
+        }
+        return updateMount.call(this, args);
+      }
+    );
+
+    const moved = await moveFrameV2Source(context.auth, {
+      conversation: context.conversation,
+      destinationDirectoryPath,
+      sourceDirectoryPath: context.sourceDirectoryPath,
+    });
+
+    expect(moved.isErr() && moved.error).toMatchObject({ code: "internal" });
+    expect(fileStorageMock.getObject(destinationManifestPath)).toBe(manifest);
+    expect(fileStorageMock.deleteCalls).not.toContainEqual(
+      expect.objectContaining({ filePath: destinationManifestPath })
     );
   });
 
