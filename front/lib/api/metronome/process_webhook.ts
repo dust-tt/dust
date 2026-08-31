@@ -2,6 +2,7 @@ import {
   handleSubscriptionActivationFailure,
   handleSubscriptionActivationSuccess,
 } from "@app/lib/api/checkout/business_activation";
+import { invalidateAwuPoolSummaryCache } from "@app/lib/api/credits/awu_pool_summary";
 import {
   maybeClearAdminsBalanceThresholdReached,
   maybeNotifyAdminsBalanceThresholdReached,
@@ -1421,6 +1422,10 @@ export async function processMetronomeWebhook({
           contractId,
           invoiceId,
         });
+        // The unlocked commit changes the pool balance the UI is polling
+        // for via `useAwuPoolSummary` — without this, the poll can keep
+        // serving the pre-purchase cached summary for up to its TTL.
+        await invalidateAwuPoolSummaryCache(workspace.sId);
         // Resolve a subscription activation if one is pending on this contract.
         await handleSubscriptionActivationSuccess({
           workspace,
