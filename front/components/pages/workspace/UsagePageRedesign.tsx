@@ -467,7 +467,9 @@ export function UsagePageRedesign() {
     currentCycleConsumedCredits,
     currentCycleStartMs,
     currentCycleEndMs,
+    cycleBreakdown,
     excessConsumedCredits,
+    excessCycleBreakdown,
     programmaticConsumedCredits,
     otherConsumedCredits,
     isAwuPoolSummaryLoading,
@@ -901,7 +903,8 @@ export function UsagePageRedesign() {
   const hasPool = totalActiveCredits > 0;
   // No pool, but there's still PAYG excess consumption to show — either live
   // (this cycle) or as history from previous invoices.
-  const hasExcessData = excessConsumedCredits !== null;
+  const hasExcessData =
+    excessConsumedCredits !== null || excessCycleBreakdown.length > 0;
 
   const usedPercentage =
     creditUsage?.status.usedPercentage ??
@@ -1277,7 +1280,9 @@ export function UsagePageRedesign() {
             currentCycleConsumedCredits={currentCycleConsumedCredits}
             currentCycleStartMs={currentCycleStartMs}
             currentCycleEndMs={currentCycleEndMs}
+            cycleBreakdown={cycleBreakdown}
             excessConsumedCredits={excessConsumedCredits}
+            excessCycleBreakdown={excessCycleBreakdown}
             programmaticConsumedCredits={programmaticConsumedCredits}
             otherConsumedCredits={otherConsumedCredits}
             poolSecondaryContent={

@@ -1,12 +1,16 @@
+import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import { ONE_DAY_MS } from "@app/lib/api/analytics/time_utils";
 import { formatCredits } from "@app/lib/client/credits";
+import type { AwuPoolCycleBreakdown } from "@app/types/api/credits/awu_pool_summary";
 import {
   AlertCircle,
   ContentMessage,
+  DataTable,
   Page,
   Spinner,
   ValueCard,
 } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 import type { ReactNode } from "react";
 
 function formatCycleDayLabel(
@@ -169,6 +173,54 @@ export function WorkspaceExcessCreditsValueCard({
   );
 }
 
+interface WorkspaceCreditPoolCycleHistoryTableProps {
+  cycleBreakdown: AwuPoolCycleBreakdown[];
+}
+
+type CycleHistoryRowData = {
+  cycle: string;
+  consumedCredits: string;
+  onClick?: () => void;
+};
+
+const CYCLE_HISTORY_COLUMNS: ColumnDef<CycleHistoryRowData, string>[] = [
+  {
+    accessorKey: "cycle",
+    header: "Cycle",
+    enableSorting: false,
+    cell: ({ row }) => (
+      <DataTable.CellContent>{row.original.cycle}</DataTable.CellContent>
+    ),
+  },
+  {
+    accessorKey: "consumedCredits",
+    header: "Credits consumed",
+    enableSorting: false,
+    meta: { headerAlign: "right" },
+    cell: ({ row }) => (
+      <span className="block text-right text-sm">
+        {row.original.consumedCredits}
+      </span>
+    ),
+  },
+];
+
+export function WorkspaceCreditPoolCycleHistoryTable({
+  cycleBreakdown,
+}: WorkspaceCreditPoolCycleHistoryTableProps) {
+  if (cycleBreakdown.length === 0) {
+    return null;
+  }
+  const rows: CycleHistoryRowData[] = cycleBreakdown.map((cycle) => ({
+    cycle:
+      cycle.cycleStartMs && cycle.cycleEndMs
+        ? `${formatConsumptionDate(cycle.cycleStartMs)} – ${formatConsumptionDate(cycle.cycleEndMs)}`
+        : "Unknown cycle",
+    consumedCredits: formatCredits(Math.round(cycle.consumedCredits)),
+  }));
+  return <DataTable data={rows} columns={CYCLE_HISTORY_COLUMNS} />;
+}
+
 interface WorkspaceCreditPoolSectionProps {
   isLoading: boolean;
   isError: boolean;
@@ -178,7 +230,9 @@ interface WorkspaceCreditPoolSectionProps {
   currentCycleConsumedCredits: number | null;
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
+  cycleBreakdown: AwuPoolCycleBreakdown[];
   excessConsumedCredits: number | null;
+  excessCycleBreakdown: AwuPoolCycleBreakdown[];
   programmaticConsumedCredits: number | null;
   otherConsumedCredits: number | null;
   poolSecondaryContent?: ReactNode;
@@ -197,7 +251,9 @@ export function WorkspaceCreditPoolSection({
   currentCycleConsumedCredits,
   currentCycleStartMs,
   currentCycleEndMs,
+  cycleBreakdown,
   excessConsumedCredits,
+  excessCycleBreakdown,
   programmaticConsumedCredits,
   otherConsumedCredits,
   poolSecondaryContent,
@@ -237,6 +293,9 @@ export function WorkspaceCreditPoolSection({
             isLoading={false}
           />
           {poolSecondaryContent}
+          <WorkspaceCreditPoolCycleHistoryTable
+            cycleBreakdown={cycleBreakdown}
+          />
           {footer}
         </>
       ) : (
@@ -248,6 +307,9 @@ export function WorkspaceCreditPoolSection({
             programmaticConsumedCredits={programmaticConsumedCredits}
             otherConsumedCredits={otherConsumedCredits}
             isLoading={false}
+          />
+          <WorkspaceCreditPoolCycleHistoryTable
+            cycleBreakdown={excessCycleBreakdown}
           />
           {footer}
         </>
