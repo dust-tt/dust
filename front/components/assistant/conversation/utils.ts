@@ -1,3 +1,5 @@
+import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
+import { isZeroHeightMessage } from "@app/components/assistant/conversation/types";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import type {
@@ -19,8 +21,6 @@ import type { ContentFragmentType } from "@app/types/content_fragment";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { PodListItemType } from "@app/types/space";
 import moment from "moment";
-import type { VirtuosoMessage } from "./types";
-import { isZeroHeightMessage } from "./types";
 
 const MAX_SOURCE_CONVERSATION_TITLE_LENGTH = 50;
 const UNNAMED_PARENT_CONVERSATION_TITLE = "Unnamed parent conversation";

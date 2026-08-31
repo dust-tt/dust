@@ -2,6 +2,7 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { getWorkspaceLimitForSubmitError } from "@app/components/app/ReachedLimitPopup";
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
+import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
   parseDataAsMessageIdAndActionId,
   useConversationSidePanelContext,
@@ -33,6 +34,10 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
+import {
+  findFirstUnreadMessageIndex,
+  getAutoScrollEnabled,
+} from "@app/components/assistant/conversation/utils";
 import {
   requestConversationMarkAsRead,
   useConversation,
@@ -105,8 +110,6 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
-import { ConversationErrorDisplay } from "./ConversationError";
-import { findFirstUnreadMessageIndex, getAutoScrollEnabled } from "./utils";
 
 const DEFAULT_PAGE_LIMIT = 50;
 // SSE is the fast path; poll slowly in case the completion event is missed before subscription.
