@@ -30,14 +30,14 @@ import capitalize from "lodash/capitalize";
 // Shown when a whole-premium model row or a premium reasoning-effort stop is
 // locked because the workspace is on a legacy (non usage-based) plan.
 export const PREMIUM_MODEL_LOCKED_TOOLTIP =
-  "Premium models are available via this picker on the new usage-based plans. " +
-  "Contact your administrator to upgrade and access these models.";
+  "This option isn't available on your workspace's current plan. " +
+  "Contact your administrator to upgrade.";
 
 // Shown when a model row is locked because the model's tier is not enabled for
 // the workspace's current model-tier ceiling (independent of the plan: this
 // applies even on usage-based plans whose tier grants stop below the model).
 const MODEL_TIER_LOCKED_TOOLTIP =
-  "You don't have access to this model tier. " +
+  "Your current model access doesn't include this option. " +
   "Contact your administrator to get access.";
 
 // The three primary picks of the model picker. Each tier is backed by a
@@ -132,18 +132,6 @@ export function getDefaultTierId(
   return standard && !standard.isSelectable ? "fast" : "standard";
 }
 
-// Per reasoning-effort blurbs surfaced in the effort slider tooltip.
-const REASONING_EFFORT_INFO: Record<ReasoningEffort, string> = {
-  none: "No additional reasoning, for the fastest responses.",
-  light: "Light reasoning effort, faster responses.",
-  medium: "Medium reasoning effort, balancing speed and quality.",
-  high: "High reasoning effort, longer wait times but higher quality.",
-};
-
-export function getReasoningEffortLabel(effort: ReasoningEffort): string {
-  return effort === "none" ? "None" : capitalize(effort);
-}
-
 export function getTierResolvedModelLabel(
   tierId: ModelTierId,
   streams: ModelStreamResolutionsType | null
@@ -154,7 +142,7 @@ export function getTierResolvedModelLabel(
   }
   return resolution.reasoningEffort === "none"
     ? resolution.displayName
-    : `${resolution.displayName} ${getReasoningEffortLabel(resolution.reasoningEffort)}`;
+    : `${resolution.displayName} ${capitalize(resolution.reasoningEffort)}`;
 }
 
 // What the picker is currently showing, decoupled from the payload we send:
@@ -179,11 +167,11 @@ export interface MakerGroup {
 export type EffortLockReason = "unsupported" | "premium" | "model_tier";
 
 // One stop of the reasoning-effort slider. A stop is `locked` when the level is
-// not selectable; `lockedReason` says why.
+// not selectable; a null `lockedReason` explicitly means it is available.
 export interface EffortStop {
   effort: ReasoningEffort;
   locked: boolean;
-  lockedReason?: EffortLockReason;
+  lockedReason: EffortLockReason | null;
 }
 
 // The reasoning-effort slider always presents these three canonical levels so
@@ -273,7 +261,7 @@ function modelSupportsEffortStatically(
   if (!isStaticModelId(modelId)) {
     return false;
   }
-  return STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[modelId][effort] === true;
+  return STATIC_MODEL_SUPPORTED_REASONING_EFFORTS[modelId][effort];
 }
 
 // The single authority for whether a reasoning-effort level is selectable.
@@ -304,7 +292,7 @@ export function getEffortStops(
     ) {
       return { effort, locked: true, lockedReason: "premium" };
     }
-    return { effort, locked: false };
+    return { effort, locked: false, lockedReason: null };
   });
 }
 
@@ -381,21 +369,24 @@ export function getModelLockTooltip(reason: ModelLockReason): string {
   }
 }
 
-export function getEffortStopTooltip(stop: EffortStop): string {
-  if (stop.locked) {
-    switch (stop.lockedReason) {
-      case "premium":
-        return PREMIUM_MODEL_LOCKED_TOOLTIP;
-      case "model_tier":
-        return MODEL_TIER_LOCKED_TOOLTIP;
-      case "unsupported":
-      case undefined:
-        break;
-      default:
-        assertNeverAndIgnore(stop.lockedReason);
-    }
+export function getEffortStopTooltip(stop: EffortStop): string | null {
+  if (!stop.locked) {
+    return null;
   }
-  return REASONING_EFFORT_INFO[stop.effort];
+
+  switch (stop.lockedReason) {
+    case "premium":
+      return PREMIUM_MODEL_LOCKED_TOOLTIP;
+    case "model_tier":
+      return MODEL_TIER_LOCKED_TOOLTIP;
+    case "unsupported":
+      return `This model doesn't support ${capitalize(stop.effort)} reasoning.`;
+    case null:
+      return null;
+    default:
+      assertNeverAndIgnore(stop.lockedReason);
+      return null;
+  }
 }
 
 export function getModelWithReasoningEffortLabel(

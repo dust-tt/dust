@@ -31,6 +31,35 @@ type Story = StoryObj<typeof meta>;
 const THIRD_STEP_TOOLTIP = "This step requires a higher plan.";
 const FOURTH_STEP_TOOLTIP = "This step requires the highest plan.";
 
+async function expectLockedStepTooltips(canvasElement: HTMLElement) {
+  const slider = within(canvasElement).getByRole("slider");
+  const root = slider.parentElement?.parentElement;
+  if (!root) {
+    throw new Error("Slider root not found.");
+  }
+
+  const rootRect = root.getBoundingClientRect();
+  fireEvent.pointerMove(root, {
+    clientX: rootRect.left + (rootRect.width * 2) / 3,
+    clientY: rootRect.top + rootRect.height / 2,
+  });
+
+  const tooltip = await within(canvasElement.ownerDocument.body).findByRole(
+    "tooltip"
+  );
+  await waitFor(() => expect(tooltip).toBeVisible());
+  expect(tooltip).toHaveTextContent(THIRD_STEP_TOOLTIP);
+  // The slider itself remains the trigger while the hovered step changes.
+  expect(root).toHaveAttribute("aria-describedby");
+
+  fireEvent.pointerMove(root, {
+    clientX: rootRect.right - 1,
+    clientY: rootRect.top + rootRect.height / 2,
+  });
+
+  await waitFor(() => expect(tooltip).toHaveTextContent(FOURTH_STEP_TOOLTIP));
+}
+
 // SliderSteps is fully controlled; this shared render wires changes back into
 // the `value` arg (on top of the `onChange` spy) so every story is interactive
 // and stays in sync with the Controls panel.
@@ -81,38 +110,13 @@ export const WithLockedSteps: Story = {
   },
   render: ControlledSliderSteps,
   play: async ({ canvasElement }) => {
-    const slider = within(canvasElement).getByRole("slider");
-    const root = slider.parentElement?.parentElement;
-    if (!root) {
-      throw new Error("Slider root not found.");
-    }
-
-    const rootRect = root.getBoundingClientRect();
-    fireEvent.pointerMove(root, {
-      clientX: rootRect.left + (rootRect.width * 2) / 3,
-      clientY: rootRect.top + rootRect.height / 2,
-    });
-
-    const tooltip = await within(canvasElement.ownerDocument.body).findByRole(
-      "tooltip"
-    );
-    await waitFor(() => expect(tooltip).toBeVisible());
-    expect(tooltip).toHaveTextContent(THIRD_STEP_TOOLTIP);
-    // The slider itself remains the trigger while the hovered step changes.
-    expect(root).toHaveAttribute("aria-describedby");
-
-    fireEvent.pointerMove(root, {
-      clientX: rootRect.right - 1,
-      clientY: rootRect.top + rootRect.height / 2,
-    });
-
-    await waitFor(() => expect(tooltip).toHaveTextContent(FOURTH_STEP_TOOLTIP));
+    await expectLockedStepTooltips(canvasElement);
   },
 };
 
 /**
  * The disabled state: the track dims and the slider ignores pointer and
- * keyboard input entirely.
+ * keyboard input while still explaining locked steps on hover.
  * @summary Disabled slider.
  */
 export const Disabled: Story = {
@@ -120,8 +124,13 @@ export const Disabled: Story = {
     stepCount: 4,
     value: 1,
     disabled: true,
+    lockedSteps: [2, 3],
+    stepTooltips: [null, null, THIRD_STEP_TOOLTIP, FOURTH_STEP_TOOLTIP],
     ariaLabel: "Level",
     onChange: fn(),
   },
   render: ControlledSliderSteps,
+  play: async ({ canvasElement }) => {
+    await expectLockedStepTooltips(canvasElement);
+  },
 };
