@@ -2624,11 +2624,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     // global, provisioned, regular_auto: read-only for every workspace member.
     // Write/admin are gated through the associated resource (space/agent).
-    if (
-      this.isGlobal() ||
-      this.isProvisioned() ||
-      this.isRegularAuto()
-    ) {
+    if (this.isGlobal() || this.isProvisioned() || this.isRegularAuto()) {
       return [
         {
           roles: [
