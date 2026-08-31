@@ -3,8 +3,10 @@ import * as converters from "@app/lib/model_constructors/sdk/openai_responses/co
 import {
   outputItemToEvents,
   rawOutputToEvents,
+  streamErrorToErrorEvent,
   usageToTokenUsageEvent,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
+import { APIConnectionError } from "openai";
 import type {
   Response,
   ResponseOutputItem,
@@ -159,6 +161,80 @@ function completedResponse(
 }
 
 describe("rawOutputToEvents", () => {
+  it("attributes an in-band error event to the provider", async () => {
+    const events = [];
+    for await (const event of rawOutputToEvents(
+      createAsyncGenerator([
+        {
+          type: "error",
+          code: "server_error",
+          message: "generation failed",
+          param: null,
+          sequence_number: 0,
+        },
+      ]),
+      metadata,
+      converters
+    )) {
+      events.push(event);
+    }
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "error",
+        content: expect.objectContaining({
+          type: "stream_error",
+          errorSource: "provider",
+        }),
+      }),
+    ]);
+  });
+
+  it.each([
+    ["server_error", "server_error", "provider"],
+    ["rate_limit_exceeded", "rate_limit_error", "dust"],
+    ["invalid_prompt", "invalid_request_error", "dust"],
+    ["bio_policy", "refusal_error", "dust"],
+  ] as const)("maps response.failed code %s to %s from %s", async (code, expectedType, errorSource) => {
+    const events = [];
+    for await (const event of rawOutputToEvents(
+      createAsyncGenerator([
+        {
+          type: "response.failed",
+          sequence_number: 0,
+          response: {
+            ...completedResponse(null, {
+              input_tokens: 0,
+              input_tokens_details: {
+                cached_tokens: 0,
+                cache_write_tokens: 0,
+              },
+              output_tokens: 0,
+              output_tokens_details: { reasoning_tokens: 0 },
+              total_tokens: 0,
+            }),
+            status: "failed",
+            error: { code, message: "generation failed" },
+          },
+        },
+      ]),
+      metadata,
+      converters
+    )) {
+      events.push(event);
+    }
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "error",
+        content: expect.objectContaining({
+          type: expectedType,
+          errorSource,
+        }),
+      }),
+    ]);
+  });
+
   // The tier the response was served on is what OpenAI bills, and it can differ
   // from the one we asked for: a refused flex request is replayed on standard
   // processing. OpenAI's own tier names collapse into the two provider-agnostic
@@ -384,5 +460,18 @@ describe("rawOutputToEvents", () => {
         ],
       },
     });
+  });
+});
+
+describe("streamErrorToErrorEvent", () => {
+  // The shared OpenAI helper is covered exhaustively by the completions tests;
+  // keep one adapter-level assertion that Responses delegates transport errors.
+  it("maps APIConnectionError to a network_error without blaming the provider", () => {
+    const result = streamErrorToErrorEvent(
+      metadata,
+      new APIConnectionError({ message: "connection reset" })
+    );
+    expect(result.content.type).toBe("network_error");
+    expect(result.content.errorSource).toBe("unknown");
   });
 });

@@ -10,7 +10,7 @@ import type {
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import { buildHttpStatusErrorEvent } from "@app/lib/model_constructors/utils/classify_http_status";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { classifyStreamError } from "@app/lib/model_constructors/utils/classify_stream_error";
 import { isRecord, isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type {
@@ -63,13 +63,17 @@ function usageToTokenUsageEvent(
   };
 }
 
+function isMistralError(error: unknown): error is MistralError {
+  return error instanceof MistralError;
+}
+
 // Maps any error thrown by the Mistral SDK while streaming into a unified
 // `ErrorEvent`, so everything leaving the endpoint is an event, not an exception.
 export function streamErrorToErrorEvent(
   metadata: EndpointMetadata,
   error: unknown
 ): ErrorEvent {
-  if (error instanceof MistralError) {
+  if (isMistralError(error)) {
     return buildHttpStatusErrorEvent({
       metadata,
       status: error.statusCode,
@@ -78,12 +82,11 @@ export function streamErrorToErrorEvent(
       originalError: error,
     });
   }
-  return buildErrorEvent({
-    errorSource: "provider",
+
+  return classifyStreamError({
+    error,
     metadata,
-    type: "unknown_error",
-    message: `Unknown error from Mistral: ${normalizeError(error).message}`,
-    originalError: error,
+    providerName: "Mistral",
   });
 }
 
