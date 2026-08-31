@@ -31,26 +31,20 @@ type VirtuosoMethods = VirtuosoMessageListMethods<
   VirtuosoMessageListContext
 >;
 
-function createAutoScrollToBottomLocation(
-  isAutoScrollEnabledRef: MutableRefObject<boolean>
-) {
-  return () =>
-    isAutoScrollEnabledRef.current
-      ? {
-          index: "LAST" as const,
-          align: "end" as const,
-          behavior: "instant" as const,
-        }
-      : null;
-}
-
 function mapMessagesWithScrollPolicy(
   methods: VirtuosoMethods,
   isAutoScrollEnabledRef: MutableRefObject<boolean>,
   mapFn: (message: VirtuosoMessage, index: number) => VirtuosoMessage
 ) {
   methods.data.map(mapFn, {
-    location: createAutoScrollToBottomLocation(isAutoScrollEnabledRef),
+    location: () =>
+      isAutoScrollEnabledRef.current
+        ? {
+            index: "LAST",
+            align: "end",
+            behavior: "instant",
+          }
+        : null,
   });
 }
 
