@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockEnsureSandboxStateHealthOnSleep,
   mockExecuteWithLock,
   mockExecuteWithRenewingLockResult,
   mockGetSandboxImage,
@@ -9,6 +10,7 @@ const {
   mockProviderDestroy,
   mockRevokeAllExecTokensForSandbox,
 } = vi.hoisted(() => ({
+  mockEnsureSandboxStateHealthOnSleep: vi.fn(),
   mockExecuteWithLock: vi.fn(),
   mockExecuteWithRenewingLockResult: vi.fn(),
   mockGetSandboxImage: vi.fn(),
@@ -17,6 +19,14 @@ const {
   mockProviderDestroy: vi.fn(),
   mockRevokeAllExecTokensForSandbox: vi.fn(),
 }));
+
+vi.mock("@app/lib/api/sandbox/db", async (importActual) => {
+  const actual = await importActual<typeof import("@app/lib/api/sandbox/db")>();
+  return {
+    ...actual,
+    ensureSandboxStateHealthOnSleep: mockEnsureSandboxStateHealthOnSleep,
+  };
+});
 
 vi.mock("@app/lib/api/sandbox", () => ({
   getSandboxProvider: mockGetSandboxProvider,
@@ -40,6 +50,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import {
   FrameGoneError,
   FrameSandboxAdapter,
+  FrameScopeTransitionStateError,
 } from "@app/lib/resources/frame_sandbox_adapter";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -52,7 +63,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { frameV2ContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 function createDeferred() {
   let resolvePromise: (() => void) | undefined;
@@ -116,6 +127,7 @@ describe("FrameSandboxAdapter", () => {
       destroy: mockProviderDestroy,
     });
     mockRevokeAllExecTokensForSandbox.mockResolvedValue(undefined);
+    mockEnsureSandboxStateHealthOnSleep.mockResolvedValue(new Ok(undefined));
   });
 
   it("owns one sandbox per stable Frame identity", async () => {
@@ -312,6 +324,109 @@ describe("FrameSandboxAdapter", () => {
       releaseFunctionCleanup.resolve();
       deleteInvocationsSpy.mockRestore();
     }
+  });
+
+  it("flushes state, destroys the runtime, then commits with a reloaded Frame", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace);
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 1,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
+    });
+    const sandboxResult = await FrameSandboxAdapter.ensureSandboxActive(
+      auth,
+      frame
+    );
+    if (sandboxResult.isErr()) {
+      throw sandboxResult.error;
+    }
+    const fetchFreshFrame = vi.spyOn(frame, "fetchFreshFrameV2");
+    const prepare = vi.fn(
+      async (_freshFrame: FileResource) => new Ok("prepared")
+    );
+    const commit = vi.fn(
+      async (_freshFrame: FileResource, _prep: string) => new Ok(undefined)
+    );
+
+    const transition = await FrameSandboxAdapter.withScopeTransition(
+      auth,
+      frame,
+      { prepare, commit }
+    );
+
+    expect(transition.isOk()).toBe(true);
+    expect(fetchFreshFrame).toHaveBeenCalledTimes(2);
+    expect(prepare.mock.calls[0]?.[0]).not.toBe(frame);
+    expect(commit.mock.calls[0]?.[0]).not.toBe(prepare.mock.calls[0]?.[0]);
+    expect(commit).toHaveBeenCalledWith(expect.any(FileResource), "prepared");
+    expect(mockEnsureSandboxStateHealthOnSleep).toHaveBeenCalledWith(
+      auth,
+      sandboxResult.value.sandbox,
+      expect.objectContaining({ refreshMountCredential: expect.any(Function) })
+    );
+    expect(
+      mockEnsureSandboxStateHealthOnSleep.mock.invocationCallOrder[0]
+    ).toBeLessThan(mockProviderDestroy.mock.invocationCallOrder[0]);
+    expect(mockProviderDestroy.mock.invocationCallOrder[0]).toBeLessThan(
+      commit.mock.invocationCallOrder[0]
+    );
+    await expect(
+      FrameSandboxAdapter.fetchSandbox(auth, frame)
+    ).resolves.toMatchObject({ status: "deleted" });
+  });
+
+  it("keeps the current runtime when state cannot be flushed", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace);
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 1,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
+    });
+    const sandboxResult = await FrameSandboxAdapter.ensureSandboxActive(
+      auth,
+      frame
+    );
+    if (sandboxResult.isErr()) {
+      throw sandboxResult.error;
+    }
+    mockEnsureSandboxStateHealthOnSleep.mockResolvedValue(
+      new Err(new Error("sync failed"))
+    );
+    mockProviderDestroy.mockClear();
+    const commit = vi.fn(async () => new Ok(undefined));
+
+    const transition = await FrameSandboxAdapter.withScopeTransition(
+      auth,
+      frame,
+      { prepare: async () => new Ok(undefined), commit }
+    );
+
+    expect(transition.isErr() && transition.error).toBeInstanceOf(
+      FrameScopeTransitionStateError
+    );
+    expect(transition.isErr() && transition.error.message).toContain(
+      "sync failed"
+    );
+    expect(mockProviderDestroy).not.toHaveBeenCalled();
+    expect(commit).not.toHaveBeenCalled();
+    await expect(
+      FrameSandboxAdapter.fetchSandbox(auth, frame)
+    ).resolves.toMatchObject({
+      id: sandboxResult.value.sandbox.id,
+      status: "running",
+    });
   });
 
   it("deletes Frame sandboxes during a workspace scrub", async () => {

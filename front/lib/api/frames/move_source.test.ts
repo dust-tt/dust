@@ -5,6 +5,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   emitGCSMountFileMovedAuditLogMock,
   lockLeaseCheckMock,
+  sandboxProviderDestroyMock,
+  sandboxProviderMock,
+  sandboxStateHealthOnSleepMock,
   sandboxLifecycleAfterCallbackMock,
   sandboxLifecycleBeforeCallbackMock,
   sandboxLifecycleLockTails,
@@ -13,11 +16,26 @@ const {
   return {
     emitGCSMountFileMovedAuditLogMock: vi.fn(),
     lockLeaseCheckMock: vi.fn(),
+    sandboxProviderDestroyMock: vi.fn(),
+    sandboxProviderMock: vi.fn(),
+    sandboxStateHealthOnSleepMock: vi.fn(),
     sandboxLifecycleAfterCallbackMock: vi.fn(),
     sandboxLifecycleBeforeCallbackMock: vi.fn(),
     sandboxLifecycleLockTails,
   };
 });
+
+vi.mock("@app/lib/api/sandbox/db", async (importActual) => {
+  const actual = await importActual<typeof import("@app/lib/api/sandbox/db")>();
+  return {
+    ...actual,
+    ensureSandboxStateHealthOnSleep: sandboxStateHealthOnSleepMock,
+  };
+});
+
+vi.mock("@app/lib/api/sandbox", () => ({
+  getSandboxProvider: sandboxProviderMock,
+}));
 
 vi.mock("@app/lib/api/files/gcs_mount/files", async (importActual) => {
   const actual =
@@ -82,6 +100,9 @@ import { Authenticator } from "@app/lib/auth";
 import { LockLeaseLostError } from "@app/lib/lock";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -222,6 +243,12 @@ beforeEach(() => {
   sandboxLifecycleAfterCallbackMock.mockReset();
   sandboxLifecycleAfterCallbackMock.mockResolvedValue(undefined);
   emitGCSMountFileMovedAuditLogMock.mockClear();
+  sandboxProviderDestroyMock.mockReset();
+  sandboxProviderDestroyMock.mockResolvedValue(new Ok(undefined));
+  sandboxProviderMock.mockReset();
+  sandboxProviderMock.mockReturnValue({ destroy: sandboxProviderDestroyMock });
+  sandboxStateHealthOnSleepMock.mockReset();
+  sandboxStateHealthOnSleepMock.mockResolvedValue(new Ok(undefined));
   vi.restoreAllMocks();
   leaseCheckCount = 0;
   loseLeaseAtCheck = Number.POSITIVE_INFINITY;
@@ -423,7 +450,7 @@ describe("moveFrameV2Source", () => {
     );
   });
 
-  it("serializes conversation scope changes with final eligibility and update", async () => {
+  it("recycles a running sandbox when runtime scopes converge under the lifecycle lock", async () => {
     const context = await setup({ withRuntimePod: true });
     assert(context.runtimeSpace);
     const nextRuntimeSpace = await SpaceFactory.project(
@@ -435,12 +462,27 @@ describe("moveFrameV2Source", () => {
       context.workspace.sId
     );
     assert(auth);
-    const destinationDirectoryPath = `pod-${context.runtimeSpace.sId}/Status`;
+    const destinationDirectoryPath = `pod-${nextRuntimeSpace.sId}/Status`;
     const destinationGcsDirectoryPath = `${getPodFilesBasePath({
       workspaceId: context.workspace.sId,
-      podId: context.runtimeSpace.sId,
+      podId: nextRuntimeSpace.sId,
     })}Status`;
     const destinationManifestPath = `${destinationGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const scopeTransition = vi.spyOn(
+      FrameSandboxAdapter,
+      "withScopeTransition"
+    );
+    const sandbox = await SandboxResource.makeNew(auth, {
+      providerId: "frame-sandbox",
+      status: "running",
+      baseImage: "dust-base",
+      version: "1",
+    });
+    await SandboxOwnerModel.create({
+      frameFileModelId: context.frame.id,
+      sandboxId: sandbox.id,
+      workspaceId: context.workspace.id,
+    });
 
     let releaseTransition: () => void = () => undefined;
     const allowTransition = new Promise<void>((resolve) => {
@@ -491,33 +533,34 @@ describe("moveFrameV2Source", () => {
     );
 
     const moved = await move;
-    expect(moved.isErr() && moved.error).toMatchObject({
-      code: "conflict",
-      message:
-        "The Frame runtime scope changed while its source was being moved.",
+    assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
+    expect(moved.value.frameId).toBe(context.frame.sId);
+    expect(scopeTransition).toHaveBeenCalledTimes(1);
+    expect(sandboxStateHealthOnSleepMock).toHaveBeenCalledTimes(1);
+    expect(sandboxProviderDestroyMock).toHaveBeenCalledWith("frame-sandbox", {
+      workspaceId: context.workspace.sId,
     });
+    await expect(
+      FrameSandboxAdapter.fetchSandbox(auth, context.frame)
+    ).resolves.toMatchObject({ id: sandbox.id, status: "deleted" });
     const reloaded = await FileResource.fetchById(auth, context.frame.sId);
-    expect(reloaded?.mountFilePath).toBe(
-      `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
-    );
+    expect(reloaded?.mountFilePath).toBe(destinationManifestPath);
     expect(reloaded?.useCaseMetadata).toEqual({
       activePublicationId: "publication-1",
-      conversationId: context.conversation.sId,
+      spaceId: nextRuntimeSpace.sId,
     });
-    expect(fileStorageMock.getObject(destinationManifestPath)).toBeUndefined();
+    expect(fileStorageMock.getObject(destinationManifestPath)).toBe(manifest);
     expect(
       fileStorageMock.getObject(`${destinationGcsDirectoryPath}/index.tsx`)
+    ).toBe("ui source");
+    expect(
+      fileStorageMock.getObject(
+        `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
+      )
     ).toBeUndefined();
-    expect(fileStorageMock.deleteCalls).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          filePath: destinationManifestPath,
-          options: expect.objectContaining({
-            ifGenerationMatch: expect.any(String),
-          }),
-        }),
-      ])
-    );
+    expect(
+      fileStorageMock.getObject(`${context.sourceGcsDirectoryPath}/index.tsx`)
+    ).toBeUndefined();
   });
 
   it("moves from a Pod mount to a conversation in that runtime", async () => {
@@ -588,7 +631,7 @@ describe("moveFrameV2Source", () => {
     );
   });
 
-  it("rejects moves to a different runtime before any mutation", async () => {
+  it("recycles the runtime when moving to a different runtime", async () => {
     const context = await setup();
     const destinationPod = await SpaceFactory.project(
       context.workspace,
@@ -599,33 +642,51 @@ describe("moveFrameV2Source", () => {
       context.workspace.sId
     );
     assert(auth);
-    const fetchFrames = vi.spyOn(FileResource, "fetchByMountFilePaths");
-    const updateMount = vi.spyOn(FileResource.prototype, "updateMount");
-    const copyFile = vi.fn();
-    fileStorageMock.setAfterCopyFile(copyFile);
+    const beforeShare = await context.frame.getShareInfo();
+    const sandbox = await SandboxResource.makeNew(context.auth, {
+      providerId: "frame-sandbox",
+      status: "sleeping",
+      baseImage: "dust-base",
+      version: "1",
+    });
+    await SandboxOwnerModel.create({
+      frameFileModelId: context.frame.id,
+      sandboxId: sandbox.id,
+      workspaceId: context.workspace.id,
+    });
+    const destinationDirectoryPath = `pod-${destinationPod.sId}/Status`;
 
     const moved = await moveFrameV2Source(auth, {
       conversation: context.conversation,
-      destinationDirectoryPath: `pod-${destinationPod.sId}/Status`,
+      destinationDirectoryPath,
       sourceDirectoryPath: context.sourceDirectoryPath,
     });
 
-    expect(moved.isErr() && moved.error).toMatchObject({
-      code: "invalid_source",
-      message:
-        "Frame source and destination must resolve to the same runtime space.",
+    assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
+    expect(moved.value).toEqual({
+      destinationDirectoryPath,
+      frameId: context.frame.sId,
+      sourceDeletionFailed: false,
     });
-    expect(fetchFrames).not.toHaveBeenCalled();
-    expect(updateMount).not.toHaveBeenCalled();
-    expect(copyFile).not.toHaveBeenCalled();
-    expect(fileStorageMock.deleteCalls).toEqual([]);
-    const reloaded = await FileResource.fetchById(
-      context.auth,
-      context.frame.sId
-    );
+    const reloaded = await FileResource.fetchById(auth, context.frame.sId);
+    expect(reloaded).toMatchObject({
+      sId: context.frame.sId,
+      useCase: "project_context",
+    });
     expect(reloaded?.mountFilePath).toBe(
-      `${context.sourceGcsDirectoryPath}/${FRAME_MANIFEST_FILE}`
+      `${getPodFilesBasePath({
+        workspaceId: context.workspace.sId,
+        podId: destinationPod.sId,
+      })}Status/${FRAME_MANIFEST_FILE}`
     );
+    expect(reloaded?.useCaseMetadata).toEqual({
+      activePublicationId: "publication-1",
+      spaceId: destinationPod.sId,
+    });
+    await expect(reloaded?.getShareInfo()).resolves.toEqual(beforeShare);
+    await expect(
+      FrameSandboxAdapter.fetchSandbox(auth, context.frame)
+    ).resolves.toMatchObject({ id: sandbox.id, status: "deleted" });
   });
 
   it("moves within another conversation when the caller can access its mount", async () => {

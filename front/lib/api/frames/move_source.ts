@@ -24,7 +24,12 @@ import { isLockLeaseLostError } from "@app/lib/lock";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { FrameGoneError } from "@app/lib/resources/frame_sandbox_adapter";
+import type { FrameScopeTransitionStateError } from "@app/lib/resources/frame_sandbox_adapter";
+import {
+  FrameGoneError,
+  FrameSandboxAdapter,
+} from "@app/lib/resources/frame_sandbox_adapter";
+import type { ScopeTransitionDestroyError } from "@app/lib/resources/sandbox_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
@@ -65,11 +70,29 @@ export function isFrameSourceMoveError(
   return error instanceof FrameSourceMoveError;
 }
 
+type FrameDestinationUpdateCause =
+  | FrameGoneError
+  | FrameScopeTransitionStateError
+  | FrameSourceMoveError
+  | ScopeTransitionDestroyError;
+
+class FrameDestinationUpdateError extends Error {
+  constructor(
+    readonly error: FrameDestinationUpdateCause,
+    readonly preserveDestinationObjects: boolean
+  ) {
+    super(error.message);
+    this.name = "FrameDestinationUpdateError";
+  }
+}
+
 export type MoveFrameV2SourceError =
   | DustFileSystemError
   | FrameGoneError
+  | FrameScopeTransitionStateError
   | FrameSourceMoveError
-  | SandboxFunctionError;
+  | SandboxFunctionError
+  | ScopeTransitionDestroyError;
 
 function invalidSource(message: string) {
   return new Err(new FrameSourceMoveError("invalid_source", message));
@@ -753,11 +776,6 @@ export async function moveFrameV2Source(
   if (destinationRuntimeSpace.isErr()) {
     return destinationRuntimeSpace;
   }
-  if (sourceRuntimeSpace.value !== destinationRuntimeSpace.value) {
-    return invalidSource(
-      "Frame source and destination must resolve to the same runtime space."
-    );
-  }
 
   const sourceManifestPath = path.posix.join(source, FRAME_MANIFEST_FILE);
   const destinationManifestPath = path.posix.join(
@@ -961,25 +979,23 @@ export async function moveFrameV2Source(
           );
     }
 
-    type DestinationUpdateError = {
-      error: FrameSourceMoveError;
-      preserveDestinationObjects: boolean;
-    };
     const updateFrame = async (
       currentFrame: FileResource
-    ): Promise<Result<void, DestinationUpdateError>> => {
+    ): Promise<Result<void, FrameDestinationUpdateError>> => {
       const currentReservation = getMatchingPendingMove(currentFrame, {
         destinationMountFilePath: destinationMountPath,
         sourceMountFilePath: sourceMountPath,
       });
       if (currentReservation?.operationId !== operationId) {
-        return new Err({
-          error: new FrameSourceMoveError(
-            "internal",
-            "The Frame source changed while its destination update was being committed."
-          ),
-          preserveDestinationObjects: true,
-        });
+        return new Err(
+          new FrameDestinationUpdateError(
+            new FrameSourceMoveError(
+              "internal",
+              "The Frame source changed while its destination update was being committed."
+            ),
+            true
+          )
+        );
       }
       try {
         await currentFrame.updateMount({
@@ -1004,7 +1020,7 @@ export async function moveFrameV2Source(
 
     const reconcileDestinationUpdate = async (
       updateError: FrameSourceMoveError
-    ): Promise<Result<void, DestinationUpdateError>> => {
+    ): Promise<Result<void, FrameDestinationUpdateError>> => {
       let reconciledFrame: FileResource | null = null;
       try {
         reconciledFrame = await freshFrame.fetchFreshFrameV2(auth);
@@ -1030,21 +1046,23 @@ export async function moveFrameV2Source(
           })
         : null;
       if (reconciledReservation?.operationId === operationId) {
-        return new Err({
-          error: updateError,
-          preserveDestinationObjects: false,
-        });
+        return new Err(new FrameDestinationUpdateError(updateError, false));
       }
-      return new Err({
-        error: new FrameSourceMoveError(
-          "internal",
-          "The Frame destination update could not be reconciled; retry the move."
-        ),
-        preserveDestinationObjects: true,
-      });
+      return new Err(
+        new FrameDestinationUpdateError(
+          new FrameSourceMoveError(
+            "internal",
+            "The Frame destination update could not be reconciled; retry the move."
+          ),
+          true
+        )
+      );
     };
 
-    let updateResult: Result<void, DestinationUpdateError | LockLeaseLostError>;
+    let updateResult: Result<
+      void,
+      FrameDestinationUpdateError | LockLeaseLostError
+    >;
     try {
       updateResult = await withConversationOwnerLifecycleLocks(
         [sourceOwner, destinationOwner],
@@ -1055,34 +1073,86 @@ export async function moveFrameV2Source(
               resolveRuntimeSpaceId(auth, destinationOwner),
             ]);
           if (freshSourceRuntimeSpace.isErr()) {
-            return new Err({
-              error: freshSourceRuntimeSpace.error,
-              preserveDestinationObjects: false,
-            });
+            return new Err(
+              new FrameDestinationUpdateError(
+                freshSourceRuntimeSpace.error,
+                false
+              )
+            );
           }
           if (freshDestinationRuntimeSpace.isErr()) {
-            return new Err({
-              error: freshDestinationRuntimeSpace.error,
-              preserveDestinationObjects: false,
-            });
-          }
-          if (
-            freshSourceRuntimeSpace.value !== freshDestinationRuntimeSpace.value
-          ) {
-            return new Err({
-              error: new FrameSourceMoveError(
-                "conflict",
-                "The Frame runtime scope changed while its source was being moved."
-              ),
-              preserveDestinationObjects: false,
-            });
+            return new Err(
+              new FrameDestinationUpdateError(
+                freshDestinationRuntimeSpace.error,
+                false
+              )
+            );
           }
 
           const heldBeforeUpdate = lease.check();
           if (heldBeforeUpdate.isErr()) {
             return heldBeforeUpdate;
           }
-          return updateFrame(freshFrame);
+          const canUpdateWithoutScopeTransition =
+            sourceRuntimeSpace.value === destinationRuntimeSpace.value &&
+            freshSourceRuntimeSpace.value === sourceRuntimeSpace.value &&
+            freshDestinationRuntimeSpace.value ===
+              destinationRuntimeSpace.value;
+          if (canUpdateWithoutScopeTransition) {
+            return updateFrame(freshFrame);
+          }
+
+          const transitionResult =
+            await FrameSandboxAdapter.withScopeTransition<
+              undefined,
+              void,
+              FrameDestinationUpdateError | LockLeaseLostError
+            >(auth, freshFrame, {
+              prepare: async (currentFrame) => {
+                const heldBeforeDestroy = lease.check();
+                if (heldBeforeDestroy.isErr()) {
+                  return heldBeforeDestroy;
+                }
+                const currentReservation = getMatchingPendingMove(
+                  currentFrame,
+                  {
+                    destinationMountFilePath: destinationMountPath,
+                    sourceMountFilePath: sourceMountPath,
+                  }
+                );
+                return currentReservation?.operationId === operationId
+                  ? new Ok(undefined)
+                  : new Err(
+                      new FrameDestinationUpdateError(
+                        new FrameSourceMoveError(
+                          "internal",
+                          "The Frame source changed before its runtime could be recycled."
+                        ),
+                        true
+                      )
+                    );
+              },
+              commit: async (currentFrame) => {
+                const heldAfterDestroy = lease.check();
+                return heldAfterDestroy.isErr()
+                  ? heldAfterDestroy
+                  : updateFrame(currentFrame);
+              },
+            });
+          if (transitionResult.isOk()) {
+            return transitionResult;
+          }
+          if (isLockLeaseLostError(transitionResult.error)) {
+            return new Err(transitionResult.error);
+          }
+          return new Err(
+            transitionResult.error instanceof FrameDestinationUpdateError
+              ? transitionResult.error
+              : new FrameDestinationUpdateError(
+                  transitionResult.error,
+                  transitionResult.error instanceof FrameGoneError
+                )
+          );
         }
       );
     } catch (error) {
