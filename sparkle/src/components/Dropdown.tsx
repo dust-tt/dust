@@ -384,8 +384,6 @@ interface DropdownMenuContentProps
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
   /** Scrolls the item matching highlightedItemId into view when it changes. */
   scrollHighlightedItemIntoView?: boolean;
-  /** Recalculates collision positioning when this value changes while the menu is open. */
-  repositionKey?: React.Key;
 }
 
 /** The menu panel: portaled, animated, scrollable, with typed characters routed to an embedded searchbar. */
@@ -407,7 +405,6 @@ const DropdownMenuContent = React.forwardRef<
       onKeyDown,
       searchInputRef,
       scrollHighlightedItemIntoView = false,
-      repositionKey,
       children,
       ...props
     },
@@ -415,17 +412,6 @@ const DropdownMenuContent = React.forwardRef<
   ) => {
     const viewportRef = useRef<HTMLDivElement>(null);
     const itemElementsRef = useRef(new Map<string, HTMLElement>());
-
-    React.useLayoutEffect(() => {
-      const popperWrapper = viewportRef.current?.closest<HTMLElement>(
-        "[data-radix-menu-content]"
-      )?.parentElement;
-      if (repositionKey !== undefined && popperWrapper) {
-        // Let Radix measure the full new content before applying the next cap.
-        popperWrapper.style.removeProperty("--radix-popper-available-height");
-        window.dispatchEvent(new Event("resize"));
-      }
-    }, [repositionKey]);
 
     const handleKeyDownCapture = (e: React.KeyboardEvent<HTMLDivElement>) => {
       onKeyDownCapture?.(e);
@@ -540,7 +526,7 @@ const DropdownMenuContent = React.forwardRef<
           className="w-full flex-1"
           viewportClassName={cn(
             "flex-1",
-            "max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
+            "max-h-[calc(max(var(--radix-dropdown-menu-content-available-height),calc(100dvh-var(--radix-dropdown-menu-trigger-height)-var(--radix-dropdown-menu-content-available-height)-1rem))-var(--header-height,20px))]"
           )}
           viewportRef={viewportRef}
         >

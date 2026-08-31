@@ -80,7 +80,6 @@ export function ModelPickerContent({
       className="w-84 max-w-(--radix-dropdown-menu-content-available-width)"
       align="start"
       side={side}
-      repositionKey={isMakersExpanded ? "expanded" : "collapsed"}
     >
       {tiers.length > 0 && (
         <DropdownMenuLabel label="Recommendations" className="text-sm" />
