@@ -279,7 +279,7 @@ export async function getOrCreateConversation(
     context: {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       username: mainAgent.name,
-      fullName: mainAgent.name,
+      fullName: `@${mainAgent.name}`,
       email: null,
       profilePictureUrl: mainAgent.pictureUrl,
       origin: parentOrigin,
