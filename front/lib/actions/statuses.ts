@@ -30,9 +30,18 @@ const TOOL_EXECUTION_AGENT_LOOP_EXTENSION_STATUSES = [
   "blocked_user_answer_required",
 ] as const;
 
-export type ToolExecutionStatus =
-  | ToolExecutionBaseStatus
-  | (typeof TOOL_EXECUTION_AGENT_LOOP_EXTENSION_STATUSES)[number];
+export const TOOL_EXECUTION_STATUSES = [
+  ...TOOL_EXECUTION_BASE_STATUSES,
+  ...TOOL_EXECUTION_AGENT_LOOP_EXTENSION_STATUSES,
+] as const;
+
+export type ToolExecutionStatus = (typeof TOOL_EXECUTION_STATUSES)[number];
+
+export function isToolExecutionStatus(
+  value: string
+): value is ToolExecutionStatus {
+  return TOOL_EXECUTION_STATUSES.some((status) => status === value);
+}
 
 export const TOOL_EXECUTION_BLOCKED_STATUSES = [
   "blocked_authentication_required",

@@ -1,6 +1,7 @@
 import { checkActiveWorkflows } from "@app/lib/production_checks/checks/check_active_workflows_for_connectors";
 import { checkActiveWorkflowsForFront } from "@app/lib/production_checks/checks/check_active_workflows_for_front";
 import { checkConnectorsLastSyncSuccess } from "@app/lib/production_checks/checks/check_connectors_last_sync_success";
+import { checkConsumptionAgreesWithBilling } from "@app/lib/production_checks/checks/check_consumption_agrees_with_billing";
 import { checkDataSourcesConsistency } from "@app/lib/production_checks/checks/check_data_sources_consistency";
 import { checkEndedBackendOnlySubscriptions } from "@app/lib/production_checks/checks/check_ended_backend_only_subscriptions";
 import { checkExcessCredits } from "@app/lib/production_checks/checks/check_excess_credits";
@@ -54,6 +55,11 @@ export const REGISTERED_CHECKS: Check[] = [
     name: "check_connectors_last_sync_success",
     check: checkConnectorsLastSyncSuccess,
     everyHour: 1,
+  },
+  {
+    name: "check_consumption_agrees_with_billing",
+    check: checkConsumptionAgreesWithBilling,
+    everyHour: 24,
   },
   {
     name: "check_data_sources_consistency",

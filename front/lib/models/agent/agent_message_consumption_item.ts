@@ -323,6 +323,12 @@ AgentMessageConsumptionItemModel.init(
         where: { itemType: "rounding" },
         name: "agent_message_consumption_items_unique_rounding",
       },
+      {
+        concurrently: true,
+        fields: ["attributionVersion", "createdAt", "id"],
+        where: { itemType: "rounding" },
+        name: "agent_message_consumption_items_rounding_version_created_at",
+      },
     ],
     validate: {
       validConsumptionItemShape: validateConsumptionItemShape,
