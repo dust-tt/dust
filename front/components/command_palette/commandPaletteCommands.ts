@@ -90,26 +90,26 @@ function buildNavigationCommands({
   const commands: CommandPaletteCommand[] = [
     {
       id: "nav.spaces",
-      label: "Go to Spaces",
+      label: "Spaces",
       group: "navigation",
       icon: Planet,
-      keywords: ["space", "knowledge", "data sources", "vault"],
+      keywords: ["go to", "space", "knowledge", "data sources", "vault"],
       run: () => navigate(`/w/${wId}/spaces`),
     },
     {
       id: "nav.agents",
-      label: "Go to Agents",
+      label: "Manage Agents",
       group: "navigation",
       icon: Robot,
-      keywords: ["agent", "assistant", "manage agents", "builder"],
+      keywords: ["go to", "agent", "assistant", "builder"],
       run: () => navigate(`/w/${wId}/builder/agents`),
     },
     {
       id: "nav.skills",
-      label: "Go to Skills",
+      label: "Manage Skills",
       group: "navigation",
       icon: PuzzlePiece01,
-      keywords: ["skill", "tools", "manage skills", "builder"],
+      keywords: ["go to", "skill", "tools", "builder"],
       run: () => navigate(`/w/${wId}/builder/skills`),
     },
   ];
@@ -117,10 +117,10 @@ function buildNavigationCommands({
   if (canUseProduct) {
     commands.push({
       id: "nav.labs",
-      label: "Go to Labs",
+      label: "Exploratory features",
       group: "navigation",
       icon: Beaker02,
-      keywords: ["labs", "exploratory", "experimental", "beta"],
+      keywords: ["go to", "labs", "exploratory", "experimental", "beta"],
       run: () => navigate(`/w/${wId}/labs`),
     });
   }
@@ -128,7 +128,7 @@ function buildNavigationCommands({
   commands.push(
     {
       id: "nav.docs",
-      label: "Open Documentation",
+      label: "Guides & Documentation",
       group: "navigation",
       icon: BookOpen01,
       keywords: ["help", "docs", "guides", "documentation", "support"],
@@ -136,7 +136,7 @@ function buildNavigationCommands({
     },
     {
       id: "nav.academy",
-      label: "Open Dust Academy",
+      label: "Dust Academy",
       group: "navigation",
       icon: BookOpen01,
       keywords: ["help", "academy", "learn", "training", "course"],

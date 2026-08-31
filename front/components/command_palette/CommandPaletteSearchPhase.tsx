@@ -1,31 +1,30 @@
+import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteItems";
 import {
   ItemEmptyState,
-  ItemRow,
-  ItemTitle,
   KeyboardHints,
 } from "@app/components/command_palette/CommandPaletteItems";
+import type { CommandGroupSection } from "@app/components/command_palette/CommandPaletteSections";
+import {
+  AgentSection,
+  CommandSections,
+  PodSection,
+  SkillSection,
+} from "@app/components/command_palette/CommandPaletteSections";
 import type {
   CommandGroup,
   CommandPaletteCommand,
 } from "@app/components/command_palette/commandPaletteCommands";
 import {
-  COMMAND_GROUP_LABELS,
   COMMAND_GROUP_ORDER,
   TRAILING_COMMAND_GROUP_ORDER,
 } from "@app/components/command_palette/commandPaletteCommands";
-import { getSkillAvatarIcon } from "@app/lib/skill";
-import { getSpaceIcon } from "@app/lib/spaces";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { PodType } from "@app/types/space";
-import { Avatar, cn, Icon, LoadingBlock, SearchInput } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef } from "react";
+import { cn, LoadingBlock, SearchInput } from "@dust-tt/sparkle";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
-export type CommandPaletteItem =
-  | { kind: "agent"; agent: LightAgentConfigurationType }
-  | { kind: "pod"; pod: PodType }
-  | { kind: "skill"; skill: SkillWithoutInstructionsAndToolsType }
-  | { kind: "command"; command: CommandPaletteCommand };
+export type { CommandPaletteItem };
 
 interface CommandPaletteSearchPhaseProps {
   searchQuery: string;
@@ -51,12 +50,8 @@ function groupCommands(
   commands: CommandPaletteCommand[],
   groupOrder: CommandGroup[],
   firstIndex: number
-) {
-  const groups: Array<{
-    group: CommandGroup;
-    commands: CommandPaletteCommand[];
-    startIndex: number;
-  }> = [];
+): CommandGroupSection[] {
+  const groups: CommandGroupSection[] = [];
 
   let startIndex = firstIndex;
   for (const group of groupOrder) {
@@ -118,12 +113,15 @@ export function CommandPaletteSearchPhase({
 
   // Trailing groups render below the results, so their flat indices start after
   // every leading command and every entity row.
-  const trailingFirstIndex =
-    leadingCommands.length + agents.length + pods.length + skills.length;
+  const agentsStartIndex = leadingCommands.length;
+  const podsStartIndex = agentsStartIndex + agents.length;
+  const skillsStartIndex = podsStartIndex + pods.length;
+  const trailingStartIndex = skillsStartIndex + skills.length;
+
   const trailingGroups = useMemo(
     () =>
-      groupCommands(commands, TRAILING_COMMAND_GROUP_ORDER, trailingFirstIndex),
-    [commands, trailingFirstIndex]
+      groupCommands(commands, TRAILING_COMMAND_GROUP_ORDER, trailingStartIndex),
+    [commands, trailingStartIndex]
   );
   const trailingCommands = useMemo(
     () => trailingGroups.flatMap(({ commands: groupItems }) => groupItems),
@@ -136,6 +134,13 @@ export function CommandPaletteSearchPhase({
   );
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const registerRef = useCallback(
+    (index: number, el: HTMLDivElement | null) => {
+      itemRefs.current[index] = el;
+    },
+    []
+  );
 
   // Auto-focus the search input on mount. Deferred with requestAnimationFrame
   // to run after Radix FocusScope has finished trapping focus.
@@ -154,52 +159,12 @@ export function CommandPaletteSearchPhase({
     }
   }, [selectedIndex, flatItems.length]);
 
-  // Reset selection and trim stale refs when the number of results changes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the result counts are intentional triggers
+  // Reset selection and trim stale refs whenever the results change. flatItems
+  // is memoized on every result list, so its identity is exactly that signal.
   useEffect(() => {
     itemRefs.current.length = flatItems.length;
     onSelectedIndexChange(0);
-  }, [
-    leadingCommands.length,
-    trailingCommands.length,
-    agents.length,
-    pods.length,
-    skills.length,
-    onSelectedIndexChange,
-  ]);
-
-  function renderCommandGroups(
-    groups: ReturnType<typeof groupCommands>
-  ): React.ReactNode {
-    return groups.map(({ group, commands: groupItems, startIndex }) => (
-      <div key={group}>
-        <ItemTitle>{COMMAND_GROUP_LABELS[group]}</ItemTitle>
-        {groupItems.map((command, i) => {
-          const globalIndex = startIndex + i;
-          return (
-            <ItemRow
-              key={command.id}
-              ref={(el) => {
-                itemRefs.current[globalIndex] = el;
-              }}
-              isSelected={selectedIndex === globalIndex}
-              onClick={() => onItemSelect({ kind: "command", command })}
-              onMouseMove={() => onSelectedIndexChange(globalIndex)}
-            >
-              <Icon
-                visual={command.icon}
-                size="xs"
-                className="text-muted-foreground"
-              />
-              <span className="min-w-0 truncate font-medium">
-                {command.label}
-              </span>
-            </ItemRow>
-          );
-        })}
-      </div>
-    ));
-  }
+  }, [flatItems, onSelectedIndexChange]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     const totalItems = flatItems.length;
@@ -229,6 +194,13 @@ export function CommandPaletteSearchPhase({
         break;
     }
   }
+
+  const sectionProps = {
+    selectedIndex,
+    registerRef,
+    onItemSelect,
+    onSelectedIndexChange,
+  };
 
   return (
     <div className="flex flex-col">
@@ -274,119 +246,30 @@ export function CommandPaletteSearchPhase({
           </ItemEmptyState>
         )}
 
-        {renderCommandGroups(leadingGroups)}
+        <CommandSections groups={leadingGroups} {...sectionProps} />
 
-        {agents.length > 0 && (
-          <div>
-            <ItemTitle>Agents</ItemTitle>
-            {agents.map((agent, i) => {
-              const globalIndex = leadingCommands.length + i;
-              return (
-                <ItemRow
-                  key={agent.sId}
-                  ref={(el) => {
-                    itemRefs.current[globalIndex] = el;
-                  }}
-                  isSelected={selectedIndex === globalIndex}
-                  onClick={() => onItemSelect({ kind: "agent", agent })}
-                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
-                >
-                  <Avatar visual={agent.pictureUrl} size="xs" />
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="shrink-0 font-medium">{agent.name}</span>
-                    <span className="shrink-0 text-muted-foreground">-</span>
-                    <span className="min-w-0 truncate text-muted-foreground">
-                      {agent.description}
-                    </span>
-                  </div>
-                </ItemRow>
-              );
-            })}
-            {hasMoreAgents && (
-              <div className="px-3 py-2 text-xs text-muted-foreground">
-                More agents available. Type to filter.
-              </div>
-            )}
-          </div>
-        )}
+        <AgentSection
+          agents={agents}
+          hasMore={hasMoreAgents}
+          startIndex={agentsStartIndex}
+          {...sectionProps}
+        />
 
-        {pods.length > 0 && (
-          <div>
-            <ItemTitle>Pods</ItemTitle>
-            {pods.map((pod, i) => {
-              const globalIndex = leadingCommands.length + agents.length + i;
-              return (
-                <ItemRow
-                  key={pod.sId}
-                  ref={(el) => {
-                    itemRefs.current[globalIndex] = el;
-                  }}
-                  isSelected={selectedIndex === globalIndex}
-                  onClick={() => onItemSelect({ kind: "pod", pod })}
-                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
-                >
-                  <Icon visual={getSpaceIcon(pod)} size="xs" />
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="shrink-0 font-medium">{pod.name}</span>
-                    {pod.description && (
-                      <>
-                        <span className="shrink-0 text-muted-foreground">
-                          -
-                        </span>
-                        <span className="min-w-0 truncate text-muted-foreground">
-                          {pod.description}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </ItemRow>
-              );
-            })}
-            {hasMorePods && (
-              <div className="px-3 py-2 text-xs text-muted-foreground">
-                More pods available. Type to filter.
-              </div>
-            )}
-          </div>
-        )}
+        <PodSection
+          pods={pods}
+          hasMore={hasMorePods}
+          startIndex={podsStartIndex}
+          {...sectionProps}
+        />
 
-        {skills.length > 0 && (
-          <div>
-            <ItemTitle>Skills</ItemTitle>
-            {skills.map((skill, i) => {
-              const globalIndex =
-                leadingCommands.length + agents.length + pods.length + i;
-              const SkillAvatar = getSkillAvatarIcon(skill);
-              return (
-                <ItemRow
-                  key={skill.sId}
-                  ref={(el) => {
-                    itemRefs.current[globalIndex] = el;
-                  }}
-                  isSelected={selectedIndex === globalIndex}
-                  onClick={() => onItemSelect({ kind: "skill", skill })}
-                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
-                >
-                  <SkillAvatar size="xs" />
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="shrink-0 font-medium">{skill.name}</span>
-                    <span className="shrink-0 text-muted-foreground">-</span>
-                    <span className="min-w-0 truncate text-muted-foreground">
-                      {skill.userFacingDescription}
-                    </span>
-                  </div>
-                </ItemRow>
-              );
-            })}
-            {hasMoreSkills && (
-              <div className="px-3 py-2 text-xs text-muted-foreground">
-                More skills available. Type to filter.
-              </div>
-            )}
-          </div>
-        )}
+        <SkillSection
+          skills={skills}
+          hasMore={hasMoreSkills}
+          startIndex={skillsStartIndex}
+          {...sectionProps}
+        />
 
-        {renderCommandGroups(trailingGroups)}
+        <CommandSections groups={trailingGroups} {...sectionProps} />
       </div>
       <KeyboardHints
         hints={[

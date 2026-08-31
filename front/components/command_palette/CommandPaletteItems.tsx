@@ -1,5 +1,15 @@
+import type { CommandPaletteCommand } from "@app/components/command_palette/commandPaletteCommands";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
+import type { PodType } from "@app/types/space";
 import { cn } from "@dust-tt/sparkle";
 import React from "react";
+
+export type CommandPaletteItem =
+  | { kind: "agent"; agent: LightAgentConfigurationType }
+  | { kind: "pod"; pod: PodType }
+  | { kind: "skill"; skill: SkillWithoutInstructionsAndToolsType }
+  | { kind: "command"; command: CommandPaletteCommand };
 
 interface ItemRowProps {
   isSelected: boolean;
