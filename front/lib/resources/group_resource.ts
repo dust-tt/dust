@@ -2670,24 +2670,19 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Transitional — builder role deprecation, see
    * https://github.com/dust-tt/tasks/issues/9459.
    *
-   * Keeps a per-workspace "Builders" group (`regular_manual`) in sync with the `builder`
-   * role so that when the role is removed, the group can be granted the builders' governance
-   * capabilities (create agents / skills) and former builders keep their rights. Until then
-   * the role is the source of truth: the group is created lazily and manual edits may be
-   * undone by the sync. Once the role is removed, the sync goes away and the group becomes
-   * fully admin-managed.
+   * Maintains the per-workspace "Builders" group (`regular_manual`), which holds the governance
+   * capabilities (create agents / skills) that the `builder` role used to confer, so former
+   * builders kept their rights when the role was migrated away.
    *
-   * The group is deliberately independent from SCIM provisioning: provisioned
-   * "dust-builders" groups proved unreliable (drifted membership, stale groups after
-   * deprovisioning). Workspaces provisioning builders get both groups — IdP changes flow
-   * through role assignment, which keeps this group in sync automatically.
+   * The `builder` role is no longer the source of truth and no longer drives this sync — every
+   * builder membership has been migrated to `user`. The only remaining driver is the
+   * `dust-builders` SCIM provisioning group: both callers mirror an add/remove on that IdP group
+   * into this manual group, and neither creates it (`createIfMissing: false`). Once
+   * `dust-builders` is retired on the WorkOS side, this sync goes away and the group becomes
+   * fully admin-managed.
    *
    * Idempotent ensure-state semantics: after the call, the user's active membership in the
    * group matches `isBuilder`.
-   *
-   * Callers must invoke this after every membership write that can involve the builder role
-   * (role change, membership creation, revocation) — see the `lib/api/membership.ts`
-   * wrappers.
    */
   static async syncBuilderGroupMembership({
     workspace,
