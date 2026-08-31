@@ -187,16 +187,16 @@ describe("GET /api/w/:wId/members/search", () => {
     );
   });
 
-  it("includes builders when filtering on the member role", async () => {
+  it("returns every member when filtering on the member role", async () => {
     const { workspace } = await setup();
 
-    const [member, builder] = await Promise.all([
+    const [member, otherMember] = await Promise.all([
       UserFactory.basic(),
       UserFactory.basic(),
     ]);
 
     await MembershipFactory.associate(workspace, member, { role: "user" });
-    await MembershipFactory.associate(workspace, builder, { role: "builder" });
+    await MembershipFactory.associate(workspace, otherMember, { role: "user" });
 
     const response = await honoApp.request(
       searchUrl(workspace.sId, { role: "user" })
@@ -206,7 +206,7 @@ describe("GET /api/w/:wId/members/search", () => {
     const data = await response.json();
     expect(data.total).toBe(2);
     expect(data.members.map((m: { sId: string }) => m.sId).sort()).toEqual(
-      [member.sId, builder.sId].sort()
+      [member.sId, otherMember.sId].sort()
     );
   });
 
