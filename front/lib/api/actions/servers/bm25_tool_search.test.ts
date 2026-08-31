@@ -1759,10 +1759,15 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "get a ServiceNow record by sys_id",
     expected: "servicenow.get_record",
+    maxRank: 2, // list_records shares "ServiceNow"/"record"/"sys_id" tokens
   },
   {
     query: "look up a knowledge base article by sys_id in ServiceNow",
     expected: "servicenow.get_record",
+    // "kb_knowledge" now only appears in the shared TABLE_SCHEMA field text (not repeated in
+    // get_record's own top-level description), so this can lose to an unrelated server's
+    // knowledge-base tool (e.g. freshservice's solution-articles tool) on "knowledge"/"article".
+    maxRank: 4,
   },
 
   // --- slab ---
