@@ -1,8 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import { isResourceSId } from "@app/lib/resources/string_ids";
 import { podFunctionScopeFromFramePath } from "@app/types/api/pod_function_reference";
 import type { FrameShareCapability } from "@app/types/api/sandbox_functions";
+import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
 import { isWorkspaceVisibleShareScope } from "@app/types/files";
 
 /**
@@ -14,21 +17,68 @@ import { isWorkspaceVisibleShareScope } from "@app/types/files";
  */
 
 /**
- * Resolve a function the way invocation-facing routes need it: by the caller's own access first,
- * and only when that misses, by the frame share token they presented. Members thus never pay the
- * token lookup, and an invalid token behaves exactly like an absent one.
+ * Resolve a caller-facing function without crossing feature or ownership boundaries. Pod
+ * Functions use their existing space/share capability. Frames v2 accepts `<frameId>/<slug>` for
+ * new invocations and function ids for an active publication (or an explicitly allowed in-flight
+ * publication), with use rights read from the Frame's sharing record.
  */
 export async function resolveSandboxFunctionWithCapability(
   auth: Authenticator,
   functionIdOrSlug: string,
-  frameShareToken: string | undefined
+  frameShareToken: string | undefined,
+  {
+    allowInactiveFramePublication = false,
+  }: { allowInactiveFramePublication?: boolean } = {}
 ): Promise<SandboxFunctionResource | null> {
-  const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
-    auth,
-    functionIdOrSlug
-  );
-  if (sandboxFunction || !frameShareToken) {
-    return sandboxFunction;
+  const featureFlags = await getFeatureFlags(auth);
+  const isSandboxFunctionsEnabled = featureFlags.includes("sandbox_functions");
+  const isFramesV2Enabled = featureFlags.includes("frames_v2");
+
+  if (isResourceSId("sandbox_function", functionIdOrSlug)) {
+    const sandboxFunction =
+      await SandboxFunctionResource.fetchByIdForInvocationResolution(
+        auth,
+        functionIdOrSlug
+      );
+    if (sandboxFunction?.frame) {
+      if (isFramesV2Enabled) {
+        const frameFunction = await resolveFrameV2FunctionAccess(
+          auth,
+          sandboxFunction,
+          { allowInactivePublication: allowInactiveFramePublication }
+        );
+        if (frameFunction) {
+          return frameFunction;
+        }
+      }
+    } else if (sandboxFunction && isSandboxFunctionsEnabled) {
+      return sandboxFunction;
+    }
+  } else {
+    if (isSandboxFunctionsEnabled) {
+      const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
+        auth,
+        functionIdOrSlug
+      );
+      if (sandboxFunction) {
+        return sandboxFunction;
+      }
+    }
+
+    if (isFramesV2Enabled) {
+      const frameFunction = await resolveFrameV2FunctionReference(
+        auth,
+        functionIdOrSlug,
+        { allowInactivePublication: allowInactiveFramePublication }
+      );
+      if (frameFunction) {
+        return frameFunction;
+      }
+    }
+  }
+
+  if (!isSandboxFunctionsEnabled || !frameShareToken) {
+    return null;
   }
 
   const capability = await resolveFrameShareCapability(auth, frameShareToken);
@@ -41,6 +91,60 @@ export async function resolveSandboxFunctionWithCapability(
     appPrefix: capability.appPrefix,
     idOrSlug: functionIdOrSlug,
   });
+}
+
+async function resolveFrameV2FunctionReference(
+  auth: Authenticator,
+  functionIdOrReference: string,
+  { allowInactivePublication }: { allowInactivePublication: boolean }
+): Promise<SandboxFunctionResource | null> {
+  const [frameId, slug, ...rest] = functionIdOrReference.split("/");
+  if (
+    !frameId ||
+    !slug ||
+    rest.length > 0 ||
+    !isResourceSId("file", frameId) ||
+    !isValidSandboxFunctionSlug(slug)
+  ) {
+    return null;
+  }
+  const frame = await FileResource.fetchById(auth, frameId);
+  const publicationId = frame?.useCaseMetadata?.activePublicationId;
+  if (!frame?.isFrameV2 || !publicationId) {
+    return null;
+  }
+  const sandboxFunction =
+    await SandboxFunctionResource.fetchByFramePublicationAndSlug(auth, {
+      frame,
+      publicationId,
+      slug,
+    });
+
+  return resolveFrameV2FunctionAccess(auth, sandboxFunction, {
+    allowInactivePublication,
+  });
+}
+
+async function resolveFrameV2FunctionAccess(
+  auth: Authenticator,
+  sandboxFunction: SandboxFunctionResource | null,
+  { allowInactivePublication }: { allowInactivePublication: boolean }
+): Promise<SandboxFunctionResource | null> {
+  const frame = sandboxFunction?.frame;
+  if (
+    !sandboxFunction ||
+    !frame ||
+    !(await frame.canCurrentUserUseFrame(auth))
+  ) {
+    return null;
+  }
+  if (
+    !allowInactivePublication &&
+    sandboxFunction.publicationId !== frame.useCaseMetadata?.activePublicationId
+  ) {
+    return null;
+  }
+  return sandboxFunction;
 }
 
 /**

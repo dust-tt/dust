@@ -58,7 +58,7 @@ const app = workspaceApp();
  * /api/w/{wId}/sandbox-functions/{functionId}/invocations/{invocationId}/events:
  *   get:
  *     summary: Stream sandbox function invocation events
- *     description: Stream real-time events for a sandbox function invocation using Server-Sent Events (SSE). This endpoint is redirected to /api/sse/ for SSE traffic routing.
+ *     description: Stream real-time events for a Pod or Frame function invocation using Server-Sent Events (SSE). This endpoint is redirected to /api/sse/ for SSE traffic routing.
  *     tags:
  *       - Private Events
  *     parameters:
@@ -71,7 +71,7 @@ const app = workspaceApp();
  *       - in: path
  *         name: functionId
  *         required: true
- *         description: ID of the sandbox function
+ *         description: ID of the Pod or Frame function
  *         schema:
  *           type: string
  *       - in: path
@@ -182,7 +182,8 @@ app.post(
     const sandboxFunction = await resolveSandboxFunctionWithCapability(
       auth,
       functionIdOrSlug,
-      ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
+      ctx.req.header(FRAME_SHARE_TOKEN_HEADER),
+      { allowInactiveFramePublication: true }
     );
     if (!sandboxFunction) {
       return apiError(ctx, {
@@ -250,7 +251,8 @@ app.post(
     const sandboxFunction = await resolveSandboxFunctionWithCapability(
       auth,
       functionIdOrSlug,
-      ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
+      ctx.req.header(FRAME_SHARE_TOKEN_HEADER),
+      { allowInactiveFramePublication: true }
     );
     if (!sandboxFunction) {
       return apiError(ctx, {
