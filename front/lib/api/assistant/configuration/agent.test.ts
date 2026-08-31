@@ -6,11 +6,15 @@ import {
   getAgentConfiguration,
   getAgentConfigurations,
   restoreAgentConfiguration,
+  unsafeHardDeleteAgentConfiguration,
   updateAgentConfigurationsScope,
 } from "@app/lib/api/assistant/configuration/agent";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import {
+  AgentConfigurationModel,
+  AgentModel,
+} from "@app/lib/models/agent/agent";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -72,6 +76,84 @@ describe("getAgentConfigurations", () => {
       { sId: latestFirstAgent.sId, version: latestFirstAgent.version },
       { sId: latestSecondAgent.sId, version: latestSecondAgent.version },
     ]);
+  });
+});
+
+describe("stable agent identities", () => {
+  it("reuses one identity across agent versions", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const firstVersion =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      firstVersion.sId
+    );
+
+    const versions = await AgentConfigurationModel.findAll({
+      where: { sId: firstVersion.sId, workspaceId: workspace.id },
+      attributes: ["agentId"],
+    });
+    const agentModelIds = new Set(versions.map((version) => version.agentId));
+
+    expect(versions).toHaveLength(2);
+    expect(agentModelIds.size).toBe(1);
+    expect([...agentModelIds][0]).not.toBeNull();
+  });
+
+  it("creates and attaches an identity when updating a legacy agent", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const firstVersion =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    await AgentConfigurationModel.update(
+      { agentId: null },
+      { where: { sId: firstVersion.sId, workspaceId: workspace.id } }
+    );
+    await AgentModel.destroy({
+      where: { sId: firstVersion.sId, workspaceId: workspace.id },
+    });
+
+    await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      firstVersion.sId
+    );
+
+    const versions = await AgentConfigurationModel.findAll({
+      where: { sId: firstVersion.sId, workspaceId: workspace.id },
+      attributes: ["agentId"],
+    });
+    expect(versions).toHaveLength(2);
+    expect(versions.every((version) => version.agentId !== null)).toBe(true);
+    expect(new Set(versions.map((version) => version.agentId)).size).toBe(1);
+  });
+
+  it("deletes the identity only after its last version is deleted", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const firstVersion =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const secondVersion = await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      firstVersion.sId
+    );
+
+    await unsafeHardDeleteAgentConfiguration(authenticator, secondVersion);
+    expect(
+      await AgentModel.findOne({
+        where: { sId: firstVersion.sId, workspaceId: workspace.id },
+      })
+    ).not.toBeNull();
+
+    await unsafeHardDeleteAgentConfiguration(authenticator, firstVersion);
+    expect(
+      await AgentModel.findOne({
+        where: { sId: firstVersion.sId, workspaceId: workspace.id },
+      })
+    ).toBeNull();
   });
 });
 
@@ -520,7 +602,7 @@ describe("create agent capability", () => {
 });
 
 describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
-  it("suspends editor group memberships when archiving and restores them when restoring", async () => {
+  it("keeps editor group memberships active while archiving and restoring", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -531,13 +613,14 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
       authenticator,
       agent
     );
-    expect(editorGroupRes.isOk()).toBe(true);
-    const editorGroup = editorGroupRes.isOk() ? editorGroupRes.value : null;
-    expect(editorGroup).not.toBeNull();
+    if (editorGroupRes.isErr()) {
+      throw editorGroupRes.error;
+    }
+    const editorGroup = editorGroupRes.value;
 
     const membershipsBeforeArchive = await GroupMembershipModel.findAll({
       where: {
-        groupId: editorGroup!.id,
+        groupId: editorGroup.id,
         workspaceId: workspace.id,
       },
     });
@@ -551,13 +634,19 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
 
     const membershipsAfterArchive = await GroupMembershipModel.findAll({
       where: {
-        groupId: editorGroup!.id,
+        groupId: editorGroup.id,
         workspaceId: workspace.id,
       },
     });
-    expect(membershipsAfterArchive.every((m) => m.status === "suspended")).toBe(
+    expect(membershipsAfterArchive.every((m) => m.status === "active")).toBe(
       true
     );
+
+    const editorsAfterArchive =
+      await editorGroup.getActiveMembers(authenticator);
+    expect(editorsAfterArchive.map((editor) => editor.id)).toEqual([
+      authenticator.getNonNullableUser().id,
+    ]);
 
     const restoreResult = await restoreAgentConfiguration(
       authenticator,
@@ -568,7 +657,7 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
 
     const membershipsAfterRestore = await GroupMembershipModel.findAll({
       where: {
-        groupId: editorGroup!.id,
+        groupId: editorGroup.id,
         workspaceId: workspace.id,
       },
     });
@@ -853,7 +942,7 @@ describe("updateAgentConfigurationsScope", () => {
 
   it("skips agents the caller cannot edit and is not admin of", async () => {
     const { authenticator: ownerAuth, workspace } = await createResourceTest({
-      role: "builder",
+      role: "user",
     });
     const ownedAgent = await AgentConfigurationFactory.createTestAgent(
       ownerAuth,
@@ -862,7 +951,7 @@ describe("updateAgentConfigurationsScope", () => {
 
     // Another builder who has no editing rights on the agent.
     const outsider = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, outsider, { role: "builder" });
+    await MembershipFactory.associate(workspace, outsider, { role: "user" });
     const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
       outsider.sId,
       workspace.sId
@@ -894,7 +983,7 @@ describe("updateAgentConfigurationsScope", () => {
     // A workspace member who is not in the agent's editor group.
     const nonEditor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, nonEditor, {
-      role: "builder",
+      role: "user",
     });
 
     // Trigger owned by the admin (member of the editor group).

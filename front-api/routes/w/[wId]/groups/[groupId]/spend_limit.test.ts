@@ -249,7 +249,7 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
         role: "admin",
         workspace,
       });
-      await group.updatePoolCap(auth, 25_000);
+      await group.updatePoolCap(25_000);
 
       const response = await putLimit(workspace.sId, group.sId, {
         kind: "unlimited",

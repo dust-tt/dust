@@ -3,6 +3,37 @@ use std::io::IsTerminal;
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FramePublishRequest<'a> {
+    pub manifest_path: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameRegisterRequest<'a> {
+    pub manifest_path: &'a str,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FramePublishResponse {
+    pub frame_id: String,
+    pub manifest_path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publication_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameRegisterResponse {
+    pub frame_id: String,
+    pub manifest_path: String,
+    pub created: bool,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SandboxServerViewsResponse {

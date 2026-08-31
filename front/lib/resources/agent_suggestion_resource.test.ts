@@ -15,7 +15,7 @@ describe("AgentSuggestionResource", () => {
   let agentConfiguration: LightAgentConfigurationType;
 
   beforeEach(async () => {
-    const testSetup = await createResourceTest({ role: "builder" });
+    const testSetup = await createResourceTest({ role: "user" });
     workspace = testSetup.workspace;
     authenticator = testSetup.authenticator;
 
@@ -960,7 +960,7 @@ describe("AgentSuggestionResource", () => {
 
       // Create a second workspace with its own suggestion
       const { authenticator: authenticator2 } = await createResourceTest({
-        role: "builder",
+        role: "user",
       });
 
       const agentConfiguration2 =

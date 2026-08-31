@@ -30,6 +30,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
+import type { MembershipRoleType } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -697,6 +698,7 @@ describe("SkillResource", () => {
         availability: "users_and_agents",
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [],
       });
 
@@ -718,6 +720,7 @@ describe("SkillResource", () => {
         availability: "workspace_users",
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [],
       });
 
@@ -761,6 +764,7 @@ describe("SkillResource", () => {
         icon: skillResource.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [restrictedSpace.id],
       });
 
@@ -806,6 +810,7 @@ describe("SkillResource", () => {
         icon: skillResource.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [restrictedSpace.id],
       });
 
@@ -856,6 +861,7 @@ describe("SkillResource", () => {
         icon: skillResource.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [space1.id],
       });
 
@@ -912,6 +918,7 @@ describe("SkillResource", () => {
         icon: skill1.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [skill1OnlySpace.id],
       });
 
@@ -978,6 +985,7 @@ describe("SkillResource", () => {
         icon: parentSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: parentSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: parentSkill.requestedSpaceIds,
       });
 
@@ -1031,6 +1039,7 @@ describe("SkillResource", () => {
         icon: parentSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [restrictedSpace.id],
       });
 
@@ -1060,6 +1069,7 @@ describe("SkillResource", () => {
         icon: parentSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: parentSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: parentSkill.requestedSpaceIds,
       });
 
@@ -1085,6 +1095,8 @@ describe("SkillResource", () => {
         icon: updatedParentSkill!.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds:
+          updatedParentSkill!.manuallyRequestedSpaceIds,
         requestedSpaceIds: updatedParentSkill!.requestedSpaceIds,
       });
 
@@ -1112,6 +1124,7 @@ describe("SkillResource", () => {
         icon: skill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
         requestedSpaceIds: skill.requestedSpaceIds,
       });
 
@@ -1143,6 +1156,7 @@ describe("SkillResource", () => {
         icon: childSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [restrictedSpace.id],
       });
 
@@ -1164,6 +1178,7 @@ describe("SkillResource", () => {
         icon: childSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [],
       });
 
@@ -1197,6 +1212,7 @@ describe("SkillResource", () => {
         icon: childSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: childSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: childSkill.requestedSpaceIds,
         status: "archived",
       });
@@ -1218,6 +1234,7 @@ describe("SkillResource", () => {
         icon: childSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: childSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: childSkill.requestedSpaceIds,
         status: "active",
       });
@@ -1252,6 +1269,7 @@ describe("SkillResource", () => {
         icon: newIcon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: childSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: childSkill.requestedSpaceIds,
       });
 
@@ -1381,6 +1399,7 @@ describe("SkillResource", () => {
         icon: parentSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: parentSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: parentSkill.requestedSpaceIds,
       });
 
@@ -1427,7 +1446,7 @@ describe("SkillResource", () => {
     it("rejects a caller without the publish permission, even an editor", async () => {
       const builder = await UserFactory.basic();
       await MembershipFactory.associate(testContext.workspace, builder, {
-        role: "builder",
+        role: "user",
       });
       const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
         builder.sId,
@@ -1473,6 +1492,7 @@ describe("SkillResource", () => {
           availability: "users_and_agents",
           mcpServerViews: [],
           attachedKnowledge: [],
+          manuallyRequestedSpaceIds: [],
           requestedSpaceIds: [],
         })
       ).rejects.toThrow(
@@ -1725,6 +1745,8 @@ describe("SkillResource", () => {
         icon: archivedParentSkill!.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds:
+          archivedParentSkill!.manuallyRequestedSpaceIds,
         requestedSpaceIds: archivedParentSkill!.requestedSpaceIds,
       });
 
@@ -1784,7 +1806,7 @@ describe("SkillResource", () => {
       expect(skillAfter).toBeNull();
 
       // The grant group existed only to hold this skill's grant, so it goes too.
-      const groupsAfter = await GroupResource.fetchByModelIds(
+      const groupsAfter = await GroupResource.dangerouslyFetchByModelIds(
         testContext.authenticator,
         [grantGroup!.id]
       );
@@ -3054,7 +3076,7 @@ describe("SkillResource", () => {
     it("keeps a non-editor out, and lets a workspace admin administrate but not write", async () => {
       const { skill } = await setupSkillWithEditor("Role Rules Skill");
 
-      const authFor = async (role: "user" | "admin") => {
+      const authFor = async (role: MembershipRoleType) => {
         const user = await UserFactory.basic();
         await MembershipFactory.associate(testContext.workspace, user, {
           role,

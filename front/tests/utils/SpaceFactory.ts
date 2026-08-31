@@ -174,8 +174,8 @@ export class SpaceFactory {
     }
 
     const [members, editors] = await Promise.all([
-      GroupResource.fetchByModelIds(auth, [...memberGroupIds]),
-      GroupResource.fetchByModelIds(auth, [...editorGroupIds]),
+      GroupResource.dangerouslyFetchByModelIds(auth, [...memberGroupIds]),
+      GroupResource.dangerouslyFetchByModelIds(auth, [...editorGroupIds]),
     ]);
 
     await space.writeGroupPermissions(auth, { members, editors });

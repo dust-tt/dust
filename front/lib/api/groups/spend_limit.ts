@@ -266,7 +266,7 @@ export async function setGroupSpendLimit(
   // Persist the admin's intent first: the group column is the source of truth,
   // the Metronome alerts below are derived enforcement (a failed sync can be
   // retried and re-derives from this value).
-  const updateResult = await group.updatePoolCap(auth, poolCapAwuCredits);
+  const updateResult = await group.updatePoolCap(poolCapAwuCredits);
   if (updateResult.isErr()) {
     return new Err(
       new GroupSpendLimitError("unauthorized", updateResult.error.message)
@@ -281,7 +281,7 @@ export async function setGroupSpendLimit(
     }),
     {
       revert: async () => {
-        await group.updatePoolCap(auth, previousPoolCapAwuCredits);
+        await group.updatePoolCap(previousPoolCapAwuCredits);
       },
       logContext: {
         scope: "group",

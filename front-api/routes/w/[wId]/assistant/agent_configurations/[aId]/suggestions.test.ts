@@ -11,7 +11,7 @@ import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
 async function setupTest(options: { role?: MembershipRoleType } = {}) {
-  const role = options.role ?? "builder";
+  const role = options.role ?? "user";
   const { workspace, auth } = await createPrivateApiMockRequest({ role });
   const agent = await AgentConfigurationFactory.createTestAgent(auth);
   return { workspace, auth, agent };
@@ -56,7 +56,7 @@ function patchSuggestions(
 describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/suggestions", () => {
   it("returns 404 for non-existent agent", async () => {
     const { workspace } = await createPrivateApiMockRequest({
-      role: "builder",
+      role: "user",
     });
 
     const response = await patchSuggestions(workspace, "non-existent-agent", {
@@ -265,7 +265,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/suggestions", ()
 
     const agentOwner = await UserFactory.basic();
     await MembershipFactory.associate(workspace, agentOwner, {
-      role: "builder",
+      role: "user",
     });
     const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       agentOwner.sId,
@@ -430,7 +430,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/suggestions", () =
 
     const agentOwner = await UserFactory.basic();
     await MembershipFactory.associate(workspace, agentOwner, {
-      role: "builder",
+      role: "user",
     });
     const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       agentOwner.sId,

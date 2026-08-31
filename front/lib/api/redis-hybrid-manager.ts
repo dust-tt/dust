@@ -1,7 +1,7 @@
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { createRedisStreamClient } from "@app/lib/api/redis";
 import { fromEvent } from "@app/lib/utils/events";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import tracer from "@app/logger/tracer";
@@ -276,7 +276,7 @@ class RedisHybridManager {
         const subscriptionClient = await this.getSubscriptionClient();
         const streamClient = await this.getStreamAndPublishClient();
         const clientsDurationMs = Date.now() - clientsStartMs;
-        getStatsDClient().distribution(
+        statsDMetrics.distribution(
           "sse.subscribe.get_clients_duration_ms",
           clientsDurationMs
         );
@@ -292,7 +292,7 @@ class RedisHybridManager {
           await subscriptionClient.subscribe(pubSubChannelName, this.onMessage);
         }
         const channelSetupDurationMs = Date.now() - channelSetupStartMs;
-        getStatsDClient().distribution(
+        statsDMetrics.distribution(
           "sse.subscribe.channel_setup_duration_ms",
           channelSetupDurationMs
         );
@@ -326,7 +326,7 @@ class RedisHybridManager {
               lastEventId || "0-0"
             );
           const historyFetchDurationMs = Date.now() - historyFetchStartMs;
-          getStatsDClient().distribution(
+          statsDMetrics.distribution(
             "sse.subscribe.history_fetch_duration_ms",
             historyFetchDurationMs
           );
@@ -356,7 +356,7 @@ class RedisHybridManager {
             history.sort((a, b) => a.id.localeCompare(b.id));
           }
           const dedupeDurationMs = Date.now() - dedupeStartMs;
-          getStatsDClient().distribution(
+          statsDMetrics.distribution(
             "sse.subscribe.dedupe_duration_ms",
             dedupeDurationMs
           );
@@ -370,15 +370,15 @@ class RedisHybridManager {
 
         // Track active subscription count for monitoring.
         this.activeSubscriptionCount++;
-        getStatsDClient().gauge(
+        statsDMetrics.gauge(
           "sse.active_subscriptions",
           this.activeSubscriptionCount
         );
-        getStatsDClient().increment("sse.subscription_established", 1);
+        statsDMetrics.increment("sse.subscription_established", 1);
 
         // Track total subscription establishment time.
         const subscribeDurationMs = Date.now() - subscribeStartMs;
-        getStatsDClient().timing(
+        statsDMetrics.timing(
           "sse.subscription.total_duration_ms",
           subscribeDurationMs
         );
@@ -393,7 +393,7 @@ class RedisHybridManager {
 
               // Track active subscription count for monitoring.
               this.activeSubscriptionCount--;
-              getStatsDClient().gauge(
+              statsDMetrics.gauge(
                 "sse.active_subscriptions",
                 this.activeSubscriptionCount
               );
@@ -464,11 +464,11 @@ class RedisHybridManager {
         const historyStartMs = Date.now();
 
         this.concurrentHistoryFetches++;
-        getStatsDClient().gauge(
+        statsDMetrics.gauge(
           "sse.history.concurrent_fetches",
           this.concurrentHistoryFetches
         );
-        getStatsDClient().increment("sse.history.fetch_started");
+        statsDMetrics.increment("sse.history.fetch_started");
 
         try {
           const xReadStartMs = Date.now();
@@ -482,7 +482,7 @@ class RedisHybridManager {
             })
             .then((events) => {
               const xReadDurationMs = Date.now() - xReadStartMs;
-              getStatsDClient().distribution(
+              statsDMetrics.distribution(
                 "sse.history.xread_duration_ms",
                 xReadDurationMs
               );
@@ -500,13 +500,13 @@ class RedisHybridManager {
                 const hasMore = eventCount >= HISTORY_FETCH_COUNT;
 
                 const parseDurationMs = Date.now() - parseStartMs;
-                getStatsDClient().distribution(
+                statsDMetrics.distribution(
                   "sse.history.parse_duration_ms",
                   parseDurationMs
                 );
 
                 // Track all event replays, including from-beginning fetches during deployment.
-                getStatsDClient().histogram(
+                statsDMetrics.histogram(
                   "sse.history.events_replayed",
                   eventCount
                 );
@@ -520,7 +520,7 @@ class RedisHybridManager {
             });
 
           const totalHistoryDurationMs = Date.now() - historyStartMs;
-          getStatsDClient().distribution(
+          statsDMetrics.distribution(
             "sse.history.total_duration_ms",
             totalHistoryDurationMs
           );
@@ -538,7 +538,7 @@ class RedisHybridManager {
           return await Promise.resolve({ events: [], hasMore: false });
         } finally {
           this.concurrentHistoryFetches--;
-          getStatsDClient().gauge(
+          statsDMetrics.gauge(
             "sse.history.concurrent_fetches",
             this.concurrentHistoryFetches
           );

@@ -386,7 +386,15 @@ app.patch(
       }
 
       additionalRequestedSpaceIds = additionalRequestedSpaceIdsRes.value;
+    } else if (skill.manuallyRequestedSpaceIds.length > 0) {
+      // The skill has a stored manual list: keep it verbatim.
+      additionalRequestedSpaceIds = [...skill.manuallyRequestedSpaceIds];
     } else {
+      // TODO(skills-manual-spaces): drop this inference once every skill has been backfilled. It
+      // cannot tell a space that was picked by hand from one a tool or knowledge happens to
+      // require, which is why `manuallyRequestedSpaceIds` is now stored. An empty stored list is
+      // ambiguous until then — either never written, or written empty — and both resolve to the
+      // same answer here, since a skill with no manual spaces requests only what it derives.
       const previousAttachedKnowledge = await skill.getAttachedKnowledge(auth);
       const previousComputedRequestedSpaceIds =
         await SkillResource.computeRequestedSpaceIds(auth, {
@@ -485,6 +493,7 @@ app.patch(
       instructions: body.instructions,
       instructionsHtml: body.instructionsHtml,
       availability: requestedAvailability,
+      manuallyRequestedSpaceIds: additionalRequestedSpaceIds,
       mcpServerViews,
       name,
       reinforcement: body.reinforcement,

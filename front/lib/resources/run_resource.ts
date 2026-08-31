@@ -4,6 +4,7 @@ import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { UsageType } from "@app/lib/metronome/types";
+import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
@@ -15,7 +16,7 @@ import {
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
 import type {
@@ -51,6 +52,7 @@ export interface RunUsageType {
   cacheCreationTokens?: number | null;
   costMicroUsd: number;
   isBatch: boolean;
+  serviceTier?: ServiceTier;
 }
 
 export interface RunUsageWithRunKeyType extends RunUsageType {
@@ -123,6 +125,7 @@ export class RunResource extends BaseResource<RunModel> {
           cacheCreationTokens: null,
           costMicroUsd: 0,
           isBatch: false,
+          serviceTier: "default",
           usageType: usage.usageType,
           usageState: "pending",
         },
@@ -337,6 +340,7 @@ export class RunResource extends BaseResource<RunModel> {
       cacheCreationTokens: usage.cacheCreationTokens,
       costMicroUsd: usage.costMicroUsd,
       isBatch: usage.isBatch,
+      serviceTier: usage.serviceTier,
       usageType: usage.usageType,
     }));
   }
@@ -469,6 +473,7 @@ export class RunResource extends BaseResource<RunModel> {
           cacheCreationTokens,
           costMicroUsd,
           isBatch,
+          serviceTier,
         }) => ({
           runId: this.id,
           workspaceId: this.workspaceId,
@@ -483,6 +488,7 @@ export class RunResource extends BaseResource<RunModel> {
           cacheCreationTokens: cacheCreationTokens ?? null,
           costMicroUsd,
           isBatch,
+          serviceTier: serviceTier ?? "default",
           usageType,
           usageState: "reported",
         })
@@ -499,38 +505,38 @@ export class RunResource extends BaseResource<RunModel> {
         `model_id:${usage.modelId}`,
       ];
 
-      getStatsDClient().increment(
+      statsDMetrics.increment(
         "run_usage.prompt_tokens",
         usage.promptTokens,
         tags
       );
-      getStatsDClient().increment(
+      statsDMetrics.increment(
         "run_usage.completion_tokens",
         usage.completionTokens,
         tags
       );
-      getStatsDClient().increment(
+      statsDMetrics.increment(
         "run_usage.cost_micro_usd",
         usage.costMicroUsd,
         tags
       );
 
       if (usage.cachedTokens) {
-        getStatsDClient().increment(
+        statsDMetrics.increment(
           "run_usage.cached_tokens",
           usage.cachedTokens,
           tags
         );
       }
       if (usage.cacheCreationTokens) {
-        getStatsDClient().increment(
+        statsDMetrics.increment(
           "run_usage.cache_creation_tokens",
           usage.cacheCreationTokens,
           tags
         );
       }
       if (usage.reasoningTokens) {
-        getStatsDClient().increment(
+        statsDMetrics.increment(
           "run_usage.reasoning_tokens",
           usage.reasoningTokens,
           tags
@@ -606,6 +612,7 @@ export class RunResource extends BaseResource<RunModel> {
         cacheCreationTokens: firstUsage.cacheCreationTokens ?? null,
         costMicroUsd: firstUsage.costMicroUsd,
         isBatch: firstUsage.isBatch,
+        serviceTier: firstUsage.serviceTier ?? "default",
         usageState: "reported",
       },
       {
@@ -710,6 +717,7 @@ export class RunResource extends BaseResource<RunModel> {
       // normalize explicitly instead of relying on coercion that differs between inserts and updates.
       costMicroUsd: Math.round(usageCostMicroUsd),
       isBatch,
+      serviceTier: usage.serviceTier ?? "default",
     };
   }
 
@@ -745,6 +753,7 @@ export class RunResource extends BaseResource<RunModel> {
       cacheCreationTokens: usage.cacheCreationTokens,
       costMicroUsd: usage.costMicroUsd,
       isBatch: usage.isBatch,
+      serviceTier: usage.serviceTier,
       usageType: usage.usageType,
       usageState: usage.usageState,
     }));

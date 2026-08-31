@@ -10,7 +10,7 @@ import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getShutdownSignal } from "@app/lib/shutdown_signal";
 import { classifyTemporalAbortReason } from "@app/lib/temporal/cancellation";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { makeModelInterruptionError } from "@app/temporal/agent_loop/lib/run_model_errors";
 import type {
@@ -585,16 +585,12 @@ export async function getOutputFromLLMStream(
             `is_dust_like_agent:${isDustLikeAgent(agentConfiguration.sId)}`,
           ];
           // Count: how often each reason occurs.
-          getStatsDClient().increment(
-            "llm.cache_miss_reason.count",
-            1,
-            reasonTags
-          );
+          statsDMetrics.increment("llm.cache_miss_reason.count", 1, reasonTags);
           // Weighted by lost-cache tokens: which reason actually costs the most,
           // not just which happens most. Only the `*_changed` reasons carry this
           // (the inconclusive ones have no diverged prefix to measure).
           if (cacheMissReason.cacheMissedInputTokens !== undefined) {
-            getStatsDClient().distribution(
+            statsDMetrics.distribution(
               "llm.cache_miss_reason.missed_input_tokens",
               cacheMissReason.cacheMissedInputTokens,
               reasonTags

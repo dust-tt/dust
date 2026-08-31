@@ -1,10 +1,16 @@
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { SkillFavoriteButton } from "@app/components/skills/SkillFavoriteButton";
-import { getSkillBuilderRoute } from "@app/lib/utils/router";
+import config from "@app/lib/api/config";
+import {
+  getManageSkillsRoute,
+  getSkillBuilderRoute,
+} from "@app/lib/utils/router";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
+  Clipboard,
+  ClipboardCheck,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +18,7 @@ import {
   DropdownMenuTrigger,
   Edit04,
   Trash01,
+  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -34,10 +41,7 @@ export function SkillDetailsButtonBar({
   onFavoriteChange,
 }: SkillDetailsButtonBarProps) {
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
-
-  if (!skill.canAdministrate && !onFavoriteChange) {
-    return null;
-  }
+  const [isSkillLinkCopied, copySkillLink] = useCopyToClipboard();
 
   return (
     <>
@@ -70,6 +74,18 @@ export function SkillDetailsButtonBar({
             icon={Edit04}
           />
         )}
+        <Button
+          size="sm"
+          tooltip={isSkillLinkCopied ? "Copied!" : "Copy link"}
+          variant="outline"
+          icon={isSkillLinkCopied ? ClipboardCheck : Clipboard}
+          onClick={(e) => {
+            e.stopPropagation();
+            void copySkillLink(
+              `${config.getAppUrl()}${getManageSkillsRoute(owner.sId, skill.sId)}`
+            );
+          }}
+        />
         {skill.canAdministrate && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -3,7 +3,6 @@ import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_me
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
 import { honoApp } from "@front-api/app";
@@ -71,8 +70,7 @@ function getConsumption({
 
 describe("GET /api/w/:wId/assistant/conversations/:cId/consumption", () => {
   it("returns the exact conversation bill while attribution is unavailable", async () => {
-    const { auth, workspace, conversation } = await setupConversation();
-    await FeatureFlagFactory.basic(auth, "conversation_consumption_details");
+    const { workspace, conversation } = await setupConversation();
 
     const response = await getConsumption({
       workspaceId: workspace.sId,
@@ -89,7 +87,6 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/consumption", () => {
   it("returns reconciled conversation, model, and agent totals", async () => {
     const { auth, workspace, conversation, agentMessage, runUsageModelId } =
       await setupConversation();
-    await FeatureFlagFactory.basic(auth, "conversation_consumption_details");
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation,
       agentMessageModelId: agentMessage.agentMessageId,
@@ -136,16 +133,5 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/consumption", () => {
         ],
       },
     });
-  });
-
-  it("rejects workspaces without the feature flag", async () => {
-    const { workspace, conversation } = await setupConversation();
-
-    const response = await getConsumption({
-      workspaceId: workspace.sId,
-      conversationId: conversation.sId,
-    });
-
-    expect(response.status).toBe(403);
   });
 });

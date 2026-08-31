@@ -128,7 +128,7 @@ describe("POST /api/w/:wId/spaces/:spaceId/webhook_source_views", () => {
 
   it("returns 403 when user is not admin", async () => {
     const { workspace } = await createPrivateApiMockRequest({
-      role: "builder",
+      role: "user",
     });
     const regularSpace = await SpaceFactory.regular(workspace);
 
@@ -232,7 +232,7 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/webhook_source_views/:webhookSource
 
   it("returns 403 when user is not admin", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
-      role: "builder",
+      role: "user",
     });
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId

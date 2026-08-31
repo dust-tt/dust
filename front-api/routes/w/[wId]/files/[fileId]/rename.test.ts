@@ -43,7 +43,7 @@ describe("PATCH /api/w/:wId/files/:fileId/rename", () => {
   it("should return 400 when fileName is missing", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
-      role: "builder",
+      role: "user",
     });
 
     const file = await FileFactory.create(auth, user, {
@@ -63,7 +63,7 @@ describe("PATCH /api/w/:wId/files/:fileId/rename", () => {
   it("should return 400 when fileName is empty", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
-      role: "builder",
+      role: "user",
     });
 
     const file = await FileFactory.create(auth, user, {

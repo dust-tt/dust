@@ -26,6 +26,7 @@ type CreateSkillOverrides = Partial<{
   status: SkillStatus;
   version: number;
   requestedSpaceIds: ModelId[];
+  manuallyRequestedSpaceIds: ModelId[];
   addCurrentUserAsEditor: boolean;
   attachedKnowledge: SkillAttachedKnowledge[];
   mcpServerViews: MCPServerViewResource[];
@@ -84,6 +85,7 @@ export class SkillFactory {
     const status = overrides.status ?? "active";
     const editedBy = overrides.status === "suggested" ? null : user.id;
     const requestedSpaceIds = overrides.requestedSpaceIds ?? [];
+    const manuallyRequestedSpaceIds = overrides.manuallyRequestedSpaceIds ?? [];
     const attachedKnowledge = overrides.attachedKnowledge ?? [];
     const mcpServerViews = overrides.mcpServerViews ?? [];
 
@@ -97,6 +99,7 @@ export class SkillFactory {
         instructionsHtml: overrides.instructionsHtml,
         name,
         requestedSpaceIds,
+        manuallyRequestedSpaceIds,
         status,
         icon: SKILL_ICON.name,
         availability,
@@ -176,6 +179,7 @@ export class SkillFactory {
       icon: parentSkill.icon,
       mcpServerViews: parentSkill.mcpServerViews,
       attachedKnowledge: await parentSkill.getAttachedKnowledge(auth),
+      manuallyRequestedSpaceIds: parentSkill.manuallyRequestedSpaceIds,
       requestedSpaceIds: parentSkill.requestedSpaceIds,
     });
 

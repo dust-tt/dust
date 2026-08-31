@@ -30,7 +30,10 @@ async function serializeGroupPermissions(
   groupPermissions: GroupPermissionResource[]
 ): Promise<PokeGroupPermissionType[]> {
   const groupModelIds = [...new Set(groupPermissions.map((gp) => gp.groupId))];
-  const groups = await GroupResource.fetchByModelIds(auth, groupModelIds);
+  const groups = await GroupResource.dangerouslyFetchByModelIds(
+    auth,
+    groupModelIds
+  );
   const groupByModelId = new Map(groups.map((group) => [group.id, group]));
 
   return removeNulls(

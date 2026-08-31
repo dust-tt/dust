@@ -1,5 +1,8 @@
 import { format } from "date-fns";
 
+export const ONE_HOUR_MS = 60 * 60 * 1000;
+export const ONE_DAY_MS = 24 * ONE_HOUR_MS;
+
 export function isValidDate(date: Date) {
   return !isNaN(date.valueOf());
 }

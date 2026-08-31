@@ -28,13 +28,16 @@ export TEMPORAL_ADDRESS="${TEMPORAL_ADDRESS:-127.0.0.1:7233}"
 export DUST_LOCAL_TEMPORAL_ADDRESS="${DUST_LOCAL_TEMPORAL_ADDRESS:-127.0.0.1:7233}"
 
 # Temporal CLI is installed to /usr/local/bin in the dev image; also check the installer path.
-for _temporal_dir in /usr/local/bin /root/.temporalio/bin; do
-  if [ -x "${_temporal_dir}/temporal" ]; then
-    export PATH="${_temporal_dir}:${PATH}"
-    break
+# Cursor cloud-agent terminals replace image PATH — prepend other dev tool dirs when missing.
+for _dev_bin_dir in /usr/local/bin /usr/local/cargo/bin /opt/qdrant /root/.temporalio/bin; do
+  if [ -d "${_dev_bin_dir}" ]; then
+    case ":${PATH}:" in
+      *":${_dev_bin_dir}:"*) ;;
+      *) export PATH="${_dev_bin_dir}:${PATH}" ;;
+    esac
   fi
 done
-unset _temporal_dir
+unset _dev_bin_dir
 
 export FRONT_DATABASE_URI="${FRONT_DATABASE_URI:-postgres://dev:dev@${POSTGRES_HOST}:${POSTGRES_PORT}/dust_front}"
 export FRONT_DATABASE_READ_REPLICA_URI="${FRONT_DATABASE_READ_REPLICA_URI:-$FRONT_DATABASE_URI}"

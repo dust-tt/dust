@@ -2581,47 +2581,47 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
   },
   "workspace_analytics": {
     "get_agent_details": {
-      "freeUsage": false,
+      "freeUsage": true,
       "toolCostCategory": "basic",
     },
     "get_credit_timeseries": {
-      "freeUsage": false,
+      "freeUsage": true,
       "toolCostCategory": "basic",
     },
     "get_credit_usage": {
-      "freeUsage": false,
+      "freeUsage": true,
       "toolCostCategory": "basic",
     },
     "get_source_breakdown": {
-      "freeUsage": false,
+      "freeUsage": true,
       "toolCostCategory": "basic",
     },
     "get_top_agent_tags": {
-      "freeUsage": false,
+      "freeUsage": true,
       "toolCostCategory": "basic",
     },
     "get_top_agents": {
-      "freeUsage": false,
+      "freeUsage": true,
       "toolCostCategory": "basic",
     },
     "get_top_models": {
-      "freeUsage": false,
+      "freeUsage": true,
       "toolCostCategory": "basic",
     },
     "get_top_skills": {
-      "freeUsage": false,
+      "freeUsage": true,
       "toolCostCategory": "basic",
     },
     "get_top_tools": {
-      "freeUsage": false,
+      "freeUsage": true,
       "toolCostCategory": "basic",
     },
     "get_top_users": {
-      "freeUsage": false,
+      "freeUsage": true,
       "toolCostCategory": "basic",
     },
     "get_usage_timeseries": {
-      "freeUsage": false,
+      "freeUsage": true,
       "toolCostCategory": "basic",
     },
   },

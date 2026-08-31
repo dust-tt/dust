@@ -18,7 +18,7 @@ import type { ModelResponseEvent } from "@app/lib/model_constructors/types/outpu
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import {
@@ -119,10 +119,10 @@ function makeTraceContext(
 
 function spyTelemetry() {
   const increment = vi
-    .spyOn(getStatsDClient(), "increment")
+    .spyOn(statsDMetrics, "increment")
     .mockImplementation(() => {});
   const distribution = vi
-    .spyOn(getStatsDClient(), "distribution")
+    .spyOn(statsDMetrics, "distribution")
     .mockImplementation(() => {});
   const error = vi.spyOn(logger, "error").mockImplementation(() => {});
   const info = vi.spyOn(logger, "info").mockImplementation(() => {});
@@ -384,7 +384,7 @@ describe("non-batch LLM run persistence", () => {
     const { authenticator: auth } = await createResourceTest({});
     const warn = vi.spyOn(logger, "warn").mockImplementation(() => {});
     const increment = vi
-      .spyOn(getStatsDClient(), "increment")
+      .spyOn(statsDMetrics, "increment")
       .mockImplementation(() => {});
     const llm = makeNoopLLM(auth, DustNoopNoopGlobalNoopStream, {
       operationType: "agent_conversation",

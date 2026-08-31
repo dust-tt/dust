@@ -23,10 +23,10 @@ const {
 }));
 
 vi.mock("@app/lib/utils/statsd", () => ({
-  getStatsDClient: () => ({
+  statsDMetrics: {
     increment: vi.fn(),
     distribution: mockDistribution,
-  }),
+  },
 }));
 
 vi.mock("@app/lib/api/sandbox", () => ({

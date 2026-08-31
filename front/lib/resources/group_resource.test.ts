@@ -126,12 +126,19 @@ describe("GroupResource", () => {
       });
       const ids = [autoGroup.id, globalGroup.id, systemGroup.id];
 
-      const all = await GroupResource.fetchByModelIds(authenticator, ids);
+      const all = await GroupResource.dangerouslyFetchByModelIds(
+        authenticator,
+        ids
+      );
       expect(all.map((g) => g.id).sort()).toEqual([...ids].sort());
 
-      const autoOnly = await GroupResource.fetchByModelIds(authenticator, ids, {
-        groupKinds: ["regular_auto"],
-      });
+      const autoOnly = await GroupResource.dangerouslyFetchByModelIds(
+        authenticator,
+        ids,
+        {
+          groupKinds: ["regular_auto"],
+        }
+      );
       expect(autoOnly.map((g) => g.id)).toEqual([autoGroup.id]);
     });
   });
@@ -842,7 +849,7 @@ describe("GroupResource", () => {
       });
       expect(regularGroup.poolCapAwuCredits).toBeNull();
 
-      const setResult = await regularGroup.updatePoolCap(authenticator, 5000);
+      const setResult = await regularGroup.updatePoolCap(5000);
       expect(setResult.isOk()).toBe(true);
 
       const afterSet = await GroupResource.fetchById(
@@ -854,7 +861,7 @@ describe("GroupResource", () => {
       }
       expect(afterSet.value.poolCapAwuCredits).toBe(5000);
 
-      const clearResult = await regularGroup.updatePoolCap(authenticator, null);
+      const clearResult = await regularGroup.updatePoolCap(null);
       expect(clearResult.isOk()).toBe(true);
 
       const afterClear = await GroupResource.fetchById(
@@ -883,7 +890,7 @@ describe("GroupResource", () => {
         },
         { memberIds: [user.id] }
       );
-      await capped500.updatePoolCap(authenticator, 500);
+      await capped500.updatePoolCap(500);
 
       const capped800 = await GroupResource.makeNew(
         {
@@ -894,7 +901,7 @@ describe("GroupResource", () => {
         },
         { memberIds: [user.id] }
       );
-      await capped800.updatePoolCap(authenticator, 800);
+      await capped800.updatePoolCap(800);
 
       // Uncapped group: user2 belongs only here, so they have no group cap.
       await GroupResource.makeNew(
@@ -917,7 +924,7 @@ describe("GroupResource", () => {
         },
         { memberIds: [user.id, user2.id] }
       );
-      await regularGroup.updatePoolCap(authenticator, 10_000);
+      await regularGroup.updatePoolCap(10_000);
 
       const result =
         await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
@@ -1031,10 +1038,8 @@ describe("GroupResource", () => {
       await GroupResource.listWorkspaceGroupsFromKey(key);
       expect(inMemoryCache.has(cacheKey)).toBe(true);
 
-      const updateResult = await regularGroup.updateName(
-        authenticator,
-        "Name After"
-      );
+      const updateResult =
+        await regularGroup.dangerouslyUpdateName("Name After");
       expect(updateResult.isOk()).toBe(true);
 
       expect(inMemoryCache.has(cacheKey)).toBe(true);

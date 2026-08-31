@@ -798,7 +798,7 @@
       },
       "delete": {
         "summary": "Archive agent configuration",
-        "description": "Archive the agent configuration identified by {sId} in the workspace identified by {wId}. The agent is soft-archived and triggers/editor-group memberships associated with it are disabled.",
+        "description": "Archive the agent configuration identified by {sId} in the workspace identified by {wId}. The agent is soft-archived and its triggers are disabled.",
         "tags": [
           "Agents"
         ],
@@ -844,7 +844,7 @@
             }
           },
           "400": {
-            "description": "Bad Request. Invalid or missing parameters."
+            "description": "Bad Request. Invalid parameters or the agent is already archived."
           },
           "401": {
             "description": "Unauthorized. Invalid or missing authentication token."
@@ -6825,9 +6825,6 @@
               }
             }
           },
-          "403": {
-            "description": "The workspace does not have access to consumption details"
-          },
           "404": {
             "description": "Conversation not found"
           }
@@ -9050,7 +9047,7 @@
     "/api/w/{wId}/files/{fileId}": {
       "get": {
         "summary": "Get or download a file",
-        "description": "View or download a file. Skill attachments require read access to their associated skill. Use query parameters `version` (original, processed, public) and `action` (view, download).",
+        "description": "View or download a file. Skill attachments require read access to their associated skill. Feature-flagged Frames v2 return the active published UI bundle when viewed. Use query parameters `version` (original, processed, public) and `action` (view, download).",
         "tags": [
           "Private Files"
         ],

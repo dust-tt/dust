@@ -1,5 +1,5 @@
 import { COMMIT_HASH } from "@app/lib/commit-hash";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import { createHono } from "@front-api/lib/hono";
 
 /**
@@ -24,7 +24,9 @@ app.get("/", (ctx) => {
   const response = ctx.json({ status: "ready", commitHash: COMMIT_HASH }, 200);
 
   const durationMs = performance.now() - startMs;
-  getStatsDClient().distribution("healthz.ready.duration_ms", durationMs);
+  statsDMetrics.distribution("healthz.ready.duration_ms", durationMs, [], {
+    includeHostTag: true,
+  });
 
   return response;
 });

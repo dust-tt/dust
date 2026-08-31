@@ -13,7 +13,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import type {
   AgentFunctionCallContentType,
@@ -372,7 +372,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     });
 
     if (!cacheResult) {
-      getStatsDClient().increment(
+      statsDMetrics.increment(
         "agent_step_content.fetch.count",
         agentMessageIds.length,
         ["source:postgres", "cache:error"]
@@ -385,12 +385,12 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
     const { hitsByAgentMessageId, missAgentMessageIds } = cacheResult;
 
-    getStatsDClient().increment(
+    statsDMetrics.increment(
       "agent_step_content.fetch.count",
       hitsByAgentMessageId.size,
       ["source:cache"]
     );
-    getStatsDClient().increment(
+    statsDMetrics.increment(
       "agent_step_content.fetch.count",
       missAgentMessageIds.length,
       ["source:postgres"]

@@ -173,7 +173,7 @@ async function setupTest({
   endDate?: string;
   timezone?: string;
   format?: string;
-  role?: "user" | "builder" | "admin";
+  role?: "user" | "admin";
   method?: string;
 } = {}) {
   const { workspace, key } = await createPublicApiMockRequest({ role });
@@ -216,18 +216,6 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     const { response } = await setupTest();
 
     expect(response.status).toBe(200);
-  });
-
-  it("returns 403 for builder API key", async () => {
-    const { response } = await setupTest({ role: "builder" });
-
-    expect(response.status).toBe(403);
-    expect(await response.json()).toEqual({
-      error: {
-        type: "workspace_auth_error",
-        message: ENSURE_IS_ADMIN_ERROR_MESSAGE,
-      },
-    });
   });
 
   it("returns 403 for read-only API key (insufficient scope)", async () => {

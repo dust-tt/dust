@@ -17,8 +17,10 @@ import {
   getFramePublicationFunctionSchemaPath,
   getFramePublicationManifestPath,
   getFramePublicationSourcePath,
+  getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import {
+  frameContentType,
   frameV2ContentType,
   sandboxFunctionContentType,
 } from "@app/types/files";
@@ -83,6 +85,8 @@ const sourceFilesWithFunction = [
   },
 ];
 
+const uiBundleCode = "export default function App() {}";
+
 const functionArtifacts = [
   {
     name: "add-task",
@@ -106,7 +110,7 @@ beforeEach(() => {
 });
 
 describe("storeFramePublication", () => {
-  it("stores immutable source files before the manifest commit marker", async () => {
+  it("stores the UI bundle and immutable source before the manifest commit marker", async () => {
     const { auth, frame, workspaceId } = await setupFrame();
 
     const result = await storeFramePublication(auth, {
@@ -114,6 +118,7 @@ describe("storeFramePublication", () => {
       functionArtifacts: [],
       manifest,
       sourceFiles,
+      uiBundleCode,
     });
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
@@ -127,6 +132,7 @@ describe("storeFramePublication", () => {
     );
     expect(new Set(savedPaths.slice(0, -1))).toEqual(
       new Set([
+        getFramePublicationUiBundlePath(identity),
         getFramePublicationSourcePath({
           ...identity,
           relativePath: "index.tsx",
@@ -141,6 +147,13 @@ describe("storeFramePublication", () => {
     expect(fileStorageMock.saveFileCalls.at(-1)?.contentType).toBe(
       frameV2ContentType
     );
+    const uiBundlePath = getFramePublicationUiBundlePath(identity);
+    expect(fileStorageMock.getObject(uiBundlePath)).toBe(uiBundleCode);
+    expect(
+      fileStorageMock.saveFileCalls.find(
+        ({ filePath }) => filePath === uiBundlePath
+      )?.contentType
+    ).toBe(frameContentType);
     expect(
       fileStorageMock.saveFileCalls.some(({ filePath }) =>
         filePath.startsWith("files/w/")
@@ -156,6 +169,7 @@ describe("storeFramePublication", () => {
       functionArtifacts,
       manifest: manifestWithFunction,
       sourceFiles: sourceFilesWithFunction,
+      uiBundleCode,
     });
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
@@ -212,6 +226,7 @@ describe("storeFramePublication", () => {
       functionArtifacts: [],
       manifest,
       sourceFiles: sourceFiles.slice(1),
+      uiBundleCode,
     });
 
     expect(result.isErr() && result.error.code).toBe("invalid_source");
@@ -226,6 +241,7 @@ describe("storeFramePublication", () => {
       functionArtifacts,
       manifest: manifestWithFunction,
       sourceFiles,
+      uiBundleCode,
     });
 
     expect(result.isErr() && result.error.code).toBe("invalid_source");
@@ -266,6 +282,7 @@ describe("storeFramePublication", () => {
       functionArtifacts,
       manifest,
       sourceFiles,
+      uiBundleCode,
     });
 
     expect(result.isErr() && result.error.code).toBe(
@@ -285,6 +302,7 @@ describe("storeFramePublication", () => {
       functionArtifacts: [],
       manifest,
       sourceFiles: invalidSourceFiles,
+      uiBundleCode,
     });
 
     expect(result.isErr() && result.error.code).toBe("invalid_source");
@@ -300,6 +318,7 @@ describe("storeFramePublication", () => {
       functionArtifacts: [],
       manifest,
       sourceFiles,
+      uiBundleCode,
     });
 
     expect(result.isErr() && result.error.code).toBe("invalid_frame");
@@ -318,6 +337,7 @@ describe("storeFramePublication", () => {
         functionArtifacts: [],
         manifest,
         sourceFiles,
+        uiBundleCode,
       })
     ).rejects.toThrow("Simulated GCS write failure");
     expect(
@@ -336,6 +356,7 @@ describe("Frame publication reads", () => {
       functionArtifacts: [],
       manifest,
       sourceFiles,
+      uiBundleCode,
     });
     expect(stored.isOk()).toBe(true);
     if (stored.isErr()) {
@@ -408,6 +429,7 @@ describe("Frame publication reads", () => {
       functionArtifacts: [],
       manifest,
       sourceFiles,
+      uiBundleCode,
     });
     expect(stored.isOk()).toBe(true);
     if (stored.isErr()) {
@@ -445,6 +467,7 @@ describe("activateFramePublication", () => {
       functionArtifacts: [],
       manifest,
       sourceFiles,
+      uiBundleCode,
     });
     expect(stored.isOk()).toBe(true);
     if (stored.isErr()) {
@@ -470,6 +493,7 @@ describe("activateFramePublication", () => {
       functionArtifacts: [],
       manifest,
       sourceFiles,
+      uiBundleCode,
     });
     expect(stored.isOk()).toBe(true);
     if (stored.isErr()) {
@@ -505,6 +529,7 @@ describe("publishFramePublication", () => {
       functionArtifacts: [],
       manifest,
       sourceFiles,
+      uiBundleCode,
     });
 
     expect(published.isOk()).toBe(true);
@@ -531,6 +556,7 @@ describe("publishFramePublication", () => {
         functionArtifacts,
         manifest: manifestWithFunction,
         sourceFiles: sourceFilesWithFunction,
+        uiBundleCode,
       })
     ).rejects.toThrow("Simulated GCS write failure");
     expect(

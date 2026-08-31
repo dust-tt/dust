@@ -22,10 +22,12 @@ import {
   getFramePublicationFunctionSchemaPath,
   getFramePublicationManifestPath,
   getFramePublicationSourcePath,
+  getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import {
+  frameContentType,
   frameV2ContentType,
   sandboxFunctionContentType,
 } from "@app/types/files";
@@ -58,12 +60,19 @@ export class FramePublicationError extends Error {
       | "invalid_source"
       | "publication_not_found"
       | "source_not_found"
+      | "ui_build_failed"
       | "unauthorized",
     message: string
   ) {
     super(message);
     this.name = "FramePublicationError";
   }
+}
+
+export function isFramePublicationError(
+  error: unknown
+): error is FramePublicationError {
+  return error instanceof FramePublicationError;
 }
 
 function getFrameIdentity(
@@ -90,11 +99,13 @@ export async function storeFramePublication(
     functionArtifacts,
     manifest,
     sourceFiles,
+    uiBundleCode,
   }: {
     frame: FileResource;
     functionArtifacts: FramePublicationFunctionArtifact[];
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
+    uiBundleCode: string;
   }
 ): Promise<Result<{ publicationId: string }, FramePublicationError>> {
   const frameIdentity = getFrameIdentity(auth, frame);
@@ -182,6 +193,11 @@ export async function storeFramePublication(
   const storage = getPrivateUploadBucket();
 
   const publicationFiles = [
+    {
+      filePath: getFramePublicationUiBundlePath(identity),
+      content: uiBundleCode,
+      contentType: frameContentType,
+    },
     ...sourceFiles.map((sourceFile) => ({
       filePath: getFramePublicationSourcePath({
         ...identity,
@@ -283,6 +299,50 @@ export async function loadFramePublicationManifest(
   return manifest;
 }
 
+export async function loadActiveFrameUiBundle(
+  auth: Authenticator,
+  {
+    frame,
+  }: {
+    frame: FileResource;
+  }
+): Promise<Result<string, FramePublicationError>> {
+  const frameIdentity = getFrameIdentity(auth, frame);
+  if (frameIdentity.isErr()) {
+    return frameIdentity;
+  }
+
+  const publicationId = frame.useCaseMetadata?.activePublicationId;
+  if (!publicationId) {
+    return new Err(
+      new FramePublicationError(
+        "publication_not_found",
+        "Frame has no active publication."
+      )
+    );
+  }
+
+  const uiBundlePath = getFramePublicationUiBundlePath({
+    ...frameIdentity.value,
+    publicationId,
+  });
+  try {
+    const uiBundle =
+      await getPrivateUploadBucket().fetchFileContent(uiBundlePath);
+    return new Ok(uiBundle);
+  } catch (error) {
+    if (isGCSNotFoundError(error)) {
+      return new Err(
+        new FramePublicationError(
+          "publication_not_found",
+          `Frame publication not found: ${publicationId}`
+        )
+      );
+    }
+    throw error;
+  }
+}
+
 export async function activateFramePublication(
   auth: Authenticator,
   {
@@ -330,11 +390,13 @@ export async function publishFramePublication(
     functionArtifacts,
     manifest,
     sourceFiles,
+    uiBundleCode,
   }: {
     frame: FileResource;
     functionArtifacts: FramePublicationFunctionArtifact[];
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
+    uiBundleCode: string;
   }
 ): Promise<Result<{ publicationId: string }, FramePublicationError>> {
   const publication = await storeFramePublication(auth, {
@@ -342,6 +404,7 @@ export async function publishFramePublication(
     functionArtifacts,
     manifest,
     sourceFiles,
+    uiBundleCode,
   });
   if (publication.isErr()) {
     return publication;

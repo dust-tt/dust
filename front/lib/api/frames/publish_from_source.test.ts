@@ -1,4 +1,9 @@
-import { publishFrameV2FromSource } from "@app/lib/api/frames/publish_from_source";
+// @vitest-environment node
+
+import {
+  publishFrameFromSource,
+  publishFrameV2FromSource,
+} from "@app/lib/api/frames/publish_from_source";
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -8,7 +13,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { getFramePublicationSourcePath } from "@app/types/api/frame_storage";
-import { frameV2ContentType } from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import {
   getConversationFilesBasePath,
   getPodFilesBasePath,
@@ -80,6 +85,96 @@ async function setup() {
 
 beforeEach(() => {
   fileStorageMock.reset();
+});
+
+describe("publishFrameFromSource", () => {
+  it("rejects a Frame outside the signed conversation scope", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+    });
+    const otherConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+    });
+    const sourcePath = `conversation-${otherConversation.sId}/Legacy.tsx`;
+    await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Legacy.tsx",
+      fileSize: Buffer.byteLength(uiSource),
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: otherConversation.sId },
+      mountFilePath: `${getConversationFilesBasePath({
+        workspaceId: workspace.sId,
+        conversationId: otherConversation.sId,
+      })}Legacy.tsx`,
+    });
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath,
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "invalid_path",
+    });
+    expect(fileStorageMock.readStreamCalls).toHaveLength(0);
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("rejects a legacy Frame in a read-only Pod", async () => {
+    const {
+      authenticator: auth,
+      globalGroup,
+      user,
+      workspace,
+    } = await createResourceTest({ role: "admin" });
+    const space = await SpaceFactory.project(workspace);
+    await SpaceFactory.attachGroup(space, globalGroup, "project_viewer");
+    const viewerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    assert(viewerAuth);
+    expect(space.canRead(viewerAuth)).toBe(true);
+    expect(space.canWrite(viewerAuth)).toBe(false);
+
+    const conversation = await ConversationFactory.create(viewerAuth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      spaceId: space.id,
+    });
+    const sourcePath = `pod-${space.sId}/Legacy.tsx`;
+    await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Legacy.tsx",
+      fileSize: Buffer.byteLength(uiSource),
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+      mountFilePath: `${getPodFilesBasePath({
+        workspaceId: workspace.sId,
+        podId: space.sId,
+      })}Legacy.tsx`,
+    });
+
+    const result = await publishFrameFromSource(viewerAuth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath,
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "unauthorized",
+    });
+    expect(fileStorageMock.readStreamCalls).toHaveLength(0);
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
 });
 
 describe("publishFrameV2FromSource", () => {

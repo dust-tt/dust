@@ -44,7 +44,7 @@ WorkspacePlanLimitOverrideModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    // Range is enforced by `WorkspacePlanLimitOverrideResource.upsert`, the only
+    // Range is enforced by `WorkspaceResource.upsertPlanLimitOverride`, the only
     // write path.
     maxUsersInWorkspace: {
       type: DataTypes.INTEGER,

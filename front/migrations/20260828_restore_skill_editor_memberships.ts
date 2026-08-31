@@ -78,7 +78,7 @@ async function listGroupsToRestore(
     );
   }
 
-  const groups = await GroupResource.fetchByModelIds(
+  const groups = await GroupResource.dangerouslyFetchByModelIds(
     auth,
     [...suspendedCountByGroupId.keys()],
     { groupKinds: ["regular_auto"] }

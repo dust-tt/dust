@@ -383,6 +383,8 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           (k) => !dataSourceViewIdSet.has(k.dataSourceView.id)
         );
 
+        // TODO(skills-manual-spaces): read `manuallyRequestedSpaceIds` here once every skill has
+        // been backfilled, and drop this inference.
         const previousComputedRequestedSpaceIds =
           await SkillResource.computeRequestedSpaceIds(auth, {
             mcpServerViews: skill.mcpServerViews,
@@ -396,6 +398,12 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
             spaceId !== space.id &&
             !previousComputedRequestedSpaceIdSet.has(spaceId)
         );
+
+        // A deleted space cannot stay a manual choice: nothing can grant access to it any more
+        const manuallyRequestedSpaceIds =
+          skill.manuallyRequestedSpaceIds.filter(
+            (spaceId) => spaceId !== space.id
+          );
 
         // Compute the new requestedSpaceIds from the filtered tools and knowledge.
         const computedRequestedSpaceIds =
@@ -428,6 +436,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           icon: skill.icon,
           mcpServerViews: filteredMCPServerViews,
           attachedKnowledge: filteredAttachedKnowledge,
+          manuallyRequestedSpaceIds,
           requestedSpaceIds,
         });
       }
@@ -777,11 +786,10 @@ export async function createSpaceAndGroup(
           break;
         }
 
-        // Add members to the member group in regular spaces
-        const users = (await UserResource.fetchByIds(params.memberIds)).map(
-          (user) => user.toJSON()
-        );
-        if (!membersGroup.canWrite(auth)) {
+        // Seeding a regular space's members requires administering it. The member
+        // group is a regular_auto group whose permissions are not checked directly,
+        // so gate on the space instead.
+        if (!space.canAdministrate(auth)) {
           return new Err(
             new DustError(
               "unauthorized",
@@ -789,6 +797,11 @@ export async function createSpaceAndGroup(
             )
           );
         }
+
+        // Add members to the member group in regular spaces
+        const users = (await UserResource.fetchByIds(params.memberIds)).map(
+          (user) => user.toJSON()
+        );
         const groupsResult = await membersGroup.dangerouslyAddMembers(auth, {
           users,
           transaction: t,
@@ -810,6 +823,15 @@ export async function createSpaceAndGroup(
       case "group":
         // For group-based spaces, we need to associate the selected groups with the space
         if (params.groupIds.length > 0) {
+          // Associating groups requires administering the space.
+          if (!space.canAdministrate(auth)) {
+            return new Err(
+              new DustError(
+                "unauthorized",
+                "Only admins can change group members"
+              )
+            );
+          }
           const selectedGroupsResult = await GroupResource.fetchByIds(
             auth,
             params.groupIds

@@ -18,7 +18,7 @@ import { honoApp } from "@front-api/app";
 
 async function setup() {
   const { workspace } = await createPrivateApiMockRequest({
-    role: "builder",
+    role: "user",
     method: "POST",
   });
   return { workspace };

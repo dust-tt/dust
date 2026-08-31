@@ -15,7 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { computeRunFingerprint } from "@app/lib/credits/agent_message_billing";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
 
@@ -225,11 +225,11 @@ export async function decreaseProgrammaticCredits(
       }
 
       // Emit both metrics for backwards compatibility with existing dashboards.
-      getStatsDClient().increment("credits.consumption.blocked", 1, [
+      statsDMetrics.increment("credits.consumption.blocked", 1, [
         `workspace_id:${workspace.sId}`,
         `origin:${userMessageOrigin}`,
       ]);
-      getStatsDClient().increment("credits.consumption.excess", 1, [
+      statsDMetrics.increment("credits.consumption.excess", 1, [
         `workspace_id:${workspace.sId}`,
         `origin:${userMessageOrigin}`,
       ]);
@@ -262,7 +262,7 @@ export async function decreaseProgrammaticCredits(
         },
         "[Programmatic Usage Tracking] Error consuming credit."
       );
-      getStatsDClient().increment("credits.consumption.error", 1, [
+      statsDMetrics.increment("credits.consumption.error", 1, [
         `workspace_id:${workspace.sId}`,
         `origin:${userMessageOrigin}`,
       ]);
@@ -281,7 +281,7 @@ export async function decreaseProgrammaticCredits(
     );
   }
 
-  getStatsDClient().increment("credits.consumption.success", 1, [
+  statsDMetrics.increment("credits.consumption.success", 1, [
     `workspace_id:${workspace.sId}`,
     `origin:${userMessageOrigin}`,
   ]);
@@ -412,7 +412,7 @@ export async function trackProgrammaticCost(
     );
     if (totalConsumedMicroUsd >= thresholdMicroUsd) {
       const workspace = auth.getNonNullableWorkspace();
-      getStatsDClient().increment("credits.consumption.alert", 1, [
+      statsDMetrics.increment("credits.consumption.alert", 1, [
         `workspace_id:${workspace.sId}`,
         `origin:${userMessageOrigin}`,
       ]);

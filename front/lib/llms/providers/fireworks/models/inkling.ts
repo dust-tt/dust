@@ -6,7 +6,7 @@ export function WithDustThinkingMachinesInklingConfig<
   ) => object,
 >(Base: TBase) {
   abstract class DustThinkingMachinesInkling extends Base {
-    static readonly displayName = "Inkling (Fireworks)";
+    static readonly displayName = "Inkling";
     static readonly description =
       "Thinking Machines Lab's open-weights multimodal Mixture-of-Experts model with controllable reasoning and 1M context (served via Fireworks).";
     // Dust caps output at 64k; Fireworks supports up to 1M completion tokens.

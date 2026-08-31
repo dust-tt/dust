@@ -12,6 +12,7 @@ import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
 import type { SupportedCurrency } from "@app/types/currency";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   AlertCircle,
@@ -140,8 +141,6 @@ function formatAwuCredits(info: SeatTypeInfo): string {
   }`;
 }
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
 // Preview endpoints return a monthly-equivalent figure for every cadence
 // (e.g. annual price / 12), treating it as a steady-state run rate. Seats
 // don't actually bill that way at any cadence: every seat subscription is
@@ -175,13 +174,13 @@ function prorateAmountForCurrentPeriod({
 }): { amountCents: number; daysRemaining: number } | null {
   const startMs = new Date(currentBillingPeriod.startsAt).getTime();
   const endMs = new Date(currentBillingPeriod.endsAt).getTime();
-  const totalDays = (endMs - startMs) / MS_PER_DAY;
+  const totalDays = (endMs - startMs) / ONE_DAY_MS;
   if (!(totalDays > 0)) {
     return null;
   }
   const daysRemaining = Math.min(
     totalDays,
-    Math.max(0, (endMs - Date.now()) / MS_PER_DAY)
+    Math.max(0, (endMs - Date.now()) / ONE_DAY_MS)
   );
   return {
     amountCents: Math.round(amountCents * (daysRemaining / totalDays)),

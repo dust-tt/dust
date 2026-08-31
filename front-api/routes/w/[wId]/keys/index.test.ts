@@ -1,5 +1,6 @@
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import { honoApp } from "@front-api/app";
@@ -18,7 +19,7 @@ describe("GET /api/w/:wId/keys — secret visibility", () => {
         userId: user.id,
         isSystem: false,
         status: "active",
-        role: "builder",
+        role: "user",
       },
       [globalGroup]
     );
@@ -46,7 +47,7 @@ describe("GET /api/w/:wId/keys — secret visibility", () => {
         userId: user.id,
         isSystem: false,
         status: "active",
-        role: "builder",
+        role: "user",
       },
       [globalGroup]
     );
@@ -108,5 +109,24 @@ describe("POST /api/w/:wId/keys — role restrictions", () => {
     expect(key.role).toBe("user");
     const group = await GroupResource.fetchManualBuildersGroup(workspace);
     expect(group).toBeNull();
+  });
+});
+
+describe("POST /api/w/:wId/keys — group scoping", () => {
+  it("rejects scoping to a group not tied to a restricted space or pod", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+
+    // This group is not associated to any restricted space or pod, so it is
+    // not scopable — even for an admin.
+    const group = await GroupFactory.regularManual(workspace, "Backend");
+
+    const res = await honoApp.request(`/api/w/${workspace.sId}/keys`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "scoped-key", group_ids: [group.sId] }),
+    });
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error.type).toBe("workspace_auth_error");
   });
 });

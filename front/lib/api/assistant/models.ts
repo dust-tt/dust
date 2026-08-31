@@ -3,7 +3,6 @@ import { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { isModelEnabled } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { UserMessageModel } from "@app/lib/models/agent/conversation";
 import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { GEMINI_3_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
@@ -211,9 +210,11 @@ function isResolvedModel(m: {
   );
 }
 
-export function resolvedModelFromUserMessageRow(
-  row: UserMessageModel
-): ResolvedRequestedModel | null {
+export function resolvedModelFromUserMessageRow(row: {
+  requestedProviderId: string | null;
+  requestedModelId: string | null;
+  requestedReasoningEffort: string | null;
+}): ResolvedRequestedModel | null {
   const { requestedProviderId, requestedModelId, requestedReasoningEffort } =
     row;
   const resolvedModel = {

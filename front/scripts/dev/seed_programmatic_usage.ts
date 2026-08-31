@@ -7,6 +7,7 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { AgentMessageAnalyticsData } from "@app/types/assistant/analytics";
 import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 
 const MICRO_USD_PER_DOLLAR = 1_000_000;
 const TOKEN_PROMPT_RANGE = { min: 100, max: 5000 };
@@ -16,7 +17,6 @@ const COST_MICRO_USD_RANGE = { min: 1_000_000, max: 10_000_000 };
 const LATENCY_MS_RANGE = { min: 100, max: 2000 };
 const AGENT_COUNT = 5;
 const API_KEY_COUNT = 3;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -24,7 +24,7 @@ function randomInt(min: number, max: number): number {
 
 function randomDate(daysBack: number): Date {
   const now = Date.now();
-  const pastMs = daysBack * MS_PER_DAY;
+  const pastMs = daysBack * ONE_DAY_MS;
   const randomOffset = Math.random() * pastMs;
   return new Date(now - randomOffset);
 }

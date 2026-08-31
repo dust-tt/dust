@@ -537,6 +537,7 @@ app.post(
         instructionsHtml: body.instructionsHtml,
         editedBy: user.id,
         requestedSpaceIds,
+        manuallyRequestedSpaceIds: additionalRequestedSpaceIdsRes.value,
         icon,
         source: body.source ?? "web_app",
         sourceMetadata: body.sourceMetadata ?? null,

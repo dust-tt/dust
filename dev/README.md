@@ -22,7 +22,7 @@ bash dev/scripts/docker-run.sh --shell
 | Script | Role |
 |--------|------|
 | `install.sh` | `npm install` + lefthook |
-| `infra.sh` | Postgres/Redis/Qdrant/ES/Temporal + materialize 1Password + migrations |
+| `infra.sh` | Postgres/Redis/Qdrant/ES/Temporal + Chrome managed policies + materialize 1Password + migrations |
 | `apps.sh` | Wait for infra, optional WorkOS seed, mprocs |
 | `up.sh` | `install?` → `infra` → `apps` (serial entry for laptop / non-Cursor agents) |
 | `refresh-op-env.sh` | Re-fetch 1Password Environment into `/tmp` for all shells |
@@ -42,6 +42,15 @@ bash dev/scripts/docker-run.sh --shell
 | Mac compose | Host Docker Desktop | root `docker-compose.yml` via `tools/start-mprocs.sh` |
 
 Inside the container, compose-based mprocs procs (`docker-infra`, `kibana`, …) no-op when `DUST_IN_CONTAINER=1`.
+
+## Base image
+
+`dev/Dockerfile` builds on `ubuntu:24.04` and installs Node from the official tarball
+(`NODE_VERSION` build arg) instead of using a `node:*` image. Cursor's in-container screen
+recorder (`/exec-daemon/polished-renderer.node`) links against glibc 2.39 and the FFmpeg 6
+sonames shipped by Noble (`libavutil.so.58`, `libav{codec,format,device}.so.60`,
+`libswscale.so.7`), which Debian 12 (glibc 2.36, FFmpeg 5) and Debian 13 (FFmpeg 7) cannot
+provide. Keep the base on Noble and keep `ffmpeg` installed, or agents lose video capture.
 
 ## Cursor Cloud snapshots
 

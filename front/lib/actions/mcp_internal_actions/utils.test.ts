@@ -112,16 +112,16 @@ describe("workspaceManagerGuard (via an in-memory MCP tool)", () => {
     expect(JSON.stringify(result.content)).toContain("guarded ok");
   });
 
-  it("blocks a builder from a guarded tool", async () => {
-    const auth = await authForRole("builder");
+  it("blocks a regular user from a guarded tool", async () => {
+    const auth = await authForRole("user");
     const result = await callTestTool(auth, "guarded_tool");
 
     expect(result.isError).toBe(true);
     expect(JSON.stringify(result.content)).toContain("admins");
   });
 
-  it("lets a builder call an unguarded tool", async () => {
-    const auth = await authForRole("builder");
+  it("lets a regular user call an unguarded tool", async () => {
+    const auth = await authForRole("user");
     const result = await callTestTool(auth, "open_tool");
 
     expect(result.isError).toBeFalsy();

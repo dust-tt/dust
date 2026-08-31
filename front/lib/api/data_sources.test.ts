@@ -60,14 +60,14 @@ vi.mock("@app/poke/temporal/client", () => ({
 }));
 
 describe("softDeleteDataSourceAndLaunchScrubWorkflow", () => {
-  let builderAuth: Authenticator;
+  let managerAuth: Authenticator;
   let userAuth: Authenticator;
   let folderDataSource: DataSourceResource;
 
   beforeEach(async () => {
-    // Setup builder user
-    const builderSetup = await createResourceTest({ role: "builder" });
-    builderAuth = builderSetup.authenticator;
+    // Setup a manager, who has write access on the global space.
+    const managerSetup = await createResourceTest({ role: "manager" });
+    managerAuth = managerSetup.authenticator;
 
     // Setup regular user
     const userSetup = await createResourceTest({
@@ -75,11 +75,11 @@ describe("softDeleteDataSourceAndLaunchScrubWorkflow", () => {
     });
     userAuth = userSetup.authenticator;
 
-    // Create a folder data source owned by the builder in their workspace
+    // Create a folder data source owned by the manager in their workspace
     const dataSourceView = await DataSourceViewFactory.folder(
-      builderSetup.workspace,
-      builderSetup.globalSpace,
-      builderSetup.user
+      managerSetup.workspace,
+      managerSetup.globalSpace,
+      managerSetup.user
     );
     folderDataSource = dataSourceView.dataSource;
 
@@ -142,15 +142,15 @@ describe("softDeleteDataSourceAndLaunchScrubWorkflow", () => {
   });
 
   describe("successful deletions", () => {
-    it("should allow builder to delete folder data source", async () => {
+    it("should allow a workspace manager to delete folder data source", async () => {
       const result = await softDeleteDataSourceAndLaunchScrubWorkflow(
-        builderAuth,
+        managerAuth,
         { dataSource: folderDataSource }
       );
 
       expect(result.isOk()).toBe(true);
       expect(launchScrubDataSourceWorkflow).toHaveBeenCalledWith(
-        builderAuth.workspace(),
+        managerAuth.workspace(),
         folderDataSource
       );
       expect(launchScrubDataSourceWorkflow).toHaveBeenCalledTimes(1);
@@ -173,16 +173,16 @@ describe("softDeleteDataSourceAndLaunchScrubWorkflow", () => {
       ] as any);
 
       const result = await softDeleteDataSourceAndLaunchScrubWorkflow(
-        builderAuth,
+        managerAuth,
         { dataSource: folderDataSource }
       );
 
       expect(result.isOk()).toBe(true);
-      expect(view1.delete).toHaveBeenCalledWith(builderAuth, {
+      expect(view1.delete).toHaveBeenCalledWith(managerAuth, {
         transaction: undefined,
         hardDelete: false,
       });
-      expect(view2.delete).toHaveBeenCalledWith(builderAuth, {
+      expect(view2.delete).toHaveBeenCalledWith(managerAuth, {
         transaction: undefined,
         hardDelete: false,
       });
@@ -191,7 +191,7 @@ describe("softDeleteDataSourceAndLaunchScrubWorkflow", () => {
 
     it("should launch scrub workflow with correct workspace and data source", async () => {
       const result = await softDeleteDataSourceAndLaunchScrubWorkflow(
-        builderAuth,
+        managerAuth,
         { dataSource: folderDataSource }
       );
 
@@ -200,7 +200,7 @@ describe("softDeleteDataSourceAndLaunchScrubWorkflow", () => {
         expect(result.value.sId).toBe(folderDataSource.sId);
       }
       expect(launchScrubDataSourceWorkflow).toHaveBeenCalledWith(
-        builderAuth.workspace(),
+        managerAuth.workspace(),
         folderDataSource
       );
     });

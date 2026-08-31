@@ -1,4 +1,7 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  archiveAgentConfiguration,
+  getAgentConfiguration,
+} from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -27,7 +30,7 @@ async function createOtherMemberAgent(
   { name }: { name: string }
 ) {
   const agentOwner = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, agentOwner, { role: "builder" });
+  await MembershipFactory.associate(workspace, agentOwner, { role: "user" });
   const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
     agentOwner.sId,
     workspace.sId
@@ -70,7 +73,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_scope", (
   it("returns 403 for non-admins", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
 
     const response = await batchUpdateScope(workspace, {
@@ -79,5 +82,22 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_scope", (
     });
 
     expect(response.status).toBe(403);
+  });
+
+  it("rejects a batch containing an archived agent", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    await archiveAgentConfiguration(auth, agent.sId);
+
+    const response = await batchUpdateScope(workspace, {
+      agentIds: [agent.sId],
+      scope: "visible",
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(agent.name);
   });
 });

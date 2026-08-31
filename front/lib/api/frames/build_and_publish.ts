@@ -12,22 +12,57 @@ import { ensureConversationSandboxReadyWithScope } from "@app/lib/api/sandbox/li
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import { buildFrameBundle } from "@app/lib/api/viz/build_frame_bundle";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
-import { Err } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const FRAME_BUILD_STAGING_ROOT = "/tmp/dust-frame-publication-builds";
 const FRAME_BUILD_STAGING_CONCURRENCY = 8;
 
+async function buildFrameUiBundle({
+  manifest,
+  sourceFiles,
+}: {
+  manifest: FrameManifest;
+  sourceFiles: FramePublicationSourceFile[];
+}): Promise<Result<string, FramePublicationError>> {
+  const sourceByPath = new Map(
+    sourceFiles.map((sourceFile) => [
+      sourceFile.relativePath,
+      sourceFile.content,
+    ])
+  );
+  const buildResult = await buildFrameBundle({
+    entryRelPath: manifest.uiEntryPoint,
+    reader: {
+      list: async () => [...sourceByPath.keys()],
+      read: async (relativePath) =>
+        sourceByPath.get(relativePath)?.toString("utf8") ?? null,
+    },
+  });
+
+  if (buildResult.isErr()) {
+    return new Err(
+      new FramePublicationError(
+        "ui_build_failed",
+        `Failed to build Frame UI: ${buildResult.error.message}`
+      )
+    );
+  }
+
+  return new Ok(buildResult.value.code);
+}
+
 /**
- * Stage one captured source snapshot in the invoking conversation's DSBX, build every function
- * declared by the manifest from that snapshot, then atomically publish the source and artifacts.
- * No publication storage is touched until every build has succeeded.
+ * Build the UI and every declared function from one captured source snapshot, then atomically
+ * publish the source and artifacts. Function builds stage the snapshot in the invoking
+ * conversation's DSBX. No publication storage is touched until every build has succeeded.
  */
 export async function buildAndPublishFramePublication(
   auth: Authenticator,
@@ -37,7 +72,7 @@ export async function buildAndPublishFramePublication(
     manifest,
     sourceFiles,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
@@ -48,15 +83,6 @@ export async function buildAndPublishFramePublication(
     FramePublicationError | SandboxFunctionError
   >
 > {
-  if (manifest.functions.length === 0) {
-    return publishFramePublication(auth, {
-      frame,
-      functionArtifacts: [],
-      manifest,
-      sourceFiles,
-    });
-  }
-
   const seenSourcePaths = new Set<string>();
   for (const sourceFile of sourceFiles) {
     if (
@@ -71,6 +97,21 @@ export async function buildAndPublishFramePublication(
       );
     }
     seenSourcePaths.add(sourceFile.relativePath);
+  }
+
+  const uiBundle = await buildFrameUiBundle({ manifest, sourceFiles });
+  if (uiBundle.isErr()) {
+    return uiBundle;
+  }
+
+  if (manifest.functions.length === 0) {
+    return publishFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest,
+      sourceFiles,
+      uiBundleCode: uiBundle.value,
+    });
   }
 
   const ensureResult = await ensureConversationSandboxReadyWithScope(
@@ -132,6 +173,7 @@ export async function buildAndPublishFramePublication(
       functionArtifacts,
       manifest,
       sourceFiles,
+      uiBundleCode: uiBundle.value,
     });
   } finally {
     await sandbox.exec(auth, `rm -rf -- ${shellEscape(stagingDirectory)}`, {

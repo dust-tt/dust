@@ -1,3 +1,4 @@
+import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -74,7 +75,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
     // acting admin is not a member of: exactly what "Show hidden agents" surfaces.
     const agentOwner = await UserFactory.basic();
     await MembershipFactory.associate(workspace, agentOwner, {
-      role: "builder",
+      role: "user",
     });
     const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       agentOwner.sId,
@@ -117,6 +118,29 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
       error: {
         type: "invalid_request_error",
         message: "Failed to add tags",
+      },
+    });
+  });
+
+  it("rejects a batch containing an archived agent", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const tag = await TagFactory.create(workspace, { name: "governance" });
+    await archiveAgentConfiguration(auth, agent.sId);
+
+    const response = await batchUpdateTags(workspace, {
+      agentIds: [agent.sId],
+      addTagIds: [tag.sId],
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "An archived agent cannot be updated. Restore it first.",
       },
     });
   });

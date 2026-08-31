@@ -1,4 +1,5 @@
 import { PokeConversationConsumptionInspector } from "@app/components/poke/conversation/consumption_inspectors";
+import { PokeConversationWakeUpsInspector } from "@app/components/poke/conversation/wakeups_inspector";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import type { AgentMessageCreditsToolBreakdown } from "@app/lib/api/assistant/credit_cost";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -618,6 +619,9 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
           )}
           <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
             <span>date: {new Date(message.created).toLocaleString()}</span>
+            {message.context.origin === "wakeup" && (
+              <StatusBadge label="wake-up" color="highlight" />
+            )}
             <StatusBadge
               label={
                 USER_VISIBILITY[message.visibility]?.label ?? message.visibility
@@ -1291,10 +1295,14 @@ export function ConversationPage() {
             </div>
           )}
           <div className="grid w-full grid-cols-1 gap-6 py-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-            <aside className="xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start">
+            <aside className="flex flex-col gap-4 xl:sticky xl:top-4 xl:col-start-2 xl:row-start-1 xl:self-start">
               <PokeConversationConsumptionInspector
                 conversationId={conversationId}
                 workspaceId={owner.sId}
+              />
+              <PokeConversationWakeUpsInspector
+                conversationId={conversationId}
+                owner={owner}
               />
             </aside>
             <div className="flex min-w-0 flex-col justify-start gap-8 xl:col-start-1 xl:row-start-1">

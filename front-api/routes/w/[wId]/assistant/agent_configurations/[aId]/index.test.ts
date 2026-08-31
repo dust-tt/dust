@@ -1,4 +1,5 @@
 import {
+  archiveAgentConfiguration,
   createPendingAgentConfiguration,
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
@@ -141,7 +142,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - non-editor adm
 
     const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
       workspace,
-      "builder"
+      "user"
     );
     const agent =
       await AgentConfigurationFactory.createTestAgent(agentOwnerAuth);
@@ -175,6 +176,52 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - non-editor adm
       variant: "light",
     });
     expect(unchanged?.instructions).toBe(agent.instructions);
+  });
+});
+
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - archived agent", () => {
+  it("rejects updates until the agent is restored", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "PATCH",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    await archiveAgentConfiguration(auth, agent.sId);
+
+    const response = await patch(workspace, agent.sId, {
+      assistant: {
+        name: agent.name,
+        description: agent.description,
+        instructions: "Updated instructions",
+        pictureUrl: agent.pictureUrl,
+        status: "active",
+        scope: agent.scope,
+        model: {
+          providerId: agent.model.providerId,
+          modelId: agent.model.modelId,
+          temperature: agent.model.temperature,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+      },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "An archived agent cannot be updated. Restore it first.",
+      },
+    });
+
+    const versions = await AgentConfigurationModel.findAll({
+      where: { sId: agent.sId, workspaceId: workspace.id },
+    });
+    expect(versions).toHaveLength(1);
   });
 });
 

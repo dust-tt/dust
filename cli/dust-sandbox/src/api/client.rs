@@ -9,7 +9,8 @@ use tokio::time::sleep;
 use super::error::DustApiError;
 use super::types::{
     parse_action_poll_response, ActionPollResponse, CallToolPostResponse, CallToolRequest,
-    CallToolResponse, CallToolResult, MCPServerView, SandboxServerViewsResponse,
+    CallToolResponse, CallToolResult, FramePublishRequest, FramePublishResponse,
+    FrameRegisterRequest, FrameRegisterResponse, MCPServerView, SandboxServerViewsResponse,
 };
 
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -97,10 +98,21 @@ impl DustApiClient {
         path: &str,
         body: &B,
     ) -> anyhow::Result<T> {
+        self.post_with_timeout(path, body, HTTP_REQUEST_TIMEOUT)
+            .await
+    }
+
+    async fn post_with_timeout<B: Serialize, T: DeserializeOwned>(
+        &self,
+        path: &str,
+        body: &B,
+        timeout: Duration,
+    ) -> anyhow::Result<T> {
         let url = self.url(path);
         let resp = self
             .client
             .post(&url)
+            .timeout(timeout)
             .json(body)
             .send()
             .await
@@ -119,6 +131,28 @@ impl DustApiClient {
         resp.json::<T>()
             .await
             .context(format!("failed to parse response from POST {url}"))
+    }
+
+    pub async fn publish_frame(&self, source_path: &str) -> anyhow::Result<FramePublishResponse> {
+        self.post_with_timeout(
+            "sandbox/frames/publish",
+            &FramePublishRequest {
+                manifest_path: source_path,
+            },
+            POLL_MAX_DURATION,
+        )
+        .await
+    }
+
+    pub async fn register_frame(
+        &self,
+        manifest_path: &str,
+    ) -> anyhow::Result<FrameRegisterResponse> {
+        self.post(
+            "sandbox/frames/register",
+            &FrameRegisterRequest { manifest_path },
+        )
+        .await
     }
 
     pub async fn list_tools(

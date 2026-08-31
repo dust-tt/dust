@@ -20,6 +20,20 @@ install_mprocs_config() {
   fi
 }
 
+# Chrome in Cursor Cloud is launched by computer-use, not by our Dockerfile.
+# Managed policies are the supported Linux way to disable the password manager
+# and history-based omnibox suggestions (see AGENTS.md).
+install_chrome_policies() {
+  local src="${DUST_REPO_ROOT}/dev/config/chrome-policies.json"
+  local dest_dir="/etc/opt/chrome/policies/managed"
+  if [ ! -f "$src" ]; then
+    return 0
+  fi
+  mkdir -p "$dest_dir"
+  cp "$src" "${dest_dir}/dust-cloud.json"
+  chmod 644 "${dest_dir}/dust-cloud.json"
+}
+
 ensure_node_path() {
   if command -v node >/dev/null 2>&1; then
     return 0
@@ -56,6 +70,31 @@ ensure_client_built() {
   if [ ! -f sdks/js/dist/index.js ]; then
     log "Building @dust-tt/client (sdks/js)..."
     npm -w @dust-tt/client run build
+  fi
+}
+
+elasticsearch_create_index_bin() {
+  echo "${DUST_REPO_ROOT}/core/target/debug/elasticsearch_create_index"
+}
+
+ensure_elasticsearch_create_index_built() {
+  local bin
+  bin="$(elasticsearch_create_index_bin)"
+  if [ -x "$bin" ]; then
+    return 0
+  fi
+  if ! command -v cargo >/dev/null 2>&1; then
+    log "cargo not found on PATH; rebuild dev/Dockerfile or source dev/scripts/env.sh"
+    return 1
+  fi
+  log "Building elasticsearch_create_index (core)..."
+  (
+    cd "${DUST_REPO_ROOT}/core"
+    cargo build --bin elasticsearch_create_index
+  )
+  if [ ! -x "$bin" ]; then
+    log "elasticsearch_create_index binary missing after cargo build"
+    return 1
   fi
 }
 

@@ -19,6 +19,7 @@ import type { MembershipSeatType } from "@app/types/memberships";
 import { isMembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { ONE_DAY_MS, ONE_HOUR_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import Metronome, { BadRequestError, ConflictError } from "@metronome/sdk";
@@ -67,11 +68,10 @@ export function getMetronomeClient(): Metronome {
 }
 
 // Metronome requires dates on specific boundaries (hour for contracts, midnight for usage).
-const HOUR_MS = 3_600_000;
-const DAY_MS = 24 * HOUR_MS;
-
 export function floorToHourISO(date: Date): string {
-  return new Date(Math.floor(date.getTime() / HOUR_MS) * HOUR_MS).toISOString();
+  return new Date(
+    Math.floor(date.getTime() / ONE_HOUR_MS) * ONE_HOUR_MS
+  ).toISOString();
 }
 
 /** Convert an epoch-seconds timestamp (e.g. from Stripe) to an hour-floored ISO string. */
@@ -80,7 +80,9 @@ export function epochSecondsToFloorHourISO(epochSeconds: number): string {
 }
 
 export function ceilToHourISO(date: Date): string {
-  return new Date(Math.ceil(date.getTime() / HOUR_MS) * HOUR_MS).toISOString();
+  return new Date(
+    Math.ceil(date.getTime() / ONE_HOUR_MS) * ONE_HOUR_MS
+  ).toISOString();
 }
 
 export function floorToMidnightUTC(d: Date): Date {
@@ -92,7 +94,7 @@ export function floorToMidnightUTC(d: Date): Date {
 export function ceilToMidnightUTC(d: Date): Date {
   const floored = floorToMidnightUTC(d);
   return floored.getTime() < d.getTime()
-    ? new Date(floored.getTime() + DAY_MS)
+    ? new Date(floored.getTime() + ONE_DAY_MS)
     : floored;
 }
 

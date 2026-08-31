@@ -3,9 +3,14 @@ import { ConversationSidePanelHeader } from "@app/components/assistant/conversat
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { FrameRenderer } from "@app/components/assistant/conversation/interactive_content/FrameRenderer";
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/interactive_content/UnsupportedContentRenderer";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useFileMetadata } from "@app/lib/swr/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { frameContentType, frameSlideshowContentType } from "@app/types/files";
+import {
+  frameContentType,
+  frameSlideshowContentType,
+  frameV2ContentType,
+} from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
 import { useMemo } from "react";
@@ -20,6 +25,7 @@ export function InteractiveContentContainer({
   owner,
 }: InteractiveContentContainerProps) {
   const { data: contentHash, closePanel } = useConversationSidePanelContext();
+  const { hasFeature } = useFeatureFlags();
 
   const contentId = useMemo(() => {
     if (!contentHash) {
@@ -87,6 +93,28 @@ export function InteractiveContentContainer({
             }
             owner={owner}
             contentHash={contentHash}
+            renderMode="legacy"
+          />
+        );
+
+      case frameV2ContentType:
+        if (!hasFeature("frames_v2")) {
+          return (
+            <UnsupportedContentRenderer
+              fileName={fileMetadata.fileName}
+              contentType={fileMetadata.contentType}
+            />
+          );
+        }
+
+        return (
+          <FrameRenderer
+            conversation={conversation}
+            fileId={contentId}
+            projectId={fileMetadata.useCaseMetadata.spaceId ?? null}
+            owner={owner}
+            contentHash={contentHash}
+            renderMode="v2"
           />
         );
 

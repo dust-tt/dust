@@ -698,12 +698,15 @@ describe("GCSFileSystemBackend.copy", () => {
 
 describe("GCSFileSystemBackend.getDownloadUrl", () => {
   let getSignedUrlMock: ReturnType<typeof vi.fn>;
+  let existsMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     getSignedUrlMock = vi
       .fn()
       .mockResolvedValue("https://signed.example.com/file.pdf");
+    existsMock = vi.fn().mockResolvedValue([true]);
     vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      file: vi.fn(() => ({ exists: existsMock })),
       getSignedUrl: getSignedUrlMock,
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);
   });
@@ -720,6 +723,20 @@ describe("GCSFileSystemBackend.getDownloadUrl", () => {
       `w/${WORKSPACE_ID}/conversations/${CONV_ID}/files/report.pdf`,
       { expirationDelayMs: DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS }
     );
+  });
+
+  it("returns Err(not_found) without signing when the file is missing", async () => {
+    existsMock.mockResolvedValue([false]);
+
+    const result = await makeBackend().getDownloadUrl(
+      `conversation-${CONV_ID}/missing.png`
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("not_found");
+    }
+    expect(getSignedUrlMock).not.toHaveBeenCalled();
   });
 
   it("returns Ok with the signed URL for a pod file", async () => {

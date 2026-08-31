@@ -165,9 +165,9 @@ describe("rawOutputToEvents", () => {
   // ones, since flex is the only tier that changes the rate.
   it.each([
     { reportedTier: "flex", serviceTier: "flex" },
-    { reportedTier: "default", serviceTier: "auto" },
-    { reportedTier: "scale", serviceTier: "auto" },
-    { reportedTier: "priority", serviceTier: "auto" },
+    { reportedTier: "default", serviceTier: "default" },
+    { reportedTier: "scale", serviceTier: "default" },
+    { reportedTier: "priority", serviceTier: "default" },
   ] as const)("reports $reportedTier as the $serviceTier tier", async ({
     reportedTier,
     serviceTier,

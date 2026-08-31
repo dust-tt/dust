@@ -4,6 +4,7 @@ import type { CreditUsageState } from "./CreditUsage";
 import { CREDIT_USAGE_LEARN_MORE_LABEL, CreditUsage } from "./CreditUsage";
 
 const ON_TARGET_STATE = {
+  kind: "billing_period",
   usedPercentage: 80,
   resetInDays: 5,
   target: "on_target",
@@ -77,5 +78,24 @@ describe("CreditUsage", () => {
       screen.getByRole("progressbar", { name: "Credits used" })
         .firstElementChild
     ).toHaveClass("bg-warning-500");
+  });
+
+  it("renders rolling-window consumption", () => {
+    render(
+      <CreditUsage
+        state={{
+          kind: "rolling_window",
+          usedCredits: 2_000,
+          limitCredits: 20_000,
+          timeframe: "week",
+          usedPercentage: 10,
+        }}
+        variant="profile_menu"
+      />
+    );
+
+    expect(
+      screen.getByText("2,000 of 20,000 used in the last 7 days")
+    ).toBeInTheDocument();
   });
 });

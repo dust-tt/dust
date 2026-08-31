@@ -19,6 +19,7 @@ import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
   AgentConfigurationModel,
+  AgentModel,
   AgentUserRelationModel,
   GlobalAgentSettingsModel,
 } from "@app/lib/models/agent/agent";
@@ -217,6 +218,7 @@ export function loadAllModels() {
     CouponRedemptionModel,
     ProgrammaticUsageConfigurationModel,
     CreditUsageConfigurationModel,
+    AgentModel,
     AgentConfigurationModel,
     AgentUserRelationModel,
     GlobalAgentSettingsModel,

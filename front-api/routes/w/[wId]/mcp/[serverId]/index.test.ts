@@ -3,10 +3,11 @@ import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_r
 import { makeSId } from "@app/lib/resources/string_ids";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
-async function setup(role: "builder" | "user" | "admin" = "admin") {
+async function setup(role: MembershipRoleType = "admin") {
   const { workspace, auth, systemSpace } = await createPrivateApiMockRequest({
     role,
   });

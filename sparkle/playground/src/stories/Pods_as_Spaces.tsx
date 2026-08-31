@@ -1,17 +1,16 @@
 import {
   Atom01,
   Avatar,
-  ZapOff,
   BookOpen01,
   Button,
-  Card,
-  MessageChatSquare,
-  Settings01,
+  ChevronDown,
   Code01,
   ContactsRobot,
-  UserSquare,
+  Cube01,
+  CubeOutline,
   Dialog,
   DialogContent,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -23,33 +22,36 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  Edit04,
   Heart,
+  Icon,
   Inbox01,
+  LayoutLeft,
+  LayoutRight,
   Lightbulb04,
   ListSelect,
   LogOut01,
-  SearchMd,
-  DotsHorizontal,
+  MessageChatSquare,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
-  Edit04,
+  PencilLine,
   Plus,
   ScrollArea,
   ScrollBar,
   SearchInput,
+  SearchMd,
+  Settings01,
   SidebarLayout,
-  type SidebarLayoutRef,
-  LayoutLeft,
-  LayoutRight,
   SlackLogo,
-  SpaceClosed,
-  SpaceOpen,
   Star01,
   Trash01,
-  User01,
+  User03,
+  UserSquare,
+  ZapOff,
+  type SidebarLayoutRef,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
@@ -63,10 +65,7 @@ import { InboxView } from "../components/InboxView";
 import { InputBar } from "../components/InputBar";
 import { PersonAgentView } from "../components/PersonAgentView";
 import { ProfilePanel } from "../components/Profile";
-import TemplateSelection, { type Template } from "./TemplateSelection";
 import {
-  type Agent,
-  type Conversation,
   createConversationsWithMessages,
   getAgentById,
   getConversationsBySpaceId,
@@ -77,9 +76,12 @@ import {
   mockAgents,
   mockConversations,
   mockUsers,
+  type Agent,
+  type Conversation,
   type Space,
   type User,
 } from "../data";
+import TemplateSelection, { type Template } from "./TemplateSelection";
 
 type Collaborator =
   | { type: "agent"; data: Agent }
@@ -625,39 +627,41 @@ function DustMain() {
 
   // Sidebar content
   const sidebarContent = (
-    <div className="flex h-full flex-col border-r border-border bg-muted-background">
+    <div className="flex h-full flex-col border-r border bg-muted-background">
       {/* Top Bar */}
-      <div className="flex h-14 items-center justify-between gap-2 border-b border-border pl-1 pr-2">
+      <div className="flex h-14 items-center justify-between gap-2 border-b border pl-1 pr-2">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Card
-              size="xs"
-              onClick={(e: MouseEvent) => e.preventDefault()}
-              className="p-1"
-              containerClassName="flex-1 min-w-0"
-            >
-              <div className="flex min-w-0 items-center gap-2 pr-1">
+          <DropdownMenuTrigger className="group min-w-0 flex-1 rounded-xl p-2 hover:bg-hover data-[state=open]:bg-selected">
+            <div className="flex cursor-pointer items-center justify-between gap-2">
+              <span className="sr-only">Open user menu</span>
+              <div className="flex min-w-0 items-center gap-2">
                 <Avatar
                   name={user.fullName}
                   visual={user.portrait}
                   size="sm"
                   isRounded={true}
                 />
-                <div className="flex min-w-0 grow flex-col text-sm text-foreground">
-                  <span className="heading-sm min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                <div className="flex min-w-0 flex-1 flex-col items-start text-left">
+                  <span className="heading-sm w-full truncate text-foreground transition-colors">
                     {user.fullName}
                   </span>
-                  <span className="-mt-0.5 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-muted-foreground">
+                  <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground">
                     ACME
                   </span>
                 </div>
               </div>
-            </Card>
+              <div className="flex-shrink-0">
+                <Icon
+                  visual={ChevronDown}
+                  className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950"
+                />
+              </div>
+            </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem
               label="Profile"
-              icon={User01}
+              icon={User03}
               onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -775,7 +779,7 @@ function DustMain() {
             variant="primary"
             tooltip="New Conversation"
             size="sm"
-            icon={MessageChatSquare}
+            icon={PencilLine}
             label="New"
             onClick={handleNewConversation}
           />
@@ -970,7 +974,7 @@ function DustMain() {
                   <NavigationListItem
                     key={space.id}
                     label={space.name}
-                    icon={isRestricted ? SpaceOpen : SpaceClosed}
+                    icon={isRestricted ? Cube01 : CubeOutline}
                     selected={space.id === selectedSpaceId}
                     count={count}
                     moreMenu={
@@ -1241,7 +1245,7 @@ function DustMain() {
                           <DropdownMenuContent>
                             <DropdownMenuItem
                               label="View profile"
-                              icon={User01}
+                              icon={User03}
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();

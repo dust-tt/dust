@@ -118,11 +118,9 @@ export function SliderSteps({
   // The tooltip reflects the raw hovered step (so a locked step explains why it
   // is locked), not the step selection would snap to.
   const activeTooltip =
-    !disabled && hoveredIndex !== null
-      ? (stepTooltips?.[hoveredIndex] ?? null)
-      : null;
+    hoveredIndex !== null ? (stepTooltips?.[hoveredIndex] ?? null) : null;
 
-  const root = (
+  const slider = (
     <SliderPrimitive.Root
       className={cn(
         "relative flex h-5 w-full touch-none select-none items-center",
@@ -163,7 +161,7 @@ export function SliderSteps({
         <span
           className={cn(
             "pointer-events-none absolute inset-y-0 left-0 rounded-full",
-            "bg-black/[0.06] dark:bg-white/[0.08]",
+            "bg-black/6 dark:bg-white/8",
             "transition-[width,opacity] duration-200 ease-in-out motion-reduce:transition-none",
             previewIndex !== null ? "opacity-100" : "opacity-0"
           )}
@@ -197,31 +195,18 @@ export function SliderSteps({
       >
         <span className="block h-4 w-4 rounded-full bg-white drop-shadow" />
       </SliderPrimitive.Thumb>
-      {stepTooltips ? (
-        <TooltipTrigger asChild>
-          <span
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 h-0 w-0 -translate-y-1/2"
-            style={{
-              left:
-                hoveredIndex !== null
-                  ? stepCenter(hoveredIndex, lastIndex)
-                  : "50%",
-            }}
-          />
-        </TooltipTrigger>
-      ) : null}
     </SliderPrimitive.Root>
   );
 
   if (!stepTooltips) {
-    return root;
+    return slider;
   }
 
   return (
     <TooltipProvider delayDuration={0}>
       <TooltipRoot open={activeTooltip !== null}>
-        {root}
+        {/* Keep the trigger geometry stable while the hovered step changes. */}
+        <TooltipTrigger asChild>{slider}</TooltipTrigger>
         {activeTooltip !== null ? (
           <TooltipContent>{activeTooltip}</TooltipContent>
         ) : null}

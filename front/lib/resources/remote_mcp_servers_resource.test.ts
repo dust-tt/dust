@@ -126,6 +126,17 @@ describe("getMCPAuthorizationScope", () => {
       })
     ).toBe("files.read");
   });
+
+  it("requests offline access when only the protected resource metadata advertises it", () => {
+    // Atlassian's authv2 advertises offline_access in the protected resource metadata while its
+    // authorization server metadata publishes no scopes at all.
+    expect(
+      getMCPAuthorizationScope({
+        resourceScopes: ["read:jira-work", "offline_access"],
+        authorizationServerScopes: undefined,
+      })
+    ).toBe("read:jira-work offline_access");
+  });
 });
 
 describe("RemoteMCPServerResource.updateUrl", () => {

@@ -11,7 +11,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
 import { defineCacheOperations } from "@app/lib/utils/cache_operations";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import type {
   CapabilitySpec,
@@ -306,10 +306,14 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
 
     const groupIds = [...new Set(grants.map((grant) => grant.groupId))];
-    const autoGroups = await GroupResource.fetchByModelIds(auth, groupIds, {
-      groupKinds: ["regular_auto"],
-      transaction,
-    });
+    const autoGroups = await GroupResource.dangerouslyFetchByModelIds(
+      auth,
+      groupIds,
+      {
+        groupKinds: ["regular_auto"],
+        transaction,
+      }
+    );
 
     return autoGroups[0] ?? null;
   }
@@ -344,7 +348,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       return [];
     }
 
-    return GroupResource.fetchByModelIds(auth, groupIds, {
+    return GroupResource.dangerouslyFetchByModelIds(auth, groupIds, {
       groupKinds: ["regular_auto"],
       transaction,
     });
@@ -383,10 +387,14 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
 
     const groupIds = [...new Set(rows.map((row) => row.groupId))];
-    const autoGroups = await GroupResource.fetchByModelIds(auth, groupIds, {
-      groupKinds: ["regular_auto"],
-      transaction,
-    });
+    const autoGroups = await GroupResource.dangerouslyFetchByModelIds(
+      auth,
+      groupIds,
+      {
+        groupKinds: ["regular_auto"],
+        transaction,
+      }
+    );
     const autoGroupById = new Map(autoGroups.map((group) => [group.id, group]));
 
     for (const row of rows) {
@@ -639,7 +647,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       return [];
     }
 
-    const statsDClient = getStatsDClient();
+    const statsDClient = statsDMetrics;
     const uniqueGroupModelIds = [...new Set(groupModelIds)];
 
     try {
@@ -699,7 +707,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     groupModelIds: ModelId[]
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
-    const statsDClient = getStatsDClient();
+    const statsDClient = statsDMetrics;
     try {
       const redis = await getRedisCacheClient({
         origin: "group_permissions_cache",
@@ -1083,7 +1091,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       ),
     ];
     const groups = groupModelIds.length
-      ? await GroupResource.fetchByModelIds(auth, groupModelIds)
+      ? await GroupResource.dangerouslyFetchByModelIds(auth, groupModelIds)
       : [];
     const groupByModelId = new Map(groups.map((group) => [group.id, group]));
 

@@ -425,9 +425,9 @@ describe("POST /api/v1/w/[wId]/skills", () => {
       workspace.sId
     );
     await SpaceFactory.defaults(adminAuth);
-    // The mock key's role ("builder") doesn't grant create/skill by itself anymore — it
-    // requires a group grant. The key is scoped to the workspace's global group, so granting
-    // the capability to everybody satisfies it.
+    // The mock key's role doesn't grant create/skill by itself — it requires a group grant. The
+    // key is scoped to the workspace's global group, so granting the capability to everybody
+    // satisfies it.
     await GroupPermissionResource.setForEverybody(adminAuth, {
       grantType: "create",
       resourceType: "skill",
@@ -441,10 +441,10 @@ describe("POST /api/v1/w/[wId]/skills", () => {
     const firstEditor = await UserFactory.basic();
     const secondEditor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, firstEditor, {
-      role: "builder",
+      role: "user",
     });
     await MembershipFactory.associate(workspace, secondEditor, {
-      role: "builder",
+      role: "user",
     });
 
     const firstImport = await importSkillsFromFiles(auth, {
@@ -502,7 +502,7 @@ describe("POST /api/v1/w/[wId]/skills", () => {
     );
   });
 
-  it("rejects the import for a non-builder API key", async () => {
+  it("rejects the import for a key without the create/skill capability", async () => {
     const { auth, workspace } = await createPublicApiMockRequest({
       role: "user",
     });

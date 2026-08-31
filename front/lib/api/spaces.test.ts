@@ -1399,6 +1399,43 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       expect(skillAfter!.requestedSpaceIds).toHaveLength(0);
     });
 
+    it("should remove a deleted space from a skill's manually requested spaces", async () => {
+      // A manual selection survives everything else, but not the space going away: an id pointing
+      // at a missing space makes the skill unreadable for everyone.
+      const spaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Manually Selected Space",
+          isRestricted: false,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(spaceResult.isOk()).toBe(true);
+      const space = spaceResult.isOk() ? spaceResult.value : null;
+      expect(space).not.toBeNull();
+
+      const skill = await SkillFactory.create(adminAuth, {
+        name: "Skill With Manual Space",
+        requestedSpaceIds: [space!.id],
+        manuallyRequestedSpaceIds: [space!.id],
+      });
+
+      const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+        adminAuth,
+        space!,
+        true // force delete
+      );
+      expect(deleteResult.isOk()).toBe(true);
+
+      const skillAfter = await SkillResource.fetchById(adminAuth, skill.sId);
+      expect(skillAfter).not.toBeNull();
+      expect(skillAfter!.manuallyRequestedSpaceIds).not.toContain(space!.id);
+      expect(skillAfter!.requestedSpaceIds).not.toContain(space!.id);
+    });
+
     it("should clean an archived skill's requestedSpaceIds too", async () => {
       // An archived skill keeps its references, and a dangling one makes it unfetchable — so it
       // could never be restored. The cleanup must not be limited to active skills.

@@ -1,25 +1,31 @@
 import path from "node:path";
 
 import { DustFileSystem } from "@app/lib/api/file_system";
+import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import { buildAndPublishFramePublication } from "@app/lib/api/frames/build_and_publish";
 import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication_storage";
 import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
+import type { PublishFrameError } from "@app/lib/api/viz/publish_frame";
+import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   FRAME_MANIFEST_FILE,
   isSafeFrameRelativePath,
   parseFrameManifest,
 } from "@app/types/api/frame_manifest";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { DustFileSystemError } from "@app/types/file_system";
 import {
   isAllSupportedFileContentType,
   normalizeMimeType,
 } from "@app/types/files";
+import { splitFrameEntryScopedPath } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
-import { Err } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const FRAME_SOURCE_READ_CONCURRENCY = 8;
 const MAX_FRAME_SOURCE_FILE_COUNT = 1024;
@@ -27,6 +33,115 @@ const MAX_FRAME_SOURCE_BYTES = 100 * 1024 * 1024;
 
 function frameError(code: FramePublicationError["code"], message: string) {
   return new Err(new FramePublicationError(code, message));
+}
+
+export type PublishFrameFromSourceError =
+  | DustFileSystemError
+  | FramePublicationError
+  | PublishFrameError
+  | SandboxFunctionError;
+
+export type PublishFrameFromSourceResult =
+  | {
+      kind: "legacy";
+      frameId: string;
+      sourcePath: string;
+      warnings: ValidationWarning[];
+    }
+  | {
+      kind: "v2";
+      frameId: string;
+      sourcePath: string;
+      publicationId: string;
+    };
+
+export async function publishFrameFromSource(
+  auth: Authenticator,
+  {
+    conversation,
+    publishedByAgentConfigurationId,
+    sourcePath,
+  }: {
+    conversation: ConversationWithoutContentType;
+    publishedByAgentConfigurationId: string;
+    sourcePath: string;
+  }
+): Promise<Result<PublishFrameFromSourceResult, PublishFrameFromSourceError>> {
+  const normalizedPath = DustFileSystem.normalizeScopedPath(sourcePath);
+  if (!normalizedPath) {
+    return frameError(
+      "invalid_source",
+      `Invalid Frame source path: ${sourcePath}`
+    );
+  }
+
+  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  if (fsResult.isErr()) {
+    return new Err(fsResult.error);
+  }
+  const dustFs = fsResult.value;
+
+  const writeAccess = dustFs.checkWriteAccess(normalizedPath);
+  if (writeAccess.isErr()) {
+    return new Err(writeAccess.error);
+  }
+
+  const mountFilePath = dustFs.toMountFilePath(normalizedPath);
+  if (!mountFilePath) {
+    return frameError(
+      "invalid_source",
+      `Invalid Frame source path: ${sourcePath}`
+    );
+  }
+
+  const [frame] = await FileResource.fetchByMountFilePaths(auth, [
+    mountFilePath,
+  ]);
+  if (!frame || (!frame.isFrameV2 && !frame.isInteractiveContent)) {
+    return frameError("invalid_source", `No Frame found at ${normalizedPath}.`);
+  }
+
+  if (frame.isFrameV2) {
+    const publication = await publishFrameV2FromSource(auth, {
+      conversation,
+      frame,
+      manifestPath: normalizedPath,
+    });
+    if (publication.isErr()) {
+      return new Err(publication.error);
+    }
+
+    return new Ok({
+      kind: "v2",
+      frameId: frame.sId,
+      sourcePath: normalizedPath,
+      publicationId: publication.value.publicationId,
+    });
+  }
+
+  const splitResult = splitFrameEntryScopedPath(normalizedPath);
+  if (splitResult.isErr()) {
+    return frameError("invalid_source", splitResult.error.message);
+  }
+  const { root, entryRelPath } = splitResult.value;
+
+  const publication = await publishFrame(auth, {
+    file: frame,
+    reader: createMountFrameSourceReader(dustFs, root),
+    entryRelPath,
+    rootScopedPath: root,
+    publishedByAgentConfigurationId,
+  });
+  if (publication.isErr()) {
+    return new Err(publication.error);
+  }
+
+  return new Ok({
+    kind: "legacy",
+    frameId: frame.sId,
+    sourcePath: normalizedPath,
+    warnings: publication.value.warnings,
+  });
 }
 
 /**
@@ -40,7 +155,7 @@ export async function publishFrameV2FromSource(
     frame,
     manifestPath,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifestPath: string;
   }

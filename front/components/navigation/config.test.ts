@@ -46,8 +46,8 @@ describe("subNavigationAdmin automation entry", () => {
     expect(item?.disabled).toBe(false);
   });
 
-  it("is absent for a builder, who has no admin sidebar at all", () => {
-    const item = automationNavItem(ownerWithRole("builder"));
+  it("is absent for a regular user, who has no admin sidebar at all", () => {
+    const item = automationNavItem(ownerWithRole("user"));
     expect(item).toBeUndefined();
   });
 });

@@ -226,7 +226,7 @@ describe("MembershipResource", () => {
         await MembershipResource.updateMembershipRole({
           user,
           workspace,
-          newRole: "builder",
+          newRole: "admin",
           author: "no-author",
         });
 
@@ -574,7 +574,7 @@ describe("MembershipResource", () => {
         await MembershipResource.createMembership({
           user,
           workspace: lightWorkspace,
-          role: "builder",
+          role: "admin",
         });
 
         const role = await MembershipResource.getActiveRoleForUserInWorkspace({
@@ -582,7 +582,7 @@ describe("MembershipResource", () => {
           workspace: lightWorkspace,
         });
 
-        expect(role).toBe("builder");
+        expect(role).toBe("admin");
       });
 
       it("should return 'none' when no membership exists", async () => {

@@ -11,7 +11,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import { InternalPostMessagesRequestBodySchema } from "@app/types/api/assistant";
 import type { PostMessagesResponseBody } from "@app/types/api/assistant/messages";
 import type {
@@ -240,7 +240,7 @@ app.get(
 
     const messageLatency = performance.now() - messageStartTime;
 
-    getStatsDClient().distribution(
+    statsDMetrics.distribution(
       "assistant.messages.fetch.latency",
       messageLatency
     );
@@ -248,10 +248,7 @@ app.get(
       JSON.stringify(messagesRes.value),
       "utf8"
     );
-    getStatsDClient().distribution(
-      "assistant.messages.fetch.raw_size",
-      rawSize
-    );
+    statsDMetrics.distribution("assistant.messages.fetch.raw_size", rawSize);
 
     return ctx.json(messagesRes.value);
   }

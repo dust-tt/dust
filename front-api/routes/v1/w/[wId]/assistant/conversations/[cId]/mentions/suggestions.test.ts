@@ -35,7 +35,7 @@ async function setupTest() {
 
   // Create a user and agent for testing
   const user = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, user, { role: "builder" });
+  await MembershipFactory.associate(workspace, user, { role: "user" });
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,
     workspace.sId

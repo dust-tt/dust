@@ -340,7 +340,7 @@ async function addAgentEditorsToSkill(
     return;
   }
 
-  const agentEditorGroups = await GroupResource.fetchByModelIds(
+  const agentEditorGroups = await GroupResource.dangerouslyFetchByModelIds(
     auth,
     agentEditorGroupModelIds
   );

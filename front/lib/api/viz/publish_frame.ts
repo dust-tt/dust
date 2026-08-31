@@ -38,6 +38,12 @@ export class PublishFrameError extends Error {
   }
 }
 
+export function isPublishFrameError(
+  error: unknown
+): error is PublishFrameError {
+  return error instanceof PublishFrameError;
+}
+
 // Only code files are syntax and Tailwind validated. Assets (.json, .css, images) are skipped.
 const VALIDATED_EXTENSIONS = [".tsx", ".ts", ".jsx", ".js"];
 

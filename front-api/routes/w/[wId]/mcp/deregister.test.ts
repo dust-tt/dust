@@ -1,4 +1,5 @@
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import type { MembershipRoleType } from "@app/types/memberships";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockDeregisterMCPServer } = vi.hoisted(() => ({
@@ -21,7 +22,7 @@ vi.mock(
 
 import { honoApp } from "@front-api/app";
 
-async function setup(role: "builder" | "user" | "admin" = "admin") {
+async function setup(role: MembershipRoleType = "admin") {
   const { workspace } = await createPrivateApiMockRequest({
     role,
     method: "POST",

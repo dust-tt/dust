@@ -77,7 +77,7 @@ function getMessageEvents(
 async function setupAgentMessage() {
   const { workspace, key } = await createPublicApiMockRequest();
   const user = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, user, { role: "builder" });
+  await MembershipFactory.associate(workspace, user, { role: "user" });
   const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,
     workspace.sId

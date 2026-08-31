@@ -133,7 +133,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       done: "Retrieved top agents",
     },
     toolCostCategory: "basic",
-    freeUsage: false,
+    freeUsage: true,
   },
   {
     name: "get_top_users",
@@ -150,7 +150,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       done: "Retrieved top users",
     },
     toolCostCategory: "basic",
-    freeUsage: false,
+    freeUsage: true,
   },
   {
     name: "get_top_agent_tags",
@@ -170,7 +170,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       done: "Retrieved top agent tags",
     },
     toolCostCategory: "basic",
-    freeUsage: false,
+    freeUsage: true,
   },
   {
     name: "get_top_models",
@@ -190,7 +190,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       done: "Retrieved top models",
     },
     toolCostCategory: "basic",
-    freeUsage: false,
+    freeUsage: true,
   },
   {
     name: "get_agent_details",
@@ -206,7 +206,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       done: "Retrieved agent details",
     },
     toolCostCategory: "basic",
-    freeUsage: false,
+    freeUsage: true,
   },
   {
     name: "get_top_skills",
@@ -222,7 +222,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       done: "Retrieved top skills",
     },
     toolCostCategory: "basic",
-    freeUsage: false,
+    freeUsage: true,
   },
   {
     name: "get_top_tools",
@@ -240,7 +240,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       done: "Retrieved top tools",
     },
     toolCostCategory: "basic",
-    freeUsage: false,
+    freeUsage: true,
   },
   {
     name: "get_source_breakdown",
@@ -262,7 +262,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       done: "Retrieved source breakdown",
     },
     toolCostCategory: "basic",
-    freeUsage: false,
+    freeUsage: true,
   },
   {
     name: "get_credit_usage",
@@ -284,7 +284,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       done: "Estimated credit usage",
     },
     toolCostCategory: "basic",
-    freeUsage: false,
+    freeUsage: true,
   },
   {
     name: "get_credit_timeseries",
@@ -307,7 +307,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       done: "Estimated credit trend",
     },
     toolCostCategory: "basic",
-    freeUsage: false,
+    freeUsage: true,
   },
   {
     name: "get_usage_timeseries",
@@ -324,7 +324,7 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
       done: "Retrieved usage time series",
     },
     toolCostCategory: "basic",
-    freeUsage: false,
+    freeUsage: true,
   },
 ] as const;
 
