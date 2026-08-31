@@ -33,6 +33,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
 import type {
   AgentMessageStatus,
   CompactionMessageStatus,
@@ -818,6 +819,77 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       triggeringUserMessageOrigin,
       previousCostCredits: agentMessage.costCredits,
     };
+  }
+
+  static async getOrSetAgentMessageConsumptionMode(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      mode,
+      transaction,
+    }: {
+      agentMessageId: string;
+      mode: AgentMessageConsumptionMode;
+      transaction: Transaction;
+    }
+  ): Promise<AgentMessageConsumptionMode | null> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const message = await MessageModel.findOne({
+      attributes: ["id"],
+      where: { sId: agentMessageId, workspaceId },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          attributes: ["id", "consumptionMode"],
+          required: true,
+        },
+      ],
+      transaction,
+    });
+    if (!message?.agentMessage) {
+      return null;
+    }
+
+    await AgentMessageModel.update(
+      { consumptionMode: mode },
+      {
+        where: {
+          id: message.agentMessage.id,
+          workspaceId,
+          consumptionMode: null,
+        },
+        transaction,
+      }
+    );
+    const rootAgentMessage = await AgentMessageModel.findOne({
+      attributes: ["consumptionMode"],
+      where: { id: message.agentMessage.id, workspaceId },
+      transaction,
+    });
+    return rootAgentMessage?.consumptionMode ?? null;
+  }
+
+  static async fetchAgentMessageConsumptionMode(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<AgentMessageConsumptionMode | null> {
+    const message = await MessageModel.findOne({
+      attributes: ["id"],
+      where: {
+        sId: agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          attributes: ["consumptionMode"],
+          required: true,
+        },
+      ],
+    });
+    return message?.agentMessage?.consumptionMode ?? null;
   }
 
   /**
