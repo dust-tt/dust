@@ -3,6 +3,7 @@ import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/me
 import { computeActivationFromCells } from "@app/lib/api/activation/evaluator";
 import type { UserDayCell } from "@app/lib/api/activation/evaluator";
 import {
+  type ElasticsearchError,
   searchAnalytics,
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
@@ -71,6 +72,7 @@ interface EvidenceHit<TDocument> {
 
 interface EvidenceResult<TDocument> {
   documents: EvidenceHit<TDocument>[];
+  error: ElasticsearchError | null;
   truncated: boolean;
 }
 
@@ -336,7 +338,7 @@ async function fetchLegacyCellEvidence({
   workspaceId: string;
 }): Promise<EvidenceResult<AgentMessageAnalyticsData>> {
   if (differences.length === 0) {
-    return { documents: [], truncated: false };
+    return { documents: [], error: null, truncated: false };
   }
 
   const result = await searchAnalytics<AgentMessageAnalyticsData>(
@@ -368,12 +370,13 @@ async function fetchLegacyCellEvidence({
     { size: EVIDENCE_DOCUMENT_LIMIT }
   );
   if (result.isErr()) {
-    throw result.error;
+    return { documents: [], error: result.error, truncated: false };
   }
 
   const hits = result.value.hits.hits;
   return {
     documents: evidenceHits(hits),
+    error: null,
     truncated: hits.length === EVIDENCE_DOCUMENT_LIMIT,
   };
 }
@@ -386,7 +389,7 @@ async function fetchConsumptionCellEvidence({
   workspaceId: string;
 }): Promise<EvidenceResult<AgentMessageConsumptionAnalyticsData>> {
   if (differences.length === 0) {
-    return { documents: [], truncated: false };
+    return { documents: [], error: null, truncated: false };
   }
 
   const result =
@@ -422,12 +425,13 @@ async function fetchConsumptionCellEvidence({
       { size: EVIDENCE_DOCUMENT_LIMIT }
     );
   if (result.isErr()) {
-    throw result.error;
+    return { documents: [], error: result.error, truncated: false };
   }
 
   const hits = result.value.hits.hits;
   return {
     documents: evidenceHits(hits),
+    error: null,
     truncated: hits.length === EVIDENCE_DOCUMENT_LIMIT,
   };
 }
@@ -440,7 +444,7 @@ async function fetchLegacyMessageEvidence({
   workspaceId: string;
 }): Promise<EvidenceResult<AgentMessageAnalyticsData>> {
   if (messageIds.length === 0) {
-    return { documents: [], truncated: false };
+    return { documents: [], error: null, truncated: false };
   }
 
   const result = await searchAnalytics<AgentMessageAnalyticsData>(
@@ -455,12 +459,13 @@ async function fetchLegacyMessageEvidence({
     { size: EVIDENCE_DOCUMENT_LIMIT }
   );
   if (result.isErr()) {
-    throw result.error;
+    return { documents: [], error: result.error, truncated: false };
   }
 
   const hits = result.value.hits.hits;
   return {
     documents: evidenceHits(hits),
+    error: null,
     truncated: hits.length === EVIDENCE_DOCUMENT_LIMIT,
   };
 }
@@ -473,7 +478,7 @@ async function fetchConsumptionMessageEvidence({
   workspaceId: string;
 }): Promise<EvidenceResult<AgentMessageConsumptionAnalyticsData>> {
   if (messageIds.length === 0) {
-    return { documents: [], truncated: false };
+    return { documents: [], error: null, truncated: false };
   }
 
   const result =
@@ -489,12 +494,13 @@ async function fetchConsumptionMessageEvidence({
       { size: EVIDENCE_DOCUMENT_LIMIT }
     );
   if (result.isErr()) {
-    throw result.error;
+    return { documents: [], error: result.error, truncated: false };
   }
 
   const hits = result.value.hits.hits;
   return {
     documents: evidenceHits(hits),
+    error: null,
     truncated: hits.length === EVIDENCE_DOCUMENT_LIMIT,
   };
 }
@@ -908,6 +914,36 @@ makeScript(
           workspaceId,
         }),
       ]);
+    const diagnosticEvidenceQueries = [
+      { error: legacyCellEvidence.error, query: "legacyCells" },
+      { error: consumptionCellEvidence.error, query: "consumptionCells" },
+      { error: legacyMessageEvidence.error, query: "legacyMessages" },
+      {
+        error: consumptionMessageEvidence.error,
+        query: "consumptionMessages",
+      },
+    ];
+    for (const { error, query } of diagnosticEvidenceQueries) {
+      if (error) {
+        logger.error(
+          { err: error, evidenceQuery: query, workspaceId },
+          "Failed to fetch activation comparison evidence"
+        );
+      }
+    }
+    const diagnosticEvidenceErrors = diagnosticEvidenceQueries.flatMap(
+      ({ error, query }) =>
+        error
+          ? [
+              {
+                message: error.message,
+                query,
+                statusCode: error.statusCode ?? null,
+                type: error.type,
+              },
+            ]
+          : []
+    );
     const legacyEvidenceByMessage = groupEvidence(
       mergeEvidence(
         legacyCellEvidence.documents,
@@ -990,6 +1026,7 @@ makeScript(
         diagnosticEvidence: {
           evidenceMessageCount: evidenceMessageIds.length,
           documentLimitPerQuery: EVIDENCE_DOCUMENT_LIMIT,
+          errors: diagnosticEvidenceErrors,
           truncated: {
             legacyCells: legacyCellEvidence.truncated,
             consumptionCells: consumptionCellEvidence.truncated,
