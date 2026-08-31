@@ -37,7 +37,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 type SortDirection = "asc" | "desc";
 
-type OrderColumn = "name" | "seatType" | "consumedAwuCredits" | "creditState";
+type OrderColumn =
+  | "name"
+  | "seatType"
+  | "consumedFromPoolAwuCredits"
+  | "creditState";
 
 // Explicit, server-driven sort header. Toggling updates the parent sort state
 // directly (no reliance on react-table's manual-sorting toggle), which
@@ -232,7 +236,7 @@ function makeColumns({
       header: () => (
         <SortableHeader
           label={showCreditColumns ? "Consumed (ES / RL / MT)" : "Consumed"}
-          column="consumedAwuCredits"
+          column="consumedFromPoolAwuCredits"
           activeColumn={orderColumn}
           direction={orderDirection}
           onToggle={onToggleSort}

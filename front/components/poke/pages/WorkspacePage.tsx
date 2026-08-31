@@ -25,6 +25,7 @@ import { WebhookSourceDataTable } from "@app/components/poke/webhook_sources/tab
 import { WorkspaceMetadataTab } from "@app/components/poke/workspace/MetadataTab";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import { WorkspaceAnalyticsButton } from "@app/components/poke/workspace/WorkspaceAnalyticsButton";
+import { WorkspacePoolUsageButton } from "@app/components/poke/workspace/WorkspacePoolUsageButton";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
@@ -249,6 +250,7 @@ export function WorkspacePage() {
                     temporalFrontNamespace={temporalFrontNamespace}
                   />
                   <WorkspaceAnalyticsButton workspaceId={owner.sId} />
+                  <WorkspacePoolUsageButton workspaceId={owner.sId} />
                 </div>
               </TabsContent>
               <TabsContent value="subscriptions">

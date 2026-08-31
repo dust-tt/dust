@@ -27,6 +27,7 @@ import { PlansPage } from "@dust-tt/front/components/poke/pages/PlansPage";
 import { PluginsPage } from "@dust-tt/front/components/poke/pages/PluginsPage";
 import { PodFunctionPage } from "@dust-tt/front/components/poke/pages/PodFunctionPage";
 import { PokefyPage } from "@dust-tt/front/components/poke/pages/PokefyPage";
+import { PoolUsagePage } from "@dust-tt/front/components/poke/pages/PoolUsagePage";
 import { ProductionChecksPage } from "@dust-tt/front/components/poke/pages/ProductionChecksPage";
 import { SkillDetailsPage } from "@dust-tt/front/components/poke/pages/SkillDetailsPage";
 import { SkillSuggestionDetailsPage } from "@dust-tt/front/components/poke/pages/SkillSuggestionDetailsPage";
@@ -106,6 +107,7 @@ export const routes: RouteObject[] = [
         children: [
           { index: true, element: <WorkspacePage /> },
           { path: "analytics", element: <AnalyticsPage /> },
+          { path: "pool-usage", element: <PoolUsagePage /> },
           { path: "memberships", element: <MembershipsPage /> },
           { path: "llm-traces/:runId", element: <LLMTracePage /> },
           {
