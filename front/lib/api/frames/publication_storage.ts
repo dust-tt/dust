@@ -5,8 +5,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
-import { getFramePublishLockName } from "@app/lib/api/frames/operation_lock";
-import { getRedisStreamClient } from "@app/lib/api/redis";
+import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
@@ -16,13 +15,12 @@ import {
   getPrivateUploadBucket,
 } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
-import { distributedLock, distributedUnlock } from "@app/lib/lock";
+import { LockAcquisitionTimeoutError } from "@app/lib/lock";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FramePublicationFunctionDefinition } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import tracer from "@app/logger/tracer";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
 import type { FramePublicationDescriptor } from "@app/types/api/frame_publication";
@@ -49,9 +47,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 const FRAME_PUBLICATION_UPLOAD_CONCURRENCY = 4;
 const FRAME_PUBLICATION_READ_CONCURRENCY = 4;
-const FRAME_PUBLISH_LOCK_ACQUIRE_TIMEOUT_MS = 30_000;
-const FRAME_PUBLISH_LOCK_RETRY_INTERVAL_MS = 100;
-const FRAME_PUBLISH_LOCK_TTL_MS = 10 * 60_000;
 
 export type FramePublicationSourceFile = {
   relativePath: string;
@@ -591,69 +586,47 @@ export async function publishFramePublication(
     FramePublicationError | SandboxFunctionError
   >
 > {
-  const client = await getRedisStreamClient({ origin: "lock" });
-  const lockName = getFramePublishLockName(frame.sId);
-  const lockValue = await tracer.trace(
-    "lock.acquire",
-    { resource: "frame.publish" },
-    async () => {
-      const startMs = Date.now();
-      while (Date.now() - startMs < FRAME_PUBLISH_LOCK_ACQUIRE_TIMEOUT_MS) {
-        const acquired = await distributedLock(
-          client,
-          lockName,
-          FRAME_PUBLISH_LOCK_TTL_MS
-        );
-        if (acquired) {
-          return acquired;
-        }
-        await new Promise((resolve) =>
-          setTimeout(resolve, FRAME_PUBLISH_LOCK_RETRY_INTERVAL_MS)
-        );
-      }
-      return undefined;
-    }
-  );
-  if (!lockValue) {
-    return new Err(
-      new SandboxFunctionError(
-        "publish_conflict",
-        "Another publication is in progress for this Frame; retry shortly."
-      )
-    );
-  }
-
   try {
-    const publication = await storeFramePublication(auth, {
-      frame,
-      functionArtifacts,
-      manifest,
-      sourceFiles,
-      uiBundleCode,
-    });
-    if (publication.isErr()) {
+    return await withFramePublishLock(frame.sId, async () => {
+      const publication = await storeFramePublication(auth, {
+        frame,
+        functionArtifacts,
+        manifest,
+        sourceFiles,
+        uiBundleCode,
+      });
+      if (publication.isErr()) {
+        return publication;
+      }
+
+      const reconciliation = await reconcileFramePublicationDatabases(auth, {
+        frame,
+        manifest,
+        sourceFiles,
+      });
+      if (reconciliation.isErr()) {
+        return reconciliation;
+      }
+
+      const activation = await activateFramePublication(auth, {
+        frame,
+        publicationId: publication.value.publicationId,
+      });
+      if (activation.isErr()) {
+        return activation;
+      }
+
       return publication;
-    }
-
-    const reconciliation = await reconcileFramePublicationDatabases(auth, {
-      frame,
-      manifest,
-      sourceFiles,
     });
-    if (reconciliation.isErr()) {
-      return reconciliation;
+  } catch (error) {
+    if (error instanceof LockAcquisitionTimeoutError) {
+      return new Err(
+        new SandboxFunctionError(
+          "publish_conflict",
+          "Another publication is in progress for this Frame; retry shortly."
+        )
+      );
     }
-
-    const activation = await activateFramePublication(auth, {
-      frame,
-      publicationId: publication.value.publicationId,
-    });
-    if (activation.isErr()) {
-      return activation;
-    }
-
-    return publication;
-  } finally {
-    await distributedUnlock(client, lockName, lockValue);
+    throw error;
   }
 }

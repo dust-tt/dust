@@ -3,6 +3,7 @@
 import { buildAndPublishFramePublication } from "@app/lib/api/frames/build_and_publish";
 import { FRAME_SOURCE_STAGING_ROOT } from "@app/lib/api/frames/source_staging";
 import { ensureConversationSandboxReadyWithScope } from "@app/lib/api/sandbox/lifecycle";
+import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
 import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { Authenticator } from "@app/lib/auth";
@@ -118,9 +119,17 @@ async function setup(): Promise<{
     version: "0.0.0-test",
   });
   vi.spyOn(sandbox, "writeFile").mockResolvedValue(new Ok(undefined));
-  vi.spyOn(sandbox, "exec").mockResolvedValue(
+  vi.spyOn(sandbox, "execRoot").mockResolvedValue(
     new Ok({ exitCode: 0, stdout: "", stderr: "" })
   );
+  vi.spyOn(sandbox, "readFile").mockImplementation(async (_auth, filePath) => {
+    const sourceFile = sourceFiles.find(({ relativePath }) =>
+      filePath.endsWith(`/${relativePath}`)
+    );
+    return sourceFile
+      ? new Ok(sourceFile.content)
+      : new Err(new Error(`Unexpected staged path: ${filePath}`));
+  });
   vi.mocked(ensureConversationSandboxReadyWithScope).mockResolvedValue(
     new Ok({ sandbox, freshlyCreated: false, scope: { spaceId: null } })
   );
@@ -219,12 +228,11 @@ describe("buildAndPublishFramePublication", () => {
         ),
       }
     );
-    expect(sandbox.exec).toHaveBeenCalledWith(
-      auth,
-      expect.stringMatching(
-        new RegExp(`^rm -rf -- '${FRAME_SOURCE_STAGING_ROOT}/[^/]+'$`)
-      ),
-      { user: "agent-proxied" }
+    expect(sandbox.readFile).toHaveBeenCalledTimes(sourceFiles.length);
+    expect(
+      renderRootCommand(vi.mocked(sandbox.execRoot).mock.calls.at(-1)![1])
+    ).toMatch(
+      new RegExp(`^/usr/bin/rm -rf -- ${FRAME_SOURCE_STAGING_ROOT}/[^/]+$`)
     );
     expect(ensureConversationSandboxReadyWithScope).toHaveBeenCalledOnce();
     const publicationId = result.isOk() ? result.value.publicationId : "";
