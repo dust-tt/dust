@@ -80,6 +80,7 @@ import {
   isClientSideMCPToolConfiguration,
   isMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
+  isServerSideMCPServerConfigurationWithName,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getBaseServerId } from "@app/lib/api/actions/mcp/client_side_registry";
@@ -1028,7 +1029,7 @@ export function deduplicateMCPServerConfigurations({
   jitServers: MCPServerConfigurationType[];
 }): MCPServerConfigurationType[] {
   const seen = new Set<string>();
-  return [
+  const configs = [
     ...agentActions,
     ...clientSideActions,
     ...skillServers,
@@ -1043,6 +1044,20 @@ export function deduplicateMCPServerConfigurations({
     seen.add(key);
     return true;
   });
+
+  // The sandbox generates and converts files itself, so file_generation is only exposed to
+  // conversations running without it.
+  const hasSandbox = configs.some((config) =>
+    isServerSideMCPServerConfigurationWithName(config, "sandbox")
+  );
+  if (hasSandbox) {
+    return configs.filter(
+      (config) =>
+        !isServerSideMCPServerConfigurationWithName(config, "file_generation")
+    );
+  }
+
+  return configs;
 }
 
 /**
