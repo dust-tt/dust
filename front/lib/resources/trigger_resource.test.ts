@@ -469,7 +469,7 @@ describe("TriggerResource", () => {
   });
   describe("setExecutionMode", () => {
     it("refuses the workspace pool without the governance grant", async () => {
-      const { authenticator } = await createResourceTest({ role: "builder" });
+      const { authenticator } = await createResourceTest({ role: "user" });
       const agentConfig = await AgentConfigurationFactory.createTestAgent(
         authenticator,
         { name: "Test Agent" }

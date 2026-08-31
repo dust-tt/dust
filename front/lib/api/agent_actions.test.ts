@@ -85,7 +85,7 @@ describe("getToolsUsage", () => {
 
     const user = await UserFactory.basic();
     await MembershipFactory.associate(testContext.workspace, user, {
-      role: "builder",
+      role: "user",
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,

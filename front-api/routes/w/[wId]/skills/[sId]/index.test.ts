@@ -15,14 +15,15 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import type { WhereOptions } from "sequelize";
 import { describe, expect, it } from "vitest";
 
 async function setupTest(
   options: {
-    skillOwnerRole?: "admin" | "builder" | "user";
-    requestUserRole?: "admin" | "builder" | "user";
+    skillOwnerRole?: MembershipRoleType;
+    requestUserRole?: MembershipRoleType;
   } = {}
 ) {
   const skillOwnerRole = options.skillOwnerRole ?? "admin";
@@ -255,7 +256,7 @@ describe("GET /api/w/:wId/skills/:sId", () => {
 describe("PATCH /api/w/:wId/skills/:sId", () => {
   it("should return 403 for non-editor user", async () => {
     const { workspace, skill } = await setupTest({
-      skillOwnerRole: "builder",
+      skillOwnerRole: "admin",
       requestUserRole: "user",
     });
 
@@ -487,7 +488,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
 
   it("denies any edit to a non-editor even with the publish permission", async () => {
     const { workspace, skill } = await setupTest({
-      skillOwnerRole: "builder",
+      skillOwnerRole: "user",
       requestUserRole: "admin",
     });
 
@@ -832,7 +833,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
 
     const coEditor = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, coEditor, { role: "builder" });
+    await MembershipFactory.associate(workspace, coEditor, { role: "user" });
     const addRes = await skill.addEditors(requestUserAuth, [coEditor]);
     if (addRes.isErr()) {
       throw new Error("Failed to add the co-editor");
@@ -874,7 +875,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     );
 
     const coEditor = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, coEditor, { role: "builder" });
+    await MembershipFactory.associate(workspace, coEditor, { role: "user" });
     await restrictedSpace.addMembers(adminAuth, {
       userIds: [requestUser.sId, coEditor.sId],
     });
@@ -1252,8 +1253,8 @@ describe("PATCH /api/w/:wId/skills/:sId - file attachments", () => {
   it("should update file attachments", async () => {
     const { auth, workspace, skill, requestUser, requestUserAuth } =
       await setupTest({
-        skillOwnerRole: "builder",
-        requestUserRole: "builder",
+        skillOwnerRole: "user",
+        requestUserRole: "user",
       });
 
     const file = await FileFactory.create(auth, requestUser, {
@@ -1294,8 +1295,8 @@ describe("PATCH /api/w/:wId/skills/:sId - file attachments", () => {
 
   it("should succeed without file attachments", async () => {
     const { workspace, skill } = await setupTest({
-      skillOwnerRole: "builder",
-      requestUserRole: "builder",
+      skillOwnerRole: "user",
+      requestUserRole: "user",
     });
 
     const response = await patchSkill(workspace, skill.sId, {
@@ -1315,8 +1316,8 @@ describe("PATCH /api/w/:wId/skills/:sId - file attachments", () => {
   it("should remove file attachments when updating with empty array", async () => {
     const { auth, workspace, skill, requestUser, requestUserAuth } =
       await setupTest({
-        skillOwnerRole: "builder",
-        requestUserRole: "builder",
+        skillOwnerRole: "user",
+        requestUserRole: "user",
       });
 
     const file = await FileFactory.create(auth, requestUser, {
@@ -1382,7 +1383,7 @@ describe("PATCH /api/w/:wId/skills/:sId - file attachments", () => {
 describe("DELETE /api/w/:wId/skills/:sId", () => {
   it("should return 403 for non-editor user", async () => {
     const { workspace, skill } = await setupTest({
-      skillOwnerRole: "builder",
+      skillOwnerRole: "admin",
       requestUserRole: "user",
     });
 
@@ -1425,7 +1426,7 @@ describe("DELETE /api/w/:wId/skills/:sId", () => {
 
   it("allows a workspace admin to archive a skill they do not edit", async () => {
     const { workspace, requestUserAuth, skill } = await setupTest({
-      skillOwnerRole: "builder",
+      skillOwnerRole: "user",
       requestUserRole: "admin",
     });
 

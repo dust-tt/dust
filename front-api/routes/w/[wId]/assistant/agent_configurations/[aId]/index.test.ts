@@ -142,7 +142,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - non-editor adm
 
     const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
       workspace,
-      "builder"
+      "user"
     );
     const agent =
       await AgentConfigurationFactory.createTestAgent(agentOwnerAuth);

@@ -35,7 +35,7 @@ describe("pruneSuggestionsForAgent", () => {
   let agentConfiguration: LightAgentConfigurationType;
 
   beforeEach(async () => {
-    const testSetup = await createResourceTest({ role: "builder" });
+    const testSetup = await createResourceTest({ role: "user" });
     authenticator = testSetup.authenticator;
 
     agentConfiguration =

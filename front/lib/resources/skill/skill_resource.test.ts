@@ -30,6 +30,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
+import type { MembershipRoleType } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -1445,7 +1446,7 @@ describe("SkillResource", () => {
     it("rejects a caller without the publish permission, even an editor", async () => {
       const builder = await UserFactory.basic();
       await MembershipFactory.associate(testContext.workspace, builder, {
-        role: "builder",
+        role: "user",
       });
       const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
         builder.sId,
@@ -3075,7 +3076,7 @@ describe("SkillResource", () => {
     it("keeps a non-editor out, and lets a workspace admin administrate but not write", async () => {
       const { skill } = await setupSkillWithEditor("Role Rules Skill");
 
-      const authFor = async (role: "user" | "admin") => {
+      const authFor = async (role: MembershipRoleType) => {
         const user = await UserFactory.basic();
         await MembershipFactory.associate(testContext.workspace, user, {
           role,

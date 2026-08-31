@@ -19,7 +19,7 @@ describe("GET /api/w/:wId/keys — secret visibility", () => {
         userId: user.id,
         isSystem: false,
         status: "active",
-        role: "builder",
+        role: "user",
       },
       [globalGroup]
     );
@@ -47,7 +47,7 @@ describe("GET /api/w/:wId/keys — secret visibility", () => {
         userId: user.id,
         isSystem: false,
         status: "active",
-        role: "builder",
+        role: "user",
       },
       [globalGroup]
     );

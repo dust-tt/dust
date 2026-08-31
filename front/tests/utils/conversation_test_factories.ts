@@ -13,6 +13,7 @@ import type {
   MessageFeedback,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
+import type { MembershipRoleType } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { UserType } from "@app/types/user";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -38,7 +39,7 @@ export function makeExtra(
 }
 
 export async function setupPlainConversation(
-  role: "admin" | "user" = "admin"
+  role: MembershipRoleType = "admin"
 ): Promise<{
   auth: Authenticator;
   conversation: ConversationResource;
@@ -53,7 +54,7 @@ export async function setupPlainConversation(
 }
 
 export async function setupProjectConversation(
-  role: "admin" | "user" = "admin"
+  role: MembershipRoleType = "admin"
 ): Promise<{
   auth: Authenticator;
   conversation: ConversationResource;

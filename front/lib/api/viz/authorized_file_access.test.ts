@@ -402,7 +402,7 @@ describe("computeAuthorizedFileAccess", () => {
         workspaceId: globalGroup.workspaceId,
         isSystem: false,
         status: "active",
-        role: "builder",
+        role: "user",
         userId: user.id,
       },
       [globalGroup]

@@ -93,7 +93,7 @@ async function callToolLines(
 // does not edit, and one published agent requesting a space the caller cannot read.
 async function setupOtherMembersAgents(workspace: LightWorkspaceType) {
   const agentOwner = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, agentOwner, { role: "builder" });
+  await MembershipFactory.associate(workspace, agentOwner, { role: "user" });
   const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
     agentOwner.sId,
     workspace.sId
@@ -479,7 +479,7 @@ describe("workspace_management tools", () => {
       const salesUser = await UserFactory.basic();
       const engineeringUser = await UserFactory.basic();
       await MembershipFactory.associate(workspace, salesUser, {
-        role: "builder",
+        role: "admin",
       });
       await MembershipFactory.associate(workspace, engineeringUser, {
         role: "user",
@@ -500,7 +500,7 @@ describe("workspace_management tools", () => {
 
       expect(lines).toHaveLength(2);
       expect(lines[0]).toContain(salesUser.sId);
-      expect(lines[0]).toContain(") - builder");
+      expect(lines[0]).toContain(") - admin");
       expect(lines[0]).toContain("groups: Enterprise Sales");
       expect(lines[1]).toContain(engineeringUser.sId);
       expect(lines[1]).toContain(") - user");

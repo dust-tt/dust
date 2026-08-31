@@ -30,7 +30,7 @@ async function createOtherMemberAgent(
   { name }: { name: string }
 ) {
   const agentOwner = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, agentOwner, { role: "builder" });
+  await MembershipFactory.associate(workspace, agentOwner, { role: "user" });
   const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
     agentOwner.sId,
     workspace.sId
@@ -73,7 +73,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_scope", (
   it("returns 403 for non-admins", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
 
     const response = await batchUpdateScope(workspace, {

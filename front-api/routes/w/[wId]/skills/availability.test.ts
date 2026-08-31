@@ -18,7 +18,7 @@ async function setupTest(role: MembershipRoleType = "admin") {
   // editor group: the batch endpoint relies on the publish permission alone.
   const skillOwner = await UserFactory.basic();
   await MembershipFactory.associate(workspace, skillOwner, {
-    role: "builder",
+    role: "user",
   });
   const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
     skillOwner.sId,
@@ -156,7 +156,7 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
   });
 
   it("denies a caller without the publish permission", async () => {
-    const { workspace, skillOwnerAuth } = await setupTest("builder");
+    const { workspace, skillOwnerAuth } = await setupTest("user");
     const skill = await SkillFactory.create(skillOwnerAuth);
 
     const response = await patchSkillsAvailability(workspace, {
@@ -168,8 +168,7 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
   });
 
   it("denies making skills auto-discoverable without the make_discoverable permission", async () => {
-    const { workspace, requestUser, skillOwnerAuth } =
-      await setupTest("builder");
+    const { workspace, requestUser, skillOwnerAuth } = await setupTest("user");
     // The caller can publish skills, but not make them auto-discoverable.
     await grantWorkspacePermission(workspace, requestUser, {
       grantType: "publish",
@@ -195,7 +194,7 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
 
   it("denies changing an auto-discoverable skill's availability without the make_discoverable permission", async () => {
     const { workspace, requestUser, requestUserAuth, skillOwnerAuth } =
-      await setupTest("builder");
+      await setupTest("user");
     // The caller can publish skills, but not make them auto-discoverable.
     await grantWorkspacePermission(workspace, requestUser, {
       grantType: "publish",
@@ -221,7 +220,7 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
 
   it("allows changing an auto-discoverable skill's availability with the make_discoverable permission", async () => {
     const { workspace, requestUser, requestUserAuth, skillOwnerAuth } =
-      await setupTest("builder");
+      await setupTest("user");
     await grantWorkspacePermission(workspace, requestUser, {
       grantType: "publish",
       resourceType: "skill",
@@ -249,7 +248,7 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
 
   it("allows making skills auto-discoverable with the make_discoverable permission", async () => {
     const { workspace, requestUser, requestUserAuth, skillOwnerAuth } =
-      await setupTest("builder");
+      await setupTest("user");
     await grantWorkspacePermission(workspace, requestUser, {
       grantType: "publish",
       resourceType: "skill",

@@ -367,7 +367,7 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
     expect(response.status).toBe(204);
   });
 
-  it("should deny non-author without builder role from deleting upload files", async () => {
+  it("should deny a non-author from deleting upload files", async () => {
     const { auth, workspace, globalSpace } = await createPrivateApiMockRequest({
       method: "DELETE",
       role: "user",
@@ -478,7 +478,7 @@ describe("POST /api/w/:wId/files/:fileId", () => {
     vi.clearAllMocks();
   });
 
-  it("should allow a non-builder skill editor to upload an attachment", async () => {
+  it("should allow a skill editor to upload an attachment", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
@@ -500,10 +500,10 @@ describe("POST /api/w/:wId/files/:fileId", () => {
     expect(response.status).toBe(200);
   });
 
-  it("should deny a builder who is not a skill editor", async () => {
+  it("should deny a member who is not a skill editor", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
     const skill = await SkillFactory.create(auth, {
       addCurrentUserAsEditor: false,
@@ -563,10 +563,10 @@ describe("POST /api/w/:wId/files/:fileId", () => {
     expect(response.status).toBe(200);
   });
 
-  it("should allow builder to upload any file", async () => {
+  it("should allow a workspace member to upload any file", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "POST",
-      role: "builder",
+      role: "user",
     });
 
     const conversation = await ConversationFactory.create(auth, {
@@ -618,7 +618,7 @@ describe("POST /api/w/:wId/files/:fileId", () => {
     expect(response.status).toBe(200);
   });
 
-  it("should deny non-author without builder role from uploading to space", async () => {
+  it("should deny a non-author from uploading to space", async () => {
     const { auth, workspace, globalSpace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",

@@ -17,7 +17,7 @@ describe("SkillSuggestionResource", () => {
   let skill: SkillResource;
 
   beforeEach(async () => {
-    const testSetup = await createResourceTest({ role: "builder" });
+    const testSetup = await createResourceTest({ role: "user" });
     workspace = testSetup.workspace;
     authenticator = testSetup.authenticator;
 
@@ -841,7 +841,7 @@ describe("SkillSuggestionResource", () => {
       // of conversation2.
       const otherUser = await UserFactory.basic();
       await MembershipFactory.associate(workspace, otherUser, {
-        role: "builder",
+        role: "user",
       });
       const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
         otherUser.sId,
@@ -879,7 +879,7 @@ describe("SkillSuggestionResource", () => {
       // Create a second user's conversation.
       const otherUser = await UserFactory.basic();
       await MembershipFactory.associate(workspace, otherUser, {
-        role: "builder",
+        role: "user",
       });
       const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
         otherUser.sId,

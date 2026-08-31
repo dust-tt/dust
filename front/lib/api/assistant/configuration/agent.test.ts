@@ -942,7 +942,7 @@ describe("updateAgentConfigurationsScope", () => {
 
   it("skips agents the caller cannot edit and is not admin of", async () => {
     const { authenticator: ownerAuth, workspace } = await createResourceTest({
-      role: "builder",
+      role: "user",
     });
     const ownedAgent = await AgentConfigurationFactory.createTestAgent(
       ownerAuth,
@@ -951,7 +951,7 @@ describe("updateAgentConfigurationsScope", () => {
 
     // Another builder who has no editing rights on the agent.
     const outsider = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, outsider, { role: "builder" });
+    await MembershipFactory.associate(workspace, outsider, { role: "user" });
     const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
       outsider.sId,
       workspace.sId
@@ -983,7 +983,7 @@ describe("updateAgentConfigurationsScope", () => {
     // A workspace member who is not in the agent's editor group.
     const nonEditor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, nonEditor, {
-      role: "builder",
+      role: "user",
     });
 
     // Trigger owned by the admin (member of the editor group).

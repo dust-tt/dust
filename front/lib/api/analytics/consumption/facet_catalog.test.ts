@@ -61,7 +61,7 @@ describe("listConsumptionFacetCatalog", () => {
       name: "Production key",
       workspaceId: workspace.id,
       status: "active" as const,
-      role: "builder" as const,
+      role: "user" as const,
     };
     await KeyResource.makeNew({ ...keyInput, isSystem: false }, [globalGroup]);
     await KeyResource.makeNew({ ...keyInput, isSystem: false }, [globalGroup]);

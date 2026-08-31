@@ -79,7 +79,7 @@ function patchFeedback(
 describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/feedbacks/:fId", () => {
   it("allows an editor of the agent to dismiss feedback", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
-      role: "builder",
+      role: "user",
       method: "PATCH",
     });
 
@@ -101,9 +101,9 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/feedbacks/:fId",
     expect(refetched?.dismissed).toBe(true);
   });
 
-  it("returns 403 for a builder who is not an editor of the agent", async () => {
+  it("returns 403 for a user who is not an editor of the agent", async () => {
     const { workspace } = await createPrivateApiMockRequest({
-      role: "builder",
+      role: "user",
       method: "PATCH",
     });
 
@@ -111,7 +111,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/feedbacks/:fId",
     // editor even though they have the builder role.
     const agentOwner: UserResource = await UserFactory.basic();
     await MembershipFactory.associate(workspace, agentOwner, {
-      role: "builder",
+      role: "user",
     });
     const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       agentOwner.sId,

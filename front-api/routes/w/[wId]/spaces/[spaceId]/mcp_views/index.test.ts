@@ -87,7 +87,7 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/mcp_views/:svId", () => {
 
   it("returns 403 when user is not authorized to delete a server view", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
-      role: "builder",
+      role: "user",
     });
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId

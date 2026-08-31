@@ -29,7 +29,7 @@ describe("AgentMessageFeedbackResource.getFeedbackCountsByConversationIds", () =
   let auth: Authenticator;
 
   beforeEach(async () => {
-    const setup = await createResourceTest({ role: "builder" });
+    const setup = await createResourceTest({ role: "user" });
     auth = setup.authenticator;
   });
 

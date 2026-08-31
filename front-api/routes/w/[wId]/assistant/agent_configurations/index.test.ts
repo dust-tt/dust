@@ -15,6 +15,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { MembershipRoleType } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
@@ -45,7 +46,7 @@ const TEST_AGENT_PARAMS = {
 
 export async function setupAgentOwner(
   workspace: LightWorkspaceType,
-  agentOwnerRole: "admin" | "builder" | "user"
+  agentOwnerRole: MembershipRoleType
 ) {
   const agentOwner = await UserFactory.basic();
   await MembershipFactory.associate(workspace, agentOwner, {
@@ -279,7 +280,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations", () => {
 
     // Both agents belong to another member: one is unpublished and the admin is not an editor,
     // the other requires a space the admin is not a member of.
-    const { agentOwnerAuth } = await setupAgentOwner(workspace, "builder");
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
     const restrictedSpace = await SpaceFactory.regular(workspace);
     await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
       name: "Unpublished agent",
@@ -313,7 +314,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations", () => {
   it("returns 403 for the manage_unrestricted view without admin role", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",
-      role: "builder",
+      role: "user",
     });
 
     const response = await listAgents(workspace, {
