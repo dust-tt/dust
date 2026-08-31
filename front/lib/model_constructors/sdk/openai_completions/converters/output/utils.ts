@@ -1,3 +1,4 @@
+import { openaiStreamErrorToErrorEvent } from "@app/lib/model_constructors/sdk/openai_shared/stream_error";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
   ErrorEvent,
@@ -8,12 +9,9 @@ import type {
   ToolCallEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
-import { buildHttpStatusErrorEvent } from "@app/lib/model_constructors/utils/classify_http_status";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isRecord, isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import { APIError } from "openai";
 import type { ChatCompletionChunk } from "openai/resources/chat/completions";
 
 // Parses tool-call arguments into an object, falling back to `{}` for malformed
@@ -67,27 +65,13 @@ function usageToTokenUsageEvent(
 }
 
 // Maps any error thrown while streaming into a unified `ErrorEvent`, so
-// everything leaving the endpoint is an event, not an exception.
+// everything leaving the endpoint is an event, not an exception. This adapter
+// is Fireworks-only (see stream/clients/fireworks.ts).
 export function streamErrorToErrorEvent(
   metadata: EndpointMetadata,
   error: unknown
 ): ErrorEvent {
-  if (error instanceof APIError) {
-    return buildHttpStatusErrorEvent({
-      metadata,
-      status: error.status,
-      provider: "Fireworks",
-      detail: error.message,
-      originalError: error,
-    });
-  }
-  return buildErrorEvent({
-    errorSource: "provider",
-    metadata,
-    type: "unknown_error",
-    message: `Unknown error from Fireworks: ${normalizeError(error).message}`,
-    originalError: error,
-  });
+  return openaiStreamErrorToErrorEvent(metadata, error, "Fireworks");
 }
 
 type Accumulator = { textParts: string; reasoningParts: string };
