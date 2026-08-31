@@ -843,6 +843,86 @@ async function fetchFreeSeatCreditsForMembersTable({
 }
 
 /**
+ * Sum, across every active member, the portion of their AWU consumption that
+ * draws from the workspace pool rather than their own seat allowance — the
+ * same `consumedFromPoolAwuCredits` split shown per-row in the members table,
+ * but totaled workspace-wide instead of per page. Used to compute the
+ * "unattributed" pool consumption left over once member and programmatic
+ * usage are subtracted from the cycle total (see `getAwuPoolSummary`).
+ *
+ * Reuses the same batched, cached fetchers as the members table (per-user
+ * usage, seat allocations, free-seat allowances) so this stays a handful of
+ * Metronome calls regardless of workspace size, not one per member.
+ * Returns `null` when Metronome isn't configured for the workspace.
+ */
+export async function sumActiveMembersPoolConsumedCredits({
+  workspace,
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  workspace: LightWorkspaceType;
+  metronomeCustomerId: string | null;
+  metronomeContractId: string | null;
+}): Promise<number | null> {
+  if (!metronomeCustomerId || !metronomeContractId) {
+    return null;
+  }
+
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+  });
+  if (memberships.length === 0) {
+    return 0;
+  }
+  const users = await UserResource.fetchByModelIds(
+    memberships.map((m) => m.userId)
+  );
+  const userByModelId = new Map(users.map((u) => [u.id, u]));
+  const members = memberships.flatMap((m) => {
+    const user = userByModelId.get(m.userId);
+    return user ? [{ sId: user.sId, seatType: m.seatType ?? null }] : [];
+  });
+
+  const [usageByMetronomeUserId, seatDataByUserId, { freeStartingByUserId }] =
+    await Promise.all([
+      fetchPerUserUsageCreditsForMembersTable({
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        metronomeContractId,
+        userIds: members.map((m) =>
+          m.seatType === "free" ? toFreeMetronomeUserId(m.sId) : m.sId
+        ),
+      }),
+      fetchSeatDataForMembersTable({
+        metronomeCustomerId,
+        metronomeContractId,
+      }),
+      fetchFreeSeatCreditsForMembersTable({ metronomeCustomerId }),
+    ]);
+
+  let sumConsumedFromPoolAwuCredits = 0;
+  for (const member of members) {
+    const metronomeUserId =
+      member.seatType === "free"
+        ? toFreeMetronomeUserId(member.sId)
+        : member.sId;
+    const totalConsumedCredits =
+      usageByMetronomeUserId.get(metronomeUserId) ?? 0;
+    const effectiveAllocationAwu =
+      freeStartingByUserId.get(member.sId) ??
+      seatDataByUserId.get(member.sId)?.awuAllocation ??
+      0;
+    const consumedFromAllowanceAwuCredits = Math.min(
+      totalConsumedCredits,
+      effectiveAllocationAwu
+    );
+    sumConsumedFromPoolAwuCredits +=
+      totalConsumedCredits - consumedFromAllowanceAwuCredits;
+  }
+  return sumConsumedFromPoolAwuCredits;
+}
+
+/**
  * Resolve the inputs needed to compute the effective per-user spend limit for
  * the members table:
  *   - the per-seat-type default cap totals, derived from the pool-only

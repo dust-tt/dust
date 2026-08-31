@@ -1,4 +1,7 @@
-import { getEsConsumedAwuCreditsForWorkspace } from "@app/lib/api/credits/members_usage";
+import {
+  getEsConsumedAwuCreditsForWorkspace,
+  sumActiveMembersPoolConsumedCredits,
+} from "@app/lib/api/credits/members_usage";
 import type { Authenticator } from "@app/lib/auth";
 import { amountCents } from "@app/lib/metronome/amounts";
 import {
@@ -311,12 +314,18 @@ export async function getAwuPoolSummary(
     invoicesResult,
     poolCommitIdsResult,
     finalizedInvoicesResult,
+    membersPoolConsumedCredits,
   ] = await Promise.all([
     listMetronomeBalances(metronomeCustomerId),
     listMetronomeDraftInvoices(metronomeCustomerId),
     getPoolCommitIds({ metronomeCustomerId }),
     listMetronomeFinalizedInvoices(metronomeCustomerId, {
       limit: cycleHistoryLimit,
+    }),
+    sumActiveMembersPoolConsumedCredits({
+      workspace,
+      metronomeCustomerId,
+      metronomeContractId,
     }),
   ]);
 
@@ -422,6 +431,7 @@ export async function getAwuPoolSummary(
       excessConsumedCredits,
       excessCycleBreakdown,
       programmaticConsumedCredits,
+      otherConsumedCredits: null,
     });
   }
 
@@ -500,6 +510,21 @@ export async function getAwuPoolSummary(
         awuCreditTypeId,
       });
 
+  // Whatever is left of the cycle total once programmatic and per-member pool
+  // draw are subtracted — mainly usage the invoice tags as member usage
+  // (`usage_type: "user"`) for someone with no active membership anymore.
+  const otherConsumedCredits =
+    currentCycleConsumedCredits !== null &&
+    programmaticConsumedCredits !== null &&
+    membersPoolConsumedCredits !== null
+      ? Math.max(
+          0,
+          currentCycleConsumedCredits -
+            programmaticConsumedCredits -
+            membersPoolConsumedCredits
+        )
+      : null;
+
   return new Ok({
     totalRemainingCredits,
     totalActiveCredits,
@@ -513,5 +538,6 @@ export async function getAwuPoolSummary(
     excessConsumedCredits,
     excessCycleBreakdown,
     programmaticConsumedCredits,
+    otherConsumedCredits,
   });
 }

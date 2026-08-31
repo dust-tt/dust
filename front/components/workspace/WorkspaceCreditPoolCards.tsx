@@ -40,6 +40,7 @@ interface WorkspaceCreditPoolValueCardsProps {
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
   programmaticConsumedCredits: number | null;
+  otherConsumedCredits: number | null;
   isLoading: boolean;
 }
 
@@ -49,6 +50,7 @@ export function WorkspaceCreditPoolValueCards({
   currentCycleStartMs,
   currentCycleEndMs,
   programmaticConsumedCredits,
+  otherConsumedCredits,
   isLoading,
 }: WorkspaceCreditPoolValueCardsProps) {
   const cycleDayLabel = formatCycleDayLabel(
@@ -85,13 +87,21 @@ export function WorkspaceCreditPoolValueCards({
         }
       />
       <ValueCard
-        title="Programmatic usage"
+        title="Programmatic / Other usage"
         isLoading={isLoading}
         content={
-          <div className="truncate text-2xl text-foreground">
-            {typeof programmaticConsumedCredits === "number"
-              ? formatCredits(programmaticConsumedCredits)
-              : "—"}
+          <div className="flex flex-col gap-1">
+            <div className="truncate text-2xl text-foreground">
+              {typeof programmaticConsumedCredits === "number"
+                ? formatCredits(programmaticConsumedCredits)
+                : "—"}
+            </div>
+            <span className="copy-sm text-muted-foreground">
+              Other:{" "}
+              {typeof otherConsumedCredits === "number"
+                ? formatCredits(otherConsumedCredits)
+                : "—"}
+            </span>
           </div>
         }
       />
@@ -104,6 +114,7 @@ interface WorkspaceExcessCreditsValueCardProps {
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
   programmaticConsumedCredits: number | null;
+  otherConsumedCredits: number | null;
   isLoading: boolean;
 }
 
@@ -112,6 +123,7 @@ export function WorkspaceExcessCreditsValueCard({
   currentCycleStartMs,
   currentCycleEndMs,
   programmaticConsumedCredits,
+  otherConsumedCredits,
   isLoading,
 }: WorkspaceExcessCreditsValueCardProps) {
   const cycleDayLabel = formatCycleDayLabel(
@@ -139,13 +151,21 @@ export function WorkspaceExcessCreditsValueCard({
         }
       />
       <ValueCard
-        title="Programmatic usage"
+        title="Programmatic / Other usage"
         isLoading={isLoading}
         content={
-          <div className="truncate text-2xl text-foreground">
-            {typeof programmaticConsumedCredits === "number"
-              ? formatCredits(programmaticConsumedCredits)
-              : "—"}
+          <div className="flex flex-col gap-1">
+            <div className="truncate text-2xl text-foreground">
+              {typeof programmaticConsumedCredits === "number"
+                ? formatCredits(programmaticConsumedCredits)
+                : "—"}
+            </div>
+            <span className="copy-sm text-muted-foreground">
+              Other:{" "}
+              {typeof otherConsumedCredits === "number"
+                ? formatCredits(otherConsumedCredits)
+                : "—"}
+            </span>
           </div>
         }
       />
@@ -214,6 +234,7 @@ interface WorkspaceCreditPoolSectionProps {
   excessConsumedCredits: number | null;
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
   programmaticConsumedCredits: number | null;
+  otherConsumedCredits: number | null;
   poolSecondaryContent?: ReactNode;
   footer?: ReactNode;
 }
@@ -234,6 +255,7 @@ export function WorkspaceCreditPoolSection({
   excessConsumedCredits,
   excessCycleBreakdown,
   programmaticConsumedCredits,
+  otherConsumedCredits,
   poolSecondaryContent,
   footer,
 }: WorkspaceCreditPoolSectionProps) {
@@ -267,6 +289,7 @@ export function WorkspaceCreditPoolSection({
             currentCycleStartMs={currentCycleStartMs}
             currentCycleEndMs={currentCycleEndMs}
             programmaticConsumedCredits={programmaticConsumedCredits}
+            otherConsumedCredits={otherConsumedCredits}
             isLoading={false}
           />
           {poolSecondaryContent}
@@ -282,6 +305,7 @@ export function WorkspaceCreditPoolSection({
             currentCycleStartMs={currentCycleStartMs}
             currentCycleEndMs={currentCycleEndMs}
             programmaticConsumedCredits={programmaticConsumedCredits}
+            otherConsumedCredits={otherConsumedCredits}
             isLoading={false}
           />
           <WorkspaceCreditPoolCycleHistoryTable

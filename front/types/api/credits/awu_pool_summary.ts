@@ -42,12 +42,22 @@ export type AwuPoolSummaryResponseBody = {
    */
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
   /**
-   * Live, Elasticsearch-derived AWU consumption for the current billing
-   * cycle from programmatic origins (API keys, webhooks, workflow/agent
-   * triggers) — usage not attributable to a member, so it doesn't appear in
-   * the members table's per-row totals but still draws from the same pool.
-   * `null` when there's no active cycle to resolve, or the analytics read
-   * failed.
+   * AWU consumption for the current billing cycle from programmatic origins
+   * (API keys, webhooks, workflow/agent triggers) — usage not attributable
+   * to a member, so it doesn't appear in the members table's per-row totals
+   * but still draws from the same pool. Read from the current draft
+   * invoice's own usage line items when available, falling back to a live
+   * Metronome usage query. `null` when there's no active cycle to resolve,
+   * or the read failed.
    */
   programmaticConsumedCredits: number | null;
+  /**
+   * The portion of `currentCycleConsumedCredits` attributable neither to
+   * programmatic usage nor to any active member: `currentCycleConsumedCredits
+   * - programmaticConsumedCredits - sum(active members' pool-drawn credits)`.
+   * Mainly usage the invoice tags as member usage (`usage_type: "user"`) for
+   * a user who no longer has an active membership (e.g. removed mid-cycle).
+   * `null` when any term of that computation is unknown.
+   */
+  otherConsumedCredits: number | null;
 };
