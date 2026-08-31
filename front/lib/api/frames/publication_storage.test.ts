@@ -2,7 +2,7 @@ import { getFramePublishLockName } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationFunctionArtifact } from "@app/lib/api/frames/publication_storage";
 import {
   activateFramePublication,
-  loadFramePublicationManifest,
+  loadFramePublicationDescriptor,
   publishFramePublication,
   storeFramePublication,
 } from "@app/lib/api/frames/publication_storage";
@@ -20,10 +20,10 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { redisMock } from "@app/tests/utils/mocks/redis";
 import { getNamespace } from "@app/tests/utils/test_cls";
 import { FrameManifestSchema } from "@app/types/api/frame_manifest";
+import { FramePublicationDescriptorSchema } from "@app/types/api/frame_publication";
 import {
+  getFramePublicationDescriptorPath,
   getFramePublicationFunctionBundlePath,
-  getFramePublicationFunctionSchemaPath,
-  getFramePublicationManifestPath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import {
@@ -31,7 +31,6 @@ import {
   frameV2ContentType,
   sandboxFunctionContentType,
 } from "@app/types/files";
-import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 async function setupFrame({
@@ -139,6 +138,14 @@ beforeEach(() => {
   fileStorageMock.reset();
 });
 
+function getStoredDescriptor(path: string) {
+  const storedDescriptor = fileStorageMock.getObject(path);
+  if (!storedDescriptor) {
+    throw new Error(`Missing stored Frame publication descriptor: ${path}`);
+  }
+  return FramePublicationDescriptorSchema.parse(JSON.parse(storedDescriptor));
+}
+
 describe("storeFramePublication", () => {
   it("stores runtime artifacts without source before the publication commit marker", async () => {
     const { auth, frame, workspaceId } = await setupFrame();
@@ -163,7 +170,7 @@ describe("storeFramePublication", () => {
     expect(new Set(savedPaths.slice(0, -1))).toEqual(
       new Set([getFramePublicationUiBundlePath(identity)])
     );
-    expect(savedPaths.at(-1)).toBe(getFramePublicationManifestPath(identity));
+    expect(savedPaths.at(-1)).toBe(getFramePublicationDescriptorPath(identity));
     expect(fileStorageMock.saveFileCalls.at(-1)?.contentType).toBe(
       frameV2ContentType
     );
@@ -205,37 +212,35 @@ describe("storeFramePublication", () => {
       ...identity,
       functionName: "add-task",
     });
-    const schemaPath = getFramePublicationFunctionSchemaPath({
-      ...identity,
-      functionName: "add-task",
-    });
     const savedPaths = fileStorageMock.saveFileCalls.map(
       ({ filePath }) => filePath
     );
 
     expect(savedPaths).toContain(bundlePath);
-    expect(savedPaths).toContain(schemaPath);
-    expect(savedPaths.at(-1)).toBe(getFramePublicationManifestPath(identity));
+    expect(savedPaths.at(-1)).toBe(getFramePublicationDescriptorPath(identity));
     expect(fileStorageMock.getObject(bundlePath)).toBe(
       functionArtifacts[0].bundleCode
-    );
-    expect(fileStorageMock.getObject(schemaPath)).toBe(
-      JSON.stringify({
-        userIdentity: functionArtifacts[0].userIdentity,
-        inputSchema: functionArtifacts[0].inputSchema,
-        outputSchema: functionArtifacts[0].outputSchema,
-      })
     );
     expect(
       fileStorageMock.saveFileCalls.find(
         ({ filePath }) => filePath === bundlePath
       )?.contentType
     ).toBe(sandboxFunctionContentType);
-    expect(
-      fileStorageMock.saveFileCalls.find(
-        ({ filePath }) => filePath === schemaPath
-      )?.contentType
-    ).toBe("application/json");
+    const descriptor = await loadFramePublicationDescriptor(auth, {
+      frame,
+      publicationId: result.value.publicationId,
+    });
+    expect(descriptor.isOk() && descriptor.value.functions).toEqual([
+      {
+        name: "add-task",
+        bundleSha256: computeSandboxFunctionBundleSha256(
+          functionArtifacts[0].bundleCode
+        ),
+        userIdentity: functionArtifacts[0].userIdentity,
+        inputSchema: functionArtifacts[0].inputSchema,
+        outputSchema: functionArtifacts[0].outputSchema,
+      },
+    ]);
   });
 
   it("retains declared database schemas in publication metadata", async () => {
@@ -259,13 +264,19 @@ describe("storeFramePublication", () => {
       return;
     }
 
-    const loadedManifest = await loadFramePublicationManifest(auth, {
+    const descriptor = await loadFramePublicationDescriptor(auth, {
       frame,
       publicationId: result.value.publicationId,
     });
-    expect(loadedManifest.isOk() && loadedManifest.value.databases).toEqual(
-      manifestWithDatabase.databases
-    );
+    expect(descriptor.isOk() && descriptor.value.databases).toEqual([
+      {
+        name: "tasks",
+        schemaSource: databaseSchema.content.toString("utf8"),
+        schemaSha256: computeSandboxFunctionBundleSha256(
+          databaseSchema.content.toString("utf8")
+        ),
+      },
+    ]);
   });
 
   it("rejects a publication whose UI entry point is missing", async () => {
@@ -316,6 +327,28 @@ describe("storeFramePublication", () => {
     expect(result.isErr() && result.error.message).toContain(
       "Frame database schema not found: tasks"
     );
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("rejects a database schema that is not valid UTF-8", async () => {
+    const { auth, frame } = await setupFrame();
+
+    const result = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest: manifestWithDatabase,
+      sourceFiles: [
+        ...sourceFiles,
+        {
+          relativePath: "databases/tasks.db.ts",
+          content: Buffer.from([0xff]),
+          contentType: "text/typescript" as const,
+        },
+      ],
+      uiBundleCode,
+    });
+
+    expect(result.isErr() && result.error.code).toBe("invalid_source");
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
@@ -417,7 +450,7 @@ describe("storeFramePublication", () => {
 });
 
 describe("Frame publication reads", () => {
-  it("loads the manifest of a committed publication", async () => {
+  it("loads the descriptor of a committed publication", async () => {
     const { auth, frame } = await setupFrame();
     const stored = await storeFramePublication(auth, {
       frame,
@@ -431,18 +464,33 @@ describe("Frame publication reads", () => {
       return;
     }
 
-    const loadedManifest = await loadFramePublicationManifest(auth, {
+    const descriptor = await loadFramePublicationDescriptor(auth, {
       frame,
       publicationId: stored.value.publicationId,
     });
-    expect(loadedManifest).toEqual(new Ok(manifest));
+    expect(descriptor.isOk()).toBe(true);
+    if (descriptor.isErr()) {
+      return;
+    }
+    expect(descriptor.value).toMatchObject({
+      schemaVersion: 1,
+      manifest,
+      publisherId: auth.getNonNullableUser().sId,
+      ui: {
+        bundleSha256: computeSandboxFunctionBundleSha256(uiBundleCode),
+      },
+      functions: [],
+      databases: [],
+    });
+    expect(descriptor.value.publishedAt).toEqual(expect.any(String));
+    expect(descriptor.value.sourceFiles).toHaveLength(sourceFiles.length);
   });
 
-  it("rejects an invalid stored manifest", async () => {
+  it("rejects an invalid stored descriptor", async () => {
     const { auth, frame, workspaceId } = await setupFrame();
     const publicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
     fileStorageMock.setObject(
-      getFramePublicationManifestPath({
+      getFramePublicationDescriptorPath({
         workspaceId,
         frameId: frame.sId,
         publicationId,
@@ -450,12 +498,57 @@ describe("Frame publication reads", () => {
       "not json"
     );
 
-    const result = await loadFramePublicationManifest(auth, {
+    const result = await loadFramePublicationDescriptor(auth, {
       frame,
       publicationId,
     });
 
-    expect(result.isErr() && result.error.code).toBe("invalid_manifest");
+    expect(result.isErr() && result.error.code).toBe("invalid_publication");
+  });
+
+  it("rejects a modified database schema contract", async () => {
+    const { auth, frame, workspaceId } = await setupFrame();
+    const stored = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts: [],
+      manifest: manifestWithDatabase,
+      sourceFiles: [
+        ...sourceFiles,
+        {
+          relativePath: "databases/tasks.db.ts",
+          content: Buffer.from("export const tasks = {};"),
+          contentType: "text/typescript" as const,
+        },
+      ],
+      uiBundleCode,
+    });
+    expect(stored.isOk()).toBe(true);
+    if (stored.isErr()) {
+      return;
+    }
+    const descriptorPath = getFramePublicationDescriptorPath({
+      workspaceId,
+      frameId: frame.sId,
+      publicationId: stored.value.publicationId,
+    });
+    const descriptor = getStoredDescriptor(descriptorPath);
+    fileStorageMock.setObject(
+      descriptorPath,
+      JSON.stringify({
+        ...descriptor,
+        databases: descriptor.databases.map((database) => ({
+          ...database,
+          schemaSource: "export const tampered = {};",
+        })),
+      })
+    );
+
+    const result = await loadFramePublicationDescriptor(auth, {
+      frame,
+      publicationId: stored.value.publicationId,
+    });
+
+    expect(result.isErr() && result.error.code).toBe("invalid_publication");
   });
 });
 
@@ -566,6 +659,40 @@ describe("activateFramePublication", () => {
     );
   });
 
+  it("rejects a modified function bundle before activation", async () => {
+    const { auth, frame, workspaceId } = await setupFrame();
+    const stored = await storeFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest: manifestWithFunction,
+      sourceFiles: sourceFilesWithFunction,
+      uiBundleCode,
+    });
+    expect(stored.isOk()).toBe(true);
+    if (stored.isErr()) {
+      return;
+    }
+    fileStorageMock.setObject(
+      getFramePublicationFunctionBundlePath({
+        workspaceId,
+        frameId: frame.sId,
+        publicationId: stored.value.publicationId,
+        functionName: "add-task",
+      }),
+      "export const tampered = true;"
+    );
+
+    const result = await activateFramePublication(auth, {
+      frame,
+      publicationId: stored.value.publicationId,
+    });
+
+    expect(result.isErr() && result.error.code).toBe(
+      "invalid_function_artifact"
+    );
+    expect(frame.useCaseMetadata?.activePublicationId).toBeUndefined();
+  });
+
   it("rolls back the allowlist and function rows when activation fails", async () => {
     const { auth, frame, workspaceId } = await setupFrame();
     vi.spyOn(frame, "computeAuthorizedFileAccess").mockImplementation(
@@ -590,13 +717,26 @@ describe("activateFramePublication", () => {
     }
 
     const stagedBundle = "export default function Staged() {}";
+    const identity = {
+      workspaceId,
+      frameId: frame.sId,
+      publicationId: active.value.publicationId,
+    };
     fileStorageMock.setObject(
-      getFramePublicationUiBundlePath({
-        workspaceId,
-        frameId: frame.sId,
-        publicationId: active.value.publicationId,
-      }),
+      getFramePublicationUiBundlePath(identity),
       stagedBundle
+    );
+    const descriptor = getStoredDescriptor(
+      getFramePublicationDescriptorPath(identity)
+    );
+    fileStorageMock.setObject(
+      getFramePublicationDescriptorPath(identity),
+      JSON.stringify({
+        ...descriptor,
+        ui: {
+          bundleSha256: computeSandboxFunctionBundleSha256(stagedBundle),
+        },
+      })
     );
 
     const parentTransaction =
@@ -710,7 +850,7 @@ describe("publishFramePublication", () => {
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
     await frame.setActiveFramePublication(activePublicationId);
     fileStorageMock.setFileSaveFails((filePath) =>
-      filePath.endsWith(".schema.json")
+      filePath.endsWith("/functions/add-task.ts")
     );
 
     await expect(

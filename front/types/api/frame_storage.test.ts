@@ -1,9 +1,8 @@
 import {
   getFrameBasePath,
   getFrameDatabaseReplicaBasePath,
+  getFramePublicationDescriptorPath,
   getFramePublicationFunctionBundlePath,
-  getFramePublicationFunctionSchemaPath,
-  getFramePublicationManifestPath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import { describe, expect, it } from "vitest";
@@ -17,7 +16,7 @@ const IDS = {
 describe("Frames v2 GCS paths", () => {
   it("keeps publications under the Frame identity", () => {
     expect(getFrameBasePath(IDS)).toBe("w/w_123/frames/fil_456/");
-    expect(getFramePublicationManifestPath(IDS)).toBe(
+    expect(getFramePublicationDescriptorPath(IDS)).toBe(
       "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/publication.json"
     );
     expect(getFramePublicationUiBundlePath(IDS)).toBe(
@@ -30,14 +29,6 @@ describe("Frames v2 GCS paths", () => {
       })
     ).toBe(
       "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions/add-task.ts"
-    );
-    expect(
-      getFramePublicationFunctionSchemaPath({
-        ...IDS,
-        functionName: "add-task",
-      })
-    ).toBe(
-      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions/add-task.schema.json"
     );
   });
 
