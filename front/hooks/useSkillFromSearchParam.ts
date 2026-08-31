@@ -23,12 +23,13 @@ export function useSkillFromSearchParam(workspaceId: string) {
       return;
     }
 
+    // Keep a space between the prefill and what the user types.
     setPendingInputText(
       `Use ${serializeSkillTag({
         id: skill.sId,
         name: skill.name,
         icon: skill.icon,
-      })} for this request:`,
+      })} for this request: `,
       { replace: true }
     );
 

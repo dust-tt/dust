@@ -50,7 +50,7 @@ export function SkillCreatedDialog({
             },
           }}
           rightButtonProps={{
-            label: "Try skill",
+            label: "Start conversation",
             icon: MessageCircle01,
             href: conversationRoute,
           }}
