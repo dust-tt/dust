@@ -1,4 +1,7 @@
-import { upsertAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/store";
+import {
+  upsertAgentMessageConsumptionAnalyticsDocuments,
+  upsertVersionedAgentMessageConsumptionAnalyticsDocuments,
+} from "@app/lib/analytics/agent_message_consumption/store";
 import {
   CONSUMPTION_ANALYTICS_ALIAS_NAME,
   ElasticsearchError,
@@ -162,5 +165,52 @@ describe("upsertAgentMessageConsumptionAnalyticsDocuments", () => {
       expect(result.error.message).toBe("queue full");
       expect(result.error.statusCode).toBe(429);
     }
+  });
+
+  it("uses external versions for outbox-driven upserts", async () => {
+    const document = makeDocument();
+    const result =
+      await upsertVersionedAgentMessageConsumptionAnalyticsDocuments([
+        { document, version: 42 },
+      ]);
+
+    expect(result).toEqual(new Ok({ versionConflictCount: 0 }));
+    expect(bulkMock).toHaveBeenCalledWith({
+      body: [
+        {
+          index: {
+            _index: CONSUMPTION_ANALYTICS_ALIAS_NAME,
+            _id: "workspace_1_agent_message_1_run-usage:1",
+            version: 42,
+            version_type: "external_gte",
+          },
+        },
+        document,
+      ],
+      refresh: false,
+    });
+  });
+
+  it("accepts external-version conflicts but returns other item failures", async () => {
+    bulkMock.mockResolvedValueOnce({
+      errors: true,
+      items: [
+        {
+          index: {
+            _index: CONSUMPTION_ANALYTICS_ALIAS_NAME,
+            status: 409,
+            error: { type: "version_conflict_engine_exception", reason: "old" },
+          },
+        },
+      ],
+      took: 1,
+    });
+
+    const result =
+      await upsertVersionedAgentMessageConsumptionAnalyticsDocuments([
+        { document: makeDocument(), version: 41 },
+      ]);
+
+    expect(result).toEqual(new Ok({ versionConflictCount: 1 }));
   });
 });
