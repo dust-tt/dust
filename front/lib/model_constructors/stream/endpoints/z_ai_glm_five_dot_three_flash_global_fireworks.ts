@@ -1,5 +1,5 @@
-import { WithZAiGlm53FlashConfig } from "@app/lib/model_constructors/providers/fireworks/models/glm_five_dot_three_flash";
 import type { FireworksInputConfig } from "@app/lib/model_constructors/providers/fireworks/inputConfig";
+import { WithZAiGlm53FlashConfig } from "@app/lib/model_constructors/providers/fireworks/models/glm_five_dot_three_flash";
 import { FireworksStream } from "@app/lib/model_constructors/stream/clients/fireworks";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";

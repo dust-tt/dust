@@ -31,7 +31,9 @@ const configSchema = fireworksConfigSchema.extend({
 });
 
 export function WithZAiGlm53FlashConfig<
-  TBase extends abstract new (...args: any[]) => object,
+  TBase extends abstract new (
+    ...args: any[]
+  ) => object,
 >(Base: TBase) {
   abstract class ZAiGlm53Flash extends Base {
     static readonly model = GLM_5P3_FLASH;
