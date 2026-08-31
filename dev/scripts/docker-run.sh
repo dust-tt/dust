@@ -109,6 +109,7 @@ ensure_container_running() {
     -e LC_ALL=C.UTF-8 \
     -e DUST_IN_CONTAINER=1 \
     -p 3000:3000 \
+    -p 3010:3010 \
     -p 3011:3011 \
     -p 3001:3001 \
     -p 3007:3007 \
