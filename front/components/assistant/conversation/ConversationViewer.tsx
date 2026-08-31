@@ -268,11 +268,133 @@ export const ConversationViewer = ({
   const isAutoScrollEnabledRef = useRef(true);
   const hasLeftBottomSinceDetachRef = useRef(false);
   const lastTouchYRef = useRef<number | null>(null);
+  const previousScrollHeightRef = useRef<number | null>(null);
+  const previousScrollTopRef = useRef<number | null>(null);
+  const getScrollElement = useCallback(
+    () =>
+      isMobile
+        ? document.scrollingElement
+        : virtuosoMessageListRef.current?.scrollerElement(),
+    [isMobile]
+  );
+  const captureScrollPosition = useCallback(() => {
+    const scrollElement = getScrollElement();
+    previousScrollHeightRef.current = scrollElement?.scrollHeight ?? null;
+    previousScrollTopRef.current = scrollElement?.scrollTop ?? null;
+  }, [getScrollElement]);
   const detachFromAutoScroll = useCallback(() => {
+    captureScrollPosition();
+    if (!isAutoScrollEnabledRef.current) {
+      return;
+    }
+
     isAutoScrollEnabledRef.current = false;
     hasLeftBottomSinceDetachRef.current = false;
     virtuosoMessageListRef.current?.cancelSmoothScroll();
-  }, []);
+  }, [captureScrollPosition]);
+
+  // While the list's scroll direction is "up", Virtuoso compensates row-height
+  // growth by adding the same delta to scrollTop. Streaming markdown can keep
+  // that compensation alive indefinitely. A native listener recognizes those
+  // matching deltas and restores the detached position before the next paint.
+  useEffect(() => {
+    const scrollElement = getScrollElement();
+    if (!scrollElement) {
+      return;
+    }
+
+    const scrollTarget = isMobile ? window : scrollElement;
+    const listElement =
+      virtuosoMessageListRef.current?.scrollerElement()?.firstElementChild;
+    previousScrollHeightRef.current = scrollElement.scrollHeight;
+    previousScrollTopRef.current = scrollElement.scrollTop;
+
+    const resizeObserver = new ResizeObserver(() => {
+      // Keep the height baseline current when the list grows without moving.
+      // If scrollTop changed, the scroll listener still needs the old values
+      // to recognize and undo Virtuoso's height compensation.
+      if (
+        !isAutoScrollEnabledRef.current &&
+        scrollElement.scrollTop === previousScrollTopRef.current
+      ) {
+        previousScrollHeightRef.current = scrollElement.scrollHeight;
+      }
+    });
+    if (listElement) {
+      resizeObserver.observe(listElement);
+    }
+
+    const preserveDetachedScrollPosition = () => {
+      const scrollHeight = scrollElement.scrollHeight;
+      const previousScrollHeight = previousScrollHeightRef.current;
+      const previousScrollTop = previousScrollTopRef.current;
+      let scrollTop = scrollElement.scrollTop;
+      const scrollHeightDelta =
+        previousScrollHeight === null ? 0 : scrollHeight - previousScrollHeight;
+      const scrollTopDelta =
+        previousScrollTop === null ? 0 : scrollTop - previousScrollTop;
+      const viewportHeight = isMobile
+        ? window.innerHeight
+        : scrollElement.clientHeight;
+      const bottomOffset = scrollHeight - viewportHeight - scrollTop;
+
+      if (
+        isAutoScrollEnabledRef.current &&
+        previousScrollTop !== null &&
+        scrollTop < previousScrollTop &&
+        bottomOffset > AUTO_SCROLL_BOTTOM_THRESHOLD_PX
+      ) {
+        isAutoScrollEnabledRef.current = false;
+        hasLeftBottomSinceDetachRef.current = true;
+        virtuosoMessageListRef.current?.cancelSmoothScroll();
+      }
+
+      // Reattach before correcting a concurrent height change. Otherwise a
+      // stream update landing with the user's scroll-to-bottom can move the
+      // viewport back up and make the reattachment miss.
+      if (
+        !isAutoScrollEnabledRef.current &&
+        hasLeftBottomSinceDetachRef.current &&
+        bottomOffset <= AUTO_SCROLL_BOTTOM_THRESHOLD_PX
+      ) {
+        isAutoScrollEnabledRef.current = true;
+        hasLeftBottomSinceDetachRef.current = false;
+      }
+
+      if (
+        !isAutoScrollEnabledRef.current &&
+        scrollHeightDelta !== 0 &&
+        Math.abs(scrollTopDelta - scrollHeightDelta) <= 1
+      ) {
+        scrollElement.scrollTop -= scrollTopDelta;
+        scrollTop = scrollElement.scrollTop;
+      }
+
+      if (!isAutoScrollEnabledRef.current) {
+        const correctedBottomOffset = scrollHeight - viewportHeight - scrollTop;
+        if (correctedBottomOffset > AUTO_SCROLL_BOTTOM_THRESHOLD_PX) {
+          hasLeftBottomSinceDetachRef.current = true;
+        } else if (hasLeftBottomSinceDetachRef.current) {
+          isAutoScrollEnabledRef.current = true;
+          hasLeftBottomSinceDetachRef.current = false;
+        }
+      }
+
+      previousScrollHeightRef.current = scrollHeight;
+      previousScrollTopRef.current = scrollTop;
+    };
+
+    scrollTarget.addEventListener("scroll", preserveDetachedScrollPosition, {
+      passive: true,
+    });
+    return () => {
+      resizeObserver.disconnect();
+      scrollTarget.removeEventListener(
+        "scroll",
+        preserveDetachedScrollPosition
+      );
+    };
+  }, [getScrollElement, isMobile]);
   const sendNotification = useSendNotification();
   const { incrementPendingSteeringCount } = useGenerationContext();
   const { peekPendingFirstMessage } = useContext(InputBarContext);
@@ -1360,15 +1482,6 @@ export const ConversationViewer = ({
 
   const onScroll = useCallback(
     (location: ListScrollLocation) => {
-      if (!isAutoScrollEnabledRef.current) {
-        if (location.bottomOffset > AUTO_SCROLL_BOTTOM_THRESHOLD_PX) {
-          hasLeftBottomSinceDetachRef.current = true;
-        } else if (hasLeftBottomSinceDetachRef.current) {
-          isAutoScrollEnabledRef.current = true;
-          hasLeftBottomSinceDetachRef.current = false;
-        }
-      }
-
       const isLoadingData =
         isLoadingInitialData || isMessagesLoading || isValidating;
 
@@ -1393,11 +1506,17 @@ export const ConversationViewer = ({
 
   const onWheel = useCallback(
     (event: WheelEvent<HTMLDivElement>) => {
-      if (!event.ctrlKey && event.deltaY < 0) {
+      if (event.ctrlKey) {
+        return;
+      }
+
+      if (event.deltaY < 0) {
         detachFromAutoScroll();
+      } else if (!isAutoScrollEnabledRef.current) {
+        captureScrollPosition();
       }
     },
-    [detachFromAutoScroll]
+    [captureScrollPosition, detachFromAutoScroll]
   );
 
   const onTouchStart = useCallback((event: TouchEvent<HTMLDivElement>) => {
@@ -1411,12 +1530,15 @@ export const ConversationViewer = ({
         return;
       }
 
+      if (!isAutoScrollEnabledRef.current) {
+        captureScrollPosition();
+      }
       if (lastTouchYRef.current !== null && touchY > lastTouchYRef.current) {
         detachFromAutoScroll();
       }
       lastTouchYRef.current = touchY;
     },
-    [detachFromAutoScroll]
+    [captureScrollPosition, detachFromAutoScroll]
   );
 
   const onTouchEnd = useCallback(() => {

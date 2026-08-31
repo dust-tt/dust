@@ -31,31 +31,27 @@ type VirtuosoMethods = VirtuosoMessageListMethods<
   VirtuosoMessageListContext
 >;
 
-function createAutoScrollToBottomBehavior(
+function createAutoScrollToBottomLocation(
   isAutoScrollEnabledRef: MutableRefObject<boolean>
 ) {
-  return ({ scrollInProgress }: { scrollInProgress: boolean }) => {
-    if (!isAutoScrollEnabledRef.current || scrollInProgress) {
-      return false;
-    }
-
-    return {
-      index: "LAST" as const,
-      align: "end" as const,
-      behavior: "instant" as const,
-    };
-  };
+  return () =>
+    isAutoScrollEnabledRef.current
+      ? {
+          index: "LAST" as const,
+          align: "end" as const,
+          behavior: "instant" as const,
+        }
+      : null;
 }
 
-function batchMapMessagesWithAutoScroll(
+function mapMessagesWithScrollPolicy(
   methods: VirtuosoMethods,
   isAutoScrollEnabledRef: MutableRefObject<boolean>,
   mapFn: (message: VirtuosoMessage, index: number) => VirtuosoMessage
 ) {
-  methods.data.batch(
-    () => methods.data.map(mapFn),
-    createAutoScrollToBottomBehavior(isAutoScrollEnabledRef)
-  );
+  methods.data.map(mapFn, {
+    location: createAutoScrollToBottomLocation(isAutoScrollEnabledRef),
+  });
 }
 
 function createUpdateMessageThrottled(
@@ -72,7 +68,7 @@ function createUpdateMessageThrottled(
       content: string;
       sId: string;
     }) => {
-      batchMapMessagesWithAutoScroll(methods, isAutoScrollEnabledRef, (m) => {
+      mapMessagesWithScrollPolicy(methods, isAutoScrollEnabledRef, (m) => {
         if (isAgentMessageWithStreaming(m) && m.sId === sId) {
           return {
             ...m,
@@ -324,7 +320,7 @@ export function useAgentMessageStream({
 
   const mapMessagesWithAutoScroll = useCallback(
     (mapFn: (message: VirtuosoMessage, index: number) => VirtuosoMessage) => {
-      batchMapMessagesWithAutoScroll(methods, isAutoScrollEnabledRef, mapFn);
+      mapMessagesWithScrollPolicy(methods, isAutoScrollEnabledRef, mapFn);
     },
     [methods, isAutoScrollEnabledRef]
   );
