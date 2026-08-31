@@ -125,7 +125,7 @@ function ToolValidationDetailsDialog({
             {displayLabel}
           </DialogDescription>
         </DialogHeader>
-        <DialogContainer className="p-0">
+        <DialogContainer className="max-h-[60vh] overflow-y-auto p-0">
           <ToolValidationDetails
             blockedAction={validationRequest}
             user={currentUser}
