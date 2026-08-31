@@ -1,9 +1,14 @@
 // biome-ignore-all lint/plugin/noRawSql: relocation SQL file requires raw SQL
 
 import { frontSequelize } from "@app/lib/resources/storage";
-import { UserModel } from "@app/lib/resources/storage/models/user";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import {
+  buildDestinationIdNormalization,
+  normalizeStatements,
+  readDestinationIdNormalization,
+  writeDestinationIdNormalization,
+} from "@app/temporal/relocation/activities/destination_region/front/id_normalization";
 import type {
   CoreEntitiesRelocationBlob,
   RelocationBlob,
@@ -11,25 +16,24 @@ import type {
 import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
-  writeToRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
 import type { RegionType } from "@app/types/region";
-import type { ModelId } from "@app/types/shared/model_id";
-import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
-import { Op, QueryTypes } from "sequelize";
+import { QueryTypes } from "sequelize";
 
-export async function writeCoreEntitiesToDestinationRegion({
-  dataPath,
-  destRegion,
-  sourceRegion,
-  workspaceId,
-}: {
+interface WriteCoreEntitiesParams {
   dataPath: string;
   destRegion: RegionType;
   sourceRegion: RegionType;
   workspaceId: string;
-}) {
+}
+
+export async function writeCoreEntitiesToDestinationRegionWithIdNormalization({
+  dataPath,
+  destRegion,
+  sourceRegion,
+  workspaceId,
+}: WriteCoreEntitiesParams) {
   const localLogger = logger.child({
     destRegion,
     sourceRegion,
@@ -42,8 +46,20 @@ export async function writeCoreEntitiesToDestinationRegion({
   const blob =
     await readFromRelocationStorage<CoreEntitiesRelocationBlob>(dataPath);
 
+  const normalization = await buildDestinationIdNormalization({ blob });
+  await writeDestinationIdNormalization({
+    destRegion,
+    normalization,
+    sourceRegion,
+    workspaceId,
+  });
+
   assert(blob.statements.workspace.length === 1, "Expected one workspace SQL");
-  const [workspaceStatements] = blob.statements.workspace;
+  const [workspaceStatements] = normalizeStatements({
+    normalization,
+    statements: blob.statements.workspace,
+    tableName: "workspaces",
+  });
 
   // 1) Create workspace.
 
@@ -53,7 +69,12 @@ export async function writeCoreEntitiesToDestinationRegion({
   });
 
   // 2) Create users in transaction.
-  for (const { sql, params } of blob.statements.users) {
+  const userStatements = normalizeStatements({
+    normalization,
+    statements: blob.statements.users,
+    tableName: "users",
+  });
+  for (const { sql, params } of userStatements) {
     await withTransaction(async (transaction) => {
       await frontSequelize.query(sql, {
         bind: params,
@@ -64,7 +85,12 @@ export async function writeCoreEntitiesToDestinationRegion({
   }
 
   // 3) Create users metadata in transaction.
-  for (const { sql, params } of blob.statements.user_metadata) {
+  const userMetadataStatements = normalizeStatements({
+    normalization,
+    statements: blob.statements.user_metadata,
+    tableName: "user_metadata",
+  });
+  for (const { sql, params } of userMetadataStatements) {
     await withTransaction(async (transaction) => {
       await frontSequelize.query(sql, {
         bind: params,
@@ -90,19 +116,21 @@ export async function writeCoreEntitiesToDestinationRegion({
   await deleteFromRelocationStorage(dataPath);
 }
 
-export async function processFrontTableChunk({
+interface ProcessFrontTableChunkParams {
+  dataPath: string;
+  destRegion: RegionType;
+  sourceRegion: RegionType;
+  tableName: string;
+  workspaceId: string;
+}
+
+export async function processFrontTableChunkWithIdNormalization({
   dataPath,
   destRegion,
   sourceRegion,
   tableName,
   workspaceId,
-}: {
-  dataPath: string;
-  destRegion: string;
-  sourceRegion: string;
-  tableName: string;
-  workspaceId: string;
-}) {
+}: ProcessFrontTableChunkParams) {
   const localLogger = logger.child({
     destRegion,
     sourceRegion,
@@ -130,13 +158,24 @@ export async function processFrontTableChunk({
     }
   }
 
+  const normalization = await readDestinationIdNormalization({
+    destRegion,
+    sourceRegion,
+    workspaceId,
+  });
+
   for (const [tableName, statements] of Object.entries(blob.statements)) {
     logger.info(
       { tableName, dataPath, statementCount: statements.length },
       "Executing SQL statements"
     );
 
-    for (const { sql, params } of statements) {
+    const normalizedStatements = normalizeStatements({
+      normalization,
+      statements,
+      tableName,
+    });
+    for (const { sql, params } of normalizedStatements) {
       await withTransaction(async (transaction) =>
         frontSequelize.query(sql, {
           bind: params,
@@ -150,109 +189,4 @@ export async function processFrontTableChunk({
   localLogger.info("[SQL] Table chunk written successfully.");
 
   await deleteFromRelocationStorage(dataPath);
-}
-export async function prepareDestinationUserMapping({
-  destRegion,
-  sourceRegion,
-  workspaceId,
-  usersDataPath,
-}: {
-  destRegion: RegionType;
-  sourceRegion: RegionType;
-  workspaceId: string;
-  usersDataPath: string | null;
-}): Promise<string | null> {
-  const localLogger = logger.child({
-    destRegion,
-    sourceRegion,
-    workspaceId,
-  });
-
-  if (!usersDataPath) {
-    localLogger.info(
-      "[SQL Core Entities] No users data provided for mapping, skipping."
-    );
-    return null;
-  }
-
-  try {
-    const usersForMapping =
-      await readFromRelocationStorage<
-        { id: ModelId; workOSUserId: string | null }[]
-      >(usersDataPath);
-
-    const workOSUserIds = Array.from(
-      new Set(
-        usersForMapping
-          .map((user) => user.workOSUserId)
-          .filter((workOSUserId): workOSUserId is string => !!workOSUserId)
-      )
-    );
-
-    if (workOSUserIds.length === 0) {
-      localLogger.info(
-        "[SQL Core Entities] No WorkOS users to reconcile, skipping mapping."
-      );
-      return null;
-    }
-
-    const existingUsers = await UserModel.findAll({
-      attributes: ["id", "workOSUserId"],
-      where: {
-        workOSUserId: {
-          [Op.in]: workOSUserIds,
-        },
-      },
-      raw: true,
-    });
-
-    if (existingUsers.length === 0) {
-      localLogger.info(
-        "[SQL Core Entities] No conflicting users found in destination region."
-      );
-      return null;
-    }
-
-    const existingUsersByWorkOSId = new Map<string, ModelId>(
-      removeNulls(
-        existingUsers.map((user) =>
-          user.workOSUserId ? [user.workOSUserId, user.id] : null
-        )
-      )
-    );
-
-    const mapping: Record<string, ModelId> = {};
-    for (const user of usersForMapping) {
-      if (!user.workOSUserId) {
-        continue;
-      }
-      const destinationUserId = existingUsersByWorkOSId.get(user.workOSUserId);
-      if (destinationUserId) {
-        mapping[user.id.toString()] = destinationUserId;
-      }
-    }
-
-    const mappingSize = Object.keys(mapping).length;
-    if (mappingSize === 0) {
-      localLogger.info(
-        "[SQL Core Entities] No divergent user IDs detected, mapping not created."
-      );
-      return null;
-    }
-
-    const userIdMappingPath = await writeToRelocationStorage(mapping, {
-      workspaceId,
-      type: "front",
-      operation: "user_id_mapping",
-    });
-
-    localLogger.info(
-      { mappingSize, userIdMappingPath },
-      "[SQL Core Entities] Created user ID mapping for destination region."
-    );
-
-    return userIdMappingPath;
-  } finally {
-    await deleteFromRelocationStorage(usersDataPath);
-  }
 }
