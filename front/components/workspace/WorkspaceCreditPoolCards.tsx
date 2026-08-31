@@ -87,7 +87,7 @@ export function WorkspaceCreditPoolValueCards({
         }
       />
       <ValueCard
-        title="Programmatic / Other usage"
+        title="Programmatic / Other usage this cycle"
         isLoading={isLoading}
         content={
           <div className="flex flex-col gap-1">
@@ -151,7 +151,7 @@ export function WorkspaceExcessCreditsValueCard({
         }
       />
       <ValueCard
-        title="Programmatic / Other usage"
+        title="Programmatic / Other usage this cycle"
         isLoading={isLoading}
         content={
           <div className="flex flex-col gap-1">
