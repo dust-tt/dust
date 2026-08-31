@@ -69,9 +69,6 @@ describe("poke tools - security gates", () => {
         workspace.sId
       );
 
-      // Sanity: auth IS a super user but the workspace is NOT the Dust workspace.
-      expect(auth.isDustSuperUser()).toBe(true);
-
       const tool = getToolByName("get_workspace_metadata");
       const result = await tool.handler(
         { workspace_id: workspace.sId },

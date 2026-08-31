@@ -54,8 +54,8 @@ export type SegmentWorkspaceResponseBody = {
 const app = pokeApp();
 
 // `auth-context` runs without `withPokeWorkspace` because it needs to handle
-// the missing-workspace case (cross-region redirect). It owns its own
-// session-based auth flow internally. Must be mounted before the
+// the missing-workspace case (cross-region redirect). It re-scopes the
+// unscoped poke Authenticator itself. Must be mounted before the
 // `withPokeWorkspace` middleware below.
 app.route("/auth-context", authContext);
 

@@ -21,7 +21,9 @@ export type WorkspaceAwareCtx = SessionCtx & {
   };
 };
 
-export type PokeCtx = SessionCtx & {
+// Poke authenticates via Cloudflare Access JWT (preferred) or a WorkOS
+// super-user session fallback. Only the resulting Authenticator is exposed.
+export type PokeCtx = {
   Variables: {
     auth: Authenticator;
     pokeRoles: PokeRole[];

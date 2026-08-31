@@ -133,7 +133,7 @@ export const applyGroupRoles = createPlugin({
           user,
           workspace,
           newRole: expectedRole,
-          author: auth.user()?.toJSON() ?? "no-author",
+          author: auth.toPokeUserJSON(),
         });
 
         if (updateResult.isErr()) {
