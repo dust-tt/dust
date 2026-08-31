@@ -70,6 +70,7 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import posthog from "posthog-js";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
@@ -330,7 +331,15 @@ function CustomizationSection() {
     if (typeof window !== "undefined") {
       localStorage.setItem("submitMessageKey", submitKey);
     }
-    setAgentsSectionVisible(localAgentsSectionVisible);
+    if (localAgentsSectionVisible !== isAgentsSectionVisible) {
+      setAgentsSectionVisible(localAgentsSectionVisible);
+      // Person property (not a click event) so we can query, per user, the
+      // actual resting preference for the home "Chat with..." section
+      // rather than counting toggle clicks that may never get saved.
+      posthog.setPersonProperties({
+        chat_with_section_enabled: localAgentsSectionVisible,
+      });
+    }
   };
 
   return (
@@ -429,15 +438,9 @@ function CustomizationSection() {
           action={
             <SliderToggle
               selected={localAgentsSectionVisible}
-              onClick={() => {
-                const nextValue = !localAgentsSectionVisible;
-                setLocalAgentsSectionVisible(nextValue);
-                trackEvent({
-                  area: TRACKING_AREAS.SETTINGS,
-                  object: "chat_with_toggle",
-                  extra: { enabled: nextValue },
-                });
-              }}
+              onClick={() =>
+                setLocalAgentsSectionVisible(!localAgentsSectionVisible)
+              }
             />
           }
         />
