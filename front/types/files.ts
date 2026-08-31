@@ -68,6 +68,7 @@ export type FileUseCaseMetadata = {
   pendingFrameSourceMove?: {
     sourceMountFilePath: string;
     destinationMountFilePath: string;
+    operationId: string;
   };
 };
 

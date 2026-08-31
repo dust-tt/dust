@@ -26,7 +26,10 @@ interface MockFileMetadata {
   crc32c?: string;
   generation?: string;
   md5Hash?: string;
+  metadata?: ObjectCustomMetadata;
 }
+
+type ObjectCustomMetadata = Record<string, string | boolean | number | null>;
 
 interface DeleteCall {
   filePath: string;
@@ -69,6 +72,7 @@ class FileStorageMock {
   private _metadataCalls: string[] = [];
   private _objectStore = new Map<string, string>();
   private _objectGenerations = new Map<string, string>();
+  private _objectCustomMetadata = new Map<string, ObjectCustomMetadata>();
   private _objectVersions = new Map<string, Map<string, string>>();
   private _nextGeneration = 1;
   private _deleteCalls: DeleteCall[] = [];
@@ -82,6 +86,8 @@ class FileStorageMock {
     () => null;
   private _copyFileShouldFail: (src: string, dest: string) => boolean = () =>
     false;
+  private _copyFileCommitsThenFails: (src: string, dest: string) => boolean =
+    () => false;
   private _afterCopyFile: (src: string, dest: string) => void = () => {};
   private _deleteShouldFail: (filePath: string) => boolean = () => false;
   private _filesByPrefix: (
@@ -178,6 +184,14 @@ class FileStorageMock {
     this._copyFileShouldFail = predicate;
   }
 
+  // Simulates a committed first attempt whose response was lost. The real
+  // copy wrapper retries internally, then surfaces the create-only 412.
+  setCopyFileCommitsThenFails(
+    predicate: (src: string, dest: string) => boolean
+  ): void {
+    this._copyFileCommitsThenFails = predicate;
+  }
+
   setDeleteFails(predicate: (filePath: string) => boolean): void {
     this._deleteShouldFail = predicate;
   }
@@ -240,9 +254,18 @@ class FileStorageMock {
   }
 
   // Seed the in-memory object store directly (no write path).
-  setObject(filePath: string, content: string): void {
+  setObject(
+    filePath: string,
+    content: string,
+    metadata?: ObjectCustomMetadata
+  ): void {
     const generation = String(this._nextGeneration++);
     this._objectStore.set(filePath, content);
+    if (metadata) {
+      this._objectCustomMetadata.set(filePath, metadata);
+    } else {
+      this._objectCustomMetadata.delete(filePath);
+    }
     this._objectGenerations.set(filePath, generation);
     const versions = this._objectVersions.get(filePath) ?? new Map();
     versions.set(generation, content);
@@ -259,6 +282,7 @@ class FileStorageMock {
     this._deleteCalls.length = 0;
     this._objectStore.clear();
     this._objectGenerations.clear();
+    this._objectCustomMetadata.clear();
     this._objectVersions.clear();
     this._nextGeneration = 1;
     this._fetchNotFoundPredicate = () => false;
@@ -268,6 +292,7 @@ class FileStorageMock {
     this._contentForPath = () => null;
     this._sortedFileVersions = () => null;
     this._copyFileShouldFail = () => false;
+    this._copyFileCommitsThenFails = () => false;
     this._afterCopyFile = () => {};
     this._deleteShouldFail = () => false;
     this._filesByPrefix = () => null;
@@ -346,6 +371,7 @@ class FileStorageMock {
         }
         this._objectStore.delete(path);
         this._objectGenerations.delete(path);
+        this._objectCustomMetadata.delete(path);
         return Promise.resolve(undefined);
       }),
       download: vi.fn().mockImplementation(() => {
@@ -358,12 +384,21 @@ class FileStorageMock {
       getMetadata: vi.fn(() => {
         const path = filePath ?? "";
         this._metadataCalls.push(path);
+        const configuredMetadata = this._metadataForPath(path);
         return Promise.resolve([
-          this._metadataForPath(path) ?? {
-            contentType: "text/plain",
-            generation: this._objectGenerations.get(path) ?? "1",
-            size: "0",
-          },
+          configuredMetadata
+            ? {
+                ...configuredMetadata,
+                metadata:
+                  configuredMetadata.metadata ??
+                  this._objectCustomMetadata.get(path),
+              }
+            : {
+                contentType: "text/plain",
+                generation: this._objectGenerations.get(path) ?? "1",
+                metadata: this._objectCustomMetadata.get(path),
+                size: "0",
+              },
         ]);
       }),
       getSignedUrl: vi.fn().mockResolvedValue(["https://signed-url.test"]),
@@ -384,6 +419,7 @@ class FileStorageMock {
               contentType: opts?.contentType,
             });
             this._objectStore.set(path, content.toString());
+            this._objectCustomMetadata.delete(path);
             return Promise.resolve(undefined);
           }
         ),
@@ -418,6 +454,7 @@ class FileStorageMock {
             );
           }
           this._objectStore.set(args.filePath, args.buffer.toString());
+          this._objectCustomMetadata.delete(args.filePath);
           this._saveFileCalls.push({
             filePath: args.filePath,
             content: args.buffer,
@@ -429,6 +466,7 @@ class FileStorageMock {
       uploadRawContentToBucket: vi.fn(
         (args: { content: string; contentType: string; filePath: string }) => {
           this._objectStore.set(args.filePath, args.content);
+          this._objectCustomMetadata.delete(args.filePath);
           this._saveFileCalls.push({
             filePath: args.filePath,
             content: args.content,
@@ -450,6 +488,7 @@ class FileStorageMock {
             );
           }
           this._objectStore.set(args.filePath, args.content);
+          this._objectCustomMetadata.delete(args.filePath);
           this._saveFileCalls.push({
             filePath: args.filePath,
             content: args.content,
@@ -494,6 +533,7 @@ class FileStorageMock {
           _destinationStorage?: unknown,
           options?: {
             destinationGenerationMatch?: number;
+            destinationMetadata?: ObjectCustomMetadata;
             sourceGeneration?: string;
           }
         ) => {
@@ -526,10 +566,19 @@ class FileStorageMock {
             versionedContent ??
               this._objectStore.get(src) ??
               this._contentForPath(src) ??
-              ""
+              "",
+            options?.destinationMetadata
           );
           const copiedGeneration = this._objectGenerations.get(dest);
           this._afterCopyFile(src, dest);
+          if (this._copyFileCommitsThenFails(src, dest)) {
+            return Promise.reject(
+              new MockGcsError(
+                412,
+                `Copy committed but its response was lost: ${src} -> ${dest}`
+              )
+            );
+          }
           return Promise.resolve({
             destinationFile: this.createMockGCSFile(dest),
             destinationGeneration: copiedGeneration,
@@ -543,6 +592,7 @@ class FileStorageMock {
           .map((path) => this._objectStore.get(path) ?? "")
           .join("");
         this._objectStore.set(destinationPath, combined);
+        this._objectCustomMetadata.delete(destinationPath);
         this._saveFileCalls.push({
           filePath: destinationPath,
           content: combined,
@@ -569,6 +619,7 @@ class FileStorageMock {
         }
         this._objectStore.delete(filePath);
         this._objectGenerations.delete(filePath);
+        this._objectCustomMetadata.delete(filePath);
         return Promise.resolve(undefined);
       }),
       deleteByPrefix: vi.fn(async (prefix: string) => {
@@ -577,6 +628,7 @@ class FileStorageMock {
         for (const path of [...this._objectStore.keys()]) {
           if (path.startsWith(prefix)) {
             this._objectStore.delete(path);
+            this._objectCustomMetadata.delete(path);
           }
         }
       }),

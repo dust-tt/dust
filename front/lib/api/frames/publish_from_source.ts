@@ -174,6 +174,12 @@ async function publishFrameV2FromSourceWithLockHeld(
       `File '${frame.sId}' is not a Frames v2 manifest.`
     );
   }
+  if (frame.useCaseMetadata?.pendingFrameSourceMove) {
+    return frameError(
+      "invalid_source",
+      `Frame '${frame.sId}' cannot be published while its source move is incomplete.`
+    );
+  }
 
   const canonicalManifestPath = frame.toScopedPath(auth);
   if (

@@ -1,5 +1,7 @@
 // @vitest-environment node
 
+import path from "node:path";
+
 import {
   publishFrameFromSource,
   publishFrameV2FromSource,
@@ -182,6 +184,40 @@ describe("publishFrameFromSource", () => {
 });
 
 describe("publishFrameV2FromSource", () => {
+  it("fails closed while a partial source move is reserved", async () => {
+    const { auth, conversation, frame, gcsSourceDirectoryPath } = await setup();
+    const destinationManifestPath = `${path.posix.dirname(
+      gcsSourceDirectoryPath
+    )}/Moved/${FRAME_MANIFEST_FILE}`;
+    await frame.updateMount({
+      destFileName: FRAME_MANIFEST_FILE,
+      destMountFilePath: destinationManifestPath,
+      destUseCase: "conversation",
+      destUseCaseMetadata: {
+        activePublicationId: "publication-1",
+        conversationId: conversation.sId,
+        pendingFrameSourceMove: {
+          destinationMountFilePath: destinationManifestPath,
+          operationId: "interrupted-move",
+          sourceMountFilePath: `${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+        },
+      },
+    });
+
+    const result = await publishFrameV2FromSource(auth, {
+      conversation,
+      frame,
+      manifestPath: `conversation-${conversation.sId}/Moved/${FRAME_MANIFEST_FILE}`,
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "invalid_source",
+      message: expect.stringContaining("source move is incomplete"),
+    });
+    expect(fileStorageMock.readStreamCalls).toHaveLength(0);
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
   it("publishes artifacts without copying source and activates one publication", async () => {
     const {
       auth,

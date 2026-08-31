@@ -48,11 +48,11 @@ Use the CLI instead of \`mv\` so the Frame keeps its identity, active publicatio
 database state while its source folder moves:
 
 \`\`\`bash
-dsbx frame move /files/<source-scope>/<frame-folder> /files/<destination-scope>/<frame-folder>
+dsbx frame move /files/<scope>/<source-folder> /files/<scope>/<destination-folder>
 \`\`\`
 
-Moving to a different runtime scope safely refreshes the Frame-owned sandbox. Do not move a
-registered Frame folder with raw filesystem commands.
+Source and destination must stay in the same conversation or Pod mount.
+Do not move a registered Frame folder with raw filesystem commands.
 
 ## Frames v2 source layout
 

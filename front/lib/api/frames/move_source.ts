@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 
 import { DustFileSystem, parseScopedPrefix } from "@app/lib/api/file_system";
@@ -31,6 +32,7 @@ import type { File, FileMetadata } from "@google-cloud/storage";
 import { UniqueConstraintError } from "sequelize";
 
 const FRAME_SOURCE_MOVE_COPY_CONCURRENCY = 4;
+const FRAME_SOURCE_MOVE_ID_METADATA_KEY = "dust_frame_source_move_id";
 
 type FrameSourceOwner = {
   useCase: FileUseCase;
@@ -102,7 +104,11 @@ function metadataWithoutPendingMove(
   return stableMetadata;
 }
 
-function hasMatchingPendingMove(
+type FrameSourceMoveReservation = NonNullable<
+  FileUseCaseMetadata["pendingFrameSourceMove"]
+>;
+
+function getMatchingPendingMove(
   frame: FileResource,
   {
     destinationMountFilePath,
@@ -111,14 +117,14 @@ function hasMatchingPendingMove(
     destinationMountFilePath: string;
     sourceMountFilePath: string;
   }
-): boolean {
+): FrameSourceMoveReservation | null {
   const pending = frame.useCaseMetadata?.pendingFrameSourceMove;
-  return (
-    frame.isFrameV2 &&
+  return frame.isFrameV2 &&
     frame.mountFilePath === destinationMountFilePath &&
     pending?.sourceMountFilePath === sourceMountFilePath &&
     pending.destinationMountFilePath === destinationMountFilePath
-  );
+    ? pending
+    : null;
 }
 
 function assertFrameAtSource(
@@ -142,21 +148,9 @@ function metadataValue(metadata: FileMetadata, key: keyof FileMetadata) {
   return value === undefined || value === null ? null : String(value);
 }
 
-function isSameGCSObject(source: File, destination: File): boolean {
-  const sourceMd5 = metadataValue(source.metadata, "md5Hash");
-  const destinationMd5 = metadataValue(destination.metadata, "md5Hash");
-  if (sourceMd5 && destinationMd5) {
-    return sourceMd5 === destinationMd5;
-  }
-
-  const sourceCrc32c = metadataValue(source.metadata, "crc32c");
-  const destinationCrc32c = metadataValue(destination.metadata, "crc32c");
-  return Boolean(
-    sourceCrc32c &&
-      destinationCrc32c &&
-      sourceCrc32c === destinationCrc32c &&
-      metadataValue(source.metadata, "size") ===
-        metadataValue(destination.metadata, "size")
+function isDestinationOwnedByMove(file: File, operationId: string): boolean {
+  return (
+    file.metadata.metadata?.[FRAME_SOURCE_MOVE_ID_METADATA_KEY] === operationId
   );
 }
 
@@ -226,13 +220,13 @@ async function deleteCopiedSourceObjects(
 }
 
 async function copyFrameSourceAsNew({
-  allowMatchingDestinationObjects,
   destinationMountPrefix,
+  operationId,
   sourceManifestPath,
   sourceMountPrefix,
 }: {
-  allowMatchingDestinationObjects: boolean;
   destinationMountPrefix: string;
+  operationId: string;
   sourceManifestPath: string;
   sourceMountPrefix: string;
 }): Promise<Result<FrameSourceCopy, FrameSourceCopyFailure>> {
@@ -349,6 +343,10 @@ async function copyFrameSourceAsNew({
               {
                 destinationGenerationMatch:
                   GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+                destinationMetadata: {
+                  ...sourceFile.metadata.metadata,
+                  [FRAME_SOURCE_MOVE_ID_METADATA_KEY]: operationId,
+                },
                 sourceGeneration,
               }
             );
@@ -361,12 +359,6 @@ async function copyFrameSourceAsNew({
             if (!isGCSPreconditionFailedError(error)) {
               throw error;
             }
-            if (!allowMatchingDestinationObjects) {
-              throw new FrameSourceMoveError(
-                "conflict",
-                `Destination file already exists: ${relativePath}`
-              );
-            }
             hasPreexistingDestinationObject = true;
             destinationFile = bucket.file(destinationPath);
             const [metadata] = await destinationFile.getMetadata();
@@ -374,15 +366,27 @@ async function copyFrameSourceAsNew({
           }
         }
 
-        if (
-          !ownedDestinationObject &&
-          (!allowMatchingDestinationObjects ||
-            !isSameGCSObject(sourceFile, destinationFile))
-        ) {
-          throw new FrameSourceMoveError(
-            "conflict",
-            `Destination file already exists: ${relativePath}`
+        if (!ownedDestinationObject) {
+          if (!isDestinationOwnedByMove(destinationFile, operationId)) {
+            throw new FrameSourceMoveError(
+              "conflict",
+              `Destination file already exists: ${relativePath}`
+            );
+          }
+          const destinationGeneration = metadataValue(
+            destinationFile.metadata,
+            "generation"
           );
+          if (!destinationGeneration) {
+            throw new FrameSourceMoveError(
+              "internal",
+              `Destination generation is missing: ${relativePath}`
+            );
+          }
+          ownedDestinationObject = {
+            filePath: destinationPath,
+            generation: destinationGeneration,
+          };
         }
 
         return new Ok<{
@@ -497,6 +501,8 @@ export async function moveFrameV2Source(
     );
   }
 
+  // The conversation is the sandbox invocation context. Explicitly requested
+  // mounts are still resolved through the authenticated agent-loop filesystem.
   const fsResult = await DustFileSystem.forAgentLoop(auth, {
     conversation,
     scopedPaths: [source, destination],
@@ -544,7 +550,7 @@ export async function moveFrameV2Source(
     sourceFrame?.isFrameV2 === true
       ? sourceFrame
       : destinationFrame &&
-          hasMatchingPendingMove(destinationFrame, {
+          getMatchingPendingMove(destinationFrame, {
             destinationMountFilePath: destinationMountPath,
             sourceMountFilePath: sourceMountPath,
           })
@@ -559,10 +565,12 @@ export async function moveFrameV2Source(
     if (!freshFrame) {
       return new Err(new FrameGoneError(`Frame ${frame.sId} not found.`));
     }
-    const isRecovery = hasMatchingPendingMove(freshFrame, {
+    const reservation = getMatchingPendingMove(freshFrame, {
       destinationMountFilePath: destinationMountPath,
       sourceMountFilePath: sourceMountPath,
     });
+    const isRecovery = reservation !== null;
+    const operationId = reservation?.operationId ?? randomUUID();
     if (!isRecovery) {
       const sourceCheck = assertFrameAtSource(
         auth,
@@ -644,6 +652,7 @@ export async function moveFrameV2Source(
             ...originalMetadata,
             pendingFrameSourceMove: {
               destinationMountFilePath: destinationMountPath,
+              operationId,
               sourceMountFilePath: sourceMountPath,
             },
           },
@@ -665,8 +674,8 @@ export async function moveFrameV2Source(
       destinationMountPath
     )}/`;
     const copyResult = await copyFrameSourceAsNew({
-      allowMatchingDestinationObjects: isRecovery,
       destinationMountPrefix,
+      operationId,
       sourceManifestPath: sourceMountPath,
       sourceMountPrefix,
     });
@@ -700,7 +709,7 @@ export async function moveFrameV2Source(
       currentFrame: FileResource
     ): Promise<Result<void, FrameSourceMoveError>> => {
       if (
-        !hasMatchingPendingMove(currentFrame, {
+        !getMatchingPendingMove(currentFrame, {
           destinationMountFilePath: destinationMountPath,
           sourceMountFilePath: sourceMountPath,
         })
@@ -790,12 +799,18 @@ export async function moveFrameV2Source(
             useCase: "pod",
             podId: destinationOwner.useCaseMetadata.spaceId ?? "",
           };
-    const destinationRelativePath = destination.slice(
-      destination.indexOf("/") + 1
+    const scopedPrefix =
+      sourceOwner.useCase === "conversation"
+        ? `conversation-${sourceOwner.useCaseMetadata.conversationId}`
+        : `pod-${sourceOwner.useCaseMetadata.spaceId}`;
+    const sourceRelativePath = path.posix.relative(scopedPrefix, source);
+    const destinationRelativePath = path.posix.relative(
+      scopedPrefix,
+      destination
     );
     const parentRelativePath = path.posix.dirname(destinationRelativePath);
     void emitGCSMountFileMovedAuditLog(auth, destinationScope, {
-      relativeFilePath: destinationRelativePath,
+      relativeFilePath: sourceRelativePath,
       parentRelativePath: parentRelativePath === "." ? "" : parentRelativePath,
     });
 

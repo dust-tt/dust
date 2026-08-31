@@ -13,7 +13,12 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
-import type { Bucket, File, SaveOptions } from "@google-cloud/storage";
+import type {
+  Bucket,
+  CopyOptions,
+  File,
+  SaveOptions,
+} from "@google-cloud/storage";
 import { RETRYABLE_ERR_FN_DEFAULT, Storage } from "@google-cloud/storage";
 import type formidable from "formidable";
 import fs from "fs";
@@ -531,9 +536,11 @@ export class FileStorage {
     destinationStorage: FileStorage = this,
     {
       destinationGenerationMatch,
+      destinationMetadata,
       sourceGeneration,
     }: {
       destinationGenerationMatch?: number;
+      destinationMetadata?: CopyOptions["metadata"];
       sourceGeneration?: string;
     } = {}
   ): Promise<FileCopyResult> {
@@ -551,6 +558,7 @@ export class FileStorage {
         const [copiedFile, copyResponse] = await sourceFile.copy(
           destinationFile,
           {
+            metadata: destinationMetadata,
             preconditionOpts:
               destinationGenerationMatch !== undefined
                 ? { ifGenerationMatch: destinationGenerationMatch }
