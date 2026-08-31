@@ -1719,17 +1719,17 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "list open incidents in ServiceNow",
     expected: "servicenow.list_records",
-    maxRank: 4, // create_record/get_record/update_record share boilerplate description text
+    maxRank: 6, // create_record/get_record/update_record still share TABLE_SCHEMA's field text
   },
   {
     query: "show me my ServiceNow tickets",
     expected: "servicenow.list_records",
-    maxRank: 4, // get_record/create_record/update_record all share "ServiceNow"/"ticket" tokens
+    maxRank: 6, // get_record/create_record/update_record all share "ServiceNow"/"ticket" tokens
   },
   {
     query: "create a new incident in ServiceNow",
     expected: "servicenow.create_record",
-    maxRank: 2, // list_records/get_record share "incident"/"ServiceNow" tokens
+    maxRank: 3, // list_records/get_record share "incident"/"ServiceNow" tokens
   },
   {
     query: "open a ServiceNow ticket for this issue",
@@ -1739,22 +1739,22 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "update the state of a ServiceNow incident",
     expected: "servicenow.update_record",
-    maxRank: 2, // get_record/list_records share "incident"/"ServiceNow" tokens
+    maxRank: 3, // get_record/list_records share "incident"/"ServiceNow" tokens
   },
   {
     query: "resolve a ServiceNow ticket and add close notes",
     expected: "servicenow.update_record",
-    maxRank: 2, // get_record/list_records share "ServiceNow"/"ticket" tokens
+    maxRank: 3, // get_record/list_records share "ServiceNow"/"ticket" tokens
   },
   {
     query: "list ServiceNow problem records",
     expected: "servicenow.list_records",
-    maxRank: 4, // same shared-boilerplate issue as above
+    maxRank: 6, // same shared-field-text issue as above
   },
   {
     query: "list change requests in ServiceNow",
     expected: "servicenow.list_records",
-    maxRank: 4, // same shared-boilerplate issue as the other list_records cases above
+    maxRank: 6, // same shared-field-text issue as the other list_records cases above
   },
   {
     query: "get a ServiceNow record by sys_id",

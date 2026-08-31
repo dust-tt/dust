@@ -39,7 +39,7 @@ export const SERVICENOW_TOOLS_METADATA = [
   {
     name: "list_records",
     description:
-      "List records from any ServiceNow table the connected account has access to (e.g. incident (ticket), problem, change_request, sc_request, kb_knowledge, or a custom table). Supports filtering with a ServiceNow encoded query.",
+      "List records from any ServiceNow table the connected account has access to. Supports filtering with a ServiceNow encoded query.",
     schema: {
       ...TABLE_SCHEMA,
       query: z
@@ -97,7 +97,7 @@ export const SERVICENOW_TOOLS_METADATA = [
   {
     name: "get_record",
     description:
-      "Get a single record from any ServiceNow table the connected account has access to (e.g. incident (ticket), problem, change_request, sc_request, kb_knowledge, or a custom table) by its sys_id.",
+      "Get a single record from any ServiceNow table the connected account has access to, by its sys_id.",
     schema: {
       ...TABLE_SCHEMA,
       sysId: z
@@ -123,7 +123,7 @@ export const SERVICENOW_TOOLS_METADATA = [
   {
     name: "create_record",
     description:
-      "Create (open) a new record in any ServiceNow table the connected account has access to (e.g. incident (ticket), problem, change_request, sc_request, kb_knowledge, or a custom table).",
+      "Create (open) a new record in any ServiceNow table the connected account has access to.",
     schema: {
       ...TABLE_SCHEMA,
       ...WRITE_FIELDS_SCHEMA,
@@ -139,7 +139,7 @@ export const SERVICENOW_TOOLS_METADATA = [
   {
     name: "update_record",
     description:
-      "Update, resolve, or close an existing record in any ServiceNow table the connected account has access to (e.g. incident (ticket), problem, change_request, sc_request, kb_knowledge, or a custom table), identified by its sys_id.",
+      "Update, resolve, or close an existing record in any ServiceNow table the connected account has access to, identified by its sys_id.",
     schema: {
       ...TABLE_SCHEMA,
       sysId: z
