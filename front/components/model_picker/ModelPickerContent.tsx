@@ -32,7 +32,6 @@ import {
   Icon,
   Lock01,
 } from "@dust-tt/sparkle";
-import { useLayoutEffect, useRef, useState } from "react";
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
@@ -76,54 +75,12 @@ export function ModelPickerContent({
   onChangeEffort,
   confirm,
 }: ModelPickerContentProps) {
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [expandedSide, setExpandedSide] = useState<typeof side | null>(null);
-
-  // Sparkle caps the scroll viewport to the current side's available height.
-  // If expanding starts scrolling, prefer the roomier side without remounting.
-  useLayoutEffect(() => {
-    if (!isMakersExpanded) {
-      setExpandedSide(null);
-      return;
-    }
-
-    const content = contentRef.current;
-    const scrollViewport = content?.querySelector<HTMLElement>(
-      "[data-radix-scroll-area-viewport]"
-    );
-    if (
-      !content ||
-      !scrollViewport ||
-      scrollViewport.scrollHeight <= scrollViewport.clientHeight + 1
-    ) {
-      return;
-    }
-
-    const triggerId = content.getAttribute("aria-labelledby");
-    const trigger = triggerId
-      ? content.ownerDocument.getElementById(triggerId)
-      : null;
-    const view = content.ownerDocument.defaultView;
-    if (!trigger || !view) {
-      return;
-    }
-
-    const triggerRect = trigger.getBoundingClientRect();
-    const viewportTop = view.visualViewport?.offsetTop ?? 0;
-    const viewportBottom =
-      viewportTop + (view.visualViewport?.height ?? view.innerHeight);
-    const availableAbove = triggerRect.top - viewportTop;
-    const availableBelow = viewportBottom - triggerRect.bottom;
-
-    setExpandedSide(availableAbove >= availableBelow ? "top" : "bottom");
-  }, [isMakersExpanded]);
-
   return (
     <DropdownMenuContent
-      ref={contentRef}
       className="w-84 max-w-(--radix-dropdown-menu-content-available-width)"
       align="start"
-      side={isMakersExpanded ? (expandedSide ?? side) : side}
+      side={side}
+      repositionKey={isMakersExpanded ? "expanded" : "collapsed"}
     >
       {tiers.length > 0 && (
         <DropdownMenuLabel label="Recommendations" className="text-sm" />

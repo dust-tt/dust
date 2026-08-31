@@ -861,6 +861,7 @@ export const WithFilters: Story = {
         </DropdownMenuTrigger>
         <DropdownMenuContent
           className="w-[320px]"
+          repositionKey={searchFilteredItems.length}
           dropdownHeaders={
             <>
               <DropdownMenuSearchbar
