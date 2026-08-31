@@ -1713,8 +1713,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   // The space's auto-created (regular_auto) groups: its manual member group and, for projects, its
   // editor group. Resolved from `group_permissions`, filtered to regular_auto groups (a grant's
-  // type alone cannot tell a regular_auto group from the global group). Empty in group management
-  // mode, where the space's groups are provisioned (IdP-owned) rather than auto-created.
+  // type alone cannot tell a regular_auto group from the global group). Present in group management
+  // mode too: that mode adds the provisioned groups' grants on top of these rather than replacing
+  // them (see `updatePermissions`).
   async fetchRegularAutoGroups(
     auth: Authenticator,
     transaction?: Transaction
@@ -1723,6 +1724,18 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       resourceType: "space",
       resourceId: this.id,
       transaction,
+    });
+  }
+
+  // The batched counterpart of `fetchRegularAutoGroups`: the regular_auto groups of every space in
+  // `spaces`, as a flat deduped union, in two queries rather than two per space.
+  static async listRegularAutoGroupsForSpaces(
+    auth: Authenticator,
+    spaces: SpaceResource[]
+  ): Promise<GroupResource[]> {
+    return GroupPermissionResource.listRegularAutoGroupsForResources(auth, {
+      resourceType: "space",
+      resourceIds: spaces.map((space) => space.id),
     });
   }
 

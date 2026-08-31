@@ -335,11 +335,34 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       transaction?: Transaction;
     }
   ): Promise<GroupResource[]> {
+    return this.listRegularAutoGroupsForResources(auth, {
+      resourceType,
+      resourceIds: [resourceId],
+      transaction,
+    });
+  }
+
+  static async listRegularAutoGroupsForResources(
+    auth: Authenticator,
+    {
+      resourceType,
+      resourceIds,
+      transaction,
+    }: {
+      resourceType: GroupPermissionResourceType;
+      resourceIds: number[];
+      transaction?: Transaction;
+    }
+  ): Promise<GroupResource[]> {
+    if (resourceIds.length === 0) {
+      return [];
+    }
+
     const grants = await GroupPermissionModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         resourceType,
-        resourceId,
+        resourceId: [...new Set(resourceIds)],
       },
       transaction,
     });

@@ -18,6 +18,7 @@ import type {
   GetSpaceDataSourceViewsResponseBody,
 } from "@app/types/api/data_source_view";
 import type { PostSpaceDataSourceResponseBody } from "@app/types/api/data_sources";
+import type { GetKeyScopableSpacesResponseBody } from "@app/types/api/keys";
 import type { SpacesLookupResponseBody } from "@app/types/api/projects/list";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type {
@@ -197,6 +198,31 @@ export function useSpacesAsAdmin({
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
+  };
+}
+
+// The spaces a new API key may be scoped to: the workspace's restricted spaces and pods. Admin
+// only — the endpoint that serves it is behind `ensureIsAdmin()`.
+export function useKeyScopableSpaces({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const spacesFetcher: Fetcher<GetKeyScopableSpacesResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/keys/spaces`,
+    spacesFetcher,
+    { disabled }
+  );
+
+  return {
+    spaces: data?.spaces ?? emptyArray(),
+    isSpacesLoading: !error && !data && !disabled,
+    isSpacesError: !!error,
   };
 }
 

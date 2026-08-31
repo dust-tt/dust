@@ -3,7 +3,6 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { listKeyScopableGroups } from "@app/lib/api/keys/scopable_groups";
 import {
   MAX_API_KEY_SPEND_LIMIT_AWU_CREDITS,
   MIN_API_KEY_SPEND_LIMIT_AWU_CREDITS,
@@ -11,6 +10,7 @@ import {
 } from "@app/lib/api/keys/spend_limit";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
@@ -26,13 +26,13 @@ import { z } from "zod";
 
 import keyId from "./[id]";
 import keyGroups from "./groups";
+import keySpaces from "./spaces";
 
 const MAX_API_KEY_CREATION_PER_DAY = 30;
 
 const CreateKeyPostBodySchema = z.object({
   name: z.string(),
-  group_id: z.string().optional(),
-  group_ids: z.array(z.string()).optional(),
+  space_ids: z.array(z.string()).optional(),
   monthly_cap_micro_usd: z.number().nullish(),
   // Per-key credit cap in AWU credits (credit-priced plans only). null/omitted
   // = unlimited.
@@ -71,8 +71,7 @@ app.post(
 
     const {
       name,
-      group_id,
-      group_ids,
+      space_ids,
       monthly_cap_micro_usd,
       monthly_cap_awu_credits,
       role,
@@ -154,7 +153,8 @@ app.post(
       });
     }
 
-    // Resolve groups: prefer group_ids (new), fall back to group_id (retro-compatibility).
+    // A key always carries the workspace global group, so it can reach everything every workspace
+    // member can reach; the spaces it is scoped to add to that.
     const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
     if (globalGroupRes.isErr()) {
       return apiError(ctx, {
@@ -168,46 +168,37 @@ app.post(
     const globalGroup = globalGroupRes.value;
 
     const resolvedGroups: GroupResource[] = [globalGroup];
+    const requestedSpaceIds = [...new Set(space_ids ?? [])];
 
-    const additionalGroupIds = group_ids
-      ? group_ids.filter((gId) => gId !== globalGroup.sId)
-      : group_id && group_id !== globalGroup.sId
-        ? [group_id]
-        : [];
+    if (requestedSpaceIds.length > 0) {
+      const spaces = await SpaceResource.fetchByIds(auth, requestedSpaceIds);
+      const openSpaceModelIds = await SpaceResource.listOpenSpaceModelIds(
+        auth,
+        spaces
+      );
+      const scopableSpaces = spaces.filter(
+        (space) =>
+          (space.isRegular() || space.isProject()) &&
+          !openSpaceModelIds.has(space.id)
+      );
 
-    if (additionalGroupIds.length > 0) {
-      // A key can only be scoped to groups of restricted spaces or pods.
-      const scopableGroupIds = new Set(
-        (await listKeyScopableGroups(auth)).map((group) => group.sId)
-      );
-      const invalidGroupIds = additionalGroupIds.filter(
-        (gId) => !scopableGroupIds.has(gId)
-      );
-      if (invalidGroupIds.length > 0) {
+      if (scopableSpaces.length !== requestedSpaceIds.length) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
             message:
-              "An API key can only be scoped to groups of restricted spaces or pods.",
+              "An API key can only be scoped to restricted spaces or pods.",
           },
         });
       }
 
-      const groupsRes = await GroupResource.fetchByIds(
-        auth,
-        additionalGroupIds
+      resolvedGroups.push(
+        ...(await SpaceResource.listRegularAutoGroupsForSpaces(
+          auth,
+          scopableSpaces
+        ))
       );
-      if (groupsRes.isErr()) {
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: {
-            type: "group_not_found",
-            message: "Invalid group",
-          },
-        });
-      }
-      resolvedGroups.push(...groupsRes.value);
     }
 
     const rateLimitKey = `api_key_creation_${owner.sId}`;
@@ -306,6 +297,7 @@ app.post(
 );
 
 app.route("/groups", keyGroups);
+app.route("/spaces", keySpaces);
 app.route("/:id", keyId);
 
 export default app;

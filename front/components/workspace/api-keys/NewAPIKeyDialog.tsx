@@ -7,11 +7,9 @@ import {
   monthlyCapCreditsSchema,
   monthlyCapDollarsSchema,
   parseCreditsString,
-  prettifyGroupName,
 } from "@app/components/workspace/api-keys/utils";
-import type { GroupType } from "@app/types/groups";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
-import type { ModelId } from "@app/types/shared/model_id";
+import type { SpaceType } from "@app/types/space";
 import {
   Button,
   DropdownMenu,
@@ -43,20 +41,20 @@ const formSchema = z.object({
   name: z.string().min(1, "API key name is required"),
   monthlyCapDollars: monthlyCapDollarsSchema,
   monthlyCapCredits: monthlyCapCreditsSchema,
-  selectedGroupIds: z.array(z.number()),
+  selectedSpaceIds: z.array(z.string()),
   role: z.enum(KEY_ROLES),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
 interface NewAPIKeyDialogProps {
-  groups: GroupType[];
+  spaces: SpaceType[];
   disabled?: boolean;
   isGenerating: boolean;
   isRevoking: boolean;
   onCreate: (params: {
     name: string;
-    groups: GroupType[];
+    spaceIds: string[];
     monthlyCapMicroUsd: number | null;
     monthlyCapAwuCredits: number | null;
     role: KeyRole;
@@ -65,7 +63,7 @@ interface NewAPIKeyDialogProps {
 }
 
 export const NewAPIKeyDialog = ({
-  groups,
+  spaces,
   disabled,
   isGenerating,
   isRevoking,
@@ -82,7 +80,7 @@ export const NewAPIKeyDialog = ({
       name: "",
       monthlyCapDollars: "",
       monthlyCapCredits: "",
-      selectedGroupIds: [],
+      selectedSpaceIds: [],
       role: "user",
     },
   });
@@ -90,9 +88,9 @@ export const NewAPIKeyDialog = ({
   const { handleSubmit, reset, formState } = form;
 
   const {
-    field: { value: selectedGroupIds, onChange: setSelectedGroupIds },
-  } = useController<FormValues, "selectedGroupIds">({
-    name: "selectedGroupIds",
+    field: { value: selectedSpaceIds, onChange: setSelectedSpaceIds },
+  } = useController<FormValues, "selectedSpaceIds">({
+    name: "selectedSpaceIds",
     control: form.control,
   });
 
@@ -103,28 +101,32 @@ export const NewAPIKeyDialog = ({
     control: form.control,
   });
 
-  const removeGroupId = (groupId: ModelId) => {
-    setSelectedGroupIds(selectedGroupIds.filter((id) => id !== groupId));
+  const removeSpaceId = (spaceId: string) => {
+    setSelectedSpaceIds(selectedSpaceIds.filter((sId) => sId !== spaceId));
   };
 
-  const groupsById = useMemo(() => {
-    const map: Record<ModelId, GroupType> = {};
-    for (const g of groups) {
-      map[g.id] = g;
+  const spacesById = useMemo(() => {
+    const map: Record<string, SpaceType> = {};
+    for (const space of spaces) {
+      map[space.sId] = space;
     }
     return map;
-  }, [groups]);
+  }, [spaces]);
 
-  const nonGlobalGroups = useMemo(
+  const sortedSpaces = useMemo(
     () =>
-      groups
-        .filter((g) => g.kind !== "global")
-        .sort((a, b) =>
-          prettifyGroupName(a)
-            .toLowerCase()
-            .localeCompare(prettifyGroupName(b).toLowerCase())
-        ),
-    [groups]
+      [...spaces].sort((a, b) =>
+        a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+      ),
+    [spaces]
+  );
+
+  const matchingSpaces = useMemo(
+    () =>
+      sortedSpaces.filter((space) =>
+        space.name.toLowerCase().includes(spaceSearch.toLowerCase())
+      ),
+    [sortedSpaces, spaceSearch]
   );
 
   const handleClose = () => {
@@ -136,13 +138,9 @@ export const NewAPIKeyDialog = ({
     const dollars =
       data.monthlyCapDollars === "" ? null : parseFloat(data.monthlyCapDollars);
 
-    const selectedGroups = data.selectedGroupIds
-      .map((id) => groupsById[id])
-      .filter(Boolean);
-
     await onCreate({
       name: data.name,
-      groups: selectedGroups,
+      spaceIds: data.selectedSpaceIds,
       monthlyCapMicroUsd: dollarsToMicroUsd(dollars),
       monthlyCapAwuCredits: parseCreditsString(data.monthlyCapCredits),
       role: data.role,
@@ -204,32 +202,24 @@ export const NewAPIKeyDialog = ({
                         />
                       }
                     >
-                      {nonGlobalGroups.filter((g) =>
-                        prettifyGroupName(g)
-                          .toLowerCase()
-                          .includes(spaceSearch.toLowerCase())
-                      ).length === 0 && (
+                      {matchingSpaces.length === 0 && (
                         <div className="flex items-center justify-center py-4 text-sm">
                           No spaces found
                         </div>
                       )}
-                      {nonGlobalGroups
+                      {matchingSpaces
                         .filter(
-                          (g) =>
-                            !selectedGroupIds.includes(g.id) &&
-                            prettifyGroupName(g)
-                              .toLowerCase()
-                              .includes(spaceSearch.toLowerCase())
+                          (space) => !selectedSpaceIds.includes(space.sId)
                         )
-                        .map((group) => (
+                        .map((space) => (
                           <DropdownMenuItem
-                            key={group.id}
-                            label={prettifyGroupName(group)}
+                            key={space.sId}
+                            label={space.name}
                             onSelect={(e) => e.preventDefault()}
                             onClick={() =>
-                              setSelectedGroupIds([
-                                ...selectedGroupIds,
-                                group.id,
+                              setSelectedSpaceIds([
+                                ...selectedSpaceIds,
+                                space.sId,
                               ])
                             }
                           />
@@ -244,19 +234,19 @@ export const NewAPIKeyDialog = ({
                     variant="outline"
                     disabled
                   />
-                  {selectedGroupIds.map((gId) => {
-                    const group = groupsById[gId];
-                    if (!group) {
+                  {selectedSpaceIds.map((id) => {
+                    const space = spacesById[id];
+                    if (!space) {
                       return null;
                     }
                     return (
                       <Button
-                        key={gId}
-                        label={prettifyGroupName(group)}
+                        key={id}
+                        label={space.name}
                         icon={XClose}
                         size="xs"
                         variant="ghost"
-                        onClick={() => removeGroupId(gId)}
+                        onClick={() => removeSpaceId(id)}
                       />
                     );
                   })}
