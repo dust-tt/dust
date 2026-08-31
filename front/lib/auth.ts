@@ -900,8 +900,9 @@ export class Authenticator {
   }
 
   /**
-   * Returns two Authenticators, one for the workspace associated with the key and one for the
-   * workspace provided as an argument.
+   * Returns an Authenticator for the workspace provided as an argument, authenticated with the
+   * given API key. The key does not have to belong to that workspace: when it does not, it
+   * confers no groups and no role there.
    *
    * @param key Key the API key
    * @param wId the target workspaceId
@@ -909,7 +910,7 @@ export class Authenticator {
    *                                   possible with a system key).
    * @param requestedRole optional role to assign the auth in place of the key role (only possible
    *                               with a system key).
-   * @returns Promise<{ workspaceAuth: Authenticator, keyAuth: Authenticator }>
+   * @returns Promise<{ workspaceAuth: Authenticator }>
    */
   static async fromKey(
     key: KeyResource,
@@ -918,7 +919,6 @@ export class Authenticator {
     requestedRole?: RoleType
   ): Promise<{
     workspaceAuth: Authenticator;
-    keyAuth: Authenticator;
   }> {
     const [workspace, keyWorkspace] = await Promise.all([
       WorkspaceResource.fetchById(wId),
@@ -944,49 +944,21 @@ export class Authenticator {
     let keyGroups: GroupResource[] = [];
     let requestedGroups: GroupResource[] = [];
     let workspaceSubscription: SubscriptionResource | null = null;
-    let keySubscription: SubscriptionResource | null = null;
 
     if (workspace) {
       const lightWorkspace = renderLightWorkspaceType({ workspace });
-      const lightKeyWorkspace = renderLightWorkspaceType({
-        workspace: keyWorkspace,
-      });
       if (requestedGroupIds && key.isSystem) {
-        [requestedGroups, keySubscription, workspaceSubscription] =
-          await Promise.all([
-            GroupResource.listGroupsWithSystemKey(key, requestedGroupIds),
-            SubscriptionResource.fetchActiveByWorkspaceModelId(
-              lightKeyWorkspace.id
-            ),
-            // We need to fetch the subscription separately as requested groups
-            // might not include the global group which is used to fetch the
-            // subscription in fetchRoleGroupsAndSubscription.
-            isKeyWorkspace
-              ? null
-              : SubscriptionResource.fetchActiveByWorkspaceModelId(
-                  lightWorkspace.id
-                ),
-          ]);
+        [requestedGroups, workspaceSubscription] = await Promise.all([
+          GroupResource.listGroupsWithSystemKey(key, requestedGroupIds),
+          // Fetched separately: the requested groups might not include the global group, which is
+          // what fetchRoleGroupsAndSubscription uses to resolve the subscription.
+          SubscriptionResource.fetchActiveByWorkspaceModelId(lightWorkspace.id),
+        ]);
       } else {
-        [keyGroups, keySubscription, workspaceSubscription] = await Promise.all(
-          [
-            GroupResource.listWorkspaceGroupsFromKey(key),
-            SubscriptionResource.fetchActiveByWorkspaceModelId(
-              lightKeyWorkspace.id
-            ),
-            isKeyWorkspace
-              ? null
-              : SubscriptionResource.fetchActiveByWorkspaceModelId(
-                  lightWorkspace.id
-                ),
-          ]
-        );
-      }
-
-      // When the key workspace is the target workspace, both subscriptions
-      // are identical - reuse the one we already fetched.
-      if (isKeyWorkspace) {
-        workspaceSubscription = keySubscription;
+        [keyGroups, workspaceSubscription] = await Promise.all([
+          GroupResource.listWorkspaceGroupsFromKey(key),
+          SubscriptionResource.fetchActiveByWorkspaceModelId(lightWorkspace.id),
+        ]);
       }
     }
     const allGroups = requestedGroupIds ? requestedGroups : keyGroups;
@@ -1000,37 +972,18 @@ export class Authenticator {
     const workspaceGroupModelIds = isKeyWorkspace
       ? allGroups.map((g) => g.id)
       : [];
-    const keyGroupModelIds = allGroups.map((g) => g.id);
 
     // `requestedGroupIds` replaces the key's own groups (the Slack bot acting as a user), so the
     // resolution goes through those groups instead of the key.
     const systemKey = !requestedGroupIds && isSystemKey(key) ? key : null;
 
-    let permissions: GroupPermissions;
-    let keyPermissions: GroupPermissions;
-    if (isKeyWorkspace) {
-      // Same workspace and same groups: both Authenticators share one resolution rather than
-      // running the same query twice. Safe to share the instance, GroupPermissions is immutable.
-      permissions = await this.resolvePermissions(
-        systemKey
-          ? { workspace, systemKey }
-          : { workspace, groupModelIds: workspaceGroupModelIds }
-      );
-      keyPermissions = permissions;
-    } else {
-      [permissions, keyPermissions] = await Promise.all([
-        // The target workspace is not the key's, so the key says nothing about it.
-        this.resolvePermissions({
-          workspace,
-          groupModelIds: workspaceGroupModelIds,
-        }),
-        this.resolvePermissions(
-          systemKey
-            ? { workspace: keyWorkspace, systemKey }
-            : { workspace: keyWorkspace, groupModelIds: keyGroupModelIds }
-        ),
-      ]);
-    }
+    // The target workspace is not necessarily the key's; when it is not, the key says nothing
+    // about it and `workspaceGroupModelIds` is empty.
+    const permissions = await this.resolvePermissions(
+      systemKey && isKeyWorkspace
+        ? { workspace, systemKey }
+        : { workspace, groupModelIds: workspaceGroupModelIds }
+    );
 
     return {
       workspaceAuth: new Authenticator({
@@ -1042,15 +995,6 @@ export class Authenticator {
         workspace,
         providersHealth: workspaceProvidersHealth,
         permissions,
-      }),
-      keyAuth: new Authenticator({
-        authMethod: key.isSystem ? "system_api_key" : "api_key",
-        groupModelIds: keyGroupModelIds,
-        key: key.toAuthJSON(),
-        role: "builder",
-        subscription: keySubscription,
-        workspace: keyWorkspace,
-        permissions: keyPermissions,
       }),
     };
   }
