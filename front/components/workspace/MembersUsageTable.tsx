@@ -208,7 +208,7 @@ function spendLimitSourceLabel(
       return "Limit set specifically for this member";
     case "group":
       return groupName
-        ? `Limit from the "${groupName}" group`
+        ? `Limit inherited from the "${groupName}" group`
         : "Limit from a group";
     case "default":
       return "Workspace default limit";
