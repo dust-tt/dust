@@ -154,7 +154,6 @@ function memberFromUpgradeRequest(
     rateLimiterSpendAwuCredits: null,
     metronomeConsumedAwuCredits: null,
     spendLimitSource: "none",
-    spendLimitGroupName: null,
     spendLimitAlertId: null,
     spendLimitWarningAlertId: null,
     freeCreditLowAlert: null,

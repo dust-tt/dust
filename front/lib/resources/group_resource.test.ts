@@ -941,43 +941,6 @@ describe("GroupResource", () => {
     });
   });
 
-  describe("listMaxPoolCapGroupByUserModelIdInWorkspace", () => {
-    it("returns the winning group's name alongside its cap", async () => {
-      const capped500 = await GroupResource.makeNew(
-        {
-          name: "Capped 500",
-          workspaceId: workspace.id,
-          kind: "provisioned",
-          workOSGroupId: "fake-capped-500",
-        },
-        { memberIds: [user.id] }
-      );
-      await capped500.updatePoolCap(authenticator, 500);
-
-      const capped800 = await GroupResource.makeNew(
-        {
-          name: "Capped 800",
-          workspaceId: workspace.id,
-          kind: "provisioned",
-          workOSGroupId: "fake-capped-800",
-        },
-        { memberIds: [user.id] }
-      );
-      await capped800.updatePoolCap(authenticator, 800);
-
-      const result =
-        await GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
-          workspace,
-          userModelIds: [user.id],
-        });
-
-      expect(result.get(user.id)).toEqual({
-        capAwuCredits: 800,
-        groupName: "Capped 800",
-      });
-    });
-  });
-
   describe("listWorkspaceGroupsFromKey", () => {
     it("system key: populates cache on first call and serves from cache on second", async () => {
       const key = await KeyFactory.system(systemGroup);
