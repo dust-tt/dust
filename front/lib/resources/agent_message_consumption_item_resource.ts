@@ -1,3 +1,4 @@
+import { INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/consumption/version";
 import { MAX_CONVERSATION_DEPTH } from "@app/lib/api/assistant/conversation/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
@@ -627,6 +628,42 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     });
 
     return items.map((item) => new this(this.model, item.get()));
+  }
+
+  static async sumConsumptionCreditAmountMicroByRunKey(
+    auth: Authenticator,
+    { runKey }: { runKey: string }
+  ): Promise<number> {
+    // biome-ignore lint/plugin/noRawSql: Sequelize cannot express SUM(COALESCE(column, column)).
+    const [row] = await frontSequelize.query<{ total: string }>(
+      `
+        SELECT COALESCE(
+          SUM(COALESCE(
+            "reconciledCreditAmountMicro",
+            "grossAttributedCreditAmountMicro"
+          )),
+          0
+        )::text AS total
+        FROM agent_message_consumption_items
+        WHERE "workspaceId" = $workspaceModelId
+          AND "runKey" = $runKey
+          AND "attributionVersion" = $attributionVersion
+      `,
+      {
+        bind: {
+          attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+          runKey,
+          workspaceModelId: auth.getNonNullableWorkspace().id,
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+    const total = Number(row?.total ?? 0);
+    assert(
+      Number.isSafeInteger(total) && total >= 0,
+      "Consumption total is outside the supported integer range"
+    );
+    return total;
   }
 
   /**

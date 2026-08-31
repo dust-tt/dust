@@ -24,6 +24,10 @@ class RedisMock {
   // getRedisCacheClient / runOnRedisCache: one shared client, as in production.
   readonly cacheClient = this.createStatefulClient(this.hashStore);
 
+  hashField(key: string, field: string): string | null {
+    return this.hashStore.get(key)?.get(field) ?? null;
+  }
+
   reset(): void {
     this.stringStore.clear();
     this.hashStore.clear();
@@ -152,7 +156,150 @@ class RedisMock {
       subscribe: vi.fn().mockResolvedValue(undefined),
       unsubscribe: vi.fn().mockResolvedValue(undefined),
       ping: vi.fn().mockResolvedValue("PONG"),
-      eval: vi.fn().mockResolvedValue(1),
+      eval: vi.fn(
+        async (
+          script: string,
+          options: { keys: string[]; arguments: string[] }
+        ) => {
+          const [rootKey, cursorKey] = options.keys;
+          if (!rootKey?.startsWith("consumption:root:")) {
+            return 1;
+          }
+          if (!cursorKey && script.includes('redis.call("DEL"')) {
+            const [
+              initializedField,
+              revisionField,
+              expectedRevision,
+              totalField,
+              subagentField,
+              total,
+              subagents,
+            ] = options.arguments;
+            if (
+              !initializedField ||
+              !revisionField ||
+              expectedRevision === undefined ||
+              !totalField ||
+              !subagentField ||
+              total === undefined ||
+              subagents === undefined
+            ) {
+              throw new Error("Invalid consumption root seed arguments");
+            }
+            const existing = hashStore.get(rootKey);
+            if (existing?.has(initializedField)) {
+              return 0;
+            }
+            if (
+              Number(existing?.get(revisionField) ?? 0) !==
+              Number(expectedRevision)
+            ) {
+              return -1;
+            }
+            const root = new Map<string, string>();
+            root.set(initializedField, "1");
+            root.set(revisionField, expectedRevision);
+            root.set(totalField, total);
+            root.set(subagentField, subagents);
+            for (let index = 8; index < options.arguments.length; index += 2) {
+              const field = options.arguments[index];
+              const value = options.arguments[index + 1];
+              if (!field || value === undefined) {
+                throw new Error("Invalid consumption execution seed");
+              }
+              root.set(field, value);
+            }
+            hashStore.set(rootKey, root);
+            return 1;
+          }
+          if (!cursorKey) {
+            const [executionField, total, totalField, subagentField] =
+              options.arguments;
+            if (
+              !executionField ||
+              total === undefined ||
+              !totalField ||
+              !subagentField
+            ) {
+              throw new Error("Invalid consumption root update arguments");
+            }
+            const root = hashStore.get(rootKey) ?? new Map<string, string>();
+            hashStore.set(rootKey, root);
+            const previous = Number(root.get(executionField) ?? 0);
+            root.set(executionField, total);
+            root.set(
+              totalField,
+              (
+                Number(root.get(totalField) ?? 0) +
+                Number(total) -
+                previous
+              ).toString()
+            );
+            const subagentMarker = options.arguments[4];
+            if (subagentMarker && !root.has(subagentMarker)) {
+              root.set(subagentMarker, "1");
+              root.set(
+                subagentField,
+                (Number(root.get(subagentField) ?? 0) + 1).toString()
+              );
+            }
+            const revisionField = options.arguments[5];
+            if (!revisionField) {
+              throw new Error("Invalid consumption root revision field");
+            }
+            root.set(
+              revisionField,
+              (Number(root.get(revisionField) ?? 0) + 1).toString()
+            );
+            return 1;
+          }
+          const [eventId, executionField, total, totalField, subagentField] =
+            options.arguments;
+          if (
+            !eventId ||
+            !executionField ||
+            total === undefined ||
+            !totalField ||
+            !subagentField
+          ) {
+            throw new Error("Invalid consumption root update arguments");
+          }
+          const currentCursor = this.stringStore.get(cursorKey)?.value;
+          if (currentCursor && Number(currentCursor) >= Number(eventId)) {
+            return 0;
+          }
+
+          const root = hashStore.get(rootKey) ?? new Map<string, string>();
+          hashStore.set(rootKey, root);
+          const previous = Number(root.get(executionField) ?? 0);
+          root.set(executionField, total);
+          root.set(
+            totalField,
+            (
+              Number(root.get(totalField) ?? 0) +
+              Number(total) -
+              previous
+            ).toString()
+          );
+          const countsAsSubagent = options.arguments[5] === "1";
+          const subagentMarker = options.arguments[6];
+          if (!subagentMarker) {
+            throw new Error("Invalid consumption subagent marker");
+          }
+          if (countsAsSubagent && !root.has(subagentMarker)) {
+            root.set(subagentMarker, "1");
+            root.set(
+              subagentField,
+              (Number(root.get(subagentField) ?? 0) + 1).toString()
+            );
+          }
+          this.stringStore.set(cursorKey, {
+            value: eventId,
+            expiresAtMs: Date.now() + Number(options.arguments[7]),
+          });
+          return 1;
+        }
+      ),
       exists: vi.fn(async (key: string) => {
         const entry = this.stringStore.get(key);
         if (!entry) {
@@ -228,6 +375,9 @@ class RedisMock {
 
       return toDelete.filter((field) => hash.delete(field)).length;
     });
+    const hGet = vi.fn(async (key: string, field: string) =>
+      hashStore.get(key)?.get(field)
+    );
     const pExpire = vi.fn(async (_key: string, _ms: number) => true);
     const type = vi.fn(async (key: string) => {
       if (hashStore.has(key)) {
@@ -284,6 +434,7 @@ class RedisMock {
     Object.assign(client, {
       hSet,
       hSetNX,
+      hGet,
       hGetAll,
       hmGet,
       hDel,

@@ -57,6 +57,7 @@ export type RedisUsageTagsType =
   | "cache_diagnostics"
   | "cache_with_redis"
   | "cancel_message_generation"
+  | "consumption"
   | "conversation_events"
   | "daily_usage_tracking"
   | "email_context"
