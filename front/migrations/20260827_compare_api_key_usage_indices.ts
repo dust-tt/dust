@@ -23,7 +23,16 @@ const DaysSchema = z.number().int().positive();
 type ApiKeyCreditsBucket = {
   key: string;
   credits?: estypes.AggregationsSumAggregate;
+  by_status?: StatusCreditsTermsAggregate;
 };
+
+type StatusCreditsBucket = {
+  key: string;
+  credits?: estypes.AggregationsSumAggregate;
+};
+
+type StatusCreditsTermsAggregate =
+  estypes.AggregationsTermsAggregateBase<StatusCreditsBucket>;
 
 type ApiKeyCreditsTermsAggregate =
   estypes.AggregationsTermsAggregateBase<ApiKeyCreditsBucket>;
@@ -112,7 +121,15 @@ makeScript(
           aggregations: {
             by_api_key_name: {
               terms: { field: "api_key_name", size: MAX_API_KEY_NAMES },
-              aggs: { credits: { sum: { field: "cost.billable_awu" } } },
+              aggs: {
+                credits: { sum: { field: "cost.billable_awu" } },
+                by_status: {
+                  terms: { field: "status", size: 10 },
+                  aggs: {
+                    credits: { sum: { field: "cost.billable_awu" } },
+                  },
+                },
+              },
             },
           },
           size: 0,
@@ -166,13 +183,27 @@ makeScript(
       CONSUMPTION_ANALYTICS_ALIAS_NAME
     );
 
+    const legacyBuckets = bucketsToArray<ApiKeyCreditsBucket>(
+      legacyAggregation?.buckets
+    );
     const legacyByApiKeyName = new Map(
-      bucketsToArray<ApiKeyCreditsBucket>(legacyAggregation?.buckets).map(
-        (bucket) => [
-          String(bucket.key),
-          roundCreditsToMicroCredits(bucket.credits?.value ?? 0),
-        ]
-      )
+      legacyBuckets.map((bucket) => [
+        String(bucket.key),
+        roundCreditsToMicroCredits(bucket.credits?.value ?? 0),
+      ])
+    );
+    const legacyCreditsByStatusByApiKeyName = new Map(
+      legacyBuckets.map((bucket) => [
+        String(bucket.key),
+        Object.fromEntries(
+          bucketsToArray<StatusCreditsBucket>(bucket.by_status?.buckets).map(
+            (statusBucket) => [
+              String(statusBucket.key),
+              statusBucket.credits?.value ?? 0,
+            ]
+          )
+        ),
+      ])
     );
     const consumptionByApiKeyName = new Map(
       bucketsToArray<ApiKeyCreditsBucket>(consumptionAggregation?.buckets).map(
@@ -197,6 +228,8 @@ makeScript(
             {
               apiKeyName,
               legacyCredits: microCreditsToCredits(legacyCreditsMicro),
+              legacyCreditsByStatus:
+                legacyCreditsByStatusByApiKeyName.get(apiKeyName) ?? {},
               consumptionCredits: microCreditsToCredits(
                 consumptionCreditsMicro
               ),
